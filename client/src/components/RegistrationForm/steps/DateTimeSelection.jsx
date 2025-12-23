@@ -1,18 +1,49 @@
-import React from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { motion } from 'framer-motion';
+import api from '../../../config/api';
 
 const DateTimeSelection = ({ formData, onChange, onNext, onBack }) => {
   const { t, i18n } = useTranslation();
   const isRTL = i18n.language === 'ar';
 
+  const [availableSlots, setAvailableSlots] = useState([]);
+  const [loadingSlots, setLoadingSlots] = useState(false);
+  const [selectedMonth, setSelectedMonth] = useState(new Date());
+  const [bookedDates, setBookedDates] = useState([]);
+
   const handleChange = (field, value) => {
     onChange({ [field]: value });
   };
 
+  // Fetch available slots when date and section are selected
+  const fetchAvailableSlots = useCallback(async (date) => {
+    if (!date || !formData.fablabSection) return;
+
+    setLoadingSlots(true);
+    try {
+      const response = await api.get('/registration/available-slots', {
+        params: { section: formData.fablabSection, date }
+      });
+      setAvailableSlots(response.data.slots || []);
+    } catch (error) {
+      console.error('Error fetching slots:', error);
+      setAvailableSlots([]);
+    } finally {
+      setLoadingSlots(false);
+    }
+  }, [formData.fablabSection]);
+
+  useEffect(() => {
+    const date = formData.appointmentDate || formData.visitDate;
+    if (date) {
+      fetchAvailableSlots(date);
+    }
+  }, [formData.appointmentDate, formData.visitDate, fetchAvailableSlots]);
+
   const canProceed = () => {
     if (['Beneficiary', 'Talented', 'Visitor'].includes(formData.applicationType)) {
-      return formData.appointmentDate && formData.appointmentTime;
+      return formData.appointmentDate && formData.appointmentTime && formData.appointmentDuration;
     } else if (formData.applicationType === 'Volunteer') {
       return formData.startDate && formData.endDate && formData.startTime && formData.endTime;
     } else if (formData.applicationType === 'FABLAB Visit') {
@@ -27,8 +58,88 @@ const DateTimeSelection = ({ formData, onChange, onNext, onBack }) => {
     return today.toISOString().split('T')[0];
   };
 
+  // Check if a date is a working day (Sunday-Thursday)
+  const isWorkingDay = (date) => {
+    const day = date.getDay();
+    return day !== 5 && day !== 6; // Not Friday (5) or Saturday (6)
+  };
+
+  // Generate calendar days
+  const getDaysInMonth = (date) => {
+    const year = date.getFullYear();
+    const month = date.getMonth();
+    const firstDay = new Date(year, month, 1);
+    const lastDay = new Date(year, month + 1, 0);
+    const days = [];
+
+    // Add empty slots for days before first day of month
+    for (let i = 0; i < firstDay.getDay(); i++) {
+      days.push(null);
+    }
+
+    // Add actual days
+    for (let d = 1; d <= lastDay.getDate(); d++) {
+      days.push(new Date(year, month, d));
+    }
+
+    return days;
+  };
+
+  const formatDateForInput = (date) => {
+    return date.toISOString().split('T')[0];
+  };
+
+  const isDateSelectable = (date) => {
+    if (!date) return false;
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    return date > today && isWorkingDay(date);
+  };
+
+  const handleDateSelect = (date) => {
+    if (!isDateSelectable(date)) return;
+    const dateStr = formatDateForInput(date);
+
+    if (['Beneficiary', 'Talented', 'Visitor'].includes(formData.applicationType)) {
+      handleChange('appointmentDate', dateStr);
+      handleChange('appointmentTime', ''); // Reset time when date changes
+    } else if (formData.applicationType === 'FABLAB Visit') {
+      handleChange('visitDate', dateStr);
+      handleChange('visitStartTime', '');
+      handleChange('visitEndTime', '');
+    }
+  };
+
+  const handleTimeSlotSelect = (time) => {
+    if (['Beneficiary', 'Talented', 'Visitor'].includes(formData.applicationType)) {
+      handleChange('appointmentTime', time);
+    } else if (formData.applicationType === 'FABLAB Visit') {
+      if (!formData.visitStartTime) {
+        handleChange('visitStartTime', time);
+      } else {
+        handleChange('visitEndTime', time);
+      }
+    }
+  };
+
+  const selectedDate = formData.appointmentDate || formData.visitDate || formData.startDate;
+
+  const weekDays = isRTL
+    ? ['أحد', 'إثن', 'ثلا', 'أرب', 'خمي', 'جمع', 'سبت']
+    : ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
+  const monthNames = isRTL
+    ? ['يناير', 'فبراير', 'مارس', 'أبريل', 'مايو', 'يونيو', 'يوليو', 'أغسطس', 'سبتمبر', 'أكتوبر', 'نوفمبر', 'ديسمبر']
+    : ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+
+  const durationOptions = [
+    { value: 30, labelEn: '30 minutes', labelAr: '30 دقيقة' },
+    { value: 60, labelEn: '1 hour', labelAr: 'ساعة واحدة' },
+    { value: 120, labelEn: '2 hours', labelAr: 'ساعتان' }
+  ];
+
   return (
-    <div>
+    <div className="datetime-selection">
       <h2 className="step-title">
         {isRTL ? 'اختيار الموعد' : 'Schedule Appointment'}
       </h2>
@@ -48,228 +159,283 @@ const DateTimeSelection = ({ formData, onChange, onNext, onBack }) => {
         </svg>
         <span>
           {isRTL
-            ? 'يرجى اختيار موعد خلال ساعات العمل الرسمية'
-            : 'Please select a time within official working hours'}
+            ? 'الأيام الخضراء متاحة للحجز. اختر يوماً ثم اختر الوقت المناسب.'
+            : 'Green days are available for booking. Select a day, then choose your time slot.'}
         </span>
       </motion.div>
 
-      <div className="form-grid">
-        {['Beneficiary', 'Talented', 'Visitor'].includes(formData.applicationType) && (
-          <>
-            <motion.div
-              className="form-group"
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.1 }}
-            >
-              <label className="form-label">
-                {isRTL ? 'التاريخ' : 'Date'} <span className="required">*</span>
-              </label>
-              <input
-                type="date"
-                className="form-input"
-                value={formData.appointmentDate || ''}
-                onChange={(e) => handleChange('appointmentDate', e.target.value)}
-                min={getMinDate()}
-              />
-            </motion.div>
-
-            <motion.div
-              className="form-group"
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.15 }}
-            >
-              <label className="form-label">
-                {isRTL ? 'الوقت' : 'Time'} <span className="required">*</span>
-              </label>
-              <input
-                type="time"
-                className="form-input"
-                value={formData.appointmentTime || ''}
-                onChange={(e) => handleChange('appointmentTime', e.target.value)}
-                min="08:00"
-                max="15:00"
-              />
-            </motion.div>
-
-            <motion.div
-              className="form-group"
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.2 }}
-            >
-              <label className="form-label">
-                {isRTL ? 'مدة الموعد (بالدقائق)' : 'Duration (minutes)'}
-              </label>
-              <select
-                className="form-select"
-                value={formData.appointmentDuration}
-                onChange={(e) => handleChange('appointmentDuration', parseInt(e.target.value))}
+      {/* Calendar View for appointment types */}
+      {['Beneficiary', 'Talented', 'Visitor', 'FABLAB Visit'].includes(formData.applicationType) && (
+        <div className="booking-calendar-container">
+          {/* Calendar */}
+          <motion.div
+            className="booking-calendar"
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+          >
+            <div className="calendar-nav-header">
+              <button
+                type="button"
+                className="calendar-nav-btn"
+                onClick={() => setSelectedMonth(new Date(selectedMonth.getFullYear(), selectedMonth.getMonth() - 1))}
               >
-                <option value={30}>30 {isRTL ? 'دقيقة' : 'minutes'}</option>
-                <option value={60}>60 {isRTL ? 'دقيقة' : 'minutes'}</option>
-                <option value={90}>90 {isRTL ? 'دقيقة' : 'minutes'}</option>
-                <option value={120}>120 {isRTL ? 'دقيقة' : 'minutes'}</option>
-                <option value={180}>180 {isRTL ? 'دقيقة' : 'minutes'}</option>
-                <option value={240}>240 {isRTL ? 'دقيقة' : 'minutes'}</option>
-              </select>
-            </motion.div>
-          </>
-        )}
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <polyline points="15 18 9 12 15 6"/>
+                </svg>
+              </button>
+              <h3 className="calendar-month-title">
+                {monthNames[selectedMonth.getMonth()]} {selectedMonth.getFullYear()}
+              </h3>
+              <button
+                type="button"
+                className="calendar-nav-btn"
+                onClick={() => setSelectedMonth(new Date(selectedMonth.getFullYear(), selectedMonth.getMonth() + 1))}
+              >
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <polyline points="9 18 15 12 9 6"/>
+                </svg>
+              </button>
+            </div>
 
-        {formData.applicationType === 'Volunteer' && (
-          <>
-            <motion.div
-              className="form-group"
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.1 }}
-            >
-              <label className="form-label">
-                {isRTL ? 'تاريخ البداية' : 'Start Date'} <span className="required">*</span>
-              </label>
-              <input
-                type="date"
-                className="form-input"
-                value={formData.startDate || ''}
-                onChange={(e) => handleChange('startDate', e.target.value)}
-                min={getMinDate()}
-              />
-            </motion.div>
+            <div className="calendar-weekdays">
+              {weekDays.map((day, i) => (
+                <div key={i} className={`weekday ${i === 5 || i === 6 ? 'weekend' : ''}`}>
+                  {day}
+                </div>
+              ))}
+            </div>
 
-            <motion.div
-              className="form-group"
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.15 }}
-            >
-              <label className="form-label">
-                {isRTL ? 'تاريخ النهاية' : 'End Date'} <span className="required">*</span>
-              </label>
-              <input
-                type="date"
-                className="form-input"
-                value={formData.endDate || ''}
-                onChange={(e) => handleChange('endDate', e.target.value)}
-                min={formData.startDate || getMinDate()}
-              />
-            </motion.div>
+            <div className="calendar-days-grid">
+              {getDaysInMonth(selectedMonth).map((date, i) => {
+                if (!date) return <div key={`empty-${i}`} className="calendar-day empty" />;
 
-            <motion.div
-              className="form-group"
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.2 }}
-            >
-              <label className="form-label">
-                {isRTL ? 'وقت البداية' : 'Start Time'} <span className="required">*</span>
-              </label>
-              <input
-                type="time"
-                className="form-input"
-                value={formData.startTime || ''}
-                onChange={(e) => handleChange('startTime', e.target.value)}
-                min="08:00"
-                max="15:00"
-              />
-            </motion.div>
+                const isSelectable = isDateSelectable(date);
+                const isSelected = selectedDate === formatDateForInput(date);
+                const isToday = formatDateForInput(date) === formatDateForInput(new Date());
+                const isWeekend = date.getDay() === 5 || date.getDay() === 6;
 
-            <motion.div
-              className="form-group"
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.25 }}
-            >
-              <label className="form-label">
-                {isRTL ? 'وقت النهاية' : 'End Time'} <span className="required">*</span>
-              </label>
-              <input
-                type="time"
-                className="form-input"
-                value={formData.endTime || ''}
-                onChange={(e) => handleChange('endTime', e.target.value)}
-                min="08:00"
-                max="15:00"
-              />
-            </motion.div>
-          </>
-        )}
+                return (
+                  <button
+                    key={date.toISOString()}
+                    type="button"
+                    className={`calendar-day
+                      ${isSelectable ? 'available' : 'unavailable'}
+                      ${isSelected ? 'selected' : ''}
+                      ${isToday ? 'today' : ''}
+                      ${isWeekend ? 'weekend' : ''}`}
+                    onClick={() => handleDateSelect(date)}
+                    disabled={!isSelectable}
+                  >
+                    <span className="day-number">{date.getDate()}</span>
+                  </button>
+                );
+              })}
+            </div>
 
-        {formData.applicationType === 'FABLAB Visit' && (
-          <>
-            <motion.div
-              className="form-group"
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.1 }}
-            >
-              <label className="form-label">
-                {isRTL ? 'تاريخ الزيارة' : 'Visit Date'} <span className="required">*</span>
-              </label>
-              <input
-                type="date"
-                className="form-input"
-                value={formData.visitDate || ''}
-                onChange={(e) => handleChange('visitDate', e.target.value)}
-                min={getMinDate()}
-              />
-            </motion.div>
+            <div className="calendar-legend">
+              <div className="legend-item">
+                <span className="legend-dot available"></span>
+                <span>{isRTL ? 'متاح' : 'Available'}</span>
+              </div>
+              <div className="legend-item">
+                <span className="legend-dot unavailable"></span>
+                <span>{isRTL ? 'غير متاح' : 'Unavailable'}</span>
+              </div>
+              <div className="legend-item">
+                <span className="legend-dot selected"></span>
+                <span>{isRTL ? 'محدد' : 'Selected'}</span>
+              </div>
+            </div>
+          </motion.div>
 
+          {/* Time Slots */}
+          {selectedDate && (
             <motion.div
-              className="form-group"
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.15 }}
+              className="time-slots-section"
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
             >
-              <label className="form-label">
-                {isRTL ? 'وقت بداية الزيارة' : 'Visit Start Time'} <span className="required">*</span>
-              </label>
-              <input
-                type="time"
-                className="form-input"
-                value={formData.visitStartTime || ''}
-                onChange={(e) => handleChange('visitStartTime', e.target.value)}
-                min="08:00"
-                max="15:00"
-              />
-            </motion.div>
+              <h4 className="time-slots-title">
+                {isRTL ? 'اختر الوقت المتاح' : 'Select Available Time'}
+              </h4>
 
-            <motion.div
-              className="form-group"
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.2 }}
-            >
-              <label className="form-label">
-                {isRTL ? 'وقت نهاية الزيارة' : 'Visit End Time'} <span className="required">*</span>
-              </label>
-              <input
-                type="time"
-                className="form-input"
-                value={formData.visitEndTime || ''}
-                onChange={(e) => handleChange('visitEndTime', e.target.value)}
-                min="08:00"
-                max="15:00"
-              />
+              {loadingSlots ? (
+                <div className="slots-loading">
+                  <div className="loading-spinner"></div>
+                  <span>{isRTL ? 'جاري تحميل المواعيد...' : 'Loading available times...'}</span>
+                </div>
+              ) : availableSlots.length > 0 ? (
+                <div className="time-slots-grid">
+                  {availableSlots.map((slot) => {
+                    const isSelected = formData.appointmentTime === slot.time ||
+                      formData.visitStartTime === slot.time ||
+                      formData.visitEndTime === slot.time;
+
+                    return (
+                      <button
+                        key={slot.time}
+                        type="button"
+                        className={`time-slot ${isSelected ? 'selected' : ''}`}
+                        onClick={() => handleTimeSlotSelect(slot.time)}
+                      >
+                        {slot.time}
+                      </button>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div className="no-slots-message">
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <circle cx="12" cy="12" r="10"/>
+                    <line x1="15" y1="9" x2="9" y2="15"/>
+                    <line x1="9" y1="9" x2="15" y2="15"/>
+                  </svg>
+                  <span>{isRTL ? 'لا توجد مواعيد متاحة في هذا اليوم' : 'No available slots for this day'}</span>
+                </div>
+              )}
+
+              {/* Duration Selection for Beneficiary/Talented/Visitor */}
+              {['Beneficiary', 'Talented', 'Visitor'].includes(formData.applicationType) && formData.appointmentTime && (
+                <motion.div
+                  className="duration-selection"
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                >
+                  <h4 className="duration-title">
+                    {isRTL ? 'اختر مدة الموعد' : 'Select Duration'}
+                  </h4>
+                  <div className="duration-options">
+                    {durationOptions.map((option) => (
+                      <button
+                        key={option.value}
+                        type="button"
+                        className={`duration-option ${formData.appointmentDuration === option.value ? 'selected' : ''}`}
+                        onClick={() => handleChange('appointmentDuration', option.value)}
+                      >
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                          <circle cx="12" cy="12" r="10"/>
+                          <polyline points="12 6 12 12 16 14"/>
+                        </svg>
+                        <span>{isRTL ? option.labelAr : option.labelEn}</span>
+                      </button>
+                    ))}
+                  </div>
+                </motion.div>
+              )}
+
+              {/* FABLAB Visit - show selected time range */}
+              {formData.applicationType === 'FABLAB Visit' && (
+                <div className="visit-time-summary">
+                  <p>
+                    {isRTL ? 'وقت البداية: ' : 'Start Time: '}
+                    <strong>{formData.visitStartTime || (isRTL ? 'لم يتم التحديد' : 'Not selected')}</strong>
+                  </p>
+                  <p>
+                    {isRTL ? 'وقت النهاية: ' : 'End Time: '}
+                    <strong>{formData.visitEndTime || (isRTL ? 'لم يتم التحديد' : 'Not selected')}</strong>
+                  </p>
+                  {formData.visitStartTime && !formData.visitEndTime && (
+                    <p className="hint">{isRTL ? 'اختر وقت النهاية' : 'Now select an end time'}</p>
+                  )}
+                </div>
+              )}
             </motion.div>
-          </>
-        )}
-      </div>
+          )}
+        </div>
+      )}
+
+      {/* Volunteer date range selection */}
+      {formData.applicationType === 'Volunteer' && (
+        <div className="form-grid">
+          <motion.div
+            className="form-group"
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.1 }}
+          >
+            <label className="form-label">
+              {isRTL ? 'تاريخ البداية' : 'Start Date'} <span className="required">*</span>
+            </label>
+            <input
+              type="date"
+              className="form-input"
+              value={formData.startDate || ''}
+              onChange={(e) => handleChange('startDate', e.target.value)}
+              min={getMinDate()}
+            />
+          </motion.div>
+
+          <motion.div
+            className="form-group"
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.15 }}
+          >
+            <label className="form-label">
+              {isRTL ? 'تاريخ النهاية' : 'End Date'} <span className="required">*</span>
+            </label>
+            <input
+              type="date"
+              className="form-input"
+              value={formData.endDate || ''}
+              onChange={(e) => handleChange('endDate', e.target.value)}
+              min={formData.startDate || getMinDate()}
+            />
+          </motion.div>
+
+          <motion.div
+            className="form-group"
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.2 }}
+          >
+            <label className="form-label">
+              {isRTL ? 'وقت البداية' : 'Start Time'} <span className="required">*</span>
+            </label>
+            <input
+              type="time"
+              className="form-input"
+              value={formData.startTime || ''}
+              onChange={(e) => handleChange('startTime', e.target.value)}
+              min="08:00"
+              max="15:00"
+            />
+          </motion.div>
+
+          <motion.div
+            className="form-group"
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.25 }}
+          >
+            <label className="form-label">
+              {isRTL ? 'وقت النهاية' : 'End Time'} <span className="required">*</span>
+            </label>
+            <input
+              type="time"
+              className="form-input"
+              value={formData.endTime || ''}
+              onChange={(e) => handleChange('endTime', e.target.value)}
+              min="08:00"
+              max="15:00"
+            />
+          </motion.div>
+        </div>
+      )}
 
       <div className="form-navigation">
         <button className="btn btn-secondary" onClick={onBack}>
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ transform: isRTL ? 'rotate(180deg)' : 'none' }}>
             <path d="m15 18-6-6 6-6"/>
           </svg>
-          {t('previous')}
+          {isRTL ? 'السابق' : 'Previous'}
         </button>
         <button
           className="btn btn-primary"
           onClick={onNext}
           disabled={!canProceed()}
         >
-          {t('next')}
+          {isRTL ? 'التالي' : 'Next'}
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ transform: isRTL ? 'rotate(180deg)' : 'none' }}>
             <path d="m9 18 6-6-6-6"/>
           </svg>

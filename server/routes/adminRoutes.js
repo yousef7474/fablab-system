@@ -20,6 +20,7 @@ router.delete('/registrations/:id', authMiddleware, adminController.deleteRegist
 // User routes
 router.get('/users', authMiddleware, adminController.getAllUsers);
 router.get('/users/:userId', authMiddleware, adminController.getUserProfile);
+router.get('/users/:userId/registrations', authMiddleware, adminController.getUserWithRegistrations);
 
 // Employee routes
 router.get('/employees', authMiddleware, adminController.getAllEmployees);

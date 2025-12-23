@@ -1,11 +1,11 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'react-toastify';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
-  PieChart, Pie, Cell, LineChart, Line, AreaChart, Area
+  PieChart, Pie, Cell, AreaChart, Area
 } from 'recharts';
 import { format, parseISO, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay } from 'date-fns';
 import { ar, enUS } from 'date-fns/locale';
@@ -28,6 +28,7 @@ const AdminDashboard = () => {
   const navigate = useNavigate();
   const { i18n } = useTranslation();
   const isRTL = i18n.language === 'ar';
+  const printRef = useRef();
 
   const [adminData, setAdminData] = useState(null);
   const [activeTab, setActiveTab] = useState('dashboard');
@@ -57,7 +58,10 @@ const AdminDashboard = () => {
   const [selectedRegistration, setSelectedRegistration] = useState(null);
   const [showModal, setShowModal] = useState(false);
   const [showEmployeeModal, setShowEmployeeModal] = useState(false);
+  const [showUserModal, setShowUserModal] = useState(false);
   const [selectedEmployee, setSelectedEmployee] = useState(null);
+  const [selectedUser, setSelectedUser] = useState(null);
+  const [userRegistrations, setUserRegistrations] = useState([]);
   const [employeeForm, setEmployeeForm] = useState({ name: '', email: '', section: '' });
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [analyticsPeriod, setAnalyticsPeriod] = useState('month');
@@ -123,6 +127,19 @@ const AdminDashboard = () => {
     }
   };
 
+  const fetchUserWithRegistrations = async (userId) => {
+    try {
+      const encodedId = encodeURIComponent(userId);
+      const response = await api.get(`/admin/users/${encodedId}/registrations`);
+      setSelectedUser(response.data.user);
+      setUserRegistrations(response.data.registrations || []);
+      setShowUserModal(true);
+    } catch (error) {
+      console.error('Error fetching user registrations:', error);
+      toast.error(isRTL ? 'خطأ في تحميل بيانات المستخدم' : 'Error loading user data');
+    }
+  };
+
   const fetchEmployees = async () => {
     try {
       const response = await api.get('/admin/employees');
@@ -173,6 +190,142 @@ const AdminDashboard = () => {
       console.error('Error updating status:', error);
       toast.error(isRTL ? 'خطأ في تحديث الحالة' : 'Error updating status');
     }
+  };
+
+  const handlePrintRegistration = (registration) => {
+    const printWindow = window.open('', '_blank');
+    const userName = registration.user?.firstName && registration.user?.lastName
+      ? `${registration.user.firstName} ${registration.user.lastName}`
+      : registration.user?.name || 'N/A';
+
+    const printContent = `
+      <!DOCTYPE html>
+      <html dir="${isRTL ? 'rtl' : 'ltr'}">
+      <head>
+        <title>Registration Form - ${registration.registrationId}</title>
+        <style>
+          * { margin: 0; padding: 0; box-sizing: border-box; }
+          body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; padding: 40px; background: #fff; }
+          .header { text-align: center; margin-bottom: 30px; border-bottom: 3px solid #e02529; padding-bottom: 20px; }
+          .logo { font-size: 28px; font-weight: bold; color: #e02529; margin-bottom: 5px; }
+          .subtitle { color: #666; font-size: 14px; }
+          .form-title { font-size: 20px; font-weight: 600; margin: 20px 0; color: #333; text-align: center; }
+          .section { margin-bottom: 25px; }
+          .section-title { font-size: 16px; font-weight: 600; color: #e02529; margin-bottom: 15px; padding-bottom: 8px; border-bottom: 1px solid #eee; }
+          .field-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
+          .field { margin-bottom: 12px; }
+          .field-label { font-size: 12px; color: #888; margin-bottom: 4px; text-transform: uppercase; }
+          .field-value { font-size: 14px; color: #333; font-weight: 500; padding: 8px; background: #f8f9fa; border-radius: 4px; }
+          .status { display: inline-block; padding: 6px 16px; border-radius: 20px; font-size: 12px; font-weight: 600; text-transform: uppercase; }
+          .status.pending { background: #fff3cd; color: #856404; }
+          .status.approved { background: #d4edda; color: #155724; }
+          .status.rejected { background: #f8d7da; color: #721c24; }
+          .footer { margin-top: 40px; text-align: center; color: #888; font-size: 12px; border-top: 1px solid #eee; padding-top: 20px; }
+          .qr-section { text-align: center; margin: 30px 0; }
+          @media print { body { padding: 20px; } }
+        </style>
+      </head>
+      <body>
+        <div class="header">
+          <div class="logo">FABLAB Al-Ahsa</div>
+          <div class="subtitle">${isRTL ? 'نموذج التسجيل' : 'Registration Form'}</div>
+        </div>
+
+        <div class="form-title">${isRTL ? 'تفاصيل التسجيل' : 'Registration Details'}</div>
+
+        <div class="section">
+          <div class="section-title">${isRTL ? 'معلومات التسجيل' : 'Registration Information'}</div>
+          <div class="field-grid">
+            <div class="field">
+              <div class="field-label">${isRTL ? 'رقم التسجيل' : 'Registration ID'}</div>
+              <div class="field-value">${registration.registrationId}</div>
+            </div>
+            <div class="field">
+              <div class="field-label">${isRTL ? 'الحالة' : 'Status'}</div>
+              <div class="field-value"><span class="status ${registration.status}">${registration.status}</span></div>
+            </div>
+            <div class="field">
+              <div class="field-label">${isRTL ? 'تاريخ التقديم' : 'Submission Date'}</div>
+              <div class="field-value">${formatDate(registration.createdAt)}</div>
+            </div>
+            <div class="field">
+              <div class="field-label">${isRTL ? 'القسم' : 'Section'}</div>
+              <div class="field-value">${registration.fablabSection || 'N/A'}</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="section">
+          <div class="section-title">${isRTL ? 'معلومات المتقدم' : 'Applicant Information'}</div>
+          <div class="field-grid">
+            <div class="field">
+              <div class="field-label">${isRTL ? 'الاسم' : 'Name'}</div>
+              <div class="field-value">${userName}</div>
+            </div>
+            <div class="field">
+              <div class="field-label">${isRTL ? 'رقم المستخدم' : 'User ID'}</div>
+              <div class="field-value">${registration.userId}</div>
+            </div>
+            <div class="field">
+              <div class="field-label">${isRTL ? 'نوع الطلب' : 'Application Type'}</div>
+              <div class="field-value">${registration.user?.applicationType || 'N/A'}</div>
+            </div>
+            <div class="field">
+              <div class="field-label">${isRTL ? 'البريد الإلكتروني' : 'Email'}</div>
+              <div class="field-value">${registration.user?.email || 'N/A'}</div>
+            </div>
+            <div class="field">
+              <div class="field-label">${isRTL ? 'رقم الهاتف' : 'Phone'}</div>
+              <div class="field-value">${registration.user?.phoneNumber || 'N/A'}</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="section">
+          <div class="section-title">${isRTL ? 'تفاصيل الموعد' : 'Appointment Details'}</div>
+          <div class="field-grid">
+            <div class="field">
+              <div class="field-label">${isRTL ? 'التاريخ' : 'Date'}</div>
+              <div class="field-value">${formatDate(registration.appointmentDate || registration.visitDate || registration.startDate)}</div>
+            </div>
+            <div class="field">
+              <div class="field-label">${isRTL ? 'الوقت' : 'Time'}</div>
+              <div class="field-value">${registration.appointmentTime || registration.visitStartTime || registration.startTime || 'N/A'}</div>
+            </div>
+            <div class="field">
+              <div class="field-label">${isRTL ? 'نوع الخدمة' : 'Service Type'}</div>
+              <div class="field-value">${registration.serviceType || 'N/A'}</div>
+            </div>
+            <div class="field">
+              <div class="field-label">${isRTL ? 'الخدمات المطلوبة' : 'Required Services'}</div>
+              <div class="field-value">${registration.requiredServices?.join(', ') || 'N/A'}</div>
+            </div>
+          </div>
+        </div>
+
+        ${registration.serviceDetails ? `
+        <div class="section">
+          <div class="section-title">${isRTL ? 'تفاصيل إضافية' : 'Additional Details'}</div>
+          <div class="field">
+            <div class="field-value">${registration.serviceDetails}</div>
+          </div>
+        </div>
+        ` : ''}
+
+        <div class="footer">
+          <p>FABLAB Al-Ahsa - ${isRTL ? 'مختبر التصنيع الرقمي' : 'Digital Fabrication Laboratory'}</p>
+          <p>${isRTL ? 'تم الطباعة في' : 'Printed on'}: ${new Date().toLocaleString(isRTL ? 'ar-SA' : 'en-US')}</p>
+        </div>
+      </body>
+      </html>
+    `;
+
+    printWindow.document.write(printContent);
+    printWindow.document.close();
+    printWindow.focus();
+    setTimeout(() => {
+      printWindow.print();
+    }, 250);
   };
 
   const handleExportCSV = async () => {
@@ -289,6 +442,12 @@ const AdminDashboard = () => {
     'Vinyl Cutting': isRTL ? 'قطع الفينيل' : 'Vinyl Cutting'
   };
 
+  const statusLabels = {
+    pending: isRTL ? 'قيد المراجعة' : 'Pending',
+    approved: isRTL ? 'مقبول' : 'Approved',
+    rejected: isRTL ? 'مرفوض' : 'Rejected'
+  };
+
   if (!adminData) {
     return null;
   }
@@ -349,8 +508,8 @@ const AdminDashboard = () => {
           </div>
 
           <div className="header-right">
-            <button className="header-btn" onClick={toggleLanguage}>
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <button className="lang-toggle-btn" onClick={toggleLanguage}>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <circle cx="12" cy="12" r="10"/>
                 <line x1="2" y1="12" x2="22" y2="12"/>
                 <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
@@ -498,7 +657,7 @@ const AdminDashboard = () => {
                           <span className="recent-type">{reg.user?.applicationType}</span>
                         </div>
                         <div className="recent-meta">
-                          <span className={`status-badge ${reg.status}`}>{reg.status}</span>
+                          <span className={`status-badge ${reg.status}`}>{statusLabels[reg.status]}</span>
                           <span className="recent-date">{formatDate(reg.createdAt)}</span>
                         </div>
                       </div>
@@ -611,18 +770,21 @@ const AdminDashboard = () => {
                           <tr key={reg.registrationId}>
                             <td><span className="reg-id">{reg.registrationId}</span></td>
                             <td>
-                              {reg.user?.firstName && reg.user?.lastName
-                                ? `${reg.user.firstName} ${reg.user.lastName}`
-                                : reg.user?.name || 'N/A'}
+                              <span
+                                className="user-link"
+                                onClick={() => fetchUserWithRegistrations(reg.userId)}
+                              >
+                                {reg.user?.firstName && reg.user?.lastName
+                                  ? `${reg.user.firstName} ${reg.user.lastName}`
+                                  : reg.user?.name || 'N/A'}
+                              </span>
                             </td>
                             <td>{reg.user?.applicationType}</td>
-                            <td>{reg.fablabSection}</td>
+                            <td>{sectionLabels[reg.fablabSection] || reg.fablabSection}</td>
                             <td>{formatDate(reg.appointmentDate || reg.visitDate || reg.startDate)}</td>
                             <td>
                               <span className={`status-badge ${reg.status}`}>
-                                {reg.status === 'pending' && (isRTL ? 'قيد المراجعة' : 'Pending')}
-                                {reg.status === 'approved' && (isRTL ? 'مقبول' : 'Approved')}
-                                {reg.status === 'rejected' && (isRTL ? 'مرفوض' : 'Rejected')}
+                                {statusLabels[reg.status]}
                               </span>
                             </td>
                             <td>
@@ -635,6 +797,17 @@ const AdminDashboard = () => {
                                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                                     <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
                                     <circle cx="12" cy="12" r="3"/>
+                                  </svg>
+                                </button>
+                                <button
+                                  className="action-btn print"
+                                  onClick={() => handlePrintRegistration(reg)}
+                                  title={isRTL ? 'طباعة' : 'Print'}
+                                >
+                                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                    <polyline points="6 9 6 2 18 2 18 9"/>
+                                    <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/>
+                                    <rect x="6" y="14" width="12" height="8"/>
                                   </svg>
                                 </button>
                                 {reg.status === 'pending' && (
@@ -689,9 +862,6 @@ const AdminDashboard = () => {
                     <input
                       type="text"
                       placeholder={isRTL ? 'بحث بالاسم أو البريد...' : 'Search by name or email...'}
-                      onChange={(e) => {
-                        // Simple client-side filter for now
-                      }}
                     />
                   </div>
                   <button className="filter-btn" onClick={fetchUsers}>
@@ -727,6 +897,7 @@ const AdminDashboard = () => {
                           <th>{isRTL ? 'الهاتف' : 'Phone'}</th>
                           <th>{isRTL ? 'النوع' : 'Type'}</th>
                           <th>{isRTL ? 'تاريخ التسجيل' : 'Registered'}</th>
+                          <th>{isRTL ? 'الإجراءات' : 'Actions'}</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -734,14 +905,31 @@ const AdminDashboard = () => {
                           <tr key={user.userId}>
                             <td><span className="reg-id">{user.userId}</span></td>
                             <td>
-                              {user.firstName && user.lastName
-                                ? `${user.firstName} ${user.lastName}`
-                                : user.name || 'N/A'}
+                              <span
+                                className="user-link"
+                                onClick={() => fetchUserWithRegistrations(user.userId)}
+                              >
+                                {user.firstName && user.lastName
+                                  ? `${user.firstName} ${user.lastName}`
+                                  : user.name || 'N/A'}
+                              </span>
                             </td>
                             <td>{user.email}</td>
                             <td>{user.phoneNumber}</td>
                             <td>{user.applicationType}</td>
                             <td>{formatDate(user.createdAt)}</td>
+                            <td>
+                              <button
+                                className="action-btn view"
+                                onClick={() => fetchUserWithRegistrations(user.userId)}
+                                title={isRTL ? 'عرض التسجيلات' : 'View Registrations'}
+                              >
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                  <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                                  <circle cx="12" cy="12" r="3"/>
+                                </svg>
+                              </button>
+                            </td>
                           </tr>
                         ))}
                       </tbody>
@@ -785,7 +973,6 @@ const AdminDashboard = () => {
 
                 {analyticsData ? (
                   <>
-                    {/* Summary Cards */}
                     <div className="stats-grid">
                       <div className="stat-card primary">
                         <div className="stat-content">
@@ -807,9 +994,7 @@ const AdminDashboard = () => {
                       </div>
                     </div>
 
-                    {/* Charts Grid */}
                     <div className="charts-grid">
-                      {/* Registrations Over Time */}
                       <div className="chart-card full-width">
                         <h3>{isRTL ? 'التسجيلات عبر الزمن' : 'Registrations Over Time'}</h3>
                         <ResponsiveContainer width="100%" height={300}>
@@ -829,13 +1014,6 @@ const AdminDashboard = () => {
                             <YAxis tick={{ fill: '#6b7280', fontSize: 12 }} />
                             <Tooltip
                               contentStyle={{ backgroundColor: '#fff', border: '1px solid #e5e7eb', borderRadius: '8px' }}
-                              labelFormatter={(value) => {
-                                try {
-                                  return format(parseISO(value), 'MMM dd, yyyy');
-                                } catch {
-                                  return value;
-                                }
-                              }}
                             />
                             <Area
                               type="monotone"
@@ -854,7 +1032,6 @@ const AdminDashboard = () => {
                         </ResponsiveContainer>
                       </div>
 
-                      {/* By Section */}
                       <div className="chart-card">
                         <h3>{isRTL ? 'حسب القسم' : 'By Section'}</h3>
                         <ResponsiveContainer width="100%" height={300}>
@@ -868,7 +1045,7 @@ const AdminDashboard = () => {
                               fill="#8884d8"
                               dataKey="count"
                               nameKey="fablabSection"
-                              label={({ fablabSection, percent }) => `${(percent * 100).toFixed(0)}%`}
+                              label={({ percent }) => `${(percent * 100).toFixed(0)}%`}
                             >
                               {(analyticsData.bySection || []).map((entry, index) => (
                                 <Cell
@@ -877,9 +1054,7 @@ const AdminDashboard = () => {
                                 />
                               ))}
                             </Pie>
-                            <Tooltip
-                              formatter={(value, name, props) => [value, sectionLabels[props.payload.fablabSection] || props.payload.fablabSection]}
-                            />
+                            <Tooltip />
                             <Legend
                               formatter={(value, entry) => sectionLabels[entry.payload.fablabSection] || entry.payload.fablabSection}
                             />
@@ -887,7 +1062,6 @@ const AdminDashboard = () => {
                         </ResponsiveContainer>
                       </div>
 
-                      {/* By Status */}
                       <div className="chart-card">
                         <h3>{isRTL ? 'حسب الحالة' : 'By Status'}</h3>
                         <ResponsiveContainer width="100%" height={300}>
@@ -898,14 +1072,7 @@ const AdminDashboard = () => {
                               dataKey="status"
                               type="category"
                               tick={{ fill: '#6b7280', fontSize: 12 }}
-                              tickFormatter={(value) => {
-                                const labels = {
-                                  pending: isRTL ? 'قيد المراجعة' : 'Pending',
-                                  approved: isRTL ? 'مقبول' : 'Approved',
-                                  rejected: isRTL ? 'مرفوض' : 'Rejected'
-                                };
-                                return labels[value] || value;
-                              }}
+                              tickFormatter={(value) => statusLabels[value] || value}
                             />
                             <Tooltip />
                             <Bar dataKey="count" name={isRTL ? 'العدد' : 'Count'}>
@@ -915,53 +1082,6 @@ const AdminDashboard = () => {
                               })}
                             </Bar>
                           </BarChart>
-                        </ResponsiveContainer>
-                      </div>
-
-                      {/* By Application Type */}
-                      <div className="chart-card">
-                        <h3>{isRTL ? 'حسب نوع الطلب' : 'By Application Type'}</h3>
-                        <ResponsiveContainer width="100%" height={300}>
-                          <BarChart data={analyticsData.byApplicationType || []}>
-                            <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-                            <XAxis
-                              dataKey="applicationType"
-                              tick={{ fill: '#6b7280', fontSize: 11 }}
-                              angle={-45}
-                              textAnchor="end"
-                              height={80}
-                            />
-                            <YAxis tick={{ fill: '#6b7280', fontSize: 12 }} />
-                            <Tooltip />
-                            <Bar dataKey="count" fill="#6366f1" name={isRTL ? 'العدد' : 'Count'} radius={[4, 4, 0, 0]} />
-                          </BarChart>
-                        </ResponsiveContainer>
-                      </div>
-
-                      {/* By Service Type */}
-                      <div className="chart-card">
-                        <h3>{isRTL ? 'حسب نوع الخدمة' : 'By Service Type'}</h3>
-                        <ResponsiveContainer width="100%" height={300}>
-                          <PieChart>
-                            <Pie
-                              data={analyticsData.byServiceType || []}
-                              cx="50%"
-                              cy="50%"
-                              innerRadius={60}
-                              outerRadius={100}
-                              fill="#8884d8"
-                              paddingAngle={5}
-                              dataKey="count"
-                              nameKey="serviceType"
-                              label
-                            >
-                              {(analyticsData.byServiceType || []).map((entry, index) => (
-                                <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                              ))}
-                            </Pie>
-                            <Tooltip />
-                            <Legend />
-                          </PieChart>
                         </ResponsiveContainer>
                       </div>
                     </div>
@@ -985,7 +1105,6 @@ const AdminDashboard = () => {
                 className="schedule-content"
               >
                 <div className="schedule-layout">
-                  {/* Calendar */}
                   <div className="calendar-section">
                     <div className="calendar-header">
                       <button
@@ -1019,11 +1138,9 @@ const AdminDashboard = () => {
                         ))}
                       </div>
                       <div className="calendar-days">
-                        {/* Empty cells for days before month starts */}
                         {Array.from({ length: startOfMonth(selectedDate).getDay() }).map((_, i) => (
                           <div key={`empty-${i}`} className="calendar-day empty" />
                         ))}
-                        {/* Days of the month */}
                         {getDaysInMonth(selectedDate).map((day) => {
                           const events = getEventsForDay(day);
                           const isToday = isSameDay(day, new Date());
@@ -1052,9 +1169,7 @@ const AdminDashboard = () => {
                     </div>
                   </div>
 
-                  {/* Employees & Appointments */}
                   <div className="schedule-sidebar">
-                    {/* Employees Section */}
                     <div className="employees-section">
                       <div className="section-header">
                         <h3>{isRTL ? 'الموظفين' : 'Employees'}</h3>
@@ -1114,7 +1229,6 @@ const AdminDashboard = () => {
                       </div>
                     </div>
 
-                    {/* Today's Appointments */}
                     <div className="appointments-section">
                       <h3>{isRTL ? 'المواعيد القادمة' : 'Upcoming Appointments'}</h3>
                       <div className="appointments-list">
@@ -1179,14 +1293,14 @@ const AdminDashboard = () => {
                           className={`lang-option ${i18n.language === 'en' ? 'active' : ''}`}
                           onClick={() => i18n.changeLanguage('en')}
                         >
-                          <span className="lang-flag">🇬🇧</span>
+                          <span className="lang-flag">EN</span>
                           <span>English</span>
                         </button>
                         <button
                           className={`lang-option ${i18n.language === 'ar' ? 'active' : ''}`}
                           onClick={() => i18n.changeLanguage('ar')}
                         >
-                          <span className="lang-flag">🇸🇦</span>
+                          <span className="lang-flag">ع</span>
                           <span>العربية</span>
                         </button>
                       </div>
@@ -1260,12 +1374,12 @@ const AdminDashboard = () => {
                 </div>
                 <div className="detail-item">
                   <label>{isRTL ? 'القسم' : 'Section'}</label>
-                  <span>{selectedRegistration.fablabSection}</span>
+                  <span>{sectionLabels[selectedRegistration.fablabSection] || selectedRegistration.fablabSection}</span>
                 </div>
                 <div className="detail-item">
                   <label>{isRTL ? 'الحالة' : 'Status'}</label>
                   <span className={`status-badge ${selectedRegistration.status}`}>
-                    {selectedRegistration.status}
+                    {statusLabels[selectedRegistration.status]}
                   </span>
                 </div>
                 <div className="detail-item">
@@ -1287,29 +1401,143 @@ const AdminDashboard = () => {
               </div>
             </div>
 
-            {selectedRegistration.status === 'pending' && (
-              <div className="modal-footer">
-                <button
-                  className="modal-btn approve"
-                  onClick={() => handleStatusChange(selectedRegistration.registrationId, 'approved')}
-                >
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <polyline points="20 6 9 17 4 12"/>
-                  </svg>
-                  {isRTL ? 'قبول' : 'Approve'}
-                </button>
-                <button
-                  className="modal-btn reject"
-                  onClick={() => handleStatusChange(selectedRegistration.registrationId, 'rejected')}
-                >
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <line x1="18" y1="6" x2="6" y2="18"/>
-                    <line x1="6" y1="6" x2="18" y2="18"/>
-                  </svg>
-                  {isRTL ? 'رفض' : 'Reject'}
-                </button>
+            <div className="modal-footer">
+              <button
+                className="modal-btn print-btn"
+                onClick={() => handlePrintRegistration(selectedRegistration)}
+              >
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <polyline points="6 9 6 2 18 2 18 9"/>
+                  <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/>
+                  <rect x="6" y="14" width="12" height="8"/>
+                </svg>
+                {isRTL ? 'طباعة' : 'Print'}
+              </button>
+              {selectedRegistration.status === 'pending' && (
+                <>
+                  <button
+                    className="modal-btn approve"
+                    onClick={() => handleStatusChange(selectedRegistration.registrationId, 'approved')}
+                  >
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <polyline points="20 6 9 17 4 12"/>
+                    </svg>
+                    {isRTL ? 'قبول' : 'Approve'}
+                  </button>
+                  <button
+                    className="modal-btn reject"
+                    onClick={() => handleStatusChange(selectedRegistration.registrationId, 'rejected')}
+                  >
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <line x1="18" y1="6" x2="6" y2="18"/>
+                      <line x1="6" y1="6" x2="18" y2="18"/>
+                    </svg>
+                    {isRTL ? 'رفض' : 'Reject'}
+                  </button>
+                </>
+              )}
+            </div>
+          </motion.div>
+        </div>
+      )}
+
+      {/* User Profile Modal */}
+      {showUserModal && selectedUser && (
+        <div className="modal-overlay" onClick={() => setShowUserModal(false)}>
+          <motion.div
+            className="modal-content user-profile-modal"
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="modal-header">
+              <h2>{isRTL ? 'ملف المستخدم' : 'User Profile'}</h2>
+              <button className="modal-close" onClick={() => setShowUserModal(false)}>
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <line x1="18" y1="6" x2="6" y2="18"/>
+                  <line x1="6" y1="6" x2="18" y2="18"/>
+                </svg>
+              </button>
+            </div>
+
+            <div className="modal-body">
+              <div className="user-profile-header">
+                <div className="user-profile-avatar">
+                  {selectedUser.firstName?.charAt(0) || selectedUser.name?.charAt(0) || 'U'}
+                </div>
+                <div className="user-profile-info">
+                  <h3>
+                    {selectedUser.firstName && selectedUser.lastName
+                      ? `${selectedUser.firstName} ${selectedUser.lastName}`
+                      : selectedUser.name || 'N/A'}
+                  </h3>
+                  <p>{selectedUser.email}</p>
+                  <span className="user-type-badge">{selectedUser.applicationType}</span>
+                </div>
               </div>
-            )}
+
+              <div className="user-details-grid">
+                <div className="detail-item">
+                  <label>{isRTL ? 'رقم المستخدم' : 'User ID'}</label>
+                  <span>{selectedUser.userId}</span>
+                </div>
+                <div className="detail-item">
+                  <label>{isRTL ? 'رقم الهاتف' : 'Phone'}</label>
+                  <span>{selectedUser.phoneNumber || 'N/A'}</span>
+                </div>
+                <div className="detail-item">
+                  <label>{isRTL ? 'تاريخ التسجيل' : 'Registered'}</label>
+                  <span>{formatDate(selectedUser.createdAt)}</span>
+                </div>
+              </div>
+
+              <div className="user-registrations-section">
+                <h4>{isRTL ? 'سجل التسجيلات' : 'Registration History'} ({userRegistrations.length})</h4>
+                <div className="user-registrations-list">
+                  {userRegistrations.length > 0 ? (
+                    userRegistrations.map((reg) => (
+                      <div key={reg.registrationId} className="user-registration-item">
+                        <div className="reg-item-header">
+                          <span className="reg-item-id">{reg.registrationId}</span>
+                          <span className={`status-badge ${reg.status}`}>{statusLabels[reg.status]}</span>
+                        </div>
+                        <div className="reg-item-details">
+                          <span>{sectionLabels[reg.fablabSection] || reg.fablabSection}</span>
+                          <span>{formatDate(reg.appointmentDate || reg.visitDate || reg.startDate)}</span>
+                        </div>
+                        <div className="reg-item-actions">
+                          <button
+                            className="action-btn view"
+                            onClick={() => {
+                              setSelectedRegistration(reg);
+                              setShowUserModal(false);
+                              setShowModal(true);
+                            }}
+                          >
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                              <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                              <circle cx="12" cy="12" r="3"/>
+                            </svg>
+                          </button>
+                          <button
+                            className="action-btn print"
+                            onClick={() => handlePrintRegistration({ ...reg, user: selectedUser })}
+                          >
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                              <polyline points="6 9 6 2 18 2 18 9"/>
+                              <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/>
+                              <rect x="6" y="14" width="12" height="8"/>
+                            </svg>
+                          </button>
+                        </div>
+                      </div>
+                    ))
+                  ) : (
+                    <p className="empty-message">{isRTL ? 'لا توجد تسجيلات' : 'No registrations found'}</p>
+                  )}
+                </div>
+              </div>
+            </div>
           </motion.div>
         </div>
       )}

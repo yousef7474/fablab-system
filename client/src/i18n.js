@@ -140,7 +140,71 @@ const resources = {
       "nouraHouse": "Noura Al-Mousa House for Culture and Arts",
       "ahsaAcademy": "Al-Ahsa Academy for Crafts",
       "innovationCenter": "Creativity and Innovation Training Center",
-      "rashedFoundation": "Abdulmonem Al-Rashed Foundation"
+      "rashedFoundation": "Abdulmonem Al-Rashed Foundation",
+
+      // Schedule & Calendar
+      "schedule": "Schedule",
+      "employees": "Employees",
+      "addEmployee": "Add Employee",
+      "editEmployee": "Edit Employee",
+      "employeeName": "Employee Name",
+      "employeeSection": "Section",
+      "employeeColor": "Color",
+      "todaysAppointments": "Today's Appointments",
+      "noAppointments": "No appointments for this day",
+      "noEmployees": "No employees added yet",
+
+      // Calendar Booking
+      "selectDate": "Select Date",
+      "selectTime": "Select Time",
+      "selectDuration": "Select Duration",
+      "availableSlots": "Available Time Slots",
+      "noAvailableSlots": "No available slots for this date",
+      "slotAvailable": "Available",
+      "slotBooked": "Booked",
+      "minutes": "minutes",
+      "hour": "hour",
+      "hours": "hours",
+      "30min": "30 minutes",
+      "1hour": "1 hour",
+      "2hours": "2 hours",
+
+      // User Profile
+      "viewProfile": "View Profile",
+      "userRegistrations": "User Registrations",
+      "noRegistrations": "No registrations found",
+      "totalUserRegistrations": "Total Registrations",
+      "registeredOn": "Registered on",
+      "lastActivity": "Last Activity",
+
+      // Analytics
+      "registrationsBySection": "Registrations by Section",
+      "registrationsByType": "Registrations by Type",
+      "registrationsByStatus": "Registrations by Status",
+      "registrationTrends": "Registration Trends",
+      "monthlyOverview": "Monthly Overview",
+      "weeklyOverview": "Weekly Overview",
+      "averagePerDay": "Average per Day",
+      "peakDay": "Peak Day",
+      "conversionRate": "Conversion Rate",
+
+      // Additional
+      "all": "All",
+      "today": "Today",
+      "thisWeek": "This Week",
+      "thisMonth": "This Month",
+      "exportCSV": "Export CSV",
+      "downloadPDF": "Download PDF",
+      "printRegistration": "Print Registration",
+      "registrationDetails": "Registration Details",
+      "applicantInfo": "Applicant Information",
+      "serviceDetails": "Service Details",
+      "appointmentDetails": "Appointment Details",
+      "createdAt": "Created At",
+      "updatedAt": "Updated At",
+      "viewAll": "View All",
+      "quickActions": "Quick Actions",
+      "recentActivity": "Recent Activity"
     }
   },
   ar: {
@@ -281,7 +345,71 @@ const resources = {
       "nouraHouse": "بيت نورة الموسى للثقافة والفنون",
       "ahsaAcademy": "أكاديمية الأحساء للحرف",
       "innovationCenter": "مركز التدريب للإبداع والابتكار",
-      "rashedFoundation": "مؤسسة عبدالمنعم الراشد الإنسانية"
+      "rashedFoundation": "مؤسسة عبدالمنعم الراشد الإنسانية",
+
+      // Schedule & Calendar
+      "schedule": "الجدول",
+      "employees": "الموظفون",
+      "addEmployee": "إضافة موظف",
+      "editEmployee": "تعديل موظف",
+      "employeeName": "اسم الموظف",
+      "employeeSection": "القسم",
+      "employeeColor": "اللون",
+      "todaysAppointments": "مواعيد اليوم",
+      "noAppointments": "لا توجد مواعيد لهذا اليوم",
+      "noEmployees": "لم يتم إضافة موظفين بعد",
+
+      // Calendar Booking
+      "selectDate": "اختر التاريخ",
+      "selectTime": "اختر الوقت",
+      "selectDuration": "اختر المدة",
+      "availableSlots": "الأوقات المتاحة",
+      "noAvailableSlots": "لا توجد أوقات متاحة لهذا التاريخ",
+      "slotAvailable": "متاح",
+      "slotBooked": "محجوز",
+      "minutes": "دقيقة",
+      "hour": "ساعة",
+      "hours": "ساعات",
+      "30min": "30 دقيقة",
+      "1hour": "ساعة واحدة",
+      "2hours": "ساعتان",
+
+      // User Profile
+      "viewProfile": "عرض الملف",
+      "userRegistrations": "تسجيلات المستخدم",
+      "noRegistrations": "لا توجد تسجيلات",
+      "totalUserRegistrations": "إجمالي التسجيلات",
+      "registeredOn": "تاريخ التسجيل",
+      "lastActivity": "آخر نشاط",
+
+      // Analytics
+      "registrationsBySection": "التسجيلات حسب القسم",
+      "registrationsByType": "التسجيلات حسب النوع",
+      "registrationsByStatus": "التسجيلات حسب الحالة",
+      "registrationTrends": "اتجاهات التسجيل",
+      "monthlyOverview": "نظرة شهرية",
+      "weeklyOverview": "نظرة أسبوعية",
+      "averagePerDay": "المعدل اليومي",
+      "peakDay": "يوم الذروة",
+      "conversionRate": "معدل التحويل",
+
+      // Additional
+      "all": "الكل",
+      "today": "اليوم",
+      "thisWeek": "هذا الأسبوع",
+      "thisMonth": "هذا الشهر",
+      "exportCSV": "تصدير CSV",
+      "downloadPDF": "تحميل PDF",
+      "printRegistration": "طباعة التسجيل",
+      "registrationDetails": "تفاصيل التسجيل",
+      "applicantInfo": "معلومات المتقدم",
+      "serviceDetails": "تفاصيل الخدمة",
+      "appointmentDetails": "تفاصيل الموعد",
+      "createdAt": "تاريخ الإنشاء",
+      "updatedAt": "تاريخ التحديث",
+      "viewAll": "عرض الكل",
+      "quickActions": "إجراءات سريعة",
+      "recentActivity": "النشاط الأخير"
     }
   }
 };

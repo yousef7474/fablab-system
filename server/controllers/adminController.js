@@ -418,6 +418,31 @@ exports.getAnalytics = async (req, res) => {
   }
 };
 
+// Get user profile with all registrations
+exports.getUserWithRegistrations = async (req, res) => {
+  try {
+    const { userId } = req.params;
+
+    const user = await User.findByPk(userId);
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    const registrations = await Registration.findAll({
+      where: { userId },
+      order: [['createdAt', 'DESC']]
+    });
+
+    res.json({
+      user,
+      registrations
+    });
+  } catch (error) {
+    console.error('Error getting user with registrations:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
 // Get all users
 exports.getAllUsers = async (req, res) => {
   try {
