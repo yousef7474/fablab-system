@@ -1,0 +1,47 @@
+ok great now first thing is if the user is already registered, he is not required to fill his personal info every time, he can just enter his unique id or phone number of national id and he will be not asked to fill his personal info every time. in case that a new user is registering, he will be asked to fill the following sections in order
+first section "application type" in this section user will select his type from one the following choices: 1) Beneficiary 2) visitor 3) volunteer 4) talented 5) entity 6) FABLAB Visit. based on the selection type in section 1, the required personal info to be filled in section 2 will change. section two "application data", in this section if the type selected is either beneficiary, talented, volunteer, visitor, he will be asked to fill the following info: first name, last name, sex, nationality, national id, phone number, email address, current job, national address. if type selected is entity, he will be asked to choose an entity from 5, the 5 entities are: FABLAB AL-Ahsa, Noura Al-Mousa House for Culture and Arts, Al-Ahsa Academy for Crafts, Creativity and Innovation Training Center, Abdulmonem Al-Rashed Foundation, then he will have these fields only to fill: Name, phone number, email address. and if the type selected is FABLAB Visit, the user should fill the entity coming to visit the lab, name of person in charge of arranging the visit with us, phone number, email address. third section "FABLAB sections" in this section user will chose on the following sections that he wants [only one section can be selected]: Electronics and Programming, CNC Laser, CNC Wood, 3D, Robotic and AI, Kid's Club, Vinyl Cutting. fourth section "Required service" in this section, the user will chose which service does he want [max of 2 services can be selected]: in-person consultation, online consultation, Machine/Device reservation, personal workspace, support in project implementation, other [this option allow user to type any unlisted service]. fifth section "select date and time", in this section user will have the ability to pick the date and time that he want but the required fields change based on the type of the user selected in first section "application type". if beneficiary or talented or visitor is selected, the fields to be filled are: Date, time, duration. and if the type is volunteer the fields required are: starting date, end date, start time, end time. and if the type is visit the fields required are: date, visit start and end time. [note: the working days are from Sunday to Thursday only from 8 AM to 3 PM], [note: i don't want the user to have ability to pick appointment if it is already reserved based on the section selected, e.g. if someone picked an appointment on Sunday 12 Dec at 2 PM in Electronics and Programming section, and another user wants to register at the same time in same section, the system wont accept and will tell user to pick another time or date, the reserved timeslots wont be available for them to pick them, only free available timeslots]. sixth section "Details of what is required" this section allow user to explain exactly what does he want. seventh section "type of service" this section allow user to choose only one of the following: From official partners, Free, Partial Financial compensation, Full Financial compensation. eighth section "Beneficiary's Commitment" is section ask user to fill his name in the commitment [I commit [name] I will abide by all the terms and conditions stated in the document and contribute to spreading the culture of the Fab Lab and its importance to the local and global community. If I do anything contrary to that, the party has the right to take whatever action it deems appropriate to protect its rights.] then user can submit his registration form. 
+After successfully registering, a new window should pop-up having the unique id of the user, his name, his appointment details [date, time, section, service required] and barcode of this successful registration. i want this form to look interactive and modern and has animations with high quality, i don't need any poor work, also the form should be in both Arabic and English languages. also the want to follow these color scheme: [/* CSS HEX */
+--racing-red: #EE2329ff;
+--light-blue: #C2E0E1ff;
+--sky-reflection: #81AED6ff;
+--baby-blue-ice: #92B9E1ff;
+--mint-leaf: #48BF85ff;
+
+/* CSS HSL */
+--racing-red: hsla(358, 86%, 54%, 1);
+--light-blue: hsla(182, 34%, 82%, 1);
+--sky-reflection: hsla(208, 51%, 67%, 1);
+--baby-blue-ice: hsla(210, 57%, 73%, 1);
+--mint-leaf: hsla(151, 48%, 52%, 1);
+
+/* SCSS HEX */
+$racing-red: #EE2329ff;
+$light-blue: #C2E0E1ff;
+$sky-reflection: #81AED6ff;
+$baby-blue-ice: #92B9E1ff;
+$mint-leaf: #48BF85ff;
+
+/* SCSS HSL */
+$racing-red: hsla(358, 86%, 54%, 1);
+$light-blue: hsla(182, 34%, 82%, 1);
+$sky-reflection: hsla(208, 51%, 67%, 1);
+$baby-blue-ice: hsla(210, 57%, 73%, 1);
+$mint-leaf: hsla(151, 48%, 52%, 1);
+
+/* SCSS RGB */
+$racing-red: rgba(238, 35, 41, 1);
+$light-blue: rgba(194, 224, 225, 1);
+$sky-reflection: rgba(129, 174, 214, 1);
+$baby-blue-ice: rgba(146, 185, 225, 1);
+$mint-leaf: rgba(72, 191, 133, 1);
+
+/* SCSS Gradient */
+$gradient-top: linear-gradient(0deg, #EE2329ff, #C2E0E1ff, #81AED6ff, #92B9E1ff, #48BF85ff);
+$gradient-right: linear-gradient(90deg, #EE2329ff, #C2E0E1ff, #81AED6ff, #92B9E1ff, #48BF85ff);
+$gradient-bottom: linear-gradient(180deg, #EE2329ff, #C2E0E1ff, #81AED6ff, #92B9E1ff, #48BF85ff);
+$gradient-left: linear-gradient(270deg, #EE2329ff, #C2E0E1ff, #81AED6ff, #92B9E1ff, #48BF85ff);
+$gradient-top-right: linear-gradient(45deg, #EE2329ff, #C2E0E1ff, #81AED6ff, #92B9E1ff, #48BF85ff);
+$gradient-bottom-right: linear-gradient(135deg, #EE2329ff, #C2E0E1ff, #81AED6ff, #92B9E1ff, #48BF85ff);
+$gradient-top-left: linear-gradient(225deg, #EE2329ff, #C2E0E1ff, #81AED6ff, #92B9E1ff, #48BF85ff);
+$gradient-bottom-left: linear-gradient(315deg, #EE2329ff, #C2E0E1ff, #81AED6ff, #92B9E1ff, #48BF85ff);
+$gradient-radial: radial-gradient(#EE2329ff, #C2E0E1ff, #81AED6ff, #92B9E1ff, #48BF85ff);]
