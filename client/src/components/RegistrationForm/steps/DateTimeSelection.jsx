@@ -255,6 +255,19 @@ const DateTimeSelection = ({ formData, onChange, onNext, onBack }) => {
               initial={{ opacity: 0, x: 20 }}
               animate={{ opacity: 1, x: 0 }}
             >
+              <div className="selected-date-display">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+                  <line x1="16" y1="2" x2="16" y2="6"/>
+                  <line x1="8" y1="2" x2="8" y2="6"/>
+                  <line x1="3" y1="10" x2="21" y2="10"/>
+                </svg>
+                <span>
+                  {isRTL ? 'التاريخ المحدد: ' : 'Selected Date: '}
+                  <strong>{new Date(selectedDate).toLocaleDateString(isRTL ? 'ar-SA' : 'en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</strong>
+                </span>
+              </div>
+
               <h4 className="time-slots-title">
                 {isRTL ? 'اختر الوقت المتاح' : 'Select Available Time'}
               </h4>
@@ -292,6 +305,25 @@ const DateTimeSelection = ({ formData, onChange, onNext, onBack }) => {
                   </svg>
                   <span>{isRTL ? 'لا توجد مواعيد متاحة في هذا اليوم' : 'No available slots for this day'}</span>
                 </div>
+              )}
+
+              {/* Selected Time Confirmation */}
+              {formData.appointmentTime && (
+                <motion.div
+                  className="time-selected-message success"
+                  initial={{ opacity: 0, scale: 0.9 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                >
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+                    <polyline points="22 4 12 14.01 9 11.01"/>
+                  </svg>
+                  <span>
+                    {isRTL
+                      ? `تم اختيار الوقت: ${formData.appointmentTime} - هذا الوقت متاح للحجز`
+                      : `Time selected: ${formData.appointmentTime} - This slot is available`}
+                  </span>
+                </motion.div>
               )}
 
               {/* Duration Selection for Beneficiary/Talented/Visitor */}

@@ -1349,6 +1349,16 @@
   background: var(--gray-50);
   font-size: 0.9rem;
   font-weight: 500;
+  /* Reset button styles */
+  outline: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+  padding: 0;
+  margin: 0;
+  font-family: inherit;
+  min-width: 40px;
+  min-height: 40px;
 }
 
 .calendar-days-grid .calendar-day.empty {
@@ -1427,12 +1437,69 @@
   background: var(--racing-red);
 }
 
+/* Time Selected Message */
+.time-selected-message {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 1rem 1.25rem;
+  border-radius: 12px;
+  margin-top: 1rem;
+  font-size: 0.9rem;
+  font-weight: 500;
+}
+
+.time-selected-message.success {
+  background: linear-gradient(135deg, rgba(72, 191, 133, 0.1), rgba(72, 191, 133, 0.05));
+  border: 2px solid rgba(72, 191, 133, 0.3);
+  color: #2d8659;
+}
+
+.time-selected-message.success svg {
+  color: var(--mint-leaf);
+  flex-shrink: 0;
+}
+
+.time-selected-message.warning {
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.1), rgba(245, 158, 11, 0.05));
+  border: 2px solid rgba(245, 158, 11, 0.3);
+  color: #b45309;
+}
+
+.time-selected-message.error {
+  background: linear-gradient(135deg, rgba(239, 68, 68, 0.1), rgba(239, 68, 68, 0.05));
+  border: 2px solid rgba(239, 68, 68, 0.3);
+  color: #dc2626;
+}
+
 /* Time Slots Section */
 .time-slots-section {
   background: white;
   border: 2px solid var(--gray-200);
   border-radius: var(--border-radius);
   padding: 1.5rem;
+}
+
+.selected-date-display {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 1rem;
+  background: linear-gradient(135deg, rgba(238, 35, 41, 0.05), rgba(238, 35, 41, 0.02));
+  border: 2px solid rgba(238, 35, 41, 0.2);
+  border-radius: 12px;
+  margin-bottom: 1.25rem;
+  color: var(--gray-700);
+  font-size: 0.9rem;
+}
+
+.selected-date-display svg {
+  color: var(--racing-red);
+  flex-shrink: 0;
+}
+
+.selected-date-display strong {
+  color: var(--racing-red);
 }
 
 .time-slots-title {
