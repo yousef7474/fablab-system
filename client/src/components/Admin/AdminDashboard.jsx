@@ -51,9 +51,14 @@ const AdminDashboard = () => {
     status: '',
     section: '',
     applicationType: '',
+    sex: '',
     search: '',
     dateFrom: '',
     dateTo: ''
+  });
+  const [analyticsDateRange, setAnalyticsDateRange] = useState({
+    startDate: '',
+    endDate: ''
   });
   const [selectedRegistration, setSelectedRegistration] = useState(null);
   const [showModal, setShowModal] = useState(false);
@@ -63,6 +68,8 @@ const AdminDashboard = () => {
   const [selectedUser, setSelectedUser] = useState(null);
   const [userRegistrations, setUserRegistrations] = useState([]);
   const [employeeForm, setEmployeeForm] = useState({ name: '', email: '', section: '' });
+  const [isEditingUser, setIsEditingUser] = useState(false);
+  const [userEditForm, setUserEditForm] = useState({});
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [analyticsPeriod, setAnalyticsPeriod] = useState('month');
 
@@ -91,7 +98,14 @@ const AdminDashboard = () => {
 
   const fetchEnhancedAnalytics = async () => {
     try {
-      const response = await api.get(`/admin/analytics/enhanced?period=${analyticsPeriod}`);
+      let url = `/admin/analytics/enhanced?period=${analyticsPeriod}`;
+      if (analyticsDateRange.startDate) {
+        url += `&startDate=${analyticsDateRange.startDate}`;
+      }
+      if (analyticsDateRange.endDate) {
+        url += `&endDate=${analyticsDateRange.endDate}`;
+      }
+      const response = await api.get(url);
       setAnalyticsData(response.data);
     } catch (error) {
       console.error('Error fetching enhanced analytics:', error);
@@ -133,10 +147,26 @@ const AdminDashboard = () => {
       const response = await api.get(`/admin/users/${encodedId}/registrations`);
       setSelectedUser(response.data.user);
       setUserRegistrations(response.data.registrations || []);
+      setUserEditForm(response.data.user);
+      setIsEditingUser(false);
       setShowUserModal(true);
     } catch (error) {
       console.error('Error fetching user registrations:', error);
       toast.error(isRTL ? 'خطأ في تحميل بيانات المستخدم' : 'Error loading user data');
+    }
+  };
+
+  const handleUpdateUser = async () => {
+    try {
+      const encodedId = encodeURIComponent(selectedUser.userId);
+      await api.put(`/admin/users/${encodedId}`, userEditForm);
+      toast.success(isRTL ? 'تم تحديث بيانات المستخدم بنجاح' : 'User updated successfully');
+      setSelectedUser({ ...selectedUser, ...userEditForm });
+      setIsEditingUser(false);
+      fetchUsers();
+    } catch (error) {
+      console.error('Error updating user:', error);
+      toast.error(isRTL ? 'خطأ في تحديث بيانات المستخدم' : 'Error updating user');
     }
   };
 
@@ -508,15 +538,6 @@ const AdminDashboard = () => {
           </div>
 
           <div className="header-right">
-            <button className="lang-toggle-btn" onClick={toggleLanguage}>
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <circle cx="12" cy="12" r="10"/>
-                <line x1="2" y1="12" x2="22" y2="12"/>
-                <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
-              </svg>
-              <span>{i18n.language === 'ar' ? 'EN' : 'ع'}</span>
-            </button>
-
             <div className="admin-profile">
               <div className="admin-avatar">
                 {adminData.fullName?.charAt(0) || 'A'}
@@ -717,6 +738,31 @@ const AdminDashboard = () => {
                     <option value="Talented">{isRTL ? 'موهوب' : 'Talented'}</option>
                     <option value="Entity">{isRTL ? 'جهة' : 'Entity'}</option>
                     <option value="FABLAB Visit">{isRTL ? 'زيارة فاب لاب' : 'FABLAB Visit'}</option>
+                  </select>
+
+                  <select
+                    value={filters.section}
+                    onChange={(e) => setFilters({ ...filters, section: e.target.value })}
+                    className="filter-select"
+                  >
+                    <option value="">{isRTL ? 'كل الأقسام' : 'All Sections'}</option>
+                    <option value="Electronics and Programming">{isRTL ? 'الإلكترونيات والبرمجة' : 'Electronics & Programming'}</option>
+                    <option value="CNC Laser">{isRTL ? 'الليزر CNC' : 'CNC Laser'}</option>
+                    <option value="CNC Wood">{isRTL ? 'الخشب CNC' : 'CNC Wood'}</option>
+                    <option value="3D">{isRTL ? 'الطباعة ثلاثية الأبعاد' : '3D Printing'}</option>
+                    <option value="Robotic and AI">{isRTL ? 'الروبوتات والذكاء الاصطناعي' : 'Robotics & AI'}</option>
+                    <option value="Kid's Club">{isRTL ? 'نادي الأطفال' : "Kid's Club"}</option>
+                    <option value="Vinyl Cutting">{isRTL ? 'قطع الفينيل' : 'Vinyl Cutting'}</option>
+                  </select>
+
+                  <select
+                    value={filters.sex}
+                    onChange={(e) => setFilters({ ...filters, sex: e.target.value })}
+                    className="filter-select"
+                  >
+                    <option value="">{isRTL ? 'كل الجنس' : 'All Genders'}</option>
+                    <option value="male">{isRTL ? 'ذكر' : 'Male'}</option>
+                    <option value="female">{isRTL ? 'أنثى' : 'Female'}</option>
                   </select>
 
                   <button className="filter-btn" onClick={fetchRegistrations}>
@@ -949,6 +995,41 @@ const AdminDashboard = () => {
                 className="analytics-content"
               >
                 <div className="analytics-header">
+                  <div className="date-range-selector">
+                    <div className="date-input-group">
+                      <label>{isRTL ? 'من' : 'From'}</label>
+                      <input
+                        type="date"
+                        value={analyticsDateRange.startDate}
+                        onChange={(e) => setAnalyticsDateRange({ ...analyticsDateRange, startDate: e.target.value })}
+                        className="date-input"
+                      />
+                    </div>
+                    <div className="date-input-group">
+                      <label>{isRTL ? 'إلى' : 'To'}</label>
+                      <input
+                        type="date"
+                        value={analyticsDateRange.endDate}
+                        onChange={(e) => setAnalyticsDateRange({ ...analyticsDateRange, endDate: e.target.value })}
+                        className="date-input"
+                      />
+                    </div>
+                    <button
+                      className="filter-btn"
+                      onClick={fetchEnhancedAnalytics}
+                    >
+                      {isRTL ? 'تطبيق' : 'Apply'}
+                    </button>
+                    <button
+                      className="filter-btn"
+                      onClick={() => {
+                        setAnalyticsDateRange({ startDate: '', endDate: '' });
+                        setTimeout(fetchEnhancedAnalytics, 100);
+                      }}
+                    >
+                      {isRTL ? 'مسح' : 'Clear'}
+                    </button>
+                  </div>
                   <div className="period-selector">
                     <button
                       className={`period-btn ${analyticsPeriod === 'week' ? 'active' : ''}`}
@@ -1452,12 +1533,29 @@ const AdminDashboard = () => {
           >
             <div className="modal-header">
               <h2>{isRTL ? 'ملف المستخدم' : 'User Profile'}</h2>
-              <button className="modal-close" onClick={() => setShowUserModal(false)}>
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <line x1="18" y1="6" x2="6" y2="18"/>
-                  <line x1="6" y1="6" x2="18" y2="18"/>
-                </svg>
-              </button>
+              <div style={{ display: 'flex', gap: '0.5rem' }}>
+                <button
+                  className={`filter-btn ${isEditingUser ? 'active' : ''}`}
+                  onClick={() => {
+                    if (isEditingUser) {
+                      setUserEditForm(selectedUser);
+                    }
+                    setIsEditingUser(!isEditingUser);
+                  }}
+                >
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                    <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                  </svg>
+                  {isEditingUser ? (isRTL ? 'إلغاء' : 'Cancel') : (isRTL ? 'تعديل' : 'Edit')}
+                </button>
+                <button className="modal-close" onClick={() => setShowUserModal(false)}>
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <line x1="18" y1="6" x2="6" y2="18"/>
+                    <line x1="6" y1="6" x2="18" y2="18"/>
+                  </svg>
+                </button>
+              </div>
             </div>
 
             <div className="modal-body">
@@ -1476,67 +1574,181 @@ const AdminDashboard = () => {
                 </div>
               </div>
 
-              <div className="user-details-grid">
-                <div className="detail-item">
-                  <label>{isRTL ? 'رقم المستخدم' : 'User ID'}</label>
-                  <span>{selectedUser.userId}</span>
+              {isEditingUser ? (
+                <div className="user-edit-form">
+                  <div className="form-group">
+                    <label>{isRTL ? 'الاسم الأول' : 'First Name'}</label>
+                    <input
+                      type="text"
+                      value={userEditForm.firstName || ''}
+                      onChange={(e) => setUserEditForm({ ...userEditForm, firstName: e.target.value })}
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label>{isRTL ? 'اسم العائلة' : 'Last Name'}</label>
+                    <input
+                      type="text"
+                      value={userEditForm.lastName || ''}
+                      onChange={(e) => setUserEditForm({ ...userEditForm, lastName: e.target.value })}
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label>{isRTL ? 'البريد الإلكتروني' : 'Email'}</label>
+                    <input
+                      type="email"
+                      value={userEditForm.email || ''}
+                      onChange={(e) => setUserEditForm({ ...userEditForm, email: e.target.value })}
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label>{isRTL ? 'رقم الهاتف' : 'Phone Number'}</label>
+                    <input
+                      type="text"
+                      value={userEditForm.phoneNumber || ''}
+                      onChange={(e) => setUserEditForm({ ...userEditForm, phoneNumber: e.target.value })}
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label>{isRTL ? 'الجنس' : 'Sex'}</label>
+                    <select
+                      value={userEditForm.sex || ''}
+                      onChange={(e) => setUserEditForm({ ...userEditForm, sex: e.target.value })}
+                    >
+                      <option value="">{isRTL ? 'اختر' : 'Select'}</option>
+                      <option value="male">{isRTL ? 'ذكر' : 'Male'}</option>
+                      <option value="female">{isRTL ? 'أنثى' : 'Female'}</option>
+                    </select>
+                  </div>
+                  <div className="form-group">
+                    <label>{isRTL ? 'الجنسية' : 'Nationality'}</label>
+                    <input
+                      type="text"
+                      value={userEditForm.nationality || ''}
+                      onChange={(e) => setUserEditForm({ ...userEditForm, nationality: e.target.value })}
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label>{isRTL ? 'رقم الهوية' : 'National ID'}</label>
+                    <input
+                      type="text"
+                      value={userEditForm.nationalId || ''}
+                      onChange={(e) => setUserEditForm({ ...userEditForm, nationalId: e.target.value })}
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label>{isRTL ? 'العمل الحالي' : 'Current Job'}</label>
+                    <input
+                      type="text"
+                      value={userEditForm.currentJob || ''}
+                      onChange={(e) => setUserEditForm({ ...userEditForm, currentJob: e.target.value })}
+                    />
+                  </div>
+                  <div className="form-group full-width">
+                    <label>{isRTL ? 'العنوان الوطني' : 'National Address'}</label>
+                    <input
+                      type="text"
+                      value={userEditForm.nationalAddress || ''}
+                      onChange={(e) => setUserEditForm({ ...userEditForm, nationalAddress: e.target.value })}
+                    />
+                  </div>
+                  <div className="user-edit-actions">
+                    <button
+                      className="modal-btn cancel"
+                      onClick={() => {
+                        setUserEditForm(selectedUser);
+                        setIsEditingUser(false);
+                      }}
+                    >
+                      {isRTL ? 'إلغاء' : 'Cancel'}
+                    </button>
+                    <button
+                      className="modal-btn approve"
+                      onClick={handleUpdateUser}
+                    >
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <polyline points="20 6 9 17 4 12"/>
+                      </svg>
+                      {isRTL ? 'حفظ التغييرات' : 'Save Changes'}
+                    </button>
+                  </div>
                 </div>
-                <div className="detail-item">
-                  <label>{isRTL ? 'رقم الهاتف' : 'Phone'}</label>
-                  <span>{selectedUser.phoneNumber || 'N/A'}</span>
-                </div>
-                <div className="detail-item">
-                  <label>{isRTL ? 'تاريخ التسجيل' : 'Registered'}</label>
-                  <span>{formatDate(selectedUser.createdAt)}</span>
-                </div>
-              </div>
+              ) : (
+                <>
+                  <div className="user-details-grid">
+                    <div className="detail-item">
+                      <label>{isRTL ? 'رقم المستخدم' : 'User ID'}</label>
+                      <span>{selectedUser.userId}</span>
+                    </div>
+                    <div className="detail-item">
+                      <label>{isRTL ? 'رقم الهاتف' : 'Phone'}</label>
+                      <span>{selectedUser.phoneNumber || 'N/A'}</span>
+                    </div>
+                    <div className="detail-item">
+                      <label>{isRTL ? 'الجنس' : 'Sex'}</label>
+                      <span>{selectedUser.sex === 'male' ? (isRTL ? 'ذكر' : 'Male') : selectedUser.sex === 'female' ? (isRTL ? 'أنثى' : 'Female') : 'N/A'}</span>
+                    </div>
+                    <div className="detail-item">
+                      <label>{isRTL ? 'الجنسية' : 'Nationality'}</label>
+                      <span>{selectedUser.nationality || 'N/A'}</span>
+                    </div>
+                    <div className="detail-item">
+                      <label>{isRTL ? 'رقم الهوية' : 'National ID'}</label>
+                      <span>{selectedUser.nationalId || 'N/A'}</span>
+                    </div>
+                    <div className="detail-item">
+                      <label>{isRTL ? 'تاريخ التسجيل' : 'Registered'}</label>
+                      <span>{formatDate(selectedUser.createdAt)}</span>
+                    </div>
+                  </div>
 
-              <div className="user-registrations-section">
-                <h4>{isRTL ? 'سجل التسجيلات' : 'Registration History'} ({userRegistrations.length})</h4>
-                <div className="user-registrations-list">
-                  {userRegistrations.length > 0 ? (
-                    userRegistrations.map((reg) => (
-                      <div key={reg.registrationId} className="user-registration-item">
-                        <div className="reg-item-header">
-                          <span className="reg-item-id">{reg.registrationId}</span>
-                          <span className={`status-badge ${reg.status}`}>{statusLabels[reg.status]}</span>
-                        </div>
-                        <div className="reg-item-details">
-                          <span>{sectionLabels[reg.fablabSection] || reg.fablabSection}</span>
-                          <span>{formatDate(reg.appointmentDate || reg.visitDate || reg.startDate)}</span>
-                        </div>
-                        <div className="reg-item-actions">
-                          <button
-                            className="action-btn view"
-                            onClick={() => {
-                              setSelectedRegistration(reg);
-                              setShowUserModal(false);
-                              setShowModal(true);
-                            }}
-                          >
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                              <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
-                              <circle cx="12" cy="12" r="3"/>
-                            </svg>
-                          </button>
-                          <button
-                            className="action-btn print"
-                            onClick={() => handlePrintRegistration({ ...reg, user: selectedUser })}
-                          >
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                              <polyline points="6 9 6 2 18 2 18 9"/>
-                              <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/>
-                              <rect x="6" y="14" width="12" height="8"/>
-                            </svg>
-                          </button>
-                        </div>
-                      </div>
-                    ))
-                  ) : (
-                    <p className="empty-message">{isRTL ? 'لا توجد تسجيلات' : 'No registrations found'}</p>
-                  )}
-                </div>
-              </div>
+                  <div className="user-registrations-section">
+                    <h4>{isRTL ? 'سجل التسجيلات' : 'Registration History'} ({userRegistrations.length})</h4>
+                    <div className="user-registrations-list">
+                      {userRegistrations.length > 0 ? (
+                        userRegistrations.map((reg) => (
+                          <div key={reg.registrationId} className="user-registration-item">
+                            <div className="reg-item-header">
+                              <span className="reg-item-id">{reg.registrationId}</span>
+                              <span className={`status-badge ${reg.status}`}>{statusLabels[reg.status]}</span>
+                            </div>
+                            <div className="reg-item-details">
+                              <span>{sectionLabels[reg.fablabSection] || reg.fablabSection}</span>
+                              <span>{formatDate(reg.appointmentDate || reg.visitDate || reg.startDate)}</span>
+                            </div>
+                            <div className="reg-item-actions">
+                              <button
+                                className="action-btn view"
+                                onClick={() => {
+                                  setSelectedRegistration(reg);
+                                  setShowUserModal(false);
+                                  setShowModal(true);
+                                }}
+                              >
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                  <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                                  <circle cx="12" cy="12" r="3"/>
+                                </svg>
+                              </button>
+                              <button
+                                className="action-btn print"
+                                onClick={() => handlePrintRegistration({ ...reg, user: selectedUser })}
+                              >
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                  <polyline points="6 9 6 2 18 2 18 9"/>
+                                  <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/>
+                                  <rect x="6" y="14" width="12" height="8"/>
+                                </svg>
+                              </button>
+                            </div>
+                          </div>
+                        ))
+                      ) : (
+                        <p className="empty-message">{isRTL ? 'لا توجد تسجيلات' : 'No registrations found'}</p>
+                      )}
+                    </div>
+                  </div>
+                </>
+              )}
             </div>
           </motion.div>
         </div>
@@ -1613,6 +1825,16 @@ const AdminDashboard = () => {
           </motion.div>
         </div>
       )}
+
+      {/* Fixed Language Toggle Button */}
+      <button className="lang-toggle-btn" onClick={toggleLanguage}>
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <circle cx="12" cy="12" r="10"/>
+          <line x1="2" y1="12" x2="22" y2="12"/>
+          <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
+        </svg>
+        <span>{i18n.language === 'ar' ? 'EN' : 'ع'}</span>
+      </button>
     </div>
   );
 };

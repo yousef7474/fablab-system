@@ -443,6 +443,43 @@ exports.getUserWithRegistrations = async (req, res) => {
   }
 };
 
+// Update user profile
+exports.updateUser = async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const updateData = req.body;
+
+    const user = await User.findByPk(userId);
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    // Allowed fields to update
+    const allowedFields = [
+      'firstName', 'lastName', 'name', 'email', 'phoneNumber',
+      'sex', 'nationality', 'nationalId', 'currentJob', 'nationalAddress',
+      'applicationType', 'entityName', 'personInCharge'
+    ];
+
+    const filteredData = {};
+    allowedFields.forEach(field => {
+      if (updateData[field] !== undefined) {
+        filteredData[field] = updateData[field];
+      }
+    });
+
+    await user.update(filteredData);
+
+    res.json({
+      message: 'User updated successfully',
+      user
+    });
+  } catch (error) {
+    console.error('Error updating user:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
 // Get all users
 exports.getAllUsers = async (req, res) => {
   try {
@@ -619,30 +656,44 @@ exports.getSchedule = async (req, res) => {
 // Get enhanced analytics with time series data
 exports.getEnhancedAnalytics = async (req, res) => {
   try {
-    const { period = 'month' } = req.query;
+    const { period = 'month', startDate: customStartDate, endDate: customEndDate } = req.query;
 
     // Calculate date range
     const now = new Date();
     let startDate;
+    let endDate = customEndDate ? new Date(customEndDate + 'T23:59:59') : now;
     let groupBy;
 
-    switch (period) {
-      case 'week':
-        startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-        groupBy = 'day';
-        break;
-      case 'month':
-        startDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
-        groupBy = 'day';
-        break;
-      case 'year':
-        startDate = new Date(now.getTime() - 365 * 24 * 60 * 60 * 1000);
-        groupBy = 'month';
-        break;
-      default:
-        startDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
-        groupBy = 'day';
+    // Use custom dates if provided
+    if (customStartDate) {
+      startDate = new Date(customStartDate);
+    } else {
+      switch (period) {
+        case 'week':
+          startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+          groupBy = 'day';
+          break;
+        case 'month':
+          startDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+          groupBy = 'day';
+          break;
+        case 'year':
+          startDate = new Date(now.getTime() - 365 * 24 * 60 * 60 * 1000);
+          groupBy = 'month';
+          break;
+        default:
+          startDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+          groupBy = 'day';
+      }
     }
+
+    // Build date filter
+    const dateFilter = {
+      createdAt: {
+        [Op.gte]: startDate,
+        [Op.lte]: endDate
+      }
+    };
 
     // Basic stats
     const totalRegistrations = await Registration.count();
@@ -738,38 +789,62 @@ exports.getEnhancedAnalytics = async (req, res) => {
 // Export registrations to CSV
 exports.exportToCSV = async (req, res) => {
   try {
-    const { registrationIds } = req.body;
+    const { registrationIds, status, section, applicationType, startDate, endDate } = req.query;
+
+    const whereClause = {};
+    const userWhereClause = {};
+
+    // If specific IDs provided, use them
+    if (registrationIds) {
+      const ids = registrationIds.split(',');
+      whereClause.registrationId = { [Op.in]: ids };
+    }
+
+    // Apply optional filters
+    if (status) whereClause.status = status;
+    if (section) whereClause.fablabSection = section;
+    if (applicationType) userWhereClause.applicationType = applicationType;
+
+    // Date range filter
+    if (startDate || endDate) {
+      whereClause.createdAt = {};
+      if (startDate) whereClause.createdAt[Op.gte] = new Date(startDate);
+      if (endDate) whereClause.createdAt[Op.lte] = new Date(endDate + 'T23:59:59');
+    }
 
     const registrations = await Registration.findAll({
-      where: {
-        registrationId: { [Op.in]: registrationIds }
-      },
+      where: whereClause,
       include: [{
         model: User,
-        as: 'user'
-      }]
+        as: 'user',
+        where: Object.keys(userWhereClause).length > 0 ? userWhereClause : undefined
+      }],
+      order: [['createdAt', 'DESC']]
     });
 
-    // Create CSV content
-    let csv = 'Registration ID,User ID,Name,Email,Phone,Application Type,Section,Services,Date,Time,Status\n';
+    // Create CSV content with BOM for Excel compatibility
+    const BOM = '\uFEFF';
+    let csv = BOM + 'Registration ID,User ID,Name,Email,Phone,Sex,Nationality,National ID,Application Type,Section,Services,Service Type,Date,Time,Status,Created At\n';
 
     registrations.forEach(reg => {
-      const userName = reg.user.firstName && reg.user.lastName
+      const userName = reg.user?.firstName && reg.user?.lastName
         ? `${reg.user.firstName} ${reg.user.lastName}`
-        : reg.user.name;
+        : reg.user?.name || '';
 
       const date = reg.appointmentDate || reg.visitDate || reg.startDate || '';
       const time = reg.appointmentTime || reg.visitStartTime || reg.startTime || '';
+      const services = reg.requiredServices ? reg.requiredServices.join('; ') : '';
+      const createdAt = reg.createdAt ? new Date(reg.createdAt).toISOString().split('T')[0] : '';
 
-      csv += `${reg.registrationId},${reg.userId},"${userName}",${reg.user.email},${reg.user.phoneNumber},${reg.user.applicationType},${reg.fablabSection},"${reg.requiredServices.join('; ')}",${date},${time},${reg.status}\n`;
+      csv += `"${reg.registrationId}","${reg.userId}","${userName}","${reg.user?.email || ''}","${reg.user?.phoneNumber || ''}","${reg.user?.sex || ''}","${reg.user?.nationality || ''}","${reg.user?.nationalId || ''}","${reg.user?.applicationType || ''}","${reg.fablabSection || ''}","${services}","${reg.serviceType || ''}","${date}","${time}","${reg.status}","${createdAt}"\n`;
     });
 
-    res.setHeader('Content-Type', 'text/csv');
-    res.setHeader('Content-Disposition', 'attachment; filename=registrations.csv');
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader('Content-Disposition', `attachment; filename=registrations_${new Date().toISOString().split('T')[0]}.csv`);
     res.send(csv);
   } catch (error) {
     console.error('Error exporting to CSV:', error);
-    res.status(500).json({ message: 'Server error' });
+    res.status(500).json({ message: 'Server error', error: error.message });
   }
 };
 

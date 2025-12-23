@@ -1158,8 +1158,45 @@
 
 .analytics-header {
   display: flex;
-  justify-content: flex-end;
+  justify-content: space-between;
+  align-items: center;
   margin-bottom: 1.5rem;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.date-range-selector {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.date-input-group {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.date-input-group label {
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: var(--gray-600);
+}
+
+.date-input {
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--gray-200);
+  border-radius: 8px;
+  font-size: 0.9rem;
+  color: var(--gray-700);
+  background: white;
+}
+
+.date-input:focus {
+  outline: none;
+  border-color: var(--racing-red);
+  box-shadow: 0 0 0 2px rgba(238, 35, 41, 0.1);
 }
 
 .period-selector {
@@ -1971,16 +2008,257 @@
 }
 
 /* Clickable user name in tables */
-.clickable-name {
+.clickable-name,
+.user-link {
   color: var(--gray-800);
   font-weight: 500;
   cursor: pointer;
   transition: color 0.2s;
 }
 
-.clickable-name:hover {
+.clickable-name:hover,
+.user-link:hover {
   color: var(--racing-red);
   text-decoration: underline;
+}
+
+/* ========== Enhanced User Profile Modal ========== */
+.user-profile-modal {
+  max-width: 900px;
+  max-height: 90vh;
+}
+
+.user-profile-header {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+  padding: 1.5rem;
+  background: linear-gradient(135deg, var(--gray-50), white);
+  border-radius: 16px;
+  margin-bottom: 1.5rem;
+}
+
+.user-profile-avatar {
+  width: 100px;
+  height: 100px;
+  background: linear-gradient(135deg, var(--racing-red), #c41e24);
+  border-radius: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-size: 2.5rem;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.user-profile-info {
+  flex: 1;
+}
+
+.user-profile-info h3 {
+  font-size: 1.75rem;
+  font-weight: 700;
+  color: var(--gray-800);
+  margin-bottom: 0.5rem;
+}
+
+.user-profile-info p {
+  color: var(--gray-500);
+  font-size: 1rem;
+  margin-bottom: 0.5rem;
+}
+
+.user-type-badge {
+  display: inline-block;
+  padding: 0.35rem 1rem;
+  background: linear-gradient(135deg, var(--racing-red), #c41e24);
+  color: white;
+  border-radius: 20px;
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.user-details-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+  padding: 1rem;
+  background: var(--gray-50);
+  border-radius: 12px;
+}
+
+.user-details-grid .detail-item {
+  padding: 0.75rem;
+  background: white;
+  border-radius: 8px;
+}
+
+.user-details-grid .detail-item label {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  color: var(--gray-500);
+  margin-bottom: 0.25rem;
+  display: block;
+}
+
+.user-details-grid .detail-item span {
+  font-size: 0.95rem;
+  color: var(--gray-800);
+  font-weight: 500;
+}
+
+.user-registrations-section {
+  margin-top: 1.5rem;
+}
+
+.user-registrations-section h4 {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--gray-800);
+  margin-bottom: 1rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid var(--gray-100);
+}
+
+.user-registrations-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  max-height: 300px;
+  overflow-y: auto;
+  padding-right: 0.5rem;
+}
+
+[dir="rtl"] .user-registrations-list {
+  padding-right: 0;
+  padding-left: 0.5rem;
+}
+
+.user-registration-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1rem;
+  background: var(--gray-50);
+  border-radius: 12px;
+  border: 1px solid var(--gray-100);
+  transition: all 0.2s;
+}
+
+.user-registration-item:hover {
+  background: white;
+  border-color: var(--gray-200);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+}
+
+.reg-item-header {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.reg-item-id {
+  font-family: 'Monaco', 'Consolas', monospace;
+  background: var(--gray-100);
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  font-size: 0.8rem;
+  color: var(--racing-red);
+}
+
+.reg-item-details {
+  display: flex;
+  gap: 1rem;
+  color: var(--gray-600);
+  font-size: 0.85rem;
+}
+
+.reg-item-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+/* Editable user form */
+.user-edit-form {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1rem;
+  margin-top: 1rem;
+  padding: 1rem;
+  background: var(--gray-50);
+  border-radius: 12px;
+}
+
+.user-edit-form .form-group {
+  margin-bottom: 0;
+}
+
+.user-edit-form .form-group.full-width {
+  grid-column: 1 / -1;
+}
+
+.user-edit-form label {
+  display: block;
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: var(--gray-600);
+  margin-bottom: 0.5rem;
+  text-transform: uppercase;
+}
+
+.user-edit-form input,
+.user-edit-form select {
+  width: 100%;
+  padding: 0.75rem 1rem;
+  border: 1px solid var(--gray-200);
+  border-radius: 8px;
+  font-size: 0.9rem;
+  color: var(--gray-800);
+  background: white;
+  transition: all 0.2s;
+}
+
+.user-edit-form input:focus,
+.user-edit-form select:focus {
+  outline: none;
+  border-color: var(--racing-red);
+  box-shadow: 0 0 0 3px rgba(238, 35, 41, 0.1);
+}
+
+.user-edit-actions {
+  grid-column: 1 / -1;
+  display: flex;
+  gap: 1rem;
+  justify-content: flex-end;
+  margin-top: 0.5rem;
+}
+
+@media (max-width: 768px) {
+  .user-details-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .user-edit-form {
+    grid-template-columns: 1fr;
+  }
+
+  .user-registration-item {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.75rem;
+  }
+
+  .reg-item-details {
+    flex-direction: column;
+    gap: 0.25rem;
+  }
+
+  .date-range-selector {
+    width: 100%;
+    justify-content: center;
+  }
 }
 
 /* Animation */
