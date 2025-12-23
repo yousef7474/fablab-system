@@ -1,24 +1,18 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { ThemeProvider, CssBaseline } from '@mui/material';
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import './i18n';
-import { lightTheme, darkTheme } from './config/theme';
+import { lightTheme } from './config/theme';
 import RegistrationForm from './components/RegistrationForm/RegistrationForm';
 import AdminLogin from './components/Admin/AdminLogin';
 import AdminDashboard from './components/Admin/AdminDashboard';
 import LanguageSelector from './components/LanguageSelector';
 
 function App() {
-  const [isDarkMode, setIsDarkMode] = useState(false);
-
-  const toggleTheme = () => {
-    setIsDarkMode(!isDarkMode);
-  };
-
   return (
-    <ThemeProvider theme={isDarkMode ? darkTheme : lightTheme}>
+    <ThemeProvider theme={lightTheme}>
       <CssBaseline />
       <Router>
         <LanguageSelector />
@@ -26,10 +20,7 @@ function App() {
           <Route path="/" element={<RegistrationForm />} />
           <Route path="/register" element={<RegistrationForm />} />
           <Route path="/admin/login" element={<AdminLogin />} />
-          <Route
-            path="/admin/dashboard/*"
-            element={<AdminDashboard isDarkMode={isDarkMode} toggleTheme={toggleTheme} />}
-          />
+          <Route path="/admin/dashboard/*" element={<AdminDashboard />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </Router>

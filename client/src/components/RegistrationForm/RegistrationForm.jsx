@@ -1,16 +1,6 @@
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { motion, AnimatePresence } from 'framer-motion';
-import {
-  Box,
-  Stepper,
-  Step,
-  StepLabel,
-  Button,
-  Paper,
-  Typography,
-  Container
-} from '@mui/material';
 import { toast } from 'react-toastify';
 import api from '../../config/api';
 import UserLookup from './steps/UserLookup';
@@ -29,7 +19,7 @@ const RegistrationForm = () => {
   const { t, i18n } = useTranslation();
   const isRTL = i18n.language === 'ar';
 
-  const [activeStep, setActiveStep] = useState(-1); // Start with user lookup
+  const [activeStep, setActiveStep] = useState(-1);
   const [formData, setFormData] = useState({
     existingUserId: null,
     applicationType: '',
@@ -49,14 +39,14 @@ const RegistrationForm = () => {
     fablabSection: '',
     requiredServices: [],
     otherServiceDetails: '',
-    appointmentDate: null,
+    appointmentDate: '',
     appointmentTime: '',
     appointmentDuration: 60,
-    startDate: null,
-    endDate: null,
+    startDate: '',
+    endDate: '',
     startTime: '',
     endTime: '',
-    visitDate: null,
+    visitDate: '',
     visitStartTime: '',
     visitEndTime: '',
     serviceDetails: '',
@@ -68,14 +58,14 @@ const RegistrationForm = () => {
   const [loading, setLoading] = useState(false);
 
   const steps = [
-    t('section1'), // Application Type
-    t('section2'), // Application Data
-    t('section3'), // FABLAB Sections
-    t('section4'), // Required Service
-    t('section5'), // Select Date and Time
-    t('section6'), // Details
-    t('section7'), // Type of Service
-    t('section8')  // Commitment
+    { key: 'section1', label: t('section1') },
+    { key: 'section2', label: t('section2') },
+    { key: 'section3', label: t('section3') },
+    { key: 'section4', label: t('section4') },
+    { key: 'section5', label: t('section5') },
+    { key: 'section6', label: t('section6') },
+    { key: 'section7', label: t('section7') },
+    { key: 'section8', label: t('section8') }
   ];
 
   const handleNext = () => {
@@ -101,7 +91,7 @@ const RegistrationForm = () => {
       email: userData.email,
       phoneNumber: userData.phoneNumber
     });
-    setActiveStep(2); // Skip to section 3
+    setActiveStep(2);
   };
 
   const handleSubmit = async () => {
@@ -119,106 +109,76 @@ const RegistrationForm = () => {
   };
 
   const renderStepContent = (step) => {
+    const stepProps = {
+      formData,
+      onChange: handleFormDataChange,
+      onNext: handleNext,
+      onBack: handleBack
+    };
+
     switch (step) {
       case 0:
-        return (
-          <ApplicationType
-            formData={formData}
-            onChange={handleFormDataChange}
-            onNext={handleNext}
-          />
-        );
+        return <ApplicationType {...stepProps} />;
       case 1:
-        return (
-          <ApplicationData
-            formData={formData}
-            onChange={handleFormDataChange}
-            onNext={handleNext}
-            onBack={handleBack}
-          />
-        );
+        return <ApplicationData {...stepProps} />;
       case 2:
-        return (
-          <FablabSection
-            formData={formData}
-            onChange={handleFormDataChange}
-            onNext={handleNext}
-            onBack={handleBack}
-          />
-        );
+        return <FablabSection {...stepProps} />;
       case 3:
-        return (
-          <RequiredService
-            formData={formData}
-            onChange={handleFormDataChange}
-            onNext={handleNext}
-            onBack={handleBack}
-          />
-        );
+        return <RequiredService {...stepProps} />;
       case 4:
-        return (
-          <DateTimeSelection
-            formData={formData}
-            onChange={handleFormDataChange}
-            onNext={handleNext}
-            onBack={handleBack}
-          />
-        );
+        return <DateTimeSelection {...stepProps} />;
       case 5:
-        return (
-          <ServiceDetails
-            formData={formData}
-            onChange={handleFormDataChange}
-            onNext={handleNext}
-            onBack={handleBack}
-          />
-        );
+        return <ServiceDetails {...stepProps} />;
       case 6:
-        return (
-          <ServiceType
-            formData={formData}
-            onChange={handleFormDataChange}
-            onNext={handleNext}
-            onBack={handleBack}
-          />
-        );
+        return <ServiceType {...stepProps} />;
       case 7:
-        return (
-          <Commitment
-            formData={formData}
-            onChange={handleFormDataChange}
-            onBack={handleBack}
-            onSubmit={handleSubmit}
-            loading={loading}
-          />
-        );
+        return <Commitment {...stepProps} onSubmit={handleSubmit} loading={loading} />;
       default:
         return null;
     }
   };
 
   if (registrationResult) {
-    return <SuccessPage registration={registrationResult} />;
+    return (
+      <div className="registration-page" dir={isRTL ? 'rtl' : 'ltr'}>
+        <div className="registration-container">
+          <div className="form-card">
+            <SuccessPage registration={registrationResult} />
+          </div>
+        </div>
+      </div>
+    );
   }
 
   return (
-    <Container maxWidth="lg" className="registration-container">
-      <Box sx={{ py: 4 }}>
-        <motion.div
-          initial={{ opacity: 0, y: -20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5 }}
-        >
-          <Paper elevation={3} sx={{ p: 4, borderRadius: 3 }}>
-            <Typography
-              variant="h3"
-              align="center"
-              gutterBottom
-              sx={{ mb: 4, fontWeight: 700 }}
-            >
-              {t('register')} - FABLAB Al-Ahsa
-            </Typography>
+    <div className="registration-page" dir={isRTL ? 'rtl' : 'ltr'}>
+      <div className="registration-container">
+        <div style={{ width: '100%', maxWidth: '900px' }}>
+          {/* Header */}
+          <motion.div
+            className="registration-header"
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5 }}
+          >
+            <div className="registration-logo">
+              <svg viewBox="0 0 24 24" fill="currentColor">
+                <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
+              </svg>
+            </div>
+            <h1 className="registration-title">FABLAB Al-Ahsa</h1>
+            <p className="registration-subtitle">
+              {isRTL ? 'نظام التسجيل وحجز المواعيد' : 'Registration & Appointment System'}
+            </p>
+          </motion.div>
 
+          {/* Form Card */}
+          <motion.div
+            className="form-card"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: 0.2 }}
+          >
             {activeStep === -1 ? (
               <UserLookup
                 onUserFound={handleUserFound}
@@ -226,36 +186,44 @@ const RegistrationForm = () => {
               />
             ) : (
               <>
-                <Stepper
-                  activeStep={activeStep}
-                  alternativeLabel
-                  sx={{ mb: 4 }}
-                  dir={isRTL ? 'rtl' : 'ltr'}
-                >
-                  {steps.map((label, index) => (
-                    <Step key={index}>
-                      <StepLabel>{label}</StepLabel>
-                    </Step>
-                  ))}
-                </Stepper>
+                {/* Stepper */}
+                <div className="stepper-container">
+                  <div className="stepper-wrapper">
+                    {steps.map((step, index) => (
+                      <div
+                        key={step.key}
+                        className={`step-item ${index === activeStep ? 'active' : ''} ${index < activeStep ? 'completed' : ''}`}
+                      >
+                        <div className="step-circle">
+                          {index < activeStep ? '✓' : index + 1}
+                        </div>
+                        <span className="step-label">{step.label}</span>
+                        {index < steps.length - 1 && <div className="step-connector" />}
+                      </div>
+                    ))}
+                  </div>
+                </div>
 
-                <AnimatePresence mode="wait">
-                  <motion.div
-                    key={activeStep}
-                    initial={{ opacity: 0, x: isRTL ? -50 : 50 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    exit={{ opacity: 0, x: isRTL ? 50 : -50 }}
-                    transition={{ duration: 0.3 }}
-                  >
-                    {renderStepContent(activeStep)}
-                  </motion.div>
-                </AnimatePresence>
+                {/* Form Content */}
+                <div className="form-content">
+                  <AnimatePresence mode="wait">
+                    <motion.div
+                      key={activeStep}
+                      initial={{ opacity: 0, x: isRTL ? -30 : 30 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      exit={{ opacity: 0, x: isRTL ? 30 : -30 }}
+                      transition={{ duration: 0.3 }}
+                    >
+                      {renderStepContent(activeStep)}
+                    </motion.div>
+                  </AnimatePresence>
+                </div>
               </>
             )}
-          </Paper>
-        </motion.div>
-      </Box>
-    </Container>
+          </motion.div>
+        </div>
+      </div>
+    </div>
   );
 };
 

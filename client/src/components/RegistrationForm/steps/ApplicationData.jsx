@@ -1,9 +1,10 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
-import { Box, TextField, Button, Grid, Typography, MenuItem } from '@mui/material';
+import { motion } from 'framer-motion';
 
 const ApplicationData = ({ formData, onChange, onNext, onBack }) => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const isRTL = i18n.language === 'ar';
 
   const handleChange = (field, value) => {
     onChange({ [field]: value });
@@ -20,171 +21,287 @@ const ApplicationData = ({ formData, onChange, onNext, onBack }) => {
     return false;
   };
 
-  return (
-    <Box className="form-step">
-      <Typography variant="h5" gutterBottom sx={{ mb: 4, fontWeight: 600 }}>
-        {t('section2')}
-      </Typography>
+  const entities = [
+    { value: 'FABLAB AL-Ahsa', labelEn: 'FABLAB Al-Ahsa', labelAr: 'فاب لاب الأحساء' },
+    { value: 'Noura Al-Mousa House for Culture and Arts', labelEn: 'Noura Al-Mousa House for Culture and Arts', labelAr: 'دار نورة الموسى للثقافة والفنون' },
+    { value: 'Al-Ahsa Academy for Crafts', labelEn: 'Al-Ahsa Academy for Crafts', labelAr: 'أكاديمية الأحساء للحرف' },
+    { value: 'Creativity and Innovation Training Center', labelEn: 'Creativity and Innovation Training Center', labelAr: 'مركز الإبداع والابتكار للتدريب' },
+    { value: 'Abdulmonem Al-Rashed Foundation', labelEn: 'Abdulmonem Al-Rashed Foundation', labelAr: 'مؤسسة عبدالمنعم الراشد' }
+  ];
 
-      <Grid container spacing={3}>
+  return (
+    <div>
+      <h2 className="step-title">
+        {isRTL ? 'بيانات مقدم الطلب' : 'Applicant Information'}
+      </h2>
+      <p className="step-description">
+        {isRTL ? 'يرجى إدخال معلوماتك الشخصية' : 'Please enter your personal information'}
+      </p>
+
+      <div className="form-grid">
         {['Beneficiary', 'Visitor', 'Volunteer', 'Talented'].includes(formData.applicationType) && (
           <>
-            <Grid item xs={12} sm={6}>
-              <TextField
-                fullWidth
-                label={t('firstName')}
+            <motion.div
+              className="form-group"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.1 }}
+            >
+              <label className="form-label">
+                {isRTL ? 'الاسم الأول' : 'First Name'} <span className="required">*</span>
+              </label>
+              <input
+                type="text"
+                className="form-input"
                 value={formData.firstName}
                 onChange={(e) => handleChange('firstName', e.target.value)}
-                required
+                placeholder={isRTL ? 'أدخل الاسم الأول' : 'Enter first name'}
               />
-            </Grid>
-            <Grid item xs={12} sm={6}>
-              <TextField
-                fullWidth
-                label={t('lastName')}
+            </motion.div>
+
+            <motion.div
+              className="form-group"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.15 }}
+            >
+              <label className="form-label">
+                {isRTL ? 'اسم العائلة' : 'Last Name'} <span className="required">*</span>
+              </label>
+              <input
+                type="text"
+                className="form-input"
                 value={formData.lastName}
                 onChange={(e) => handleChange('lastName', e.target.value)}
-                required
+                placeholder={isRTL ? 'أدخل اسم العائلة' : 'Enter last name'}
               />
-            </Grid>
-            <Grid item xs={12} sm={6}>
-              <TextField
-                select
-                fullWidth
-                label={t('sex')}
+            </motion.div>
+
+            <motion.div
+              className="form-group"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.2 }}
+            >
+              <label className="form-label">{isRTL ? 'الجنس' : 'Gender'}</label>
+              <select
+                className="form-select"
                 value={formData.sex}
                 onChange={(e) => handleChange('sex', e.target.value)}
               >
-                <MenuItem value="Male">{t('male')}</MenuItem>
-                <MenuItem value="Female">{t('female')}</MenuItem>
-              </TextField>
-            </Grid>
-            <Grid item xs={12} sm={6}>
-              <TextField
-                fullWidth
-                label={t('nationality')}
+                <option value="">{isRTL ? 'اختر الجنس' : 'Select gender'}</option>
+                <option value="Male">{isRTL ? 'ذكر' : 'Male'}</option>
+                <option value="Female">{isRTL ? 'أنثى' : 'Female'}</option>
+              </select>
+            </motion.div>
+
+            <motion.div
+              className="form-group"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.25 }}
+            >
+              <label className="form-label">{isRTL ? 'الجنسية' : 'Nationality'}</label>
+              <input
+                type="text"
+                className="form-input"
                 value={formData.nationality}
                 onChange={(e) => handleChange('nationality', e.target.value)}
+                placeholder={isRTL ? 'أدخل الجنسية' : 'Enter nationality'}
               />
-            </Grid>
-            <Grid item xs={12} sm={6}>
-              <TextField
-                fullWidth
-                label={t('nationalId')}
+            </motion.div>
+
+            <motion.div
+              className="form-group"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.3 }}
+            >
+              <label className="form-label">{isRTL ? 'رقم الهوية الوطنية' : 'National ID'}</label>
+              <input
+                type="text"
+                className="form-input"
                 value={formData.nationalId}
                 onChange={(e) => handleChange('nationalId', e.target.value)}
+                placeholder={isRTL ? 'أدخل رقم الهوية' : 'Enter national ID'}
               />
-            </Grid>
-            <Grid item xs={12} sm={6}>
-              <TextField
-                fullWidth
-                label={t('currentJob')}
+            </motion.div>
+
+            <motion.div
+              className="form-group"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.35 }}
+            >
+              <label className="form-label">{isRTL ? 'الوظيفة الحالية' : 'Current Job'}</label>
+              <input
+                type="text"
+                className="form-input"
                 value={formData.currentJob}
                 onChange={(e) => handleChange('currentJob', e.target.value)}
+                placeholder={isRTL ? 'أدخل الوظيفة الحالية' : 'Enter current job'}
               />
-            </Grid>
-            <Grid item xs={12}>
-              <TextField
-                fullWidth
-                label={t('nationalAddress')}
+            </motion.div>
+
+            <motion.div
+              className="form-group full-width"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.4 }}
+            >
+              <label className="form-label">{isRTL ? 'العنوان الوطني' : 'National Address'}</label>
+              <textarea
+                className="form-textarea"
                 value={formData.nationalAddress}
                 onChange={(e) => handleChange('nationalAddress', e.target.value)}
-                multiline
+                placeholder={isRTL ? 'أدخل العنوان الوطني' : 'Enter national address'}
                 rows={2}
               />
-            </Grid>
+            </motion.div>
           </>
         )}
 
         {formData.applicationType === 'Entity' && (
           <>
-            <Grid item xs={12}>
-              <TextField
-                select
-                fullWidth
-                label={t('entity')}
+            <motion.div
+              className="form-group full-width"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.1 }}
+            >
+              <label className="form-label">
+                {isRTL ? 'الجهة' : 'Entity'} <span className="required">*</span>
+              </label>
+              <select
+                className="form-select"
                 value={formData.entityName}
                 onChange={(e) => handleChange('entityName', e.target.value)}
-                required
               >
-                <MenuItem value="FABLAB AL-Ahsa">{t('fablabAlAhsa')}</MenuItem>
-                <MenuItem value="Noura Al-Mousa House for Culture and Arts">{t('nouraHouse')}</MenuItem>
-                <MenuItem value="Al-Ahsa Academy for Crafts">{t('ahsaAcademy')}</MenuItem>
-                <MenuItem value="Creativity and Innovation Training Center">{t('innovationCenter')}</MenuItem>
-                <MenuItem value="Abdulmonem Al-Rashed Foundation">{t('rashedFoundation')}</MenuItem>
-              </TextField>
-            </Grid>
-            <Grid item xs={12}>
-              <TextField
-                fullWidth
-                label={t('name')}
+                <option value="">{isRTL ? 'اختر الجهة' : 'Select entity'}</option>
+                {entities.map((entity) => (
+                  <option key={entity.value} value={entity.value}>
+                    {isRTL ? entity.labelAr : entity.labelEn}
+                  </option>
+                ))}
+              </select>
+            </motion.div>
+
+            <motion.div
+              className="form-group full-width"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.15 }}
+            >
+              <label className="form-label">
+                {isRTL ? 'الاسم' : 'Name'} <span className="required">*</span>
+              </label>
+              <input
+                type="text"
+                className="form-input"
                 value={formData.name}
                 onChange={(e) => handleChange('name', e.target.value)}
-                required
+                placeholder={isRTL ? 'أدخل الاسم' : 'Enter name'}
               />
-            </Grid>
+            </motion.div>
           </>
         )}
 
         {formData.applicationType === 'FABLAB Visit' && (
           <>
-            <Grid item xs={12}>
-              <TextField
-                fullWidth
-                label={t('visitingEntity')}
+            <motion.div
+              className="form-group full-width"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.1 }}
+            >
+              <label className="form-label">
+                {isRTL ? 'الجهة الزائرة' : 'Visiting Entity'} <span className="required">*</span>
+              </label>
+              <input
+                type="text"
+                className="form-input"
                 value={formData.visitingEntity}
                 onChange={(e) => handleChange('visitingEntity', e.target.value)}
-                required
+                placeholder={isRTL ? 'أدخل اسم الجهة الزائرة' : 'Enter visiting entity name'}
               />
-            </Grid>
-            <Grid item xs={12}>
-              <TextField
-                fullWidth
-                label={t('personInCharge')}
+            </motion.div>
+
+            <motion.div
+              className="form-group full-width"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.15 }}
+            >
+              <label className="form-label">
+                {isRTL ? 'المسؤول' : 'Person in Charge'} <span className="required">*</span>
+              </label>
+              <input
+                type="text"
+                className="form-input"
                 value={formData.personInCharge}
                 onChange={(e) => handleChange('personInCharge', e.target.value)}
-                required
+                placeholder={isRTL ? 'أدخل اسم المسؤول' : 'Enter person in charge name'}
               />
-            </Grid>
+            </motion.div>
           </>
         )}
 
-        <Grid item xs={12} sm={6}>
-          <TextField
-            fullWidth
-            label={t('phoneNumber')}
+        <motion.div
+          className="form-group"
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.45 }}
+        >
+          <label className="form-label">
+            {isRTL ? 'رقم الهاتف' : 'Phone Number'} <span className="required">*</span>
+          </label>
+          <input
+            type="tel"
+            className="form-input"
             value={formData.phoneNumber}
             onChange={(e) => handleChange('phoneNumber', e.target.value)}
-            required
+            placeholder={isRTL ? 'أدخل رقم الهاتف' : 'Enter phone number'}
           />
-        </Grid>
-        <Grid item xs={12} sm={6}>
-          <TextField
-            fullWidth
+        </motion.div>
+
+        <motion.div
+          className="form-group"
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.5 }}
+        >
+          <label className="form-label">
+            {isRTL ? 'البريد الإلكتروني' : 'Email'} <span className="required">*</span>
+          </label>
+          <input
             type="email"
-            label={t('email')}
+            className="form-input"
             value={formData.email}
             onChange={(e) => handleChange('email', e.target.value)}
-            required
+            placeholder={isRTL ? 'أدخل البريد الإلكتروني' : 'Enter email address'}
           />
-        </Grid>
-      </Grid>
+        </motion.div>
+      </div>
 
-      <Box className="form-step-buttons">
-        <Button variant="outlined" onClick={onBack} size="large">
+      <div className="form-navigation">
+        <button className="btn btn-secondary" onClick={onBack}>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ transform: isRTL ? 'rotate(180deg)' : 'none' }}>
+            <path d="m15 18-6-6 6-6"/>
+          </svg>
           {t('previous')}
-        </Button>
-        <Button
-          variant="contained"
-          color="primary"
+        </button>
+        <button
+          className="btn btn-primary"
           onClick={onNext}
           disabled={!canProceed()}
-          size="large"
         >
           {t('next')}
-        </Button>
-      </Box>
-    </Box>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ transform: isRTL ? 'rotate(180deg)' : 'none' }}>
+            <path d="m9 18 6-6-6-6"/>
+          </svg>
+        </button>
+      </div>
+    </div>
   );
 };
 

@@ -83,7 +83,26 @@ const User = sequelize.define('User', {
   }
 }, {
   tableName: 'users',
-  timestamps: true
+  timestamps: true,
+  hooks: {
+    beforeValidate: (user) => {
+      // Convert empty strings to null for ENUM fields
+      if (user.entityName === '') user.entityName = null;
+      if (user.sex === '') user.sex = null;
+      if (user.applicationType === '') user.applicationType = null;
+    },
+    beforeCreate: (user) => {
+      // Ensure empty strings are converted to null for all nullable fields
+      const nullableFields = [
+        'firstName', 'lastName', 'sex', 'nationality', 'nationalId',
+        'currentJob', 'nationalAddress', 'entityName', 'visitingEntity',
+        'personInCharge', 'name'
+      ];
+      nullableFields.forEach(field => {
+        if (user[field] === '') user[field] = null;
+      });
+    }
+  }
 });
 
 module.exports = User;

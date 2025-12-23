@@ -4,7 +4,10 @@
       "Bash(npx create-react-app client)",
       "Bash(npm install axios react-router-dom framer-motion react-hook-form @mui/material @mui/icons-material @emotion/react @emotion/styled react-qr-code i18next react-i18next react-toastify)",
       "Bash(npm install axios react-router-dom framer-motion react-hook-form @mui/material @mui/icons-material @emotion/react @emotion/styled react-qr-code i18next react-i18next react-toastify --legacy-peer-deps)",
-      "Bash(npm install)"
+      "Bash(npm install)",
+      "Bash(ssh:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)"
     ],
     "deny": [],
     "ask": []

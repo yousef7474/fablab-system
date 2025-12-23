@@ -1,12 +1,11 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
-import { Box, Typography, Paper, Button } from '@mui/material';
 import { motion } from 'framer-motion';
-import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import QRCode from 'react-qr-code';
 
 const SuccessPage = ({ registration }) => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const isRTL = i18n.language === 'ar';
 
   const handlePrint = () => {
     window.print();
@@ -17,83 +16,141 @@ const SuccessPage = ({ registration }) => {
   };
 
   return (
-    <Box className="success-container" sx={{ py: 6, px: 3 }}>
+    <div className="success-page">
       <motion.div
+        className="success-icon"
         initial={{ scale: 0 }}
         animate={{ scale: 1 }}
         transition={{ type: 'spring', stiffness: 200 }}
       >
-        <CheckCircleIcon
-          sx={{ fontSize: 100, color: '#48BF85', mb: 3 }}
-        />
+        <svg width="60" height="60" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
+          <polyline points="20 6 9 17 4 12"/>
+        </svg>
       </motion.div>
 
-      <Typography variant="h3" gutterBottom sx={{ color: '#48BF85', fontWeight: 700 }}>
-        {t('registrationSuccess')}
-      </Typography>
+      <motion.h2
+        className="success-title"
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.2 }}
+      >
+        {isRTL ? 'تم التسجيل بنجاح!' : 'Registration Successful!'}
+      </motion.h2>
 
-      <Typography variant="h6" color="text.secondary" sx={{ mb: 4 }}>
-        Your registration has been submitted successfully!
-      </Typography>
+      <motion.p
+        className="success-message"
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.3 }}
+      >
+        {isRTL
+          ? 'تم إرسال طلب التسجيل الخاص بك بنجاح. ستتلقى بريدًا إلكترونيًا للتأكيد قريبًا.'
+          : 'Your registration has been submitted successfully. You will receive a confirmation email soon.'}
+      </motion.p>
 
-      <Paper elevation={3} sx={{ p: 4, maxWidth: 600, mx: 'auto', mb: 4 }}>
-        <Box className="barcode-container">
-          <QRCode value={registration.registrationId} size={200} />
-        </Box>
+      <motion.div
+        className="success-card"
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.4 }}
+      >
+        <div className="qr-container">
+          <QRCode value={registration.registrationId} size={150} />
+        </div>
 
-        <Box className="registration-details">
-          <Box className="detail-row">
-            <Typography className="detail-label">Registration ID:</Typography>
-            <Typography className="detail-value">{registration.registrationId}</Typography>
-          </Box>
+        <div className="registration-details">
+          <div className="detail-row">
+            <span className="detail-label">
+              {isRTL ? 'رقم التسجيل' : 'Registration ID'}
+            </span>
+            <span className="detail-value">{registration.registrationId}</span>
+          </div>
 
-          <Box className="detail-row">
-            <Typography className="detail-label">User ID:</Typography>
-            <Typography className="detail-value">{registration.userId}</Typography>
-          </Box>
+          <div className="detail-row">
+            <span className="detail-label">
+              {isRTL ? 'رقم المستخدم' : 'User ID'}
+            </span>
+            <span className="detail-value">{registration.userId}</span>
+          </div>
 
-          <Box className="detail-row">
-            <Typography className="detail-label">Name:</Typography>
-            <Typography className="detail-value">{registration.userName}</Typography>
-          </Box>
+          <div className="detail-row">
+            <span className="detail-label">
+              {isRTL ? 'الاسم' : 'Name'}
+            </span>
+            <span className="detail-value">{registration.userName}</span>
+          </div>
 
-          <Box className="detail-row">
-            <Typography className="detail-label">Section:</Typography>
-            <Typography className="detail-value">{registration.fablabSection}</Typography>
-          </Box>
+          <div className="detail-row">
+            <span className="detail-label">
+              {isRTL ? 'القسم' : 'Section'}
+            </span>
+            <span className="detail-value">{registration.fablabSection}</span>
+          </div>
 
-          <Box className="detail-row">
-            <Typography className="detail-label">Date:</Typography>
-            <Typography className="detail-value">{registration.appointmentDate || 'N/A'}</Typography>
-          </Box>
+          <div className="detail-row">
+            <span className="detail-label">
+              {isRTL ? 'التاريخ' : 'Date'}
+            </span>
+            <span className="detail-value">{registration.appointmentDate || 'N/A'}</span>
+          </div>
 
-          <Box className="detail-row">
-            <Typography className="detail-label">Time:</Typography>
-            <Typography className="detail-value">{registration.appointmentTime || 'N/A'}</Typography>
-          </Box>
+          <div className="detail-row">
+            <span className="detail-label">
+              {isRTL ? 'الوقت' : 'Time'}
+            </span>
+            <span className="detail-value">{registration.appointmentTime || 'N/A'}</span>
+          </div>
 
-          <Box className="detail-row">
-            <Typography className="detail-label">Status:</Typography>
-            <Typography className="detail-value" sx={{ color: '#EE2329', fontWeight: 600 }}>
-              {registration.status.toUpperCase()}
-            </Typography>
-          </Box>
-        </Box>
+          <div className="detail-row">
+            <span className="detail-label">
+              {isRTL ? 'الحالة' : 'Status'}
+            </span>
+            <span className={`status-badge status-${registration.status}`}>
+              {registration.status === 'pending' && (isRTL ? 'قيد المراجعة' : 'PENDING')}
+              {registration.status === 'approved' && (isRTL ? 'مقبول' : 'APPROVED')}
+              {registration.status === 'rejected' && (isRTL ? 'مرفوض' : 'REJECTED')}
+            </span>
+          </div>
+        </div>
+      </motion.div>
 
-        <Typography variant="body2" color="text.secondary" sx={{ mt: 3, textAlign: 'center' }}>
-          A confirmation email has been sent to you. You will receive another email once your registration is approved by our team.
-        </Typography>
-      </Paper>
+      <motion.p
+        className="success-note"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ delay: 0.5 }}
+      >
+        {isRTL
+          ? 'سيتم مراجعة طلبك من قبل المهندس المسؤول وسيتم إرسال رسالة تأكيد إليك.'
+          : 'Your request will be reviewed by the responsible engineer and a confirmation message will be sent to you.'}
+      </motion.p>
 
-      <Box sx={{ display: 'flex', gap: 2, justifyContent: 'center' }}>
-        <Button variant="contained" color="primary" onClick={handlePrint} size="large">
+      <motion.div
+        className="success-buttons"
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.6 }}
+      >
+        <button className="btn btn-primary" onClick={handlePrint}>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <polyline points="6 9 6 2 18 2 18 9"/>
+            <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/>
+            <rect x="6" y="14" width="12" height="8"/>
+          </svg>
           {t('print')}
-        </Button>
-        <Button variant="outlined" onClick={handleNewRegistration} size="large">
-          New Registration
-        </Button>
-      </Box>
-    </Box>
+        </button>
+
+        <button className="btn btn-secondary" onClick={handleNewRegistration}>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/>
+            <path d="M21 3v5h-5"/>
+            <path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/>
+            <path d="M8 16H3v5"/>
+          </svg>
+          {isRTL ? 'تسجيل جديد' : 'New Registration'}
+        </button>
+      </motion.div>
+    </div>
   );
 };
 

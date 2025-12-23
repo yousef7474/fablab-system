@@ -131,7 +131,26 @@ const Registration = sequelize.define('Registration', {
   }
 }, {
   tableName: 'registrations',
-  timestamps: true
+  timestamps: true,
+  hooks: {
+    beforeValidate: (registration) => {
+      // Convert empty strings to null for ENUM fields
+      if (registration.fablabSection === '') registration.fablabSection = null;
+      if (registration.serviceType === '') registration.serviceType = null;
+      if (registration.status === '') registration.status = null;
+    },
+    beforeCreate: (registration) => {
+      // Ensure empty strings are converted to null for all nullable fields
+      const nullableFields = [
+        'otherServiceDetails', 'appointmentDate', 'appointmentTime', 'appointmentDuration',
+        'startDate', 'endDate', 'startTime', 'endTime', 'visitDate', 'visitStartTime',
+        'visitEndTime', 'rejectionReason', 'adminNotes', 'approvedBy', 'approvedAt'
+      ];
+      nullableFields.forEach(field => {
+        if (registration[field] === '') registration[field] = null;
+      });
+    }
+  }
 });
 
 module.exports = Registration;
