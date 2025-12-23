@@ -163,7 +163,8 @@ const AdminDashboard = () => {
 
   const handleStatusChange = async (registrationId, newStatus) => {
     try {
-      await api.patch(`/admin/registrations/${registrationId}/status`, { status: newStatus });
+      const encodedId = encodeURIComponent(registrationId);
+      await api.patch(`/admin/registrations/${encodedId}/status`, { status: newStatus });
       toast.success(isRTL ? 'تم تحديث الحالة بنجاح' : 'Status updated successfully');
       fetchRegistrations();
       fetchAnalytics();
