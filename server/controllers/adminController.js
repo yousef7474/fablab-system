@@ -418,6 +418,298 @@ exports.getAnalytics = async (req, res) => {
   }
 };
 
+// Get all users
+exports.getAllUsers = async (req, res) => {
+  try {
+    const { search, applicationType, page = 1, limit = 20 } = req.query;
+
+    const whereClause = {};
+
+    if (applicationType) {
+      whereClause.applicationType = applicationType;
+    }
+
+    if (search) {
+      whereClause[Op.or] = [
+        { firstName: { [Op.iLike]: `%${search}%` } },
+        { lastName: { [Op.iLike]: `%${search}%` } },
+        { name: { [Op.iLike]: `%${search}%` } },
+        { email: { [Op.iLike]: `%${search}%` } },
+        { phoneNumber: { [Op.iLike]: `%${search}%` } }
+      ];
+    }
+
+    const offset = (page - 1) * limit;
+
+    const { count, rows: users } = await User.findAndCountAll({
+      where: whereClause,
+      order: [['createdAt', 'DESC']],
+      limit: parseInt(limit),
+      offset: parseInt(offset)
+    });
+
+    res.json({
+      users,
+      pagination: {
+        total: count,
+        page: parseInt(page),
+        pages: Math.ceil(count / limit)
+      }
+    });
+  } catch (error) {
+    console.error('Error getting users:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+// Get all employees
+exports.getAllEmployees = async (req, res) => {
+  try {
+    const employees = await Employee.findAll({
+      order: [['name', 'ASC']]
+    });
+    res.json(employees);
+  } catch (error) {
+    console.error('Error getting employees:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+// Create employee
+exports.createEmployee = async (req, res) => {
+  try {
+    const { name, email, section } = req.body;
+
+    const existingEmployee = await Employee.findOne({ where: { email } });
+    if (existingEmployee) {
+      return res.status(400).json({ message: 'Employee with this email already exists' });
+    }
+
+    const employee = await Employee.create({ name, email, section });
+    res.status(201).json({ message: 'Employee created successfully', employee });
+  } catch (error) {
+    console.error('Error creating employee:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+// Update employee
+exports.updateEmployee = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { name, email, section, isActive } = req.body;
+
+    const employee = await Employee.findByPk(id);
+    if (!employee) {
+      return res.status(404).json({ message: 'Employee not found' });
+    }
+
+    await employee.update({ name, email, section, isActive });
+    res.json({ message: 'Employee updated successfully', employee });
+  } catch (error) {
+    console.error('Error updating employee:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+// Delete employee
+exports.deleteEmployee = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const employee = await Employee.findByPk(id);
+    if (!employee) {
+      return res.status(404).json({ message: 'Employee not found' });
+    }
+
+    await employee.destroy();
+    res.json({ message: 'Employee deleted successfully' });
+  } catch (error) {
+    console.error('Error deleting employee:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+// Get schedule data (appointments by date)
+exports.getSchedule = async (req, res) => {
+  try {
+    const { startDate, endDate, section } = req.query;
+
+    const whereClause = {
+      status: 'approved'
+    };
+
+    if (section) {
+      whereClause.fablabSection = section;
+    }
+
+    // Get approved registrations with appointment dates
+    const registrations = await Registration.findAll({
+      where: {
+        ...whereClause,
+        [Op.or]: [
+          { appointmentDate: { [Op.not]: null } },
+          { visitDate: { [Op.not]: null } },
+          { startDate: { [Op.not]: null } }
+        ]
+      },
+      include: [{
+        model: User,
+        as: 'user',
+        attributes: ['firstName', 'lastName', 'name', 'phoneNumber', 'email', 'applicationType']
+      }],
+      order: [['appointmentDate', 'ASC'], ['appointmentTime', 'ASC']]
+    });
+
+    // Format for calendar view
+    const scheduleItems = registrations.map(reg => {
+      const date = reg.appointmentDate || reg.visitDate || reg.startDate;
+      const time = reg.appointmentTime || reg.visitStartTime || reg.startTime;
+      const endTime = reg.visitEndTime || reg.endTime;
+      const userName = reg.user.firstName && reg.user.lastName
+        ? `${reg.user.firstName} ${reg.user.lastName}`
+        : reg.user.name;
+
+      return {
+        id: reg.registrationId,
+        title: userName,
+        date,
+        startTime: time,
+        endTime,
+        section: reg.fablabSection,
+        services: reg.requiredServices,
+        applicationType: reg.user.applicationType,
+        phone: reg.user.phoneNumber,
+        email: reg.user.email
+      };
+    });
+
+    res.json(scheduleItems);
+  } catch (error) {
+    console.error('Error getting schedule:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+// Get enhanced analytics with time series data
+exports.getEnhancedAnalytics = async (req, res) => {
+  try {
+    const { period = 'month' } = req.query;
+
+    // Calculate date range
+    const now = new Date();
+    let startDate;
+    let groupBy;
+
+    switch (period) {
+      case 'week':
+        startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+        groupBy = 'day';
+        break;
+      case 'month':
+        startDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+        groupBy = 'day';
+        break;
+      case 'year':
+        startDate = new Date(now.getTime() - 365 * 24 * 60 * 60 * 1000);
+        groupBy = 'month';
+        break;
+      default:
+        startDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+        groupBy = 'day';
+    }
+
+    // Basic stats
+    const totalRegistrations = await Registration.count();
+    const totalUsers = await User.count();
+    const pendingRegistrations = await Registration.count({ where: { status: 'pending' } });
+    const approvedRegistrations = await Registration.count({ where: { status: 'approved' } });
+    const rejectedRegistrations = await Registration.count({ where: { status: 'rejected' } });
+
+    // Today's registrations
+    const todayStart = new Date();
+    todayStart.setHours(0, 0, 0, 0);
+    const todayRegistrations = await Registration.count({
+      where: {
+        createdAt: { [Op.gte]: todayStart }
+      }
+    });
+
+    // Registrations by section
+    const bySection = await Registration.findAll({
+      attributes: [
+        'fablabSection',
+        [Registration.sequelize.fn('COUNT', Registration.sequelize.col('registrationId')), 'count']
+      ],
+      group: ['fablabSection'],
+      raw: true
+    });
+
+    // Registrations by application type (via User table)
+    const byApplicationType = await User.findAll({
+      attributes: [
+        'applicationType',
+        [User.sequelize.fn('COUNT', User.sequelize.col('userId')), 'count']
+      ],
+      group: ['applicationType'],
+      raw: true
+    });
+
+    // Registrations by status
+    const byStatus = await Registration.findAll({
+      attributes: [
+        'status',
+        [Registration.sequelize.fn('COUNT', Registration.sequelize.col('registrationId')), 'count']
+      ],
+      group: ['status'],
+      raw: true
+    });
+
+    // Time series data - registrations over time
+    const timeSeriesData = await Registration.findAll({
+      where: {
+        createdAt: { [Op.gte]: startDate }
+      },
+      attributes: [
+        [Registration.sequelize.fn('DATE', Registration.sequelize.col('createdAt')), 'date'],
+        [Registration.sequelize.fn('COUNT', Registration.sequelize.col('registrationId')), 'count']
+      ],
+      group: [Registration.sequelize.fn('DATE', Registration.sequelize.col('createdAt'))],
+      order: [[Registration.sequelize.fn('DATE', Registration.sequelize.col('createdAt')), 'ASC']],
+      raw: true
+    });
+
+    // Registrations by service type
+    const byServiceType = await Registration.findAll({
+      attributes: [
+        'serviceType',
+        [Registration.sequelize.fn('COUNT', Registration.sequelize.col('registrationId')), 'count']
+      ],
+      group: ['serviceType'],
+      raw: true
+    });
+
+    res.json({
+      summary: {
+        totalRegistrations,
+        totalUsers,
+        pendingRegistrations,
+        approvedRegistrations,
+        rejectedRegistrations,
+        todayRegistrations
+      },
+      bySection,
+      byApplicationType,
+      byStatus,
+      byServiceType,
+      timeSeriesData
+    });
+  } catch (error) {
+    console.error('Error getting enhanced analytics:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
 // Export registrations to CSV
 exports.exportToCSV = async (req, res) => {
   try {

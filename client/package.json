@@ -13,6 +13,7 @@
     "@testing-library/react": "^16.3.1",
     "@testing-library/user-event": "^13.5.0",
     "axios": "^1.13.2",
+    "date-fns": "^4.1.0",
     "framer-motion": "^12.23.26",
     "i18next": "^25.7.3",
     "react": "^19.2.3",
@@ -23,6 +24,7 @@
     "react-router-dom": "^7.11.0",
     "react-scripts": "5.0.1",
     "react-toastify": "^11.0.5",
+    "recharts": "^3.6.0",
     "web-vitals": "^2.1.4"
   },
   "scripts": {
