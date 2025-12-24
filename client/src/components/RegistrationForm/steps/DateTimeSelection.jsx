@@ -86,14 +86,26 @@ const DateTimeSelection = ({ formData, onChange, onNext, onBack }) => {
   };
 
   const formatDateForInput = (date) => {
-    return date.toISOString().split('T')[0];
+    // Use local time instead of UTC to avoid timezone issues
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+
+  const isSameDay = (date1, date2) => {
+    return date1.getFullYear() === date2.getFullYear() &&
+           date1.getMonth() === date2.getMonth() &&
+           date1.getDate() === date2.getDate();
   };
 
   const isDateSelectable = (date) => {
     if (!date) return false;
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    return date > today && isWorkingDay(date);
+    const dateToCheck = new Date(date);
+    dateToCheck.setHours(0, 0, 0, 0);
+    return dateToCheck > today && isWorkingDay(date);
   };
 
   const handleDateSelect = (date) => {
@@ -216,12 +228,12 @@ const DateTimeSelection = ({ formData, onChange, onNext, onBack }) => {
 
                 const isSelectable = isDateSelectable(date);
                 const isSelected = selectedDate === formatDateForInput(date);
-                const isToday = formatDateForInput(date) === formatDateForInput(new Date());
+                const isToday = isSameDay(date, new Date());
                 const isWeekend = date.getDay() === 5 || date.getDay() === 6;
 
                 return (
                   <button
-                    key={date.toISOString()}
+                    key={formatDateForInput(date)}
                     type="button"
                     className={`calendar-day
                       ${isSelectable ? 'available' : 'unavailable'}
