@@ -1091,6 +1091,364 @@ const AdminDashboard = () => {
     }, 250);
   };
 
+  // Print Terms and Conditions Document
+  const handlePrintTermsDocument = (user) => {
+    const printWindow = window.open('', '_blank');
+
+    const userName = user.firstName && user.lastName
+      ? `${user.firstName} ${user.lastName}`
+      : user.name || (isRTL ? 'غير متوفر' : 'N/A');
+
+    const today = new Date().toLocaleDateString(isRTL ? 'ar-SA' : 'en-US', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
+    });
+
+    const termsArabic = [
+      'تعبئة الأستمارة الخاصة بالاستفادة من خدمات فاب لاب الأحساء.',
+      'وضع شعار فاب لاب الأحساء من ضمن الشعارات الخاصة بالمشروع المنتج سواء بالعروض أو المطبوعات.',
+      'الإشارة إلى الدور المقدم من فاب لاب الأحساء ومساهمته في إنتاج المشروع في التصاريح الإعلامية أو المشاركات المحلية أو العالمية.',
+      'تقديم الشكر لفاب لاب الأحساء على مواقع التواصل الاجتماعي على الخدمات المقدمة.',
+      'السماح للفريق الإعلامي بفاب لاب الأحساء بتصوير العمل وإخراجه ونشره على حسابات التواصل الاجتماعي الخاص بالفاب لاب أو مؤسسة عبد المنعم الراشد الإنسانية.',
+      'الموافقة على الاحتفاظ بنسخة أخرى للمشروع في فاب لاب الأحساء مع ذكر الحقوق عليها.',
+      'التقيد بالأنظمة والضوابط المحددة في فاب لاب الأحساء.',
+      'التقيد بالأوقات المحجوزة وعدم تعديلها إلا بموافقة إدارة فاب لاب الأحساء.'
+    ];
+
+    const termsEnglish = [
+      'Complete the application form for utilizing FABLAB Al-Ahsa services.',
+      'Include FABLAB Al-Ahsa logo among the project logos in presentations or printed materials.',
+      'Acknowledge the role and contribution of FABLAB Al-Ahsa in project production in media statements or local/international participations.',
+      'Thank FABLAB Al-Ahsa on social media platforms for the services provided.',
+      'Allow the FABLAB Al-Ahsa media team to photograph, produce, and publish the work on social media accounts of FABLAB or Abdulmonem Al-Rashed Foundation.',
+      'Agree to keep another copy of the project at FABLAB Al-Ahsa with rights attribution.',
+      'Comply with the rules and regulations specified by FABLAB Al-Ahsa.',
+      'Adhere to reserved times and not modify them without approval from FABLAB Al-Ahsa management.'
+    ];
+
+    const terms = isRTL ? termsArabic : termsEnglish;
+
+    const termsDocContent = `
+      <!DOCTYPE html>
+      <html dir="${isRTL ? 'rtl' : 'ltr'}" lang="${isRTL ? 'ar' : 'en'}">
+      <head>
+        <meta charset="UTF-8">
+        <title>${isRTL ? 'وثيقة الاستفادة من خدمات فاب لاب الأحساء' : 'FABLAB Al-Ahsa Service Utilization Agreement'}</title>
+        <style>
+          @page {
+            size: A4;
+            margin: 15mm;
+          }
+          * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+          }
+          body {
+            font-family: 'Segoe UI', Tahoma, Arial, sans-serif;
+            background: white;
+            color: #1a1a2e;
+            line-height: 1.6;
+            padding: 20px;
+          }
+          .document {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+          }
+          .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding-bottom: 20px;
+            border-bottom: 3px solid #e02529;
+            margin-bottom: 25px;
+          }
+          .header .logo {
+            height: 60px;
+            width: auto;
+          }
+          .header-center {
+            text-align: center;
+            flex: 1;
+            padding: 0 20px;
+          }
+          .document-title {
+            font-size: 22px;
+            font-weight: 700;
+            color: #e02529;
+            margin-bottom: 5px;
+          }
+          .document-subtitle {
+            font-size: 14px;
+            color: #666;
+          }
+          .user-info-section {
+            background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 25px;
+            border-${isRTL ? 'right' : 'left'}: 4px solid #e02529;
+          }
+          .user-info-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: #e02529;
+            margin-bottom: 15px;
+          }
+          .user-info-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 12px;
+          }
+          .user-info-item {
+            display: flex;
+            gap: 8px;
+          }
+          .user-info-label {
+            font-weight: 600;
+            color: #555;
+            min-width: 100px;
+          }
+          .user-info-value {
+            color: #333;
+          }
+          .terms-section {
+            margin-bottom: 30px;
+          }
+          .terms-title {
+            font-size: 18px;
+            font-weight: 700;
+            color: #1a1a2e;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #e9ecef;
+          }
+          .terms-intro {
+            font-size: 14px;
+            color: #444;
+            margin-bottom: 20px;
+            line-height: 1.8;
+          }
+          .terms-list {
+            list-style: none;
+            counter-reset: terms-counter;
+          }
+          .terms-list li {
+            counter-increment: terms-counter;
+            padding: 12px 15px;
+            margin-bottom: 10px;
+            background: #fafafa;
+            border-radius: 8px;
+            border-${isRTL ? 'right' : 'left'}: 3px solid #e02529;
+            font-size: 13px;
+            line-height: 1.7;
+            position: relative;
+            padding-${isRTL ? 'right' : 'left'}: 45px;
+          }
+          .terms-list li::before {
+            content: counter(terms-counter);
+            position: absolute;
+            ${isRTL ? 'right' : 'left'}: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 24px;
+            height: 24px;
+            background: linear-gradient(135deg, #e02529, #c41e24);
+            color: white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 11px;
+            font-weight: 600;
+          }
+          .agreement-section {
+            background: #fff8f8;
+            border: 2px solid #e02529;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 30px;
+          }
+          .agreement-text {
+            font-size: 14px;
+            color: #333;
+            line-height: 1.8;
+            margin-bottom: 15px;
+          }
+          .checkbox-line {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 14px;
+            font-weight: 600;
+            color: #1a1a2e;
+          }
+          .checkbox-box {
+            width: 20px;
+            height: 20px;
+            border: 2px solid #e02529;
+            border-radius: 4px;
+            display: inline-block;
+          }
+          .signature-section {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 30px;
+            margin-top: 40px;
+            padding-top: 20px;
+            border-top: 2px dashed #ddd;
+          }
+          .signature-box {
+            text-align: center;
+          }
+          .signature-label {
+            font-size: 12px;
+            color: #888;
+            margin-bottom: 40px;
+            display: block;
+          }
+          .signature-line {
+            border-bottom: 2px solid #333;
+            height: 1px;
+            margin-bottom: 8px;
+          }
+          .signature-field-name {
+            font-size: 13px;
+            font-weight: 600;
+            color: #333;
+          }
+          .footer {
+            margin-top: 40px;
+            padding-top: 15px;
+            border-top: 2px solid #e9ecef;
+            text-align: center;
+            color: #888;
+            font-size: 11px;
+          }
+          .footer-logos {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            margin-bottom: 10px;
+          }
+          .footer-logos img {
+            height: 35px;
+            width: auto;
+            opacity: 0.8;
+          }
+          @media print {
+            body {
+              padding: 0;
+            }
+            .document {
+              max-width: none;
+            }
+          }
+        </style>
+      </head>
+      <body>
+        <div class="document">
+          <div class="header">
+            <img src="/fablab.png" alt="FABLAB" class="logo">
+            <div class="header-center">
+              <div class="document-title">
+                ${isRTL ? 'وثيقة الاستفادة من خدمات فاب لاب الأحساء' : 'FABLAB Al-Ahsa Service Utilization Agreement'}
+              </div>
+              <div class="document-subtitle">
+                ${isRTL ? 'مؤسسة عبدالمنعم الراشد الإنسانية' : 'Abdulmonem Al-Rashed Foundation'}
+              </div>
+            </div>
+            <img src="/found.png" alt="Foundation" class="logo">
+          </div>
+
+          <div class="user-info-section">
+            <div class="user-info-title">${isRTL ? 'بيانات المستفيد' : 'Beneficiary Information'}</div>
+            <div class="user-info-grid">
+              <div class="user-info-item">
+                <span class="user-info-label">${isRTL ? 'الاسم:' : 'Name:'}</span>
+                <span class="user-info-value">${userName}</span>
+              </div>
+              <div class="user-info-item">
+                <span class="user-info-label">${isRTL ? 'رقم العضوية:' : 'Member ID:'}</span>
+                <span class="user-info-value">${user.uniqueId || user.userId || 'N/A'}</span>
+              </div>
+              <div class="user-info-item">
+                <span class="user-info-label">${isRTL ? 'رقم الهوية:' : 'National ID:'}</span>
+                <span class="user-info-value">${user.nationalId || (isRTL ? 'غير محدد' : 'N/A')}</span>
+              </div>
+              <div class="user-info-item">
+                <span class="user-info-label">${isRTL ? 'الهاتف:' : 'Phone:'}</span>
+                <span class="user-info-value">${user.phoneNumber || (isRTL ? 'غير محدد' : 'N/A')}</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="terms-section">
+            <div class="terms-title">${isRTL ? 'الشروط والأحكام' : 'Terms and Conditions'}</div>
+            <div class="terms-intro">
+              ${isRTL
+                ? 'أتعهد أنا الموقع أدناه بالالتزام بجميع الشروط والأحكام التالية للاستفادة من خدمات فاب لاب الأحساء:'
+                : 'I, the undersigned, hereby agree to comply with all the following terms and conditions for utilizing FABLAB Al-Ahsa services:'
+              }
+            </div>
+            <ol class="terms-list">
+              ${terms.map(term => `<li>${term}</li>`).join('')}
+            </ol>
+          </div>
+
+          <div class="agreement-section">
+            <div class="agreement-text">
+              ${isRTL
+                ? 'أقر أنا الموقع أدناه بأنني قد قرأت وفهمت جميع الشروط والأحكام المذكورة أعلاه، وأوافق على الالتزام بها كاملة.'
+                : 'I, the undersigned, hereby declare that I have read and understood all the terms and conditions mentioned above, and I agree to comply with them in full.'
+              }
+            </div>
+            <div class="checkbox-line">
+              <span class="checkbox-box"></span>
+              <span>${isRTL ? 'أوافق على جميع الشروط والأحكام' : 'I agree to all terms and conditions'}</span>
+            </div>
+          </div>
+
+          <div class="signature-section">
+            <div class="signature-box">
+              <span class="signature-label">${isRTL ? 'الاسم الكامل' : 'Full Name'}</span>
+              <div class="signature-line"></div>
+              <span class="signature-field-name">${isRTL ? 'اسم المستفيد' : 'Beneficiary Name'}</span>
+            </div>
+            <div class="signature-box">
+              <span class="signature-label">${isRTL ? 'التوقيع' : 'Signature'}</span>
+              <div class="signature-line"></div>
+              <span class="signature-field-name">${isRTL ? 'التوقيع' : 'Signature'}</span>
+            </div>
+            <div class="signature-box">
+              <span class="signature-label">${isRTL ? 'التاريخ' : 'Date'}</span>
+              <div class="signature-line"></div>
+              <span class="signature-field-name">${today}</span>
+            </div>
+          </div>
+
+          <div class="footer">
+            <div class="footer-logos">
+              <img src="/fablab.png" alt="FABLAB">
+              <img src="/found.png" alt="Foundation">
+            </div>
+            <p><strong>FABLAB</strong> ${isRTL ? 'الأحساء' : 'Al-Ahsa'} | ${isRTL ? 'مؤسسة عبدالمنعم الراشد الإنسانية' : 'Abdulmonem Al-Rashed Foundation'}</p>
+          </div>
+        </div>
+      </body>
+      </html>
+    `;
+
+    printWindow.document.write(termsDocContent);
+    printWindow.document.close();
+    printWindow.focus();
+    setTimeout(() => {
+      printWindow.print();
+    }, 250);
+  };
+
   const handleExportCSV = async () => {
     try {
       const response = await api.get('/admin/export/csv', { responseType: 'blob' });
@@ -1842,6 +2200,19 @@ const AdminDashboard = () => {
                                     <line x1="12" y1="17" x2="12" y2="21"/>
                                   </svg>
                                 </button>
+                                <button
+                                  className="action-btn"
+                                  onClick={() => handlePrintTermsDocument(user)}
+                                  title={isRTL ? 'وثيقة الاستفادة' : 'Terms Document'}
+                                  style={{ background: 'linear-gradient(135deg, #1a1a2e, #2d2d44)' }}
+                                >
+                                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                                    <polyline points="14 2 14 8 20 8"/>
+                                    <line x1="16" y1="13" x2="8" y2="13"/>
+                                    <line x1="16" y1="17" x2="8" y2="17"/>
+                                  </svg>
+                                </button>
                               </div>
                             </td>
                           </tr>
@@ -2520,7 +2891,21 @@ const AdminDashboard = () => {
                     <line x1="8" y1="21" x2="16" y2="21"/>
                     <line x1="12" y1="17" x2="12" y2="21"/>
                   </svg>
-                  {isRTL ? 'طباعة البطاقة' : 'Print ID Card'}
+                  {isRTL ? 'البطاقة' : 'ID Card'}
+                </button>
+                <button
+                  className="filter-btn"
+                  onClick={() => handlePrintTermsDocument(selectedUser)}
+                  title={isRTL ? 'وثيقة الاستفادة' : 'Terms Document'}
+                >
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                    <polyline points="14 2 14 8 20 8"/>
+                    <line x1="16" y1="13" x2="8" y2="13"/>
+                    <line x1="16" y1="17" x2="8" y2="17"/>
+                    <polyline points="10 9 9 9 8 9"/>
+                  </svg>
+                  {isRTL ? 'الوثيقة' : 'Terms'}
                 </button>
                 <button className="modal-close" onClick={() => setShowUserModal(false)}>
                   <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
