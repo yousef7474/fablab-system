@@ -1277,6 +1277,8 @@
   border: 2px solid var(--gray-200);
   border-radius: var(--border-radius);
   padding: 1.5rem;
+  position: relative;
+  z-index: 1;
 }
 
 .calendar-nav-header {
@@ -1335,6 +1337,8 @@
   display: grid;
   grid-template-columns: repeat(7, 1fr);
   gap: 6px;
+  position: relative;
+  z-index: 10;
 }
 
 .calendar-days-grid .calendar-day {
@@ -1360,7 +1364,11 @@
   margin: 0;
   font-family: inherit;
   position: relative;
-  z-index: 1;
+  z-index: 11;
+  /* Ensure touch works on mobile */
+  -webkit-tap-highlight-color: rgba(0, 0, 0, 0.1);
+  touch-action: manipulation;
+  user-select: none;
 }
 
 .calendar-days-grid .calendar-day:focus {
