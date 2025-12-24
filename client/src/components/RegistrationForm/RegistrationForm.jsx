@@ -162,21 +162,7 @@ const RegistrationForm = () => {
             transition={{ duration: 0.5 }}
           >
             <div className="registration-logo">
-              <svg viewBox="0 0 100 100" width="60" height="60">
-                {/* FABLAB Logo */}
-                <g fill="#2EAA5E">
-                  <path d="M25 50 Q20 65, 30 78 Q40 88, 50 85 L50 70 Q42 72, 38 65 Q32 55, 38 45 Q42 38, 50 35 L50 20 Q35 22, 25 35 Q18 45, 25 50Z"/>
-                  <circle cx="32" cy="68" r="12"/>
-                </g>
-                <g fill="#3B5BA9">
-                  <path d="M75 50 Q80 65, 70 78 Q60 88, 50 85 L50 70 Q58 72, 62 65 Q68 55, 62 45 Q58 38, 50 35 L50 20 Q65 22, 75 35 Q82 45, 75 50Z"/>
-                  <circle cx="68" cy="68" r="12"/>
-                </g>
-                <g fill="#E63329">
-                  <path d="M50 20 Q58 22, 65 28 Q78 38, 78 50 L65 50 Q65 42, 58 38 Q52 35, 50 35 Q48 35, 42 38 Q35 42, 35 50 L22 50 Q22 38, 35 28 Q42 22, 50 20Z"/>
-                  <circle cx="50" cy="28" r="12"/>
-                </g>
-              </svg>
+              <img src="/logo.png" alt="FABLAB Logo" style={{ width: '70px', height: '70px', objectFit: 'contain' }} />
             </div>
             <h1 className="registration-title">FABLAB Al-Ahsa</h1>
             <p className="registration-subtitle">

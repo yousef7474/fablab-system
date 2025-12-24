@@ -234,91 +234,338 @@ const AdminDashboard = () => {
     const printWindow = window.open('', '_blank');
     const userName = registration.user?.firstName && registration.user?.lastName
       ? `${registration.user.firstName} ${registration.user.lastName}`
-      : registration.user?.name || 'N/A';
+      : registration.user?.name || (isRTL ? 'غير متوفر' : 'N/A');
+
+    // Get duration
+    const getDuration = () => {
+      if (registration.appointmentDuration) {
+        return `${registration.appointmentDuration} ${isRTL ? 'دقيقة' : 'minutes'}`;
+      }
+      if (registration.visitEndTime && registration.visitStartTime) {
+        return `${registration.visitStartTime} - ${registration.visitEndTime}`;
+      }
+      if (registration.endTime && registration.startTime) {
+        return `${registration.startTime} - ${registration.endTime}`;
+      }
+      return isRTL ? 'غير متوفر' : 'N/A';
+    };
+
+    // Translate services for print
+    const getTranslatedServices = () => {
+      if (!registration.requiredServices || !Array.isArray(registration.requiredServices)) {
+        return isRTL ? 'غير متوفر' : 'N/A';
+      }
+      const printServiceLabels = {
+        'In-person consultation': isRTL ? 'استشارة حضورية' : 'In-person Consultation',
+        'Online consultation': isRTL ? 'استشارة عن بعد' : 'Online Consultation',
+        'Machine/Device reservation': isRTL ? 'حجز جهاز / آلة' : 'Machine/Device Reservation',
+        'Personal workspace': isRTL ? 'مساحة عمل شخصية' : 'Personal Workspace',
+        'Support in project implementation': isRTL ? 'دعم في تنفيذ المشروع' : 'Project Implementation Support',
+        'Other': isRTL ? 'أخرى' : 'Other'
+      };
+      return registration.requiredServices.map(s => printServiceLabels[s] || s).join('، ');
+    };
+
+    // Translate status
+    const getStatusLabel = () => {
+      const labels = {
+        pending: isRTL ? 'قيد المراجعة' : 'Pending',
+        approved: isRTL ? 'مقبول' : 'Approved',
+        rejected: isRTL ? 'مرفوض' : 'Rejected'
+      };
+      return labels[registration.status] || registration.status;
+    };
+
+    // Translate section
+    const getSectionLabel = () => {
+      const labels = {
+        'Electronics and Programming': isRTL ? 'الإلكترونيات والبرمجة' : 'Electronics & Programming',
+        'CNC Laser': isRTL ? 'الليزر CNC' : 'CNC Laser',
+        'CNC Wood': isRTL ? 'الخشب CNC' : 'CNC Wood',
+        '3D': isRTL ? 'الطباعة ثلاثية الأبعاد' : '3D Printing',
+        'Robotic and AI': isRTL ? 'الروبوتات والذكاء الاصطناعي' : 'Robotics & AI',
+        "Kid's Club": isRTL ? 'نادي الأطفال' : "Kid's Club",
+        'Vinyl Cutting': isRTL ? 'قطع الفينيل' : 'Vinyl Cutting'
+      };
+      return labels[registration.fablabSection] || registration.fablabSection || (isRTL ? 'غير متوفر' : 'N/A');
+    };
+
+    // Translate application type
+    const getAppTypeLabel = () => {
+      const labels = {
+        'Beneficiary': isRTL ? 'مستفيد' : 'Beneficiary',
+        'Visitor': isRTL ? 'زائر' : 'Visitor',
+        'Volunteer': isRTL ? 'متطوع' : 'Volunteer',
+        'Talented': isRTL ? 'موهوب' : 'Talented',
+        'Entity': isRTL ? 'جهة' : 'Entity',
+        'FABLAB Visit': isRTL ? 'زيارة فاب لاب' : 'FABLAB Visit'
+      };
+      return labels[registration.user?.applicationType] || registration.user?.applicationType || (isRTL ? 'غير متوفر' : 'N/A');
+    };
+
+    const na = isRTL ? 'غير متوفر' : 'N/A';
 
     const printContent = `
       <!DOCTYPE html>
-      <html dir="${isRTL ? 'rtl' : 'ltr'}">
+      <html dir="${isRTL ? 'rtl' : 'ltr'}" lang="${isRTL ? 'ar' : 'en'}">
       <head>
-        <title>Registration Form - ${registration.registrationId}</title>
+        <title>${isRTL ? 'نموذج التسجيل' : 'Registration Form'} - ${registration.registrationId}</title>
         <style>
+          @page { size: A4; margin: 10mm; }
           * { margin: 0; padding: 0; box-sizing: border-box; }
-          body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; padding: 40px; background: #fff; }
-          .header { text-align: center; margin-bottom: 30px; border-bottom: 3px solid #e02529; padding-bottom: 20px; }
-          .logo { font-size: 28px; font-weight: bold; color: #e02529; margin-bottom: 5px; }
-          .subtitle { color: #666; font-size: 14px; }
-          .form-title { font-size: 20px; font-weight: 600; margin: 20px 0; color: #333; text-align: center; }
-          .section { margin-bottom: 25px; }
-          .section-title { font-size: 16px; font-weight: 600; color: #e02529; margin-bottom: 15px; padding-bottom: 8px; border-bottom: 1px solid #eee; }
-          .field-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
-          .field { margin-bottom: 12px; }
-          .field-label { font-size: 12px; color: #888; margin-bottom: 4px; text-transform: uppercase; }
-          .field-value { font-size: 14px; color: #333; font-weight: 500; padding: 8px; background: #f8f9fa; border-radius: 4px; }
-          .status { display: inline-block; padding: 6px 16px; border-radius: 20px; font-size: 12px; font-weight: 600; text-transform: uppercase; }
+          body {
+            font-family: 'Segoe UI', Tahoma, Arial, sans-serif;
+            padding: 15px;
+            background: #fff;
+            font-size: 11px;
+            line-height: 1.4;
+            color: #333;
+          }
+
+          /* Top IDs Bar */
+          .ids-bar {
+            display: flex;
+            justify-content: space-between;
+            background: linear-gradient(135deg, #e02529, #c41e24);
+            color: white;
+            padding: 8px 15px;
+            border-radius: 6px;
+            margin-bottom: 12px;
+            font-weight: 600;
+            font-size: 12px;
+          }
+          .ids-bar span { display: flex; align-items: center; gap: 5px; }
+
+          /* Header with Logos */
+          .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding-bottom: 12px;
+            border-bottom: 2px solid #e02529;
+            margin-bottom: 15px;
+          }
+          .logo-container {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+          }
+          .logo-container img {
+            height: 55px;
+            width: auto;
+            object-fit: contain;
+          }
+          .header-center {
+            text-align: center;
+            flex: 1;
+          }
+          .header-title {
+            font-size: 16px;
+            font-weight: 700;
+            color: #e02529;
+            margin-bottom: 3px;
+          }
+          .header-subtitle {
+            font-size: 11px;
+            color: #666;
+          }
+
+          /* Form Title */
+          .form-title {
+            text-align: center;
+            font-size: 14px;
+            font-weight: 700;
+            color: #1a1a2e;
+            margin-bottom: 12px;
+            padding: 8px;
+            background: #f8f9fa;
+            border-radius: 6px;
+            border-${isRTL ? 'right' : 'left'}: 4px solid #e02529;
+          }
+
+          /* Sections */
+          .section {
+            margin-bottom: 12px;
+            background: #fafafa;
+            border-radius: 6px;
+            padding: 10px;
+            border: 1px solid #eee;
+          }
+          .section-title {
+            font-size: 11px;
+            font-weight: 700;
+            color: #e02529;
+            margin-bottom: 8px;
+            padding-bottom: 5px;
+            border-bottom: 1px solid #e02529;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+          }
+
+          /* Field Grid */
+          .field-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 8px;
+          }
+          .field-grid-2 {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 8px;
+          }
+          .field {
+            background: white;
+            padding: 6px 8px;
+            border-radius: 4px;
+            border: 1px solid #e5e5e5;
+          }
+          .field-label {
+            font-size: 9px;
+            color: #888;
+            margin-bottom: 2px;
+            text-transform: uppercase;
+            font-weight: 600;
+            letter-spacing: 0.3px;
+          }
+          .field-value {
+            font-size: 11px;
+            color: #333;
+            font-weight: 500;
+          }
+          .field-full { grid-column: span 3; }
+          .field-full-2 { grid-column: span 2; }
+
+          /* Status Badge */
+          .status {
+            display: inline-block;
+            padding: 3px 10px;
+            border-radius: 12px;
+            font-size: 10px;
+            font-weight: 600;
+          }
           .status.pending { background: #fff3cd; color: #856404; }
           .status.approved { background: #d4edda; color: #155724; }
           .status.rejected { background: #f8d7da; color: #721c24; }
-          .footer { margin-top: 40px; text-align: center; color: #888; font-size: 12px; border-top: 1px solid #eee; padding-top: 20px; }
-          .qr-section { text-align: center; margin: 30px 0; }
-          @media print { body { padding: 20px; } }
+
+          /* Signature Section */
+          .signature-section {
+            margin-top: 15px;
+            padding: 12px;
+            background: #f8f9fa;
+            border-radius: 6px;
+            border: 1px dashed #ccc;
+          }
+          .signature-title {
+            font-size: 11px;
+            font-weight: 700;
+            color: #333;
+            margin-bottom: 10px;
+            text-align: center;
+          }
+          .signature-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+          }
+          .signature-box {
+            text-align: center;
+          }
+          .signature-label {
+            font-size: 10px;
+            color: #666;
+            margin-bottom: 25px;
+          }
+          .signature-line {
+            border-top: 1px solid #333;
+            margin-top: 30px;
+            padding-top: 5px;
+            font-size: 9px;
+            color: #888;
+          }
+
+          /* Footer */
+          .footer {
+            margin-top: 12px;
+            text-align: center;
+            font-size: 9px;
+            color: #888;
+            padding-top: 8px;
+            border-top: 1px solid #eee;
+          }
+
+          @media print {
+            body { padding: 0; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+            .section { break-inside: avoid; }
+          }
         </style>
       </head>
       <body>
-        <div class="header">
-          <div class="logo">FABLAB Al-Ahsa</div>
-          <div class="subtitle">${isRTL ? 'نموذج التسجيل' : 'Registration Form'}</div>
+        <!-- Top IDs Bar -->
+        <div class="ids-bar">
+          <span>${isRTL ? 'رقم المستخدم:' : 'User ID:'} ${registration.userId}</span>
+          <span>${isRTL ? 'رقم التسجيل:' : 'Reg ID:'} ${registration.registrationId}</span>
         </div>
 
-        <div class="form-title">${isRTL ? 'تفاصيل التسجيل' : 'Registration Details'}</div>
+        <!-- Header with Logos -->
+        <div class="header">
+          <div class="logo-container">
+            <img src="/found.png" alt="Abdulmonem Alrashed Foundation" />
+          </div>
+          <div class="header-center">
+            <div class="header-title">${isRTL ? 'فاب لاب الأحساء' : 'FABLAB Al-Ahsa'}</div>
+            <div class="header-subtitle">${isRTL ? 'مختبر التصنيع الرقمي' : 'Digital Fabrication Laboratory'}</div>
+          </div>
+          <div class="logo-container">
+            <img src="/fablab.png" alt="FABLAB" />
+          </div>
+        </div>
 
+        <!-- Form Title -->
+        <div class="form-title">${isRTL ? 'نموذج تسجيل موعد' : 'Appointment Registration Form'}</div>
+
+        <!-- Registration Info Section -->
         <div class="section">
           <div class="section-title">${isRTL ? 'معلومات التسجيل' : 'Registration Information'}</div>
           <div class="field-grid">
-            <div class="field">
-              <div class="field-label">${isRTL ? 'رقم التسجيل' : 'Registration ID'}</div>
-              <div class="field-value">${registration.registrationId}</div>
-            </div>
-            <div class="field">
-              <div class="field-label">${isRTL ? 'الحالة' : 'Status'}</div>
-              <div class="field-value"><span class="status ${registration.status}">${registration.status}</span></div>
-            </div>
             <div class="field">
               <div class="field-label">${isRTL ? 'تاريخ التقديم' : 'Submission Date'}</div>
               <div class="field-value">${formatDate(registration.createdAt)}</div>
             </div>
             <div class="field">
               <div class="field-label">${isRTL ? 'القسم' : 'Section'}</div>
-              <div class="field-value">${registration.fablabSection || 'N/A'}</div>
+              <div class="field-value">${getSectionLabel()}</div>
+            </div>
+            <div class="field">
+              <div class="field-label">${isRTL ? 'الحالة' : 'Status'}</div>
+              <div class="field-value"><span class="status ${registration.status}">${getStatusLabel()}</span></div>
             </div>
           </div>
         </div>
 
+        <!-- Applicant Info Section -->
         <div class="section">
           <div class="section-title">${isRTL ? 'معلومات المتقدم' : 'Applicant Information'}</div>
           <div class="field-grid">
             <div class="field">
-              <div class="field-label">${isRTL ? 'الاسم' : 'Name'}</div>
+              <div class="field-label">${isRTL ? 'الاسم الكامل' : 'Full Name'}</div>
               <div class="field-value">${userName}</div>
             </div>
             <div class="field">
-              <div class="field-label">${isRTL ? 'رقم المستخدم' : 'User ID'}</div>
-              <div class="field-value">${registration.userId}</div>
-            </div>
-            <div class="field">
-              <div class="field-label">${isRTL ? 'نوع الطلب' : 'Application Type'}</div>
-              <div class="field-value">${registration.user?.applicationType || 'N/A'}</div>
-            </div>
-            <div class="field">
-              <div class="field-label">${isRTL ? 'البريد الإلكتروني' : 'Email'}</div>
-              <div class="field-value">${registration.user?.email || 'N/A'}</div>
+              <div class="field-label">${isRTL ? 'نوع المتقدم' : 'Applicant Type'}</div>
+              <div class="field-value">${getAppTypeLabel()}</div>
             </div>
             <div class="field">
               <div class="field-label">${isRTL ? 'رقم الهاتف' : 'Phone'}</div>
-              <div class="field-value">${registration.user?.phoneNumber || 'N/A'}</div>
+              <div class="field-value">${registration.user?.phoneNumber || na}</div>
+            </div>
+            <div class="field field-full">
+              <div class="field-label">${isRTL ? 'البريد الإلكتروني' : 'Email'}</div>
+              <div class="field-value">${registration.user?.email || na}</div>
             </div>
           </div>
         </div>
 
+        <!-- Appointment Details Section -->
         <div class="section">
           <div class="section-title">${isRTL ? 'تفاصيل الموعد' : 'Appointment Details'}</div>
           <div class="field-grid">
@@ -328,30 +575,52 @@ const AdminDashboard = () => {
             </div>
             <div class="field">
               <div class="field-label">${isRTL ? 'الوقت' : 'Time'}</div>
-              <div class="field-value">${registration.appointmentTime || registration.visitStartTime || registration.startTime || 'N/A'}</div>
+              <div class="field-value">${registration.appointmentTime || registration.visitStartTime || registration.startTime || na}</div>
             </div>
             <div class="field">
-              <div class="field-label">${isRTL ? 'نوع الخدمة' : 'Service Type'}</div>
-              <div class="field-value">${registration.serviceType || 'N/A'}</div>
+              <div class="field-label">${isRTL ? 'المدة' : 'Duration'}</div>
+              <div class="field-value">${getDuration()}</div>
             </div>
-            <div class="field">
+            <div class="field field-full">
               <div class="field-label">${isRTL ? 'الخدمات المطلوبة' : 'Required Services'}</div>
-              <div class="field-value">${registration.requiredServices?.join(', ') || 'N/A'}</div>
+              <div class="field-value">${getTranslatedServices()}</div>
             </div>
           </div>
         </div>
 
         ${registration.serviceDetails ? `
+        <!-- Additional Details Section -->
         <div class="section">
           <div class="section-title">${isRTL ? 'تفاصيل إضافية' : 'Additional Details'}</div>
-          <div class="field">
-            <div class="field-value">${registration.serviceDetails}</div>
+          <div class="field-grid">
+            <div class="field field-full">
+              <div class="field-value">${registration.serviceDetails}</div>
+            </div>
           </div>
         </div>
         ` : ''}
 
+        <!-- Signature Section -->
+        <div class="signature-section">
+          <div class="signature-title">${isRTL ? 'التوقيع والتأكيد' : 'Signature & Confirmation'}</div>
+          <div class="signature-grid">
+            <div class="signature-box">
+              <div class="signature-label">${isRTL ? 'توقيع المتقدم' : 'Applicant Signature'}</div>
+              <div class="signature-line">${isRTL ? 'التوقيع' : 'Signature'}</div>
+            </div>
+            <div class="signature-box">
+              <div class="signature-label">${isRTL ? 'توقيع المسؤول' : 'Staff Signature'}</div>
+              <div class="signature-line">${isRTL ? 'التوقيع' : 'Signature'}</div>
+            </div>
+          </div>
+          <div style="text-align: center; margin-top: 12px; font-size: 10px; color: #666;">
+            ${isRTL ? 'التاريخ:' : 'Date:'} ____________________
+          </div>
+        </div>
+
+        <!-- Footer -->
         <div class="footer">
-          <p>FABLAB Al-Ahsa - ${isRTL ? 'مختبر التصنيع الرقمي' : 'Digital Fabrication Laboratory'}</p>
+          <p>${isRTL ? 'مؤسسة عبدالمنعم الراشد الإنسانية - فاب لاب الأحساء' : 'Abdulmonem Alrashed Humanitarian Foundation - FABLAB Al-Ahsa'}</p>
           <p>${isRTL ? 'تم الطباعة في' : 'Printed on'}: ${new Date().toLocaleString(isRTL ? 'ar-SA' : 'en-US')}</p>
         </div>
       </body>
@@ -572,21 +841,7 @@ const AdminDashboard = () => {
       <aside className={`admin-sidebar ${sidebarOpen ? 'open' : 'collapsed'}`}>
         <div className="sidebar-header">
           <div className="sidebar-logo">
-            <svg viewBox="0 0 100 100" width="36" height="36">
-              {/* FABLAB Logo */}
-              <g fill="#2EAA5E">
-                <path d="M25 50 Q20 65, 30 78 Q40 88, 50 85 L50 70 Q42 72, 38 65 Q32 55, 38 45 Q42 38, 50 35 L50 20 Q35 22, 25 35 Q18 45, 25 50Z"/>
-                <circle cx="32" cy="68" r="12"/>
-              </g>
-              <g fill="#3B5BA9">
-                <path d="M75 50 Q80 65, 70 78 Q60 88, 50 85 L50 70 Q58 72, 62 65 Q68 55, 62 45 Q58 38, 50 35 L50 20 Q65 22, 75 35 Q82 45, 75 50Z"/>
-                <circle cx="68" cy="68" r="12"/>
-              </g>
-              <g fill="#E63329">
-                <path d="M50 20 Q58 22, 65 28 Q78 38, 78 50 L65 50 Q65 42, 58 38 Q52 35, 50 35 Q48 35, 42 38 Q35 42, 35 50 L22 50 Q22 38, 35 28 Q42 22, 50 20Z"/>
-                <circle cx="50" cy="28" r="12"/>
-              </g>
-            </svg>
+            <img src="/logo.png" alt="FABLAB" style={{ width: '36px', height: '36px', objectFit: 'contain' }} />
           </div>
           {sidebarOpen && <span className="sidebar-title">FABLAB</span>}
         </div>
