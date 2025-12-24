@@ -101,12 +101,17 @@ const DateTimeSelection = ({ formData, onChange, onNext, onBack }) => {
     const dateStr = formatDateForInput(date);
 
     if (['Beneficiary', 'Talented', 'Visitor'].includes(formData.applicationType)) {
-      handleChange('appointmentDate', dateStr);
-      handleChange('appointmentTime', ''); // Reset time when date changes
+      // Update both fields at once to prevent state override
+      onChange({
+        appointmentDate: dateStr,
+        appointmentTime: '' // Reset time when date changes
+      });
     } else if (formData.applicationType === 'FABLAB Visit') {
-      handleChange('visitDate', dateStr);
-      handleChange('visitStartTime', '');
-      handleChange('visitEndTime', '');
+      onChange({
+        visitDate: dateStr,
+        visitStartTime: '',
+        visitEndTime: ''
+      });
     }
   };
 
