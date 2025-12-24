@@ -76,6 +76,22 @@ const checkTimeSlotAvailability = async (section, date, startTime, endTime, excl
   }
 };
 
+// Helper to normalize time to HH:mm format
+const normalizeTime = (time) => {
+  if (!time) return null;
+  // Handle both "HH:mm" and "HH:mm:ss" formats
+  const parts = time.toString().split(':');
+  return `${parts[0].padStart(2, '0')}:${parts[1].padStart(2, '0')}`;
+};
+
+// Convert time string to minutes since midnight for proper comparison
+const timeToMinutes = (time) => {
+  if (!time) return 0;
+  const normalized = normalizeTime(time);
+  const [hours, minutes] = normalized.split(':').map(Number);
+  return hours * 60 + minutes;
+};
+
 // Get available time slots for a specific section and date
 const getAvailableTimeSlots = async (section, date) => {
   try {
@@ -97,6 +113,7 @@ const getAvailableTimeSlots = async (section, date) => {
         const timeStr = `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
         slots.push({
           time: timeStr,
+          timeInMinutes: hour * 60 + minute,
           available: true
         });
       }
@@ -120,33 +137,49 @@ const getAvailableTimeSlots = async (section, date) => {
       }
     });
 
+    console.log(`Found ${registrations.length} registrations for section ${section} on ${date}`);
+
     // Mark unavailable slots
     registrations.forEach(reg => {
       let regStartTime, regEndTime;
 
       if (reg.appointmentTime) {
-        regStartTime = reg.appointmentTime;
+        regStartTime = normalizeTime(reg.appointmentTime);
         const duration = reg.appointmentDuration || 60;
-        const endMoment = moment(reg.appointmentTime, 'HH:mm').add(duration, 'minutes');
+        const endMoment = moment(regStartTime, 'HH:mm').add(duration, 'minutes');
         regEndTime = endMoment.format('HH:mm');
       } else if (reg.startTime && reg.endTime) {
-        regStartTime = reg.startTime;
-        regEndTime = reg.endTime;
+        regStartTime = normalizeTime(reg.startTime);
+        regEndTime = normalizeTime(reg.endTime);
       } else if (reg.visitStartTime && reg.visitEndTime) {
-        regStartTime = reg.visitStartTime;
-        regEndTime = reg.visitEndTime;
+        regStartTime = normalizeTime(reg.visitStartTime);
+        regEndTime = normalizeTime(reg.visitEndTime);
       }
 
       if (regStartTime && regEndTime) {
+        const startMinutes = timeToMinutes(regStartTime);
+        const endMinutes = timeToMinutes(regEndTime);
+
+        console.log(`Blocking slots from ${regStartTime} (${startMinutes}min) to ${regEndTime} (${endMinutes}min)`);
+
         slots.forEach(slot => {
-          if (slot.time >= regStartTime && slot.time < regEndTime) {
+          // Check if slot falls within the booked time range
+          if (slot.timeInMinutes >= startMinutes && slot.timeInMinutes < endMinutes) {
             slot.available = false;
+            console.log(`  Marking ${slot.time} as unavailable`);
           }
         });
       }
     });
 
-    return slots.filter(slot => slot.available);
+    const availableSlots = slots.filter(slot => slot.available).map(slot => ({
+      time: slot.time,
+      available: true
+    }));
+
+    console.log(`Returning ${availableSlots.length} available slots`);
+
+    return availableSlots;
   } catch (error) {
     console.error('Error getting available time slots:', error);
     throw error;
