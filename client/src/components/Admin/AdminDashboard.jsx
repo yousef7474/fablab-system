@@ -764,6 +764,262 @@ const AdminDashboard = () => {
     }, 250);
   };
 
+  // Print User ID Card function
+  const handlePrintUserIDCard = (user) => {
+    const printWindow = window.open('', '_blank');
+
+    const userName = user.firstName && user.lastName
+      ? `${user.firstName} ${user.lastName}`
+      : user.name || (isRTL ? 'غير متوفر' : 'N/A');
+
+    // Get application type label
+    const getAppTypeLabel = () => {
+      const labels = {
+        'Beneficiary': isRTL ? 'مستفيد' : 'Beneficiary',
+        'Visitor': isRTL ? 'زائر' : 'Visitor',
+        'Volunteer': isRTL ? 'متطوع' : 'Volunteer',
+        'Talented': isRTL ? 'موهوب' : 'Talented',
+        'Entity': isRTL ? 'جهة' : 'Entity',
+        'FABLAB Visit': isRTL ? 'زيارة فاب لاب' : 'FABLAB Visit'
+      };
+      return labels[user.applicationType] || user.applicationType || (isRTL ? 'غير متوفر' : 'N/A');
+    };
+
+    // Get sex label
+    const getSexLabelForCard = () => {
+      const sex = (user.sex || '').toLowerCase();
+      if (sex === 'male') return isRTL ? 'ذكر' : 'Male';
+      if (sex === 'female') return isRTL ? 'أنثى' : 'Female';
+      return isRTL ? 'غير محدد' : 'N/A';
+    };
+
+    const idCardContent = `
+      <!DOCTYPE html>
+      <html dir="${isRTL ? 'rtl' : 'ltr'}" lang="${isRTL ? 'ar' : 'en'}">
+      <head>
+        <meta charset="UTF-8">
+        <title>${isRTL ? 'بطاقة تعريف المستخدم' : 'User ID Card'}</title>
+        <style>
+          @page {
+            size: 85.6mm 53.98mm;
+            margin: 0;
+          }
+          * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+          }
+          body {
+            font-family: 'Segoe UI', Tahoma, Arial, sans-serif;
+            background: #f0f0f0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 20px;
+          }
+          .id-card {
+            width: 85.6mm;
+            height: 53.98mm;
+            background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+            position: relative;
+            display: flex;
+            flex-direction: column;
+          }
+          .card-header {
+            background: linear-gradient(135deg, #e02529 0%, #c41e24 100%);
+            padding: 8px 12px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 8px;
+          }
+          .card-header .logos {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+          }
+          .card-header .logo {
+            height: 28px;
+            width: auto;
+            background: white;
+            padding: 3px 6px;
+            border-radius: 4px;
+          }
+          .card-header .title {
+            color: white;
+            font-size: 10px;
+            font-weight: 600;
+            text-align: ${isRTL ? 'left' : 'right'};
+            flex: 1;
+          }
+          .card-body {
+            flex: 1;
+            padding: 10px 12px;
+            display: flex;
+            gap: 10px;
+          }
+          .user-avatar {
+            width: 50px;
+            height: 50px;
+            background: linear-gradient(135deg, #e02529, #c41e24);
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 22px;
+            font-weight: bold;
+            flex-shrink: 0;
+            border: 2px solid #fff;
+            box-shadow: 0 2px 8px rgba(224, 37, 41, 0.3);
+          }
+          .user-info {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            gap: 3px;
+          }
+          .user-name {
+            font-size: 12px;
+            font-weight: 700;
+            color: #1a1a2e;
+            line-height: 1.2;
+          }
+          .info-row {
+            display: flex;
+            gap: 4px;
+            font-size: 8px;
+            color: #555;
+          }
+          .info-label {
+            font-weight: 600;
+            color: #333;
+          }
+          .info-value {
+            color: #666;
+          }
+          .user-type-badge {
+            display: inline-block;
+            background: linear-gradient(135deg, #e02529, #c41e24);
+            color: white;
+            font-size: 7px;
+            padding: 2px 8px;
+            border-radius: 10px;
+            font-weight: 600;
+            margin-top: 2px;
+            width: fit-content;
+          }
+          .card-footer {
+            background: #f8f9fa;
+            padding: 6px 12px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-top: 1px solid #eee;
+          }
+          .user-id-section {
+            display: flex;
+            flex-direction: column;
+            gap: 1px;
+          }
+          .user-id-label {
+            font-size: 6px;
+            color: #888;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+          }
+          .user-id-value {
+            font-size: 11px;
+            font-weight: 700;
+            color: #e02529;
+            font-family: 'Consolas', 'Courier New', monospace;
+          }
+          .fablab-text {
+            font-size: 7px;
+            color: #888;
+            text-align: ${isRTL ? 'left' : 'right'};
+          }
+          .fablab-text strong {
+            color: #e02529;
+          }
+          .decorative-line {
+            position: absolute;
+            bottom: 35px;
+            ${isRTL ? 'left' : 'right'}: 0;
+            width: 40%;
+            height: 2px;
+            background: linear-gradient(${isRTL ? 'to left' : 'to right'}, transparent, #e02529);
+          }
+          @media print {
+            body {
+              background: none;
+              padding: 0;
+              min-height: auto;
+            }
+            .id-card {
+              box-shadow: none;
+              margin: 0;
+            }
+          }
+        </style>
+      </head>
+      <body>
+        <div class="id-card">
+          <div class="card-header">
+            <div class="logos">
+              <img src="/fablab.png" alt="FABLAB" class="logo">
+              <img src="/found.png" alt="Foundation" class="logo">
+            </div>
+            <div class="title">
+              ${isRTL ? 'بطاقة عضوية فاب لاب الأحساء' : 'FABLAB Al-Ahsa Member Card'}
+            </div>
+          </div>
+          <div class="card-body">
+            <div class="user-avatar">
+              ${userName.charAt(0).toUpperCase()}
+            </div>
+            <div class="user-info">
+              <div class="user-name">${userName}</div>
+              <div class="info-row">
+                <span class="info-label">${isRTL ? 'الجنس:' : 'Sex:'}</span>
+                <span class="info-value">${getSexLabelForCard()}</span>
+              </div>
+              <div class="info-row">
+                <span class="info-label">${isRTL ? 'الجنسية:' : 'Nationality:'}</span>
+                <span class="info-value">${user.nationality || (isRTL ? 'غير محدد' : 'N/A')}</span>
+              </div>
+              <div class="user-type-badge">${getAppTypeLabel()}</div>
+            </div>
+          </div>
+          <div class="decorative-line"></div>
+          <div class="card-footer">
+            <div class="user-id-section">
+              <span class="user-id-label">${isRTL ? 'رقم العضوية' : 'Member ID'}</span>
+              <span class="user-id-value">${user.uniqueId || user.userId || 'N/A'}</span>
+            </div>
+            <div class="fablab-text">
+              <strong>FABLAB</strong> ${isRTL ? 'الأحساء' : 'Al-Ahsa'}<br>
+              ${isRTL ? 'مؤسسة الملك عبدالعزيز ورجاله للموهبة والإبداع' : 'King Abdulaziz Foundation'}
+            </div>
+          </div>
+        </div>
+      </body>
+      </html>
+    `;
+
+    printWindow.document.write(idCardContent);
+    printWindow.document.close();
+    printWindow.focus();
+    setTimeout(() => {
+      printWindow.print();
+    }, 250);
+  };
+
   const handleExportCSV = async () => {
     try {
       const response = await api.get('/admin/export/csv', { responseType: 'blob' });
@@ -1492,16 +1748,30 @@ const AdminDashboard = () => {
                             <td>{applicationTypeLabels[user.applicationType] || user.applicationType}</td>
                             <td>{formatDate(user.createdAt)}</td>
                             <td>
-                              <button
-                                className="action-btn view"
-                                onClick={() => fetchUserWithRegistrations(user.userId)}
-                                title={isRTL ? 'عرض التسجيلات' : 'View Registrations'}
-                              >
-                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                  <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
-                                  <circle cx="12" cy="12" r="3"/>
-                                </svg>
-                              </button>
+                              <div style={{ display: 'flex', gap: '4px' }}>
+                                <button
+                                  className="action-btn view"
+                                  onClick={() => fetchUserWithRegistrations(user.userId)}
+                                  title={isRTL ? 'عرض التسجيلات' : 'View Registrations'}
+                                >
+                                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                                    <circle cx="12" cy="12" r="3"/>
+                                  </svg>
+                                </button>
+                                <button
+                                  className="action-btn"
+                                  onClick={() => handlePrintUserIDCard(user)}
+                                  title={isRTL ? 'طباعة البطاقة' : 'Print ID Card'}
+                                  style={{ background: 'linear-gradient(135deg, #e02529, #c41e24)' }}
+                                >
+                                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                    <rect x="2" y="3" width="20" height="14" rx="2" ry="2"/>
+                                    <line x1="8" y1="21" x2="16" y2="21"/>
+                                    <line x1="12" y1="17" x2="12" y2="21"/>
+                                  </svg>
+                                </button>
+                              </div>
                             </td>
                           </tr>
                         ))}
@@ -2168,6 +2438,18 @@ const AdminDashboard = () => {
                     <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
                   </svg>
                   {isEditingUser ? (isRTL ? 'إلغاء' : 'Cancel') : (isRTL ? 'تعديل' : 'Edit')}
+                </button>
+                <button
+                  className="filter-btn"
+                  onClick={() => handlePrintUserIDCard(selectedUser)}
+                  title={isRTL ? 'طباعة البطاقة' : 'Print ID Card'}
+                >
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <rect x="2" y="3" width="20" height="14" rx="2" ry="2"/>
+                    <line x1="8" y1="21" x2="16" y2="21"/>
+                    <line x1="12" y1="17" x2="12" y2="21"/>
+                  </svg>
+                  {isRTL ? 'طباعة البطاقة' : 'Print ID Card'}
                 </button>
                 <button className="modal-close" onClick={() => setShowUserModal(false)}>
                   <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">

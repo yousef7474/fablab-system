@@ -366,12 +366,14 @@ exports.exportSelectedCSV = async (req, res) => {
       ];
     });
 
-    const csvContent = [
+    // Add BOM for Excel to recognize UTF-8 encoding (required for Arabic text)
+    const BOM = '\uFEFF';
+    const csvContent = BOM + [
       headers.join(','),
       ...rows.map(row => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(','))
     ].join('\n');
 
-    res.setHeader('Content-Type', 'text/csv');
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
     res.setHeader('Content-Disposition', `attachment; filename=registrations_${new Date().toISOString().split('T')[0]}.csv`);
     res.send(csvContent);
   } catch (error) {

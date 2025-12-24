@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'react-toastify';
@@ -15,47 +15,101 @@ import Commitment from './steps/Commitment';
 import SuccessPage from './SuccessPage';
 import './RegistrationForm.css';
 
+const STORAGE_KEY = 'fablab_registration_form';
+
+const getInitialFormData = () => {
+  try {
+    const saved = localStorage.getItem(STORAGE_KEY);
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      return parsed.formData || null;
+    }
+  } catch (e) {
+    console.error('Error loading saved form data:', e);
+  }
+  return null;
+};
+
+const getInitialStep = () => {
+  try {
+    const saved = localStorage.getItem(STORAGE_KEY);
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      return typeof parsed.activeStep === 'number' ? parsed.activeStep : -1;
+    }
+  } catch (e) {
+    console.error('Error loading saved step:', e);
+  }
+  return -1;
+};
+
+const defaultFormData = {
+  existingUserId: null,
+  applicationType: '',
+  firstName: '',
+  lastName: '',
+  sex: '',
+  nationality: '',
+  nationalId: '',
+  phoneNumber: '',
+  email: '',
+  currentJob: '',
+  nationalAddress: '',
+  entityName: '',
+  visitingEntity: '',
+  personInCharge: '',
+  name: '',
+  fablabSection: '',
+  requiredServices: [],
+  otherServiceDetails: '',
+  appointmentDate: '',
+  appointmentTime: '',
+  appointmentDuration: 60,
+  startDate: '',
+  endDate: '',
+  startTime: '',
+  endTime: '',
+  visitDate: '',
+  visitStartTime: '',
+  visitEndTime: '',
+  serviceDetails: '',
+  serviceType: '',
+  commitmentName: ''
+};
+
 const RegistrationForm = () => {
   const { t, i18n } = useTranslation();
   const isRTL = i18n.language === 'ar';
 
-  const [activeStep, setActiveStep] = useState(-1);
-  const [formData, setFormData] = useState({
-    existingUserId: null,
-    applicationType: '',
-    firstName: '',
-    lastName: '',
-    sex: '',
-    nationality: '',
-    nationalId: '',
-    phoneNumber: '',
-    email: '',
-    currentJob: '',
-    nationalAddress: '',
-    entityName: '',
-    visitingEntity: '',
-    personInCharge: '',
-    name: '',
-    fablabSection: '',
-    requiredServices: [],
-    otherServiceDetails: '',
-    appointmentDate: '',
-    appointmentTime: '',
-    appointmentDuration: 60,
-    startDate: '',
-    endDate: '',
-    startTime: '',
-    endTime: '',
-    visitDate: '',
-    visitStartTime: '',
-    visitEndTime: '',
-    serviceDetails: '',
-    serviceType: '',
-    commitmentName: ''
-  });
+  const [activeStep, setActiveStep] = useState(() => getInitialStep());
+  const [formData, setFormData] = useState(() => getInitialFormData() || defaultFormData);
 
   const [registrationResult, setRegistrationResult] = useState(null);
   const [loading, setLoading] = useState(false);
+
+  // Save form state to localStorage whenever it changes
+  useEffect(() => {
+    if (!registrationResult) {
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify({
+          formData,
+          activeStep,
+          savedAt: new Date().toISOString()
+        }));
+      } catch (e) {
+        console.error('Error saving form data:', e);
+      }
+    }
+  }, [formData, activeStep, registrationResult]);
+
+  // Clear saved form data on successful registration
+  const clearSavedForm = () => {
+    try {
+      localStorage.removeItem(STORAGE_KEY);
+    } catch (e) {
+      console.error('Error clearing saved form:', e);
+    }
+  };
 
   const steps = [
     { key: 'section1', label: t('section1') },
@@ -99,6 +153,7 @@ const RegistrationForm = () => {
     try {
       const response = await api.post('/registration/create', formData);
       setRegistrationResult(response.data.registration);
+      clearSavedForm(); // Clear saved form data on successful registration
       toast.success(t('registrationSuccess'));
     } catch (error) {
       console.error('Registration error:', error);
