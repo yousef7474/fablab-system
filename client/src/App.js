@@ -10,12 +10,11 @@ import AdminLogin from './components/Admin/AdminLogin';
 import AdminDashboard from './components/Admin/AdminDashboard';
 import LanguageSelector from './components/LanguageSelector';
 
-// Wrapper to conditionally show LanguageSelector (only on non-admin pages)
+// Wrapper to conditionally show LanguageSelector (hide only on admin login)
 const ConditionalLanguageSelector = () => {
   const location = useLocation();
-  // Hide on admin pages (admin has its own language settings in Settings tab)
-  const isAdminPage = location.pathname.startsWith('/admin');
-  if (isAdminPage) return null;
+  // Hide only on admin login page (it has its own language toggle)
+  if (location.pathname === '/admin/login') return null;
   return <LanguageSelector />;
 };
 
