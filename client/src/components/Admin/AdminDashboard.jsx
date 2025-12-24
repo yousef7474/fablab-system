@@ -1138,7 +1138,7 @@ const AdminDashboard = () => {
         <style>
           @page {
             size: A4;
-            margin: 10mm;
+            margin: 12mm;
           }
           * {
             margin: 0;
@@ -1149,9 +1149,8 @@ const AdminDashboard = () => {
             font-family: 'Segoe UI', Tahoma, Arial, sans-serif;
             background: white;
             color: #1a1a2e;
-            line-height: 1.4;
-            padding: 10px;
-            font-size: 11px;
+            line-height: 1.5;
+            padding: 15px;
           }
           .document {
             max-width: 100%;
@@ -1162,51 +1161,51 @@ const AdminDashboard = () => {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            padding-bottom: 10px;
-            border-bottom: 2px solid #e02529;
-            margin-bottom: 12px;
+            padding-bottom: 15px;
+            border-bottom: 3px solid #e02529;
+            margin-bottom: 18px;
           }
           .header .logo {
-            height: 45px;
+            height: 55px;
             width: auto;
           }
           .header-center {
             text-align: center;
             flex: 1;
-            padding: 0 15px;
+            padding: 0 20px;
           }
           .document-title {
-            font-size: 16px;
+            font-size: 20px;
             font-weight: 700;
             color: #e02529;
-            margin-bottom: 2px;
+            margin-bottom: 4px;
           }
           .document-subtitle {
-            font-size: 11px;
+            font-size: 13px;
             color: #666;
           }
           .user-info-section {
-            background: #f8f9fa;
-            padding: 10px 12px;
-            border-radius: 6px;
-            margin-bottom: 12px;
-            border-${isRTL ? 'right' : 'left'}: 3px solid #e02529;
+            background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 18px;
+            border-${isRTL ? 'right' : 'left'}: 4px solid #e02529;
           }
           .user-info-title {
-            font-size: 12px;
+            font-size: 14px;
             font-weight: 600;
             color: #e02529;
-            margin-bottom: 8px;
+            margin-bottom: 12px;
           }
           .user-info-grid {
             display: grid;
             grid-template-columns: repeat(2, 1fr);
-            gap: 6px 20px;
+            gap: 10px 30px;
           }
           .user-info-item {
             display: flex;
-            gap: 5px;
-            font-size: 10px;
+            gap: 8px;
+            font-size: 12px;
           }
           .user-info-label {
             font-weight: 600;
@@ -1216,117 +1215,128 @@ const AdminDashboard = () => {
             color: #333;
           }
           .terms-section {
-            margin-bottom: 10px;
+            margin-bottom: 18px;
           }
           .terms-title {
-            font-size: 13px;
+            font-size: 16px;
             font-weight: 700;
             color: #1a1a2e;
-            margin-bottom: 8px;
-            padding-bottom: 5px;
-            border-bottom: 1px solid #e9ecef;
+            margin-bottom: 12px;
+            padding-bottom: 8px;
+            border-bottom: 2px solid #e9ecef;
           }
           .terms-intro {
-            font-size: 10px;
+            font-size: 12px;
             color: #444;
-            margin-bottom: 8px;
-            line-height: 1.5;
+            margin-bottom: 12px;
+            line-height: 1.6;
           }
           .terms-list {
             list-style: none;
             counter-reset: terms-counter;
             display: grid;
-            gap: 4px;
+            gap: 8px;
           }
           .terms-list li {
             counter-increment: terms-counter;
-            padding: 6px 8px;
+            padding: 10px 12px;
             background: #fafafa;
-            border-radius: 4px;
-            border-${isRTL ? 'right' : 'left'}: 2px solid #e02529;
-            font-size: 9px;
-            line-height: 1.4;
+            border-radius: 6px;
+            border-${isRTL ? 'right' : 'left'}: 3px solid #e02529;
+            font-size: 11px;
+            line-height: 1.5;
             position: relative;
-            padding-${isRTL ? 'right' : 'left'}: 28px;
+            padding-${isRTL ? 'right' : 'left'}: 38px;
           }
           .terms-list li::before {
             content: counter(terms-counter);
             position: absolute;
-            ${isRTL ? 'right' : 'left'}: 6px;
+            ${isRTL ? 'right' : 'left'}: 10px;
             top: 50%;
             transform: translateY(-50%);
-            width: 16px;
-            height: 16px;
+            width: 20px;
+            height: 20px;
             background: linear-gradient(135deg, #e02529, #c41e24);
             color: white;
             border-radius: 50%;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 8px;
+            font-size: 10px;
             font-weight: 600;
           }
           .agreement-section {
             background: #fff8f8;
-            border: 1px solid #e02529;
-            border-radius: 6px;
-            padding: 10px;
-            margin-bottom: 12px;
+            border: 2px solid #e02529;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 18px;
           }
           .agreement-text {
-            font-size: 10px;
+            font-size: 12px;
             color: #333;
-            line-height: 1.5;
-            margin-bottom: 8px;
+            line-height: 1.6;
+            margin-bottom: 12px;
           }
           .checkbox-line {
             display: flex;
             align-items: center;
-            gap: 8px;
-            font-size: 10px;
+            gap: 10px;
+            font-size: 12px;
             font-weight: 600;
             color: #1a1a2e;
           }
           .checkbox-box {
-            width: 14px;
-            height: 14px;
+            width: 18px;
+            height: 18px;
             border: 2px solid #e02529;
-            border-radius: 3px;
+            border-radius: 4px;
             display: inline-block;
             flex-shrink: 0;
           }
           .signature-section {
             display: grid;
             grid-template-columns: repeat(3, 1fr);
-            gap: 20px;
-            padding-top: 10px;
-            border-top: 1px dashed #ccc;
+            gap: 25px;
+            padding-top: 15px;
+            border-top: 2px dashed #ddd;
           }
           .signature-box {
             text-align: center;
           }
           .signature-label {
-            font-size: 8px;
+            font-size: 10px;
             color: #888;
-            margin-bottom: 25px;
+            margin-bottom: 35px;
             display: block;
           }
           .signature-line {
-            border-bottom: 1px solid #333;
-            margin-bottom: 4px;
+            border-bottom: 2px solid #333;
+            margin-bottom: 6px;
           }
           .signature-field-name {
-            font-size: 9px;
+            font-size: 11px;
             font-weight: 600;
             color: #333;
           }
           .footer {
-            margin-top: 12px;
-            padding-top: 8px;
-            border-top: 1px solid #e9ecef;
+            margin-top: 20px;
+            padding-top: 15px;
+            border-top: 2px solid #e9ecef;
             text-align: center;
             color: #888;
-            font-size: 9px;
+            font-size: 10px;
+          }
+          .footer-logos {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            margin-bottom: 8px;
+          }
+          .footer-logos img {
+            height: 35px;
+            width: auto;
+            opacity: 0.8;
           }
           @media print {
             body {
@@ -1422,7 +1432,11 @@ const AdminDashboard = () => {
           </div>
 
           <div class="footer">
-            <strong>FABLAB</strong> ${isRTL ? 'الأحساء' : 'Al-Ahsa'} | ${isRTL ? 'مؤسسة عبدالمنعم الراشد الإنسانية' : 'Abdulmonem Al-Rashed Foundation'}
+            <div class="footer-logos">
+              <img src="/fablab.png" alt="FABLAB">
+              <img src="/found.png" alt="Foundation">
+            </div>
+            <p><strong>FABLAB</strong> ${isRTL ? 'الأحساء' : 'Al-Ahsa'} | ${isRTL ? 'مؤسسة عبدالمنعم الراشد الإنسانية' : 'Abdulmonem Al-Rashed Foundation'}</p>
           </div>
         </div>
       </body>
