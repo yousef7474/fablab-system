@@ -75,6 +75,17 @@ const AdminDashboard = () => {
   const [scheduleFilter, setScheduleFilter] = useState('all'); // 'all' or employee section
   const [theme, setTheme] = useState(() => localStorage.getItem('adminTheme') || 'light');
 
+  // Status modal states
+  const [showStatusModal, setShowStatusModal] = useState(false);
+  const [statusModalAction, setStatusModalAction] = useState(''); // 'approve' or 'reject'
+  const [statusModalRegistration, setStatusModalRegistration] = useState(null);
+  const [statusMessage, setStatusMessage] = useState('');
+  const [rejectionReason, setRejectionReason] = useState('');
+  const [sendMessageInEmail, setSendMessageInEmail] = useState(false);
+
+  // Bulk selection states
+  const [selectedRegistrations, setSelectedRegistrations] = useState(new Set());
+
   // Apply theme to document
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme);
@@ -216,17 +227,135 @@ const AdminDashboard = () => {
     navigate('/admin/login');
   };
 
-  const handleStatusChange = async (registrationId, newStatus) => {
+  // Open status modal for approval/rejection
+  const handleOpenStatusModal = (registration, action) => {
+    setStatusModalRegistration(registration);
+    setStatusModalAction(action);
+    setStatusMessage('');
+    setRejectionReason('');
+    setSendMessageInEmail(false);
+    setShowStatusModal(true);
+  };
+
+  // Submit status change with message
+  const handleStatusSubmit = async () => {
+    if (!statusModalRegistration) return;
+
+    // Validate rejection reason for rejections
+    if (statusModalAction === 'reject' && !rejectionReason.trim()) {
+      toast.error(isRTL ? 'يرجى إدخال سبب الرفض' : 'Please enter rejection reason');
+      return;
+    }
+
     try {
-      const encodedId = encodeURIComponent(registrationId);
-      await api.patch(`/admin/registrations/${encodedId}/status`, { status: newStatus });
-      toast.success(isRTL ? 'تم تحديث الحالة بنجاح' : 'Status updated successfully');
+      const encodedId = encodeURIComponent(statusModalRegistration.registrationId);
+      await api.patch(`/admin/registrations/${encodedId}/status`, {
+        status: statusModalAction === 'approve' ? 'approved' : 'rejected',
+        rejectionReason: statusModalAction === 'reject' ? rejectionReason : null,
+        adminMessage: statusMessage || null,
+        sendMessageInEmail: sendMessageInEmail
+      });
+
+      toast.success(isRTL
+        ? (statusModalAction === 'approve' ? 'تم قبول الطلب بنجاح' : 'تم رفض الطلب بنجاح')
+        : (statusModalAction === 'approve' ? 'Registration approved successfully' : 'Registration rejected successfully')
+      );
+
       fetchRegistrations();
       fetchAnalytics();
+      setShowStatusModal(false);
       setShowModal(false);
     } catch (error) {
       console.error('Error updating status:', error);
       toast.error(isRTL ? 'خطأ في تحديث الحالة' : 'Error updating status');
+    }
+  };
+
+  // Legacy function for direct status change (kept for compatibility)
+  const handleStatusChange = async (registrationId, newStatus) => {
+    const registration = registrations.find(r => r.registrationId === registrationId) || selectedRegistration;
+    handleOpenStatusModal(registration, newStatus === 'approved' ? 'approve' : 'reject');
+  };
+
+  // Bulk selection functions
+  const handleToggleSelection = (registrationId) => {
+    setSelectedRegistrations(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(registrationId)) {
+        newSet.delete(registrationId);
+      } else {
+        newSet.add(registrationId);
+      }
+      return newSet;
+    });
+  };
+
+  const handleSelectAll = () => {
+    const allIds = registrations.map(r => r.registrationId);
+    setSelectedRegistrations(new Set(allIds));
+  };
+
+  const handleDeselectAll = () => {
+    setSelectedRegistrations(new Set());
+  };
+
+  const handleBulkDelete = async () => {
+    if (selectedRegistrations.size === 0) {
+      toast.warning(isRTL ? 'يرجى اختيار تسجيلات للحذف' : 'Please select registrations to delete');
+      return;
+    }
+
+    const confirmed = window.confirm(
+      isRTL
+        ? `هل أنت متأكد من حذف ${selectedRegistrations.size} تسجيل؟`
+        : `Are you sure you want to delete ${selectedRegistrations.size} registration(s)?`
+    );
+
+    if (!confirmed) return;
+
+    try {
+      await api.post('/admin/registrations/bulk-delete', {
+        ids: Array.from(selectedRegistrations)
+      });
+
+      toast.success(
+        isRTL
+          ? `تم حذف ${selectedRegistrations.size} تسجيل بنجاح`
+          : `${selectedRegistrations.size} registration(s) deleted successfully`
+      );
+
+      setSelectedRegistrations(new Set());
+      fetchRegistrations();
+      fetchAnalytics();
+    } catch (error) {
+      console.error('Error bulk deleting:', error);
+      toast.error(isRTL ? 'خطأ في حذف التسجيلات' : 'Error deleting registrations');
+    }
+  };
+
+  const handleBulkExport = async () => {
+    if (selectedRegistrations.size === 0) {
+      toast.warning(isRTL ? 'يرجى اختيار تسجيلات للتصدير' : 'Please select registrations to export');
+      return;
+    }
+
+    try {
+      const response = await api.post('/admin/registrations/export-selected', {
+        ids: Array.from(selectedRegistrations)
+      }, { responseType: 'blob' });
+
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `selected_registrations_${new Date().toISOString().split('T')[0]}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+
+      toast.success(isRTL ? 'تم تصدير التسجيلات المحددة' : 'Selected registrations exported');
+    } catch (error) {
+      console.error('Error exporting selected:', error);
+      toast.error(isRTL ? 'خطأ في تصدير التسجيلات' : 'Error exporting registrations');
     }
   };
 
@@ -1150,92 +1279,139 @@ const AdminDashboard = () => {
                       <p>{isRTL ? 'لا توجد تسجيلات' : 'No registrations found'}</p>
                     </div>
                   ) : (
-                    <table className="data-table">
-                      <thead>
-                        <tr>
-                          <th>{isRTL ? 'رقم التسجيل' : 'Reg. ID'}</th>
-                          <th>{isRTL ? 'الاسم' : 'Name'}</th>
-                          <th>{isRTL ? 'النوع' : 'Type'}</th>
-                          <th>{isRTL ? 'القسم' : 'Section'}</th>
-                          <th>{isRTL ? 'الموعد' : 'Date'}</th>
-                          <th>{isRTL ? 'الحالة' : 'Status'}</th>
-                          <th>{isRTL ? 'الإجراءات' : 'Actions'}</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {registrations.map((reg) => (
-                          <tr key={reg.registrationId}>
-                            <td><span className="reg-id">{reg.registrationId}</span></td>
-                            <td>
-                              <span
-                                className="user-link"
-                                onClick={() => fetchUserWithRegistrations(reg.userId)}
-                              >
-                                {reg.user?.firstName && reg.user?.lastName
-                                  ? `${reg.user.firstName} ${reg.user.lastName}`
-                                  : reg.user?.name || 'N/A'}
-                              </span>
-                            </td>
-                            <td>{applicationTypeLabels[reg.user?.applicationType] || reg.user?.applicationType}</td>
-                            <td>{sectionLabels[reg.fablabSection] || reg.fablabSection}</td>
-                            <td>{formatDate(reg.appointmentDate || reg.visitDate || reg.startDate)}</td>
-                            <td>
-                              <span className={`status-badge ${reg.status}`}>
-                                {statusLabels[reg.status]}
-                              </span>
-                            </td>
-                            <td>
-                              <div className="action-buttons">
-                                <button
-                                  className="action-btn view"
-                                  onClick={() => { setSelectedRegistration(reg); setShowModal(true); }}
-                                  title={isRTL ? 'عرض' : 'View'}
-                                >
-                                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
-                                    <circle cx="12" cy="12" r="3"/>
-                                  </svg>
-                                </button>
-                                <button
-                                  className="action-btn print"
-                                  onClick={() => handlePrintRegistration(reg)}
-                                  title={isRTL ? 'طباعة' : 'Print'}
-                                >
-                                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                    <polyline points="6 9 6 2 18 2 18 9"/>
-                                    <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/>
-                                    <rect x="6" y="14" width="12" height="8"/>
-                                  </svg>
-                                </button>
-                                {reg.status === 'pending' && (
-                                  <>
-                                    <button
-                                      className="action-btn approve"
-                                      onClick={() => handleStatusChange(reg.registrationId, 'approved')}
-                                      title={isRTL ? 'قبول' : 'Approve'}
-                                    >
-                                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                        <polyline points="20 6 9 17 4 12"/>
-                                      </svg>
-                                    </button>
-                                    <button
-                                      className="action-btn reject"
-                                      onClick={() => handleStatusChange(reg.registrationId, 'rejected')}
-                                      title={isRTL ? 'رفض' : 'Reject'}
-                                    >
-                                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                        <line x1="18" y1="6" x2="6" y2="18"/>
-                                        <line x1="6" y1="6" x2="18" y2="18"/>
-                                      </svg>
-                                    </button>
-                                  </>
-                                )}
-                              </div>
-                            </td>
+                    <>
+                      {/* Bulk Actions Bar */}
+                      {selectedRegistrations.size > 0 && (
+                        <div className="bulk-actions-bar">
+                          <span className="bulk-count">
+                            {isRTL
+                              ? `${selectedRegistrations.size} تسجيل محدد`
+                              : `${selectedRegistrations.size} selected`}
+                          </span>
+                          <div className="bulk-buttons">
+                            <button className="bulk-btn export" onClick={handleBulkExport}>
+                              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                                <polyline points="7 10 12 15 17 10"/>
+                                <line x1="12" y1="15" x2="12" y2="3"/>
+                              </svg>
+                              {isRTL ? 'تصدير CSV' : 'Export CSV'}
+                            </button>
+                            <button className="bulk-btn delete" onClick={handleBulkDelete}>
+                              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                <polyline points="3 6 5 6 21 6"/>
+                                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+                              </svg>
+                              {isRTL ? 'حذف المحدد' : 'Delete Selected'}
+                            </button>
+                            <button className="bulk-btn deselect" onClick={handleDeselectAll}>
+                              {isRTL ? 'إلغاء التحديد' : 'Deselect All'}
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                      <table className="data-table">
+                        <thead>
+                          <tr>
+                            <th className="checkbox-col">
+                              <input
+                                type="checkbox"
+                                checked={selectedRegistrations.size === registrations.length && registrations.length > 0}
+                                onChange={(e) => e.target.checked ? handleSelectAll() : handleDeselectAll()}
+                                title={isRTL ? 'تحديد الكل' : 'Select All'}
+                              />
+                            </th>
+                            <th>{isRTL ? 'رقم التسجيل' : 'Reg. ID'}</th>
+                            <th>{isRTL ? 'الاسم' : 'Name'}</th>
+                            <th>{isRTL ? 'النوع' : 'Type'}</th>
+                            <th>{isRTL ? 'القسم' : 'Section'}</th>
+                            <th>{isRTL ? 'الموعد' : 'Date'}</th>
+                            <th>{isRTL ? 'الحالة' : 'Status'}</th>
+                            <th>{isRTL ? 'الإجراءات' : 'Actions'}</th>
                           </tr>
-                        ))}
-                      </tbody>
-                    </table>
+                        </thead>
+                        <tbody>
+                          {registrations.map((reg) => (
+                            <tr key={reg.registrationId} className={selectedRegistrations.has(reg.registrationId) ? 'selected' : ''}>
+                              <td className="checkbox-col">
+                                <input
+                                  type="checkbox"
+                                  checked={selectedRegistrations.has(reg.registrationId)}
+                                  onChange={() => handleToggleSelection(reg.registrationId)}
+                                />
+                              </td>
+                              <td><span className="reg-id">{reg.registrationId}</span></td>
+                              <td>
+                                <span
+                                  className="user-link"
+                                  onClick={() => fetchUserWithRegistrations(reg.userId)}
+                                >
+                                  {reg.user?.firstName && reg.user?.lastName
+                                    ? `${reg.user.firstName} ${reg.user.lastName}`
+                                    : reg.user?.name || 'N/A'}
+                                </span>
+                              </td>
+                              <td>{applicationTypeLabels[reg.user?.applicationType] || reg.user?.applicationType}</td>
+                              <td>{sectionLabels[reg.fablabSection] || reg.fablabSection}</td>
+                              <td>{formatDate(reg.appointmentDate || reg.visitDate || reg.startDate)}</td>
+                              <td>
+                                <span className={`status-badge ${reg.status}`}>
+                                  {statusLabels[reg.status]}
+                                </span>
+                              </td>
+                              <td>
+                                <div className="action-buttons">
+                                  <button
+                                    className="action-btn view"
+                                    onClick={() => { setSelectedRegistration(reg); setShowModal(true); }}
+                                    title={isRTL ? 'عرض' : 'View'}
+                                  >
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                      <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                                      <circle cx="12" cy="12" r="3"/>
+                                    </svg>
+                                  </button>
+                                  <button
+                                    className="action-btn print"
+                                    onClick={() => handlePrintRegistration(reg)}
+                                    title={isRTL ? 'طباعة' : 'Print'}
+                                  >
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                      <polyline points="6 9 6 2 18 2 18 9"/>
+                                      <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/>
+                                      <rect x="6" y="14" width="12" height="8"/>
+                                    </svg>
+                                  </button>
+                                  {reg.status === 'pending' && (
+                                    <>
+                                      <button
+                                        className="action-btn approve"
+                                        onClick={() => handleOpenStatusModal(reg, 'approve')}
+                                        title={isRTL ? 'قبول' : 'Approve'}
+                                      >
+                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                          <polyline points="20 6 9 17 4 12"/>
+                                        </svg>
+                                      </button>
+                                      <button
+                                        className="action-btn reject"
+                                        onClick={() => handleOpenStatusModal(reg, 'reject')}
+                                        title={isRTL ? 'رفض' : 'Reject'}
+                                      >
+                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                          <line x1="18" y1="6" x2="6" y2="18"/>
+                                          <line x1="6" y1="6" x2="18" y2="18"/>
+                                        </svg>
+                                      </button>
+                                    </>
+                                  )}
+                                </div>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </>
                   )}
                 </div>
               </motion.div>
@@ -2264,6 +2440,120 @@ const AdminDashboard = () => {
                 disabled={!employeeForm.name || !employeeForm.email || !employeeForm.section}
               >
                 {selectedEmployee ? (isRTL ? 'تحديث' : 'Update') : (isRTL ? 'إضافة' : 'Add')}
+              </button>
+            </div>
+          </motion.div>
+        </div>
+      )}
+
+      {/* Status Change Modal (Approve/Reject with message) */}
+      {showStatusModal && statusModalRegistration && (
+        <div className="modal-overlay" onClick={() => setShowStatusModal(false)}>
+          <motion.div
+            className="modal-content status-modal"
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="modal-header">
+              <h2>
+                {statusModalAction === 'approve'
+                  ? (isRTL ? 'قبول الطلب' : 'Approve Registration')
+                  : (isRTL ? 'رفض الطلب' : 'Reject Registration')
+                }
+              </h2>
+              <button className="modal-close" onClick={() => setShowStatusModal(false)}>
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <line x1="18" y1="6" x2="6" y2="18"/>
+                  <line x1="6" y1="6" x2="18" y2="18"/>
+                </svg>
+              </button>
+            </div>
+
+            <div className="modal-body">
+              {/* Registration Info Summary */}
+              <div className="status-modal-info">
+                <div className="info-item">
+                  <span className="info-label">{isRTL ? 'رقم التسجيل:' : 'Registration ID:'}</span>
+                  <span className="info-value">{statusModalRegistration.registrationId}</span>
+                </div>
+                <div className="info-item">
+                  <span className="info-label">{isRTL ? 'الاسم:' : 'Name:'}</span>
+                  <span className="info-value">
+                    {statusModalRegistration.user?.firstName && statusModalRegistration.user?.lastName
+                      ? `${statusModalRegistration.user.firstName} ${statusModalRegistration.user.lastName}`
+                      : statusModalRegistration.user?.name || 'N/A'}
+                  </span>
+                </div>
+                <div className="info-item">
+                  <span className="info-label">{isRTL ? 'الموعد:' : 'Appointment:'}</span>
+                  <span className="info-value">
+                    {formatDate(statusModalRegistration.appointmentDate || statusModalRegistration.visitDate)} - {statusModalRegistration.appointmentTime || statusModalRegistration.visitStartTime || 'N/A'}
+                  </span>
+                </div>
+              </div>
+
+              {/* Rejection Reason (Required for rejection) */}
+              {statusModalAction === 'reject' && (
+                <div className="form-group">
+                  <label>
+                    {isRTL ? 'سبب الرفض' : 'Rejection Reason'} <span className="required">*</span>
+                  </label>
+                  <textarea
+                    value={rejectionReason}
+                    onChange={(e) => setRejectionReason(e.target.value)}
+                    placeholder={isRTL ? 'أدخل سبب رفض الطلب...' : 'Enter the reason for rejection...'}
+                    rows={3}
+                    className="form-textarea"
+                  />
+                  <small className="form-hint">
+                    {isRTL ? 'سيتم إرسال هذا السبب للمستخدم في رسالة الرفض' : 'This will be sent to the user in the rejection email'}
+                  </small>
+                </div>
+              )}
+
+              {/* Admin Message (Optional) */}
+              <div className="form-group">
+                <label>{isRTL ? 'رسالة إضافية (اختياري)' : 'Additional Message (Optional)'}</label>
+                <textarea
+                  value={statusMessage}
+                  onChange={(e) => setStatusMessage(e.target.value)}
+                  placeholder={isRTL ? 'أدخل رسالة للمستخدم...' : 'Enter a message for the user...'}
+                  rows={3}
+                  className="form-textarea"
+                />
+              </div>
+
+              {/* Send Message in Email Checkbox */}
+              {statusMessage && (
+                <div className="form-group checkbox-group">
+                  <label className="checkbox-label">
+                    <input
+                      type="checkbox"
+                      checked={sendMessageInEmail}
+                      onChange={(e) => setSendMessageInEmail(e.target.checked)}
+                    />
+                    <span className="checkbox-text">
+                      {isRTL ? 'إرسال هذه الرسالة في البريد الإلكتروني' : 'Include this message in the email'}
+                    </span>
+                  </label>
+                </div>
+              )}
+            </div>
+
+            <div className="modal-footer">
+              <button className="modal-btn cancel" onClick={() => setShowStatusModal(false)}>
+                {isRTL ? 'إلغاء' : 'Cancel'}
+              </button>
+              <button
+                className={`modal-btn ${statusModalAction === 'approve' ? 'approve' : 'reject'}`}
+                onClick={handleStatusSubmit}
+                disabled={statusModalAction === 'reject' && !rejectionReason.trim()}
+              >
+                {statusModalAction === 'approve'
+                  ? (isRTL ? 'قبول الطلب' : 'Approve')
+                  : (isRTL ? 'رفض الطلب' : 'Reject')
+                }
               </button>
             </div>
           </motion.div>

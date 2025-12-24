@@ -40,4 +40,8 @@ router.get('/analytics/enhanced', authMiddleware, adminController.getEnhancedAna
 router.post('/export-csv', authMiddleware, adminController.exportToCSV);
 router.get('/export/csv', authMiddleware, adminController.exportToCSV);
 
+// Bulk operations
+router.post('/registrations/bulk-delete', authMiddleware, adminController.bulkDeleteRegistrations);
+router.post('/registrations/export-selected', authMiddleware, adminController.exportSelectedCSV);
+
 module.exports = router;

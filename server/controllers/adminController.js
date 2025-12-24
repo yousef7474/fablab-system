@@ -218,7 +218,7 @@ exports.getRegistrationById = async (req, res) => {
 exports.updateRegistrationStatus = async (req, res) => {
   try {
     const { id } = req.params;
-    const { status, rejectionReason, adminNotes } = req.body;
+    const { status, rejectionReason, adminMessage, sendMessageInEmail } = req.body;
 
     const registration = await Registration.findByPk(id, {
       include: [{
@@ -233,8 +233,8 @@ exports.updateRegistrationStatus = async (req, res) => {
 
     // Update registration
     registration.status = status;
-    registration.rejectionReason = rejectionReason;
-    registration.adminNotes = adminNotes;
+    registration.rejectionReason = rejectionReason || null;
+    registration.adminNotes = adminMessage || null;
 
     if (status === 'approved') {
       registration.approvedBy = req.admin.fullName;
@@ -248,12 +248,24 @@ exports.updateRegistrationStatus = async (req, res) => {
       ? `${registration.user.firstName} ${registration.user.lastName}`
       : registration.user.name;
 
+    // Get appointment date/time from registration
+    const appointmentDate = registration.appointmentDate || registration.visitDate || registration.startDate;
+    const appointmentTime = registration.appointmentTime || registration.visitStartTime || registration.startTime;
+
     await sendStatusUpdateEmail(
       registration.user.email,
       userName,
       registration.registrationId,
       status,
-      rejectionReason
+      {
+        rejectionReason: rejectionReason || null,
+        adminMessage: adminMessage || null,
+        sendMessage: sendMessageInEmail || false,
+        appointmentDate: appointmentDate,
+        appointmentTime: appointmentTime,
+        appointmentDuration: registration.appointmentDuration,
+        fablabSection: registration.fablabSection
+      }
     );
 
     res.json({
@@ -262,6 +274,108 @@ exports.updateRegistrationStatus = async (req, res) => {
     });
   } catch (error) {
     console.error('Error updating registration status:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+// Bulk delete registrations
+exports.bulkDeleteRegistrations = async (req, res) => {
+  try {
+    const { ids } = req.body;
+
+    if (!ids || !Array.isArray(ids) || ids.length === 0) {
+      return res.status(400).json({ message: 'No registration IDs provided' });
+    }
+
+    const deletedCount = await Registration.destroy({
+      where: {
+        registrationId: {
+          [Op.in]: ids
+        }
+      }
+    });
+
+    res.json({
+      message: `${deletedCount} registration(s) deleted successfully`,
+      deletedCount
+    });
+  } catch (error) {
+    console.error('Error bulk deleting registrations:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+// Export selected registrations as CSV
+exports.exportSelectedCSV = async (req, res) => {
+  try {
+    const { ids } = req.body;
+
+    if (!ids || !Array.isArray(ids) || ids.length === 0) {
+      return res.status(400).json({ message: 'No registration IDs provided' });
+    }
+
+    const registrations = await Registration.findAll({
+      where: {
+        registrationId: {
+          [Op.in]: ids
+        }
+      },
+      include: [{
+        model: User,
+        as: 'user'
+      }],
+      order: [['createdAt', 'DESC']]
+    });
+
+    // Generate CSV
+    const headers = [
+      'Registration ID',
+      'User ID',
+      'Name',
+      'Email',
+      'Phone',
+      'Application Type',
+      'Section',
+      'Status',
+      'Date',
+      'Time',
+      'Duration',
+      'Services',
+      'Created At'
+    ];
+
+    const rows = registrations.map(reg => {
+      const userName = reg.user?.firstName && reg.user?.lastName
+        ? `${reg.user.firstName} ${reg.user.lastName}`
+        : reg.user?.name || 'N/A';
+
+      return [
+        reg.registrationId,
+        reg.userId,
+        userName,
+        reg.user?.email || 'N/A',
+        reg.user?.phoneNumber || 'N/A',
+        reg.user?.applicationType || 'N/A',
+        reg.fablabSection || 'N/A',
+        reg.status,
+        reg.appointmentDate || reg.visitDate || reg.startDate || 'N/A',
+        reg.appointmentTime || reg.visitStartTime || reg.startTime || 'N/A',
+        reg.appointmentDuration ? `${reg.appointmentDuration} min` : 'N/A',
+        Array.isArray(reg.requiredServices) ? reg.requiredServices.join('; ') : 'N/A',
+        reg.createdAt ? new Date(reg.createdAt).toISOString() : 'N/A'
+      ];
+    });
+
+    const csvContent = [
+      headers.join(','),
+      ...rows.map(row => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(','))
+    ].join('\n');
+
+    res.setHeader('Content-Type', 'text/csv');
+    res.setHeader('Content-Disposition', `attachment; filename=registrations_${new Date().toISOString().split('T')[0]}.csv`);
+    res.send(csvContent);
+  } catch (error) {
+    console.error('Error exporting selected CSV:', error);
     res.status(500).json({ message: 'Server error' });
   }
 };
