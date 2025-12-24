@@ -509,6 +509,52 @@ const AdminDashboard = () => {
     'Female': isRTL ? 'أنثى' : 'Female'
   };
 
+  const serviceLabels = {
+    'PCB Design': isRTL ? 'تصميم الدوائر المطبوعة' : 'PCB Design',
+    'PCB Fabrication': isRTL ? 'تصنيع الدوائر المطبوعة' : 'PCB Fabrication',
+    'Arduino Programming': isRTL ? 'برمجة الأردوينو' : 'Arduino Programming',
+    'Raspberry Pi': isRTL ? 'راسبيري باي' : 'Raspberry Pi',
+    'IoT Projects': isRTL ? 'مشاريع إنترنت الأشياء' : 'IoT Projects',
+    'Laser Cutting': isRTL ? 'القطع بالليزر' : 'Laser Cutting',
+    'Laser Engraving': isRTL ? 'النقش بالليزر' : 'Laser Engraving',
+    'Wood Cutting': isRTL ? 'قطع الخشب' : 'Wood Cutting',
+    'Wood Carving': isRTL ? 'نحت الخشب' : 'Wood Carving',
+    'CNC Milling': isRTL ? 'التفريز CNC' : 'CNC Milling',
+    '3D Printing': isRTL ? 'الطباعة ثلاثية الأبعاد' : '3D Printing',
+    '3D Modeling': isRTL ? 'النمذجة ثلاثية الأبعاد' : '3D Modeling',
+    '3D Scanning': isRTL ? 'المسح ثلاثي الأبعاد' : '3D Scanning',
+    'Robot Design': isRTL ? 'تصميم الروبوت' : 'Robot Design',
+    'Robot Programming': isRTL ? 'برمجة الروبوت' : 'Robot Programming',
+    'AI Projects': isRTL ? 'مشاريع الذكاء الاصطناعي' : 'AI Projects',
+    'Machine Learning': isRTL ? 'تعلم الآلة' : 'Machine Learning',
+    'Vinyl Cutting': isRTL ? 'قطع الفينيل' : 'Vinyl Cutting',
+    'Sticker Making': isRTL ? 'صناعة الملصقات' : 'Sticker Making',
+    'Heat Transfer': isRTL ? 'النقل الحراري' : 'Heat Transfer',
+    'Kids Workshop': isRTL ? 'ورشة الأطفال' : 'Kids Workshop',
+    'Educational Activities': isRTL ? 'الأنشطة التعليمية' : 'Educational Activities',
+    'STEM Activities': isRTL ? 'أنشطة STEM' : 'STEM Activities',
+    'Consultation': isRTL ? 'استشارة' : 'Consultation',
+    'Training': isRTL ? 'تدريب' : 'Training',
+    'Project Development': isRTL ? 'تطوير المشاريع' : 'Project Development',
+    'Prototyping': isRTL ? 'النماذج الأولية' : 'Prototyping',
+    'Other': isRTL ? 'أخرى' : 'Other'
+  };
+
+  // Helper function to translate services array
+  const translateServices = (services) => {
+    if (!services || !Array.isArray(services)) return 'N/A';
+    return services.map(service => serviceLabels[service] || service).join(', ');
+  };
+
+  // Helper function to get sex label
+  const getSexLabel = (sex) => {
+    if (!sex) return 'N/A';
+    const normalizedSex = sex.toLowerCase();
+    if (normalizedSex === 'male') return isRTL ? 'ذكر' : 'Male';
+    if (normalizedSex === 'female') return isRTL ? 'أنثى' : 'Female';
+    return sex;
+  };
+
   if (!adminData) {
     return null;
   }
@@ -1216,38 +1262,8 @@ const AdminDashboard = () => {
                 exit={{ opacity: 0, y: -20 }}
                 className="schedule-content"
               >
-                <div className="schedule-layout">
-                  {/* Schedule Filter Tabs */}
-                  <div className="schedule-filter-tabs">
-                    <button
-                      className={`schedule-filter-tab ${scheduleFilter === 'all' ? 'active' : ''}`}
-                      onClick={() => setScheduleFilter('all')}
-                    >
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                        <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
-                        <line x1="16" y1="2" x2="16" y2="6"/>
-                        <line x1="8" y1="2" x2="8" y2="6"/>
-                        <line x1="3" y1="10" x2="21" y2="10"/>
-                      </svg>
-                      {isRTL ? 'كل المواعيد' : 'All Schedules'}
-                    </button>
-                    {employees.map(emp => (
-                      <button
-                        key={emp.employeeId}
-                        className={`schedule-filter-tab ${scheduleFilter === emp.section ? 'active' : ''}`}
-                        onClick={() => setScheduleFilter(emp.section)}
-                        style={{
-                          '--tab-color': SECTION_COLORS[emp.section] || '#6366f1'
-                        }}
-                      >
-                        <span className="tab-avatar" style={{ backgroundColor: SECTION_COLORS[emp.section] || '#6366f1' }}>
-                          {emp.name?.charAt(0)}
-                        </span>
-                        {emp.name}
-                      </button>
-                    ))}
-                  </div>
-
+                <div className="schedule-layout-new">
+                  {/* Calendar Section */}
                   <div className="calendar-section">
                     {scheduleFilter !== 'all' && (
                       <div className="current-schedule-header">
@@ -1329,7 +1345,9 @@ const AdminDashboard = () => {
                     </div>
                   </div>
 
+                  {/* Right Sidebar */}
                   <div className="schedule-sidebar">
+                    {/* Employees Section */}
                     <div className="employees-section">
                       <div className="section-header">
                         <h3>{isRTL ? 'الموظفين' : 'Employees'}</h3>
@@ -1347,6 +1365,21 @@ const AdminDashboard = () => {
                           </svg>
                         </button>
                       </div>
+
+                      {/* All Schedules Button */}
+                      <button
+                        className={`all-schedules-btn ${scheduleFilter === 'all' ? 'active' : ''}`}
+                        onClick={() => setScheduleFilter('all')}
+                      >
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                          <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+                          <line x1="16" y1="2" x2="16" y2="6"/>
+                          <line x1="8" y1="2" x2="8" y2="6"/>
+                          <line x1="3" y1="10" x2="21" y2="10"/>
+                        </svg>
+                        {isRTL ? 'جميع المواعيد' : 'All Schedules'}
+                      </button>
+
                       <div className="employees-grid">
                         {employees.map((emp) => (
                           <div
@@ -1394,6 +1427,7 @@ const AdminDashboard = () => {
                       </div>
                     </div>
 
+                    {/* Appointments Section */}
                     <div className="appointments-section">
                       <h3>
                         {scheduleFilter === 'all'
@@ -1609,7 +1643,7 @@ const AdminDashboard = () => {
                 </div>
                 <div className="detail-item full-width">
                   <label>{isRTL ? 'الخدمات المطلوبة' : 'Required Services'}</label>
-                  <span>{selectedRegistration.requiredServices?.join(', ') || 'N/A'}</span>
+                  <span>{translateServices(selectedRegistration.requiredServices)}</span>
                 </div>
                 <div className="detail-item full-width">
                   <label>{isRTL ? 'تفاصيل الخدمة' : 'Service Details'}</label>
@@ -1821,7 +1855,7 @@ const AdminDashboard = () => {
                     </div>
                     <div className="detail-item">
                       <label>{isRTL ? 'الجنس' : 'Sex'}</label>
-                      <span>{selectedUser.sex === 'male' ? (isRTL ? 'ذكر' : 'Male') : selectedUser.sex === 'female' ? (isRTL ? 'أنثى' : 'Female') : 'N/A'}</span>
+                      <span>{getSexLabel(selectedUser.sex)}</span>
                     </div>
                     <div className="detail-item">
                       <label>{isRTL ? 'الجنسية' : 'Nationality'}</label>
