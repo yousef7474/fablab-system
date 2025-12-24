@@ -712,7 +712,7 @@ exports.getEnhancedAnalytics = async (req, res) => {
     });
 
     // Registrations by section
-    const bySection = await Registration.findAll({
+    const bySectionRaw = await Registration.findAll({
       attributes: [
         'fablabSection',
         [Registration.sequelize.fn('COUNT', Registration.sequelize.col('registrationId')), 'count']
@@ -720,6 +720,11 @@ exports.getEnhancedAnalytics = async (req, res) => {
       group: ['fablabSection'],
       raw: true
     });
+    // Convert count to number (PostgreSQL returns string)
+    const bySection = bySectionRaw.map(item => ({
+      ...item,
+      count: parseInt(item.count, 10) || 0
+    }));
 
     // Registrations by application type (via User table)
     const byApplicationType = await User.findAll({
@@ -732,7 +737,7 @@ exports.getEnhancedAnalytics = async (req, res) => {
     });
 
     // Registrations by status
-    const byStatus = await Registration.findAll({
+    const byStatusRaw = await Registration.findAll({
       attributes: [
         'status',
         [Registration.sequelize.fn('COUNT', Registration.sequelize.col('registrationId')), 'count']
@@ -740,6 +745,10 @@ exports.getEnhancedAnalytics = async (req, res) => {
       group: ['status'],
       raw: true
     });
+    const byStatus = byStatusRaw.map(item => ({
+      ...item,
+      count: parseInt(item.count, 10) || 0
+    }));
 
     // Time series data - registrations over time
     const timeSeriesData = await Registration.findAll({

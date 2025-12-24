@@ -22,16 +22,18 @@ const LanguageSelector = () => {
   };
 
   return (
-    <Box sx={{ position: 'fixed', top: 20, right: 20, zIndex: 1000 }}>
+    <Box sx={{ position: 'fixed', bottom: 24, right: 24, zIndex: 1000 }}>
       <IconButton
         onClick={handleClick}
         sx={{
           backgroundColor: 'white',
-          boxShadow: 2,
-          '&:hover': { backgroundColor: '#f5f5f5' }
+          boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+          padding: '12px',
+          '&:hover': { backgroundColor: '#f5f5f5', transform: 'translateY(-2px)' },
+          transition: 'all 0.2s ease'
         }}
       >
-        <LanguageIcon />
+        <LanguageIcon sx={{ fontSize: 24 }} />
       </IconButton>
       <Menu
         anchorEl={anchorEl}
