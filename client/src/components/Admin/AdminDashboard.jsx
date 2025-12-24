@@ -510,6 +510,14 @@ const AdminDashboard = () => {
   };
 
   const serviceLabels = {
+    // Main required services from registration form
+    'In-person consultation': isRTL ? 'استشارة حضورية' : 'In-person Consultation',
+    'Online consultation': isRTL ? 'استشارة عن بعد' : 'Online Consultation',
+    'Machine/Device reservation': isRTL ? 'حجز جهاز / آلة' : 'Machine/Device Reservation',
+    'Personal workspace': isRTL ? 'مساحة عمل شخصية' : 'Personal Workspace',
+    'Support in project implementation': isRTL ? 'دعم في تنفيذ المشروع' : 'Project Implementation Support',
+    'Other': isRTL ? 'أخرى' : 'Other',
+    // Additional services
     'PCB Design': isRTL ? 'تصميم الدوائر المطبوعة' : 'PCB Design',
     'PCB Fabrication': isRTL ? 'تصنيع الدوائر المطبوعة' : 'PCB Fabrication',
     'Arduino Programming': isRTL ? 'برمجة الأردوينو' : 'Arduino Programming',
@@ -536,8 +544,7 @@ const AdminDashboard = () => {
     'Consultation': isRTL ? 'استشارة' : 'Consultation',
     'Training': isRTL ? 'تدريب' : 'Training',
     'Project Development': isRTL ? 'تطوير المشاريع' : 'Project Development',
-    'Prototyping': isRTL ? 'النماذج الأولية' : 'Prototyping',
-    'Other': isRTL ? 'أخرى' : 'Other'
+    'Prototyping': isRTL ? 'النماذج الأولية' : 'Prototyping'
   };
 
   // Helper function to translate services array
@@ -565,8 +572,20 @@ const AdminDashboard = () => {
       <aside className={`admin-sidebar ${sidebarOpen ? 'open' : 'collapsed'}`}>
         <div className="sidebar-header">
           <div className="sidebar-logo">
-            <svg viewBox="0 0 24 24" fill="currentColor">
-              <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
+            <svg viewBox="0 0 100 100" width="36" height="36">
+              {/* FABLAB Logo */}
+              <g fill="#2EAA5E">
+                <path d="M25 50 Q20 65, 30 78 Q40 88, 50 85 L50 70 Q42 72, 38 65 Q32 55, 38 45 Q42 38, 50 35 L50 20 Q35 22, 25 35 Q18 45, 25 50Z"/>
+                <circle cx="32" cy="68" r="12"/>
+              </g>
+              <g fill="#3B5BA9">
+                <path d="M75 50 Q80 65, 70 78 Q60 88, 50 85 L50 70 Q58 72, 62 65 Q68 55, 62 45 Q58 38, 50 35 L50 20 Q65 22, 75 35 Q82 45, 75 50Z"/>
+                <circle cx="68" cy="68" r="12"/>
+              </g>
+              <g fill="#E63329">
+                <path d="M50 20 Q58 22, 65 28 Q78 38, 78 50 L65 50 Q65 42, 58 38 Q52 35, 50 35 Q48 35, 42 38 Q35 42, 35 50 L22 50 Q22 38, 35 28 Q42 22, 50 20Z"/>
+                <circle cx="50" cy="28" r="12"/>
+              </g>
             </svg>
           </div>
           {sidebarOpen && <span className="sidebar-title">FABLAB</span>}
