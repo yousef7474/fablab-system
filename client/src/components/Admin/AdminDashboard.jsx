@@ -793,6 +793,8 @@ const AdminDashboard = () => {
       return isRTL ? 'غير محدد' : 'N/A';
     };
 
+    const na = isRTL ? 'غير محدد' : 'N/A';
+
     const idCardContent = `
       <!DOCTYPE html>
       <html dir="${isRTL ? 'rtl' : 'ltr'}" lang="${isRTL ? 'ar' : 'en'}">
@@ -801,7 +803,7 @@ const AdminDashboard = () => {
         <title>${isRTL ? 'بطاقة تعريف المستخدم' : 'User ID Card'}</title>
         <style>
           @page {
-            size: 85.6mm 53.98mm;
+            size: 53.98mm 100mm;
             margin: 0;
           }
           * {
@@ -818,142 +820,185 @@ const AdminDashboard = () => {
             min-height: 100vh;
             padding: 20px;
           }
+          .id-card-wrapper {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+          }
+          .card-holder-area {
+            width: 53.98mm;
+            height: 15mm;
+            background: #f8f9fa;
+            border: 2px dashed #ccc;
+            border-bottom: none;
+            border-radius: 10px 10px 0 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 2mm;
+          }
+          .punch-hole {
+            width: 8mm;
+            height: 8mm;
+            border: 2px dashed #999;
+            border-radius: 50%;
+            background: white;
+          }
+          .cut-line-text {
+            font-size: 6px;
+            color: #999;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+          }
           .id-card {
-            width: 85.6mm;
-            height: 53.98mm;
-            background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
-            border-radius: 10px;
+            width: 53.98mm;
+            height: 85.6mm;
+            background: linear-gradient(180deg, #ffffff 0%, #f8f9fa 100%);
+            border-radius: 0 0 10px 10px;
             overflow: hidden;
             box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
             position: relative;
             display: flex;
             flex-direction: column;
+            border-top: 3px solid #e02529;
           }
           .card-header {
             background: linear-gradient(135deg, #e02529 0%, #c41e24 100%);
-            padding: 8px 12px;
+            padding: 8px;
             display: flex;
-            justify-content: space-between;
+            flex-direction: column;
             align-items: center;
-            gap: 8px;
+            gap: 6px;
           }
           .card-header .logos {
             display: flex;
             gap: 8px;
             align-items: center;
+            justify-content: center;
           }
           .card-header .logo {
-            height: 28px;
+            height: 22px;
             width: auto;
             background: white;
-            padding: 3px 6px;
+            padding: 2px 5px;
             border-radius: 4px;
           }
           .card-header .title {
             color: white;
-            font-size: 10px;
+            font-size: 8px;
             font-weight: 600;
-            text-align: ${isRTL ? 'left' : 'right'};
-            flex: 1;
+            text-align: center;
           }
           .card-body {
             flex: 1;
-            padding: 10px 12px;
+            padding: 8px;
             display: flex;
-            gap: 10px;
+            flex-direction: column;
+            align-items: center;
+            gap: 6px;
           }
           .user-avatar {
-            width: 50px;
-            height: 50px;
+            width: 45px;
+            height: 45px;
             background: linear-gradient(135deg, #e02529, #c41e24);
-            border-radius: 8px;
+            border-radius: 50%;
             display: flex;
             align-items: center;
             justify-content: center;
             color: white;
-            font-size: 22px;
+            font-size: 20px;
             font-weight: bold;
-            flex-shrink: 0;
-            border: 2px solid #fff;
+            border: 3px solid #fff;
             box-shadow: 0 2px 8px rgba(224, 37, 41, 0.3);
           }
-          .user-info {
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            gap: 3px;
-          }
           .user-name {
-            font-size: 12px;
+            font-size: 11px;
             font-weight: 700;
             color: #1a1a2e;
+            text-align: center;
             line-height: 1.2;
-          }
-          .info-row {
-            display: flex;
-            gap: 4px;
-            font-size: 8px;
-            color: #555;
-          }
-          .info-label {
-            font-weight: 600;
-            color: #333;
-          }
-          .info-value {
-            color: #666;
           }
           .user-type-badge {
             display: inline-block;
             background: linear-gradient(135deg, #e02529, #c41e24);
             color: white;
             font-size: 7px;
-            padding: 2px 8px;
+            padding: 2px 10px;
             border-radius: 10px;
             font-weight: 600;
-            margin-top: 2px;
-            width: fit-content;
           }
-          .card-footer {
-            background: #f8f9fa;
-            padding: 6px 12px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            border-top: 1px solid #eee;
-          }
-          .user-id-section {
+          .info-section {
+            width: 100%;
             display: flex;
             flex-direction: column;
+            gap: 3px;
+            margin-top: 4px;
+          }
+          .info-row {
+            display: flex;
+            justify-content: space-between;
+            font-size: 7px;
+            padding: 2px 0;
+            border-bottom: 1px dotted #eee;
+          }
+          .info-row:last-child {
+            border-bottom: none;
+          }
+          .info-label {
+            font-weight: 600;
+            color: #555;
+          }
+          .info-value {
+            color: #333;
+            text-align: ${isRTL ? 'left' : 'right'};
+            max-width: 60%;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+          }
+          .card-footer {
+            background: linear-gradient(135deg, #1a1a2e 0%, #2d2d44 100%);
+            padding: 6px 8px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 3px;
+          }
+          .member-id-section {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
             gap: 1px;
           }
-          .user-id-label {
-            font-size: 6px;
-            color: #888;
+          .member-id-label {
+            font-size: 5px;
+            color: rgba(255,255,255,0.7);
             text-transform: uppercase;
-            letter-spacing: 0.5px;
+            letter-spacing: 1px;
           }
-          .user-id-value {
-            font-size: 11px;
+          .member-id-value {
+            font-size: 10px;
             font-weight: 700;
-            color: #e02529;
+            color: #fff;
             font-family: 'Consolas', 'Courier New', monospace;
+            background: rgba(224, 37, 41, 0.3);
+            padding: 2px 8px;
+            border-radius: 4px;
           }
-          .fablab-text {
-            font-size: 7px;
-            color: #888;
-            text-align: ${isRTL ? 'left' : 'right'};
+          .foundation-text {
+            font-size: 5px;
+            color: rgba(255,255,255,0.6);
+            text-align: center;
+            margin-top: 2px;
           }
-          .fablab-text strong {
-            color: #e02529;
-          }
-          .decorative-line {
+          .decorative-stripe {
             position: absolute;
-            bottom: 35px;
-            ${isRTL ? 'left' : 'right'}: 0;
-            width: 40%;
-            height: 2px;
-            background: linear-gradient(${isRTL ? 'to left' : 'to right'}, transparent, #e02529);
+            top: 50%;
+            ${isRTL ? 'right' : 'left'}: 0;
+            width: 3px;
+            height: 30%;
+            background: linear-gradient(to bottom, transparent, #e02529, transparent);
           }
           @media print {
             body {
@@ -961,50 +1006,76 @@ const AdminDashboard = () => {
               padding: 0;
               min-height: auto;
             }
-            .id-card {
+            .id-card-wrapper {
               box-shadow: none;
               margin: 0;
+            }
+            .card-holder-area {
+              border: 2px dashed #ccc;
+              border-bottom: none;
+            }
+            .punch-hole {
+              border: 2px dashed #999;
             }
           }
         </style>
       </head>
       <body>
-        <div class="id-card">
-          <div class="card-header">
-            <div class="logos">
-              <img src="/fablab.png" alt="FABLAB" class="logo">
-              <img src="/found.png" alt="Foundation" class="logo">
-            </div>
-            <div class="title">
-              ${isRTL ? 'بطاقة عضوية فاب لاب الأحساء' : 'FABLAB Al-Ahsa Member Card'}
-            </div>
+        <div class="id-card-wrapper">
+          <div class="card-holder-area">
+            <div class="punch-hole"></div>
+            <span class="cut-line-text">${isRTL ? '✂ خط القطع' : '✂ CUT LINE'}</span>
           </div>
-          <div class="card-body">
-            <div class="user-avatar">
-              ${userName.charAt(0).toUpperCase()}
+          <div class="id-card">
+            <div class="card-header">
+              <div class="logos">
+                <img src="/fablab.png" alt="FABLAB" class="logo">
+                <img src="/found.png" alt="Foundation" class="logo">
+              </div>
+              <div class="title">
+                ${isRTL ? 'بطاقة عضوية فاب لاب الأحساء' : 'FABLAB Al-Ahsa Member Card'}
+              </div>
             </div>
-            <div class="user-info">
+            <div class="card-body">
+              <div class="user-avatar">
+                ${userName.charAt(0).toUpperCase()}
+              </div>
               <div class="user-name">${userName}</div>
-              <div class="info-row">
-                <span class="info-label">${isRTL ? 'الجنس:' : 'Sex:'}</span>
-                <span class="info-value">${getSexLabelForCard()}</span>
-              </div>
-              <div class="info-row">
-                <span class="info-label">${isRTL ? 'الجنسية:' : 'Nationality:'}</span>
-                <span class="info-value">${user.nationality || (isRTL ? 'غير محدد' : 'N/A')}</span>
-              </div>
               <div class="user-type-badge">${getAppTypeLabel()}</div>
+
+              <div class="info-section">
+                <div class="info-row">
+                  <span class="info-label">${isRTL ? 'الجنس' : 'Sex'}</span>
+                  <span class="info-value">${getSexLabelForCard()}</span>
+                </div>
+                <div class="info-row">
+                  <span class="info-label">${isRTL ? 'الجنسية' : 'Nationality'}</span>
+                  <span class="info-value">${user.nationality || na}</span>
+                </div>
+                <div class="info-row">
+                  <span class="info-label">${isRTL ? 'رقم الهوية' : 'National ID'}</span>
+                  <span class="info-value">${user.nationalId || na}</span>
+                </div>
+                <div class="info-row">
+                  <span class="info-label">${isRTL ? 'الهاتف' : 'Phone'}</span>
+                  <span class="info-value">${user.phoneNumber || na}</span>
+                </div>
+                <div class="info-row">
+                  <span class="info-label">${isRTL ? 'العنوان' : 'Address'}</span>
+                  <span class="info-value">${user.nationalAddress || na}</span>
+                </div>
+              </div>
             </div>
-          </div>
-          <div class="decorative-line"></div>
-          <div class="card-footer">
-            <div class="user-id-section">
-              <span class="user-id-label">${isRTL ? 'رقم العضوية' : 'Member ID'}</span>
-              <span class="user-id-value">${user.uniqueId || user.userId || 'N/A'}</span>
-            </div>
-            <div class="fablab-text">
-              <strong>FABLAB</strong> ${isRTL ? 'الأحساء' : 'Al-Ahsa'}<br>
-              ${isRTL ? 'مؤسسة الملك عبدالعزيز ورجاله للموهبة والإبداع' : 'King Abdulaziz Foundation'}
+            <div class="decorative-stripe"></div>
+            <div class="card-footer">
+              <div class="member-id-section">
+                <span class="member-id-label">${isRTL ? 'رقم العضوية' : 'Member ID'}</span>
+                <span class="member-id-value">${user.uniqueId || user.userId || 'N/A'}</span>
+              </div>
+              <div class="foundation-text">
+                <strong>FABLAB</strong> ${isRTL ? 'الأحساء' : 'Al-Ahsa'}<br>
+                ${isRTL ? 'مؤسسة عبدالمنعم الراشد الإنسانية' : 'Abdulmonem Al-Rashed Foundation'}
+              </div>
             </div>
           </div>
         </div>
