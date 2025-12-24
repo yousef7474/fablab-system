@@ -173,22 +173,33 @@ exports.createRegistration = async (req, res) => {
       status: 'pending'
     });
 
-    // Send emails
+    // Send emails (non-blocking - don't fail registration if email fails)
     const userName = user.firstName && user.lastName
       ? `${user.firstName} ${user.lastName}`
       : user.name;
 
-    await sendRegistrationConfirmation(user.email, userName, registrationId);
+    // Send confirmation to user
+    try {
+      await sendRegistrationConfirmation(user.email, userName, registrationId);
+    } catch (emailError) {
+      console.error('Failed to send user confirmation email:', emailError);
+    }
 
-    await sendEngineerNotification(fablabSection, {
-      userName,
-      userEmail: user.email,
-      registrationId,
-      appointmentDate: appointmentDate || visitDate || startDate,
-      appointmentTime: appointmentTime || visitStartTime || startTime,
-      requiredServices,
-      serviceDetails
-    });
+    // Send notification to section engineer
+    try {
+      console.log(`📧 Attempting to send engineer notification for section: ${fablabSection}`);
+      await sendEngineerNotification(fablabSection, {
+        userName,
+        userEmail: user.email,
+        registrationId,
+        appointmentDate: appointmentDate || visitDate || startDate,
+        appointmentTime: appointmentTime || visitStartTime || startTime,
+        requiredServices,
+        serviceDetails
+      });
+    } catch (emailError) {
+      console.error('Failed to send engineer notification email:', emailError);
+    }
 
     res.status(201).json({
       message: 'Registration created successfully',

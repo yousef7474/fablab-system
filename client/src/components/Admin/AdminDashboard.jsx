@@ -72,6 +72,7 @@ const AdminDashboard = () => {
   const [userEditForm, setUserEditForm] = useState({});
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [analyticsPeriod, setAnalyticsPeriod] = useState('month');
+  const [scheduleFilter, setScheduleFilter] = useState('all'); // 'all' or employee section
 
   useEffect(() => {
     const token = localStorage.getItem('adminToken');
@@ -413,11 +414,6 @@ const AdminDashboard = () => {
     }
   };
 
-  const toggleLanguage = () => {
-    const newLang = i18n.language === 'ar' ? 'en' : 'ar';
-    i18n.changeLanguage(newLang);
-  };
-
   const formatDate = (dateString) => {
     if (!dateString) return 'N/A';
     return new Date(dateString).toLocaleDateString(isRTL ? 'ar-SA' : 'en-US', {
@@ -458,8 +454,20 @@ const AdminDashboard = () => {
   const getEventsForDay = (day) => {
     return schedule.filter(event => {
       if (!event.date) return false;
-      return isSameDay(parseISO(event.date), day);
+      const sameDay = isSameDay(parseISO(event.date), day);
+      if (!sameDay) return false;
+      // Filter by section if a specific employee is selected
+      if (scheduleFilter !== 'all') {
+        return event.section === scheduleFilter;
+      }
+      return true;
     });
+  };
+
+  // Get filtered schedule for upcoming appointments
+  const getFilteredSchedule = () => {
+    if (scheduleFilter === 'all') return schedule;
+    return schedule.filter(event => event.section === scheduleFilter);
   };
 
   const sectionLabels = {
@@ -1186,7 +1194,55 @@ const AdminDashboard = () => {
                 className="schedule-content"
               >
                 <div className="schedule-layout">
+                  {/* Schedule Filter Tabs */}
+                  <div className="schedule-filter-tabs">
+                    <button
+                      className={`schedule-filter-tab ${scheduleFilter === 'all' ? 'active' : ''}`}
+                      onClick={() => setScheduleFilter('all')}
+                    >
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+                        <line x1="16" y1="2" x2="16" y2="6"/>
+                        <line x1="8" y1="2" x2="8" y2="6"/>
+                        <line x1="3" y1="10" x2="21" y2="10"/>
+                      </svg>
+                      {isRTL ? 'كل المواعيد' : 'All Schedules'}
+                    </button>
+                    {employees.map(emp => (
+                      <button
+                        key={emp.employeeId}
+                        className={`schedule-filter-tab ${scheduleFilter === emp.section ? 'active' : ''}`}
+                        onClick={() => setScheduleFilter(emp.section)}
+                        style={{
+                          '--tab-color': SECTION_COLORS[emp.section] || '#6366f1'
+                        }}
+                      >
+                        <span className="tab-avatar" style={{ backgroundColor: SECTION_COLORS[emp.section] || '#6366f1' }}>
+                          {emp.name?.charAt(0)}
+                        </span>
+                        {emp.name}
+                      </button>
+                    ))}
+                  </div>
+
                   <div className="calendar-section">
+                    {scheduleFilter !== 'all' && (
+                      <div className="current-schedule-header">
+                        <h2>
+                          {employees.find(e => e.section === scheduleFilter)?.name || scheduleFilter}
+                          <span className="section-badge" style={{ backgroundColor: SECTION_COLORS[scheduleFilter] }}>
+                            {sectionLabels[scheduleFilter] || scheduleFilter}
+                          </span>
+                        </h2>
+                        <p className="schedule-email">
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                            <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
+                            <polyline points="22,6 12,13 2,6"/>
+                          </svg>
+                          {employees.find(e => e.section === scheduleFilter)?.email || 'No email'}
+                        </p>
+                      </div>
+                    )}
                     <div className="calendar-header">
                       <button
                         className="calendar-nav"
@@ -1276,6 +1332,7 @@ const AdminDashboard = () => {
                             </div>
                             <div className="employee-info">
                               <span className="employee-name">{emp.name}</span>
+                              <span className="employee-email">{emp.email}</span>
                               <span className="employee-section">{sectionLabels[emp.section] || emp.section}</span>
                             </div>
                             <div className="employee-actions">
@@ -1311,9 +1368,14 @@ const AdminDashboard = () => {
                     </div>
 
                     <div className="appointments-section">
-                      <h3>{isRTL ? 'المواعيد القادمة' : 'Upcoming Appointments'}</h3>
+                      <h3>
+                        {scheduleFilter === 'all'
+                          ? (isRTL ? 'المواعيد القادمة' : 'Upcoming Appointments')
+                          : (isRTL ? `مواعيد ${employees.find(e => e.section === scheduleFilter)?.name || ''}` : `${employees.find(e => e.section === scheduleFilter)?.name || ''}'s Appointments`)
+                        }
+                      </h3>
                       <div className="appointments-list">
-                        {schedule.slice(0, 5).map((apt) => (
+                        {getFilteredSchedule().slice(0, 5).map((apt) => (
                           <div key={apt.id} className="appointment-item">
                             <div
                               className="appointment-color"
@@ -1328,7 +1390,7 @@ const AdminDashboard = () => {
                             </div>
                           </div>
                         ))}
-                        {schedule.length === 0 && (
+                        {getFilteredSchedule().length === 0 && (
                           <p className="empty-message">{isRTL ? 'لا توجد مواعيد' : 'No appointments'}</p>
                         )}
                       </div>
@@ -1470,6 +1532,19 @@ const AdminDashboard = () => {
                 <div className="detail-item">
                   <label>{isRTL ? 'الوقت' : 'Time'}</label>
                   <span>{selectedRegistration.appointmentTime || selectedRegistration.visitStartTime || selectedRegistration.startTime || 'N/A'}</span>
+                </div>
+                <div className="detail-item">
+                  <label>{isRTL ? 'المدة' : 'Duration'}</label>
+                  <span>
+                    {selectedRegistration.appointmentDuration
+                      ? `${selectedRegistration.appointmentDuration} ${isRTL ? 'دقيقة' : 'minutes'}`
+                      : (selectedRegistration.visitEndTime && selectedRegistration.visitStartTime)
+                        ? `${selectedRegistration.visitStartTime} - ${selectedRegistration.visitEndTime}`
+                        : (selectedRegistration.endTime && selectedRegistration.startTime)
+                          ? `${selectedRegistration.startTime} - ${selectedRegistration.endTime}`
+                          : 'N/A'
+                    }
+                  </span>
                 </div>
                 <div className="detail-item full-width">
                   <label>{isRTL ? 'الخدمات المطلوبة' : 'Required Services'}</label>
@@ -1826,15 +1901,6 @@ const AdminDashboard = () => {
         </div>
       )}
 
-      {/* Fixed Language Toggle Button */}
-      <button className="lang-toggle-btn" onClick={toggleLanguage}>
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-          <circle cx="12" cy="12" r="10"/>
-          <line x1="2" y1="12" x2="22" y2="12"/>
-          <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
-        </svg>
-        <span>{i18n.language === 'ar' ? 'EN' : 'ع'}</span>
-      </button>
     </div>
   );
 };

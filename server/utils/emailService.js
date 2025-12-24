@@ -1,20 +1,45 @@
 const sgMail = require('@sendgrid/mail');
+const { Employee } = require('../models');
 require('dotenv').config();
 
 sgMail.setApiKey(process.env.SENDGRID_API_KEY);
 
-// Get employee email by section
-const getEmployeeEmailBySection = (section) => {
-  const sectionMapping = {
-    'Electronics and Programming': process.env.EMPLOYEE_ELECTRONICS_EMAIL,
-    'CNC Laser': process.env.EMPLOYEE_CNC_LASER_EMAIL,
-    'CNC Wood': process.env.EMPLOYEE_CNC_WOOD_EMAIL,
-    '3D': process.env.EMPLOYEE_3D_EMAIL,
-    'Robotic and AI': process.env.EMPLOYEE_ROBOTIC_AI_EMAIL,
-    "Kid's Club": process.env.EMPLOYEE_KIDS_CLUB_EMAIL,
-    'Vinyl Cutting': process.env.EMPLOYEE_VINYL_CUTTING_EMAIL
-  };
-  return sectionMapping[section];
+// Get employee email by section from database ONLY (no fallback to env variables)
+const getEmployeeEmailBySection = async (section) => {
+  try {
+    console.log(`🔍 Looking for employee in section: "${section}"`);
+
+    // Get all employees for debugging
+    const allEmployees = await Employee.findAll({
+      attributes: ['name', 'email', 'section', 'isActive']
+    });
+    console.log(`📋 All employees in database:`, JSON.stringify(allEmployees.map(e => ({
+      name: e.name,
+      email: e.email,
+      section: e.section,
+      isActive: e.isActive
+    })), null, 2));
+
+    // Find employee for this section
+    const employee = await Employee.findOne({
+      where: {
+        section: section,
+        isActive: true
+      }
+    });
+
+    if (employee && employee.email) {
+      console.log(`✅ Found employee: ${employee.name} (${employee.email}) for section: ${section}`);
+      return { email: employee.email, name: employee.name };
+    }
+
+    console.log(`⚠️ No active employee found in database for section: "${section}"`);
+    console.log(`   Make sure an employee is added in Admin Dashboard -> Schedule tab`);
+    return null;
+  } catch (error) {
+    console.error('❌ Error fetching employee email:', error);
+    return null;
+  }
 };
 
 // Send registration confirmation to user
@@ -56,58 +81,67 @@ const sendRegistrationConfirmation = async (userEmail, userName, registrationId)
 
 // Send notification to section engineer
 const sendEngineerNotification = async (section, registrationData) => {
-  const engineerEmail = getEmployeeEmailBySection(section);
+  const engineerData = await getEmployeeEmailBySection(section);
 
-  if (!engineerEmail) {
+  if (!engineerData || !engineerData.email) {
     console.warn(`⚠️ No email configured for section: ${section}`);
     return;
   }
 
   const { userName, userEmail, registrationId, appointmentDate, appointmentTime, requiredServices, serviceDetails } = registrationData;
+  const servicesText = Array.isArray(requiredServices) ? requiredServices.join(', ') : (requiredServices || 'N/A');
 
   const msg = {
-    to: engineerEmail,
+    to: engineerData.email,
     from: {
       email: process.env.SENDGRID_FROM_EMAIL,
       name: process.env.SENDGRID_FROM_NAME
     },
     subject: `طلب تسجيل جديد في قسم ${section} - New Registration Request`,
     html: `
-      <div dir="rtl" style="font-family: Arial, sans-serif; padding: 20px;">
-        <h2>طلب تسجيل جديد</h2>
-        <p><strong>القسم:</strong> ${section}</p>
-        <p><strong>رقم التسجيل:</strong> ${registrationId}</p>
-        <p><strong>اسم المستخدم:</strong> ${userName}</p>
-        <p><strong>البريد الإلكتروني:</strong> ${userEmail}</p>
-        <p><strong>التاريخ:</strong> ${appointmentDate || 'N/A'}</p>
-        <p><strong>الوقت:</strong> ${appointmentTime || 'N/A'}</p>
-        <p><strong>الخدمات المطلوبة:</strong> ${requiredServices.join(', ')}</p>
-        <p><strong>تفاصيل الخدمة:</strong> ${serviceDetails}</p>
-        <br>
-        <p>يرجى الدخول إلى لوحة التحكم لمراجعة الطلب والموافقة عليه أو رفضه.</p>
-        <br>
-        <div dir="ltr">
-          <h2>New Registration Request</h2>
-          <p><strong>Section:</strong> ${section}</p>
-          <p><strong>Registration ID:</strong> ${registrationId}</p>
-          <p><strong>User Name:</strong> ${userName}</p>
-          <p><strong>Email:</strong> ${userEmail}</p>
-          <p><strong>Date:</strong> ${appointmentDate || 'N/A'}</p>
-          <p><strong>Time:</strong> ${appointmentTime || 'N/A'}</p>
-          <p><strong>Required Services:</strong> ${requiredServices.join(', ')}</p>
-          <p><strong>Service Details:</strong> ${serviceDetails}</p>
+      <div dir="rtl" style="font-family: Arial, sans-serif; padding: 20px; background: #f9fafb; border-radius: 10px;">
+        <div style="background: white; padding: 20px; border-radius: 8px; border-left: 4px solid #EE2329;">
+          <h2 style="color: #EE2329; margin-top: 0;">مرحباً ${engineerData.name}،</h2>
+          <h3>طلب تسجيل جديد</h3>
+          <table style="width: 100%; border-collapse: collapse;">
+            <tr><td style="padding: 8px 0; border-bottom: 1px solid #eee;"><strong>القسم:</strong></td><td style="padding: 8px 0; border-bottom: 1px solid #eee;">${section}</td></tr>
+            <tr><td style="padding: 8px 0; border-bottom: 1px solid #eee;"><strong>رقم التسجيل:</strong></td><td style="padding: 8px 0; border-bottom: 1px solid #eee;">${registrationId}</td></tr>
+            <tr><td style="padding: 8px 0; border-bottom: 1px solid #eee;"><strong>اسم المستخدم:</strong></td><td style="padding: 8px 0; border-bottom: 1px solid #eee;">${userName}</td></tr>
+            <tr><td style="padding: 8px 0; border-bottom: 1px solid #eee;"><strong>البريد الإلكتروني:</strong></td><td style="padding: 8px 0; border-bottom: 1px solid #eee;">${userEmail}</td></tr>
+            <tr><td style="padding: 8px 0; border-bottom: 1px solid #eee;"><strong>التاريخ:</strong></td><td style="padding: 8px 0; border-bottom: 1px solid #eee;">${appointmentDate || 'N/A'}</td></tr>
+            <tr><td style="padding: 8px 0; border-bottom: 1px solid #eee;"><strong>الوقت:</strong></td><td style="padding: 8px 0; border-bottom: 1px solid #eee;">${appointmentTime || 'N/A'}</td></tr>
+            <tr><td style="padding: 8px 0; border-bottom: 1px solid #eee;"><strong>الخدمات المطلوبة:</strong></td><td style="padding: 8px 0; border-bottom: 1px solid #eee;">${servicesText}</td></tr>
+            <tr><td style="padding: 8px 0;"><strong>تفاصيل الخدمة:</strong></td><td style="padding: 8px 0;">${serviceDetails || 'N/A'}</td></tr>
+          </table>
           <br>
-          <p>Please log in to the admin dashboard to review and approve or reject this request.</p>
+          <p style="background: #fff3cd; padding: 10px; border-radius: 5px;">⚠️ يرجى الدخول إلى لوحة التحكم لمراجعة الطلب والموافقة عليه أو رفضه.</p>
         </div>
         <br>
-        <p style="color: #666;">فاب لاب الأحساء | FABLAB Al-Ahsa</p>
+        <div dir="ltr" style="background: white; padding: 20px; border-radius: 8px; border-left: 4px solid #EE2329;">
+          <h2 style="color: #EE2329; margin-top: 0;">Hello ${engineerData.name},</h2>
+          <h3>New Registration Request</h3>
+          <table style="width: 100%; border-collapse: collapse;">
+            <tr><td style="padding: 8px 0; border-bottom: 1px solid #eee;"><strong>Section:</strong></td><td style="padding: 8px 0; border-bottom: 1px solid #eee;">${section}</td></tr>
+            <tr><td style="padding: 8px 0; border-bottom: 1px solid #eee;"><strong>Registration ID:</strong></td><td style="padding: 8px 0; border-bottom: 1px solid #eee;">${registrationId}</td></tr>
+            <tr><td style="padding: 8px 0; border-bottom: 1px solid #eee;"><strong>User Name:</strong></td><td style="padding: 8px 0; border-bottom: 1px solid #eee;">${userName}</td></tr>
+            <tr><td style="padding: 8px 0; border-bottom: 1px solid #eee;"><strong>Email:</strong></td><td style="padding: 8px 0; border-bottom: 1px solid #eee;">${userEmail}</td></tr>
+            <tr><td style="padding: 8px 0; border-bottom: 1px solid #eee;"><strong>Date:</strong></td><td style="padding: 8px 0; border-bottom: 1px solid #eee;">${appointmentDate || 'N/A'}</td></tr>
+            <tr><td style="padding: 8px 0; border-bottom: 1px solid #eee;"><strong>Time:</strong></td><td style="padding: 8px 0; border-bottom: 1px solid #eee;">${appointmentTime || 'N/A'}</td></tr>
+            <tr><td style="padding: 8px 0; border-bottom: 1px solid #eee;"><strong>Required Services:</strong></td><td style="padding: 8px 0; border-bottom: 1px solid #eee;">${servicesText}</td></tr>
+            <tr><td style="padding: 8px 0;"><strong>Service Details:</strong></td><td style="padding: 8px 0;">${serviceDetails || 'N/A'}</td></tr>
+          </table>
+          <br>
+          <p style="background: #fff3cd; padding: 10px; border-radius: 5px;">⚠️ Please log in to the admin dashboard to review and approve or reject this request.</p>
+        </div>
+        <br>
+        <p style="color: #666; text-align: center;">فاب لاب الأحساء | FABLAB Al-Ahsa</p>
       </div>
     `
   };
 
   try {
     await sgMail.send(msg);
-    console.log(`✅ Engineer notification email sent to ${engineerEmail} for section ${section}`);
+    console.log(`✅ Engineer notification email sent to ${engineerData.email} (${engineerData.name}) for section ${section}`);
   } catch (error) {
     console.error('❌ Error sending engineer notification email:', error);
     throw error;
