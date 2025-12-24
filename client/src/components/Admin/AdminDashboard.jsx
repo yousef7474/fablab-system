@@ -73,6 +73,13 @@ const AdminDashboard = () => {
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [analyticsPeriod, setAnalyticsPeriod] = useState('month');
   const [scheduleFilter, setScheduleFilter] = useState('all'); // 'all' or employee section
+  const [theme, setTheme] = useState(() => localStorage.getItem('adminTheme') || 'light');
+
+  // Apply theme to document
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', theme);
+    localStorage.setItem('adminTheme', theme);
+  }, [theme]);
 
   useEffect(() => {
     const token = localStorage.getItem('adminToken');
@@ -486,6 +493,22 @@ const AdminDashboard = () => {
     rejected: isRTL ? 'مرفوض' : 'Rejected'
   };
 
+  const applicationTypeLabels = {
+    'Beneficiary': isRTL ? 'مستفيد' : 'Beneficiary',
+    'Visitor': isRTL ? 'زائر' : 'Visitor',
+    'Volunteer': isRTL ? 'متطوع' : 'Volunteer',
+    'Talented': isRTL ? 'موهوب' : 'Talented',
+    'Entity': isRTL ? 'جهة' : 'Entity',
+    'FABLAB Visit': isRTL ? 'زيارة فاب لاب' : 'FABLAB Visit'
+  };
+
+  const sexLabels = {
+    'male': isRTL ? 'ذكر' : 'Male',
+    'female': isRTL ? 'أنثى' : 'Female',
+    'Male': isRTL ? 'ذكر' : 'Male',
+    'Female': isRTL ? 'أنثى' : 'Female'
+  };
+
   if (!adminData) {
     return null;
   }
@@ -683,7 +706,7 @@ const AdminDashboard = () => {
                               ? `${reg.user.firstName} ${reg.user.lastName}`
                               : reg.user?.name || 'Unknown'}
                           </span>
-                          <span className="recent-type">{reg.user?.applicationType}</span>
+                          <span className="recent-type">{applicationTypeLabels[reg.user?.applicationType] || reg.user?.applicationType}</span>
                         </div>
                         <div className="recent-meta">
                           <span className={`status-badge ${reg.status}`}>{statusLabels[reg.status]}</span>
@@ -833,7 +856,7 @@ const AdminDashboard = () => {
                                   : reg.user?.name || 'N/A'}
                               </span>
                             </td>
-                            <td>{reg.user?.applicationType}</td>
+                            <td>{applicationTypeLabels[reg.user?.applicationType] || reg.user?.applicationType}</td>
                             <td>{sectionLabels[reg.fablabSection] || reg.fablabSection}</td>
                             <td>{formatDate(reg.appointmentDate || reg.visitDate || reg.startDate)}</td>
                             <td>
@@ -970,7 +993,7 @@ const AdminDashboard = () => {
                             </td>
                             <td>{user.email}</td>
                             <td>{user.phoneNumber}</td>
-                            <td>{user.applicationType}</td>
+                            <td>{applicationTypeLabels[user.applicationType] || user.applicationType}</td>
                             <td>{formatDate(user.createdAt)}</td>
                             <td>
                               <button
@@ -1324,36 +1347,40 @@ const AdminDashboard = () => {
                           </svg>
                         </button>
                       </div>
-                      <div className="employees-list">
+                      <div className="employees-grid">
                         {employees.map((emp) => (
-                          <div key={emp.employeeId} className="employee-item">
-                            <div className="employee-avatar" style={{ backgroundColor: SECTION_COLORS[emp.section] || '#6366f1' }}>
-                              {emp.name?.charAt(0)}
+                          <div
+                            key={emp.employeeId}
+                            className={`employee-card ${scheduleFilter === emp.section ? 'active' : ''}`}
+                            onClick={() => setScheduleFilter(emp.section)}
+                          >
+                            <div className="employee-card-avatar" style={{ backgroundColor: SECTION_COLORS[emp.section] || '#6366f1' }}>
+                              {emp.name?.charAt(0)?.toUpperCase()}
                             </div>
-                            <div className="employee-info">
-                              <span className="employee-name">{emp.name}</span>
-                              <span className="employee-email">{emp.email}</span>
-                              <span className="employee-section">{sectionLabels[emp.section] || emp.section}</span>
-                            </div>
-                            <div className="employee-actions">
+                            <span className="employee-card-name">{emp.name}</span>
+                            <div className="employee-card-actions">
                               <button
                                 className="edit-btn"
-                                onClick={() => {
+                                onClick={(e) => {
+                                  e.stopPropagation();
                                   setSelectedEmployee(emp);
                                   setEmployeeForm({ name: emp.name, email: emp.email, section: emp.section });
                                   setShowEmployeeModal(true);
                                 }}
                               >
-                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                                   <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
                                   <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
                                 </svg>
                               </button>
                               <button
                                 className="delete-btn"
-                                onClick={() => handleDeleteEmployee(emp.employeeId)}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleDeleteEmployee(emp.employeeId);
+                                }}
                               >
-                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                                   <polyline points="3 6 5 6 21 6"/>
                                   <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
                                 </svg>
@@ -1451,6 +1478,40 @@ const AdminDashboard = () => {
                   </div>
 
                   <div className="settings-card">
+                    <h3>{isRTL ? 'المظهر' : 'Appearance'}</h3>
+                    <div className="settings-form">
+                      <div className="theme-options">
+                        <button
+                          className={`theme-option ${theme === 'light' ? 'active' : ''}`}
+                          onClick={() => setTheme('light')}
+                        >
+                          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                            <circle cx="12" cy="12" r="5"/>
+                            <line x1="12" y1="1" x2="12" y2="3"/>
+                            <line x1="12" y1="21" x2="12" y2="23"/>
+                            <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/>
+                            <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/>
+                            <line x1="1" y1="12" x2="3" y2="12"/>
+                            <line x1="21" y1="12" x2="23" y2="12"/>
+                            <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/>
+                            <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
+                          </svg>
+                          <span>{isRTL ? 'فاتح' : 'Light'}</span>
+                        </button>
+                        <button
+                          className={`theme-option ${theme === 'dark' ? 'active' : ''}`}
+                          onClick={() => setTheme('dark')}
+                        >
+                          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+                          </svg>
+                          <span>{isRTL ? 'داكن' : 'Dark'}</span>
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="settings-card">
                     <h3>{isRTL ? 'معلومات النظام' : 'System Information'}</h3>
                     <div className="system-info">
                       <div className="info-row">
@@ -1513,7 +1574,7 @@ const AdminDashboard = () => {
                 </div>
                 <div className="detail-item">
                   <label>{isRTL ? 'نوع الطلب' : 'Application Type'}</label>
-                  <span>{selectedRegistration.user?.applicationType}</span>
+                  <span>{applicationTypeLabels[selectedRegistration.user?.applicationType] || selectedRegistration.user?.applicationType}</span>
                 </div>
                 <div className="detail-item">
                   <label>{isRTL ? 'القسم' : 'Section'}</label>
@@ -1645,7 +1706,7 @@ const AdminDashboard = () => {
                       : selectedUser.name || 'N/A'}
                   </h3>
                   <p>{selectedUser.email}</p>
-                  <span className="user-type-badge">{selectedUser.applicationType}</span>
+                  <span className="user-type-badge">{applicationTypeLabels[selectedUser.applicationType] || selectedUser.applicationType}</span>
                 </div>
               </div>
 
