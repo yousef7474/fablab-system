@@ -57,7 +57,7 @@ const ApplicationType = ({ formData, onChange, onNext }) => {
     {
       value: 'Entity',
       label: t('entity'),
-      labelAr: 'جهة',
+      labelAr: 'كيان',
       icon: (
         <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
           <path d="M6 22V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v18Z"/>

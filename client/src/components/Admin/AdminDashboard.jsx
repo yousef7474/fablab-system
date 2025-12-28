@@ -979,16 +979,16 @@ const AdminDashboard = () => {
           }
           .footer-logos {
             display: flex;
-            gap: 10px;
+            gap: 12px;
             align-items: center;
             justify-content: center;
           }
           .footer-logos .logo {
-            height: 20px;
+            height: 28px;
             width: auto;
             background: white;
-            padding: 2px 4px;
-            border-radius: 3px;
+            padding: 3px 5px;
+            border-radius: 4px;
           }
           .decorative-stripe {
             position: absolute;
@@ -1586,6 +1586,7 @@ const AdminDashboard = () => {
     'Machine/Device reservation': isRTL ? 'حجز جهاز / آلة' : 'Machine/Device Reservation',
     'Personal workspace': isRTL ? 'مساحة عمل شخصية' : 'Personal Workspace',
     'Support in project implementation': isRTL ? 'دعم في تنفيذ المشروع' : 'Project Implementation Support',
+    'FABLAB Visit': isRTL ? 'زيارة فاب لاب' : 'FABLAB Visit',
     'Other': isRTL ? 'أخرى' : 'Other',
     // Additional services
     'PCB Design': isRTL ? 'تصميم الدوائر المطبوعة' : 'PCB Design',

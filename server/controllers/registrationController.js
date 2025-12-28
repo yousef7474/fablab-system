@@ -19,6 +19,7 @@ exports.checkUser = async (req, res) => {
     });
 
     if (user) {
+      // Return all user fields for auto-fill
       return res.json({
         exists: true,
         user: {
@@ -27,8 +28,16 @@ exports.checkUser = async (req, res) => {
           firstName: user.firstName,
           lastName: user.lastName,
           name: user.name,
+          sex: user.sex,
+          nationality: user.nationality,
+          nationalId: user.nationalId,
+          phoneNumber: user.phoneNumber,
           email: user.email,
-          phoneNumber: user.phoneNumber
+          currentJob: user.currentJob,
+          nationalAddress: user.nationalAddress,
+          entityName: user.entityName,
+          visitingEntity: user.visitingEntity,
+          personInCharge: user.personInCharge
         }
       });
     }
@@ -36,6 +45,81 @@ exports.checkUser = async (req, res) => {
     res.json({ exists: false });
   } catch (error) {
     console.error('Error checking user:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+// Validate user info before registration (check for conflicts)
+exports.validateUserInfo = async (req, res) => {
+  try {
+    const { email, phoneNumber, nationalId, existingUserId } = req.body;
+    const conflicts = [];
+
+    // Check if email is already used by another user
+    if (email) {
+      const emailUser = await User.findOne({ where: { email } });
+      if (emailUser && emailUser.userId !== existingUserId) {
+        conflicts.push({
+          field: 'email',
+          message: 'This email is already registered with different information',
+          messageAr: 'هذا البريد الإلكتروني مسجل بالفعل بمعلومات مختلفة',
+          existingUser: {
+            name: emailUser.firstName && emailUser.lastName
+              ? `${emailUser.firstName} ${emailUser.lastName}`
+              : emailUser.name,
+            phoneNumber: emailUser.phoneNumber
+          }
+        });
+      }
+    }
+
+    // Check if phone number is already used by another user
+    if (phoneNumber) {
+      const phoneUser = await User.findOne({ where: { phoneNumber } });
+      if (phoneUser && phoneUser.userId !== existingUserId) {
+        conflicts.push({
+          field: 'phoneNumber',
+          message: 'This phone number is already registered with different information',
+          messageAr: 'رقم الهاتف هذا مسجل بالفعل بمعلومات مختلفة',
+          existingUser: {
+            name: phoneUser.firstName && phoneUser.lastName
+              ? `${phoneUser.firstName} ${phoneUser.lastName}`
+              : phoneUser.name,
+            email: phoneUser.email
+          }
+        });
+      }
+    }
+
+    // Check if national ID is already used by another user
+    if (nationalId) {
+      const idUser = await User.findOne({ where: { nationalId } });
+      if (idUser && idUser.userId !== existingUserId) {
+        conflicts.push({
+          field: 'nationalId',
+          message: 'This National ID is already registered with different information',
+          messageAr: 'رقم الهوية هذا مسجل بالفعل بمعلومات مختلفة',
+          existingUser: {
+            name: idUser.firstName && idUser.lastName
+              ? `${idUser.firstName} ${idUser.lastName}`
+              : idUser.name,
+            email: idUser.email,
+            phoneNumber: idUser.phoneNumber
+          }
+        });
+      }
+    }
+
+    if (conflicts.length > 0) {
+      return res.status(409).json({
+        valid: false,
+        conflicts
+      });
+    }
+
+    res.json({ valid: true });
+  } catch (error) {
+    console.error('Error validating user info:', error);
     res.status(500).json({ message: 'Server error' });
   }
 };

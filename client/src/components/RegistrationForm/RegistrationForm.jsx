@@ -135,17 +135,26 @@ const RegistrationForm = () => {
   };
 
   const handleUserFound = (userData) => {
+    // Auto-fill all user fields from existing user data
     setFormData({
       ...formData,
       existingUserId: userData.userId,
-      applicationType: userData.applicationType,
-      firstName: userData.firstName,
-      lastName: userData.lastName,
-      name: userData.name,
-      email: userData.email,
-      phoneNumber: userData.phoneNumber
+      applicationType: userData.applicationType || '',
+      firstName: userData.firstName || '',
+      lastName: userData.lastName || '',
+      name: userData.name || '',
+      sex: userData.sex || '',
+      nationality: userData.nationality || '',
+      nationalId: userData.nationalId || '',
+      phoneNumber: userData.phoneNumber || '',
+      email: userData.email || '',
+      currentJob: userData.currentJob || '',
+      nationalAddress: userData.nationalAddress || '',
+      entityName: userData.entityName || '',
+      visitingEntity: userData.visitingEntity || '',
+      personInCharge: userData.personInCharge || ''
     });
-    setActiveStep(2);
+    setActiveStep(2); // Skip to FablabSection since user data is already filled
   };
 
   const handleSubmit = async () => {

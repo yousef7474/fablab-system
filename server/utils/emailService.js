@@ -22,6 +22,7 @@ const serviceTranslations = {
   'Machine/Device reservation': 'حجز جهاز / آلة',
   'Personal workspace': 'مساحة عمل شخصية',
   'Support in project implementation': 'دعم في تنفيذ المشروع',
+  'FABLAB Visit': 'زيارة فاب لاب',
   'Other': 'أخرى',
   'PCB Design': 'تصميم الدوائر المطبوعة',
   'PCB Fabrication': 'تصنيع الدوائر المطبوعة',
