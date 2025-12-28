@@ -13,6 +13,7 @@ import ServiceDetails from './steps/ServiceDetails';
 import ServiceType from './steps/ServiceType';
 import Commitment from './steps/Commitment';
 import SuccessPage from './SuccessPage';
+import FabyBot from './FabyBot';
 import './RegistrationForm.css';
 
 const STORAGE_KEY = 'fablab_registration_form';
@@ -304,6 +305,9 @@ const RegistrationForm = () => {
           </motion.div>
         </div>
       </div>
+
+      {/* FABY - AI Assistant Bot */}
+      <FabyBot currentStep={activeStep} formData={formData} />
     </div>
   );
 };
