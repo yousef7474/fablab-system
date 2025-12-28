@@ -56,7 +56,7 @@ exports.login = async (req, res) => {
 // Create admin
 exports.createAdmin = async (req, res) => {
   try {
-    const { username, email, password, fullName } = req.body;
+    const { username, email, password, fullName, role } = req.body;
 
     // Check if admin already exists
     const existingAdmin = await Admin.findOne({
@@ -69,12 +69,17 @@ exports.createAdmin = async (req, res) => {
       return res.status(400).json({ message: 'Admin already exists' });
     }
 
+    // Validate role if provided
+    const validRoles = ['admin', 'manager'];
+    const adminRole = role && validRoles.includes(role) ? role : 'admin';
+
     // Create admin
     const admin = await Admin.create({
       username,
       email,
       password,
-      fullName
+      fullName,
+      role: adminRole
     });
 
     res.status(201).json({
@@ -83,7 +88,8 @@ exports.createAdmin = async (req, res) => {
         adminId: admin.adminId,
         username: admin.username,
         email: admin.email,
-        fullName: admin.fullName
+        fullName: admin.fullName,
+        role: admin.role
       }
     });
   } catch (error) {
