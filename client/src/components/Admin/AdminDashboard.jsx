@@ -3465,8 +3465,11 @@ const AdminDashboard = () => {
                     ? `${statusModalRegistration.user.firstName} ${statusModalRegistration.user.lastName}`
                     : statusModalRegistration.user?.name || 'User';
                   const phone = statusModalRegistration.user?.phoneNumber;
+                  const userId = statusModalRegistration.user?.uniqueId || statusModalRegistration.userId;
                   const appointmentDate = formatDate(statusModalRegistration.appointmentDate || statusModalRegistration.visitDate);
                   const appointmentTime = statusModalRegistration.appointmentTime || statusModalRegistration.visitStartTime;
+                  const applicationType = statusModalRegistration.user?.applicationType;
+                  const services = statusModalRegistration.requiredServices;
 
                   if (!phone) {
                     toast.error(isRTL ? 'رقم الهاتف غير متوفر' : 'Phone number not available');
@@ -3478,9 +3481,12 @@ const AdminDashboard = () => {
                     message = getApprovalMessage(
                       userName,
                       statusModalRegistration.registrationId,
+                      userId,
                       appointmentDate,
                       appointmentTime,
                       statusModalRegistration.fablabSection,
+                      applicationType,
+                      services,
                       sendMessageInEmail ? statusMessage : null,
                       isRTL
                     );
@@ -3488,6 +3494,9 @@ const AdminDashboard = () => {
                     message = getRejectionMessage(
                       userName,
                       statusModalRegistration.registrationId,
+                      userId,
+                      applicationType,
+                      services,
                       rejectionReason,
                       sendMessageInEmail ? statusMessage : null,
                       isRTL

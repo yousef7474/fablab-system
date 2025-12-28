@@ -32,147 +32,245 @@ export const generateWhatsAppUrl = (phone, message) => {
   return `https://wa.me/${formattedPhone}?text=${encodedMessage}`;
 };
 
-// Message templates
-export const getRegistrationConfirmationMessage = (userName, registrationId, isArabic = true) => {
-  if (isArabic) {
-    return `مرحباً ${userName} 👋
-
-تم استلام طلب التسجيل الخاص بك بنجاح ✅
-
-رقم التسجيل: *${registrationId}*
-
-سيتم مراجعة طلبك من قبل المهندس المسؤول وسنرسل لك رسالة تأكيد قريباً.
-
-_فاب لاب الأحساء | FABLAB Al-Ahsa_`;
-  }
-
-  return `Hello ${userName} 👋
-
-Your registration request has been received successfully ✅
-
-Registration ID: *${registrationId}*
-
-Your request will be reviewed and a confirmation will be sent to you soon.
-
-_FABLAB Al-Ahsa_`;
+// Section translations
+const sectionTranslations = {
+  'Electronics and Programming': 'الإلكترونيات والبرمجة',
+  'CNC Laser': 'الليزر CNC',
+  'CNC Wood': 'الخشب CNC',
+  '3D': 'الطباعة ثلاثية الأبعاد',
+  'Robotic and AI': 'الروبوتات والذكاء الاصطناعي',
+  "Kid's Club": 'نادي الأطفال',
+  'Vinyl Cutting': 'قطع الفينيل'
 };
 
-export const getApprovalMessage = (userName, registrationId, appointmentDate, appointmentTime, section, adminMessage = null, isArabic = true) => {
-  const sectionTranslations = {
-    'Electronics and Programming': 'الإلكترونيات والبرمجة',
-    'CNC Laser': 'الليزر CNC',
-    'CNC Wood': 'الخشب CNC',
-    '3D': 'الطباعة ثلاثية الأبعاد',
-    'Robotic and AI': 'الروبوتات والذكاء الاصطناعي',
-    "Kid's Club": 'نادي الأطفال',
-    'Vinyl Cutting': 'قطع الفينيل'
-  };
+// Application type translations
+const applicationTypeTranslations = {
+  'Beneficiary': { ar: 'مستفيد', en: 'Beneficiary' },
+  'Visitor': { ar: 'زائر', en: 'Visitor' },
+  'Entrepreneur': { ar: 'رائد أعمال', en: 'Entrepreneur' },
+  'Student': { ar: 'طالب', en: 'Student' },
+  'FABLAB Visit': { ar: 'زيارة فاب لاب', en: 'FABLAB Visit' }
+};
 
-  const sectionAr = sectionTranslations[section] || section;
+// Service translations
+const serviceTranslations = {
+  'In-person consultation': { ar: 'استشارة حضورية', en: 'In-person consultation' },
+  'Online consultation': { ar: 'استشارة عن بعد', en: 'Online consultation' },
+  'Machine/Device reservation': { ar: 'حجز جهاز / آلة', en: 'Machine/Device reservation' },
+  'Personal workspace': { ar: 'مساحة عمل شخصية', en: 'Personal workspace' },
+  'Support in project implementation': { ar: 'دعم في تنفيذ المشروع', en: 'Support in project implementation' },
+  'FABLAB Visit': { ar: 'زيارة فاب لاب', en: 'FABLAB Visit' },
+  'Other': { ar: 'أخرى', en: 'Other' }
+};
+
+// Format time to remove seconds
+const formatTime = (time) => {
+  if (!time) return null;
+  // If time has seconds (HH:MM:SS), remove them
+  if (time.includes(':')) {
+    const parts = time.split(':');
+    if (parts.length >= 2) {
+      return `${parts[0]}:${parts[1]}`;
+    }
+  }
+  return time;
+};
+
+// Translate application type
+const translateApplicationType = (type, isArabic) => {
+  const translation = applicationTypeTranslations[type];
+  if (translation) {
+    return isArabic ? translation.ar : translation.en;
+  }
+  return type || (isArabic ? 'غير محدد' : 'N/A');
+};
+
+// Translate services array
+const translateServices = (services, isArabic) => {
+  if (!services) return isArabic ? 'غير محدد' : 'N/A';
+
+  if (typeof services === 'string') {
+    const translation = serviceTranslations[services];
+    return translation ? (isArabic ? translation.ar : translation.en) : services;
+  }
+
+  if (Array.isArray(services) && services.length > 0) {
+    return services.map(s => {
+      const translation = serviceTranslations[s];
+      return translation ? (isArabic ? translation.ar : translation.en) : s;
+    }).join(isArabic ? '، ' : ', ');
+  }
+
+  return isArabic ? 'غير محدد' : 'N/A';
+};
+
+// Message templates - Professional Arabic/English
+
+export const getRegistrationConfirmationMessage = (userName, registrationId, userId, applicationType, services, isArabic = true) => {
+  const translatedType = translateApplicationType(applicationType, isArabic);
+  const translatedServices = translateServices(services, isArabic);
 
   if (isArabic) {
-    let message = `مرحباً ${userName} 👋
+    return `السلام عليكم ${userName}،
 
-✅ *تم الموافقة على طلب التسجيل الخاص بك!*
+تم استلام طلب التسجيل الخاص بكم بنجاح.
 
-رقم التسجيل: *${registrationId}*
+رقم التسجيل: ${registrationId}
+رقم المستفيد: ${userId || 'غير متوفر'}
+نوع الطلب: ${translatedType}
+الخدمات المطلوبة: ${translatedServices}
 
-📅 *تفاصيل الموعد:*
-• التاريخ: ${appointmentDate || 'غير محدد'}
-• الوقت: ${appointmentTime || 'غير محدد'}
-• القسم: ${sectionAr}`;
+سيتم مراجعة طلبكم من قبل الفريق المختص وسيتم التواصل معكم قريباً.
+
+مع تحيات،
+فاب لاب الأحساء
+FABLAB Al-Ahsa`;
+  }
+
+  return `Dear ${userName},
+
+Your registration request has been received successfully.
+
+Registration ID: ${registrationId}
+User ID: ${userId || 'N/A'}
+Application Type: ${translatedType}
+Requested Services: ${translatedServices}
+
+Your request will be reviewed by our team and we will contact you soon.
+
+Best regards,
+FABLAB Al-Ahsa`;
+};
+
+export const getApprovalMessage = (userName, registrationId, userId, appointmentDate, appointmentTime, section, applicationType, services, adminMessage = null, isArabic = true) => {
+  const sectionAr = sectionTranslations[section] || section;
+  const formattedTime = formatTime(appointmentTime);
+  const translatedType = translateApplicationType(applicationType, isArabic);
+  const translatedServices = translateServices(services, isArabic);
+
+  if (isArabic) {
+    let message = `السلام عليكم ${userName}،
+
+يسرنا إبلاغكم بأنه تمت الموافقة على طلب التسجيل الخاص بكم.
+
+رقم التسجيل: ${registrationId}
+رقم المستفيد: ${userId || 'غير متوفر'}
+نوع الطلب: ${translatedType}
+الخدمات: ${translatedServices}
+
+تفاصيل الموعد:
+- التاريخ: ${appointmentDate || 'سيتم تحديده'}
+- الوقت: ${formattedTime || 'سيتم تحديده'}
+- القسم: ${sectionAr}`;
 
     if (adminMessage) {
       message += `
 
-💬 *رسالة من الإدارة:*
+ملاحظة من الإدارة:
 ${adminMessage}`;
     }
 
     message += `
 
-نتطلع لرؤيتك! 🎉
+نتطلع لاستقبالكم. يرجى الحضور في الموعد المحدد.
 
-_فاب لاب الأحساء | FABLAB Al-Ahsa_`;
+مع تحيات،
+فاب لاب الأحساء
+FABLAB Al-Ahsa`;
 
     return message;
   }
 
-  let message = `Hello ${userName} 👋
+  let message = `Dear ${userName},
 
-✅ *Your registration has been approved!*
+We are pleased to inform you that your registration has been approved.
 
-Registration ID: *${registrationId}*
+Registration ID: ${registrationId}
+User ID: ${userId || 'N/A'}
+Application Type: ${translatedType}
+Services: ${translatedServices}
 
-📅 *Appointment Details:*
-• Date: ${appointmentDate || 'N/A'}
-• Time: ${appointmentTime || 'N/A'}
-• Section: ${section}`;
+Appointment Details:
+- Date: ${appointmentDate || 'To be determined'}
+- Time: ${formattedTime || 'To be determined'}
+- Section: ${section}`;
 
   if (adminMessage) {
     message += `
 
-💬 *Message from Admin:*
+Note from Admin:
 ${adminMessage}`;
   }
 
   message += `
 
-We look forward to seeing you! 🎉
+We look forward to welcoming you. Please arrive on time.
 
-_FABLAB Al-Ahsa_`;
+Best regards,
+FABLAB Al-Ahsa`;
 
   return message;
 };
 
-export const getRejectionMessage = (userName, registrationId, rejectionReason = null, adminMessage = null, isArabic = true) => {
+export const getRejectionMessage = (userName, registrationId, userId, applicationType, services, rejectionReason = null, adminMessage = null, isArabic = true) => {
+  const translatedType = translateApplicationType(applicationType, isArabic);
+  const translatedServices = translateServices(services, isArabic);
+
   if (isArabic) {
-    let message = `مرحباً ${userName} 👋
+    let message = `السلام عليكم ${userName}،
 
-❌ *للأسف، تم رفض طلب التسجيل الخاص بك*
+نأسف لإبلاغكم بأنه لم تتم الموافقة على طلب التسجيل الخاص بكم.
 
-رقم التسجيل: *${registrationId}*`;
+رقم التسجيل: ${registrationId}
+رقم المستفيد: ${userId || 'غير متوفر'}
+نوع الطلب: ${translatedType}
+الخدمات: ${translatedServices}`;
 
     if (rejectionReason) {
       message += `
 
-📝 *سبب الرفض:*
+سبب عدم الموافقة:
 ${rejectionReason}`;
     }
 
     if (adminMessage) {
       message += `
 
-💬 *رسالة من الإدارة:*
+ملاحظة من الإدارة:
 ${adminMessage}`;
     }
 
     message += `
 
-يمكنك التقديم مرة أخرى أو التواصل معنا للمزيد من المعلومات.
+يمكنكم التقديم مرة أخرى أو التواصل معنا للمزيد من المعلومات.
 
-_فاب لاب الأحساء | FABLAB Al-Ahsa_`;
+مع تحيات،
+فاب لاب الأحساء
+FABLAB Al-Ahsa`;
 
     return message;
   }
 
-  let message = `Hello ${userName} 👋
+  let message = `Dear ${userName},
 
-❌ *Unfortunately, your registration has been rejected*
+We regret to inform you that your registration request has not been approved.
 
-Registration ID: *${registrationId}*`;
+Registration ID: ${registrationId}
+User ID: ${userId || 'N/A'}
+Application Type: ${translatedType}
+Services: ${translatedServices}`;
 
   if (rejectionReason) {
     message += `
 
-📝 *Reason for Rejection:*
+Reason:
 ${rejectionReason}`;
   }
 
   if (adminMessage) {
     message += `
 
-💬 *Message from Admin:*
+Note from Admin:
 ${adminMessage}`;
   }
 
@@ -180,7 +278,8 @@ ${adminMessage}`;
 
 You may submit a new application or contact us for more information.
 
-_FABLAB Al-Ahsa_`;
+Best regards,
+FABLAB Al-Ahsa`;
 
   return message;
 };
