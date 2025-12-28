@@ -14,7 +14,8 @@
       "Bash(node check-employees.js:*)",
       "Bash(del \"F:\\\\fablab regiser\\\\server\\\\check-employees.js\")",
       "Bash(cat:*)",
-      "Bash(node create-manager.js:*)"
+      "Bash(node create-manager.js:*)",
+      "Bash(del \"F:\\\\fablab regiser\\\\server\\\\utils\\\\whatsappService.js\")"
     ],
     "deny": [],
     "ask": []
