@@ -10,7 +10,6 @@ import {
   endOfMonth,
   eachDayOfInterval,
   isSameDay,
-  isSameMonth,
   addMonths,
   subMonths,
   isToday
@@ -51,6 +50,7 @@ const ManagerDashboard = () => {
   const [scheduleFilter, setScheduleFilter] = useState('all');
   const [selectedCalendarDay, setSelectedCalendarDay] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState('schedule');
 
   // Task modal state
   const [showTaskModal, setShowTaskModal] = useState(false);
@@ -338,7 +338,10 @@ const ManagerDashboard = () => {
         </div>
 
         <nav className="sidebar-nav">
-          <button className="nav-item active">
+          <button
+            className={`nav-item ${activeTab === 'schedule' ? 'active' : ''}`}
+            onClick={() => setActiveTab('schedule')}
+          >
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
               <line x1="16" y1="2" x2="16" y2="6"/>
@@ -346,6 +349,16 @@ const ManagerDashboard = () => {
               <line x1="3" y1="10" x2="21" y2="10"/>
             </svg>
             <span>{isRTL ? 'الجدول والمهام' : 'Schedule & Tasks'}</span>
+          </button>
+          <button
+            className={`nav-item ${activeTab === 'settings' ? 'active' : ''}`}
+            onClick={() => setActiveTab('settings')}
+          >
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <circle cx="12" cy="12" r="3"/>
+              <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+            </svg>
+            <span>{isRTL ? 'الإعدادات' : 'Settings'}</span>
           </button>
         </nav>
 
@@ -374,22 +387,31 @@ const ManagerDashboard = () => {
         {/* Header */}
         <header className="admin-header">
           <div className="header-title">
-            <h1>{isRTL ? 'الجدول والمهام' : 'Schedule & Tasks'}</h1>
-            <p>{isRTL ? 'إدارة الجدول وتعيين المهام للموظفين' : 'Manage schedule and assign tasks to employees'}</p>
+            <h1>{activeTab === 'schedule'
+              ? (isRTL ? 'الجدول والمهام' : 'Schedule & Tasks')
+              : (isRTL ? 'الإعدادات' : 'Settings')
+            }</h1>
+            <p>{activeTab === 'schedule'
+              ? (isRTL ? 'إدارة الجدول وتعيين المهام للموظفين' : 'Manage schedule and assign tasks to employees')
+              : (isRTL ? 'إدارة إعدادات الحساب واللغة' : 'Manage account and language settings')
+            }</p>
           </div>
-          <div className="header-actions">
-            <button className="add-task-btn" onClick={() => openCreateTaskModal()}>
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <line x1="12" y1="5" x2="12" y2="19"/>
-                <line x1="5" y1="12" x2="19" y2="12"/>
-              </svg>
-              {isRTL ? 'مهمة جديدة' : 'New Task'}
-            </button>
-          </div>
+          {activeTab === 'schedule' && (
+            <div className="header-actions">
+              <button className="add-task-btn" onClick={() => openCreateTaskModal()}>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <line x1="12" y1="5" x2="12" y2="19"/>
+                  <line x1="5" y1="12" x2="19" y2="12"/>
+                </svg>
+                {isRTL ? 'مهمة جديدة' : 'New Task'}
+              </button>
+            </div>
+          )}
         </header>
 
         {/* Schedule Content */}
-        <div className="schedule-content">
+        {activeTab === 'schedule' && (
+        <div className="schedule-layout">
           {/* Calendar Section */}
           <div className="calendar-section">
             {/* Calendar Header */}
@@ -640,6 +662,109 @@ const ManagerDashboard = () => {
             </div>
           </div>
         </div>
+        )}
+
+        {/* Settings Content */}
+        {activeTab === 'settings' && (
+          <div className="settings-content">
+            {/* Language Settings */}
+            <div className="settings-section">
+              <div className="settings-section-header">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <circle cx="12" cy="12" r="10"/>
+                  <line x1="2" y1="12" x2="22" y2="12"/>
+                  <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
+                </svg>
+                <h3>{isRTL ? 'اللغة' : 'Language'}</h3>
+              </div>
+              <div className="settings-section-body">
+                <div className="setting-item">
+                  <div className="setting-info">
+                    <span className="setting-label">{isRTL ? 'لغة العرض' : 'Display Language'}</span>
+                    <span className="setting-description">
+                      {isRTL ? 'اختر لغة واجهة المستخدم' : 'Choose the interface language'}
+                    </span>
+                  </div>
+                  <div className="language-toggle-group">
+                    <button
+                      className={`lang-btn ${i18n.language === 'en' ? 'active' : ''}`}
+                      onClick={() => i18n.changeLanguage('en')}
+                    >
+                      English
+                    </button>
+                    <button
+                      className={`lang-btn ${i18n.language === 'ar' ? 'active' : ''}`}
+                      onClick={() => i18n.changeLanguage('ar')}
+                    >
+                      العربية
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Account Settings */}
+            <div className="settings-section">
+              <div className="settings-section-header">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+                  <circle cx="12" cy="7" r="4"/>
+                </svg>
+                <h3>{isRTL ? 'الحساب' : 'Account'}</h3>
+              </div>
+              <div className="settings-section-body">
+                <div className="setting-item">
+                  <div className="setting-info">
+                    <span className="setting-label">{isRTL ? 'اسم المستخدم' : 'Username'}</span>
+                    <span className="setting-value">{managerData?.username}</span>
+                  </div>
+                </div>
+                <div className="setting-item">
+                  <div className="setting-info">
+                    <span className="setting-label">{isRTL ? 'الاسم الكامل' : 'Full Name'}</span>
+                    <span className="setting-value">{managerData?.fullName}</span>
+                  </div>
+                </div>
+                <div className="setting-item">
+                  <div className="setting-info">
+                    <span className="setting-label">{isRTL ? 'البريد الإلكتروني' : 'Email'}</span>
+                    <span className="setting-value">{managerData?.email}</span>
+                  </div>
+                </div>
+                <div className="setting-item">
+                  <div className="setting-info">
+                    <span className="setting-label">{isRTL ? 'الدور' : 'Role'}</span>
+                    <span className="setting-value role-badge">
+                      {managerData?.role === 'manager' ? (isRTL ? 'مدير' : 'Manager') : (isRTL ? 'مشرف' : 'Admin')}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Session */}
+            <div className="settings-section">
+              <div className="settings-section-header">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+                  <polyline points="16 17 21 12 16 7"/>
+                  <line x1="21" y1="12" x2="9" y2="12"/>
+                </svg>
+                <h3>{isRTL ? 'الجلسة' : 'Session'}</h3>
+              </div>
+              <div className="settings-section-body">
+                <button className="logout-setting-btn" onClick={handleLogout}>
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+                    <polyline points="16 17 21 12 16 7"/>
+                    <line x1="21" y1="12" x2="9" y2="12"/>
+                  </svg>
+                  {isRTL ? 'تسجيل الخروج' : 'Sign Out'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </main>
 
       {/* Task Modal */}
