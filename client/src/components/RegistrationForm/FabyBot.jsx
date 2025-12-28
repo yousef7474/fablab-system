@@ -27,6 +27,80 @@ const FabyBot = ({ currentStep, formData }) => {
 
   // FAQ Data - Bilingual
   const faqData = {
+    about: {
+      keywords: ['about', 'عن', 'fablab', 'فاب لاب', 'who', 'من', 'what is', 'ما هو', 'معلومات', 'info', 'information', 'تعريف', 'هوية'],
+      response: {
+        ar: `🏭 **عن فاب لاب الأحساء:**
+
+فاب لاب الأحساء هو مختبر التصنيع الرقمي التابع لمؤسسة عبدالمنعم الراشد الإنسانية.
+
+🎯 **رؤيتنا:**
+تمكين المجتمع من تحويل أفكارهم إلى منتجات حقيقية باستخدام أحدث تقنيات التصنيع الرقمي.
+
+🌟 **ما نقدمه:**
+• مساحات عمل مجهزة بأحدث المعدات
+• تدريب وورش عمل متخصصة
+• دعم رواد الأعمال والمبتكرين
+• برامج تعليمية للأطفال والشباب
+• استشارات فنية للمشاريع
+
+🏛️ **تحت مظلة:**
+مؤسسة عبدالمنعم الراشد الإنسانية - الأحساء
+
+💡 نحن جزء من شبكة فاب لاب العالمية!`,
+        en: `🏭 **About FABLAB Al-Ahsa:**
+
+FABLAB Al-Ahsa is a digital fabrication laboratory under the Abdulmonem Al-Rashed Humanitarian Foundation.
+
+🎯 **Our Vision:**
+Empowering the community to transform their ideas into real products using the latest digital manufacturing technologies.
+
+🌟 **What We Offer:**
+• Workspaces equipped with cutting-edge equipment
+• Specialized training and workshops
+• Support for entrepreneurs and innovators
+• Educational programs for children and youth
+• Technical consultations for projects
+
+🏛️ **Under the umbrella of:**
+Abdulmonem Al-Rashed Humanitarian Foundation - Al-Ahsa
+
+💡 We are part of the global FabLab network!`
+      }
+    },
+    customerService: {
+      keywords: ['customer', 'خدمة العملاء', 'support', 'دعم', 'help', 'مساعدة', 'call', 'اتصل', 'talk', 'تحدث', 'human', 'بشري', 'person', 'شخص', 'representative', 'ممثل', 'complaint', 'شكوى', 'problem', 'مشكلة'],
+      response: {
+        ar: `📞 **خدمة العملاء:**
+
+للتواصل المباشر مع فريق خدمة العملاء:
+
+📱 **واتساب / اتصال:**
+0555022605
+
+⏰ **أوقات التواصل:**
+الأحد - الخميس
+8:00 صباحاً - 3:00 مساءً
+
+💬 فريقنا جاهز للإجابة على جميع استفساراتكم ومساعدتكم في أي وقت خلال ساعات العمل.
+
+✨ نسعد بخدمتكم!`,
+        en: `📞 **Customer Service:**
+
+To contact our customer service team directly:
+
+📱 **WhatsApp / Call:**
+0555022605
+
+⏰ **Contact Hours:**
+Sunday - Thursday
+8:00 AM - 3:00 PM
+
+💬 Our team is ready to answer all your inquiries and assist you during working hours.
+
+✨ We're happy to serve you!`
+      }
+    },
     services: {
       keywords: ['services', 'خدمات', 'service', 'خدمة', 'what do you offer', 'ماذا تقدمون'],
       response: {
@@ -221,6 +295,11 @@ Costs vary based on:
 
 📍 الموقع: الأحساء، المملكة العربية السعودية
 
+📱 **خدمة العملاء (واتساب/اتصال):**
+0555022605
+
+⏰ أوقات التواصل: الأحد - الخميس، 8:00 ص - 3:00 م
+
 💡 يمكنك أيضاً إرسال استفساراتك من خلال نموذج التسجيل!`,
         en: `📞 **Contact Information:**
 
@@ -228,6 +307,11 @@ Costs vary based on:
 🏛️ Abdulmonem Al-Rashed Foundation
 
 📍 Location: Al-Ahsa, Saudi Arabia
+
+📱 **Customer Service (WhatsApp/Call):**
+0555022605
+
+⏰ Contact Hours: Sunday - Thursday, 8:00 AM - 3:00 PM
 
 💡 You can also send inquiries through the registration form!`
       }
@@ -269,10 +353,10 @@ Costs vary based on:
 
   // Quick action buttons
   const quickActions = [
+    { id: 'about', label: isRTL ? '🏭 عن فاب لاب' : '🏭 About FABLAB' },
     { id: 'services', label: isRTL ? '🔧 الخدمات' : '🔧 Services' },
-    { id: 'hours', label: isRTL ? '⏰ أوقات العمل' : '⏰ Working Hours' },
     { id: 'registration', label: isRTL ? '📝 كيف أسجل؟' : '📝 How to register?' },
-    { id: 'sections', label: isRTL ? '🏭 الأقسام' : '🏭 Sections' }
+    { id: 'customerService', label: isRTL ? '📞 خدمة العملاء' : '📞 Customer Service' }
   ];
 
   // Initialize with greeting
@@ -359,8 +443,8 @@ Costs vary based on:
 
     // Default response if no match
     return isRTL
-      ? `🤔 عذراً، لم أفهم سؤالك تماماً. يمكنك:\n\n• اختيار أحد الأسئلة السريعة أدناه\n• أو السؤال عن: الخدمات، المواعيد، الأقسام، التسجيل\n\n💡 **نصيحة للخطوة الحالية:**\n${getContextHelp()}`
-      : `🤔 Sorry, I didn't quite understand. You can:\n\n• Choose one of the quick questions below\n• Or ask about: services, appointments, sections, registration\n\n💡 **Tip for current step:**\n${getContextHelp()}`;
+      ? `🤔 عذراً، لم أفهم سؤالك تماماً. يمكنك:\n\n• اختيار أحد الأسئلة السريعة أدناه\n• أو السؤال عن: الخدمات، المواعيد، الأقسام، التسجيل\n\n📞 **للتواصل مع خدمة العملاء:**\n0555022605\n\n💡 **نصيحة للخطوة الحالية:**\n${getContextHelp()}`
+      : `🤔 Sorry, I didn't quite understand. You can:\n\n• Choose one of the quick questions below\n• Or ask about: services, appointments, sections, registration\n\n📞 **To contact Customer Service:**\n0555022605\n\n💡 **Tip for current step:**\n${getContextHelp()}`;
   };
 
   // Handle sending message

@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'react-toastify';
@@ -82,12 +83,59 @@ const defaultFormData = {
 const RegistrationForm = () => {
   const { t, i18n } = useTranslation();
   const isRTL = i18n.language === 'ar';
+  const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
 
-  const [activeStep, setActiveStep] = useState(() => getInitialStep());
+  // Get step from URL or localStorage
+  const getStepFromUrl = () => {
+    const stepParam = searchParams.get('step');
+    if (stepParam !== null) {
+      const step = parseInt(stepParam, 10);
+      if (!isNaN(step) && step >= -1 && step <= 8) {
+        return step;
+      }
+    }
+    return null;
+  };
+
+  const [activeStep, setActiveStep] = useState(() => {
+    const urlStep = getStepFromUrl();
+    return urlStep !== null ? urlStep : getInitialStep();
+  });
   const [formData, setFormData] = useState(() => getInitialFormData() || defaultFormData);
 
   const [registrationResult, setRegistrationResult] = useState(null);
   const [loading, setLoading] = useState(false);
+
+  // Sync URL with active step
+  useEffect(() => {
+    if (!registrationResult) {
+      const currentStep = searchParams.get('step');
+      const stepStr = activeStep.toString();
+      if (currentStep !== stepStr) {
+        if (activeStep === -1) {
+          searchParams.delete('step');
+        } else {
+          searchParams.set('step', stepStr);
+        }
+        setSearchParams(searchParams, { replace: false });
+      }
+    }
+  }, [activeStep, registrationResult]);
+
+  // Listen for browser back/forward navigation
+  useEffect(() => {
+    const stepParam = searchParams.get('step');
+    if (stepParam !== null) {
+      const step = parseInt(stepParam, 10);
+      if (!isNaN(step) && step >= -1 && step <= 8 && step !== activeStep) {
+        setActiveStep(step);
+      }
+    } else if (activeStep !== -1 && !registrationResult) {
+      // URL has no step param, go to initial step
+      setActiveStep(-1);
+    }
+  }, [searchParams]);
 
   // Save form state to localStorage whenever it changes
   useEffect(() => {
@@ -166,6 +214,9 @@ const RegistrationForm = () => {
       const response = await api.post('/registration/create', formData);
       setRegistrationResult(response.data.registration);
       clearSavedForm(); // Clear saved form data on successful registration
+      // Clear step from URL on success
+      searchParams.delete('step');
+      setSearchParams(searchParams, { replace: true });
       toast.success(t('registrationSuccess'));
     } catch (error) {
       console.error('Registration error:', error);

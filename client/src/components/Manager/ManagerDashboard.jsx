@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'react-toastify';
@@ -39,8 +39,19 @@ const PRIORITY_COLORS = {
 
 const ManagerDashboard = () => {
   const navigate = useNavigate();
+  const location = useLocation();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { i18n } = useTranslation();
   const isRTL = i18n.language === 'ar';
+
+  // Valid tabs for URL persistence
+  const validTabs = ['schedule', 'tasks', 'settings'];
+
+  // Get initial tab from URL or default to 'schedule'
+  const getInitialTab = () => {
+    const tabFromUrl = searchParams.get('tab');
+    return validTabs.includes(tabFromUrl) ? tabFromUrl : 'schedule';
+  };
 
   // State
   const [managerData, setManagerData] = useState(null);
@@ -50,7 +61,7 @@ const ManagerDashboard = () => {
   const [scheduleFilter, setScheduleFilter] = useState('all');
   const [selectedCalendarDay, setSelectedCalendarDay] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState('schedule');
+  const [activeTab, setActiveTab] = useState(getInitialTab);
 
   // Task modal state
   const [showTaskModal, setShowTaskModal] = useState(false);
@@ -77,6 +88,29 @@ const ManagerDashboard = () => {
     "Kid's Club": isRTL ? 'نادي الأطفال' : "Kid's Club",
     'Vinyl Cutting': isRTL ? 'قص الفينيل' : 'Vinyl Cutting'
   };
+
+  // Sync URL with active tab
+  useEffect(() => {
+    const currentTab = searchParams.get('tab');
+    if (activeTab !== currentTab) {
+      if (activeTab === 'schedule') {
+        // Remove tab param for schedule (default)
+        searchParams.delete('tab');
+      } else {
+        searchParams.set('tab', activeTab);
+      }
+      setSearchParams(searchParams, { replace: true });
+    }
+  }, [activeTab]);
+
+  // Listen for browser back/forward navigation
+  useEffect(() => {
+    const tabFromUrl = searchParams.get('tab');
+    const newTab = validTabs.includes(tabFromUrl) ? tabFromUrl : 'schedule';
+    if (newTab !== activeTab) {
+      setActiveTab(newTab);
+    }
+  }, [searchParams]);
 
   // Authentication check
   useEffect(() => {

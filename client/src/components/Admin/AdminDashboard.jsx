@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useCallback, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'react-toastify';
@@ -33,12 +33,23 @@ const PRIORITY_COLORS = {
 
 const AdminDashboard = () => {
   const navigate = useNavigate();
+  const location = useLocation();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { i18n } = useTranslation();
   const isRTL = i18n.language === 'ar';
   const printRef = useRef();
 
+  // Valid tabs for URL persistence
+  const validTabs = ['dashboard', 'registrations', 'users', 'employees', 'schedule', 'analytics', 'settings'];
+
+  // Get initial tab from URL or default to 'dashboard'
+  const getInitialTab = () => {
+    const tabFromUrl = searchParams.get('tab');
+    return validTabs.includes(tabFromUrl) ? tabFromUrl : 'dashboard';
+  };
+
   const [adminData, setAdminData] = useState(null);
-  const [activeTab, setActiveTab] = useState('dashboard');
+  const [activeTab, setActiveTab] = useState(getInitialTab);
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [stats, setStats] = useState({
     totalRegistrations: 0,
@@ -101,6 +112,29 @@ const AdminDashboard = () => {
     document.documentElement.setAttribute('data-theme', theme);
     localStorage.setItem('adminTheme', theme);
   }, [theme]);
+
+  // Sync URL with active tab
+  useEffect(() => {
+    const currentTab = searchParams.get('tab');
+    if (activeTab !== currentTab) {
+      if (activeTab === 'dashboard') {
+        // Remove tab param for dashboard (default)
+        searchParams.delete('tab');
+      } else {
+        searchParams.set('tab', activeTab);
+      }
+      setSearchParams(searchParams, { replace: true });
+    }
+  }, [activeTab]);
+
+  // Listen for browser back/forward navigation
+  useEffect(() => {
+    const tabFromUrl = searchParams.get('tab');
+    const newTab = validTabs.includes(tabFromUrl) ? tabFromUrl : 'dashboard';
+    if (newTab !== activeTab) {
+      setActiveTab(newTab);
+    }
+  }, [searchParams]);
 
   useEffect(() => {
     const token = localStorage.getItem('adminToken');
