@@ -8,6 +8,326 @@
   background: var(--bg-primary);
 }
 
+/* ========================================
+   Sidebar Fixes
+   ======================================== */
+.manager-layout .sidebar-header h2 {
+  color: white;
+  font-size: 1.1rem;
+  font-weight: 600;
+  margin: 0;
+}
+
+.manager-layout .sidebar-logo {
+  width: 40px;
+  height: 40px;
+  object-fit: contain;
+  background: white;
+  border-radius: 10px;
+  padding: 4px;
+}
+
+.manager-layout .sidebar-nav {
+  flex: 1;
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.manager-layout .logout-btn {
+  background: rgba(255, 255, 255, 0.1);
+  border: none;
+  color: white;
+  padding: 10px;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.manager-layout .logout-btn:hover {
+  background: rgba(239, 68, 68, 0.3);
+}
+
+.manager-layout .sidebar-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.manager-layout .admin-profile {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: transparent;
+  padding: 0;
+}
+
+.manager-layout .admin-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.manager-layout .admin-info .admin-name {
+  color: white;
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.manager-layout .nav-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 12px 16px;
+  border: none;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 14px;
+  font-weight: 500;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all 0.2s;
+  text-align: left;
+}
+
+[dir="rtl"] .manager-layout .nav-item {
+  text-align: right;
+}
+
+.manager-layout .nav-item:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: white;
+}
+
+.manager-layout .nav-item.active {
+  background: rgba(255, 255, 255, 0.15);
+  color: white;
+}
+
+.manager-layout .nav-item svg {
+  flex-shrink: 0;
+}
+
+/* ========================================
+   Schedule Layout for Manager
+   ======================================== */
+.manager-layout .schedule-layout {
+  display: grid;
+  grid-template-columns: 1fr 350px;
+  gap: 1.5rem;
+  padding: 0;
+}
+
+@media (max-width: 1200px) {
+  .manager-layout .schedule-layout {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ========================================
+   Calendar Fixes for Manager
+   ======================================== */
+.manager-layout .calendar-section {
+  background: white;
+  border-radius: 16px;
+  padding: 1.5rem;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+  border: 1px solid #e5e7eb;
+}
+
+.manager-layout .calendar-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1.5rem;
+}
+
+.manager-layout .calendar-title {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: #1f2937;
+  margin: 0;
+}
+
+.manager-layout .calendar-nav-btn {
+  width: 36px;
+  height: 36px;
+  border: 1px solid #e5e7eb;
+  background: white;
+  border-radius: 10px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+  color: #6b7280;
+}
+
+.manager-layout .calendar-nav-btn:hover {
+  background: #f3f4f6;
+  border-color: #d1d5db;
+}
+
+.manager-layout .calendar-weekdays {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 4px;
+  margin-bottom: 8px;
+}
+
+.manager-layout .calendar-weekdays .weekday {
+  text-align: center;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #9ca3af;
+  padding: 8px 0;
+  text-transform: uppercase;
+}
+
+.manager-layout .calendar-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 4px;
+}
+
+.manager-layout .calendar-day {
+  aspect-ratio: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 8px;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all 0.2s;
+  background: #f9fafb;
+  min-height: 60px;
+}
+
+.manager-layout .calendar-day:hover:not(.empty) {
+  background: #f3f4f6;
+  transform: scale(1.02);
+}
+
+.manager-layout .calendar-day.empty {
+  background: transparent;
+  cursor: default;
+}
+
+.manager-layout .calendar-day.today {
+  background: linear-gradient(135deg, #e02529, #c41e24);
+  color: white;
+}
+
+.manager-layout .calendar-day.today .day-number {
+  color: white;
+}
+
+.manager-layout .calendar-day.has-events {
+  border: 2px solid #e02529;
+}
+
+.manager-layout .calendar-day.selected {
+  background: #e02529 !important;
+  color: white !important;
+  transform: scale(1.05);
+  box-shadow: 0 4px 12px rgba(224, 37, 41, 0.3);
+}
+
+.manager-layout .calendar-day.selected .day-number {
+  color: white;
+}
+
+.manager-layout .calendar-day .day-number {
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: #374151;
+}
+
+.manager-layout .calendar-day .event-dots-container {
+  display: flex;
+  gap: 3px;
+  margin-top: 4px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+/* Selected Day Section */
+.manager-layout .selected-day-section {
+  margin-top: 1.5rem;
+  padding: 1.25rem;
+  background: #f9fafb;
+  border-radius: 12px;
+  border: 1px solid #e5e7eb;
+}
+
+.manager-layout .selected-day-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1rem;
+}
+
+.manager-layout .selected-day-header h4 {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 600;
+  color: #1f2937;
+}
+
+.manager-layout .selected-day-header button {
+  width: 28px;
+  height: 28px;
+  border: none;
+  background: #e5e7eb;
+  border-radius: 50%;
+  cursor: pointer;
+  font-size: 16px;
+  color: #6b7280;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.manager-layout .selected-day-events {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.manager-layout .event-item {
+  background: white;
+  padding: 12px;
+  border-radius: 10px;
+  border-left: 3px solid #6366f1;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.manager-layout .event-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 6px;
+}
+
+.manager-layout .event-title {
+  font-weight: 600;
+  font-size: 14px;
+  color: #1f2937;
+}
+
+.manager-layout .event-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  font-size: 12px;
+  color: #6b7280;
+}
+
 /* Task Event Styling */
 .task-event {
   border-left: 3px solid;
