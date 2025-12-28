@@ -827,8 +827,9 @@ exports.getEnhancedAnalytics = async (req, res) => {
       }
     });
 
-    // Registrations by section
+    // Registrations by section (filtered by date range)
     const bySectionRaw = await Registration.findAll({
+      where: dateFilter,
       attributes: [
         'fablabSection',
         [Registration.sequelize.fn('COUNT', Registration.sequelize.col('registrationId')), 'count']
@@ -842,8 +843,9 @@ exports.getEnhancedAnalytics = async (req, res) => {
       count: parseInt(item.count, 10) || 0
     }));
 
-    // Registrations by application type (via User table)
+    // Registrations by application type (via User table - filtered by date range)
     const byApplicationType = await User.findAll({
+      where: dateFilter,
       attributes: [
         'applicationType',
         [User.sequelize.fn('COUNT', User.sequelize.col('userId')), 'count']
@@ -852,8 +854,9 @@ exports.getEnhancedAnalytics = async (req, res) => {
       raw: true
     });
 
-    // Registrations by status
+    // Registrations by status (filtered by date range)
     const byStatusRaw = await Registration.findAll({
+      where: dateFilter,
       attributes: [
         'status',
         [Registration.sequelize.fn('COUNT', Registration.sequelize.col('registrationId')), 'count']
@@ -866,11 +869,9 @@ exports.getEnhancedAnalytics = async (req, res) => {
       count: parseInt(item.count, 10) || 0
     }));
 
-    // Time series data - registrations over time
+    // Time series data - registrations over time (filtered by date range)
     const timeSeriesData = await Registration.findAll({
-      where: {
-        createdAt: { [Op.gte]: startDate }
-      },
+      where: dateFilter,
       attributes: [
         [Registration.sequelize.fn('DATE', Registration.sequelize.col('createdAt')), 'date'],
         [Registration.sequelize.fn('COUNT', Registration.sequelize.col('registrationId')), 'count']
@@ -880,8 +881,9 @@ exports.getEnhancedAnalytics = async (req, res) => {
       raw: true
     });
 
-    // Registrations by service type
+    // Registrations by service type (filtered by date range)
     const byServiceType = await Registration.findAll({
+      where: dateFilter,
       attributes: [
         'serviceType',
         [Registration.sequelize.fn('COUNT', Registration.sequelize.col('registrationId')), 'count']

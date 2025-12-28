@@ -193,6 +193,16 @@ exports.createRegistration = async (req, res) => {
       // Generate new user ID
       userId = await generateUserId();
 
+      // Determine name based on application type
+      let userName = name;
+      if (['Beneficiary', 'Visitor', 'Volunteer', 'Talented'].includes(applicationType)) {
+        userName = firstName && lastName ? `${firstName} ${lastName}` : (firstName || lastName || name);
+      } else if (applicationType === 'FABLAB Visit') {
+        userName = personInCharge || name;
+      } else if (applicationType === 'Entity') {
+        userName = name || entityName;
+      }
+
       // Create new user
       user = await User.create({
         userId,
@@ -209,7 +219,7 @@ exports.createRegistration = async (req, res) => {
         entityName,
         visitingEntity,
         personInCharge,
-        name
+        name: userName
       });
     }
 

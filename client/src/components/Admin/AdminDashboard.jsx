@@ -221,7 +221,7 @@ const AdminDashboard = () => {
       fetchSchedule();
       fetchEmployees();
     }
-  }, [activeTab, fetchRegistrations, analyticsPeriod]);
+  }, [activeTab, fetchRegistrations, analyticsPeriod, analyticsDateRange.startDate, analyticsDateRange.endDate]);
 
   const handleLogout = () => {
     localStorage.removeItem('adminToken');
