@@ -86,6 +86,9 @@ const AdminDashboard = () => {
   // Bulk selection states
   const [selectedRegistrations, setSelectedRegistrations] = useState(new Set());
 
+  // Selected calendar day for showing appointment details
+  const [selectedCalendarDay, setSelectedCalendarDay] = useState(null);
+
   // Apply theme to document
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme);
@@ -846,7 +849,7 @@ const AdminDashboard = () => {
             background: white;
           }
           .cut-line-text {
-            font-size: 6px;
+            font-size: 7px;
             color: #999;
             text-transform: uppercase;
             letter-spacing: 1px;
@@ -861,59 +864,47 @@ const AdminDashboard = () => {
             position: relative;
             display: flex;
             flex-direction: column;
-            border-top: 3px solid #e02529;
           }
           .card-header {
             background: linear-gradient(135deg, #e02529 0%, #c41e24 100%);
-            padding: 8px;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 6px;
-          }
-          .card-header .logos {
-            display: flex;
-            gap: 8px;
-            align-items: center;
-            justify-content: center;
-          }
-          .card-header .logo {
-            height: 22px;
-            width: auto;
-            background: white;
-            padding: 2px 5px;
-            border-radius: 4px;
-          }
-          .card-header .title {
-            color: white;
-            font-size: 8px;
-            font-weight: 600;
+            padding: 10px 8px;
             text-align: center;
+          }
+          .card-title {
+            color: white;
+            font-size: 11px;
+            font-weight: 700;
+            letter-spacing: 0.5px;
+          }
+          .card-subtitle {
+            color: rgba(255,255,255,0.85);
+            font-size: 8px;
+            margin-top: 2px;
           }
           .card-body {
             flex: 1;
-            padding: 8px;
+            padding: 10px;
             display: flex;
             flex-direction: column;
             align-items: center;
-            gap: 6px;
+            gap: 8px;
           }
-          .user-avatar {
-            width: 45px;
-            height: 45px;
-            background: linear-gradient(135deg, #e02529, #c41e24);
-            border-radius: 50%;
+          .user-photo {
+            width: 55px;
+            height: 65px;
+            background: linear-gradient(135deg, #e8e8e8, #d0d0d0);
+            border-radius: 6px;
             display: flex;
             align-items: center;
             justify-content: center;
-            color: white;
-            font-size: 20px;
+            color: #e02529;
+            font-size: 28px;
             font-weight: bold;
-            border: 3px solid #fff;
-            box-shadow: 0 2px 8px rgba(224, 37, 41, 0.3);
+            border: 3px solid #e02529;
+            box-shadow: 0 3px 10px rgba(0, 0, 0, 0.15);
           }
           .user-name {
-            font-size: 11px;
+            font-size: 13px;
             font-weight: 700;
             color: #1a1a2e;
             text-align: center;
@@ -923,24 +914,24 @@ const AdminDashboard = () => {
             display: inline-block;
             background: linear-gradient(135deg, #e02529, #c41e24);
             color: white;
-            font-size: 7px;
-            padding: 2px 10px;
-            border-radius: 10px;
+            font-size: 9px;
+            padding: 3px 12px;
+            border-radius: 12px;
             font-weight: 600;
           }
           .info-section {
             width: 100%;
             display: flex;
             flex-direction: column;
-            gap: 3px;
-            margin-top: 4px;
+            gap: 4px;
+            margin-top: 6px;
           }
           .info-row {
             display: flex;
             justify-content: space-between;
-            font-size: 7px;
-            padding: 2px 0;
-            border-bottom: 1px dotted #eee;
+            font-size: 9px;
+            padding: 3px 0;
+            border-bottom: 1px dotted #ddd;
           }
           .info-row:last-child {
             border-bottom: none;
@@ -950,54 +941,61 @@ const AdminDashboard = () => {
             color: #555;
           }
           .info-value {
-            color: #333;
+            color: #1a1a2e;
+            font-weight: 500;
             text-align: ${isRTL ? 'left' : 'right'};
-            max-width: 60%;
+            max-width: 55%;
             overflow: hidden;
             text-overflow: ellipsis;
             white-space: nowrap;
           }
           .card-footer {
             background: linear-gradient(135deg, #1a1a2e 0%, #2d2d44 100%);
-            padding: 6px 8px;
+            padding: 8px;
             display: flex;
             flex-direction: column;
             align-items: center;
-            gap: 3px;
+            gap: 6px;
           }
-          .member-id-section {
+          .member-id-row {
             display: flex;
-            flex-direction: column;
             align-items: center;
-            gap: 1px;
+            gap: 6px;
           }
           .member-id-label {
-            font-size: 5px;
+            font-size: 7px;
             color: rgba(255,255,255,0.7);
             text-transform: uppercase;
-            letter-spacing: 1px;
+            letter-spacing: 0.5px;
           }
           .member-id-value {
-            font-size: 10px;
+            font-size: 12px;
             font-weight: 700;
             color: #fff;
             font-family: 'Consolas', 'Courier New', monospace;
-            background: rgba(224, 37, 41, 0.3);
-            padding: 2px 8px;
+            background: rgba(224, 37, 41, 0.4);
+            padding: 2px 10px;
             border-radius: 4px;
           }
-          .foundation-text {
-            font-size: 5px;
-            color: rgba(255,255,255,0.6);
-            text-align: center;
-            margin-top: 2px;
+          .footer-logos {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            justify-content: center;
+          }
+          .footer-logos .logo {
+            height: 20px;
+            width: auto;
+            background: white;
+            padding: 2px 4px;
+            border-radius: 3px;
           }
           .decorative-stripe {
             position: absolute;
-            top: 50%;
+            top: 40%;
             ${isRTL ? 'right' : 'left'}: 0;
             width: 3px;
-            height: 30%;
+            height: 25%;
             background: linear-gradient(to bottom, transparent, #e02529, transparent);
           }
           @media print {
@@ -1028,30 +1026,17 @@ const AdminDashboard = () => {
           </div>
           <div class="id-card">
             <div class="card-header">
-              <div class="logos">
-                <img src="/fablab.png" alt="FABLAB" class="logo">
-                <img src="/found.png" alt="Foundation" class="logo">
-              </div>
-              <div class="title">
-                ${isRTL ? 'بطاقة عضوية فاب لاب الأحساء' : 'FABLAB Al-Ahsa Member Card'}
-              </div>
+              <div class="card-title">${isRTL ? 'بطاقة عضوية فاب لاب الأحساء' : 'FABLAB Al-Ahsa Member Card'}</div>
+              <div class="card-subtitle">${isRTL ? 'مؤسسة عبدالمنعم الراشد الإنسانية' : 'Abdulmonem Al-Rashed Foundation'}</div>
             </div>
             <div class="card-body">
-              <div class="user-avatar">
+              <div class="user-photo">
                 ${userName.charAt(0).toUpperCase()}
               </div>
               <div class="user-name">${userName}</div>
               <div class="user-type-badge">${getAppTypeLabel()}</div>
 
               <div class="info-section">
-                <div class="info-row">
-                  <span class="info-label">${isRTL ? 'الجنس' : 'Sex'}</span>
-                  <span class="info-value">${getSexLabelForCard()}</span>
-                </div>
-                <div class="info-row">
-                  <span class="info-label">${isRTL ? 'الجنسية' : 'Nationality'}</span>
-                  <span class="info-value">${user.nationality || na}</span>
-                </div>
                 <div class="info-row">
                   <span class="info-label">${isRTL ? 'رقم الهوية' : 'National ID'}</span>
                   <span class="info-value">${user.nationalId || na}</span>
@@ -1061,20 +1046,20 @@ const AdminDashboard = () => {
                   <span class="info-value">${user.phoneNumber || na}</span>
                 </div>
                 <div class="info-row">
-                  <span class="info-label">${isRTL ? 'العنوان' : 'Address'}</span>
-                  <span class="info-value">${user.nationalAddress || na}</span>
+                  <span class="info-label">${isRTL ? 'الجنسية' : 'Nationality'}</span>
+                  <span class="info-value">${user.nationality || na}</span>
                 </div>
               </div>
             </div>
             <div class="decorative-stripe"></div>
             <div class="card-footer">
-              <div class="member-id-section">
-                <span class="member-id-label">${isRTL ? 'رقم العضوية' : 'Member ID'}</span>
+              <div class="member-id-row">
+                <span class="member-id-label">${isRTL ? 'رقم العضوية' : 'ID'}</span>
                 <span class="member-id-value">${user.uniqueId || user.userId || 'N/A'}</span>
               </div>
-              <div class="foundation-text">
-                <strong>FABLAB</strong> ${isRTL ? 'الأحساء' : 'Al-Ahsa'}<br>
-                ${isRTL ? 'مؤسسة عبدالمنعم الراشد الإنسانية' : 'Abdulmonem Al-Rashed Foundation'}
+              <div class="footer-logos">
+                <img src="/fablab.png" alt="FABLAB" class="logo">
+                <img src="/found.png" alt="Foundation" class="logo">
               </div>
             </div>
           </div>
@@ -2484,10 +2469,13 @@ const AdminDashboard = () => {
                         {getDaysInMonth(selectedDate).map((day) => {
                           const events = getEventsForDay(day);
                           const isToday = isSameDay(day, new Date());
+                          const isSelected = selectedCalendarDay && isSameDay(day, selectedCalendarDay);
                           return (
                             <div
                               key={day.toISOString()}
-                              className={`calendar-day ${isToday ? 'today' : ''} ${events.length > 0 ? 'has-events' : ''}`}
+                              className={`calendar-day ${isToday ? 'today' : ''} ${events.length > 0 ? 'has-events' : ''} ${isSelected ? 'selected' : ''}`}
+                              onClick={() => events.length > 0 && setSelectedCalendarDay(day)}
+                              style={{ cursor: events.length > 0 ? 'pointer' : 'default' }}
                             >
                               <span className="day-number">{format(day, 'd')}</span>
                               {events.length > 0 && (
@@ -2591,6 +2579,86 @@ const AdminDashboard = () => {
                       </div>
                     </div>
 
+                    {/* Selected Day Appointments Section */}
+                    {selectedCalendarDay && (
+                      <div className="selected-day-section">
+                        <div className="selected-day-header">
+                          <h3>
+                            {format(selectedCalendarDay, isRTL ? 'dd MMMM yyyy' : 'MMMM dd, yyyy', { locale: isRTL ? ar : enUS })}
+                          </h3>
+                          <button
+                            className="close-selected-day"
+                            onClick={() => setSelectedCalendarDay(null)}
+                          >
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                              <line x1="18" y1="6" x2="6" y2="18"/>
+                              <line x1="6" y1="6" x2="18" y2="18"/>
+                            </svg>
+                          </button>
+                        </div>
+                        <div className="selected-day-appointments">
+                          {getEventsForDay(selectedCalendarDay).map((apt) => (
+                            <div key={apt.id} className="detailed-appointment-item">
+                              <div
+                                className="detailed-appointment-header"
+                                style={{ borderLeftColor: SECTION_COLORS[apt.section] || '#6366f1' }}
+                              >
+                                <span className="detailed-appointment-name">{apt.title}</span>
+                                <span className="detailed-appointment-time">
+                                  {apt.startTime}{apt.endTime && ` - ${apt.endTime}`}
+                                </span>
+                              </div>
+                              <div className="detailed-appointment-body">
+                                <div className="apt-detail-row">
+                                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                    <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+                                    <line x1="16" y1="2" x2="16" y2="6"/>
+                                    <line x1="8" y1="2" x2="8" y2="6"/>
+                                    <line x1="3" y1="10" x2="21" y2="10"/>
+                                  </svg>
+                                  <span>{sectionLabels[apt.section] || apt.section}</span>
+                                </div>
+                                {apt.phone && (
+                                  <div className="apt-detail-row">
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                      <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/>
+                                    </svg>
+                                    <span dir="ltr">{apt.phone}</span>
+                                  </div>
+                                )}
+                                {apt.email && (
+                                  <div className="apt-detail-row">
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                      <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
+                                      <polyline points="22,6 12,13 2,6"/>
+                                    </svg>
+                                    <span>{apt.email}</span>
+                                  </div>
+                                )}
+                                {apt.services && apt.services.length > 0 && (
+                                  <div className="apt-detail-row services-row">
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                      <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/>
+                                    </svg>
+                                    <span>{translateServices(apt.services)}</span>
+                                  </div>
+                                )}
+                                {apt.applicationType && (
+                                  <div className="apt-detail-row">
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                      <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+                                      <circle cx="12" cy="7" r="4"/>
+                                    </svg>
+                                    <span>{applicationTypeLabels[apt.applicationType] || apt.applicationType}</span>
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
                     {/* Appointments Section */}
                     <div className="appointments-section">
                       <h3>
@@ -2600,18 +2668,28 @@ const AdminDashboard = () => {
                         }
                       </h3>
                       <div className="appointments-list">
-                        {getFilteredSchedule().slice(0, 5).map((apt) => (
-                          <div key={apt.id} className="appointment-item">
+                        {getFilteredSchedule().slice(0, 8).map((apt) => (
+                          <div key={apt.id} className="appointment-item-detailed">
                             <div
                               className="appointment-color"
                               style={{ backgroundColor: SECTION_COLORS[apt.section] || '#6366f1' }}
                             />
                             <div className="appointment-info">
                               <span className="appointment-title">{apt.title}</span>
-                              <span className="appointment-details">
+                              <span className="appointment-datetime">
                                 {apt.date && formatDate(apt.date)} {apt.startTime && `• ${apt.startTime}`}
+                                {apt.endTime && ` - ${apt.endTime}`}
                               </span>
                               <span className="appointment-section">{sectionLabels[apt.section] || apt.section}</span>
+                              {apt.services && apt.services.length > 0 && (
+                                <span className="appointment-services">
+                                  {translateServices(apt.services.slice(0, 2))}
+                                  {apt.services.length > 2 && ` +${apt.services.length - 2}`}
+                                </span>
+                              )}
+                              {apt.phone && (
+                                <span className="appointment-phone" dir="ltr">{apt.phone}</span>
+                              )}
                             </div>
                           </div>
                         ))}

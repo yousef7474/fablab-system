@@ -4,6 +4,79 @@ require('dotenv').config();
 
 sgMail.setApiKey(process.env.SENDGRID_API_KEY);
 
+// Translation maps for sections
+const sectionTranslations = {
+  'Electronics and Programming': 'الإلكترونيات والبرمجة',
+  'CNC Laser': 'الليزر CNC',
+  'CNC Wood': 'الخشب CNC',
+  '3D': 'الطباعة ثلاثية الأبعاد',
+  'Robotic and AI': 'الروبوتات والذكاء الاصطناعي',
+  "Kid's Club": 'نادي الأطفال',
+  'Vinyl Cutting': 'قطع الفينيل'
+};
+
+// Translation maps for services
+const serviceTranslations = {
+  'In-person consultation': 'استشارة حضورية',
+  'Online consultation': 'استشارة عن بعد',
+  'Machine/Device reservation': 'حجز جهاز / آلة',
+  'Personal workspace': 'مساحة عمل شخصية',
+  'Support in project implementation': 'دعم في تنفيذ المشروع',
+  'Other': 'أخرى',
+  'PCB Design': 'تصميم الدوائر المطبوعة',
+  'PCB Fabrication': 'تصنيع الدوائر المطبوعة',
+  'Arduino Programming': 'برمجة الأردوينو',
+  'Raspberry Pi': 'راسبيري باي',
+  'IoT Projects': 'مشاريع إنترنت الأشياء',
+  'Laser Cutting': 'القطع بالليزر',
+  'Laser Engraving': 'النقش بالليزر',
+  'Wood Cutting': 'قطع الخشب',
+  'Wood Carving': 'نحت الخشب',
+  'CNC Milling': 'التفريز CNC',
+  '3D Printing': 'الطباعة ثلاثية الأبعاد',
+  '3D Modeling': 'النمذجة ثلاثية الأبعاد',
+  '3D Scanning': 'المسح ثلاثي الأبعاد',
+  'Robot Design': 'تصميم الروبوت',
+  'Robot Programming': 'برمجة الروبوت',
+  'AI Projects': 'مشاريع الذكاء الاصطناعي',
+  'Machine Learning': 'تعلم الآلة',
+  'Vinyl Cutting': 'قطع الفينيل',
+  'Sticker Making': 'صناعة الملصقات',
+  'Heat Transfer': 'النقل الحراري',
+  'Kids Workshop': 'ورشة الأطفال',
+  'Educational Activities': 'الأنشطة التعليمية',
+  'STEM Activities': 'أنشطة STEM',
+  'Consultation': 'استشارة',
+  'Training': 'تدريب',
+  'Project Development': 'تطوير المشاريع',
+  'Prototyping': 'النماذج الأولية'
+};
+
+// Helper to translate section to Arabic
+const translateSection = (section) => {
+  return sectionTranslations[section] || section;
+};
+
+// Helper to translate services array to Arabic
+const translateServicesAr = (services) => {
+  if (!services) return 'غير محدد';
+  if (typeof services === 'string') {
+    return serviceTranslations[services] || services;
+  }
+  if (Array.isArray(services)) {
+    return services.map(s => serviceTranslations[s] || s).join('، ');
+  }
+  return 'غير محدد';
+};
+
+// Helper to format services for English
+const translateServicesEn = (services) => {
+  if (!services) return 'N/A';
+  if (typeof services === 'string') return services;
+  if (Array.isArray(services)) return services.join(', ');
+  return 'N/A';
+};
+
 // Get employee email by section from database ONLY (no fallback to env variables)
 const getEmployeeEmailBySection = async (section) => {
   try {
@@ -89,7 +162,9 @@ const sendEngineerNotification = async (section, registrationData) => {
   }
 
   const { userName, userEmail, registrationId, appointmentDate, appointmentTime, requiredServices, serviceDetails } = registrationData;
-  const servicesText = Array.isArray(requiredServices) ? requiredServices.join(', ') : (requiredServices || 'N/A');
+  const servicesTextAr = translateServicesAr(requiredServices);
+  const servicesTextEn = translateServicesEn(requiredServices);
+  const sectionAr = translateSection(section);
 
   const msg = {
     to: engineerData.email,
@@ -97,21 +172,21 @@ const sendEngineerNotification = async (section, registrationData) => {
       email: process.env.SENDGRID_FROM_EMAIL,
       name: process.env.SENDGRID_FROM_NAME
     },
-    subject: `طلب تسجيل جديد في قسم ${section} - New Registration Request`,
+    subject: `طلب تسجيل جديد في قسم ${sectionAr} - New Registration Request`,
     html: `
       <div dir="rtl" style="font-family: Arial, sans-serif; padding: 20px; background: #f9fafb; border-radius: 10px;">
         <div style="background: white; padding: 20px; border-radius: 8px; border-left: 4px solid #EE2329;">
           <h2 style="color: #EE2329; margin-top: 0;">مرحباً ${engineerData.name}،</h2>
           <h3>طلب تسجيل جديد</h3>
           <table style="width: 100%; border-collapse: collapse;">
-            <tr><td style="padding: 8px 0; border-bottom: 1px solid #eee;"><strong>القسم:</strong></td><td style="padding: 8px 0; border-bottom: 1px solid #eee;">${section}</td></tr>
+            <tr><td style="padding: 8px 0; border-bottom: 1px solid #eee;"><strong>القسم:</strong></td><td style="padding: 8px 0; border-bottom: 1px solid #eee;">${sectionAr}</td></tr>
             <tr><td style="padding: 8px 0; border-bottom: 1px solid #eee;"><strong>رقم التسجيل:</strong></td><td style="padding: 8px 0; border-bottom: 1px solid #eee;">${registrationId}</td></tr>
             <tr><td style="padding: 8px 0; border-bottom: 1px solid #eee;"><strong>اسم المستخدم:</strong></td><td style="padding: 8px 0; border-bottom: 1px solid #eee;">${userName}</td></tr>
             <tr><td style="padding: 8px 0; border-bottom: 1px solid #eee;"><strong>البريد الإلكتروني:</strong></td><td style="padding: 8px 0; border-bottom: 1px solid #eee;">${userEmail}</td></tr>
-            <tr><td style="padding: 8px 0; border-bottom: 1px solid #eee;"><strong>التاريخ:</strong></td><td style="padding: 8px 0; border-bottom: 1px solid #eee;">${appointmentDate || 'N/A'}</td></tr>
-            <tr><td style="padding: 8px 0; border-bottom: 1px solid #eee;"><strong>الوقت:</strong></td><td style="padding: 8px 0; border-bottom: 1px solid #eee;">${appointmentTime || 'N/A'}</td></tr>
-            <tr><td style="padding: 8px 0; border-bottom: 1px solid #eee;"><strong>الخدمات المطلوبة:</strong></td><td style="padding: 8px 0; border-bottom: 1px solid #eee;">${servicesText}</td></tr>
-            <tr><td style="padding: 8px 0;"><strong>تفاصيل الخدمة:</strong></td><td style="padding: 8px 0;">${serviceDetails || 'N/A'}</td></tr>
+            <tr><td style="padding: 8px 0; border-bottom: 1px solid #eee;"><strong>التاريخ:</strong></td><td style="padding: 8px 0; border-bottom: 1px solid #eee;">${appointmentDate || 'غير محدد'}</td></tr>
+            <tr><td style="padding: 8px 0; border-bottom: 1px solid #eee;"><strong>الوقت:</strong></td><td style="padding: 8px 0; border-bottom: 1px solid #eee;">${appointmentTime || 'غير محدد'}</td></tr>
+            <tr><td style="padding: 8px 0; border-bottom: 1px solid #eee;"><strong>الخدمات المطلوبة:</strong></td><td style="padding: 8px 0; border-bottom: 1px solid #eee;">${servicesTextAr}</td></tr>
+            <tr><td style="padding: 8px 0;"><strong>تفاصيل الخدمة:</strong></td><td style="padding: 8px 0;">${serviceDetails || 'غير محدد'}</td></tr>
           </table>
           <br>
           <p style="background: #fff3cd; padding: 10px; border-radius: 5px;">⚠️ يرجى الدخول إلى لوحة التحكم لمراجعة الطلب والموافقة عليه أو رفضه.</p>
@@ -127,7 +202,7 @@ const sendEngineerNotification = async (section, registrationData) => {
             <tr><td style="padding: 8px 0; border-bottom: 1px solid #eee;"><strong>Email:</strong></td><td style="padding: 8px 0; border-bottom: 1px solid #eee;">${userEmail}</td></tr>
             <tr><td style="padding: 8px 0; border-bottom: 1px solid #eee;"><strong>Date:</strong></td><td style="padding: 8px 0; border-bottom: 1px solid #eee;">${appointmentDate || 'N/A'}</td></tr>
             <tr><td style="padding: 8px 0; border-bottom: 1px solid #eee;"><strong>Time:</strong></td><td style="padding: 8px 0; border-bottom: 1px solid #eee;">${appointmentTime || 'N/A'}</td></tr>
-            <tr><td style="padding: 8px 0; border-bottom: 1px solid #eee;"><strong>Required Services:</strong></td><td style="padding: 8px 0; border-bottom: 1px solid #eee;">${servicesText}</td></tr>
+            <tr><td style="padding: 8px 0; border-bottom: 1px solid #eee;"><strong>Required Services:</strong></td><td style="padding: 8px 0; border-bottom: 1px solid #eee;">${servicesTextEn}</td></tr>
             <tr><td style="padding: 8px 0;"><strong>Service Details:</strong></td><td style="padding: 8px 0;">${serviceDetails || 'N/A'}</td></tr>
           </table>
           <br>
@@ -184,6 +259,9 @@ const sendStatusUpdateEmail = async (userEmail, userName, registrationId, status
     }
   };
 
+  // Translate section name for emails
+  const sectionAr = fablabSection ? translateSection(fablabSection) : null;
+
   const appointmentInfo = appointmentDate ? `
     <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; margin: 15px 0; border-right: 4px solid #EE2329;">
       <h4 style="margin: 0 0 10px 0; color: #333;">تفاصيل الموعد:</h4>
@@ -191,7 +269,7 @@ const sendStatusUpdateEmail = async (userEmail, userName, registrationId, status
         <tr><td style="padding: 5px 0;"><strong>التاريخ:</strong></td><td>${formatDateStrAr(appointmentDate)}</td></tr>
         <tr><td style="padding: 5px 0;"><strong>الوقت:</strong></td><td>${appointmentTime || 'غير محدد'}</td></tr>
         ${appointmentDuration ? `<tr><td style="padding: 5px 0;"><strong>المدة:</strong></td><td>${appointmentDuration} دقيقة</td></tr>` : ''}
-        ${fablabSection ? `<tr><td style="padding: 5px 0;"><strong>القسم:</strong></td><td>${fablabSection}</td></tr>` : ''}
+        ${sectionAr ? `<tr><td style="padding: 5px 0;"><strong>القسم:</strong></td><td>${sectionAr}</td></tr>` : ''}
       </table>
     </div>
   ` : '';

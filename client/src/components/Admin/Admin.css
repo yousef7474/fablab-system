@@ -2331,6 +2331,208 @@
   color: var(--gray-400);
 }
 
+/* Selected Calendar Day Styles */
+.calendar-day.selected {
+  background: var(--racing-red) !important;
+  color: white !important;
+  transform: scale(1.05);
+  box-shadow: 0 4px 12px rgba(224, 37, 41, 0.3);
+}
+
+.calendar-day.selected .day-number {
+  color: white;
+}
+
+.selected-day-section {
+  background: white;
+  border-radius: 16px;
+  padding: 1.25rem;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+  border: 1px solid var(--gray-100);
+  border-top: 4px solid var(--racing-red);
+}
+
+.selected-day-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid var(--gray-100);
+}
+
+.selected-day-header h3 {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--gray-800);
+  margin: 0;
+}
+
+.close-selected-day {
+  background: var(--gray-100);
+  border: none;
+  border-radius: 50%;
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s;
+  color: var(--gray-600);
+}
+
+.close-selected-day:hover {
+  background: var(--racing-red);
+  color: white;
+}
+
+.selected-day-appointments {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.detailed-appointment-item {
+  background: var(--gray-50);
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.detailed-appointment-header {
+  padding: 0.75rem 1rem;
+  border-left: 4px solid var(--racing-red);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: white;
+}
+
+.detailed-appointment-name {
+  font-weight: 600;
+  color: var(--gray-800);
+  font-size: 0.95rem;
+}
+
+.detailed-appointment-time {
+  font-size: 0.8rem;
+  color: var(--racing-red);
+  font-weight: 500;
+  background: rgba(224, 37, 41, 0.1);
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+}
+
+.detailed-appointment-body {
+  padding: 0.75rem 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.apt-detail-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  font-size: 0.8rem;
+  color: var(--gray-600);
+}
+
+.apt-detail-row svg {
+  flex-shrink: 0;
+  color: var(--gray-400);
+  margin-top: 2px;
+}
+
+.apt-detail-row.services-row span {
+  color: var(--gray-700);
+  font-weight: 500;
+}
+
+/* Enhanced Appointment Item for list */
+.appointment-item-detailed {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  padding: 0.75rem;
+  background: var(--gray-50);
+  border-radius: 10px;
+  transition: all 0.2s;
+}
+
+.appointment-item-detailed:hover {
+  background: var(--gray-100);
+}
+
+.appointment-datetime {
+  display: block;
+  font-size: 0.75rem;
+  color: var(--gray-500);
+  margin-bottom: 0.25rem;
+}
+
+.appointment-services {
+  display: block;
+  font-size: 0.7rem;
+  color: var(--racing-red);
+  font-weight: 500;
+  margin-top: 0.25rem;
+}
+
+.appointment-phone {
+  display: block;
+  font-size: 0.7rem;
+  color: var(--gray-400);
+  margin-top: 0.15rem;
+}
+
+/* Dark theme support for schedule details */
+[data-theme="dark"] .selected-day-section {
+  background: var(--dark-card);
+  border-color: var(--dark-border);
+}
+
+[data-theme="dark"] .selected-day-header {
+  border-bottom-color: var(--dark-border);
+}
+
+[data-theme="dark"] .selected-day-header h3 {
+  color: var(--dark-text);
+}
+
+[data-theme="dark"] .close-selected-day {
+  background: var(--dark-border);
+  color: var(--dark-text-secondary);
+}
+
+[data-theme="dark"] .detailed-appointment-item {
+  background: var(--dark-bg);
+}
+
+[data-theme="dark"] .detailed-appointment-header {
+  background: var(--dark-card);
+}
+
+[data-theme="dark"] .detailed-appointment-name {
+  color: var(--dark-text);
+}
+
+[data-theme="dark"] .apt-detail-row {
+  color: var(--dark-text-secondary);
+}
+
+[data-theme="dark"] .appointment-item-detailed {
+  background: var(--dark-bg);
+}
+
+[data-theme="dark"] .appointment-item-detailed:hover {
+  background: var(--dark-border);
+}
+
+[data-theme="dark"] .calendar-day.selected {
+  box-shadow: 0 4px 12px rgba(224, 37, 41, 0.4);
+}
+
 /* ========== Settings Styles ========== */
 .settings-content {
   animation: fadeIn 0.3s ease;
