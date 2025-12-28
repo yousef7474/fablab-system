@@ -8,13 +8,14 @@ import { lightTheme } from './config/theme';
 import RegistrationForm from './components/RegistrationForm/RegistrationForm';
 import AdminLogin from './components/Admin/AdminLogin';
 import AdminDashboard from './components/Admin/AdminDashboard';
+import ManagerDashboard from './components/Manager/ManagerDashboard';
 import LanguageSelector from './components/LanguageSelector';
 
-// Wrapper to conditionally show LanguageSelector (hide only on admin login)
+// Wrapper to conditionally show LanguageSelector (hide on admin/manager pages)
 const ConditionalLanguageSelector = () => {
   const location = useLocation();
-  // Hide only on admin login page (it has its own language toggle)
-  if (location.pathname === '/admin/login') return null;
+  // Hide on admin login page and manager dashboard (they have their own language toggle)
+  if (location.pathname === '/admin/login' || location.pathname.startsWith('/manager')) return null;
   return <LanguageSelector />;
 };
 
@@ -28,6 +29,7 @@ const AppContent = () => {
         <Route path="/register" element={<RegistrationForm />} />
         <Route path="/admin/login" element={<AdminLogin />} />
         <Route path="/admin/dashboard/*" element={<AdminDashboard />} />
+        <Route path="/manager/dashboard/*" element={<ManagerDashboard />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </>

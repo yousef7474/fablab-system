@@ -711,7 +711,7 @@ exports.deleteEmployee = async (req, res) => {
 // Get schedule data (appointments by date)
 exports.getSchedule = async (req, res) => {
   try {
-    const { startDate, endDate, section } = req.query;
+    const { startDate, endDate, section, includeTasks } = req.query;
 
     const whereClause = {
       status: 'approved'
@@ -758,9 +758,50 @@ exports.getSchedule = async (req, res) => {
         services: reg.requiredServices,
         applicationType: reg.user.applicationType,
         phone: reg.user.phoneNumber,
-        email: reg.user.email
+        email: reg.user.email,
+        type: 'appointment'
       };
     });
+
+    // Include tasks if requested
+    if (includeTasks === 'true') {
+      const { Task, Employee } = require('../models');
+
+      const taskWhereClause = {
+        status: { [Op.ne]: 'cancelled' }
+      };
+
+      if (section) {
+        taskWhereClause.section = section;
+      }
+
+      const tasks = await Task.findAll({
+        where: taskWhereClause,
+        include: [{
+          model: Employee,
+          as: 'assignee',
+          attributes: ['name', 'email', 'section']
+        }],
+        order: [['dueDate', 'ASC'], ['dueTime', 'ASC']]
+      });
+
+      const taskItems = tasks.map(task => ({
+        id: task.taskId,
+        title: task.title,
+        date: task.dueDate,
+        startTime: task.dueTime,
+        endTime: null,
+        section: task.section,
+        type: 'task',
+        priority: task.priority,
+        status: task.status,
+        assignee: task.assignee?.name,
+        assigneeEmail: task.assignee?.email,
+        description: task.description
+      }));
+
+      return res.json([...scheduleItems, ...taskItems]);
+    }
 
     res.json(scheduleItems);
   } catch (error) {

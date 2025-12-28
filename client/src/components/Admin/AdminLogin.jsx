@@ -34,7 +34,13 @@ const AdminLogin = () => {
       localStorage.setItem('adminToken', response.data.token);
       localStorage.setItem('adminData', JSON.stringify(response.data.admin));
       toast.success(isRTL ? 'تم تسجيل الدخول بنجاح!' : 'Login successful!');
-      navigate('/admin/dashboard');
+
+      // Redirect based on role
+      if (response.data.admin.role === 'manager') {
+        navigate('/manager/dashboard');
+      } else {
+        navigate('/admin/dashboard');
+      }
     } catch (error) {
       console.error('Login error:', error);
       toast.error(error.response?.data?.message || (isRTL ? 'فشل تسجيل الدخول' : 'Login failed'));

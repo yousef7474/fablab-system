@@ -12,7 +12,8 @@
       "Bash(curl:*)",
       "Bash(npm install:*)",
       "Bash(node check-employees.js:*)",
-      "Bash(del \"F:\\\\fablab regiser\\\\server\\\\check-employees.js\")"
+      "Bash(del \"F:\\\\fablab regiser\\\\server\\\\check-employees.js\")",
+      "Bash(cat:*)"
     ],
     "deny": [],
     "ask": []
