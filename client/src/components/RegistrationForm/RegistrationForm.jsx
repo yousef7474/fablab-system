@@ -60,6 +60,7 @@ const defaultFormData = {
   visitingEntity: '',
   personInCharge: '',
   name: '',
+  profilePicture: '',
   fablabSection: '',
   requiredServices: [],
   otherServiceDetails: '',
@@ -153,7 +154,8 @@ const RegistrationForm = () => {
       nationalAddress: userData.nationalAddress || '',
       entityName: userData.entityName || '',
       visitingEntity: userData.visitingEntity || '',
-      personInCharge: userData.personInCharge || ''
+      personInCharge: userData.personInCharge || '',
+      profilePicture: userData.profilePicture || ''
     });
     setActiveStep(2); // Skip to FablabSection since user data is already filled
   };

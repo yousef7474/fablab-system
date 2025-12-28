@@ -3,6 +3,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useTranslation } from 'react-i18next';
 import './FabyBot.css';
 
+const WELCOME_SHOWN_KEY = 'faby_welcome_shown';
+
 const FabyBot = ({ currentStep, formData }) => {
   const { i18n } = useTranslation();
   const isRTL = i18n.language === 'ar';
@@ -11,6 +13,7 @@ const FabyBot = ({ currentStep, formData }) => {
   const [inputValue, setInputValue] = useState('');
   const [isTyping, setIsTyping] = useState(false);
   const [showQuickActions, setShowQuickActions] = useState(true);
+  const [showWelcome, setShowWelcome] = useState(false);
   const messagesEndRef = useRef(null);
 
   // FABY's personality and character
@@ -289,6 +292,25 @@ Costs vary based on:
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
+  // Show welcome popup on first visit
+  useEffect(() => {
+    const hasSeenWelcome = sessionStorage.getItem(WELCOME_SHOWN_KEY);
+    if (!hasSeenWelcome && !isOpen) {
+      const timer = setTimeout(() => {
+        setShowWelcome(true);
+        sessionStorage.setItem(WELCOME_SHOWN_KEY, 'true');
+      }, 2000); // Show after 2 seconds
+      return () => clearTimeout(timer);
+    }
+  }, []);
+
+  // Hide welcome when chat opens
+  useEffect(() => {
+    if (isOpen) {
+      setShowWelcome(false);
+    }
+  }, [isOpen]);
+
   // Context-aware help based on current step
   const getContextHelp = () => {
     const stepHelp = {
@@ -429,6 +451,40 @@ Costs vary based on:
           </motion.span>
         )}
       </motion.button>
+
+      {/* Welcome Popup */}
+      <AnimatePresence>
+        {showWelcome && !isOpen && (
+          <motion.div
+            className="faby-welcome-popup"
+            initial={{ opacity: 0, y: 20, scale: 0.9 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 10, scale: 0.95 }}
+            transition={{ type: 'spring', damping: 25 }}
+            dir={isRTL ? 'rtl' : 'ltr'}
+          >
+            <button
+              className="faby-welcome-close"
+              onClick={() => setShowWelcome(false)}
+            >
+              ×
+            </button>
+            <div className="faby-welcome-text">
+              {isRTL ? (
+                <>
+                  مرحباً! أنا <strong>فابي</strong> 🤖<br />
+                  مساعدك الآلي. هل تحتاج مساعدة في التسجيل؟
+                </>
+              ) : (
+                <>
+                  Hi there! I'm <strong>FABY</strong> 🤖<br />
+                  Your robot assistant. Need help registering?
+                </>
+              )}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Chat Window */}
       <AnimatePresence>

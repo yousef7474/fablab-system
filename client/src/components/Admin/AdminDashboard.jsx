@@ -902,6 +902,17 @@ const AdminDashboard = () => {
             font-weight: bold;
             border: 3px solid #e02529;
             box-shadow: 0 3px 10px rgba(0, 0, 0, 0.15);
+            overflow: hidden;
+          }
+          .user-photo img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+          }
+          .user-photo .initials {
+            font-size: 28px;
+            font-weight: bold;
+            color: #e02529;
           }
           .user-name {
             font-size: 13px;
@@ -1031,7 +1042,10 @@ const AdminDashboard = () => {
             </div>
             <div class="card-body">
               <div class="user-photo">
-                ${userName.charAt(0).toUpperCase()}
+                ${user.profilePicture
+                  ? `<img src="${user.profilePicture}" alt="${userName}" />`
+                  : `<span class="initials">${userName.charAt(0).toUpperCase()}</span>`
+                }
               </div>
               <div class="user-name">${userName}</div>
               <div class="user-type-badge">${getAppTypeLabel()}</div>

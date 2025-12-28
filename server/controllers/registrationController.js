@@ -37,7 +37,8 @@ exports.checkUser = async (req, res) => {
           nationalAddress: user.nationalAddress,
           entityName: user.entityName,
           visitingEntity: user.visitingEntity,
-          personInCharge: user.personInCharge
+          personInCharge: user.personInCharge,
+          profilePicture: user.profilePicture
         }
       });
     }
@@ -161,6 +162,7 @@ exports.createRegistration = async (req, res) => {
       visitingEntity,
       personInCharge,
       name,
+      profilePicture,
       // Registration data
       fablabSection,
       requiredServices,
@@ -219,7 +221,8 @@ exports.createRegistration = async (req, res) => {
         entityName,
         visitingEntity,
         personInCharge,
-        name: userName
+        name: userName,
+        profilePicture
       });
     }
 

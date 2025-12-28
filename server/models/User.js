@@ -80,6 +80,10 @@ const User = sequelize.define('User', {
   name: {
     type: DataTypes.STRING,
     allowNull: true
+  },
+  profilePicture: {
+    type: DataTypes.TEXT('long'),
+    allowNull: true
   }
 }, {
   tableName: 'users',
@@ -96,7 +100,7 @@ const User = sequelize.define('User', {
       const nullableFields = [
         'firstName', 'lastName', 'sex', 'nationality', 'nationalId',
         'currentJob', 'nationalAddress', 'entityName', 'visitingEntity',
-        'personInCharge', 'name'
+        'personInCharge', 'name', 'profilePicture'
       ];
       nullableFields.forEach(field => {
         if (user[field] === '') user[field] = null;

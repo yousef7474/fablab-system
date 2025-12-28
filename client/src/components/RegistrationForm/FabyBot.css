@@ -6,7 +6,7 @@
 /* Floating Button */
 .faby-float-btn {
   position: fixed;
-  bottom: 24px;
+  bottom: 90px;
   right: 24px;
   width: 64px;
   height: 64px;
@@ -188,10 +188,92 @@
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
 }
 
+/* Welcome Popup Bubble */
+.faby-welcome-popup {
+  position: fixed;
+  bottom: 160px;
+  right: 24px;
+  max-width: 280px;
+  background: white;
+  padding: 14px 18px;
+  border-radius: 16px;
+  border-bottom-right-radius: 4px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+  z-index: 9998;
+  font-size: 14px;
+  line-height: 1.5;
+  color: #333;
+}
+
+[dir="rtl"] .faby-welcome-popup {
+  right: auto;
+  left: 24px;
+  border-bottom-right-radius: 16px;
+  border-bottom-left-radius: 4px;
+}
+
+.faby-welcome-popup::after {
+  content: '';
+  position: absolute;
+  bottom: -8px;
+  right: 20px;
+  width: 0;
+  height: 0;
+  border-left: 10px solid transparent;
+  border-right: 10px solid transparent;
+  border-top: 10px solid white;
+}
+
+[dir="rtl"] .faby-welcome-popup::after {
+  right: auto;
+  left: 20px;
+}
+
+.faby-welcome-close {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 20px;
+  height: 20px;
+  background: #f0f0f0;
+  border: none;
+  border-radius: 50%;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  color: #666;
+  transition: all 0.2s;
+}
+
+[dir="rtl"] .faby-welcome-close {
+  right: auto;
+  left: 8px;
+}
+
+.faby-welcome-close:hover {
+  background: #e02529;
+  color: white;
+}
+
+.faby-welcome-text {
+  padding-right: 20px;
+}
+
+[dir="rtl"] .faby-welcome-text {
+  padding-right: 0;
+  padding-left: 20px;
+}
+
+.faby-welcome-text strong {
+  color: #e02529;
+}
+
 /* Chat Window */
 .faby-chat-window {
   position: fixed;
-  bottom: 100px;
+  bottom: 165px;
   right: 24px;
   width: 380px;
   height: 520px;

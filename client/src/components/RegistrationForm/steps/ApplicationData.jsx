@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { motion } from 'framer-motion';
 import { toast } from 'react-toastify';
@@ -9,12 +9,45 @@ const ApplicationData = ({ formData, onChange, onNext, onBack }) => {
   const isRTL = i18n.language === 'ar';
   const [validating, setValidating] = useState(false);
   const [conflicts, setConflicts] = useState([]);
+  const fileInputRef = useRef(null);
 
   const handleChange = (field, value) => {
     onChange({ [field]: value });
     // Clear conflicts when user modifies the conflicting field
     if (conflicts.some(c => c.field === field)) {
       setConflicts(conflicts.filter(c => c.field !== field));
+    }
+  };
+
+  // Handle profile picture upload
+  const handleProfilePictureChange = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      toast.error(isRTL ? 'يرجى اختيار صورة صالحة' : 'Please select a valid image');
+      return;
+    }
+
+    // Validate file size (max 2MB)
+    if (file.size > 2 * 1024 * 1024) {
+      toast.error(isRTL ? 'حجم الصورة يجب أن يكون أقل من 2 ميجابايت' : 'Image size must be less than 2MB');
+      return;
+    }
+
+    // Convert to base64
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      onChange({ profilePicture: event.target.result });
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const removeProfilePicture = () => {
+    onChange({ profilePicture: '' });
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
     }
   };
 
@@ -209,6 +242,125 @@ const ApplicationData = ({ formData, onChange, onNext, onBack }) => {
                 placeholder={isRTL ? 'أدخل العنوان الوطني' : 'Enter national address'}
                 rows={2}
               />
+            </motion.div>
+
+            {/* Profile Picture Upload */}
+            <motion.div
+              className="form-group full-width"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.45 }}
+            >
+              <label className="form-label">
+                {isRTL ? 'الصورة الشخصية (للبطاقة)' : 'Profile Picture (for ID Card)'}
+              </label>
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '1rem',
+                flexWrap: 'wrap'
+              }}>
+                {formData.profilePicture ? (
+                  <div style={{
+                    position: 'relative',
+                    width: '100px',
+                    height: '120px',
+                    borderRadius: '8px',
+                    overflow: 'hidden',
+                    border: '2px solid #e02529',
+                    boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
+                  }}>
+                    <img
+                      src={formData.profilePicture}
+                      alt="Profile"
+                      style={{
+                        width: '100%',
+                        height: '100%',
+                        objectFit: 'cover'
+                      }}
+                    />
+                    <button
+                      type="button"
+                      onClick={removeProfilePicture}
+                      style={{
+                        position: 'absolute',
+                        top: '4px',
+                        right: '4px',
+                        width: '24px',
+                        height: '24px',
+                        background: '#e02529',
+                        color: 'white',
+                        border: 'none',
+                        borderRadius: '50%',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        fontSize: '14px',
+                        fontWeight: 'bold'
+                      }}
+                    >
+                      ×
+                    </button>
+                  </div>
+                ) : (
+                  <div
+                    onClick={() => fileInputRef.current?.click()}
+                    style={{
+                      width: '100px',
+                      height: '120px',
+                      border: '2px dashed #ccc',
+                      borderRadius: '8px',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      cursor: 'pointer',
+                      transition: 'all 0.2s',
+                      background: '#f9f9f9'
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.borderColor = '#e02529';
+                      e.currentTarget.style.background = '#fff5f5';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.borderColor = '#ccc';
+                      e.currentTarget.style.background = '#f9f9f9';
+                    }}
+                  >
+                    <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#999" strokeWidth="1.5">
+                      <path d="M12 5v14M5 12h14"/>
+                    </svg>
+                    <span style={{ fontSize: '11px', color: '#666', marginTop: '4px', textAlign: 'center' }}>
+                      {isRTL ? 'إضافة صورة' : 'Add Photo'}
+                    </span>
+                  </div>
+                )}
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  onChange={handleProfilePictureChange}
+                  style={{ display: 'none' }}
+                />
+                <div style={{ flex: 1, minWidth: '200px' }}>
+                  <p style={{ margin: 0, fontSize: '13px', color: '#666', lineHeight: 1.5 }}>
+                    {isRTL ? (
+                      <>
+                        📷 الصورة ستُطبع على بطاقة الهوية الخاصة بك<br />
+                        • الحجم الأقصى: 2 ميجابايت<br />
+                        • الصيغ المدعومة: JPG, PNG
+                      </>
+                    ) : (
+                      <>
+                        📷 Photo will be printed on your ID card<br />
+                        • Max size: 2MB<br />
+                        • Supported formats: JPG, PNG
+                      </>
+                    )}
+                  </p>
+                </div>
+              </div>
             </motion.div>
           </>
         )}
