@@ -30,7 +30,7 @@ exports.getAllRatings = async (req, res) => {
       where,
       include: [
         { model: Employee, as: 'employee', attributes: ['employeeId', 'name', 'email', 'section'] },
-        { model: Admin, as: 'ratedBy', attributes: ['adminId', 'name', 'email'] }
+        { model: Admin, as: 'ratedBy', attributes: ['adminId', 'fullName', 'email'] }
       ],
       order: [['ratingDate', 'DESC'], ['createdAt', 'DESC']]
     });
@@ -59,7 +59,7 @@ exports.getEmployeeRatings = async (req, res) => {
     const ratings = await Rating.findAll({
       where,
       include: [
-        { model: Admin, as: 'ratedBy', attributes: ['adminId', 'name', 'email'] }
+        { model: Admin, as: 'ratedBy', attributes: ['adminId', 'fullName', 'email'] }
       ],
       order: [['ratingDate', 'DESC']]
     });
@@ -111,7 +111,7 @@ exports.exportRatings = async (req, res) => {
       where,
       include: [
         { model: Employee, as: 'employee', attributes: ['employeeId', 'name', 'email', 'section'] },
-        { model: Admin, as: 'ratedBy', attributes: ['adminId', 'name', 'email'] }
+        { model: Admin, as: 'ratedBy', attributes: ['adminId', 'fullName', 'email'] }
       ],
       order: [['ratingDate', 'DESC'], ['createdAt', 'DESC']]
     });
@@ -126,7 +126,7 @@ exports.exportRatings = async (req, res) => {
       r.points,
       r.criteria || '',
       r.notes ? r.notes.replace(/"/g, '""') : '',
-      r.ratedBy?.name || 'N/A'
+      r.ratedBy?.fullName || 'N/A'
     ]);
 
     const csvContent = [
@@ -186,7 +186,7 @@ exports.createRating = async (req, res) => {
     const createdRating = await Rating.findByPk(rating.ratingId, {
       include: [
         { model: Employee, as: 'employee', attributes: ['employeeId', 'name', 'email', 'section'] },
-        { model: Admin, as: 'ratedBy', attributes: ['adminId', 'name', 'email'] }
+        { model: Admin, as: 'ratedBy', attributes: ['adminId', 'fullName', 'email'] }
       ]
     });
 
@@ -224,7 +224,7 @@ exports.updateRating = async (req, res) => {
     const updatedRating = await Rating.findByPk(id, {
       include: [
         { model: Employee, as: 'employee', attributes: ['employeeId', 'name', 'email', 'section'] },
-        { model: Admin, as: 'ratedBy', attributes: ['adminId', 'name', 'email'] }
+        { model: Admin, as: 'ratedBy', attributes: ['adminId', 'fullName', 'email'] }
       ]
     });
 
