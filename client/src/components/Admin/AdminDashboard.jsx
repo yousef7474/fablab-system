@@ -1003,19 +1003,32 @@ const AdminDashboard = () => {
           }
           .card-footer {
             background: #ffffff;
-            padding: 6px 8px;
+            padding: 8px 6px;
             display: flex;
             flex-direction: row;
             align-items: center;
             justify-content: space-between;
-            gap: 4px;
             border-top: 1px solid #e0e0e0;
+          }
+          .card-footer .logo {
+            height: 24px;
+            width: auto;
+            flex-shrink: 0;
+          }
+          .card-footer .logo-left {
+            order: 1;
+          }
+          .card-footer .logo-right {
+            order: 3;
           }
           .member-id-section {
             display: flex;
             flex-direction: column;
-            align-items: flex-start;
+            align-items: center;
             gap: 1px;
+            order: 2;
+            flex: 1;
+            text-align: center;
           }
           .member-id-label {
             font-size: 6px;
@@ -1024,20 +1037,10 @@ const AdminDashboard = () => {
             letter-spacing: 0.5px;
           }
           .member-id-value {
-            font-size: 10px;
+            font-size: 11px;
             font-weight: 700;
             color: #e02529;
             font-family: 'Consolas', 'Courier New', monospace;
-          }
-          .footer-logos {
-            display: flex;
-            gap: 6px;
-            align-items: center;
-            justify-content: center;
-          }
-          .footer-logos .logo {
-            height: 22px;
-            width: auto;
           }
           .decorative-stripe {
             position: absolute;
@@ -1105,14 +1108,12 @@ const AdminDashboard = () => {
             </div>
             <div class="decorative-stripe"></div>
             <div class="card-footer">
+              <img src="/found.png" alt="Foundation" class="logo logo-left">
               <div class="member-id-section">
                 <span class="member-id-label">${isRTL ? 'رقم العضوية' : 'Member ID'}</span>
                 <span class="member-id-value">${user.uniqueId || user.userId || 'N/A'}</span>
               </div>
-              <div class="footer-logos">
-                <img src="/fablab.png" alt="FABLAB" class="logo">
-                <img src="/found.png" alt="Foundation" class="logo">
-              </div>
+              <img src="/fablab.png" alt="FABLAB" class="logo logo-right">
             </div>
           </div>
         </div>

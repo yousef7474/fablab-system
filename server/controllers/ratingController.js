@@ -150,6 +150,15 @@ exports.exportRatings = async (req, res) => {
 exports.createRating = async (req, res) => {
   try {
     const { employeeId, points, criteria, notes, ratingDate } = req.body;
+
+    // Debug logging
+    console.log('Creating rating - Request body:', req.body);
+    console.log('Creating rating - Admin:', req.admin?.adminId);
+
+    if (!req.admin || !req.admin.adminId) {
+      return res.status(401).json({ message: 'Admin authentication required' });
+    }
+
     const createdById = req.admin.adminId;
 
     if (!employeeId || points === undefined) {
@@ -162,13 +171,15 @@ exports.createRating = async (req, res) => {
       return res.status(404).json({ message: 'Employee not found' });
     }
 
+    console.log('Creating rating for employee:', employee.name, 'Points:', points);
+
     const rating = await Rating.create({
       employeeId,
       createdById,
-      points,
-      criteria,
-      notes,
-      ratingDate: ratingDate || new Date()
+      points: parseInt(points, 10),
+      criteria: criteria || null,
+      notes: notes || null,
+      ratingDate: ratingDate || new Date().toISOString().split('T')[0]
     });
 
     // Fetch with associations
@@ -182,7 +193,12 @@ exports.createRating = async (req, res) => {
     res.status(201).json(createdRating);
   } catch (error) {
     console.error('Error creating rating:', error);
-    res.status(500).json({ message: 'Error creating rating', error: error.message });
+    console.error('Error details:', error.name, error.parent?.message || error.message);
+    res.status(500).json({
+      message: 'Error creating rating',
+      error: error.message,
+      details: error.name === 'SequelizeDatabaseError' ? 'Database table may not exist. Please restart the server.' : undefined
+    });
   }
 };
 

@@ -97,6 +97,21 @@ const ManagerDashboard = () => {
     startDate: '',
     endDate: ''
   });
+  const [customCriteria, setCustomCriteria] = useState('');
+
+  // Predefined criteria options
+  const criteriaOptions = [
+    { value: '', label: isRTL ? 'اختر المعيار' : 'Select Criteria' },
+    { value: 'attendance', label: isRTL ? 'الحضور والانضباط' : 'Attendance & Punctuality' },
+    { value: 'performance', label: isRTL ? 'جودة الأداء' : 'Work Performance' },
+    { value: 'teamwork', label: isRTL ? 'العمل الجماعي' : 'Teamwork' },
+    { value: 'initiative', label: isRTL ? 'المبادرة والإبداع' : 'Initiative & Creativity' },
+    { value: 'communication', label: isRTL ? 'التواصل' : 'Communication' },
+    { value: 'customer_service', label: isRTL ? 'خدمة العملاء' : 'Customer Service' },
+    { value: 'technical_skills', label: isRTL ? 'المهارات التقنية' : 'Technical Skills' },
+    { value: 'safety', label: isRTL ? 'الالتزام بالسلامة' : 'Safety Compliance' },
+    { value: 'other', label: isRTL ? 'أخرى' : 'Other' }
+  ];
 
   // Section labels
   const sectionLabels = {
@@ -381,9 +396,17 @@ const ManagerDashboard = () => {
       return;
     }
 
+    // Determine the actual criteria value
+    const actualCriteria = ratingForm.criteria === 'other'
+      ? customCriteria
+      : criteriaOptions.find(c => c.value === ratingForm.criteria)?.label || ratingForm.criteria;
+
     setRatingLoading(true);
     try {
-      await api.post('/ratings', ratingForm);
+      await api.post('/ratings', {
+        ...ratingForm,
+        criteria: actualCriteria
+      });
       toast.success(isRTL ? 'تم إضافة التقييم بنجاح' : 'Rating added successfully');
       setShowRatingModal(false);
       resetRatingForm();
@@ -417,6 +440,7 @@ const ManagerDashboard = () => {
       notes: '',
       ratingDate: new Date().toISOString().split('T')[0]
     });
+    setCustomCriteria('');
   };
 
   const handleExportRatings = async () => {
@@ -965,9 +989,18 @@ const ManagerDashboard = () => {
                           </span>
                         </td>
                         <td>
-                          <span className={`points-badge ${rating.points >= 80 ? 'high' : rating.points >= 50 ? 'medium' : 'low'}`}>
-                            {rating.points}
-                          </span>
+                          <div className="points-display">
+                            <div className="mini-stars">
+                              {[1, 2, 3, 4, 5].map(star => (
+                                <svg key={star} width="14" height="14" viewBox="0 0 24 24" fill={rating.points >= star * 20 ? '#fbbf24' : '#e5e7eb'} stroke="none">
+                                  <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+                                </svg>
+                              ))}
+                            </div>
+                            <span className={`points-badge ${rating.points >= 80 ? 'high' : rating.points >= 50 ? 'medium' : 'low'}`}>
+                              {rating.points}
+                            </span>
+                          </div>
                         </td>
                         <td>{rating.criteria || '-'}</td>
                         <td>{rating.ratingDate}</td>
@@ -1022,26 +1055,74 @@ const ManagerDashboard = () => {
                     ))}
                   </select>
                 </div>
+
+                {/* Star Rating */}
                 <div className="form-group">
-                  <label>{isRTL ? 'النقاط' : 'Points'} * (0-100)</label>
-                  <input
-                    type="number"
-                    min="0"
-                    max="100"
-                    value={ratingForm.points}
-                    onChange={(e) => setRatingForm(prev => ({ ...prev, points: parseInt(e.target.value) || 0 }))}
-                    required
-                  />
+                  <label>{isRTL ? 'التقييم' : 'Rating'} * (0-100)</label>
+                  <div className="star-rating-container">
+                    <div className="star-rating">
+                      {[1, 2, 3, 4, 5].map((star) => (
+                        <button
+                          key={star}
+                          type="button"
+                          className={`star-btn ${ratingForm.points >= star * 20 ? 'active' : ''}`}
+                          onClick={() => setRatingForm(prev => ({ ...prev, points: star * 20 }))}
+                        >
+                          <svg width="32" height="32" viewBox="0 0 24 24" fill={ratingForm.points >= star * 20 ? '#fbbf24' : 'none'} stroke={ratingForm.points >= star * 20 ? '#fbbf24' : '#d1d5db'} strokeWidth="2">
+                            <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+                          </svg>
+                        </button>
+                      ))}
+                    </div>
+                    <div className="rating-bar-container">
+                      <input
+                        type="range"
+                        min="0"
+                        max="100"
+                        value={ratingForm.points}
+                        onChange={(e) => setRatingForm(prev => ({ ...prev, points: parseInt(e.target.value) }))}
+                        className="rating-slider"
+                      />
+                      <div className="rating-bar-fill" style={{ width: `${ratingForm.points}%` }} />
+                    </div>
+                    <div className="rating-value">
+                      <span className={`rating-number ${ratingForm.points >= 80 ? 'excellent' : ratingForm.points >= 60 ? 'good' : ratingForm.points >= 40 ? 'average' : 'poor'}`}>
+                        {ratingForm.points}
+                      </span>
+                      <span className="rating-label">
+                        {ratingForm.points >= 80 ? (isRTL ? 'ممتاز' : 'Excellent') :
+                         ratingForm.points >= 60 ? (isRTL ? 'جيد' : 'Good') :
+                         ratingForm.points >= 40 ? (isRTL ? 'متوسط' : 'Average') :
+                         (isRTL ? 'ضعيف' : 'Poor')}
+                      </span>
+                    </div>
+                  </div>
                 </div>
+
+                {/* Criteria Dropdown */}
                 <div className="form-group">
                   <label>{isRTL ? 'المعيار' : 'Criteria'}</label>
-                  <input
-                    type="text"
+                  <select
                     value={ratingForm.criteria}
                     onChange={(e) => setRatingForm(prev => ({ ...prev, criteria: e.target.value }))}
-                    placeholder={isRTL ? 'مثال: الحضور، الأداء، التعاون' : 'e.g., Attendance, Performance, Teamwork'}
-                  />
+                    className="criteria-select"
+                  >
+                    {criteriaOptions.map(opt => (
+                      <option key={opt.value} value={opt.value}>{opt.label}</option>
+                    ))}
+                  </select>
+                  {ratingForm.criteria === 'other' && (
+                    <input
+                      type="text"
+                      value={customCriteria}
+                      onChange={(e) => setCustomCriteria(e.target.value)}
+                      placeholder={isRTL ? 'أدخل المعيار المخصص...' : 'Enter custom criteria...'}
+                      className="custom-criteria-input"
+                      style={{ marginTop: '8px' }}
+                    />
+                  )}
                 </div>
+
                 <div className="form-group">
                   <label>{isRTL ? 'التاريخ' : 'Date'}</label>
                   <input
