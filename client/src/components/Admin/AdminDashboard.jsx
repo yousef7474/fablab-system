@@ -931,15 +931,15 @@ const AdminDashboard = () => {
             gap: 8px;
           }
           .user-photo {
-            width: 55px;
-            height: 65px;
+            width: 70px;
+            height: 85px;
             background: linear-gradient(135deg, #e8e8e8, #d0d0d0);
             border-radius: 6px;
             display: flex;
             align-items: center;
             justify-content: center;
             color: #e02529;
-            font-size: 28px;
+            font-size: 32px;
             font-weight: bold;
             border: 3px solid #e02529;
             box-shadow: 0 3px 10px rgba(0, 0, 0, 0.15);
@@ -951,7 +951,7 @@ const AdminDashboard = () => {
             object-fit: cover;
           }
           .user-photo .initials {
-            font-size: 28px;
+            font-size: 32px;
             font-weight: bold;
             color: #e02529;
           }
@@ -1002,45 +1002,42 @@ const AdminDashboard = () => {
             white-space: nowrap;
           }
           .card-footer {
-            background: linear-gradient(135deg, #1a1a2e 0%, #2d2d44 100%);
-            padding: 8px;
+            background: #ffffff;
+            padding: 6px 8px;
+            display: flex;
+            flex-direction: row;
+            align-items: center;
+            justify-content: space-between;
+            gap: 4px;
+            border-top: 1px solid #e0e0e0;
+          }
+          .member-id-section {
             display: flex;
             flex-direction: column;
-            align-items: center;
-            gap: 6px;
-          }
-          .member-id-row {
-            display: flex;
-            align-items: center;
-            gap: 6px;
+            align-items: flex-start;
+            gap: 1px;
           }
           .member-id-label {
-            font-size: 7px;
-            color: rgba(255,255,255,0.7);
+            font-size: 6px;
+            color: #666;
             text-transform: uppercase;
             letter-spacing: 0.5px;
           }
           .member-id-value {
-            font-size: 12px;
+            font-size: 10px;
             font-weight: 700;
-            color: #fff;
+            color: #e02529;
             font-family: 'Consolas', 'Courier New', monospace;
-            background: rgba(224, 37, 41, 0.4);
-            padding: 2px 10px;
-            border-radius: 4px;
           }
           .footer-logos {
             display: flex;
-            gap: 12px;
+            gap: 6px;
             align-items: center;
             justify-content: center;
           }
           .footer-logos .logo {
-            height: 28px;
+            height: 22px;
             width: auto;
-            background: white;
-            padding: 3px 5px;
-            border-radius: 4px;
           }
           .decorative-stripe {
             position: absolute;
@@ -1108,8 +1105,8 @@ const AdminDashboard = () => {
             </div>
             <div class="decorative-stripe"></div>
             <div class="card-footer">
-              <div class="member-id-row">
-                <span class="member-id-label">${isRTL ? 'رقم العضوية' : 'ID'}</span>
+              <div class="member-id-section">
+                <span class="member-id-label">${isRTL ? 'رقم العضوية' : 'Member ID'}</span>
                 <span class="member-id-value">${user.uniqueId || user.userId || 'N/A'}</span>
               </div>
               <div class="footer-logos">

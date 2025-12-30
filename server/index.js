@@ -7,6 +7,7 @@ const { testConnection, syncDatabase } = require('./models');
 const registrationRoutes = require('./routes/registrationRoutes');
 const adminRoutes = require('./routes/adminRoutes');
 const taskRoutes = require('./routes/taskRoutes');
+const ratingRoutes = require('./routes/ratingRoutes');
 
 const app = express();
 
@@ -27,6 +28,7 @@ app.use(express.urlencoded({ extended: true }));
 app.use('/api/registration', registrationRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/tasks', taskRoutes);
+app.use('/api/ratings', ratingRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {

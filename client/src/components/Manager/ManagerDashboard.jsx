@@ -45,7 +45,7 @@ const ManagerDashboard = () => {
   const isRTL = i18n.language === 'ar';
 
   // Valid tabs for URL persistence
-  const validTabs = ['schedule', 'tasks', 'settings'];
+  const validTabs = ['schedule', 'tasks', 'ratings', 'settings'];
 
   // Get initial tab from URL or default to 'schedule'
   const getInitialTab = () => {
@@ -71,11 +71,31 @@ const ManagerDashboard = () => {
     title: '',
     description: '',
     employeeId: '',
+    employeeIds: [], // For multi-employee selection
+    selectAllEmployees: false,
     dueDate: '',
+    dueDateEnd: '', // For date range
     dueTime: '',
     priority: 'medium',
     section: '',
     notes: ''
+  });
+
+  // Rating state
+  const [ratings, setRatings] = useState([]);
+  const [showRatingModal, setShowRatingModal] = useState(false);
+  const [ratingLoading, setRatingLoading] = useState(false);
+  const [ratingForm, setRatingForm] = useState({
+    employeeId: '',
+    points: 0,
+    criteria: '',
+    notes: '',
+    ratingDate: new Date().toISOString().split('T')[0]
+  });
+  const [ratingFilters, setRatingFilters] = useState({
+    employeeId: 'all',
+    startDate: '',
+    endDate: ''
   });
 
   // Section labels
@@ -198,17 +218,59 @@ const ManagerDashboard = () => {
   const handlePrevMonth = () => setSelectedDate(subMonths(selectedDate, 1));
   const handleNextMonth = () => setSelectedDate(addMonths(selectedDate, 1));
 
+  // Generate dates between start and end
+  const getDatesBetween = (startDate, endDate) => {
+    const dates = [];
+    const start = new Date(startDate);
+    const end = endDate ? new Date(endDate) : start;
+
+    for (let date = new Date(start); date <= end; date.setDate(date.getDate() + 1)) {
+      dates.push(new Date(date).toISOString().split('T')[0]);
+    }
+    return dates;
+  };
+
   // Task CRUD operations
   const handleCreateTask = async () => {
-    if (!taskForm.title || !taskForm.employeeId || !taskForm.dueDate) {
+    const hasValidEmployee = taskForm.selectAllEmployees || taskForm.employeeId;
+    if (!taskForm.title || !hasValidEmployee || !taskForm.dueDate) {
       toast.error(isRTL ? 'العنوان والموظف والتاريخ مطلوبة' : 'Title, employee, and date are required');
       return;
     }
 
     setTaskLoading(true);
     try {
-      await api.post('/tasks', taskForm);
-      toast.success(isRTL ? 'تم إنشاء المهمة بنجاح' : 'Task created successfully');
+      // Get list of employees to assign
+      const employeeIds = taskForm.selectAllEmployees
+        ? employees.map(emp => emp.employeeId)
+        : [taskForm.employeeId];
+
+      // Get list of dates (range if end date is provided)
+      const dates = getDatesBetween(taskForm.dueDate, taskForm.dueDateEnd);
+
+      // Create tasks for all combinations
+      const promises = [];
+      for (const employeeId of employeeIds) {
+        const employee = employees.find(e => e.employeeId === employeeId);
+        for (const date of dates) {
+          promises.push(api.post('/tasks', {
+            title: taskForm.title,
+            description: taskForm.description,
+            employeeId,
+            dueDate: date,
+            dueTime: taskForm.dueTime,
+            priority: taskForm.priority,
+            section: employee?.section || taskForm.section,
+            notes: taskForm.notes
+          }));
+        }
+      }
+
+      await Promise.all(promises);
+      const totalTasks = employeeIds.length * dates.length;
+      toast.success(isRTL
+        ? `تم إنشاء ${totalTasks} مهمة بنجاح`
+        : `${totalTasks} task(s) created successfully`);
       setShowTaskModal(false);
       resetTaskForm();
       fetchSchedule();
@@ -270,13 +332,121 @@ const ManagerDashboard = () => {
       title: '',
       description: '',
       employeeId: '',
+      employeeIds: [],
+      selectAllEmployees: false,
       dueDate: '',
+      dueDateEnd: '',
       dueTime: '',
       priority: 'medium',
       section: '',
       notes: ''
     });
     setSelectedTask(null);
+  };
+
+  // Rating CRUD operations
+  const fetchRatings = useCallback(async () => {
+    try {
+      let url = '/ratings';
+      const params = new URLSearchParams();
+      if (ratingFilters.employeeId && ratingFilters.employeeId !== 'all') {
+        params.append('employeeId', ratingFilters.employeeId);
+      }
+      if (ratingFilters.startDate) {
+        params.append('startDate', ratingFilters.startDate);
+      }
+      if (ratingFilters.endDate) {
+        params.append('endDate', ratingFilters.endDate);
+      }
+      if (params.toString()) {
+        url += '?' + params.toString();
+      }
+      const response = await api.get(url);
+      setRatings(response.data || []);
+    } catch (error) {
+      console.error('Error fetching ratings:', error);
+      toast.error(isRTL ? 'خطأ في تحميل التقييمات' : 'Error loading ratings');
+    }
+  }, [ratingFilters, isRTL]);
+
+  useEffect(() => {
+    if (activeTab === 'ratings' && managerData) {
+      fetchRatings();
+    }
+  }, [activeTab, managerData, fetchRatings]);
+
+  const handleCreateRating = async () => {
+    if (!ratingForm.employeeId || ratingForm.points === undefined) {
+      toast.error(isRTL ? 'الموظف والنقاط مطلوبة' : 'Employee and points are required');
+      return;
+    }
+
+    setRatingLoading(true);
+    try {
+      await api.post('/ratings', ratingForm);
+      toast.success(isRTL ? 'تم إضافة التقييم بنجاح' : 'Rating added successfully');
+      setShowRatingModal(false);
+      resetRatingForm();
+      fetchRatings();
+    } catch (error) {
+      console.error('Error creating rating:', error);
+      toast.error(isRTL ? 'خطأ في إضافة التقييم' : 'Error adding rating');
+    } finally {
+      setRatingLoading(false);
+    }
+  };
+
+  const handleDeleteRating = async (ratingId) => {
+    if (!window.confirm(isRTL ? 'هل تريد حذف هذا التقييم؟' : 'Delete this rating?')) return;
+
+    try {
+      await api.delete(`/ratings/${ratingId}`);
+      toast.success(isRTL ? 'تم حذف التقييم' : 'Rating deleted');
+      fetchRatings();
+    } catch (error) {
+      console.error('Error deleting rating:', error);
+      toast.error(isRTL ? 'خطأ في حذف التقييم' : 'Error deleting rating');
+    }
+  };
+
+  const resetRatingForm = () => {
+    setRatingForm({
+      employeeId: '',
+      points: 0,
+      criteria: '',
+      notes: '',
+      ratingDate: new Date().toISOString().split('T')[0]
+    });
+  };
+
+  const handleExportRatings = async () => {
+    try {
+      const params = new URLSearchParams();
+      params.append('employeeId', ratingFilters.employeeId || 'all');
+      if (ratingFilters.startDate) {
+        params.append('startDate', ratingFilters.startDate);
+      }
+      if (ratingFilters.endDate) {
+        params.append('endDate', ratingFilters.endDate);
+      }
+
+      const response = await api.get(`/ratings/export?${params.toString()}`, {
+        responseType: 'blob'
+      });
+
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `employee_ratings_${new Date().toISOString().split('T')[0]}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+
+      toast.success(isRTL ? 'تم تصدير التقييمات' : 'Ratings exported successfully');
+    } catch (error) {
+      console.error('Error exporting ratings:', error);
+      toast.error(isRTL ? 'خطأ في تصدير التقييمات' : 'Error exporting ratings');
+    }
   };
 
   const openCreateTaskModal = (preselectedDate = null) => {
@@ -385,6 +555,15 @@ const ManagerDashboard = () => {
             <span>{isRTL ? 'الجدول والمهام' : 'Schedule & Tasks'}</span>
           </button>
           <button
+            className={`nav-item ${activeTab === 'ratings' ? 'active' : ''}`}
+            onClick={() => setActiveTab('ratings')}
+          >
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+            </svg>
+            <span>{isRTL ? 'تقييم الموظفين' : 'Employee Ratings'}</span>
+          </button>
+          <button
             className={`nav-item ${activeTab === 'settings' ? 'active' : ''}`}
             onClick={() => setActiveTab('settings')}
           >
@@ -423,10 +602,14 @@ const ManagerDashboard = () => {
           <div className="header-title">
             <h1>{activeTab === 'schedule'
               ? (isRTL ? 'الجدول والمهام' : 'Schedule & Tasks')
+              : activeTab === 'ratings'
+              ? (isRTL ? 'تقييم الموظفين' : 'Employee Ratings')
               : (isRTL ? 'الإعدادات' : 'Settings')
             }</h1>
             <p>{activeTab === 'schedule'
               ? (isRTL ? 'إدارة الجدول وتعيين المهام للموظفين' : 'Manage schedule and assign tasks to employees')
+              : activeTab === 'ratings'
+              ? (isRTL ? 'إعطاء نقاط للموظفين وتصدير التقارير' : 'Give points to employees and export reports')
               : (isRTL ? 'إدارة إعدادات الحساب واللغة' : 'Manage account and language settings')
             }</p>
           </div>
@@ -438,6 +621,16 @@ const ManagerDashboard = () => {
                   <line x1="5" y1="12" x2="19" y2="12"/>
                 </svg>
                 {isRTL ? 'مهمة جديدة' : 'New Task'}
+              </button>
+            </div>
+          )}
+          {activeTab === 'ratings' && (
+            <div className="header-actions">
+              <button className="add-task-btn" onClick={() => setShowRatingModal(true)}>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+                </svg>
+                {isRTL ? 'إضافة تقييم' : 'Add Rating'}
               </button>
             </div>
           )}
@@ -698,6 +891,191 @@ const ManagerDashboard = () => {
         </div>
         )}
 
+        {/* Ratings Content */}
+        {activeTab === 'ratings' && (
+          <div className="ratings-content">
+            {/* Filters Section */}
+            <div className="ratings-filters">
+              <div className="filter-group">
+                <label>{isRTL ? 'الموظف' : 'Employee'}</label>
+                <select
+                  value={ratingFilters.employeeId}
+                  onChange={(e) => setRatingFilters(prev => ({ ...prev, employeeId: e.target.value }))}
+                >
+                  <option value="all">{isRTL ? 'جميع الموظفين' : 'All Employees'}</option>
+                  {employees.map(emp => (
+                    <option key={emp.employeeId} value={emp.employeeId}>{emp.name}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="filter-group">
+                <label>{isRTL ? 'من تاريخ' : 'From Date'}</label>
+                <input
+                  type="date"
+                  value={ratingFilters.startDate}
+                  onChange={(e) => setRatingFilters(prev => ({ ...prev, startDate: e.target.value }))}
+                />
+              </div>
+              <div className="filter-group">
+                <label>{isRTL ? 'إلى تاريخ' : 'To Date'}</label>
+                <input
+                  type="date"
+                  value={ratingFilters.endDate}
+                  onChange={(e) => setRatingFilters(prev => ({ ...prev, endDate: e.target.value }))}
+                />
+              </div>
+              <button className="export-btn" onClick={handleExportRatings}>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                  <polyline points="7 10 12 15 17 10"/>
+                  <line x1="12" y1="15" x2="12" y2="3"/>
+                </svg>
+                {isRTL ? 'تصدير CSV' : 'Export CSV'}
+              </button>
+            </div>
+
+            {/* Ratings Table */}
+            <div className="ratings-table-container">
+              <table className="ratings-table">
+                <thead>
+                  <tr>
+                    <th>{isRTL ? 'الموظف' : 'Employee'}</th>
+                    <th>{isRTL ? 'القسم' : 'Section'}</th>
+                    <th>{isRTL ? 'النقاط' : 'Points'}</th>
+                    <th>{isRTL ? 'المعيار' : 'Criteria'}</th>
+                    <th>{isRTL ? 'التاريخ' : 'Date'}</th>
+                    <th>{isRTL ? 'ملاحظات' : 'Notes'}</th>
+                    <th>{isRTL ? 'الإجراءات' : 'Actions'}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {ratings.length === 0 ? (
+                    <tr>
+                      <td colSpan="7" className="empty-message">
+                        {isRTL ? 'لا توجد تقييمات' : 'No ratings found'}
+                      </td>
+                    </tr>
+                  ) : (
+                    ratings.map(rating => (
+                      <tr key={rating.ratingId}>
+                        <td>{rating.employee?.name || 'N/A'}</td>
+                        <td>
+                          <span className="section-badge" style={{ backgroundColor: SECTION_COLORS[rating.employee?.section] || '#666' }}>
+                            {sectionLabels[rating.employee?.section] || rating.employee?.section || 'N/A'}
+                          </span>
+                        </td>
+                        <td>
+                          <span className={`points-badge ${rating.points >= 80 ? 'high' : rating.points >= 50 ? 'medium' : 'low'}`}>
+                            {rating.points}
+                          </span>
+                        </td>
+                        <td>{rating.criteria || '-'}</td>
+                        <td>{rating.ratingDate}</td>
+                        <td className="notes-cell">{rating.notes || '-'}</td>
+                        <td>
+                          <button
+                            className="delete-btn-small"
+                            onClick={() => handleDeleteRating(rating.ratingId)}
+                            title={isRTL ? 'حذف' : 'Delete'}
+                          >
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                              <polyline points="3 6 5 6 21 6"/>
+                              <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+                            </svg>
+                          </button>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
+        {/* Rating Modal */}
+        {showRatingModal && (
+          <div className="modal-overlay" onClick={() => setShowRatingModal(false)}>
+            <motion.div
+              className="modal-content task-modal"
+              onClick={(e) => e.stopPropagation()}
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+            >
+              <div className="modal-header">
+                <h2>{isRTL ? 'إضافة تقييم' : 'Add Rating'}</h2>
+                <button className="close-btn" onClick={() => setShowRatingModal(false)}>×</button>
+              </div>
+              <div className="modal-body">
+                <div className="form-group">
+                  <label>{isRTL ? 'الموظف' : 'Employee'} *</label>
+                  <select
+                    value={ratingForm.employeeId}
+                    onChange={(e) => setRatingForm(prev => ({ ...prev, employeeId: e.target.value }))}
+                    required
+                  >
+                    <option value="">{isRTL ? 'اختر موظف' : 'Select Employee'}</option>
+                    {employees.map(emp => (
+                      <option key={emp.employeeId} value={emp.employeeId}>
+                        {emp.name} - {sectionLabels[emp.section] || emp.section}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div className="form-group">
+                  <label>{isRTL ? 'النقاط' : 'Points'} * (0-100)</label>
+                  <input
+                    type="number"
+                    min="0"
+                    max="100"
+                    value={ratingForm.points}
+                    onChange={(e) => setRatingForm(prev => ({ ...prev, points: parseInt(e.target.value) || 0 }))}
+                    required
+                  />
+                </div>
+                <div className="form-group">
+                  <label>{isRTL ? 'المعيار' : 'Criteria'}</label>
+                  <input
+                    type="text"
+                    value={ratingForm.criteria}
+                    onChange={(e) => setRatingForm(prev => ({ ...prev, criteria: e.target.value }))}
+                    placeholder={isRTL ? 'مثال: الحضور، الأداء، التعاون' : 'e.g., Attendance, Performance, Teamwork'}
+                  />
+                </div>
+                <div className="form-group">
+                  <label>{isRTL ? 'التاريخ' : 'Date'}</label>
+                  <input
+                    type="date"
+                    value={ratingForm.ratingDate}
+                    onChange={(e) => setRatingForm(prev => ({ ...prev, ratingDate: e.target.value }))}
+                  />
+                </div>
+                <div className="form-group">
+                  <label>{isRTL ? 'ملاحظات' : 'Notes'}</label>
+                  <textarea
+                    value={ratingForm.notes}
+                    onChange={(e) => setRatingForm(prev => ({ ...prev, notes: e.target.value }))}
+                    rows="3"
+                    placeholder={isRTL ? 'ملاحظات إضافية...' : 'Additional notes...'}
+                  />
+                </div>
+              </div>
+              <div className="modal-footer">
+                <button className="modal-btn cancel" onClick={() => setShowRatingModal(false)}>
+                  {isRTL ? 'إلغاء' : 'Cancel'}
+                </button>
+                <button
+                  className="modal-btn save"
+                  onClick={handleCreateRating}
+                  disabled={ratingLoading || !ratingForm.employeeId}
+                >
+                  {ratingLoading ? (isRTL ? 'جاري الحفظ...' : 'Saving...') : (isRTL ? 'حفظ' : 'Save')}
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+
         {/* Settings Content */}
         {activeTab === 'settings' && (
           <div className="settings-content">
@@ -850,26 +1228,55 @@ const ManagerDashboard = () => {
 
                 <div className="task-form-group">
                   <label>{isRTL ? 'تعيين إلى' : 'Assign to'} <span className="required">*</span></label>
-                  <select
-                    value={taskForm.employeeId}
-                    onChange={(e) => handleEmployeeSelect(e.target.value)}
-                  >
-                    <option value="">{isRTL ? 'اختر موظف' : 'Select employee'}</option>
-                    {employees.map(emp => (
-                      <option key={emp.employeeId} value={emp.employeeId}>
-                        {emp.name} - {sectionLabels[emp.section] || emp.section}
-                      </option>
-                    ))}
-                  </select>
+                  <div className="select-all-checkbox">
+                    <label className="checkbox-label">
+                      <input
+                        type="checkbox"
+                        checked={taskForm.selectAllEmployees}
+                        onChange={(e) => {
+                          const selectAll = e.target.checked;
+                          setTaskForm({
+                            ...taskForm,
+                            selectAllEmployees: selectAll,
+                            employeeId: selectAll ? 'all' : '',
+                            employeeIds: selectAll ? employees.map(emp => emp.employeeId) : []
+                          });
+                        }}
+                      />
+                      <span>{isRTL ? 'تعيين لجميع الموظفين' : 'Assign to all employees'}</span>
+                    </label>
+                  </div>
+                  {!taskForm.selectAllEmployees && (
+                    <select
+                      value={taskForm.employeeId}
+                      onChange={(e) => handleEmployeeSelect(e.target.value)}
+                    >
+                      <option value="">{isRTL ? 'اختر موظف' : 'Select employee'}</option>
+                      {employees.map(emp => (
+                        <option key={emp.employeeId} value={emp.employeeId}>
+                          {emp.name} - {sectionLabels[emp.section] || emp.section}
+                        </option>
+                      ))}
+                    </select>
+                  )}
                 </div>
 
                 <div className="task-form-row">
                   <div className="task-form-group">
-                    <label>{isRTL ? 'تاريخ الاستحقاق' : 'Due Date'} <span className="required">*</span></label>
+                    <label>{isRTL ? 'من تاريخ' : 'From Date'} <span className="required">*</span></label>
                     <input
                       type="date"
                       value={taskForm.dueDate}
                       onChange={(e) => setTaskForm({ ...taskForm, dueDate: e.target.value })}
+                    />
+                  </div>
+                  <div className="task-form-group">
+                    <label>{isRTL ? 'إلى تاريخ' : 'To Date'} <span className="optional">({isRTL ? 'اختياري' : 'optional'})</span></label>
+                    <input
+                      type="date"
+                      value={taskForm.dueDateEnd}
+                      onChange={(e) => setTaskForm({ ...taskForm, dueDateEnd: e.target.value })}
+                      min={taskForm.dueDate}
                     />
                   </div>
                   <div className="task-form-group">
