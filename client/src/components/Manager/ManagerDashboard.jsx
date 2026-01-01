@@ -242,18 +242,26 @@ const ManagerDashboard = () => {
       if (!event.date) return false;
       try {
         const eventDate = typeof event.date === 'string' ? parseISO(event.date) : event.date;
-        return isSameDay(eventDate, day);
+        const isOnDay = isSameDay(eventDate, day);
+
+        // Apply employee filter if not 'all'
+        if (scheduleFilter !== 'all' && isOnDay) {
+          const selectedEmployee = employees.find(e => e.employeeId === scheduleFilter);
+          if (!selectedEmployee) return isOnDay;
+
+          // For tasks, filter by employeeId
+          if (event.type === 'task') {
+            return event.employeeId === scheduleFilter || event.assigneeId === scheduleFilter;
+          }
+          // For appointments, filter by section
+          return event.section === selectedEmployee.section;
+        }
+
+        return isOnDay;
       } catch {
         return false;
       }
     });
-  };
-
-  const getFilteredSchedule = () => {
-    if (scheduleFilter === 'all') return schedule;
-    const employee = employees.find(e => e.employeeId === scheduleFilter);
-    if (!employee) return schedule;
-    return schedule.filter(item => item.section === employee.section);
   };
 
   // Navigate months
