@@ -45,7 +45,7 @@ const ManagerDashboard = () => {
   const isRTL = i18n.language === 'ar';
 
   // Valid tabs for URL persistence
-  const validTabs = ['schedule', 'tasks', 'ratings', 'settings'];
+  const validTabs = ['schedule', 'tasks', 'ratings', 'volunteers', 'settings'];
 
   // Get initial tab from URL or default to 'schedule'
   const getInitialTab = () => {
@@ -98,6 +98,32 @@ const ManagerDashboard = () => {
     endDate: ''
   });
   const [customCriteria, setCustomCriteria] = useState('');
+
+  // Volunteer state
+  const [volunteers, setVolunteers] = useState([]);
+  const [groupedTasks, setGroupedTasks] = useState([]);
+  const [showVolunteerModal, setShowVolunteerModal] = useState(false);
+  const [showOpportunityModal, setShowOpportunityModal] = useState(false);
+  const [selectedVolunteer, setSelectedVolunteer] = useState(null);
+  const [volunteerLoading, setVolunteerLoading] = useState(false);
+  const [volunteerForm, setVolunteerForm] = useState({
+    name: '',
+    nationalId: '',
+    phone: '',
+    email: '',
+    nationalIdPhoto: ''
+  });
+  const [opportunityForm, setOpportunityForm] = useState({
+    volunteerId: '',
+    title: '',
+    description: '',
+    startDate: '',
+    endDate: '',
+    dailyHours: 8,
+    rating: 0,
+    ratingCriteria: '',
+    ratingNotes: ''
+  });
 
   // Predefined criteria options
   const criteriaOptions = [
@@ -473,6 +499,159 @@ const ManagerDashboard = () => {
     }
   };
 
+  // Volunteer CRUD operations
+  const fetchVolunteers = useCallback(async () => {
+    try {
+      const response = await api.get('/volunteers');
+      setVolunteers(response.data || []);
+    } catch (error) {
+      console.error('Error fetching volunteers:', error);
+    }
+  }, []);
+
+  const fetchGroupedTasks = useCallback(async () => {
+    try {
+      const response = await api.get('/tasks/grouped');
+      setGroupedTasks(response.data || []);
+    } catch (error) {
+      console.error('Error fetching grouped tasks:', error);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (activeTab === 'volunteers' && managerData) {
+      fetchVolunteers();
+    }
+    if (activeTab === 'tasks' && managerData) {
+      fetchGroupedTasks();
+    }
+  }, [activeTab, managerData, fetchVolunteers, fetchGroupedTasks]);
+
+  const handleCreateVolunteer = async () => {
+    if (!volunteerForm.name || !volunteerForm.nationalId || !volunteerForm.phone) {
+      toast.error(isRTL ? 'الاسم ورقم الهوية والجوال مطلوبة' : 'Name, national ID, and phone are required');
+      return;
+    }
+
+    setVolunteerLoading(true);
+    try {
+      await api.post('/volunteers', volunteerForm);
+      toast.success(isRTL ? 'تم إضافة المتطوع بنجاح' : 'Volunteer added successfully');
+      setShowVolunteerModal(false);
+      resetVolunteerForm();
+      fetchVolunteers();
+    } catch (error) {
+      console.error('Error creating volunteer:', error);
+      if (error.response?.status === 409) {
+        toast.error(isRTL ? 'يوجد متطوع بنفس رقم الهوية' : 'Volunteer with this national ID already exists');
+      } else {
+        toast.error(isRTL ? 'خطأ في إضافة المتطوع' : 'Error adding volunteer');
+      }
+    } finally {
+      setVolunteerLoading(false);
+    }
+  };
+
+  const handleCreateOpportunity = async () => {
+    if (!opportunityForm.volunteerId || !opportunityForm.title || !opportunityForm.startDate || !opportunityForm.endDate) {
+      toast.error(isRTL ? 'المتطوع والعنوان والتاريخ مطلوبة' : 'Volunteer, title, and dates are required');
+      return;
+    }
+
+    setVolunteerLoading(true);
+    try {
+      await api.post('/volunteers/opportunities', opportunityForm);
+      toast.success(isRTL ? 'تم إضافة فرصة التطوع بنجاح' : 'Opportunity added successfully');
+      setShowOpportunityModal(false);
+      resetOpportunityForm();
+      fetchVolunteers();
+    } catch (error) {
+      console.error('Error creating opportunity:', error);
+      toast.error(isRTL ? 'خطأ في إضافة فرصة التطوع' : 'Error adding opportunity');
+    } finally {
+      setVolunteerLoading(false);
+    }
+  };
+
+  const handleUpdateGroupStatus = async (groupId, taskId, newStatus) => {
+    try {
+      if (groupId) {
+        await api.patch(`/tasks/group/${groupId}/status`, { status: newStatus });
+      } else {
+        await api.patch(`/tasks/${taskId}/status`, { status: newStatus });
+      }
+      toast.success(isRTL ? 'تم تحديث حالة المهمة' : 'Task status updated');
+      fetchGroupedTasks();
+    } catch (error) {
+      console.error('Error updating status:', error);
+      toast.error(isRTL ? 'خطأ في تحديث الحالة' : 'Error updating status');
+    }
+  };
+
+  const handleDeleteGroup = async (groupId, taskId) => {
+    if (!window.confirm(isRTL ? 'هل تريد حذف هذه المهمة؟' : 'Delete this assignment?')) return;
+
+    try {
+      if (groupId) {
+        await api.delete(`/tasks/group/${groupId}`);
+      } else {
+        await api.delete(`/tasks/${taskId}`);
+      }
+      toast.success(isRTL ? 'تم حذف المهمة' : 'Assignment deleted');
+      fetchGroupedTasks();
+    } catch (error) {
+      console.error('Error deleting:', error);
+      toast.error(isRTL ? 'خطأ في الحذف' : 'Error deleting');
+    }
+  };
+
+  const resetVolunteerForm = () => {
+    setVolunteerForm({
+      name: '',
+      nationalId: '',
+      phone: '',
+      email: '',
+      nationalIdPhoto: ''
+    });
+  };
+
+  const resetOpportunityForm = () => {
+    setOpportunityForm({
+      volunteerId: '',
+      title: '',
+      description: '',
+      startDate: '',
+      endDate: '',
+      dailyHours: 8,
+      rating: 0,
+      ratingCriteria: '',
+      ratingNotes: ''
+    });
+  };
+
+  const handleVolunteerPhotoUpload = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      if (file.size > 5 * 1024 * 1024) {
+        toast.error(isRTL ? 'حجم الملف كبير جداً (الحد الأقصى 5 ميجا)' : 'File too large (max 5MB)');
+        return;
+      }
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setVolunteerForm(prev => ({ ...prev, nationalIdPhoto: reader.result }));
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const calculateTotalHours = (startDate, endDate, dailyHours = 8) => {
+    if (!startDate || !endDate) return 0;
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+    const days = Math.ceil((end - start) / (1000 * 60 * 60 * 24)) + 1;
+    return days * dailyHours;
+  };
+
   const openCreateTaskModal = (preselectedDate = null) => {
     resetTaskForm();
     if (preselectedDate) {
@@ -579,6 +758,16 @@ const ManagerDashboard = () => {
             <span>{isRTL ? 'الجدول والمهام' : 'Schedule & Tasks'}</span>
           </button>
           <button
+            className={`nav-item ${activeTab === 'tasks' ? 'active' : ''}`}
+            onClick={() => setActiveTab('tasks')}
+          >
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M9 11l3 3L22 4"/>
+              <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>
+            </svg>
+            <span>{isRTL ? 'المهام' : 'Tasks'}</span>
+          </button>
+          <button
             className={`nav-item ${activeTab === 'ratings' ? 'active' : ''}`}
             onClick={() => setActiveTab('ratings')}
           >
@@ -586,6 +775,18 @@ const ManagerDashboard = () => {
               <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
             </svg>
             <span>{isRTL ? 'تقييم الموظفين' : 'Employee Ratings'}</span>
+          </button>
+          <button
+            className={`nav-item ${activeTab === 'volunteers' ? 'active' : ''}`}
+            onClick={() => setActiveTab('volunteers')}
+          >
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+              <circle cx="9" cy="7" r="4"/>
+              <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+              <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+            </svg>
+            <span>{isRTL ? 'المتطوعين' : 'Volunteers'}</span>
           </button>
           <button
             className={`nav-item ${activeTab === 'settings' ? 'active' : ''}`}
@@ -625,15 +826,23 @@ const ManagerDashboard = () => {
         <header className="admin-header">
           <div className="header-title">
             <h1>{activeTab === 'schedule'
-              ? (isRTL ? 'الجدول والمهام' : 'Schedule & Tasks')
+              ? (isRTL ? 'الجدول' : 'Schedule')
+              : activeTab === 'tasks'
+              ? (isRTL ? 'المهام' : 'Tasks')
               : activeTab === 'ratings'
               ? (isRTL ? 'تقييم الموظفين' : 'Employee Ratings')
+              : activeTab === 'volunteers'
+              ? (isRTL ? 'المتطوعين' : 'Volunteers')
               : (isRTL ? 'الإعدادات' : 'Settings')
             }</h1>
             <p>{activeTab === 'schedule'
-              ? (isRTL ? 'إدارة الجدول وتعيين المهام للموظفين' : 'Manage schedule and assign tasks to employees')
+              ? (isRTL ? 'عرض جدول المواعيد والمهام' : 'View appointments and tasks schedule')
+              : activeTab === 'tasks'
+              ? (isRTL ? 'إدارة وتعيين المهام للموظفين' : 'Manage and assign tasks to employees')
               : activeTab === 'ratings'
               ? (isRTL ? 'إعطاء نقاط للموظفين وتصدير التقارير' : 'Give points to employees and export reports')
+              : activeTab === 'volunteers'
+              ? (isRTL ? 'إدارة المتطوعين وفرص التطوع' : 'Manage volunteers and opportunities')
               : (isRTL ? 'إدارة إعدادات الحساب واللغة' : 'Manage account and language settings')
             }</p>
           </div>
@@ -1056,11 +1265,30 @@ const ManagerDashboard = () => {
                   </select>
                 </div>
 
-                {/* Star Rating */}
+                {/* Simple 1 Point Rating */}
                 <div className="form-group">
-                  <label>{isRTL ? 'التقييم' : 'Rating'} * (0-100)</label>
-                  <div className="star-rating-container">
-                    <div className="star-rating">
+                  <label>{isRTL ? 'منح نقطة' : 'Award Point'}</label>
+                  <div className="point-toggle-container">
+                    <button
+                      type="button"
+                      className={`point-toggle-btn ${ratingForm.points === 1 ? 'active' : ''}`}
+                      onClick={() => setRatingForm(prev => ({ ...prev, points: prev.points === 1 ? 0 : 1 }))}
+                    >
+                      <svg width="24" height="24" viewBox="0 0 24 24" fill={ratingForm.points === 1 ? '#22c55e' : 'none'} stroke={ratingForm.points === 1 ? '#22c55e' : '#9ca3af'} strokeWidth="2">
+                        <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+                        <polyline points="22 4 12 14.01 9 11.01"/>
+                      </svg>
+                      <span>{ratingForm.points === 1
+                        ? (isRTL ? 'تم منح نقطة' : 'Point Awarded')
+                        : (isRTL ? 'انقر لمنح نقطة' : 'Click to Award Point')
+                      }</span>
+                    </button>
+                  </div>
+                </div>
+
+                {/* Legacy Star Rating - Hidden, kept for compatibility */}
+                <div style={{ display: 'none' }}>
+                  <div className="star-rating">
                       {[1, 2, 3, 4, 5].map((star) => (
                         <button
                           key={star}
@@ -1151,6 +1379,402 @@ const ManagerDashboard = () => {
                   disabled={ratingLoading || !ratingForm.employeeId}
                 >
                   {ratingLoading ? (isRTL ? 'جاري الحفظ...' : 'Saving...') : (isRTL ? 'حفظ' : 'Save')}
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+
+        {/* Tasks Content (Grouped Assignments) */}
+        {activeTab === 'tasks' && (
+          <div className="tasks-content">
+            <div className="volunteers-header">
+              <h2>{isRTL ? 'المهام المجموعة' : 'Grouped Assignments'}</h2>
+              <button className="add-task-btn" onClick={() => openCreateTaskModal()}>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <line x1="12" y1="5" x2="12" y2="19"/>
+                  <line x1="5" y1="12" x2="19" y2="12"/>
+                </svg>
+                {isRTL ? 'إضافة مهمة' : 'Add Task'}
+              </button>
+            </div>
+
+            <div className="assignments-list">
+              {groupedTasks.length === 0 ? (
+                <div className="empty-state">
+                  <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                    <path d="M9 11l3 3L22 4"/>
+                    <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>
+                  </svg>
+                  <p>{isRTL ? 'لا توجد مهام' : 'No tasks found'}</p>
+                </div>
+              ) : (
+                groupedTasks.map(task => (
+                  <div key={task.groupId || task.taskId} className={`assignment-card priority-${task.priority}`}>
+                    <div className="assignment-header">
+                      <h3 className="assignment-title">{task.title}</h3>
+                      <span className={`task-status ${task.status}`}>
+                        {task.status === 'pending' ? (isRTL ? 'قيد الانتظار' : 'Pending') :
+                         task.status === 'in_progress' ? (isRTL ? 'قيد التنفيذ' : 'In Progress') :
+                         task.status === 'completed' ? (isRTL ? 'مكتمل' : 'Completed') :
+                         (isRTL ? 'ملغى' : 'Cancelled')}
+                      </span>
+                    </div>
+                    <div className="assignment-meta">
+                      <div className="assignment-meta-item">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                          <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+                          <circle cx="12" cy="7" r="4"/>
+                        </svg>
+                        <span>{task.assignee?.name || 'N/A'}</span>
+                      </div>
+                      {task.section && (
+                        <div className="assignment-meta-item">
+                          <span className="section-badge" style={{ backgroundColor: SECTION_COLORS[task.section] || '#666', padding: '2px 8px', borderRadius: '10px', color: 'white', fontSize: '12px' }}>
+                            {sectionLabels[task.section] || task.section}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                    <div className="assignment-dates">
+                      <span>{task.startDate}</span>
+                      {task.startDate !== task.endDate && (
+                        <>
+                          <span className="date-range-arrow">→</span>
+                          <span>{task.endDate}</span>
+                          <span className="days-count">{task.dayCount} {isRTL ? 'أيام' : 'days'}</span>
+                        </>
+                      )}
+                    </div>
+                    {task.description && (
+                      <p style={{ margin: '12px 0 0', fontSize: '14px', color: 'var(--text-secondary)' }}>{task.description}</p>
+                    )}
+                    <div className="assignment-actions">
+                      <select
+                        className="status-select"
+                        value={task.status}
+                        onChange={(e) => handleUpdateGroupStatus(task.groupId, task.taskId || task.taskIds?.[0], e.target.value)}
+                      >
+                        <option value="pending">{isRTL ? 'قيد الانتظار' : 'Pending'}</option>
+                        <option value="in_progress">{isRTL ? 'قيد التنفيذ' : 'In Progress'}</option>
+                        <option value="completed">{isRTL ? 'مكتمل' : 'Completed'}</option>
+                        <option value="cancelled">{isRTL ? 'ملغى' : 'Cancelled'}</option>
+                      </select>
+                      <button
+                        className="delete-assignment-btn"
+                        onClick={() => handleDeleteGroup(task.groupId, task.taskId || task.taskIds?.[0])}
+                      >
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                          <polyline points="3 6 5 6 21 6"/>
+                          <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+                        </svg>
+                      </button>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Volunteers Content */}
+        {activeTab === 'volunteers' && (
+          <div className="volunteers-content">
+            <div className="volunteers-header">
+              <h2>{isRTL ? 'إدارة المتطوعين' : 'Volunteer Management'}</h2>
+              <div className="volunteers-actions">
+                <button className="add-volunteer-btn" onClick={() => setShowVolunteerModal(true)}>
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                    <circle cx="8.5" cy="7" r="4"/>
+                    <line x1="20" y1="8" x2="20" y2="14"/>
+                    <line x1="23" y1="11" x2="17" y2="11"/>
+                  </svg>
+                  {isRTL ? 'إضافة متطوع' : 'Add Volunteer'}
+                </button>
+                <button className="add-opportunity-btn" onClick={() => setShowOpportunityModal(true)}>
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+                    <line x1="16" y1="2" x2="16" y2="6"/>
+                    <line x1="8" y1="2" x2="8" y2="6"/>
+                    <line x1="3" y1="10" x2="21" y2="10"/>
+                    <line x1="12" y1="14" x2="12" y2="18"/>
+                    <line x1="10" y1="16" x2="14" y2="16"/>
+                  </svg>
+                  {isRTL ? 'إضافة فرصة تطوع' : 'Add Opportunity'}
+                </button>
+              </div>
+            </div>
+
+            <div className="volunteers-grid">
+              {volunteers.length === 0 ? (
+                <div className="empty-state" style={{ gridColumn: '1 / -1' }}>
+                  <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                    <circle cx="9" cy="7" r="4"/>
+                    <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+                    <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+                  </svg>
+                  <p>{isRTL ? 'لا يوجد متطوعين' : 'No volunteers found'}</p>
+                </div>
+              ) : (
+                volunteers.map(volunteer => (
+                  <div key={volunteer.volunteerId} className="volunteer-card">
+                    <div className="volunteer-header">
+                      <div className="volunteer-avatar">
+                        {volunteer.name?.charAt(0) || 'V'}
+                      </div>
+                      <div className="volunteer-info">
+                        <h3>{volunteer.name}</h3>
+                        <p>{volunteer.phone}</p>
+                      </div>
+                    </div>
+                    <div className="volunteer-stats">
+                      <div className="stat-item">
+                        <div className="stat-value">{volunteer.totalOpportunities || 0}</div>
+                        <div className="stat-label">{isRTL ? 'فرص' : 'Opportunities'}</div>
+                      </div>
+                      <div className="stat-item">
+                        <div className="stat-value">{volunteer.totalHours || 0}</div>
+                        <div className="stat-label">{isRTL ? 'ساعة' : 'Hours'}</div>
+                      </div>
+                      <div className="stat-item">
+                        <div className="stat-value">{volunteer.totalPoints || 0}</div>
+                        <div className="stat-label">{isRTL ? 'نقاط' : 'Points'}</div>
+                      </div>
+                    </div>
+                    {volunteer.opportunities && volunteer.opportunities.length > 0 && (
+                      <div className="volunteer-opportunities">
+                        <strong style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
+                          {isRTL ? 'آخر الفرص:' : 'Recent:'}
+                        </strong>
+                        {volunteer.opportunities.slice(0, 2).map(opp => (
+                          <div key={opp.opportunityId} className="opportunity-item">
+                            <span className="opportunity-title">{opp.title}</span>
+                            <span className="opportunity-hours">{opp.totalHours}h</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Volunteer Modal */}
+        {showVolunteerModal && (
+          <div className="modal-overlay" onClick={() => setShowVolunteerModal(false)}>
+            <motion.div
+              className="modal-content task-modal"
+              onClick={(e) => e.stopPropagation()}
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+            >
+              <div className="modal-header">
+                <h2>{isRTL ? 'إضافة متطوع جديد' : 'Add New Volunteer'}</h2>
+                <button className="close-btn" onClick={() => setShowVolunteerModal(false)}>×</button>
+              </div>
+              <div className="modal-body">
+                <div className="form-group">
+                  <label>{isRTL ? 'الاسم' : 'Name'} *</label>
+                  <input
+                    type="text"
+                    value={volunteerForm.name}
+                    onChange={(e) => setVolunteerForm(prev => ({ ...prev, name: e.target.value }))}
+                    placeholder={isRTL ? 'الاسم الكامل' : 'Full name'}
+                    required
+                  />
+                </div>
+                <div className="form-group">
+                  <label>{isRTL ? 'رقم الهوية' : 'National ID'} *</label>
+                  <input
+                    type="text"
+                    value={volunteerForm.nationalId}
+                    onChange={(e) => setVolunteerForm(prev => ({ ...prev, nationalId: e.target.value }))}
+                    placeholder={isRTL ? 'رقم الهوية الوطنية' : 'National ID number'}
+                    required
+                  />
+                </div>
+                <div className="form-group">
+                  <label>{isRTL ? 'رقم الجوال' : 'Phone'} *</label>
+                  <input
+                    type="tel"
+                    value={volunteerForm.phone}
+                    onChange={(e) => setVolunteerForm(prev => ({ ...prev, phone: e.target.value }))}
+                    placeholder="05xxxxxxxx"
+                    required
+                  />
+                </div>
+                <div className="form-group">
+                  <label>{isRTL ? 'البريد الإلكتروني' : 'Email'}</label>
+                  <input
+                    type="email"
+                    value={volunteerForm.email}
+                    onChange={(e) => setVolunteerForm(prev => ({ ...prev, email: e.target.value }))}
+                    placeholder="email@example.com"
+                  />
+                </div>
+                <div className="form-group">
+                  <label>{isRTL ? 'صورة الهوية' : 'ID Photo'}</label>
+                  <div
+                    className={`photo-upload-area ${volunteerForm.nationalIdPhoto ? 'has-photo' : ''}`}
+                    onClick={() => document.getElementById('id-photo-input').click()}
+                  >
+                    {volunteerForm.nationalIdPhoto ? (
+                      <>
+                        <img src={volunteerForm.nationalIdPhoto} alt="ID" className="photo-preview" />
+                        <p>{isRTL ? 'انقر لتغيير الصورة' : 'Click to change photo'}</p>
+                      </>
+                    ) : (
+                      <>
+                        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                          <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+                          <circle cx="8.5" cy="8.5" r="1.5"/>
+                          <polyline points="21 15 16 10 5 21"/>
+                        </svg>
+                        <p>{isRTL ? 'انقر لرفع صورة الهوية' : 'Click to upload ID photo'}</p>
+                      </>
+                    )}
+                  </div>
+                  <input
+                    id="id-photo-input"
+                    type="file"
+                    accept="image/*"
+                    onChange={handleVolunteerPhotoUpload}
+                    style={{ display: 'none' }}
+                  />
+                </div>
+              </div>
+              <div className="modal-footer">
+                <button className="modal-btn cancel" onClick={() => setShowVolunteerModal(false)}>
+                  {isRTL ? 'إلغاء' : 'Cancel'}
+                </button>
+                <button
+                  className="modal-btn save"
+                  onClick={handleCreateVolunteer}
+                  disabled={volunteerLoading || !volunteerForm.name || !volunteerForm.nationalId || !volunteerForm.phone}
+                >
+                  {volunteerLoading ? (isRTL ? 'جاري الحفظ...' : 'Saving...') : (isRTL ? 'حفظ' : 'Save')}
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+
+        {/* Opportunity Modal */}
+        {showOpportunityModal && (
+          <div className="modal-overlay" onClick={() => setShowOpportunityModal(false)}>
+            <motion.div
+              className="modal-content task-modal"
+              onClick={(e) => e.stopPropagation()}
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+            >
+              <div className="modal-header">
+                <h2>{isRTL ? 'إضافة فرصة تطوع' : 'Add Volunteer Opportunity'}</h2>
+                <button className="close-btn" onClick={() => setShowOpportunityModal(false)}>×</button>
+              </div>
+              <div className="modal-body">
+                <div className="form-group">
+                  <label>{isRTL ? 'المتطوع' : 'Volunteer'} *</label>
+                  <select
+                    value={opportunityForm.volunteerId}
+                    onChange={(e) => setOpportunityForm(prev => ({ ...prev, volunteerId: e.target.value }))}
+                    required
+                  >
+                    <option value="">{isRTL ? 'اختر متطوع' : 'Select Volunteer'}</option>
+                    {volunteers.map(v => (
+                      <option key={v.volunteerId} value={v.volunteerId}>{v.name} - {v.nationalId}</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="form-group">
+                  <label>{isRTL ? 'عنوان الفرصة' : 'Opportunity Title'} *</label>
+                  <input
+                    type="text"
+                    value={opportunityForm.title}
+                    onChange={(e) => setOpportunityForm(prev => ({ ...prev, title: e.target.value }))}
+                    placeholder={isRTL ? 'عنوان فرصة التطوع' : 'Opportunity title'}
+                    required
+                  />
+                </div>
+                <div className="form-group">
+                  <label>{isRTL ? 'الوصف' : 'Description'}</label>
+                  <textarea
+                    value={opportunityForm.description}
+                    onChange={(e) => setOpportunityForm(prev => ({ ...prev, description: e.target.value }))}
+                    rows="3"
+                    placeholder={isRTL ? 'وصف فرصة التطوع...' : 'Opportunity description...'}
+                  />
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+                  <div className="form-group">
+                    <label>{isRTL ? 'تاريخ البداية' : 'Start Date'} *</label>
+                    <input
+                      type="date"
+                      value={opportunityForm.startDate}
+                      onChange={(e) => setOpportunityForm(prev => ({ ...prev, startDate: e.target.value }))}
+                      required
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label>{isRTL ? 'تاريخ النهاية' : 'End Date'} *</label>
+                    <input
+                      type="date"
+                      value={opportunityForm.endDate}
+                      onChange={(e) => setOpportunityForm(prev => ({ ...prev, endDate: e.target.value }))}
+                      required
+                    />
+                  </div>
+                </div>
+                <div className="form-group">
+                  <label>{isRTL ? 'ساعات العمل اليومية' : 'Daily Hours'}</label>
+                  <input
+                    type="number"
+                    min="1"
+                    max="24"
+                    value={opportunityForm.dailyHours}
+                    onChange={(e) => setOpportunityForm(prev => ({ ...prev, dailyHours: parseInt(e.target.value) || 8 }))}
+                  />
+                </div>
+                {opportunityForm.startDate && opportunityForm.endDate && (
+                  <div className="hours-display">
+                    {isRTL ? 'إجمالي الساعات: ' : 'Total Hours: '}
+                    {calculateTotalHours(opportunityForm.startDate, opportunityForm.endDate, opportunityForm.dailyHours)}
+                  </div>
+                )}
+                <div className="form-group">
+                  <label>{isRTL ? 'منح نقطة' : 'Award Point'}</label>
+                  <div className="point-toggle-container">
+                    <button
+                      type="button"
+                      className={`point-toggle-btn ${opportunityForm.rating === 1 ? 'active' : ''}`}
+                      onClick={() => setOpportunityForm(prev => ({ ...prev, rating: prev.rating === 1 ? 0 : 1 }))}
+                    >
+                      <svg width="24" height="24" viewBox="0 0 24 24" fill={opportunityForm.rating === 1 ? '#22c55e' : 'none'} stroke={opportunityForm.rating === 1 ? '#22c55e' : '#9ca3af'} strokeWidth="2">
+                        <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+                        <polyline points="22 4 12 14.01 9 11.01"/>
+                      </svg>
+                      <span>{opportunityForm.rating === 1
+                        ? (isRTL ? 'تم منح نقطة' : 'Point Awarded')
+                        : (isRTL ? 'انقر لمنح نقطة' : 'Click to Award Point')
+                      }</span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+              <div className="modal-footer">
+                <button className="modal-btn cancel" onClick={() => setShowOpportunityModal(false)}>
+                  {isRTL ? 'إلغاء' : 'Cancel'}
+                </button>
+                <button
+                  className="modal-btn save"
+                  onClick={handleCreateOpportunity}
+                  disabled={volunteerLoading || !opportunityForm.volunteerId || !opportunityForm.title || !opportunityForm.startDate || !opportunityForm.endDate}
+                >
+                  {volunteerLoading ? (isRTL ? 'جاري الحفظ...' : 'Saving...') : (isRTL ? 'حفظ' : 'Save')}
                 </button>
               </div>
             </motion.div>

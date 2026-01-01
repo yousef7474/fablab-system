@@ -18,10 +18,12 @@ const Rating = sequelize.define('Rating', {
   points: {
     type: DataTypes.INTEGER,
     allowNull: false,
+    defaultValue: 1,
     validate: {
       min: 0,
-      max: 100
-    }
+      max: 1
+    },
+    comment: 'Simple 1 point rating - 1 means awarded, 0 means not awarded'
   },
   criteria: {
     type: DataTypes.STRING,

@@ -7,6 +7,11 @@ const Task = sequelize.define('Task', {
     defaultValue: DataTypes.UUIDV4,
     primaryKey: true
   },
+  groupId: {
+    type: DataTypes.UUID,
+    allowNull: true,
+    comment: 'Groups multi-day tasks together as one assignment'
+  },
   title: {
     type: DataTypes.STRING,
     allowNull: false
@@ -26,6 +31,11 @@ const Task = sequelize.define('Task', {
   dueDate: {
     type: DataTypes.DATEONLY,
     allowNull: false
+  },
+  dueDateEnd: {
+    type: DataTypes.DATEONLY,
+    allowNull: true,
+    comment: 'End date for multi-day assignments'
   },
   dueTime: {
     type: DataTypes.TIME,

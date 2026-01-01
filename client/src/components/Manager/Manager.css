@@ -1584,3 +1584,394 @@
 [data-theme="dark"] .mini-stars svg[fill="#e5e7eb"] {
   fill: #3a3a4f;
 }
+
+/* ========================================
+   Point Toggle Button (1 Point Rating)
+   ======================================== */
+
+.point-toggle-container {
+  display: flex;
+  justify-content: center;
+  padding: 16px;
+}
+
+.point-toggle-btn {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px 32px;
+  border: 2px solid #e5e7eb;
+  border-radius: 12px;
+  background: transparent;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  font-size: 16px;
+  font-weight: 600;
+  color: #6b7280;
+}
+
+.point-toggle-btn:hover {
+  border-color: #22c55e;
+  background: rgba(34, 197, 94, 0.05);
+}
+
+.point-toggle-btn.active {
+  border-color: #22c55e;
+  background: rgba(34, 197, 94, 0.1);
+  color: #22c55e;
+}
+
+.point-toggle-btn svg {
+  transition: all 0.3s ease;
+}
+
+[data-theme="dark"] .point-toggle-btn {
+  border-color: #3a3a4f;
+  color: #9ca3af;
+}
+
+[data-theme="dark"] .point-toggle-btn:hover {
+  border-color: #22c55e;
+  background: rgba(34, 197, 94, 0.1);
+}
+
+[data-theme="dark"] .point-toggle-btn.active {
+  border-color: #22c55e;
+  background: rgba(34, 197, 94, 0.15);
+  color: #22c55e;
+}
+
+/* Simple Point Badge in Table */
+.point-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  font-weight: 700;
+  font-size: 14px;
+}
+
+.point-badge.awarded {
+  background: rgba(34, 197, 94, 0.15);
+  color: #22c55e;
+}
+
+.point-badge.not-awarded {
+  background: rgba(107, 114, 128, 0.15);
+  color: #6b7280;
+}
+
+/* ========================================
+   Tasks Tab (Grouped Assignments)
+   ======================================== */
+
+.tasks-content {
+  padding: 24px;
+}
+
+.assignments-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.assignment-card {
+  background: var(--card-bg);
+  border: 1px solid var(--border-color);
+  border-radius: 16px;
+  padding: 20px;
+  transition: all 0.2s ease;
+}
+
+.assignment-card:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+.assignment-card.priority-high {
+  border-left: 4px solid #ef4444;
+}
+
+.assignment-card.priority-medium {
+  border-left: 4px solid #f59e0b;
+}
+
+.assignment-card.priority-low {
+  border-left: 4px solid #22c55e;
+}
+
+.assignment-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 12px;
+}
+
+.assignment-title {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin: 0;
+}
+
+.assignment-meta {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+  font-size: 14px;
+  color: var(--text-secondary);
+}
+
+.assignment-meta-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.assignment-dates {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: var(--bg-tertiary);
+  border-radius: 8px;
+  font-size: 14px;
+}
+
+.date-range-arrow {
+  color: var(--text-secondary);
+}
+
+.days-count {
+  background: rgba(99, 102, 241, 0.15);
+  color: #6366f1;
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-weight: 600;
+  font-size: 12px;
+}
+
+.assignment-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.status-select {
+  padding: 8px 12px;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  background: var(--input-bg);
+  color: var(--text-primary);
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.delete-assignment-btn {
+  padding: 8px 12px;
+  border: 1px solid #ef4444;
+  border-radius: 8px;
+  background: transparent;
+  color: #ef4444;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.delete-assignment-btn:hover {
+  background: rgba(239, 68, 68, 0.1);
+}
+
+/* ========================================
+   Volunteers Tab
+   ======================================== */
+
+.volunteers-content {
+  padding: 24px;
+}
+
+.volunteers-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+}
+
+.volunteers-actions {
+  display: flex;
+  gap: 12px;
+}
+
+.add-volunteer-btn,
+.add-opportunity-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 20px;
+  border: none;
+  border-radius: 10px;
+  font-weight: 600;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.add-volunteer-btn {
+  background: linear-gradient(135deg, #6366f1, #8b5cf6);
+  color: white;
+}
+
+.add-volunteer-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+}
+
+.add-opportunity-btn {
+  background: linear-gradient(135deg, #22c55e, #16a34a);
+  color: white;
+}
+
+.add-opportunity-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(34, 197, 94, 0.3);
+}
+
+.volunteers-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+  gap: 20px;
+}
+
+.volunteer-card {
+  background: var(--card-bg);
+  border: 1px solid var(--border-color);
+  border-radius: 16px;
+  padding: 20px;
+  transition: all 0.2s;
+}
+
+.volunteer-card:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+.volunteer-header {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.volunteer-avatar {
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #6366f1, #8b5cf6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-weight: 700;
+  font-size: 20px;
+}
+
+.volunteer-info h3 {
+  margin: 0 0 4px 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.volunteer-info p {
+  margin: 0;
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.volunteer-stats {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.stat-item {
+  flex: 1;
+  text-align: center;
+  padding: 8px;
+  background: var(--bg-tertiary);
+  border-radius: 8px;
+}
+
+.stat-value {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.stat-label {
+  font-size: 11px;
+  color: var(--text-secondary);
+  margin-top: 2px;
+}
+
+.volunteer-opportunities {
+  border-top: 1px solid var(--border-color);
+  padding-top: 12px;
+}
+
+.opportunity-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 0;
+  font-size: 13px;
+}
+
+.opportunity-title {
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+.opportunity-hours {
+  color: var(--text-secondary);
+}
+
+/* ========================================
+   Volunteer/Opportunity Modal
+   ======================================== */
+
+.photo-upload-area {
+  border: 2px dashed var(--border-color);
+  border-radius: 12px;
+  padding: 24px;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.photo-upload-area:hover {
+  border-color: #6366f1;
+  background: rgba(99, 102, 241, 0.05);
+}
+
+.photo-upload-area.has-photo {
+  border-style: solid;
+  border-color: #22c55e;
+}
+
+.photo-preview {
+  max-width: 200px;
+  max-height: 150px;
+  border-radius: 8px;
+  margin-bottom: 8px;
+}
+
+.hours-display {
+  background: rgba(99, 102, 241, 0.1);
+  color: #6366f1;
+  padding: 12px 20px;
+  border-radius: 10px;
+  font-size: 18px;
+  font-weight: 700;
+  text-align: center;
+}

@@ -5,6 +5,8 @@ const Admin = require('./Admin');
 const Employee = require('./Employee');
 const Task = require('./Task');
 const Rating = require('./Rating');
+const Volunteer = require('./Volunteer');
+const VolunteerOpportunity = require('./VolunteerOpportunity');
 
 // Define relationships
 User.hasMany(Registration, { foreignKey: 'userId', as: 'registrations' });
@@ -23,6 +25,13 @@ Employee.hasMany(Rating, { foreignKey: 'employeeId', as: 'ratings' });
 
 Rating.belongsTo(Admin, { foreignKey: 'createdById', as: 'ratedBy' });
 Admin.hasMany(Rating, { foreignKey: 'createdById', as: 'givenRatings' });
+
+// Volunteer relationships
+VolunteerOpportunity.belongsTo(Volunteer, { foreignKey: 'volunteerId', as: 'volunteer' });
+Volunteer.hasMany(VolunteerOpportunity, { foreignKey: 'volunteerId', as: 'opportunities' });
+
+VolunteerOpportunity.belongsTo(Admin, { foreignKey: 'createdById', as: 'creator' });
+Admin.hasMany(VolunteerOpportunity, { foreignKey: 'createdById', as: 'createdOpportunities' });
 
 // Sync database
 const syncDatabase = async () => {
@@ -43,5 +52,7 @@ module.exports = {
   Employee,
   Task,
   Rating,
+  Volunteer,
+  VolunteerOpportunity,
   syncDatabase
 };
