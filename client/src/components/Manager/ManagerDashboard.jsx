@@ -342,17 +342,6 @@ const ManagerDashboard = () => {
     }
   };
 
-  const handleUpdateTaskStatus = async (taskId, newStatus) => {
-    try {
-      await api.patch(`/tasks/${taskId}/status`, { status: newStatus });
-      toast.success(isRTL ? 'تم تحديث الحالة' : 'Status updated');
-      fetchSchedule();
-    } catch (error) {
-      console.error('Error updating task status:', error);
-      toast.error(isRTL ? 'خطأ في تحديث الحالة' : 'Error updating status');
-    }
-  };
-
   const resetTaskForm = () => {
     setTaskForm({
       title: '',
@@ -563,6 +552,7 @@ const ManagerDashboard = () => {
       await api.patch(`/tasks/${taskId}/status`, { status: newStatus });
       toast.success(isRTL ? 'تم تحديث حالة المهمة' : 'Task status updated');
       fetchGroupedTasks();
+      fetchSchedule();
     } catch (error) {
       console.error('Error updating status:', error);
       toast.error(isRTL ? 'خطأ في تحديث الحالة' : 'Error updating status');
