@@ -1975,3 +1975,300 @@
   font-weight: 700;
   text-align: center;
 }
+
+/* ========================================
+   Volunteer Card Actions
+   ======================================== */
+.volunteer-card-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border-color, #e5e7eb);
+}
+
+.view-volunteer-btn,
+.export-volunteer-btn {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 8px 12px;
+  border: none;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.view-volunteer-btn {
+  background: rgba(99, 102, 241, 0.1);
+  color: #6366f1;
+}
+
+.view-volunteer-btn:hover {
+  background: rgba(99, 102, 241, 0.2);
+}
+
+.export-volunteer-btn {
+  background: rgba(34, 197, 94, 0.1);
+  color: #22c55e;
+}
+
+.export-volunteer-btn:hover {
+  background: rgba(34, 197, 94, 0.2);
+}
+
+/* Export All Button */
+.export-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 20px;
+  background: rgba(34, 197, 94, 0.1);
+  color: #22c55e;
+  border: 1px solid rgba(34, 197, 94, 0.2);
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.export-btn:hover {
+  background: rgba(34, 197, 94, 0.2);
+}
+
+/* ========================================
+   Volunteer Detail Modal
+   ======================================== */
+.volunteer-detail-modal {
+  max-width: 700px;
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+.volunteer-detail-body {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.volunteer-detail-profile {
+  display: flex;
+  gap: 20px;
+  align-items: flex-start;
+}
+
+.volunteer-detail-avatar {
+  flex-shrink: 0;
+}
+
+.volunteer-id-photo {
+  width: 100px;
+  height: 100px;
+  border-radius: 12px;
+  object-fit: cover;
+  border: 3px solid var(--primary-color, #6366f1);
+}
+
+.avatar-placeholder {
+  width: 100px;
+  height: 100px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 40px;
+  font-weight: 600;
+}
+
+.volunteer-detail-info {
+  flex: 1;
+}
+
+.volunteer-detail-info h3 {
+  margin: 0 0 12px 0;
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.info-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 8px;
+  color: var(--text-secondary);
+  font-size: 14px;
+}
+
+.info-row svg {
+  color: var(--primary-color, #6366f1);
+}
+
+.volunteer-detail-stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+  background: var(--bg-secondary, #f8fafc);
+  padding: 20px;
+  border-radius: 12px;
+}
+
+.detail-stat {
+  text-align: center;
+}
+
+.detail-stat-value {
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--primary-color, #6366f1);
+}
+
+.detail-stat-label {
+  font-size: 13px;
+  color: var(--text-secondary);
+  margin-top: 4px;
+}
+
+.volunteer-id-section {
+  background: var(--bg-secondary, #f8fafc);
+  padding: 16px;
+  border-radius: 12px;
+}
+
+.volunteer-id-section h4 {
+  margin: 0 0 12px 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.volunteer-id-full {
+  max-width: 100%;
+  max-height: 300px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: transform 0.2s;
+}
+
+.volunteer-id-full:hover {
+  transform: scale(1.02);
+}
+
+.volunteer-history-section {
+  background: var(--bg-secondary, #f8fafc);
+  padding: 16px;
+  border-radius: 12px;
+}
+
+.volunteer-history-section h4 {
+  margin: 0 0 16px 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.no-history {
+  text-align: center;
+  color: var(--text-secondary);
+  font-style: italic;
+  padding: 20px;
+}
+
+.history-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.history-item {
+  background: var(--bg-primary, white);
+  padding: 16px;
+  border-radius: 10px;
+  border: 1px solid var(--border-color, #e5e7eb);
+}
+
+.history-item-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.history-item-header strong {
+  color: var(--text-primary);
+  font-size: 15px;
+}
+
+.status-badge {
+  padding: 4px 10px;
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.status-badge.active {
+  background: rgba(99, 102, 241, 0.1);
+  color: #6366f1;
+}
+
+.status-badge.completed {
+  background: rgba(34, 197, 94, 0.1);
+  color: #22c55e;
+}
+
+.status-badge.cancelled {
+  background: rgba(239, 68, 68, 0.1);
+  color: #ef4444;
+}
+
+.history-description {
+  font-size: 13px;
+  color: var(--text-secondary);
+  margin: 0 0 12px 0;
+}
+
+.history-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+.history-meta span {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.history-meta svg {
+  color: var(--text-secondary);
+}
+
+.rating-earned {
+  color: #22c55e !important;
+}
+
+.rating-earned svg {
+  color: #22c55e !important;
+}
+
+.modal-btn.export {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: #22c55e;
+  color: white;
+}
+
+.modal-btn.export:hover {
+  background: #16a34a;
+}
