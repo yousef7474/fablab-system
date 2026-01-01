@@ -259,18 +259,6 @@ const ManagerDashboard = () => {
   const handlePrevMonth = () => setSelectedDate(subMonths(selectedDate, 1));
   const handleNextMonth = () => setSelectedDate(addMonths(selectedDate, 1));
 
-  // Generate dates between start and end
-  const getDatesBetween = (startDate, endDate) => {
-    const dates = [];
-    const start = new Date(startDate);
-    const end = endDate ? new Date(endDate) : start;
-
-    for (let date = new Date(start); date <= end; date.setDate(date.getDate() + 1)) {
-      dates.push(new Date(date).toISOString().split('T')[0]);
-    }
-    return dates;
-  };
-
   // Task CRUD operations
   const handleCreateTask = async () => {
     const hasValidEmployee = taskForm.selectAllEmployees || taskForm.employeeId;
@@ -286,35 +274,31 @@ const ManagerDashboard = () => {
         ? employees.map(emp => emp.employeeId)
         : [taskForm.employeeId];
 
-      // Get list of dates (range if end date is provided)
-      const dates = getDatesBetween(taskForm.dueDate, taskForm.dueDateEnd);
-
-      // Create tasks for all combinations
+      // Create ONE task per employee (with date range if multi-day)
       const promises = [];
       for (const employeeId of employeeIds) {
         const employee = employees.find(e => e.employeeId === employeeId);
-        for (const date of dates) {
-          promises.push(api.post('/tasks', {
-            title: taskForm.title,
-            description: taskForm.description,
-            employeeId,
-            dueDate: date,
-            dueTime: taskForm.dueTime,
-            priority: taskForm.priority,
-            section: employee?.section || taskForm.section,
-            notes: taskForm.notes
-          }));
-        }
+        promises.push(api.post('/tasks', {
+          title: taskForm.title,
+          description: taskForm.description,
+          employeeId,
+          dueDate: taskForm.dueDate,
+          dueDateEnd: taskForm.dueDateEnd || null,
+          dueTime: taskForm.dueTime,
+          priority: taskForm.priority,
+          section: employee?.section || taskForm.section,
+          notes: taskForm.notes
+        }));
       }
 
       await Promise.all(promises);
-      const totalTasks = employeeIds.length * dates.length;
       toast.success(isRTL
-        ? `تم إنشاء ${totalTasks} مهمة بنجاح`
-        : `${totalTasks} task(s) created successfully`);
+        ? `تم إنشاء ${employeeIds.length} مهمة بنجاح`
+        : `${employeeIds.length} task(s) created successfully`);
       setShowTaskModal(false);
       resetTaskForm();
       fetchSchedule();
+      fetchGroupedTasks();
     } catch (error) {
       console.error('Error creating task:', error);
       toast.error(isRTL ? 'خطأ في إنشاء المهمة' : 'Error creating task');
@@ -573,13 +557,9 @@ const ManagerDashboard = () => {
     }
   };
 
-  const handleUpdateGroupStatus = async (groupId, taskId, newStatus) => {
+  const handleUpdateTaskStatus = async (taskId, newStatus) => {
     try {
-      if (groupId) {
-        await api.patch(`/tasks/group/${groupId}/status`, { status: newStatus });
-      } else {
-        await api.patch(`/tasks/${taskId}/status`, { status: newStatus });
-      }
+      await api.patch(`/tasks/${taskId}/status`, { status: newStatus });
       toast.success(isRTL ? 'تم تحديث حالة المهمة' : 'Task status updated');
       fetchGroupedTasks();
     } catch (error) {
@@ -588,15 +568,11 @@ const ManagerDashboard = () => {
     }
   };
 
-  const handleDeleteGroup = async (groupId, taskId) => {
+  const handleDeleteTaskAssignment = async (taskId) => {
     if (!window.confirm(isRTL ? 'هل تريد حذف هذه المهمة؟' : 'Delete this assignment?')) return;
 
     try {
-      if (groupId) {
-        await api.delete(`/tasks/group/${groupId}`);
-      } else {
-        await api.delete(`/tasks/${taskId}`);
-      }
+      await api.delete(`/tasks/${taskId}`);
       toast.success(isRTL ? 'تم حذف المهمة' : 'Assignment deleted');
       fetchGroupedTasks();
     } catch (error) {
@@ -1452,7 +1428,7 @@ const ManagerDashboard = () => {
                       <select
                         className="status-select"
                         value={task.status}
-                        onChange={(e) => handleUpdateGroupStatus(task.groupId, task.taskId || task.taskIds?.[0], e.target.value)}
+                        onChange={(e) => handleUpdateTaskStatus(task.taskId, e.target.value)}
                       >
                         <option value="pending">{isRTL ? 'قيد الانتظار' : 'Pending'}</option>
                         <option value="in_progress">{isRTL ? 'قيد التنفيذ' : 'In Progress'}</option>
@@ -1461,7 +1437,7 @@ const ManagerDashboard = () => {
                       </select>
                       <button
                         className="delete-assignment-btn"
-                        onClick={() => handleDeleteGroup(task.groupId, task.taskId || task.taskIds?.[0])}
+                        onClick={() => handleDeleteTaskAssignment(task.taskId)}
                       >
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                           <polyline points="3 6 5 6 21 6"/>

@@ -7,11 +7,6 @@ const Task = sequelize.define('Task', {
     defaultValue: DataTypes.UUIDV4,
     primaryKey: true
   },
-  groupId: {
-    type: DataTypes.UUID,
-    allowNull: true,
-    comment: 'Groups multi-day tasks together as one assignment'
-  },
   title: {
     type: DataTypes.STRING,
     allowNull: false

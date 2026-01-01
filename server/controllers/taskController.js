@@ -1,6 +1,5 @@
 const { Task, Employee, Admin } = require('../models');
 const { Op } = require('sequelize');
-const { v4: uuidv4 } = require('uuid');
 
 /**
  * Get all tasks with optional filters
@@ -45,7 +44,7 @@ exports.getAllTasks = async (req, res) => {
 };
 
 /**
- * Get grouped assignments (multi-day tasks grouped together)
+ * Get all tasks (each task is a single entry, may have date range)
  */
 exports.getGroupedTasks = async (req, res) => {
   try {
@@ -62,79 +61,42 @@ exports.getGroupedTasks = async (req, res) => {
         { model: Employee, as: 'assignee', attributes: ['employeeId', 'name', 'email', 'section'] },
         { model: Admin, as: 'creator', attributes: ['adminId', 'fullName', 'role'] }
       ],
-      order: [['groupId', 'ASC'], ['dueDate', 'ASC'], ['createdAt', 'DESC']]
+      order: [['dueDate', 'DESC'], ['createdAt', 'DESC']]
     });
 
-    // Group tasks by groupId
-    const groupedMap = new Map();
-    const ungrouped = [];
+    // Format tasks with consistent structure
+    const formattedTasks = tasks.map(task => {
+      const startDate = task.dueDate;
+      const endDate = task.dueDateEnd || task.dueDate;
 
-    tasks.forEach(task => {
-      if (task.groupId) {
-        if (!groupedMap.has(task.groupId)) {
-          groupedMap.set(task.groupId, {
-            groupId: task.groupId,
-            title: task.title,
-            description: task.description,
-            priority: task.priority,
-            status: task.status,
-            section: task.section,
-            notes: task.notes,
-            assignee: task.assignee,
-            creator: task.creator,
-            employeeId: task.employeeId,
-            createdById: task.createdById,
-            startDate: task.dueDate,
-            endDate: task.dueDate,
-            dueTime: task.dueTime,
-            taskIds: [task.taskId],
-            dayCount: 1,
-            createdAt: task.createdAt
-          });
-        } else {
-          const group = groupedMap.get(task.groupId);
-          group.taskIds.push(task.taskId);
-          group.dayCount++;
-          // Update end date if this task is later
-          if (task.dueDate > group.endDate) {
-            group.endDate = task.dueDate;
-          }
-          if (task.dueDate < group.startDate) {
-            group.startDate = task.dueDate;
-          }
-        }
-      } else {
-        // Single day task - treat as its own group
-        ungrouped.push({
-          groupId: null,
-          taskId: task.taskId,
-          title: task.title,
-          description: task.description,
-          priority: task.priority,
-          status: task.status,
-          section: task.section,
-          notes: task.notes,
-          assignee: task.assignee,
-          creator: task.creator,
-          employeeId: task.employeeId,
-          createdById: task.createdById,
-          startDate: task.dueDate,
-          endDate: task.dueDate,
-          dueTime: task.dueTime,
-          taskIds: [task.taskId],
-          dayCount: 1,
-          createdAt: task.createdAt
-        });
-      }
+      // Calculate day count
+      const start = new Date(startDate);
+      const end = new Date(endDate);
+      const dayCount = Math.ceil((end - start) / (1000 * 60 * 60 * 24)) + 1;
+
+      return {
+        taskId: task.taskId,
+        title: task.title,
+        description: task.description,
+        priority: task.priority,
+        status: task.status,
+        section: task.section,
+        notes: task.notes,
+        assignee: task.assignee,
+        creator: task.creator,
+        employeeId: task.employeeId,
+        createdById: task.createdById,
+        startDate,
+        endDate,
+        dueTime: task.dueTime,
+        dayCount,
+        createdAt: task.createdAt
+      };
     });
 
-    const grouped = [...groupedMap.values(), ...ungrouped];
-    // Sort by start date descending (most recent first)
-    grouped.sort((a, b) => new Date(b.startDate) - new Date(a.startDate));
-
-    res.json(grouped);
+    res.json(formattedTasks);
   } catch (error) {
-    console.error('Error fetching grouped tasks:', error);
+    console.error('Error fetching tasks:', error);
     res.status(500).json({ message: 'Server error', error: error.message });
   }
 };
@@ -165,7 +127,7 @@ exports.getTaskById = async (req, res) => {
 };
 
 /**
- * Create a new task or multi-day assignment
+ * Create a new task (single entry, can span multiple days)
  */
 exports.createTask = async (req, res) => {
   try {
@@ -188,78 +150,29 @@ exports.createTask = async (req, res) => {
       });
     }
 
-    // Check if this is a multi-day assignment
-    const isMultiDay = dueDateEnd && dueDateEnd !== dueDate;
+    // Create a single task (with optional end date for multi-day assignments)
+    const task = await Task.create({
+      title,
+      description,
+      employeeId,
+      createdById: req.admin.adminId,
+      dueDate,
+      dueDateEnd: dueDateEnd || null,
+      dueTime: dueTime || null,
+      priority: priority || 'medium',
+      section: section || employee.section,
+      notes
+    });
 
-    if (isMultiDay) {
-      // Create a group of tasks for multi-day assignment
-      const groupId = uuidv4();
-      const startDate = new Date(dueDate);
-      const endDate = new Date(dueDateEnd);
-      const tasks = [];
+    // Fetch with associations
+    const createdTask = await Task.findByPk(task.taskId, {
+      include: [
+        { model: Employee, as: 'assignee', attributes: ['employeeId', 'name', 'email', 'section'] },
+        { model: Admin, as: 'creator', attributes: ['adminId', 'fullName', 'role'] }
+      ]
+    });
 
-      // Generate tasks for each day
-      for (let d = new Date(startDate); d <= endDate; d.setDate(d.getDate() + 1)) {
-        const currentDate = d.toISOString().split('T')[0];
-        tasks.push({
-          groupId,
-          title,
-          description,
-          employeeId,
-          createdById: req.admin.adminId,
-          dueDate: currentDate,
-          dueDateEnd,
-          dueTime: dueTime || null,
-          priority: priority || 'medium',
-          section: section || employee.section,
-          notes
-        });
-      }
-
-      await Task.bulkCreate(tasks);
-
-      // Return grouped response
-      res.status(201).json({
-        groupId,
-        title,
-        description,
-        priority: priority || 'medium',
-        status: 'pending',
-        section: section || employee.section,
-        notes,
-        startDate: dueDate,
-        endDate: dueDateEnd,
-        dueTime: dueTime || null,
-        dayCount: tasks.length,
-        employeeId,
-        assignee: { employeeId: employee.employeeId, name: employee.name, email: employee.email, section: employee.section },
-        message: `Created ${tasks.length}-day assignment`,
-        messageAr: `تم إنشاء مهمة لمدة ${tasks.length} أيام`
-      });
-    } else {
-      // Single day task
-      const task = await Task.create({
-        title,
-        description,
-        employeeId,
-        createdById: req.admin.adminId,
-        dueDate,
-        dueTime: dueTime || null,
-        priority: priority || 'medium',
-        section: section || employee.section,
-        notes
-      });
-
-      // Fetch with associations
-      const createdTask = await Task.findByPk(task.taskId, {
-        include: [
-          { model: Employee, as: 'assignee', attributes: ['employeeId', 'name', 'email', 'section'] },
-          { model: Admin, as: 'creator', attributes: ['adminId', 'fullName', 'role'] }
-        ]
-      });
-
-      res.status(201).json(createdTask);
-    }
+    res.status(201).json(createdTask);
   } catch (error) {
     console.error('Error creating task:', error);
     res.status(500).json({ message: 'Server error', error: error.message });
@@ -426,75 +339,6 @@ exports.updateTaskStatus = async (req, res) => {
     });
   } catch (error) {
     console.error('Error updating task status:', error);
-    res.status(500).json({ message: 'Server error', error: error.message });
-  }
-};
-
-/**
- * Update all tasks in a group (assignment status)
- */
-exports.updateGroupStatus = async (req, res) => {
-  try {
-    const { groupId } = req.params;
-    const { status } = req.body;
-
-    if (!['pending', 'in_progress', 'completed', 'cancelled'].includes(status)) {
-      return res.status(400).json({
-        message: 'Invalid status',
-        messageAr: 'حالة غير صالحة'
-      });
-    }
-
-    // Update all tasks with this groupId
-    const [updatedCount] = await Task.update(
-      { status },
-      { where: { groupId } }
-    );
-
-    if (updatedCount === 0) {
-      return res.status(404).json({
-        message: 'No tasks found in this group',
-        messageAr: 'لا توجد مهام في هذه المجموعة'
-      });
-    }
-
-    res.json({
-      message: `Updated ${updatedCount} tasks in assignment`,
-      messageAr: `تم تحديث ${updatedCount} مهام في المهمة`,
-      updatedCount,
-      status
-    });
-  } catch (error) {
-    console.error('Error updating group status:', error);
-    res.status(500).json({ message: 'Server error', error: error.message });
-  }
-};
-
-/**
- * Delete all tasks in a group (delete entire assignment)
- */
-exports.deleteGroup = async (req, res) => {
-  try {
-    const { groupId } = req.params;
-
-    const deletedCount = await Task.destroy({
-      where: { groupId }
-    });
-
-    if (deletedCount === 0) {
-      return res.status(404).json({
-        message: 'No tasks found in this group',
-        messageAr: 'لا توجد مهام في هذه المجموعة'
-      });
-    }
-
-    res.json({
-      message: `Deleted ${deletedCount} tasks in assignment`,
-      messageAr: `تم حذف ${deletedCount} مهام`,
-      deletedCount
-    });
-  } catch (error) {
-    console.error('Error deleting group:', error);
     res.status(500).json({ message: 'Server error', error: error.message });
   }
 };
