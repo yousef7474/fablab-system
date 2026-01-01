@@ -1301,7 +1301,6 @@ const ManagerDashboard = () => {
                           </svg>
                         </button>
                       ))}
-                    </div>
                     <div className="rating-bar-container">
                       <input
                         type="range"
