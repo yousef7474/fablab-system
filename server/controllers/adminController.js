@@ -801,9 +801,11 @@ exports.getSchedule = async (req, res) => {
         type: 'task',
         priority: task.priority,
         status: task.status,
+        employeeId: task.employeeId,
         assignee: task.assignee?.name,
         assigneeEmail: task.assignee?.email,
-        description: task.description
+        description: task.description,
+        dueDateEnd: task.dueDateEnd
       }));
 
       return res.json([...scheduleItems, ...taskItems]);

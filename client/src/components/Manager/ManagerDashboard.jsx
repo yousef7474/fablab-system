@@ -765,7 +765,7 @@ const ManagerDashboard = () => {
     }
   };
 
-  // Get upcoming tasks
+  // Get upcoming tasks (filtered by selected employee)
   const getUpcomingTasks = () => {
     const tasks = schedule.filter(item => item.type === 'task');
     const today = new Date();
@@ -774,7 +774,14 @@ const ManagerDashboard = () => {
     return tasks
       .filter(task => {
         const dueDate = parseISO(task.date);
-        return dueDate >= today && task.status !== 'completed' && task.status !== 'cancelled';
+        const isUpcoming = dueDate >= today && task.status !== 'completed' && task.status !== 'cancelled';
+
+        // Apply employee filter if not 'all'
+        if (scheduleFilter !== 'all' && isUpcoming) {
+          return task.employeeId === scheduleFilter;
+        }
+
+        return isUpcoming;
       })
       .sort((a, b) => new Date(a.date) - new Date(b.date))
       .slice(0, 10);
@@ -814,7 +821,7 @@ const ManagerDashboard = () => {
               <line x1="8" y1="2" x2="8" y2="6"/>
               <line x1="3" y1="10" x2="21" y2="10"/>
             </svg>
-            <span>{isRTL ? 'الجدول والمهام' : 'Schedule & Tasks'}</span>
+            <span>{isRTL ? 'الجدول' : 'Schedule'}</span>
           </button>
           <button
             className={`nav-item ${activeTab === 'tasks' ? 'active' : ''}`}
@@ -895,7 +902,7 @@ const ManagerDashboard = () => {
               : (isRTL ? 'الإعدادات' : 'Settings')
             }</h1>
             <p>{activeTab === 'schedule'
-              ? (isRTL ? 'عرض جدول المواعيد والمهام' : 'View appointments and tasks schedule')
+              ? (isRTL ? 'عرض جدول المواعيد' : 'View appointments schedule')
               : activeTab === 'tasks'
               ? (isRTL ? 'إدارة وتعيين المهام للموظفين' : 'Manage and assign tasks to employees')
               : activeTab === 'ratings'
