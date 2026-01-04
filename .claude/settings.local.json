@@ -17,7 +17,8 @@
       "Bash(node create-manager.js:*)",
       "Bash(del \"F:\\\\fablab regiser\\\\server\\\\utils\\\\whatsappService.js\")",
       "Bash(dir:*)",
-      "Bash(node -e:*)"
+      "Bash(node -e:*)",
+      "Bash(npm run build:*)"
     ],
     "deny": [],
     "ask": []

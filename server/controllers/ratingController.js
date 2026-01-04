@@ -1,7 +1,7 @@
 const { Rating, Employee, Admin } = require('../models');
 const { Op } = require('sequelize');
 
-// Get all ratings with optional filters
+// Get all ratings with optional filters and net points calculation
 exports.getAllRatings = async (req, res) => {
   try {
     const { employeeId, startDate, endDate } = req.query;
@@ -35,7 +35,25 @@ exports.getAllRatings = async (req, res) => {
       order: [['ratingDate', 'DESC'], ['createdAt', 'DESC']]
     });
 
-    res.json(ratings);
+    // Calculate net points per employee
+    const employeeNetPoints = {};
+    ratings.forEach(r => {
+      const empId = r.employeeId;
+      if (!employeeNetPoints[empId]) {
+        employeeNetPoints[empId] = { awards: 0, deductions: 0, net: 0, name: r.employee?.name };
+      }
+      if (r.points === 1) {
+        if (r.type === 'deduction') {
+          employeeNetPoints[empId].deductions += 1;
+          employeeNetPoints[empId].net -= 1;
+        } else {
+          employeeNetPoints[empId].awards += 1;
+          employeeNetPoints[empId].net += 1;
+        }
+      }
+    });
+
+    res.json({ ratings, employeeNetPoints });
   } catch (error) {
     console.error('Error fetching ratings:', error);
     res.status(500).json({ message: 'Error fetching ratings', error: error.message });
@@ -116,22 +134,64 @@ exports.exportRatings = async (req, res) => {
       order: [['ratingDate', 'DESC'], ['createdAt', 'DESC']]
     });
 
+    // Calculate net points per employee
+    const employeeNetPoints = {};
+    ratings.forEach(r => {
+      const empId = r.employeeId;
+      if (!employeeNetPoints[empId]) {
+        employeeNetPoints[empId] = {
+          awards: 0,
+          deductions: 0,
+          net: 0,
+          name: r.employee?.name,
+          email: r.employee?.email,
+          section: r.employee?.section
+        };
+      }
+      if (r.points === 1) {
+        if (r.type === 'deduction') {
+          employeeNetPoints[empId].deductions += 1;
+          employeeNetPoints[empId].net -= 1;
+        } else {
+          employeeNetPoints[empId].awards += 1;
+          employeeNetPoints[empId].net += 1;
+        }
+      }
+    });
+
     // Create CSV content
-    const headers = ['Rating Date', 'Employee Name', 'Employee Email', 'Section', 'Points', 'Criteria', 'Notes', 'Rated By'];
+    const headers = ['Rating Date', 'Employee Name', 'Employee Email', 'Section', 'Type', 'Points', 'Criteria', 'Notes', 'Rated By'];
     const rows = ratings.map(r => [
       r.ratingDate,
       r.employee?.name || 'N/A',
       r.employee?.email || 'N/A',
       r.employee?.section || 'N/A',
-      r.points,
+      r.type || 'award',
+      r.type === 'deduction' ? `-${r.points}` : `+${r.points}`,
       r.criteria || '',
       r.notes ? r.notes.replace(/"/g, '""') : '',
       r.ratedBy?.fullName || 'N/A'
     ]);
 
+    // Add empty row and summary section
+    const summaryRows = [
+      [],
+      ['--- NET POINTS SUMMARY ---'],
+      ['Employee Name', 'Email', 'Section', 'Awards', 'Deductions', 'Net Points'],
+      ...Object.values(employeeNetPoints).map(emp => [
+        emp.name || 'N/A',
+        emp.email || 'N/A',
+        emp.section || 'N/A',
+        emp.awards,
+        emp.deductions,
+        emp.net
+      ])
+    ];
+
     const csvContent = [
       headers.join(','),
-      ...rows.map(row => row.map(cell => `"${cell}"`).join(','))
+      ...rows.map(row => row.map(cell => `"${cell}"`).join(',')),
+      ...summaryRows.map(row => row.map(cell => `"${cell}"`).join(','))
     ].join('\n');
 
     // Add BOM for Excel UTF-8 compatibility
@@ -149,7 +209,7 @@ exports.exportRatings = async (req, res) => {
 // Create new rating
 exports.createRating = async (req, res) => {
   try {
-    const { employeeId, points, criteria, notes, ratingDate } = req.body;
+    const { employeeId, points, criteria, notes, ratingDate, type } = req.body;
 
     // Debug logging
     console.log('Creating rating - Request body:', req.body);
@@ -176,6 +236,7 @@ exports.createRating = async (req, res) => {
     const rating = await Rating.create({
       employeeId,
       createdById,
+      type: type || 'award',
       points: parseInt(points, 10),
       criteria: criteria || null,
       notes: notes || null,

@@ -42,8 +42,10 @@ exports.getAllVolunteers = async (req, res) => {
       const completedOpps = volunteer.opportunities.filter(o => o.status === 'completed');
       volunteer.totalOpportunities = volunteer.opportunities.length;
       volunteer.completedOpportunities = completedOpps.length;
-      volunteer.totalHours = completedOpps.reduce((sum, o) => sum + (o.totalHours || 0), 0);
-      volunteer.totalPoints = completedOpps.reduce((sum, o) => sum + (o.rating || 0), 0);
+      // Count hours from ALL opportunities (active and completed)
+      volunteer.totalHours = volunteer.opportunities.reduce((sum, o) => sum + (o.totalHours || 0), 0);
+      // Count points only from rated opportunities (any status)
+      volunteer.totalPoints = volunteer.opportunities.reduce((sum, o) => sum + (o.rating || 0), 0);
       return volunteer;
     });
 

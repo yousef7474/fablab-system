@@ -15,6 +15,12 @@ const Rating = sequelize.define('Rating', {
     type: DataTypes.UUID,
     allowNull: false
   },
+  type: {
+    type: DataTypes.ENUM('award', 'deduction'),
+    allowNull: false,
+    defaultValue: 'award',
+    comment: 'Type of rating - award (+1) or deduction (-1)'
+  },
   points: {
     type: DataTypes.INTEGER,
     allowNull: false,
@@ -23,7 +29,7 @@ const Rating = sequelize.define('Rating', {
       min: 0,
       max: 1
     },
-    comment: 'Simple 1 point rating - 1 means awarded, 0 means not awarded'
+    comment: 'Point value (1 or 0). Actual value depends on type field'
   },
   criteria: {
     type: DataTypes.STRING,

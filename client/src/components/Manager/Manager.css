@@ -1641,6 +1641,67 @@
   color: #22c55e;
 }
 
+/* Rating Type Toggle (Award/Deduction) */
+.rating-type-toggle {
+  display: flex;
+  gap: 12px;
+}
+
+.rating-type-btn {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 14px 16px;
+  border: 2px solid var(--border-color);
+  border-radius: 12px;
+  background: var(--card-bg);
+  color: var(--text-secondary);
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.rating-type-btn:hover {
+  border-color: var(--text-secondary);
+  background: var(--bg-secondary);
+}
+
+.rating-type-btn.award.active {
+  border-color: #22c55e;
+  background: rgba(34, 197, 94, 0.1);
+  color: #22c55e;
+}
+
+.rating-type-btn.deduction.active {
+  border-color: #ef4444;
+  background: rgba(239, 68, 68, 0.1);
+  color: #ef4444;
+}
+
+[data-theme="dark"] .rating-type-btn {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+[data-theme="dark"] .rating-type-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+[data-theme="dark"] .rating-type-btn.award.active {
+  border-color: #22c55e;
+  background: rgba(34, 197, 94, 0.15);
+  color: #22c55e;
+}
+
+[data-theme="dark"] .rating-type-btn.deduction.active {
+  border-color: #ef4444;
+  background: rgba(239, 68, 68, 0.15);
+  color: #ef4444;
+}
+
 /* Simple Point Badge in Table */
 .point-badge {
   display: inline-flex;
@@ -1659,6 +1720,119 @@
 }
 
 .point-badge.not-awarded {
+  background: rgba(107, 114, 128, 0.15);
+  color: #6b7280;
+}
+
+/* Rating Type Badge */
+.rating-type-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 10px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.rating-type-badge.award {
+  background: rgba(34, 197, 94, 0.15);
+  color: #22c55e;
+}
+
+.rating-type-badge.deduction {
+  background: rgba(239, 68, 68, 0.15);
+  color: #ef4444;
+}
+
+/* Points Badge Simple */
+.points-badge-simple {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.points-badge-simple.positive {
+  background: rgba(34, 197, 94, 0.15);
+  color: #22c55e;
+}
+
+.points-badge-simple.negative {
+  background: rgba(239, 68, 68, 0.15);
+  color: #ef4444;
+}
+
+/* Net Points Summary */
+.net-points-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin-bottom: 20px;
+  padding: 16px;
+  background: var(--card-bg);
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+}
+
+.net-points-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  background: var(--bg-secondary);
+  border-radius: 10px;
+  min-width: 200px;
+}
+
+.net-points-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+  color: white;
+}
+
+.net-points-info {
+  flex: 1;
+}
+
+.net-points-name {
+  font-weight: 600;
+  font-size: 14px;
+  color: var(--text-primary);
+}
+
+.net-points-stats {
+  display: flex;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.net-points-value {
+  font-weight: 700;
+  font-size: 18px;
+  padding: 4px 12px;
+  border-radius: 8px;
+}
+
+.net-points-value.positive {
+  background: rgba(34, 197, 94, 0.15);
+  color: #22c55e;
+}
+
+.net-points-value.negative {
+  background: rgba(239, 68, 68, 0.15);
+  color: #ef4444;
+}
+
+.net-points-value.neutral {
   background: rgba(107, 114, 128, 0.15);
   color: #6b7280;
 }
@@ -2259,6 +2433,45 @@
 
 .rating-earned svg {
   color: #22c55e !important;
+}
+
+.rate-opportunity-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  background: rgba(59, 130, 246, 0.1);
+  border: 1px solid #3b82f6;
+  border-radius: 6px;
+  color: #3b82f6;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.rate-opportunity-btn:hover {
+  background: #3b82f6;
+  color: white;
+}
+
+.rate-opportunity-btn svg {
+  width: 14px;
+  height: 14px;
+}
+
+.opportunity-info-summary {
+  padding: 16px;
+  background: var(--bg-secondary);
+  border-radius: 12px;
+  margin-bottom: 20px;
+  text-align: center;
+}
+
+.opportunity-info-summary h4 {
+  margin: 0 0 8px 0;
+  font-size: 18px;
+  color: var(--text-primary);
 }
 
 .modal-btn.export {
