@@ -1,4 +1,4 @@
-const { Volunteer, VolunteerOpportunity, Admin } = require('../models');
+const { Volunteer, VolunteerOpportunity, VolunteerRating, Admin } = require('../models');
 const { Op } = require('sequelize');
 
 // ============== VOLUNTEER PROFILE MANAGEMENT ==============
@@ -31,6 +31,11 @@ exports.getAllVolunteers = async (req, res) => {
           model: VolunteerOpportunity,
           as: 'opportunities',
           attributes: ['opportunityId', 'title', 'startDate', 'endDate', 'totalHours', 'rating', 'status']
+        },
+        {
+          model: VolunteerRating,
+          as: 'ratings',
+          attributes: ['ratingId', 'type', 'points', 'criteria', 'notes', 'ratingDate', 'opportunityId']
         }
       ],
       order: [['name', 'ASC']]
@@ -44,8 +49,19 @@ exports.getAllVolunteers = async (req, res) => {
       volunteer.completedOpportunities = completedOpps.length;
       // Count hours from ALL opportunities (active and completed)
       volunteer.totalHours = volunteer.opportunities.reduce((sum, o) => sum + (o.totalHours || 0), 0);
-      // Count points only from rated opportunities (any status)
-      volunteer.totalPoints = volunteer.opportunities.reduce((sum, o) => sum + (o.rating || 0), 0);
+
+      // Calculate points from new ratings system (awards - deductions)
+      const awards = (volunteer.ratings || [])
+        .filter(r => r.type === 'award')
+        .reduce((sum, r) => sum + (r.points || 0), 0);
+      const deductions = (volunteer.ratings || [])
+        .filter(r => r.type === 'deduction')
+        .reduce((sum, r) => sum + (r.points || 0), 0);
+
+      volunteer.totalAwards = awards;
+      volunteer.totalDeductions = deductions;
+      volunteer.totalPoints = awards - deductions;
+
       return volunteer;
     });
 
@@ -446,6 +462,122 @@ exports.exportOpportunities = async (req, res) => {
   } catch (error) {
     console.error('Error exporting opportunities:', error);
     res.status(500).json({ message: 'Error exporting opportunities', error: error.message });
+  }
+};
+
+// ============== VOLUNTEER RATINGS ==============
+
+/**
+ * Get all ratings for a volunteer
+ */
+exports.getVolunteerRatings = async (req, res) => {
+  try {
+    const { volunteerId } = req.params;
+    const { startDate, endDate } = req.query;
+
+    const where = { volunteerId };
+
+    if (startDate && endDate) {
+      where.ratingDate = { [Op.between]: [startDate, endDate] };
+    } else if (startDate) {
+      where.ratingDate = { [Op.gte]: startDate };
+    } else if (endDate) {
+      where.ratingDate = { [Op.lte]: endDate };
+    }
+
+    const ratings = await VolunteerRating.findAll({
+      where,
+      include: [
+        { model: VolunteerOpportunity, as: 'opportunity', attributes: ['opportunityId', 'title'] },
+        { model: Admin, as: 'ratedBy', attributes: ['adminId', 'fullName', 'email'] }
+      ],
+      order: [['ratingDate', 'DESC'], ['createdAt', 'DESC']]
+    });
+
+    // Calculate summary
+    const awards = ratings.filter(r => r.type === 'award').reduce((sum, r) => sum + r.points, 0);
+    const deductions = ratings.filter(r => r.type === 'deduction').reduce((sum, r) => sum + r.points, 0);
+
+    res.json({
+      ratings,
+      summary: {
+        totalRatings: ratings.length,
+        awards,
+        deductions,
+        netPoints: awards - deductions
+      }
+    });
+  } catch (error) {
+    console.error('Error fetching volunteer ratings:', error);
+    res.status(500).json({ message: 'Error fetching ratings', error: error.message });
+  }
+};
+
+/**
+ * Create a volunteer rating
+ */
+exports.createVolunteerRating = async (req, res) => {
+  try {
+    const { volunteerId, opportunityId, type, points, criteria, notes, ratingDate } = req.body;
+
+    if (!req.admin || !req.admin.adminId) {
+      return res.status(401).json({ message: 'Admin authentication required' });
+    }
+
+    if (!volunteerId || !type || points === undefined) {
+      return res.status(400).json({ message: 'Volunteer ID, type, and points are required' });
+    }
+
+    // Verify volunteer exists
+    const volunteer = await Volunteer.findByPk(volunteerId);
+    if (!volunteer) {
+      return res.status(404).json({ message: 'Volunteer not found' });
+    }
+
+    const rating = await VolunteerRating.create({
+      volunteerId,
+      opportunityId: opportunityId || null,
+      createdById: req.admin.adminId,
+      type,
+      points: parseInt(points, 10),
+      criteria: criteria || null,
+      notes: notes || null,
+      ratingDate: ratingDate || new Date().toISOString().split('T')[0]
+    });
+
+    // Fetch with associations
+    const createdRating = await VolunteerRating.findByPk(rating.ratingId, {
+      include: [
+        { model: Volunteer, as: 'volunteer', attributes: ['volunteerId', 'name'] },
+        { model: VolunteerOpportunity, as: 'opportunity', attributes: ['opportunityId', 'title'] },
+        { model: Admin, as: 'ratedBy', attributes: ['adminId', 'fullName', 'email'] }
+      ]
+    });
+
+    res.status(201).json(createdRating);
+  } catch (error) {
+    console.error('Error creating volunteer rating:', error);
+    res.status(500).json({ message: 'Error creating rating', error: error.message });
+  }
+};
+
+/**
+ * Delete a volunteer rating
+ */
+exports.deleteVolunteerRating = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const rating = await VolunteerRating.findByPk(id);
+    if (!rating) {
+      return res.status(404).json({ message: 'Rating not found' });
+    }
+
+    await rating.destroy();
+    res.json({ message: 'Rating deleted successfully' });
+  } catch (error) {
+    console.error('Error deleting volunteer rating:', error);
+    res.status(500).json({ message: 'Error deleting rating', error: error.message });
   }
 };
 

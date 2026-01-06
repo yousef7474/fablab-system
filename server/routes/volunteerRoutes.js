@@ -41,4 +41,15 @@ router.put('/opportunities/:id', requireManager, volunteerController.updateOppor
 // Delete opportunity (manager or admin only)
 router.delete('/opportunities/:id', requireManager, volunteerController.deleteOpportunity);
 
+// ============== VOLUNTEER RATING ROUTES ==============
+
+// Get ratings for a volunteer
+router.get('/:volunteerId/ratings', volunteerController.getVolunteerRatings);
+
+// Create volunteer rating (manager or admin only)
+router.post('/ratings', requireManager, volunteerController.createVolunteerRating);
+
+// Delete volunteer rating (manager or admin only)
+router.delete('/ratings/:id', requireManager, volunteerController.deleteVolunteerRating);
+
 module.exports = router;

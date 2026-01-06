@@ -107,14 +107,18 @@ const ManagerDashboard = () => {
   const [showVolunteerModal, setShowVolunteerModal] = useState(false);
   const [showOpportunityModal, setShowOpportunityModal] = useState(false);
   const [showVolunteerDetailModal, setShowVolunteerDetailModal] = useState(false);
-  const [showRateOpportunityModal, setShowRateOpportunityModal] = useState(false);
+  const [showVolunteerRatingModal, setShowVolunteerRatingModal] = useState(false);
   const [selectedOpportunity, setSelectedOpportunity] = useState(null);
   const [selectedVolunteer, setSelectedVolunteer] = useState(null);
   const [volunteerLoading, setVolunteerLoading] = useState(false);
-  const [opportunityRatingForm, setOpportunityRatingForm] = useState({
-    rating: 0,
-    ratingCriteria: '',
-    ratingNotes: ''
+  const [volunteerRatingForm, setVolunteerRatingForm] = useState({
+    volunteerId: '',
+    opportunityId: '',
+    type: 'award',
+    points: 1,
+    criteria: '',
+    notes: '',
+    ratingDate: new Date().toISOString().split('T')[0]
   });
   const [volunteerForm, setVolunteerForm] = useState({
     name: '',
@@ -566,36 +570,50 @@ const ManagerDashboard = () => {
     }
   };
 
-  const handleOpenRateOpportunity = (opportunity, volunteer) => {
-    setSelectedOpportunity(opportunity);
+  const handleOpenVolunteerRating = (volunteer, opportunity = null) => {
     setSelectedVolunteer(volunteer);
-    setOpportunityRatingForm({
-      rating: opportunity.rating || 0,
-      ratingCriteria: opportunity.ratingCriteria || '',
-      ratingNotes: opportunity.ratingNotes || ''
+    setSelectedOpportunity(opportunity);
+    setVolunteerRatingForm({
+      volunteerId: volunteer.volunteerId,
+      opportunityId: opportunity?.opportunityId || '',
+      type: 'award',
+      points: 1,
+      criteria: '',
+      notes: '',
+      ratingDate: new Date().toISOString().split('T')[0]
     });
-    setShowRateOpportunityModal(true);
+    setShowVolunteerRatingModal(true);
   };
 
-  const handleRateOpportunity = async () => {
-    if (!selectedOpportunity) return;
+  const handleCreateVolunteerRating = async () => {
+    if (!volunteerRatingForm.volunteerId) return;
 
     setVolunteerLoading(true);
     try {
-      await api.put(`/volunteers/opportunities/${selectedOpportunity.opportunityId}`, {
-        rating: opportunityRatingForm.rating,
-        ratingCriteria: opportunityRatingForm.ratingCriteria,
-        ratingNotes: opportunityRatingForm.ratingNotes
-      });
-      toast.success(isRTL ? 'تم تحديث التقييم بنجاح' : 'Rating updated successfully');
-      setShowRateOpportunityModal(false);
+      await api.post('/volunteers/ratings', volunteerRatingForm);
+      toast.success(isRTL ? 'تم إضافة التقييم بنجاح' : 'Rating added successfully');
+      setShowVolunteerRatingModal(false);
+      setSelectedVolunteer(null);
       setSelectedOpportunity(null);
       fetchVolunteers();
     } catch (error) {
-      console.error('Error rating opportunity:', error);
-      toast.error(isRTL ? 'خطأ في تحديث التقييم' : 'Error updating rating');
+      console.error('Error creating volunteer rating:', error);
+      toast.error(isRTL ? 'خطأ في إضافة التقييم' : 'Error adding rating');
     } finally {
       setVolunteerLoading(false);
+    }
+  };
+
+  const handleDeleteVolunteerRating = async (ratingId) => {
+    if (!window.confirm(isRTL ? 'هل تريد حذف هذا التقييم؟' : 'Delete this rating?')) return;
+
+    try {
+      await api.delete(`/volunteers/ratings/${ratingId}`);
+      toast.success(isRTL ? 'تم حذف التقييم' : 'Rating deleted');
+      fetchVolunteers();
+    } catch (error) {
+      console.error('Error deleting rating:', error);
+      toast.error(isRTL ? 'خطأ في حذف التقييم' : 'Error deleting rating');
     }
   };
 
@@ -1696,8 +1714,10 @@ const ManagerDashboard = () => {
                         <div className="stat-label">{isRTL ? 'ساعة' : 'Hours'}</div>
                       </div>
                       <div className="stat-item">
-                        <div className="stat-value">{volunteer.totalPoints || 0}</div>
-                        <div className="stat-label">{isRTL ? 'نقاط' : 'Points'}</div>
+                        <div className={`stat-value ${(volunteer.totalPoints || 0) > 0 ? 'positive' : (volunteer.totalPoints || 0) < 0 ? 'negative' : ''}`}>
+                          {(volunteer.totalPoints || 0) > 0 ? '+' : ''}{volunteer.totalPoints || 0}
+                        </div>
+                        <div className="stat-label">{isRTL ? 'نقاط' : 'Net Points'}</div>
                       </div>
                     </div>
                     {volunteer.opportunities && volunteer.opportunities.length > 0 && (
@@ -1736,6 +1756,16 @@ const ManagerDashboard = () => {
                           <line x1="12" y1="15" x2="12" y2="3"/>
                         </svg>
                         {isRTL ? 'تصدير' : 'Export'}
+                      </button>
+                      <button
+                        className="rate-volunteer-btn"
+                        onClick={() => handleOpenVolunteerRating(volunteer)}
+                        title={isRTL ? 'تقييم المتطوع' : 'Rate Volunteer'}
+                      >
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                          <path d="M12 2L15 8L22 9L17 14L18 21L12 18L6 21L7 14L2 9L9 8L12 2Z"/>
+                        </svg>
+                        {isRTL ? 'تقييم' : 'Rate'}
                       </button>
                     </div>
                   </div>
@@ -2020,10 +2050,66 @@ const ManagerDashboard = () => {
                     <div className="detail-stat-label">{isRTL ? 'ساعة تطوع' : 'Total Hours'}</div>
                   </div>
                   <div className="detail-stat">
-                    <div className="detail-stat-value">{selectedVolunteer.totalPoints || 0}</div>
-                    <div className="detail-stat-label">{isRTL ? 'نقاط مكتسبة' : 'Points Earned'}</div>
+                    <div className={`detail-stat-value ${(selectedVolunteer.totalPoints || 0) > 0 ? 'positive' : (selectedVolunteer.totalPoints || 0) < 0 ? 'negative' : ''}`}>
+                      {(selectedVolunteer.totalPoints || 0) > 0 ? '+' : ''}{selectedVolunteer.totalPoints || 0}
+                    </div>
+                    <div className="detail-stat-label">{isRTL ? 'صافي النقاط' : 'Net Points'}</div>
                   </div>
                 </div>
+
+                {/* Points Breakdown */}
+                {(selectedVolunteer.totalAwards > 0 || selectedVolunteer.totalDeductions > 0) && (
+                  <div className="points-breakdown">
+                    <span className="awards">
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="#22c55e" stroke="#22c55e" strokeWidth="2">
+                        <path d="M12 2L15 8L22 9L17 14L18 21L12 18L6 21L7 14L2 9L9 8L12 2Z"/>
+                      </svg>
+                      +{selectedVolunteer.totalAwards || 0} {isRTL ? 'منح' : 'awards'}
+                    </span>
+                    <span className="deductions">
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#ef4444" strokeWidth="2">
+                        <circle cx="12" cy="12" r="10"/>
+                        <line x1="8" y1="12" x2="16" y2="12"/>
+                      </svg>
+                      -{selectedVolunteer.totalDeductions || 0} {isRTL ? 'خصم' : 'deductions'}
+                    </span>
+                  </div>
+                )}
+
+                {/* Ratings History */}
+                {selectedVolunteer.ratings && selectedVolunteer.ratings.length > 0 && (
+                  <div className="volunteer-history-section">
+                    <h4>{isRTL ? 'سجل التقييمات' : 'Ratings History'}</h4>
+                    <div className="ratings-history-list">
+                      {selectedVolunteer.ratings.map(rating => (
+                        <div key={rating.ratingId} className={`rating-history-item ${rating.type}`}>
+                          <div className="rating-history-header">
+                            <span className={`rating-points ${rating.type}`}>
+                              {rating.type === 'deduction' ? `-${rating.points}` : `+${rating.points}`}
+                            </span>
+                            <span className="rating-date">{rating.ratingDate}</span>
+                            <button
+                              className="delete-rating-btn"
+                              onClick={() => handleDeleteVolunteerRating(rating.ratingId)}
+                              title={isRTL ? 'حذف' : 'Delete'}
+                            >
+                              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                <polyline points="3 6 5 6 21 6"/>
+                                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/>
+                              </svg>
+                            </button>
+                          </div>
+                          {rating.criteria && (
+                            <div className="rating-criteria">{rating.criteria}</div>
+                          )}
+                          {rating.notes && (
+                            <div className="rating-notes">{rating.notes}</div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
 
                 {/* ID Photo Full View */}
                 {selectedVolunteer.nationalIdPhoto && (
@@ -2075,25 +2161,15 @@ const ManagerDashboard = () => {
                               </svg>
                               {opp.totalHours || 0} {isRTL ? 'ساعة' : 'hours'}
                             </span>
-                            {opp.rating === 1 ? (
-                              <span className="rating-earned">
-                                <svg width="14" height="14" viewBox="0 0 24 24" fill="#22c55e" stroke="#22c55e" strokeWidth="2">
-                                  <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
-                                  <polyline points="22 4 12 14.01 9 11.01"/>
-                                </svg>
-                                {isRTL ? 'نقطة' : 'Point'}
-                              </span>
-                            ) : (
-                              <button
-                                className="rate-opportunity-btn"
-                                onClick={() => handleOpenRateOpportunity(opp, selectedVolunteer)}
-                              >
-                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                  <path d="M12 2L15 8L22 9L17 14L18 21L12 18L6 21L7 14L2 9L9 8L12 2Z"/>
-                                </svg>
-                                {isRTL ? 'تقييم' : 'Rate'}
-                              </button>
-                            )}
+                            <button
+                              className="rate-opportunity-btn"
+                              onClick={() => handleOpenVolunteerRating(selectedVolunteer, opp)}
+                            >
+                              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                <path d="M12 2L15 8L22 9L17 14L18 21L12 18L6 21L7 14L2 9L9 8L12 2Z"/>
+                              </svg>
+                              {isRTL ? 'تقييم' : 'Rate'}
+                            </button>
                           </div>
                         </div>
                       ))}
@@ -2121,9 +2197,9 @@ const ManagerDashboard = () => {
           </div>
         )}
 
-        {/* Rate Opportunity Modal */}
-        {showRateOpportunityModal && selectedOpportunity && (
-          <div className="modal-overlay" onClick={() => setShowRateOpportunityModal(false)}>
+        {/* Volunteer Rating Modal */}
+        {showVolunteerRatingModal && selectedVolunteer && (
+          <div className="modal-overlay" onClick={() => setShowVolunteerRatingModal(false)}>
             <motion.div
               className="modal-content task-modal"
               onClick={(e) => e.stopPropagation()}
@@ -2131,45 +2207,69 @@ const ManagerDashboard = () => {
               animate={{ opacity: 1, scale: 1 }}
             >
               <div className="modal-header">
-                <h2>{isRTL ? 'تقييم فرصة التطوع' : 'Rate Volunteer Opportunity'}</h2>
-                <button className="close-btn" onClick={() => setShowRateOpportunityModal(false)}>×</button>
+                <h2>{isRTL ? 'تقييم المتطوع' : 'Rate Volunteer'}</h2>
+                <button className="close-btn" onClick={() => setShowVolunteerRatingModal(false)}>×</button>
               </div>
               <div className="modal-body">
                 <div className="opportunity-info-summary">
-                  <h4>{selectedOpportunity.title}</h4>
-                  <p style={{ color: 'var(--text-secondary)', fontSize: '14px' }}>
-                    {selectedVolunteer?.name} • {selectedOpportunity.startDate} → {selectedOpportunity.endDate}
-                  </p>
-                  <p style={{ color: 'var(--text-secondary)', fontSize: '14px' }}>
-                    {selectedOpportunity.totalHours} {isRTL ? 'ساعة' : 'hours'}
-                  </p>
+                  <h4>{selectedVolunteer.name}</h4>
+                  {selectedOpportunity && (
+                    <p style={{ color: 'var(--text-secondary)', fontSize: '14px' }}>
+                      {isRTL ? 'فرصة: ' : 'Opportunity: '}{selectedOpportunity.title}
+                    </p>
+                  )}
                 </div>
 
+                {/* Rating Type Toggle (Award/Deduction) */}
                 <div className="form-group">
-                  <label>{isRTL ? 'منح نقطة' : 'Award Point'}</label>
-                  <div className="point-toggle-container">
+                  <label>{isRTL ? 'نوع التقييم' : 'Rating Type'}</label>
+                  <div className="rating-type-toggle">
                     <button
                       type="button"
-                      className={`point-toggle-btn ${opportunityRatingForm.rating === 1 ? 'active' : ''}`}
-                      onClick={() => setOpportunityRatingForm(prev => ({ ...prev, rating: prev.rating === 1 ? 0 : 1 }))}
+                      className={`rating-type-btn award ${volunteerRatingForm.type === 'award' ? 'active' : ''}`}
+                      onClick={() => setVolunteerRatingForm(prev => ({ ...prev, type: 'award' }))}
                     >
-                      <svg width="24" height="24" viewBox="0 0 24 24" fill={opportunityRatingForm.rating === 1 ? '#22c55e' : 'none'} stroke={opportunityRatingForm.rating === 1 ? '#22c55e' : '#9ca3af'} strokeWidth="2">
-                        <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
-                        <polyline points="22 4 12 14.01 9 11.01"/>
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <path d="M12 2L15 8L22 9L17 14L18 21L12 18L6 21L7 14L2 9L9 8L12 2Z"/>
                       </svg>
-                      <span>{opportunityRatingForm.rating === 1
-                        ? (isRTL ? 'تم منح نقطة' : 'Point Awarded')
-                        : (isRTL ? 'انقر لمنح نقطة' : 'Click to Award Point')
-                      }</span>
+                      <span>{isRTL ? 'منح نقاط' : 'Award'}</span>
                     </button>
+                    <button
+                      type="button"
+                      className={`rating-type-btn deduction ${volunteerRatingForm.type === 'deduction' ? 'active' : ''}`}
+                      onClick={() => setVolunteerRatingForm(prev => ({ ...prev, type: 'deduction' }))}
+                    >
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <circle cx="12" cy="12" r="10"/>
+                        <line x1="8" y1="12" x2="16" y2="12"/>
+                      </svg>
+                      <span>{isRTL ? 'خصم نقاط' : 'Deduction'}</span>
+                    </button>
+                  </div>
+                </div>
+
+                {/* Points Selector (1-5) */}
+                <div className="form-group">
+                  <label>{isRTL ? 'عدد النقاط' : 'Number of Points'}</label>
+                  <div className="points-selector">
+                    {[1, 2, 3, 4, 5].map(num => (
+                      <button
+                        key={num}
+                        type="button"
+                        className={`point-btn ${volunteerRatingForm.points === num ? 'active' : ''} ${volunteerRatingForm.type}`}
+                        onClick={() => setVolunteerRatingForm(prev => ({ ...prev, points: num }))}
+                      >
+                        {volunteerRatingForm.type === 'deduction' ? `-${num}` : `+${num}`}
+                      </button>
+                    ))}
                   </div>
                 </div>
 
                 <div className="form-group">
                   <label>{isRTL ? 'المعيار' : 'Criteria'}</label>
                   <select
-                    value={opportunityRatingForm.ratingCriteria}
-                    onChange={(e) => setOpportunityRatingForm(prev => ({ ...prev, ratingCriteria: e.target.value }))}
+                    value={volunteerRatingForm.criteria}
+                    onChange={(e) => setVolunteerRatingForm(prev => ({ ...prev, criteria: e.target.value }))}
                     className="criteria-select"
                   >
                     {criteriaOptions.map(opt => (
@@ -2179,22 +2279,31 @@ const ManagerDashboard = () => {
                 </div>
 
                 <div className="form-group">
+                  <label>{isRTL ? 'التاريخ' : 'Date'}</label>
+                  <input
+                    type="date"
+                    value={volunteerRatingForm.ratingDate}
+                    onChange={(e) => setVolunteerRatingForm(prev => ({ ...prev, ratingDate: e.target.value }))}
+                  />
+                </div>
+
+                <div className="form-group">
                   <label>{isRTL ? 'ملاحظات' : 'Notes'}</label>
                   <textarea
-                    value={opportunityRatingForm.ratingNotes}
-                    onChange={(e) => setOpportunityRatingForm(prev => ({ ...prev, ratingNotes: e.target.value }))}
+                    value={volunteerRatingForm.notes}
+                    onChange={(e) => setVolunteerRatingForm(prev => ({ ...prev, notes: e.target.value }))}
                     rows="3"
                     placeholder={isRTL ? 'ملاحظات حول الأداء...' : 'Performance notes...'}
                   />
                 </div>
               </div>
               <div className="modal-footer">
-                <button className="modal-btn cancel" onClick={() => setShowRateOpportunityModal(false)}>
+                <button className="modal-btn cancel" onClick={() => setShowVolunteerRatingModal(false)}>
                   {isRTL ? 'إلغاء' : 'Cancel'}
                 </button>
                 <button
                   className="modal-btn save"
-                  onClick={handleRateOpportunity}
+                  onClick={handleCreateVolunteerRating}
                   disabled={volunteerLoading}
                 >
                   {volunteerLoading ? (isRTL ? 'جاري الحفظ...' : 'Saving...') : (isRTL ? 'حفظ التقييم' : 'Save Rating')}

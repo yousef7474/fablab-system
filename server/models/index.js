@@ -7,6 +7,7 @@ const Task = require('./Task');
 const Rating = require('./Rating');
 const Volunteer = require('./Volunteer');
 const VolunteerOpportunity = require('./VolunteerOpportunity');
+const VolunteerRating = require('./VolunteerRating');
 
 // Define relationships
 User.hasMany(Registration, { foreignKey: 'userId', as: 'registrations' });
@@ -33,6 +34,16 @@ Volunteer.hasMany(VolunteerOpportunity, { foreignKey: 'volunteerId', as: 'opport
 VolunteerOpportunity.belongsTo(Admin, { foreignKey: 'createdById', as: 'creator' });
 Admin.hasMany(VolunteerOpportunity, { foreignKey: 'createdById', as: 'createdOpportunities' });
 
+// Volunteer Rating relationships
+VolunteerRating.belongsTo(Volunteer, { foreignKey: 'volunteerId', as: 'volunteer' });
+Volunteer.hasMany(VolunteerRating, { foreignKey: 'volunteerId', as: 'ratings' });
+
+VolunteerRating.belongsTo(VolunteerOpportunity, { foreignKey: 'opportunityId', as: 'opportunity' });
+VolunteerOpportunity.hasMany(VolunteerRating, { foreignKey: 'opportunityId', as: 'ratings' });
+
+VolunteerRating.belongsTo(Admin, { foreignKey: 'createdById', as: 'ratedBy' });
+Admin.hasMany(VolunteerRating, { foreignKey: 'createdById', as: 'givenVolunteerRatings' });
+
 // Sync database
 const syncDatabase = async () => {
   try {
@@ -54,5 +65,6 @@ module.exports = {
   Rating,
   Volunteer,
   VolunteerOpportunity,
+  VolunteerRating,
   syncDatabase
 };
