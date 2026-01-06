@@ -2731,7 +2731,7 @@ const ManagerDashboard = () => {
                   <span className="stat-label">{isRTL ? 'فترة تدريب' : 'Trainings'}</span>
                 </div>
                 <div className="stat-item">
-                  <span className="stat-value">{interns.reduce((sum, i) => sum + (i.totalHours || 0), 0)}</span>
+                  <span className="stat-value">{Math.max(0, interns.reduce((sum, i) => sum + (i.totalHours || 0), 0))}</span>
                   <span className="stat-label">{isRTL ? 'ساعة' : 'Hours'}</span>
                 </div>
               </div>
