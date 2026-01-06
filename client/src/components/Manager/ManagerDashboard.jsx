@@ -697,13 +697,14 @@ const ManagerDashboard = () => {
 
   // Export single volunteer history as CSV
   const handleExportVolunteerHistory = (volunteer) => {
-    const headers = [
+    // Opportunities section
+    const oppHeaders = [
       'Volunteer Name', 'National ID', 'Phone', 'Email',
       'Opportunity Title', 'Description', 'Start Date', 'End Date',
-      'Daily Hours', 'Total Hours', 'Rating', 'Status'
+      'Daily Hours', 'Total Hours', 'Status'
     ];
 
-    const rows = (volunteer.opportunities || []).map(opp => [
+    const oppRows = (volunteer.opportunities || []).map(opp => [
       volunteer.name,
       volunteer.nationalId,
       volunteer.phone,
@@ -714,20 +715,47 @@ const ManagerDashboard = () => {
       opp.endDate,
       opp.dailyHours || 8,
       opp.totalHours || 0,
-      opp.rating || 0,
       opp.status || 'active'
     ]);
 
-    // Add summary row
+    // Calculate totals
     const totalHours = (volunteer.opportunities || []).reduce((sum, o) => sum + (o.totalHours || 0), 0);
-    const totalPoints = (volunteer.opportunities || []).reduce((sum, o) => sum + (o.rating || 0), 0);
-    rows.push([]);
-    rows.push(['SUMMARY', '', '', '', '', '', '', '', '', totalHours, totalPoints, '']);
+    const awards = (volunteer.ratings || []).filter(r => r.type === 'award').reduce((sum, r) => sum + (r.points || 0), 0);
+    const deductions = (volunteer.ratings || []).filter(r => r.type === 'deduction').reduce((sum, r) => sum + (r.points || 0), 0);
+    const netPoints = awards - deductions;
 
-    const csvContent = [
-      headers.join(','),
-      ...rows.map(row => row.map(cell => `"${cell}"`).join(','))
-    ].join('\n');
+    // Ratings section
+    const ratingHeaders = ['Date', 'Type', 'Points', 'Criteria', 'Notes'];
+    const ratingRows = (volunteer.ratings || []).map(r => [
+      r.ratingDate,
+      r.type,
+      r.type === 'deduction' ? `-${r.points}` : `+${r.points}`,
+      r.criteria || '',
+      r.notes ? r.notes.replace(/"/g, '""') : ''
+    ]);
+
+    // Build CSV content
+    const csvLines = [
+      '--- VOLUNTEER INFO ---',
+      `"Name","${volunteer.name}"`,
+      `"National ID","${volunteer.nationalId}"`,
+      `"Phone","${volunteer.phone}"`,
+      `"Email","${volunteer.email || 'N/A'}"`,
+      '',
+      '--- OPPORTUNITIES ---',
+      oppHeaders.join(','),
+      ...oppRows.map(row => row.map(cell => `"${cell}"`).join(',')),
+      '',
+      '--- RATINGS HISTORY ---',
+      ratingHeaders.join(','),
+      ...ratingRows.map(row => row.map(cell => `"${cell}"`).join(',')),
+      '',
+      '--- SUMMARY ---',
+      '"Total Hours","Total Awards","Total Deductions","Net Points"',
+      `"${totalHours}","${awards}","${deductions}","${netPoints}"`
+    ];
+
+    const csvContent = csvLines.join('\n');
 
     // Add BOM for Excel UTF-8 compatibility
     const bom = '\uFEFF';
@@ -744,7 +772,7 @@ const ManagerDashboard = () => {
   const handleExportAllVolunteers = () => {
     const headers = [
       'Volunteer Name', 'National ID', 'Phone', 'Email',
-      'Total Opportunities', 'Total Hours', 'Total Points', 'Status'
+      'Total Opportunities', 'Total Hours', 'Awards', 'Deductions', 'Net Points', 'Status'
     ];
 
     const rows = volunteers.map(v => [
@@ -754,13 +782,30 @@ const ManagerDashboard = () => {
       v.email || 'N/A',
       v.totalOpportunities || 0,
       v.totalHours || 0,
+      v.totalAwards || 0,
+      v.totalDeductions || 0,
       v.totalPoints || 0,
       v.isActive ? 'Active' : 'Inactive'
     ]);
 
+    // Add summary row
+    const totalOpps = volunteers.reduce((sum, v) => sum + (v.totalOpportunities || 0), 0);
+    const totalHours = volunteers.reduce((sum, v) => sum + (v.totalHours || 0), 0);
+    const totalAwards = volunteers.reduce((sum, v) => sum + (v.totalAwards || 0), 0);
+    const totalDeductions = volunteers.reduce((sum, v) => sum + (v.totalDeductions || 0), 0);
+    const totalNetPoints = volunteers.reduce((sum, v) => sum + (v.totalPoints || 0), 0);
+
+    const summaryRows = [
+      [],
+      ['--- SUMMARY ---'],
+      ['Total Volunteers', 'Total Opportunities', 'Total Hours', 'Total Awards', 'Total Deductions', 'Total Net Points'],
+      [volunteers.length, totalOpps, totalHours, totalAwards, totalDeductions, totalNetPoints]
+    ];
+
     const csvContent = [
       headers.join(','),
-      ...rows.map(row => row.map(cell => `"${cell}"`).join(','))
+      ...rows.map(row => row.map(cell => `"${cell}"`).join(',')),
+      ...summaryRows.map(row => row.map(cell => `"${cell}"`).join(','))
     ].join('\n');
 
     const bom = '\uFEFF';
