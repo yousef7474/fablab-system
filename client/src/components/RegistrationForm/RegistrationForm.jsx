@@ -270,6 +270,21 @@ const RegistrationForm = () => {
 
   return (
     <div className="registration-page" dir={isRTL ? 'rtl' : 'ltr'}>
+      {/* Animated Background Elements */}
+      <div className="floating-orbs">
+        <div className="floating-orb"></div>
+        <div className="floating-orb"></div>
+        <div className="floating-orb"></div>
+        <div className="floating-orb"></div>
+        <div className="floating-orb"></div>
+        <div className="floating-orb"></div>
+      </div>
+      <div className="wave-container">
+        <div className="wave"></div>
+        <div className="wave"></div>
+        <div className="wave"></div>
+      </div>
+
       <div className="registration-container">
         <div style={{ width: '100%', maxWidth: '900px' }}>
           {/* Header */}
