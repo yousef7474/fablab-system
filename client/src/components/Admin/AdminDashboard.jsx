@@ -50,7 +50,13 @@ const AdminDashboard = () => {
 
   const [adminData, setAdminData] = useState(null);
   const [activeTab, setActiveTab] = useState(getInitialTab);
-  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [sidebarOpen, setSidebarOpen] = useState(() => {
+    // Start with sidebar closed on mobile
+    if (typeof window !== 'undefined') {
+      return window.innerWidth > 768;
+    }
+    return true;
+  });
   const [stats, setStats] = useState({
     totalRegistrations: 0,
     pendingRegistrations: 0,
@@ -1692,6 +1698,12 @@ const AdminDashboard = () => {
 
   return (
     <div className="admin-layout" dir={isRTL ? 'rtl' : 'ltr'}>
+      {/* Mobile Sidebar Overlay */}
+      <div
+        className={`sidebar-overlay ${sidebarOpen ? 'active' : ''}`}
+        onClick={() => setSidebarOpen(false)}
+      />
+
       {/* Sidebar */}
       <aside className={`admin-sidebar ${sidebarOpen ? 'open' : 'collapsed'}`}>
         <div className="sidebar-header">
@@ -1706,7 +1718,13 @@ const AdminDashboard = () => {
             <button
               key={item.id}
               className={`nav-item ${activeTab === item.id ? 'active' : ''}`}
-              onClick={() => setActiveTab(item.id)}
+              onClick={() => {
+                setActiveTab(item.id);
+                // Close sidebar on mobile when nav item is clicked
+                if (window.innerWidth <= 768) {
+                  setSidebarOpen(false);
+                }
+              }}
             >
               {getIcon(item.icon)}
               {sidebarOpen && <span>{isRTL ? item.labelAr : item.labelEn}</span>}

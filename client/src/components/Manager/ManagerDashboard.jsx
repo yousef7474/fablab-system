@@ -62,6 +62,7 @@ const ManagerDashboard = () => {
   const [selectedCalendarDay, setSelectedCalendarDay] = useState(null);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState(getInitialTab);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   // Task modal state
   const [showTaskModal, setShowTaskModal] = useState(false);
@@ -1214,8 +1215,14 @@ const ManagerDashboard = () => {
 
   return (
     <div className="admin-layout manager-layout" dir={isRTL ? 'rtl' : 'ltr'}>
+      {/* Mobile Sidebar Overlay */}
+      <div
+        className={`sidebar-overlay ${sidebarOpen ? 'active' : ''}`}
+        onClick={() => setSidebarOpen(false)}
+      />
+
       {/* Sidebar */}
-      <aside className="admin-sidebar">
+      <aside className={`admin-sidebar ${sidebarOpen ? 'open' : 'collapsed'}`}>
         <div className="sidebar-header">
           <img src="/logo.png" alt="FABLAB" className="sidebar-logo" />
           <h2>{isRTL ? 'لوحة المدير' : 'Manager Panel'}</h2>
@@ -1224,7 +1231,7 @@ const ManagerDashboard = () => {
         <nav className="sidebar-nav">
           <button
             className={`nav-item ${activeTab === 'schedule' ? 'active' : ''}`}
-            onClick={() => setActiveTab('schedule')}
+            onClick={() => { setActiveTab('schedule'); setSidebarOpen(false); }}
           >
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
@@ -1236,7 +1243,7 @@ const ManagerDashboard = () => {
           </button>
           <button
             className={`nav-item ${activeTab === 'tasks' ? 'active' : ''}`}
-            onClick={() => setActiveTab('tasks')}
+            onClick={() => { setActiveTab('tasks'); setSidebarOpen(false); }}
           >
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <path d="M9 11l3 3L22 4"/>
@@ -1246,7 +1253,7 @@ const ManagerDashboard = () => {
           </button>
           <button
             className={`nav-item ${activeTab === 'ratings' ? 'active' : ''}`}
-            onClick={() => setActiveTab('ratings')}
+            onClick={() => { setActiveTab('ratings'); setSidebarOpen(false); }}
           >
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
@@ -1255,7 +1262,7 @@ const ManagerDashboard = () => {
           </button>
           <button
             className={`nav-item ${activeTab === 'volunteers' ? 'active' : ''}`}
-            onClick={() => setActiveTab('volunteers')}
+            onClick={() => { setActiveTab('volunteers'); setSidebarOpen(false); }}
           >
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
@@ -1267,7 +1274,7 @@ const ManagerDashboard = () => {
           </button>
           <button
             className={`nav-item ${activeTab === 'interns' ? 'active' : ''}`}
-            onClick={() => setActiveTab('interns')}
+            onClick={() => { setActiveTab('interns'); setSidebarOpen(false); }}
           >
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <path d="M22 10v6M2 10l10-5 10 5-10 5z"/>
@@ -1277,7 +1284,7 @@ const ManagerDashboard = () => {
           </button>
           <button
             className={`nav-item ${activeTab === 'settings' ? 'active' : ''}`}
-            onClick={() => setActiveTab('settings')}
+            onClick={() => { setActiveTab('settings'); setSidebarOpen(false); }}
           >
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <circle cx="12" cy="12" r="3"/>
@@ -1311,8 +1318,16 @@ const ManagerDashboard = () => {
       <main className="admin-main">
         {/* Header */}
         <header className="admin-header">
-          <div className="header-title">
-            <h1>{activeTab === 'schedule'
+          <div className="header-left">
+            <button className="menu-toggle" onClick={() => setSidebarOpen(!sidebarOpen)}>
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <line x1="3" y1="12" x2="21" y2="12"/>
+                <line x1="3" y1="6" x2="21" y2="6"/>
+                <line x1="3" y1="18" x2="21" y2="18"/>
+              </svg>
+            </button>
+            <div className="header-title">
+              <h1>{activeTab === 'schedule'
               ? (isRTL ? 'الجدول' : 'Schedule')
               : activeTab === 'tasks'
               ? (isRTL ? 'المهام' : 'Tasks')
@@ -1336,6 +1351,7 @@ const ManagerDashboard = () => {
               ? (isRTL ? 'إدارة طلاب التدريب الصيفي الجامعي' : 'Manage university summer training interns')
               : (isRTL ? 'إدارة إعدادات الحساب واللغة' : 'Manage account and language settings')
             }</p>
+            </div>
           </div>
           {activeTab === 'schedule' && (
             <div className="header-actions">

@@ -8,6 +8,65 @@
   background: var(--bg-primary);
 }
 
+/* Header left section */
+.manager-layout .header-left {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.manager-layout .header-title {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.manager-layout .header-title h1 {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin: 0;
+}
+
+.manager-layout .header-title p {
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+  margin: 0;
+}
+
+/* Menu toggle button */
+.manager-layout .menu-toggle {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+  color: var(--text-primary);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.manager-layout .menu-toggle:hover {
+  background: var(--bg-hover);
+}
+
+@media (max-width: 768px) {
+  .manager-layout .menu-toggle {
+    display: flex;
+  }
+
+  .manager-layout .header-title h1 {
+    font-size: 1.1rem;
+  }
+
+  .manager-layout .header-title p {
+    display: none;
+  }
+}
+
 /* ========================================
    Sidebar Fixes
    ======================================== */
