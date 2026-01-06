@@ -139,6 +139,45 @@ const ManagerDashboard = () => {
     ratingNotes: ''
   });
 
+  // Intern state (University Training)
+  const [interns, setInterns] = useState([]);
+  const [showInternModal, setShowInternModal] = useState(false);
+  const [showTrainingModal, setShowTrainingModal] = useState(false);
+  const [showInternDetailModal, setShowInternDetailModal] = useState(false);
+  const [showInternRatingModal, setShowInternRatingModal] = useState(false);
+  const [selectedTraining, setSelectedTraining] = useState(null);
+  const [selectedIntern, setSelectedIntern] = useState(null);
+  const [internLoading, setInternLoading] = useState(false);
+  const [internRatingForm, setInternRatingForm] = useState({
+    internId: '',
+    trainingId: '',
+    type: 'award',
+    points: 1,
+    criteria: '',
+    notes: '',
+    ratingDate: new Date().toISOString().split('T')[0]
+  });
+  const [internForm, setInternForm] = useState({
+    name: '',
+    nationalId: '',
+    phone: '',
+    email: '',
+    university: '',
+    major: '',
+    nationalIdPhoto: ''
+  });
+  const [trainingForm, setTrainingForm] = useState({
+    internId: '',
+    title: '',
+    description: '',
+    startDate: '',
+    endDate: '',
+    dailyHours: 8,
+    rating: 0,
+    ratingCriteria: '',
+    ratingNotes: ''
+  });
+
   // Predefined criteria options
   const criteriaOptions = [
     { value: '', label: isRTL ? 'اختر المعيار' : 'Select Criteria' },
@@ -515,6 +554,16 @@ const ManagerDashboard = () => {
     }
   }, []);
 
+  // Intern CRUD operations
+  const fetchInterns = useCallback(async () => {
+    try {
+      const response = await api.get('/interns');
+      setInterns(response.data || []);
+    } catch (error) {
+      console.error('Error fetching interns:', error);
+    }
+  }, []);
+
   useEffect(() => {
     if (activeTab === 'volunteers' && managerData) {
       fetchVolunteers();
@@ -522,7 +571,10 @@ const ManagerDashboard = () => {
     if (activeTab === 'tasks' && managerData) {
       fetchGroupedTasks();
     }
-  }, [activeTab, managerData, fetchVolunteers, fetchGroupedTasks]);
+    if (activeTab === 'interns' && managerData) {
+      fetchInterns();
+    }
+  }, [activeTab, managerData, fetchVolunteers, fetchGroupedTasks, fetchInterns]);
 
   const handleCreateVolunteer = async () => {
     if (!volunteerForm.name || !volunteerForm.nationalId || !volunteerForm.phone) {
@@ -615,6 +667,258 @@ const ManagerDashboard = () => {
       console.error('Error deleting rating:', error);
       toast.error(isRTL ? 'خطأ في حذف التقييم' : 'Error deleting rating');
     }
+  };
+
+  const handleDeleteVolunteer = async (volunteerId) => {
+    if (!window.confirm(isRTL ? 'هل أنت متأكد من حذف هذا المتطوع؟ سيتم حذف جميع سجلاته.' : 'Are you sure you want to delete this volunteer? All their records will be deleted.')) return;
+
+    try {
+      await api.delete(`/volunteers/${volunteerId}`);
+      toast.success(isRTL ? 'تم حذف المتطوع بنجاح' : 'Volunteer deleted successfully');
+      setShowVolunteerDetailModal(false);
+      setSelectedVolunteer(null);
+      fetchVolunteers();
+    } catch (error) {
+      console.error('Error deleting volunteer:', error);
+      toast.error(isRTL ? 'خطأ في حذف المتطوع' : 'Error deleting volunteer');
+    }
+  };
+
+  // ============== INTERN (University Training) CRUD ==============
+
+  const handleCreateIntern = async () => {
+    if (!internForm.name || !internForm.nationalId || !internForm.phone) {
+      toast.error(isRTL ? 'الاسم ورقم الهوية والجوال مطلوبة' : 'Name, national ID, and phone are required');
+      return;
+    }
+
+    setInternLoading(true);
+    try {
+      await api.post('/interns', internForm);
+      toast.success(isRTL ? 'تم إضافة المتدرب بنجاح' : 'Intern added successfully');
+      setShowInternModal(false);
+      resetInternForm();
+      fetchInterns();
+    } catch (error) {
+      console.error('Error creating intern:', error);
+      if (error.response?.status === 409) {
+        toast.error(isRTL ? 'يوجد متدرب بنفس رقم الهوية' : 'Intern with this national ID already exists');
+      } else {
+        toast.error(isRTL ? 'خطأ في إضافة المتدرب' : 'Error adding intern');
+      }
+    } finally {
+      setInternLoading(false);
+    }
+  };
+
+  const handleCreateTraining = async () => {
+    if (!trainingForm.internId || !trainingForm.title || !trainingForm.startDate || !trainingForm.endDate) {
+      toast.error(isRTL ? 'المتدرب والعنوان والتاريخ مطلوبة' : 'Intern, title, and dates are required');
+      return;
+    }
+
+    setInternLoading(true);
+    try {
+      await api.post('/interns/trainings', trainingForm);
+      toast.success(isRTL ? 'تم إضافة فترة التدريب بنجاح' : 'Training added successfully');
+      setShowTrainingModal(false);
+      resetTrainingForm();
+      fetchInterns();
+    } catch (error) {
+      console.error('Error creating training:', error);
+      toast.error(isRTL ? 'خطأ في إضافة فترة التدريب' : 'Error adding training');
+    } finally {
+      setInternLoading(false);
+    }
+  };
+
+  const resetInternForm = () => {
+    setInternForm({
+      name: '',
+      nationalId: '',
+      phone: '',
+      email: '',
+      university: '',
+      major: '',
+      nationalIdPhoto: ''
+    });
+  };
+
+  const resetTrainingForm = () => {
+    setTrainingForm({
+      internId: '',
+      title: '',
+      description: '',
+      startDate: '',
+      endDate: '',
+      dailyHours: 8,
+      rating: 0,
+      ratingCriteria: '',
+      ratingNotes: ''
+    });
+  };
+
+  const handleOpenInternRating = (intern, training = null) => {
+    setSelectedIntern(intern);
+    setSelectedTraining(training);
+    setInternRatingForm({
+      internId: intern.internId,
+      trainingId: training?.trainingId || '',
+      type: 'award',
+      points: 1,
+      criteria: '',
+      notes: '',
+      ratingDate: new Date().toISOString().split('T')[0]
+    });
+    setShowInternRatingModal(true);
+  };
+
+  const handleCreateInternRating = async () => {
+    if (!internRatingForm.internId || !internRatingForm.criteria) {
+      toast.error(isRTL ? 'المتدرب والمعيار مطلوبان' : 'Intern and criteria are required');
+      return;
+    }
+
+    setInternLoading(true);
+    try {
+      await api.post('/interns/ratings', internRatingForm);
+      toast.success(isRTL ? 'تم إضافة التقييم بنجاح' : 'Rating added successfully');
+      setShowInternRatingModal(false);
+      setSelectedIntern(null);
+      setSelectedTraining(null);
+      fetchInterns();
+    } catch (error) {
+      console.error('Error creating intern rating:', error);
+      toast.error(isRTL ? 'خطأ في إضافة التقييم' : 'Error adding rating');
+    } finally {
+      setInternLoading(false);
+    }
+  };
+
+  const handleDeleteInternRating = async (ratingId) => {
+    if (!window.confirm(isRTL ? 'هل تريد حذف هذا التقييم؟' : 'Delete this rating?')) return;
+
+    try {
+      await api.delete(`/interns/ratings/${ratingId}`);
+      toast.success(isRTL ? 'تم حذف التقييم' : 'Rating deleted');
+      fetchInterns();
+    } catch (error) {
+      console.error('Error deleting rating:', error);
+      toast.error(isRTL ? 'خطأ في حذف التقييم' : 'Error deleting rating');
+    }
+  };
+
+  const handleDeleteIntern = async (internId) => {
+    if (!window.confirm(isRTL ? 'هل أنت متأكد من حذف هذا المتدرب؟ سيتم حذف جميع سجلاته.' : 'Are you sure you want to delete this intern? All their records will be deleted.')) return;
+
+    try {
+      await api.delete(`/interns/${internId}`);
+      toast.success(isRTL ? 'تم حذف المتدرب بنجاح' : 'Intern deleted successfully');
+      setShowInternDetailModal(false);
+      setSelectedIntern(null);
+      fetchInterns();
+    } catch (error) {
+      console.error('Error deleting intern:', error);
+      toast.error(isRTL ? 'خطأ في حذف المتدرب' : 'Error deleting intern');
+    }
+  };
+
+  const handleExportInternHistory = (intern) => {
+    // Create CSV content for single intern
+    const bom = '\uFEFF';
+    let csv = bom;
+
+    // Intern info
+    csv += `${isRTL ? 'معلومات المتدرب' : 'Intern Information'}\n`;
+    csv += `${isRTL ? 'الاسم' : 'Name'},${intern.name}\n`;
+    csv += `${isRTL ? 'رقم الهوية' : 'National ID'},${intern.nationalId}\n`;
+    csv += `${isRTL ? 'الجوال' : 'Phone'},${intern.phone}\n`;
+    csv += `${isRTL ? 'البريد' : 'Email'},${intern.email || 'N/A'}\n`;
+    csv += `${isRTL ? 'الجامعة' : 'University'},${intern.university || 'N/A'}\n`;
+    csv += `${isRTL ? 'التخصص' : 'Major'},${intern.major || 'N/A'}\n\n`;
+
+    // Trainings
+    csv += `${isRTL ? 'فترات التدريب' : 'Trainings'}\n`;
+    csv += `${isRTL ? 'العنوان' : 'Title'},${isRTL ? 'من' : 'From'},${isRTL ? 'إلى' : 'To'},${isRTL ? 'الساعات' : 'Hours'},${isRTL ? 'الحالة' : 'Status'}\n`;
+    (intern.trainings || []).forEach(t => {
+      csv += `"${t.title}",${t.startDate},${t.endDate},${t.totalHours || 0},${t.status}\n`;
+    });
+    csv += '\n';
+
+    // Ratings history
+    csv += `${isRTL ? 'سجل التقييمات' : 'Ratings History'}\n`;
+    csv += `${isRTL ? 'التاريخ' : 'Date'},${isRTL ? 'النوع' : 'Type'},${isRTL ? 'النقاط' : 'Points'},${isRTL ? 'المعيار' : 'Criteria'},${isRTL ? 'ملاحظات' : 'Notes'}\n`;
+    (intern.ratings || []).forEach(r => {
+      const typeLabel = r.type === 'award' ? (isRTL ? 'منح' : 'Award') : (isRTL ? 'خصم' : 'Deduction');
+      const pointsDisplay = r.type === 'award' ? `+${r.points}` : `-${r.points}`;
+      csv += `${r.ratingDate},"${typeLabel}",${pointsDisplay},"${r.criteria || ''}","${r.notes || ''}"\n`;
+    });
+    csv += '\n';
+
+    // Summary
+    csv += `${isRTL ? 'ملخص' : 'Summary'}\n`;
+    csv += `${isRTL ? 'إجمالي فترات التدريب' : 'Total Trainings'},${intern.totalTrainings || 0}\n`;
+    csv += `${isRTL ? 'إجمالي الساعات' : 'Total Hours'},${intern.totalHours || 0}\n`;
+    csv += `${isRTL ? 'نقاط المنح' : 'Awards'},+${intern.totalAwards || 0}\n`;
+    csv += `${isRTL ? 'نقاط الخصم' : 'Deductions'},-${intern.totalDeductions || 0}\n`;
+    csv += `${isRTL ? 'صافي النقاط' : 'Net Points'},${intern.totalPoints || 0}\n`;
+
+    // Download
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `intern_${intern.name.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.csv`;
+    link.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const handleExportAllInterns = () => {
+    if (interns.length === 0) {
+      toast.error(isRTL ? 'لا يوجد متدربين للتصدير' : 'No interns to export');
+      return;
+    }
+
+    const bom = '\uFEFF';
+    const headers = [
+      isRTL ? 'الاسم' : 'Name',
+      isRTL ? 'رقم الهوية' : 'National ID',
+      isRTL ? 'الجوال' : 'Phone',
+      isRTL ? 'البريد' : 'Email',
+      isRTL ? 'الجامعة' : 'University',
+      isRTL ? 'التخصص' : 'Major',
+      isRTL ? 'فترات التدريب' : 'Trainings',
+      isRTL ? 'الساعات' : 'Hours',
+      isRTL ? 'نقاط المنح' : 'Awards',
+      isRTL ? 'نقاط الخصم' : 'Deductions',
+      isRTL ? 'صافي النقاط' : 'Net Points'
+    ];
+
+    let csv = bom + headers.join(',') + '\n';
+
+    let totalTrainings = 0;
+    let totalHours = 0;
+    let totalAwards = 0;
+    let totalDeductions = 0;
+
+    interns.forEach(intern => {
+      csv += `"${intern.name}","${intern.nationalId}","${intern.phone}","${intern.email || ''}","${intern.university || ''}","${intern.major || ''}",${intern.totalTrainings || 0},${intern.totalHours || 0},+${intern.totalAwards || 0},-${intern.totalDeductions || 0},${intern.totalPoints || 0}\n`;
+      totalTrainings += intern.totalTrainings || 0;
+      totalHours += intern.totalHours || 0;
+      totalAwards += intern.totalAwards || 0;
+      totalDeductions += intern.totalDeductions || 0;
+    });
+
+    // Summary row
+    csv += `\n"${isRTL ? 'الإجمالي' : 'TOTAL'}","","","","","",${totalTrainings},${totalHours},+${totalAwards},-${totalDeductions},${totalAwards - totalDeductions}\n`;
+
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `all_interns_${new Date().toISOString().split('T')[0]}.csv`;
+    link.click();
+    URL.revokeObjectURL(url);
   };
 
   const handleUpdateTaskStatus = async (taskId, newStatus) => {
@@ -962,6 +1266,16 @@ const ManagerDashboard = () => {
             <span>{isRTL ? 'المتطوعين' : 'Volunteers'}</span>
           </button>
           <button
+            className={`nav-item ${activeTab === 'interns' ? 'active' : ''}`}
+            onClick={() => setActiveTab('interns')}
+          >
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M22 10v6M2 10l10-5 10 5-10 5z"/>
+              <path d="M6 12v5c3 3 9 3 12 0v-5"/>
+            </svg>
+            <span>{isRTL ? 'تدريب جامعي' : 'University Training'}</span>
+          </button>
+          <button
             className={`nav-item ${activeTab === 'settings' ? 'active' : ''}`}
             onClick={() => setActiveTab('settings')}
           >
@@ -1006,6 +1320,8 @@ const ManagerDashboard = () => {
               ? (isRTL ? 'تقييم الموظفين' : 'Employee Ratings')
               : activeTab === 'volunteers'
               ? (isRTL ? 'المتطوعين' : 'Volunteers')
+              : activeTab === 'interns'
+              ? (isRTL ? 'تدريب جامعي' : 'University Training')
               : (isRTL ? 'الإعدادات' : 'Settings')
             }</h1>
             <p>{activeTab === 'schedule'
@@ -1016,6 +1332,8 @@ const ManagerDashboard = () => {
               ? (isRTL ? 'إعطاء نقاط للموظفين وتصدير التقارير' : 'Give points to employees and export reports')
               : activeTab === 'volunteers'
               ? (isRTL ? 'إدارة المتطوعين وفرص التطوع' : 'Manage volunteers and opportunities')
+              : activeTab === 'interns'
+              ? (isRTL ? 'إدارة طلاب التدريب الصيفي الجامعي' : 'Manage university summer training interns')
               : (isRTL ? 'إدارة إعدادات الحساب واللغة' : 'Manage account and language settings')
             }</p>
           </div>
@@ -2224,6 +2542,19 @@ const ManagerDashboard = () => {
               </div>
               <div className="modal-footer">
                 <button
+                  className="modal-btn delete"
+                  onClick={() => handleDeleteVolunteer(selectedVolunteer.volunteerId)}
+                >
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <polyline points="3 6 5 6 21 6"/>
+                    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/>
+                    <path d="M10 11v6"/>
+                    <path d="M14 11v6"/>
+                    <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/>
+                  </svg>
+                  {isRTL ? 'حذف المتطوع' : 'Delete Volunteer'}
+                </button>
+                <button
                   className="modal-btn export"
                   onClick={() => handleExportVolunteerHistory(selectedVolunteer)}
                 >
@@ -2352,6 +2683,627 @@ const ManagerDashboard = () => {
                   disabled={volunteerLoading}
                 >
                   {volunteerLoading ? (isRTL ? 'جاري الحفظ...' : 'Saving...') : (isRTL ? 'حفظ التقييم' : 'Save Rating')}
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+
+        {/* Interns (University Training) Content */}
+        {activeTab === 'interns' && (
+          <div className="volunteers-section">
+            <div className="volunteers-header">
+              <div className="volunteers-actions">
+                <button className="add-volunteer-btn" onClick={() => setShowInternModal(true)}>
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                    <circle cx="8.5" cy="7" r="4"/>
+                    <line x1="20" y1="8" x2="20" y2="14"/>
+                    <line x1="23" y1="11" x2="17" y2="11"/>
+                  </svg>
+                  {isRTL ? 'إضافة متدرب' : 'Add Intern'}
+                </button>
+                <button className="add-volunteer-btn secondary" onClick={() => setShowTrainingModal(true)}>
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+                    <line x1="16" y1="2" x2="16" y2="6"/>
+                    <line x1="8" y1="2" x2="8" y2="6"/>
+                    <line x1="3" y1="10" x2="21" y2="10"/>
+                  </svg>
+                  {isRTL ? 'إضافة فترة تدريب' : 'Add Training'}
+                </button>
+                <button className="export-btn" onClick={handleExportAllInterns}>
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                    <polyline points="7 10 12 15 17 10"/>
+                    <line x1="12" y1="15" x2="12" y2="3"/>
+                  </svg>
+                  {isRTL ? 'تصدير الكل' : 'Export All'}
+                </button>
+              </div>
+              <div className="volunteers-stats">
+                <div className="stat-item">
+                  <span className="stat-value">{interns.length}</span>
+                  <span className="stat-label">{isRTL ? 'متدرب' : 'Interns'}</span>
+                </div>
+                <div className="stat-item">
+                  <span className="stat-value">{interns.reduce((sum, i) => sum + (i.totalTrainings || 0), 0)}</span>
+                  <span className="stat-label">{isRTL ? 'فترة تدريب' : 'Trainings'}</span>
+                </div>
+                <div className="stat-item">
+                  <span className="stat-value">{interns.reduce((sum, i) => sum + (i.totalHours || 0), 0)}</span>
+                  <span className="stat-label">{isRTL ? 'ساعة' : 'Hours'}</span>
+                </div>
+              </div>
+            </div>
+
+            <div className="volunteers-grid">
+              {interns.map(intern => (
+                <motion.div
+                  key={intern.internId}
+                  className="volunteer-card"
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  onClick={() => {
+                    setSelectedIntern(intern);
+                    setShowInternDetailModal(true);
+                  }}
+                >
+                  <div className="volunteer-avatar">
+                    {intern.nationalIdPhoto ? (
+                      <img src={intern.nationalIdPhoto} alt={intern.name} />
+                    ) : (
+                      <span>{intern.name?.charAt(0) || 'I'}</span>
+                    )}
+                  </div>
+                  <div className="volunteer-info">
+                    <h4>{intern.name}</h4>
+                    <p className="volunteer-id">{intern.nationalId}</p>
+                    {intern.university && (
+                      <p className="volunteer-university">{intern.university}</p>
+                    )}
+                    {intern.major && (
+                      <p className="volunteer-major">{intern.major}</p>
+                    )}
+                  </div>
+                  <div className="volunteer-stats">
+                    <div className="stat">
+                      <span className="stat-value">{intern.totalTrainings || 0}</span>
+                      <span className="stat-label">{isRTL ? 'تدريب' : 'Trainings'}</span>
+                    </div>
+                    <div className="stat">
+                      <span className="stat-value">{intern.totalHours || 0}</span>
+                      <span className="stat-label">{isRTL ? 'ساعة' : 'Hours'}</span>
+                    </div>
+                    <div className="stat">
+                      <span className={`stat-value ${(intern.totalPoints || 0) > 0 ? 'positive' : (intern.totalPoints || 0) < 0 ? 'negative' : ''}`}>
+                        {(intern.totalPoints || 0) > 0 ? '+' : ''}{intern.totalPoints || 0}
+                      </span>
+                      <span className="stat-label">{isRTL ? 'نقاط' : 'Points'}</span>
+                    </div>
+                  </div>
+                  <button
+                    className="rate-volunteer-btn"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleOpenInternRating(intern);
+                    }}
+                  >
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+                    </svg>
+                    {isRTL ? 'تقييم' : 'Rate'}
+                  </button>
+                </motion.div>
+              ))}
+            </div>
+
+            {interns.length === 0 && (
+              <div className="empty-state">
+                <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1">
+                  <path d="M22 10v6M2 10l10-5 10 5-10 5z"/>
+                  <path d="M6 12v5c3 3 9 3 12 0v-5"/>
+                </svg>
+                <h3>{isRTL ? 'لا يوجد متدربين' : 'No Interns Yet'}</h3>
+                <p>{isRTL ? 'ابدأ بإضافة متدربين التدريب الصيفي الجامعي' : 'Start by adding university summer training interns'}</p>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Add Intern Modal */}
+        {showInternModal && (
+          <div className="modal-overlay" onClick={() => setShowInternModal(false)}>
+            <motion.div
+              className="modal-content task-modal"
+              onClick={(e) => e.stopPropagation()}
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+            >
+              <div className="modal-header">
+                <h2>{isRTL ? 'إضافة متدرب جديد' : 'Add New Intern'}</h2>
+                <button className="close-btn" onClick={() => setShowInternModal(false)}>×</button>
+              </div>
+              <div className="modal-body">
+                <div className="form-group">
+                  <label>{isRTL ? 'الاسم' : 'Name'} *</label>
+                  <input
+                    type="text"
+                    value={internForm.name}
+                    onChange={(e) => setInternForm(prev => ({ ...prev, name: e.target.value }))}
+                    placeholder={isRTL ? 'اسم المتدرب' : 'Intern name'}
+                  />
+                </div>
+                <div className="form-row">
+                  <div className="form-group">
+                    <label>{isRTL ? 'رقم الهوية' : 'National ID'} *</label>
+                    <input
+                      type="text"
+                      value={internForm.nationalId}
+                      onChange={(e) => setInternForm(prev => ({ ...prev, nationalId: e.target.value }))}
+                      placeholder={isRTL ? 'رقم الهوية الوطنية' : 'National ID number'}
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label>{isRTL ? 'رقم الجوال' : 'Phone'} *</label>
+                    <input
+                      type="text"
+                      value={internForm.phone}
+                      onChange={(e) => setInternForm(prev => ({ ...prev, phone: e.target.value }))}
+                      placeholder={isRTL ? 'رقم الجوال' : 'Phone number'}
+                    />
+                  </div>
+                </div>
+                <div className="form-group">
+                  <label>{isRTL ? 'البريد الإلكتروني' : 'Email'}</label>
+                  <input
+                    type="email"
+                    value={internForm.email}
+                    onChange={(e) => setInternForm(prev => ({ ...prev, email: e.target.value }))}
+                    placeholder={isRTL ? 'البريد الإلكتروني (اختياري)' : 'Email (optional)'}
+                  />
+                </div>
+                <div className="form-row">
+                  <div className="form-group">
+                    <label>{isRTL ? 'الجامعة' : 'University'}</label>
+                    <input
+                      type="text"
+                      value={internForm.university}
+                      onChange={(e) => setInternForm(prev => ({ ...prev, university: e.target.value }))}
+                      placeholder={isRTL ? 'اسم الجامعة' : 'University name'}
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label>{isRTL ? 'التخصص' : 'Major'}</label>
+                    <input
+                      type="text"
+                      value={internForm.major}
+                      onChange={(e) => setInternForm(prev => ({ ...prev, major: e.target.value }))}
+                      placeholder={isRTL ? 'التخصص الدراسي' : 'Field of study'}
+                    />
+                  </div>
+                </div>
+              </div>
+              <div className="modal-footer">
+                <button className="modal-btn cancel" onClick={() => setShowInternModal(false)}>
+                  {isRTL ? 'إلغاء' : 'Cancel'}
+                </button>
+                <button
+                  className="modal-btn save"
+                  onClick={handleCreateIntern}
+                  disabled={internLoading}
+                >
+                  {internLoading ? (isRTL ? 'جاري الحفظ...' : 'Saving...') : (isRTL ? 'حفظ' : 'Save')}
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+
+        {/* Add Training Modal */}
+        {showTrainingModal && (
+          <div className="modal-overlay" onClick={() => setShowTrainingModal(false)}>
+            <motion.div
+              className="modal-content task-modal"
+              onClick={(e) => e.stopPropagation()}
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+            >
+              <div className="modal-header">
+                <h2>{isRTL ? 'إضافة فترة تدريب' : 'Add Training Period'}</h2>
+                <button className="close-btn" onClick={() => setShowTrainingModal(false)}>×</button>
+              </div>
+              <div className="modal-body">
+                <div className="form-group">
+                  <label>{isRTL ? 'المتدرب' : 'Intern'} *</label>
+                  <select
+                    value={trainingForm.internId}
+                    onChange={(e) => setTrainingForm(prev => ({ ...prev, internId: e.target.value }))}
+                  >
+                    <option value="">{isRTL ? 'اختر المتدرب' : 'Select Intern'}</option>
+                    {interns.map(intern => (
+                      <option key={intern.internId} value={intern.internId}>
+                        {intern.name} - {intern.nationalId}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div className="form-group">
+                  <label>{isRTL ? 'عنوان التدريب' : 'Training Title'} *</label>
+                  <input
+                    type="text"
+                    value={trainingForm.title}
+                    onChange={(e) => setTrainingForm(prev => ({ ...prev, title: e.target.value }))}
+                    placeholder={isRTL ? 'عنوان فترة التدريب' : 'Training period title'}
+                  />
+                </div>
+                <div className="form-group">
+                  <label>{isRTL ? 'الوصف' : 'Description'}</label>
+                  <textarea
+                    value={trainingForm.description}
+                    onChange={(e) => setTrainingForm(prev => ({ ...prev, description: e.target.value }))}
+                    placeholder={isRTL ? 'وصف التدريب (اختياري)' : 'Training description (optional)'}
+                    rows="3"
+                  />
+                </div>
+                <div className="form-row">
+                  <div className="form-group">
+                    <label>{isRTL ? 'تاريخ البدء' : 'Start Date'} *</label>
+                    <input
+                      type="date"
+                      value={trainingForm.startDate}
+                      onChange={(e) => setTrainingForm(prev => ({ ...prev, startDate: e.target.value }))}
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label>{isRTL ? 'تاريخ الانتهاء' : 'End Date'} *</label>
+                    <input
+                      type="date"
+                      value={trainingForm.endDate}
+                      onChange={(e) => setTrainingForm(prev => ({ ...prev, endDate: e.target.value }))}
+                    />
+                  </div>
+                </div>
+                <div className="form-group">
+                  <label>{isRTL ? 'ساعات العمل اليومية' : 'Daily Hours'}</label>
+                  <input
+                    type="number"
+                    value={trainingForm.dailyHours}
+                    onChange={(e) => setTrainingForm(prev => ({ ...prev, dailyHours: parseFloat(e.target.value) || 8 }))}
+                    min="1"
+                    max="24"
+                    step="0.5"
+                  />
+                </div>
+              </div>
+              <div className="modal-footer">
+                <button className="modal-btn cancel" onClick={() => setShowTrainingModal(false)}>
+                  {isRTL ? 'إلغاء' : 'Cancel'}
+                </button>
+                <button
+                  className="modal-btn save"
+                  onClick={handleCreateTraining}
+                  disabled={internLoading}
+                >
+                  {internLoading ? (isRTL ? 'جاري الحفظ...' : 'Saving...') : (isRTL ? 'حفظ' : 'Save')}
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+
+        {/* Intern Detail Modal */}
+        {showInternDetailModal && selectedIntern && (
+          <div className="modal-overlay" onClick={() => setShowInternDetailModal(false)}>
+            <motion.div
+              className="modal-content volunteer-detail-modal"
+              onClick={(e) => e.stopPropagation()}
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+            >
+              <div className="modal-header">
+                <h2>{isRTL ? 'تفاصيل المتدرب' : 'Intern Details'}</h2>
+                <button className="close-btn" onClick={() => setShowInternDetailModal(false)}>×</button>
+              </div>
+              <div className="modal-body">
+                <div className="volunteer-detail-header">
+                  <div className="volunteer-avatar large">
+                    {selectedIntern.nationalIdPhoto ? (
+                      <img src={selectedIntern.nationalIdPhoto} alt="ID" className="volunteer-id-photo" />
+                    ) : (
+                      <span className="avatar-placeholder">
+                        {selectedIntern.name?.charAt(0) || 'I'}
+                      </span>
+                    )}
+                  </div>
+                  <div className="volunteer-detail-info">
+                    <h3>{selectedIntern.name}</h3>
+                    <div className="detail-item">
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <rect x="3" y="4" width="18" height="16" rx="2"/>
+                        <line x1="7" y1="8" x2="17" y2="8"/>
+                        <line x1="7" y1="12" x2="13" y2="12"/>
+                      </svg>
+                      <span>{isRTL ? 'رقم الهوية: ' : 'National ID: '}{selectedIntern.nationalId}</span>
+                    </div>
+                    <div className="detail-item">
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72"/>
+                      </svg>
+                      <span>{selectedIntern.phone}</span>
+                    </div>
+                    {selectedIntern.email && (
+                      <div className="detail-item">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                          <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
+                          <polyline points="22,6 12,13 2,6"/>
+                        </svg>
+                        <span>{selectedIntern.email}</span>
+                      </div>
+                    )}
+                    {selectedIntern.university && (
+                      <div className="detail-item">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                          <path d="M22 10v6M2 10l10-5 10 5-10 5z"/>
+                          <path d="M6 12v5c3 3 9 3 12 0v-5"/>
+                        </svg>
+                        <span>{selectedIntern.university}</span>
+                      </div>
+                    )}
+                    {selectedIntern.major && (
+                      <div className="detail-item">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                          <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/>
+                          <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
+                        </svg>
+                        <span>{selectedIntern.major}</span>
+                      </div>
+                    )}
+                  </div>
+                  <div className="volunteer-detail-stats">
+                    <div className="detail-stat-item">
+                      <div className="detail-stat-value">{selectedIntern.totalTrainings || 0}</div>
+                      <div className="detail-stat-label">{isRTL ? 'فترات تدريب' : 'Trainings'}</div>
+                    </div>
+                    <div className="detail-stat-item">
+                      <div className="detail-stat-value">{selectedIntern.totalHours || 0}</div>
+                      <div className="detail-stat-label">{isRTL ? 'ساعة' : 'Hours'}</div>
+                    </div>
+                    <div className="detail-stat-item">
+                      <div className={`detail-stat-value ${(selectedIntern.totalPoints || 0) > 0 ? 'positive' : (selectedIntern.totalPoints || 0) < 0 ? 'negative' : ''}`}>
+                        {(selectedIntern.totalPoints || 0) > 0 ? '+' : ''}{selectedIntern.totalPoints || 0}
+                      </div>
+                      <div className="detail-stat-label">{isRTL ? 'صافي النقاط' : 'Net Points'}</div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Points Breakdown */}
+                {(selectedIntern.totalAwards > 0 || selectedIntern.totalDeductions > 0) && (
+                  <div className="points-breakdown">
+                    <span className="points-award">
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <line x1="12" y1="5" x2="12" y2="19"/>
+                        <line x1="5" y1="12" x2="19" y2="12"/>
+                      </svg>
+                      +{selectedIntern.totalAwards || 0} {isRTL ? 'منح' : 'awards'}
+                    </span>
+                    <span className="points-deduction">
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <line x1="5" y1="12" x2="19" y2="12"/>
+                      </svg>
+                      -{selectedIntern.totalDeductions || 0} {isRTL ? 'خصم' : 'deductions'}
+                    </span>
+                  </div>
+                )}
+
+                {/* Ratings History */}
+                {selectedIntern.ratings && selectedIntern.ratings.length > 0 && (
+                  <div className="ratings-history-list">
+                    <h4>{isRTL ? 'سجل التقييمات' : 'Ratings History'}</h4>
+                    {selectedIntern.ratings.map(rating => (
+                      <div key={rating.ratingId} className="rating-history-item">
+                        <span className={`rating-points ${rating.type}`}>
+                          {rating.type === 'award' ? '+' : '-'}{rating.points}
+                        </span>
+                        <span className="rating-criteria">{rating.criteria}</span>
+                        <span className="rating-date">{rating.ratingDate}</span>
+                        <button
+                          className="delete-rating-btn"
+                          onClick={() => handleDeleteInternRating(rating.ratingId)}
+                          title={isRTL ? 'حذف' : 'Delete'}
+                        >
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                            <polyline points="3 6 5 6 21 6"/>
+                            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/>
+                          </svg>
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* Trainings list */}
+                <div className="opportunities-section">
+                  <h4>{isRTL ? 'فترات التدريب' : 'Training Periods'}</h4>
+                  {(!selectedIntern.trainings || selectedIntern.trainings.length === 0) ? (
+                    <p className="no-opportunities">{isRTL ? 'لا توجد فترات تدريب مسجلة' : 'No trainings recorded'}</p>
+                  ) : (
+                    <div className="opportunities-list">
+                      {selectedIntern.trainings.map(training => (
+                        <div key={training.trainingId} className="opportunity-item">
+                          <div className="opportunity-info">
+                            <h5>{training.title}</h5>
+                            <div className="opportunity-dates">
+                              <span>{training.startDate}</span>
+                              <span>→</span>
+                              <span>{training.endDate}</span>
+                            </div>
+                            <div className="opportunity-meta">
+                              <span className="hours">{training.totalHours || 0} {isRTL ? 'ساعة' : 'hours'}</span>
+                              <span className={`status ${training.status}`}>{training.status}</span>
+                            </div>
+                          </div>
+                          <div className="opportunity-actions">
+                            <button
+                              className="rate-opportunity-btn"
+                              onClick={() => handleOpenInternRating(selectedIntern, training)}
+                            >
+                              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+                              </svg>
+                              {isRTL ? 'تقييم' : 'Rate'}
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+              <div className="modal-footer">
+                <button
+                  className="modal-btn delete"
+                  onClick={() => handleDeleteIntern(selectedIntern.internId)}
+                >
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <polyline points="3 6 5 6 21 6"/>
+                    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/>
+                    <path d="M10 11v6"/>
+                    <path d="M14 11v6"/>
+                    <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/>
+                  </svg>
+                  {isRTL ? 'حذف المتدرب' : 'Delete Intern'}
+                </button>
+                <button
+                  className="modal-btn export"
+                  onClick={() => handleExportInternHistory(selectedIntern)}
+                >
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                    <polyline points="7 10 12 15 17 10"/>
+                    <line x1="12" y1="15" x2="12" y2="3"/>
+                  </svg>
+                  {isRTL ? 'تصدير السجل' : 'Export History'}
+                </button>
+                <button className="modal-btn cancel" onClick={() => setShowInternDetailModal(false)}>
+                  {isRTL ? 'إغلاق' : 'Close'}
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+
+        {/* Intern Rating Modal */}
+        {showInternRatingModal && selectedIntern && (
+          <div className="modal-overlay" onClick={() => setShowInternRatingModal(false)}>
+            <motion.div
+              className="modal-content task-modal"
+              onClick={(e) => e.stopPropagation()}
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+            >
+              <div className="modal-header">
+                <h2>{isRTL ? 'تقييم المتدرب' : 'Rate Intern'}</h2>
+                <button className="close-btn" onClick={() => setShowInternRatingModal(false)}>×</button>
+              </div>
+              <div className="modal-body">
+                <div className="opportunity-info-summary">
+                  <h4>{selectedIntern.name}</h4>
+                  {selectedTraining && (
+                    <p style={{ color: 'var(--text-secondary)', fontSize: '14px' }}>
+                      {isRTL ? 'تدريب: ' : 'Training: '}{selectedTraining.title}
+                    </p>
+                  )}
+                </div>
+
+                {/* Rating Type Toggle (Award/Deduction) */}
+                <div className="form-group">
+                  <label>{isRTL ? 'نوع التقييم' : 'Rating Type'}</label>
+                  <div className="rating-type-toggle">
+                    <button
+                      type="button"
+                      className={`rating-type-btn award ${internRatingForm.type === 'award' ? 'active' : ''}`}
+                      onClick={() => setInternRatingForm(prev => ({ ...prev, type: 'award' }))}
+                    >
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <path d="M12 2L15 8L22 9L17 14L18 21L12 18L6 21L7 14L2 9L9 8L12 2Z"/>
+                      </svg>
+                      <span>{isRTL ? 'منح نقاط' : 'Award'}</span>
+                    </button>
+                    <button
+                      type="button"
+                      className={`rating-type-btn deduction ${internRatingForm.type === 'deduction' ? 'active' : ''}`}
+                      onClick={() => setInternRatingForm(prev => ({ ...prev, type: 'deduction' }))}
+                    >
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <circle cx="12" cy="12" r="10"/>
+                        <line x1="8" y1="12" x2="16" y2="12"/>
+                      </svg>
+                      <span>{isRTL ? 'خصم نقاط' : 'Deduction'}</span>
+                    </button>
+                  </div>
+                </div>
+
+                {/* Points Selector (1-5) */}
+                <div className="form-group">
+                  <label>{isRTL ? 'عدد النقاط' : 'Number of Points'}</label>
+                  <div className="points-selector">
+                    {[1, 2, 3, 4, 5].map(num => (
+                      <button
+                        key={num}
+                        type="button"
+                        className={`point-btn ${internRatingForm.points === num ? 'active' : ''} ${internRatingForm.type}`}
+                        onClick={() => setInternRatingForm(prev => ({ ...prev, points: num }))}
+                      >
+                        {internRatingForm.type === 'deduction' ? `-${num}` : `+${num}`}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="form-group">
+                  <label>{isRTL ? 'المعيار' : 'Criteria'}</label>
+                  <select
+                    value={internRatingForm.criteria}
+                    onChange={(e) => setInternRatingForm(prev => ({ ...prev, criteria: e.target.value }))}
+                    className="criteria-select"
+                  >
+                    {criteriaOptions.map(opt => (
+                      <option key={opt.value} value={opt.value}>{opt.label}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="form-group">
+                  <label>{isRTL ? 'التاريخ' : 'Date'}</label>
+                  <input
+                    type="date"
+                    value={internRatingForm.ratingDate}
+                    onChange={(e) => setInternRatingForm(prev => ({ ...prev, ratingDate: e.target.value }))}
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label>{isRTL ? 'ملاحظات' : 'Notes'}</label>
+                  <textarea
+                    value={internRatingForm.notes}
+                    onChange={(e) => setInternRatingForm(prev => ({ ...prev, notes: e.target.value }))}
+                    placeholder={isRTL ? 'ملاحظات إضافية (اختياري)' : 'Additional notes (optional)'}
+                    rows="3"
+                  />
+                </div>
+              </div>
+              <div className="modal-footer">
+                <button className="modal-btn cancel" onClick={() => setShowInternRatingModal(false)}>
+                  {isRTL ? 'إلغاء' : 'Cancel'}
+                </button>
+                <button
+                  className="modal-btn save"
+                  onClick={handleCreateInternRating}
+                  disabled={internLoading}
+                >
+                  {internLoading ? (isRTL ? 'جاري الحفظ...' : 'Saving...') : (isRTL ? 'حفظ التقييم' : 'Save Rating')}
                 </button>
               </div>
             </motion.div>

@@ -2062,6 +2062,19 @@
   color: var(--text-secondary);
 }
 
+.volunteer-info .volunteer-university,
+.volunteer-info .volunteer-major {
+  font-size: 12px;
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.volunteer-info .volunteer-university {
+  color: var(--primary);
+}
+
 .volunteer-stats {
   display: flex;
   gap: 12px;
