@@ -2739,62 +2739,68 @@ const ManagerDashboard = () => {
 
             <div className="volunteers-grid">
               {interns.map(intern => (
-                <motion.div
-                  key={intern.internId}
-                  className="volunteer-card"
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  onClick={() => {
-                    setSelectedIntern(intern);
-                    setShowInternDetailModal(true);
-                  }}
-                >
-                  <div className="volunteer-avatar">
-                    {intern.nationalIdPhoto ? (
-                      <img src={intern.nationalIdPhoto} alt={intern.name} />
-                    ) : (
-                      <span>{intern.name?.charAt(0) || 'I'}</span>
-                    )}
-                  </div>
-                  <div className="volunteer-info">
-                    <h4>{intern.name}</h4>
-                    <p className="volunteer-id">{intern.nationalId}</p>
-                    {intern.university && (
-                      <p className="volunteer-university">{intern.university}</p>
-                    )}
-                    {intern.major && (
-                      <p className="volunteer-major">{intern.major}</p>
-                    )}
+                <div key={intern.internId} className="volunteer-card">
+                  <div className="volunteer-header">
+                    <div className="volunteer-avatar">
+                      {intern.name?.charAt(0) || 'I'}
+                    </div>
+                    <div className="volunteer-info">
+                      <h3>{intern.name}</h3>
+                      <p>{intern.phone}</p>
+                      {intern.university && (
+                        <p className="volunteer-university">{intern.university}</p>
+                      )}
+                      {intern.major && (
+                        <p className="volunteer-major">{intern.major}</p>
+                      )}
+                    </div>
                   </div>
                   <div className="volunteer-stats">
-                    <div className="stat">
-                      <span className="stat-value">{intern.totalTrainings || 0}</span>
-                      <span className="stat-label">{isRTL ? 'تدريب' : 'Trainings'}</span>
+                    <div className="stat-item">
+                      <div className="stat-value">{intern.totalTrainings || 0}</div>
+                      <div className="stat-label">{isRTL ? 'تدريب' : 'Trainings'}</div>
                     </div>
-                    <div className="stat">
-                      <span className="stat-value">{intern.totalHours || 0}</span>
-                      <span className="stat-label">{isRTL ? 'ساعة' : 'Hours'}</span>
+                    <div className="stat-item">
+                      <div className="stat-value">{Math.max(0, intern.totalHours || 0)}</div>
+                      <div className="stat-label">{isRTL ? 'ساعة' : 'Hours'}</div>
                     </div>
-                    <div className="stat">
-                      <span className={`stat-value ${(intern.totalPoints || 0) > 0 ? 'positive' : (intern.totalPoints || 0) < 0 ? 'negative' : ''}`}>
+                    <div className="stat-item">
+                      <div className={`stat-value ${(intern.totalPoints || 0) > 0 ? 'positive' : (intern.totalPoints || 0) < 0 ? 'negative' : ''}`}>
                         {(intern.totalPoints || 0) > 0 ? '+' : ''}{intern.totalPoints || 0}
-                      </span>
-                      <span className="stat-label">{isRTL ? 'نقاط' : 'Points'}</span>
+                      </div>
+                      <div className="stat-label">{isRTL ? 'نقاط' : 'Net Points'}</div>
                     </div>
                   </div>
-                  <button
-                    className="rate-volunteer-btn"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleOpenInternRating(intern);
-                    }}
-                  >
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                      <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
-                    </svg>
-                    {isRTL ? 'تقييم' : 'Rate'}
-                  </button>
-                </motion.div>
+                  <div className="volunteer-card-actions">
+                    <button
+                      className="view-volunteer-btn"
+                      onClick={() => {
+                        setSelectedIntern(intern);
+                        setShowInternDetailModal(true);
+                      }}
+                      title={isRTL ? 'عرض التفاصيل' : 'View Details'}
+                    >
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                        <circle cx="12" cy="12" r="3"/>
+                      </svg>
+                      {isRTL ? 'عرض' : 'View'}
+                    </button>
+                    <button
+                      className="rate-volunteer-btn"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleOpenInternRating(intern);
+                      }}
+                      title={isRTL ? 'تقييم' : 'Rate'}
+                    >
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+                      </svg>
+                      {isRTL ? 'تقييم' : 'Rate'}
+                    </button>
+                  </div>
+                </div>
               ))}
             </div>
 
@@ -3005,35 +3011,38 @@ const ManagerDashboard = () => {
                 <h2>{isRTL ? 'تفاصيل المتدرب' : 'Intern Details'}</h2>
                 <button className="close-btn" onClick={() => setShowInternDetailModal(false)}>×</button>
               </div>
-              <div className="modal-body">
-                <div className="volunteer-detail-header">
-                  <div className="volunteer-avatar large">
+              <div className="modal-body volunteer-detail-body">
+                {/* Intern Profile Section */}
+                <div className="volunteer-detail-profile">
+                  <div className="volunteer-detail-avatar">
                     {selectedIntern.nationalIdPhoto ? (
                       <img src={selectedIntern.nationalIdPhoto} alt="ID" className="volunteer-id-photo" />
                     ) : (
-                      <span className="avatar-placeholder">
+                      <div className="avatar-placeholder">
                         {selectedIntern.name?.charAt(0) || 'I'}
-                      </span>
+                      </div>
                     )}
                   </div>
                   <div className="volunteer-detail-info">
                     <h3>{selectedIntern.name}</h3>
-                    <div className="detail-item">
+                    <div className="info-row">
                       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                        <rect x="3" y="4" width="18" height="16" rx="2"/>
-                        <line x1="7" y1="8" x2="17" y2="8"/>
-                        <line x1="7" y1="12" x2="13" y2="12"/>
+                        <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+                        <circle cx="9" cy="10" r="2"/>
+                        <path d="M15 8h2"/>
+                        <path d="M15 12h2"/>
+                        <path d="M7 16h10"/>
                       </svg>
                       <span>{isRTL ? 'رقم الهوية: ' : 'National ID: '}{selectedIntern.nationalId}</span>
                     </div>
-                    <div className="detail-item">
+                    <div className="info-row">
                       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                         <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72"/>
                       </svg>
                       <span>{selectedIntern.phone}</span>
                     </div>
                     {selectedIntern.email && (
-                      <div className="detail-item">
+                      <div className="info-row">
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                           <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
                           <polyline points="22,6 12,13 2,6"/>
@@ -3042,7 +3051,7 @@ const ManagerDashboard = () => {
                       </div>
                     )}
                     {selectedIntern.university && (
-                      <div className="detail-item">
+                      <div className="info-row">
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                           <path d="M22 10v6M2 10l10-5 10 5-10 5z"/>
                           <path d="M6 12v5c3 3 9 3 12 0v-5"/>
@@ -3051,7 +3060,7 @@ const ManagerDashboard = () => {
                       </div>
                     )}
                     {selectedIntern.major && (
-                      <div className="detail-item">
+                      <div className="info-row">
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                           <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/>
                           <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
@@ -3060,37 +3069,39 @@ const ManagerDashboard = () => {
                       </div>
                     )}
                   </div>
-                  <div className="volunteer-detail-stats">
-                    <div className="detail-stat-item">
-                      <div className="detail-stat-value">{selectedIntern.totalTrainings || 0}</div>
-                      <div className="detail-stat-label">{isRTL ? 'فترات تدريب' : 'Trainings'}</div>
+                </div>
+
+                {/* Stats Section */}
+                <div className="volunteer-detail-stats">
+                  <div className="detail-stat">
+                    <div className="detail-stat-value">{selectedIntern.totalTrainings || 0}</div>
+                    <div className="detail-stat-label">{isRTL ? 'فترات تدريب' : 'Trainings'}</div>
+                  </div>
+                  <div className="detail-stat">
+                    <div className="detail-stat-value">{Math.max(0, selectedIntern.totalHours || 0)}</div>
+                    <div className="detail-stat-label">{isRTL ? 'ساعة تدريب' : 'Total Hours'}</div>
+                  </div>
+                  <div className="detail-stat">
+                    <div className={`detail-stat-value ${(selectedIntern.totalPoints || 0) > 0 ? 'positive' : (selectedIntern.totalPoints || 0) < 0 ? 'negative' : ''}`}>
+                      {(selectedIntern.totalPoints || 0) > 0 ? '+' : ''}{selectedIntern.totalPoints || 0}
                     </div>
-                    <div className="detail-stat-item">
-                      <div className="detail-stat-value">{selectedIntern.totalHours || 0}</div>
-                      <div className="detail-stat-label">{isRTL ? 'ساعة' : 'Hours'}</div>
-                    </div>
-                    <div className="detail-stat-item">
-                      <div className={`detail-stat-value ${(selectedIntern.totalPoints || 0) > 0 ? 'positive' : (selectedIntern.totalPoints || 0) < 0 ? 'negative' : ''}`}>
-                        {(selectedIntern.totalPoints || 0) > 0 ? '+' : ''}{selectedIntern.totalPoints || 0}
-                      </div>
-                      <div className="detail-stat-label">{isRTL ? 'صافي النقاط' : 'Net Points'}</div>
-                    </div>
+                    <div className="detail-stat-label">{isRTL ? 'صافي النقاط' : 'Net Points'}</div>
                   </div>
                 </div>
 
                 {/* Points Breakdown */}
                 {(selectedIntern.totalAwards > 0 || selectedIntern.totalDeductions > 0) && (
                   <div className="points-breakdown">
-                    <span className="points-award">
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                        <line x1="12" y1="5" x2="12" y2="19"/>
-                        <line x1="5" y1="12" x2="19" y2="12"/>
+                    <span className="awards">
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="#22c55e" stroke="#22c55e" strokeWidth="2">
+                        <path d="M12 2L15 8L22 9L17 14L18 21L12 18L6 21L7 14L2 9L9 8L12 2Z"/>
                       </svg>
                       +{selectedIntern.totalAwards || 0} {isRTL ? 'منح' : 'awards'}
                     </span>
-                    <span className="points-deduction">
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                        <line x1="5" y1="12" x2="19" y2="12"/>
+                    <span className="deductions">
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#ef4444" strokeWidth="2">
+                        <circle cx="12" cy="12" r="10"/>
+                        <line x1="8" y1="12" x2="16" y2="12"/>
                       </svg>
                       -{selectedIntern.totalDeductions || 0} {isRTL ? 'خصم' : 'deductions'}
                     </span>
@@ -3099,35 +3110,42 @@ const ManagerDashboard = () => {
 
                 {/* Ratings History */}
                 {selectedIntern.ratings && selectedIntern.ratings.length > 0 && (
-                  <div className="ratings-history-list">
+                  <div className="volunteer-history-section">
                     <h4>{isRTL ? 'سجل التقييمات' : 'Ratings History'}</h4>
-                    {selectedIntern.ratings.map(rating => (
-                      <div key={rating.ratingId} className="rating-history-item">
-                        <span className={`rating-points ${rating.type}`}>
-                          {rating.type === 'award' ? '+' : '-'}{rating.points}
-                        </span>
-                        <span className="rating-criteria">{rating.criteria}</span>
-                        <span className="rating-date">{rating.ratingDate}</span>
-                        <button
-                          className="delete-rating-btn"
-                          onClick={() => handleDeleteInternRating(rating.ratingId)}
-                          title={isRTL ? 'حذف' : 'Delete'}
-                        >
-                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                            <polyline points="3 6 5 6 21 6"/>
-                            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/>
-                          </svg>
-                        </button>
-                      </div>
-                    ))}
+                    <div className="ratings-history-list">
+                      {selectedIntern.ratings.map(rating => (
+                        <div key={rating.ratingId} className={`rating-history-item ${rating.type}`}>
+                          <div className="rating-history-header">
+                            <span className={`rating-points ${rating.type}`}>
+                              {rating.type === 'deduction' ? `-${rating.points}` : `+${rating.points}`}
+                            </span>
+                            <span className="rating-criteria">{rating.criteria || (isRTL ? 'بدون معيار' : 'No criteria')}</span>
+                            <span className="rating-date">{rating.ratingDate}</span>
+                          </div>
+                          {rating.notes && (
+                            <div className="rating-notes">{rating.notes}</div>
+                          )}
+                          <button
+                            className="delete-rating-btn"
+                            onClick={() => handleDeleteInternRating(rating.ratingId)}
+                            title={isRTL ? 'حذف' : 'Delete'}
+                          >
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                              <polyline points="3 6 5 6 21 6"/>
+                              <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/>
+                            </svg>
+                          </button>
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 )}
 
                 {/* Trainings list */}
-                <div className="opportunities-section">
+                <div className="volunteer-history-section">
                   <h4>{isRTL ? 'فترات التدريب' : 'Training Periods'}</h4>
                   {(!selectedIntern.trainings || selectedIntern.trainings.length === 0) ? (
-                    <p className="no-opportunities">{isRTL ? 'لا توجد فترات تدريب مسجلة' : 'No trainings recorded'}</p>
+                    <p className="no-data">{isRTL ? 'لا توجد فترات تدريب مسجلة' : 'No trainings recorded'}</p>
                   ) : (
                     <div className="opportunities-list">
                       {selectedIntern.trainings.map(training => (
@@ -3140,7 +3158,7 @@ const ManagerDashboard = () => {
                               <span>{training.endDate}</span>
                             </div>
                             <div className="opportunity-meta">
-                              <span className="hours">{training.totalHours || 0} {isRTL ? 'ساعة' : 'hours'}</span>
+                              <span className="hours">{Math.max(0, training.totalHours || 0)} {isRTL ? 'ساعة' : 'hours'}</span>
                               <span className={`status ${training.status}`}>{training.status}</span>
                             </div>
                           </div>

@@ -78,8 +78,8 @@ const InternTraining = sequelize.define('InternTraining', {
       if (training.startDate && training.endDate && training.dailyHours) {
         const start = new Date(training.startDate);
         const end = new Date(training.endDate);
-        const days = Math.ceil((end - start) / (1000 * 60 * 60 * 24)) + 1;
-        training.totalHours = days * training.dailyHours;
+        const days = Math.max(1, Math.ceil((end - start) / (1000 * 60 * 60 * 24)) + 1);
+        training.totalHours = Math.max(0, days * training.dailyHours);
       }
     },
     beforeUpdate: (training) => {
@@ -87,8 +87,8 @@ const InternTraining = sequelize.define('InternTraining', {
       if (training.changed('startDate') || training.changed('endDate') || training.changed('dailyHours')) {
         const start = new Date(training.startDate);
         const end = new Date(training.endDate);
-        const days = Math.ceil((end - start) / (1000 * 60 * 60 * 24)) + 1;
-        training.totalHours = days * training.dailyHours;
+        const days = Math.max(1, Math.ceil((end - start) / (1000 * 60 * 60 * 24)) + 1);
+        training.totalHours = Math.max(0, days * training.dailyHours);
       }
     }
   }
