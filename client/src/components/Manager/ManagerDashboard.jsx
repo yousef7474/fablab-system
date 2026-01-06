@@ -45,7 +45,7 @@ const ManagerDashboard = () => {
   const isRTL = i18n.language === 'ar';
 
   // Valid tabs for URL persistence
-  const validTabs = ['schedule', 'tasks', 'ratings', 'volunteers', 'settings'];
+  const validTabs = ['schedule', 'tasks', 'ratings', 'volunteers', 'interns', 'settings'];
 
   // Get initial tab from URL or default to 'schedule'
   const getInitialTab = () => {
