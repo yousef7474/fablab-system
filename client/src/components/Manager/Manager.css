@@ -9,6 +9,36 @@
   color: white;
 }
 
+/* Menu toggle button - always visible on desktop */
+.manager-layout .menu-toggle {
+  display: flex !important;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  background: var(--gray-100);
+  border: none;
+  border-radius: 10px;
+  color: var(--gray-600);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.manager-layout .menu-toggle:hover {
+  background: var(--gray-200);
+  color: var(--gray-800);
+}
+
+[data-theme="dark"] .manager-layout .menu-toggle {
+  background: var(--bg-tertiary);
+  color: var(--text-secondary);
+}
+
+[data-theme="dark"] .manager-layout .menu-toggle:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+
 /* ========================================
    Main Content Margins - Override Admin.css
    Manager uses explicit open/collapsed states
