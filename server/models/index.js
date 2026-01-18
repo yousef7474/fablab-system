@@ -12,6 +12,8 @@ const Intern = require('./Intern');
 const InternTraining = require('./InternTraining');
 const InternRating = require('./InternRating');
 const ManagerTodo = require('./ManagerTodo');
+const Workspace = require('./Workspace');
+const WorkspaceRating = require('./WorkspaceRating');
 
 // Define relationships
 User.hasMany(Registration, { foreignKey: 'userId', as: 'registrations' });
@@ -69,6 +71,17 @@ Admin.hasMany(InternRating, { foreignKey: 'createdById', as: 'givenInternRatings
 ManagerTodo.belongsTo(Admin, { foreignKey: 'managerId', as: 'manager' });
 Admin.hasMany(ManagerTodo, { foreignKey: 'managerId', as: 'todos' });
 
+// Workspace relationships
+Workspace.belongsTo(Admin, { foreignKey: 'createdById', as: 'creator' });
+Admin.hasMany(Workspace, { foreignKey: 'createdById', as: 'workspaces' });
+
+// Workspace Rating relationships
+WorkspaceRating.belongsTo(Workspace, { foreignKey: 'workspaceId', as: 'workspace' });
+Workspace.hasMany(WorkspaceRating, { foreignKey: 'workspaceId', as: 'ratings' });
+
+WorkspaceRating.belongsTo(Admin, { foreignKey: 'createdById', as: 'ratedBy' });
+Admin.hasMany(WorkspaceRating, { foreignKey: 'createdById', as: 'givenWorkspaceRatings' });
+
 // Sync database
 const syncDatabase = async () => {
   try {
@@ -95,5 +108,7 @@ module.exports = {
   InternTraining,
   InternRating,
   ManagerTodo,
+  Workspace,
+  WorkspaceRating,
   syncDatabase
 };

@@ -11,6 +11,7 @@ const ratingRoutes = require('./routes/ratingRoutes');
 const volunteerRoutes = require('./routes/volunteerRoutes');
 const internRoutes = require('./routes/internRoutes');
 const managerTodoRoutes = require('./routes/managerTodoRoutes');
+const workspaceRoutes = require('./routes/workspaceRoutes');
 
 const app = express();
 
@@ -35,6 +36,7 @@ app.use('/api/ratings', ratingRoutes);
 app.use('/api/volunteers', volunteerRoutes);
 app.use('/api/interns', internRoutes);
 app.use('/api/manager-todos', managerTodoRoutes);
+app.use('/api/workspaces', workspaceRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {

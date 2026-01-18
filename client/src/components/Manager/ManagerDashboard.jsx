@@ -45,7 +45,7 @@ const ManagerDashboard = () => {
   const isRTL = i18n.language === 'ar';
 
   // Valid tabs for URL persistence
-  const validTabs = ['schedule', 'tasks', 'employees', 'todos', 'ratings', 'volunteers', 'interns', 'settings'];
+  const validTabs = ['schedule', 'tasks', 'employees', 'todos', 'workspaces', 'ratings', 'volunteers', 'interns', 'settings'];
 
   // Get initial tab from URL, localStorage, or default to 'schedule'
   const getInitialTab = () => {
@@ -215,6 +215,53 @@ const ManagerDashboard = () => {
   // Todo calendar state
   const [todoCalendarDate, setTodoCalendarDate] = useState(new Date());
   const [selectedTodoDay, setSelectedTodoDay] = useState(null);
+
+  // Workspace state
+  const [workspaces, setWorkspaces] = useState([]);
+  const [showWorkspaceModal, setShowWorkspaceModal] = useState(false);
+  const [showWorkspaceRatingModal, setShowWorkspaceRatingModal] = useState(false);
+  const [selectedWorkspace, setSelectedWorkspace] = useState(null);
+  const [workspaceLoading, setWorkspaceLoading] = useState(false);
+  const [workspaceForm, setWorkspaceForm] = useState({
+    tableNumber: '',
+    numberOfUsers: 1,
+    personName: '',
+    personPhone: '',
+    personEmail: '',
+    startDate: '',
+    startTime: '',
+    endDate: '',
+    endTime: '',
+    photoBefore: '',
+    notes: ''
+  });
+  const [workspaceRatingForm, setWorkspaceRatingForm] = useState({
+    type: 'award',
+    points: 1,
+    criteria: '',
+    notes: '',
+    ratingDate: new Date().toISOString().split('T')[0]
+  });
+  const [workspaceStats, setWorkspaceStats] = useState({
+    totalWorkspaces: 0,
+    activeWorkspaces: 0,
+    completedWorkspaces: 0,
+    todayWorkspaces: 0
+  });
+
+  // Workspace rating criteria options
+  const workspaceCriteriaOptions = [
+    { value: '', label: isRTL ? 'اختر المعيار' : 'Select Criteria' },
+    { value: 'cleanliness', label: isRTL ? 'النظافة' : 'Cleanliness' },
+    { value: 'equipment_care', label: isRTL ? 'العناية بالمعدات' : 'Equipment Care' },
+    { value: 'time_management', label: isRTL ? 'إدارة الوقت' : 'Time Management' },
+    { value: 'safety_compliance', label: isRTL ? 'الالتزام بالسلامة' : 'Safety Compliance' },
+    { value: 'workspace_organization', label: isRTL ? 'تنظيم مساحة العمل' : 'Workspace Organization' },
+    { value: 'resource_usage', label: isRTL ? 'استخدام الموارد' : 'Resource Usage' },
+    { value: 'cooperation', label: isRTL ? 'التعاون' : 'Cooperation' },
+    { value: 'rule_compliance', label: isRTL ? 'الالتزام بالقواعد' : 'Rule Compliance' },
+    { value: 'other', label: isRTL ? 'أخرى' : 'Other' }
+  ];
 
   // Predefined criteria options
   const criteriaOptions = [
@@ -473,17 +520,171 @@ const ManagerDashboard = () => {
     setShowTodoModal(true);
   };
 
+  // Workspace CRUD operations
+  const fetchWorkspaces = useCallback(async () => {
+    try {
+      const response = await api.get('/workspaces');
+      setWorkspaces(response.data || []);
+    } catch (error) {
+      console.error('Error fetching workspaces:', error);
+    }
+  }, []);
+
+  const fetchWorkspaceStats = useCallback(async () => {
+    try {
+      const response = await api.get('/workspaces/statistics');
+      setWorkspaceStats(response.data);
+    } catch (error) {
+      console.error('Error fetching workspace stats:', error);
+    }
+  }, []);
+
+  const handleCreateWorkspace = async () => {
+    if (!workspaceForm.tableNumber || !workspaceForm.personName || !workspaceForm.startDate || !workspaceForm.endDate) {
+      toast.error(isRTL ? 'رقم الطاولة والاسم والفترة مطلوبة' : 'Table number, name, and period are required');
+      return;
+    }
+
+    setWorkspaceLoading(true);
+    try {
+      await api.post('/workspaces', workspaceForm);
+      toast.success(isRTL ? 'تم إضافة مساحة العمل بنجاح' : 'Workspace added successfully');
+      fetchWorkspaces();
+      fetchWorkspaceStats();
+      setShowWorkspaceModal(false);
+      setWorkspaceForm({
+        tableNumber: '', numberOfUsers: 1, personName: '', personPhone: '', personEmail: '',
+        startDate: '', startTime: '', endDate: '', endTime: '', photoBefore: '', notes: ''
+      });
+    } catch (error) {
+      toast.error(isRTL ? 'خطأ في إضافة مساحة العمل' : 'Error adding workspace');
+    } finally {
+      setWorkspaceLoading(false);
+    }
+  };
+
+  const handleUpdateWorkspace = async () => {
+    if (!selectedWorkspace) return;
+
+    setWorkspaceLoading(true);
+    try {
+      await api.put(`/workspaces/${selectedWorkspace.workspaceId}`, workspaceForm);
+      toast.success(isRTL ? 'تم تحديث مساحة العمل بنجاح' : 'Workspace updated successfully');
+      fetchWorkspaces();
+      setShowWorkspaceModal(false);
+      setSelectedWorkspace(null);
+    } catch (error) {
+      toast.error(isRTL ? 'خطأ في تحديث مساحة العمل' : 'Error updating workspace');
+    } finally {
+      setWorkspaceLoading(false);
+    }
+  };
+
+  const handleDeleteWorkspace = async (workspaceId) => {
+    if (!window.confirm(isRTL ? 'هل أنت متأكد من حذف مساحة العمل هذه؟' : 'Are you sure you want to delete this workspace?')) {
+      return;
+    }
+
+    try {
+      await api.delete(`/workspaces/${workspaceId}`);
+      toast.success(isRTL ? 'تم حذف مساحة العمل بنجاح' : 'Workspace deleted successfully');
+      fetchWorkspaces();
+      fetchWorkspaceStats();
+    } catch (error) {
+      toast.error(isRTL ? 'خطأ في حذف مساحة العمل' : 'Error deleting workspace');
+    }
+  };
+
+  const handleCompleteWorkspace = async (workspaceId) => {
+    try {
+      await api.patch(`/workspaces/${workspaceId}/complete`);
+      toast.success(isRTL ? 'تم تحديد مساحة العمل كمكتملة' : 'Workspace marked as completed');
+      fetchWorkspaces();
+      fetchWorkspaceStats();
+    } catch (error) {
+      toast.error(isRTL ? 'خطأ في تحديث مساحة العمل' : 'Error updating workspace');
+    }
+  };
+
+  const openWorkspaceModal = (workspace = null) => {
+    if (workspace) {
+      setSelectedWorkspace(workspace);
+      setWorkspaceForm({
+        tableNumber: workspace.tableNumber || '',
+        numberOfUsers: workspace.numberOfUsers || 1,
+        personName: workspace.personName || '',
+        personPhone: workspace.personPhone || '',
+        personEmail: workspace.personEmail || '',
+        startDate: workspace.startDate || '',
+        startTime: workspace.startTime || '',
+        endDate: workspace.endDate || '',
+        endTime: workspace.endTime || '',
+        photoBefore: workspace.photoBefore || '',
+        notes: workspace.notes || ''
+      });
+    } else {
+      setSelectedWorkspace(null);
+      setWorkspaceForm({
+        tableNumber: '', numberOfUsers: 1, personName: '', personPhone: '', personEmail: '',
+        startDate: '', startTime: '', endDate: '', endTime: '', photoBefore: '', notes: ''
+      });
+    }
+    setShowWorkspaceModal(true);
+  };
+
+  const handleAddWorkspaceRating = async () => {
+    const criteria = workspaceRatingForm.criteria === 'other'
+      ? workspaceRatingForm.customCriteria
+      : workspaceRatingForm.criteria;
+
+    if (!selectedWorkspace || !criteria || !workspaceRatingForm.points) {
+      toast.error(isRTL ? 'المعيار والنقاط مطلوبة' : 'Criteria and points are required');
+      return;
+    }
+
+    setWorkspaceLoading(true);
+    try {
+      const ratingData = {
+        ...workspaceRatingForm,
+        criteria: criteria
+      };
+      delete ratingData.customCriteria;
+
+      await api.post(`/workspaces/${selectedWorkspace.workspaceId}/ratings`, ratingData);
+      toast.success(isRTL ? 'تم إضافة التقييم بنجاح' : 'Rating added successfully');
+      fetchWorkspaces();
+      setShowWorkspaceRatingModal(false);
+      setWorkspaceRatingForm({
+        type: 'award', points: 1, criteria: '', notes: '',
+        ratingDate: new Date().toISOString().split('T')[0]
+      });
+    } catch (error) {
+      toast.error(isRTL ? 'خطأ في إضافة التقييم' : 'Error adding rating');
+    } finally {
+      setWorkspaceLoading(false);
+    }
+  };
+
+  const openWorkspaceRatingModal = (workspace) => {
+    setSelectedWorkspace(workspace);
+    setWorkspaceRatingForm({
+      type: 'award', points: 1, criteria: '', notes: '',
+      ratingDate: new Date().toISOString().split('T')[0]
+    });
+    setShowWorkspaceRatingModal(true);
+  };
+
   // Initial data load
   useEffect(() => {
     const loadData = async () => {
       setLoading(true);
-      await Promise.all([fetchSchedule(), fetchEmployees(), fetchMyTodos()]);
+      await Promise.all([fetchSchedule(), fetchEmployees(), fetchMyTodos(), fetchWorkspaces(), fetchWorkspaceStats()]);
       setLoading(false);
     };
     if (managerData) {
       loadData();
     }
-  }, [managerData, fetchSchedule, fetchEmployees, fetchMyTodos]);
+  }, [managerData, fetchSchedule, fetchEmployees, fetchMyTodos, fetchWorkspaces, fetchWorkspaceStats]);
 
   // Calendar helpers
   const getDaysInMonth = (date) => {
@@ -1522,6 +1723,16 @@ const ManagerDashboard = () => {
             {sidebarOpen && <span>{isRTL ? 'مهامي' : 'My Tasks'}</span>}
           </button>
           <button
+            className={`nav-item ${activeTab === 'workspaces' ? 'active' : ''}`}
+            onClick={() => { setActiveTab('workspaces'); if (window.innerWidth <= 768) setSidebarOpen(false); }}
+          >
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <rect x="2" y="7" width="20" height="14" rx="2" ry="2"/>
+              <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/>
+            </svg>
+            {sidebarOpen && <span>{isRTL ? 'مساحات العمل' : 'Workspaces'}</span>}
+          </button>
+          <button
             className={`nav-item ${activeTab === 'ratings' ? 'active' : ''}`}
             onClick={() => { setActiveTab('ratings'); if (window.innerWidth <= 768) setSidebarOpen(false); }}
           >
@@ -1597,6 +1808,8 @@ const ManagerDashboard = () => {
               ? (isRTL ? 'الموظفين' : 'Employees')
               : activeTab === 'todos'
               ? (isRTL ? 'مهامي' : 'My Tasks')
+              : activeTab === 'workspaces'
+              ? (isRTL ? 'مساحات العمل' : 'Workspaces')
               : activeTab === 'ratings'
               ? (isRTL ? 'تقييم الموظفين' : 'Employee Ratings')
               : activeTab === 'volunteers'
@@ -1613,6 +1826,8 @@ const ManagerDashboard = () => {
               ? (isRTL ? 'إدارة الموظفين وبياناتهم' : 'Manage employees and their data')
               : activeTab === 'todos'
               ? (isRTL ? 'قائمة مهامي الشخصية' : 'My personal task list')
+              : activeTab === 'workspaces'
+              ? (isRTL ? 'إدارة مساحات العمل للعملاء' : 'Manage customer workspaces')
               : activeTab === 'ratings'
               ? (isRTL ? 'إعطاء نقاط للموظفين وتصدير التقارير' : 'Give points to employees and export reports')
               : activeTab === 'volunteers'
@@ -1653,15 +1868,15 @@ const ManagerDashboard = () => {
           <div className="calendar-section">
             {/* Calendar Header */}
             <div className="calendar-header">
-              <button className="calendar-nav-btn" onClick={handlePrevMonth}>
+              <button className="calendar-nav" onClick={handlePrevMonth}>
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                   <polyline points={isRTL ? "9 18 15 12 9 6" : "15 18 9 12 15 6"}/>
                 </svg>
               </button>
-              <h3 className="calendar-title">
+              <h3>
                 {format(selectedDate, 'MMMM yyyy', { locale: isRTL ? ar : enUS })}
               </h3>
-              <button className="calendar-nav-btn" onClick={handleNextMonth}>
+              <button className="calendar-nav" onClick={handleNextMonth}>
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                   <polyline points={isRTL ? "15 18 9 12 15 6" : "9 18 15 12 9 6"}/>
                 </svg>
@@ -1675,8 +1890,8 @@ const ManagerDashboard = () => {
               ))}
             </div>
 
-            {/* Calendar Grid */}
-            <div className="calendar-grid">
+            {/* Calendar Days */}
+            <div className="calendar-days">
               {/* Empty cells for days before first of month */}
               {Array(days[0].getDay()).fill(null).map((_, i) => (
                 <div key={`empty-${i}`} className="calendar-day empty"></div>
@@ -1699,7 +1914,7 @@ const ManagerDashboard = () => {
                   >
                     <span className="day-number">{format(day, 'd')}</span>
                     {hasEvents && (
-                      <div className="event-dots-container">
+                      <div className="event-dots">
                         {/* Appointment dots (circles) */}
                         {appointments.slice(0, 2).map((event, i) => (
                           <span
@@ -4092,6 +4307,462 @@ const ManagerDashboard = () => {
                   disabled={todoLoading}
                 >
                   {todoLoading ? (isRTL ? 'جاري الحفظ...' : 'Saving...') : (selectedTodo ? (isRTL ? 'تحديث' : 'Update') : (isRTL ? 'إضافة' : 'Add'))}
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+
+        {/* Workspaces Content */}
+        {activeTab === 'workspaces' && (
+          <div className="workspaces-content">
+            {/* Stats Cards */}
+            <div className="stats-grid">
+              <div className="stat-card">
+                <div className="stat-icon">
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <rect x="2" y="7" width="20" height="14" rx="2" ry="2"/>
+                    <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/>
+                  </svg>
+                </div>
+                <div className="stat-info">
+                  <span className="stat-value">{workspaceStats.totalWorkspaces}</span>
+                  <span className="stat-label">{isRTL ? 'إجمالي المساحات' : 'Total Workspaces'}</span>
+                </div>
+              </div>
+              <div className="stat-card">
+                <div className="stat-icon active">
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <circle cx="12" cy="12" r="10"/>
+                    <polyline points="12 6 12 12 16 14"/>
+                  </svg>
+                </div>
+                <div className="stat-info">
+                  <span className="stat-value">{workspaceStats.activeWorkspaces}</span>
+                  <span className="stat-label">{isRTL ? 'نشطة' : 'Active'}</span>
+                </div>
+              </div>
+              <div className="stat-card">
+                <div className="stat-icon completed">
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+                    <polyline points="22 4 12 14.01 9 11.01"/>
+                  </svg>
+                </div>
+                <div className="stat-info">
+                  <span className="stat-value">{workspaceStats.completedWorkspaces}</span>
+                  <span className="stat-label">{isRTL ? 'مكتملة' : 'Completed'}</span>
+                </div>
+              </div>
+              <div className="stat-card">
+                <div className="stat-icon today">
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+                    <line x1="16" y1="2" x2="16" y2="6"/>
+                    <line x1="8" y1="2" x2="8" y2="6"/>
+                    <line x1="3" y1="10" x2="21" y2="10"/>
+                  </svg>
+                </div>
+                <div className="stat-info">
+                  <span className="stat-value">{workspaceStats.todayWorkspaces}</span>
+                  <span className="stat-label">{isRTL ? 'اليوم' : 'Today'}</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Actions Bar */}
+            <div className="actions-bar">
+              <button className="add-btn" onClick={() => openWorkspaceModal()}>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <line x1="12" y1="5" x2="12" y2="19"/>
+                  <line x1="5" y1="12" x2="19" y2="12"/>
+                </svg>
+                {isRTL ? 'إضافة مساحة عمل' : 'Add Workspace'}
+              </button>
+            </div>
+
+            {/* Workspaces Grid */}
+            <div className="workspaces-grid">
+              {workspaces.length === 0 ? (
+                <div className="empty-state">
+                  <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                    <rect x="2" y="7" width="20" height="14" rx="2" ry="2"/>
+                    <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/>
+                  </svg>
+                  <h3>{isRTL ? 'لا توجد مساحات عمل' : 'No Workspaces'}</h3>
+                  <p>{isRTL ? 'أضف مساحة عمل جديدة للبدء' : 'Add a new workspace to get started'}</p>
+                </div>
+              ) : (
+                workspaces.map(workspace => (
+                  <motion.div
+                    key={workspace.workspaceId}
+                    className={`workspace-card ${workspace.status}`}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                  >
+                    <div className="workspace-header">
+                      <div className="workspace-table">
+                        <span className="table-label">{isRTL ? 'طاولة' : 'Table'}</span>
+                        <span className="table-number">{workspace.tableNumber}</span>
+                      </div>
+                      <div className={`workspace-status ${workspace.status}`}>
+                        {workspace.status === 'active' ? (isRTL ? 'نشط' : 'Active') :
+                         workspace.status === 'completed' ? (isRTL ? 'مكتمل' : 'Completed') :
+                         (isRTL ? 'ملغي' : 'Cancelled')}
+                      </div>
+                    </div>
+
+                    <div className="workspace-body">
+                      <div className="workspace-info">
+                        <div className="info-row">
+                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+                            <circle cx="12" cy="7" r="4"/>
+                          </svg>
+                          <span>{workspace.personName}</span>
+                        </div>
+                        {workspace.personPhone && (
+                          <div className="info-row">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                              <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/>
+                            </svg>
+                            <span dir="ltr">{workspace.personPhone}</span>
+                          </div>
+                        )}
+                        <div className="info-row">
+                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                            <circle cx="9" cy="7" r="4"/>
+                            <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+                            <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+                          </svg>
+                          <span>{workspace.numberOfUsers} {isRTL ? 'مستخدم' : 'user(s)'}</span>
+                        </div>
+                      </div>
+
+                      <div className="workspace-period">
+                        <div className="period-item">
+                          <span className="period-label">{isRTL ? 'من' : 'From'}</span>
+                          <span className="period-value">{format(parseISO(workspace.startDate), 'MMM d', { locale: isRTL ? ar : enUS })} {workspace.startTime}</span>
+                        </div>
+                        <div className="period-item">
+                          <span className="period-label">{isRTL ? 'إلى' : 'To'}</span>
+                          <span className="period-value">{format(parseISO(workspace.endDate), 'MMM d', { locale: isRTL ? ar : enUS })} {workspace.endTime}</span>
+                        </div>
+                      </div>
+
+                      <div className="workspace-points">
+                        <span className={`points-badge ${workspace.totalPoints >= 0 ? 'positive' : 'negative'}`}>
+                          {workspace.totalPoints >= 0 ? '+' : ''}{workspace.totalPoints} {isRTL ? 'نقطة' : 'points'}
+                        </span>
+                      </div>
+
+                      {workspace.notes && (
+                        <div className="workspace-notes">
+                          <p>{workspace.notes}</p>
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="workspace-actions">
+                      {workspace.status === 'active' && (
+                        <>
+                          <button className="action-btn complete" onClick={() => handleCompleteWorkspace(workspace.workspaceId)} title={isRTL ? 'إكمال' : 'Complete'}>
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                              <polyline points="20 6 9 17 4 12"/>
+                            </svg>
+                          </button>
+                          <button className="action-btn rate" onClick={() => openWorkspaceRatingModal(workspace)} title={isRTL ? 'تقييم' : 'Rate'}>
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                              <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+                            </svg>
+                          </button>
+                        </>
+                      )}
+                      <button className="action-btn edit" onClick={() => openWorkspaceModal(workspace)} title={isRTL ? 'تعديل' : 'Edit'}>
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                          <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                          <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                        </svg>
+                      </button>
+                      <button className="action-btn delete" onClick={() => handleDeleteWorkspace(workspace.workspaceId)} title={isRTL ? 'حذف' : 'Delete'}>
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                          <polyline points="3 6 5 6 21 6"/>
+                          <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+                        </svg>
+                      </button>
+                    </div>
+
+                    {/* Ratings List */}
+                    {workspace.ratings && workspace.ratings.length > 0 && (
+                      <div className="workspace-ratings">
+                        <h4>{isRTL ? 'التقييمات' : 'Ratings'}</h4>
+                        <div className="ratings-list">
+                          {workspace.ratings.map(rating => (
+                            <div key={rating.ratingId} className={`rating-item ${rating.type}`}>
+                              <span className="rating-points">{rating.type === 'deduct' ? '-' : '+'}{rating.points}</span>
+                              <span className="rating-criteria">
+                                {workspaceCriteriaOptions.find(c => c.value === rating.criteria)?.label || rating.criteria}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </motion.div>
+                ))
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Workspace Modal */}
+        {showWorkspaceModal && (
+          <div className="modal-overlay" onClick={() => setShowWorkspaceModal(false)}>
+            <motion.div
+              className="modal-content large"
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="modal-header">
+                <h2>{selectedWorkspace ? (isRTL ? 'تعديل مساحة العمل' : 'Edit Workspace') : (isRTL ? 'إضافة مساحة عمل' : 'Add Workspace')}</h2>
+                <button className="modal-close" onClick={() => setShowWorkspaceModal(false)}>
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <line x1="18" y1="6" x2="6" y2="18"/>
+                    <line x1="6" y1="6" x2="18" y2="18"/>
+                  </svg>
+                </button>
+              </div>
+              <div className="modal-body">
+                <div className="form-row">
+                  <div className="form-group">
+                    <label>{isRTL ? 'رقم الطاولة' : 'Table Number'} *</label>
+                    <input
+                      type="text"
+                      value={workspaceForm.tableNumber}
+                      onChange={(e) => setWorkspaceForm({ ...workspaceForm, tableNumber: e.target.value })}
+                      placeholder={isRTL ? 'مثال: A1' : 'e.g., A1'}
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label>{isRTL ? 'عدد المستخدمين' : 'Number of Users'}</label>
+                    <input
+                      type="number"
+                      min="1"
+                      value={workspaceForm.numberOfUsers}
+                      onChange={(e) => setWorkspaceForm({ ...workspaceForm, numberOfUsers: parseInt(e.target.value) || 1 })}
+                    />
+                  </div>
+                </div>
+
+                <div className="form-section-title">{isRTL ? 'معلومات المسؤول' : 'Person in Charge'}</div>
+                <div className="form-group">
+                  <label>{isRTL ? 'الاسم' : 'Name'} *</label>
+                  <input
+                    type="text"
+                    value={workspaceForm.personName}
+                    onChange={(e) => setWorkspaceForm({ ...workspaceForm, personName: e.target.value })}
+                    placeholder={isRTL ? 'اسم الشخص المسؤول' : 'Person name'}
+                  />
+                </div>
+                <div className="form-row">
+                  <div className="form-group">
+                    <label>{isRTL ? 'رقم الهاتف' : 'Phone Number'}</label>
+                    <input
+                      type="tel"
+                      value={workspaceForm.personPhone}
+                      onChange={(e) => setWorkspaceForm({ ...workspaceForm, personPhone: e.target.value })}
+                      placeholder={isRTL ? 'رقم الهاتف' : 'Phone number'}
+                      dir="ltr"
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label>{isRTL ? 'البريد الإلكتروني' : 'Email'}</label>
+                    <input
+                      type="email"
+                      value={workspaceForm.personEmail}
+                      onChange={(e) => setWorkspaceForm({ ...workspaceForm, personEmail: e.target.value })}
+                      placeholder={isRTL ? 'البريد الإلكتروني' : 'Email address'}
+                      dir="ltr"
+                    />
+                  </div>
+                </div>
+
+                <div className="form-section-title">{isRTL ? 'فترة الاستخدام' : 'Usage Period'}</div>
+                <div className="form-row">
+                  <div className="form-group">
+                    <label>{isRTL ? 'تاريخ البداية' : 'Start Date'} *</label>
+                    <input
+                      type="date"
+                      value={workspaceForm.startDate}
+                      onChange={(e) => setWorkspaceForm({ ...workspaceForm, startDate: e.target.value })}
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label>{isRTL ? 'وقت البداية' : 'Start Time'} *</label>
+                    <input
+                      type="time"
+                      value={workspaceForm.startTime}
+                      onChange={(e) => setWorkspaceForm({ ...workspaceForm, startTime: e.target.value })}
+                    />
+                  </div>
+                </div>
+                <div className="form-row">
+                  <div className="form-group">
+                    <label>{isRTL ? 'تاريخ النهاية' : 'End Date'} *</label>
+                    <input
+                      type="date"
+                      value={workspaceForm.endDate}
+                      onChange={(e) => setWorkspaceForm({ ...workspaceForm, endDate: e.target.value })}
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label>{isRTL ? 'وقت النهاية' : 'End Time'} *</label>
+                    <input
+                      type="time"
+                      value={workspaceForm.endTime}
+                      onChange={(e) => setWorkspaceForm({ ...workspaceForm, endTime: e.target.value })}
+                    />
+                  </div>
+                </div>
+
+                <div className="form-group">
+                  <label>{isRTL ? 'صورة قبل الاستخدام' : 'Photo Before'}</label>
+                  <input
+                    type="text"
+                    value={workspaceForm.photoBefore}
+                    onChange={(e) => setWorkspaceForm({ ...workspaceForm, photoBefore: e.target.value })}
+                    placeholder={isRTL ? 'رابط الصورة' : 'Photo URL'}
+                    dir="ltr"
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label>{isRTL ? 'ملاحظات' : 'Notes'}</label>
+                  <textarea
+                    value={workspaceForm.notes}
+                    onChange={(e) => setWorkspaceForm({ ...workspaceForm, notes: e.target.value })}
+                    placeholder={isRTL ? 'ملاحظات إضافية' : 'Additional notes'}
+                    rows={3}
+                  />
+                </div>
+              </div>
+              <div className="modal-footer">
+                <button className="btn-secondary" onClick={() => setShowWorkspaceModal(false)}>
+                  {isRTL ? 'إلغاء' : 'Cancel'}
+                </button>
+                <button
+                  className="btn-primary"
+                  onClick={selectedWorkspace ? handleUpdateWorkspace : handleCreateWorkspace}
+                  disabled={workspaceLoading}
+                >
+                  {workspaceLoading ? (isRTL ? 'جاري الحفظ...' : 'Saving...') : (selectedWorkspace ? (isRTL ? 'تحديث' : 'Update') : (isRTL ? 'إضافة' : 'Add'))}
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+
+        {/* Workspace Rating Modal */}
+        {showWorkspaceRatingModal && selectedWorkspace && (
+          <div className="modal-overlay" onClick={() => setShowWorkspaceRatingModal(false)}>
+            <motion.div
+              className="modal-content"
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="modal-header">
+                <h2>{isRTL ? 'تقييم مساحة العمل' : 'Rate Workspace'}</h2>
+                <button className="modal-close" onClick={() => setShowWorkspaceRatingModal(false)}>
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <line x1="18" y1="6" x2="6" y2="18"/>
+                    <line x1="6" y1="6" x2="18" y2="18"/>
+                  </svg>
+                </button>
+              </div>
+              <div className="modal-body">
+                <div className="workspace-rating-info">
+                  <span>{isRTL ? 'طاولة' : 'Table'}: <strong>{selectedWorkspace.tableNumber}</strong></span>
+                  <span>{isRTL ? 'المسؤول' : 'Person'}: <strong>{selectedWorkspace.personName}</strong></span>
+                </div>
+
+                <div className="form-row">
+                  <div className="form-group">
+                    <label>{isRTL ? 'نوع التقييم' : 'Rating Type'}</label>
+                    <select
+                      value={workspaceRatingForm.type}
+                      onChange={(e) => setWorkspaceRatingForm({ ...workspaceRatingForm, type: e.target.value })}
+                    >
+                      <option value="award">{isRTL ? 'منح نقاط' : 'Award Points'}</option>
+                      <option value="deduct">{isRTL ? 'خصم نقاط' : 'Deduct Points'}</option>
+                    </select>
+                  </div>
+                  <div className="form-group">
+                    <label>{isRTL ? 'النقاط' : 'Points'}</label>
+                    <input
+                      type="number"
+                      min="1"
+                      value={workspaceRatingForm.points}
+                      onChange={(e) => setWorkspaceRatingForm({ ...workspaceRatingForm, points: parseInt(e.target.value) || 1 })}
+                    />
+                  </div>
+                </div>
+
+                <div className="form-group">
+                  <label>{isRTL ? 'المعيار' : 'Criteria'} *</label>
+                  <select
+                    value={workspaceRatingForm.criteria}
+                    onChange={(e) => setWorkspaceRatingForm({ ...workspaceRatingForm, criteria: e.target.value })}
+                  >
+                    {workspaceCriteriaOptions.map(opt => (
+                      <option key={opt.value} value={opt.value}>{opt.label}</option>
+                    ))}
+                  </select>
+                </div>
+
+                {workspaceRatingForm.criteria === 'other' && (
+                  <div className="form-group">
+                    <label>{isRTL ? 'معيار مخصص' : 'Custom Criteria'}</label>
+                    <input
+                      type="text"
+                      value={workspaceRatingForm.customCriteria || ''}
+                      onChange={(e) => setWorkspaceRatingForm({ ...workspaceRatingForm, customCriteria: e.target.value })}
+                      placeholder={isRTL ? 'أدخل المعيار' : 'Enter criteria'}
+                    />
+                  </div>
+                )}
+
+                <div className="form-group">
+                  <label>{isRTL ? 'تاريخ التقييم' : 'Rating Date'}</label>
+                  <input
+                    type="date"
+                    value={workspaceRatingForm.ratingDate}
+                    onChange={(e) => setWorkspaceRatingForm({ ...workspaceRatingForm, ratingDate: e.target.value })}
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label>{isRTL ? 'ملاحظات' : 'Notes'}</label>
+                  <textarea
+                    value={workspaceRatingForm.notes}
+                    onChange={(e) => setWorkspaceRatingForm({ ...workspaceRatingForm, notes: e.target.value })}
+                    placeholder={isRTL ? 'ملاحظات إضافية' : 'Additional notes'}
+                    rows={3}
+                  />
+                </div>
+              </div>
+              <div className="modal-footer">
+                <button className="btn-secondary" onClick={() => setShowWorkspaceRatingModal(false)}>
+                  {isRTL ? 'إلغاء' : 'Cancel'}
+                </button>
+                <button
+                  className="btn-primary"
+                  onClick={handleAddWorkspaceRating}
+                  disabled={workspaceLoading}
+                >
+                  {workspaceLoading ? (isRTL ? 'جاري الحفظ...' : 'Saving...') : (isRTL ? 'إضافة التقييم' : 'Add Rating')}
                 </button>
               </div>
             </motion.div>
