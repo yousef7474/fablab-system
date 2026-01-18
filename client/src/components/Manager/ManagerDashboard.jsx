@@ -2656,96 +2656,182 @@ const ManagerDashboard = () => {
         {showVolunteerModal && (
           <div className="modal-overlay" onClick={() => setShowVolunteerModal(false)}>
             <motion.div
-              className="modal-content task-modal"
+              className="modal-content modern-modal volunteer-modal"
               onClick={(e) => e.stopPropagation()}
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              transition={{ type: "spring", damping: 25, stiffness: 300 }}
             >
-              <div className="modal-header">
-                <h2>{isRTL ? 'إضافة متطوع جديد' : 'Add New Volunteer'}</h2>
-                <button className="close-btn" onClick={() => setShowVolunteerModal(false)}>×</button>
+              <div className="modern-modal-header volunteer-header-gradient">
+                <div className="modal-header-icon">
+                  <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                    <circle cx="9" cy="7" r="4"/>
+                    <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+                    <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+                  </svg>
+                </div>
+                <div className="modal-header-text">
+                  <h2>{isRTL ? 'متطوع جديد' : 'New Volunteer'}</h2>
+                  <p>{isRTL ? 'تسجيل متطوع جديد في النظام' : 'Register a new volunteer'}</p>
+                </div>
+                <button className="modal-close-modern" onClick={() => setShowVolunteerModal(false)}>
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <line x1="18" y1="6" x2="6" y2="18"/>
+                    <line x1="6" y1="6" x2="18" y2="18"/>
+                  </svg>
+                </button>
               </div>
-              <div className="modal-body">
-                <div className="form-group">
-                  <label>{isRTL ? 'الاسم' : 'Name'} *</label>
-                  <input
-                    type="text"
-                    value={volunteerForm.name}
-                    onChange={(e) => setVolunteerForm(prev => ({ ...prev, name: e.target.value }))}
-                    placeholder={isRTL ? 'الاسم الكامل' : 'Full name'}
-                    required
-                  />
-                </div>
-                <div className="form-group">
-                  <label>{isRTL ? 'رقم الهوية' : 'National ID'} *</label>
-                  <input
-                    type="text"
-                    value={volunteerForm.nationalId}
-                    onChange={(e) => setVolunteerForm(prev => ({ ...prev, nationalId: e.target.value }))}
-                    placeholder={isRTL ? 'رقم الهوية الوطنية' : 'National ID number'}
-                    required
-                  />
-                </div>
-                <div className="form-group">
-                  <label>{isRTL ? 'رقم الجوال' : 'Phone'} *</label>
-                  <input
-                    type="tel"
-                    value={volunteerForm.phone}
-                    onChange={(e) => setVolunteerForm(prev => ({ ...prev, phone: e.target.value }))}
-                    placeholder="05xxxxxxxx"
-                    required
-                  />
-                </div>
-                <div className="form-group">
-                  <label>{isRTL ? 'البريد الإلكتروني' : 'Email'}</label>
-                  <input
-                    type="email"
-                    value={volunteerForm.email}
-                    onChange={(e) => setVolunteerForm(prev => ({ ...prev, email: e.target.value }))}
-                    placeholder="email@example.com"
-                  />
-                </div>
-                <div className="form-group">
-                  <label>{isRTL ? 'صورة الهوية' : 'ID Photo'}</label>
-                  <div
-                    className={`photo-upload-area ${volunteerForm.nationalIdPhoto ? 'has-photo' : ''}`}
-                    onClick={() => document.getElementById('id-photo-input').click()}
-                  >
-                    {volunteerForm.nationalIdPhoto ? (
-                      <>
-                        <img src={volunteerForm.nationalIdPhoto} alt="ID" className="photo-preview" />
-                        <p>{isRTL ? 'انقر لتغيير الصورة' : 'Click to change photo'}</p>
-                      </>
-                    ) : (
-                      <>
-                        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-                          <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
-                          <circle cx="8.5" cy="8.5" r="1.5"/>
-                          <polyline points="21 15 16 10 5 21"/>
+              <div className="modern-modal-body">
+                <div className="form-section">
+                  <div className="section-header">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+                      <circle cx="12" cy="7" r="4"/>
+                    </svg>
+                    <span>{isRTL ? 'المعلومات الشخصية' : 'Personal Information'}</span>
+                  </div>
+                  <div className="form-group modern-input">
+                    <label>{isRTL ? 'الاسم' : 'Name'} <span className="required">*</span></label>
+                    <div className="input-with-icon">
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+                        <circle cx="12" cy="7" r="4"/>
+                      </svg>
+                      <input
+                        type="text"
+                        value={volunteerForm.name}
+                        onChange={(e) => setVolunteerForm(prev => ({ ...prev, name: e.target.value }))}
+                        placeholder={isRTL ? 'الاسم الكامل' : 'Full name'}
+                        className="modern-input-field"
+                      />
+                    </div>
+                  </div>
+                  <div className="form-group modern-input">
+                    <label>{isRTL ? 'رقم الهوية' : 'National ID'} <span className="required">*</span></label>
+                    <div className="input-with-icon">
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <rect x="3" y="4" width="18" height="16" rx="2"/>
+                        <line x1="7" y1="8" x2="17" y2="8"/>
+                        <line x1="7" y1="12" x2="13" y2="12"/>
+                      </svg>
+                      <input
+                        type="text"
+                        value={volunteerForm.nationalId}
+                        onChange={(e) => setVolunteerForm(prev => ({ ...prev, nationalId: e.target.value }))}
+                        placeholder={isRTL ? 'رقم الهوية الوطنية' : 'National ID number'}
+                        className="modern-input-field"
+                        dir="ltr"
+                      />
+                    </div>
+                  </div>
+                  <div className="form-row">
+                    <div className="form-group modern-input">
+                      <label>{isRTL ? 'رقم الجوال' : 'Phone'} <span className="required">*</span></label>
+                      <div className="input-with-icon">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                          <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/>
                         </svg>
-                        <p>{isRTL ? 'انقر لرفع صورة الهوية' : 'Click to upload ID photo'}</p>
-                      </>
+                        <input
+                          type="tel"
+                          value={volunteerForm.phone}
+                          onChange={(e) => setVolunteerForm(prev => ({ ...prev, phone: e.target.value }))}
+                          placeholder="05xxxxxxxx"
+                          className="modern-input-field"
+                          dir="ltr"
+                        />
+                      </div>
+                    </div>
+                    <div className="form-group modern-input">
+                      <label>{isRTL ? 'البريد الإلكتروني' : 'Email'}</label>
+                      <div className="input-with-icon">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                          <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
+                          <polyline points="22,6 12,13 2,6"/>
+                        </svg>
+                        <input
+                          type="email"
+                          value={volunteerForm.email}
+                          onChange={(e) => setVolunteerForm(prev => ({ ...prev, email: e.target.value }))}
+                          placeholder="email@example.com"
+                          className="modern-input-field"
+                          dir="ltr"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="form-section">
+                  <div className="section-header">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+                      <circle cx="8.5" cy="8.5" r="1.5"/>
+                      <polyline points="21 15 16 10 5 21"/>
+                    </svg>
+                    <span>{isRTL ? 'صورة الهوية' : 'ID Photo'}</span>
+                  </div>
+                  <div className="photo-upload-area modern-upload">
+                    {volunteerForm.nationalIdPhoto ? (
+                      <div className="photo-preview">
+                        <img src={volunteerForm.nationalIdPhoto} alt="ID" />
+                        <button
+                          className="remove-photo-btn"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setVolunteerForm(prev => ({ ...prev, nationalIdPhoto: '' }));
+                          }}
+                        >
+                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                            <line x1="18" y1="6" x2="6" y2="18"/>
+                            <line x1="6" y1="6" x2="18" y2="18"/>
+                          </svg>
+                        </button>
+                      </div>
+                    ) : (
+                      <label className="photo-upload-label">
+                        <input
+                          type="file"
+                          accept="image/*"
+                          onChange={handleVolunteerPhotoUpload}
+                          style={{ display: 'none' }}
+                        />
+                        <div className="upload-content">
+                          <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                            <polyline points="17 8 12 3 7 8"/>
+                            <line x1="12" y1="3" x2="12" y2="15"/>
+                          </svg>
+                          <span className="upload-text">{isRTL ? 'انقر لرفع صورة الهوية' : 'Click to upload ID photo'}</span>
+                          <span className="upload-hint">{isRTL ? 'PNG, JPG حتى 5MB' : 'PNG, JPG up to 5MB'}</span>
+                        </div>
+                      </label>
                     )}
                   </div>
-                  <input
-                    id="id-photo-input"
-                    type="file"
-                    accept="image/*"
-                    onChange={handleVolunteerPhotoUpload}
-                    style={{ display: 'none' }}
-                  />
                 </div>
               </div>
-              <div className="modal-footer">
-                <button className="modal-btn cancel" onClick={() => setShowVolunteerModal(false)}>
+              <div className="modern-modal-footer">
+                <button className="btn-cancel" onClick={() => setShowVolunteerModal(false)}>
                   {isRTL ? 'إلغاء' : 'Cancel'}
                 </button>
                 <button
-                  className="modal-btn save"
+                  className="btn-submit volunteer-submit"
                   onClick={handleCreateVolunteer}
                   disabled={volunteerLoading || !volunteerForm.name || !volunteerForm.nationalId || !volunteerForm.phone}
                 >
-                  {volunteerLoading ? (isRTL ? 'جاري الحفظ...' : 'Saving...') : (isRTL ? 'حفظ' : 'Save')}
+                  {volunteerLoading ? (
+                    <>
+                      <span className="spinner"></span>
+                      {isRTL ? 'جاري الحفظ...' : 'Saving...'}
+                    </>
+                  ) : (
+                    <>
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <polyline points="20 6 9 17 4 12"/>
+                      </svg>
+                      {isRTL ? 'إضافة متطوع' : 'Add Volunteer'}
+                    </>
+                  )}
                 </button>
               </div>
             </motion.div>
@@ -2756,20 +2842,47 @@ const ManagerDashboard = () => {
         {showOpportunityModal && (
           <div className="modal-overlay" onClick={() => setShowOpportunityModal(false)}>
             <motion.div
-              className="modal-content task-modal"
+              className="modal-content modern-modal opportunity-modal"
               onClick={(e) => e.stopPropagation()}
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              transition={{ type: "spring", damping: 25, stiffness: 300 }}
             >
-              <div className="modal-header">
-                <h2>{isRTL ? 'إضافة فرصة تطوع' : 'Add Volunteer Opportunity'}</h2>
-                <button className="close-btn" onClick={() => setShowOpportunityModal(false)}>×</button>
+              <div className="modern-modal-header opportunity-header-gradient">
+                <div className="modal-header-icon">
+                  <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+                    <line x1="16" y1="2" x2="16" y2="6"/>
+                    <line x1="8" y1="2" x2="8" y2="6"/>
+                    <line x1="3" y1="10" x2="21" y2="10"/>
+                    <line x1="12" y1="14" x2="12" y2="18"/>
+                    <line x1="10" y1="16" x2="14" y2="16"/>
+                  </svg>
+                </div>
+                <div className="modal-header-text">
+                  <h2>{isRTL ? 'فرصة تطوع جديدة' : 'New Opportunity'}</h2>
+                  <p>{isRTL ? 'إنشاء فرصة تطوع للمتطوعين' : 'Create a volunteer opportunity'}</p>
+                </div>
+                <button className="modal-close-modern" onClick={() => setShowOpportunityModal(false)}>
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <line x1="18" y1="6" x2="6" y2="18"/>
+                    <line x1="6" y1="6" x2="18" y2="18"/>
+                  </svg>
+                </button>
               </div>
-              <div className="modal-body">
-                <div className="form-group">
-                  <label>{isRTL ? 'المتطوعين' : 'Volunteers'} *</label>
-                  <div className="select-all-checkbox">
-                    <label className="checkbox-label">
+              <div className="modern-modal-body">
+                <div className="form-section">
+                  <div className="section-header">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                      <circle cx="9" cy="7" r="4"/>
+                      <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+                      <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+                    </svg>
+                    <span>{isRTL ? 'اختيار المتطوعين' : 'Select Volunteers'}</span>
+                  </div>
+                  <div className="select-all-toggle">
+                    <label className="toggle-label">
                       <input
                         type="checkbox"
                         checked={opportunityForm.selectAllVolunteers}
@@ -2781,14 +2894,16 @@ const ManagerDashboard = () => {
                             volunteerIds: selectAll ? volunteers.map(v => v.volunteerId) : []
                           }));
                         }}
+                        className="toggle-checkbox"
                       />
-                      <span>{isRTL ? 'تعيين لجميع المتطوعين' : 'Assign to all volunteers'}</span>
+                      <span className="toggle-switch"></span>
+                      <span className="toggle-text">{isRTL ? 'تعيين لجميع المتطوعين' : 'Assign to all volunteers'}</span>
                     </label>
                   </div>
                   {!opportunityForm.selectAllVolunteers && (
-                    <div className="volunteer-checkbox-list">
+                    <div className="volunteer-checkbox-list modern-list">
                       {volunteers.map(v => (
-                        <label key={v.volunteerId} className="volunteer-checkbox-item">
+                        <label key={v.volunteerId} className={`volunteer-checkbox-item modern ${opportunityForm.volunteerIds.includes(v.volunteerId) ? 'selected' : ''}`}>
                           <input
                             type="checkbox"
                             checked={opportunityForm.volunteerIds.includes(v.volunteerId)}
@@ -2811,94 +2926,156 @@ const ManagerDashboard = () => {
                             <span className="volunteer-checkbox-name">{v.name}</span>
                             <span className="volunteer-checkbox-id">{v.nationalId}</span>
                           </div>
+                          <div className="checkbox-indicator">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
+                              <polyline points="20 6 9 17 4 12"/>
+                            </svg>
+                          </div>
                         </label>
                       ))}
                     </div>
                   )}
                   {!opportunityForm.selectAllVolunteers && opportunityForm.volunteerIds.length > 0 && (
-                    <div className="selected-count">
+                    <div className="selected-count-badge">
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                        <circle cx="9" cy="7" r="4"/>
+                      </svg>
                       {isRTL
                         ? `تم تحديد ${opportunityForm.volunteerIds.length} متطوع`
                         : `${opportunityForm.volunteerIds.length} volunteer${opportunityForm.volunteerIds.length > 1 ? 's' : ''} selected`}
                     </div>
                   )}
                 </div>
-                <div className="form-group">
-                  <label>{isRTL ? 'عنوان الفرصة' : 'Opportunity Title'} *</label>
-                  <input
-                    type="text"
-                    value={opportunityForm.title}
-                    onChange={(e) => setOpportunityForm(prev => ({ ...prev, title: e.target.value }))}
-                    placeholder={isRTL ? 'عنوان فرصة التطوع' : 'Opportunity title'}
-                    required
-                  />
-                </div>
-                <div className="form-group">
-                  <label>{isRTL ? 'الوصف' : 'Description'}</label>
-                  <textarea
-                    value={opportunityForm.description}
-                    onChange={(e) => setOpportunityForm(prev => ({ ...prev, description: e.target.value }))}
-                    rows="3"
-                    placeholder={isRTL ? 'وصف فرصة التطوع...' : 'Opportunity description...'}
-                  />
-                </div>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
-                  <div className="form-group">
-                    <label>{isRTL ? 'تاريخ البداية' : 'Start Date'} *</label>
+
+                <div className="form-section">
+                  <div className="section-header">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                      <polyline points="14 2 14 8 20 8"/>
+                    </svg>
+                    <span>{isRTL ? 'تفاصيل الفرصة' : 'Opportunity Details'}</span>
+                  </div>
+                  <div className="form-group modern-input">
+                    <label>{isRTL ? 'عنوان الفرصة' : 'Opportunity Title'} <span className="required">*</span></label>
                     <input
-                      type="date"
-                      value={opportunityForm.startDate}
-                      onChange={(e) => setOpportunityForm(prev => ({ ...prev, startDate: e.target.value }))}
-                      required
+                      type="text"
+                      value={opportunityForm.title}
+                      onChange={(e) => setOpportunityForm(prev => ({ ...prev, title: e.target.value }))}
+                      placeholder={isRTL ? 'عنوان فرصة التطوع' : 'Opportunity title'}
+                      className="modern-input-field"
                     />
                   </div>
-                  <div className="form-group">
-                    <label>{isRTL ? 'تاريخ النهاية' : 'End Date'} *</label>
-                    <input
-                      type="date"
-                      value={opportunityForm.endDate}
-                      onChange={(e) => setOpportunityForm(prev => ({ ...prev, endDate: e.target.value }))}
-                      required
+                  <div className="form-group modern-input">
+                    <label>{isRTL ? 'الوصف' : 'Description'}</label>
+                    <textarea
+                      value={opportunityForm.description}
+                      onChange={(e) => setOpportunityForm(prev => ({ ...prev, description: e.target.value }))}
+                      rows="3"
+                      placeholder={isRTL ? 'وصف فرصة التطوع...' : 'Opportunity description...'}
+                      className="modern-textarea"
                     />
                   </div>
                 </div>
-                <div className="form-group">
-                  <label>{isRTL ? 'ساعات العمل اليومية' : 'Daily Hours'}</label>
-                  <input
-                    type="number"
-                    min="1"
-                    max="24"
-                    value={opportunityForm.dailyHours}
-                    onChange={(e) => setOpportunityForm(prev => ({ ...prev, dailyHours: parseInt(e.target.value) || 8 }))}
-                  />
-                </div>
-                {opportunityForm.startDate && opportunityForm.endDate && (
-                  <div className="hours-display">
-                    {isRTL ? 'إجمالي الساعات: ' : 'Total Hours: '}
-                    {calculateTotalHours(opportunityForm.startDate, opportunityForm.endDate, opportunityForm.dailyHours)}
+
+                <div className="form-section">
+                  <div className="section-header">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <circle cx="12" cy="12" r="10"/>
+                      <polyline points="12 6 12 12 16 14"/>
+                    </svg>
+                    <span>{isRTL ? 'فترة التطوع' : 'Volunteer Period'}</span>
                   </div>
-                )}
-                <div className="info-note" style={{ marginTop: '12px', padding: '12px', background: 'rgba(59, 130, 246, 0.1)', borderRadius: '8px', fontSize: '13px', color: 'var(--text-secondary)' }}>
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" strokeWidth="2" style={{ display: 'inline', verticalAlign: 'middle', marginRight: '8px' }}>
+                  <div className="period-grid">
+                    <div className="period-box start">
+                      <span className="period-label">{isRTL ? 'البداية' : 'Start'}</span>
+                      <input
+                        type="date"
+                        value={opportunityForm.startDate}
+                        onChange={(e) => setOpportunityForm(prev => ({ ...prev, startDate: e.target.value }))}
+                        className="modern-input-field"
+                      />
+                    </div>
+                    <div className={`period-arrow ${isRTL ? 'rtl' : ''}`}>
+                      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <line x1="5" y1="12" x2="19" y2="12"/>
+                        <polyline points={isRTL ? "12 5 5 12 12 19" : "12 5 19 12 12 19"}/>
+                      </svg>
+                    </div>
+                    <div className="period-box end">
+                      <span className="period-label">{isRTL ? 'النهاية' : 'End'}</span>
+                      <input
+                        type="date"
+                        value={opportunityForm.endDate}
+                        onChange={(e) => setOpportunityForm(prev => ({ ...prev, endDate: e.target.value }))}
+                        className="modern-input-field"
+                      />
+                    </div>
+                  </div>
+                  <div className="form-group modern-input" style={{ marginTop: '1rem' }}>
+                    <label>
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <circle cx="12" cy="12" r="10"/>
+                        <polyline points="12 6 12 12 16 14"/>
+                      </svg>
+                      {isRTL ? 'ساعات العمل اليومية' : 'Daily Hours'}
+                    </label>
+                    <input
+                      type="number"
+                      min="1"
+                      max="24"
+                      value={opportunityForm.dailyHours}
+                      onChange={(e) => setOpportunityForm(prev => ({ ...prev, dailyHours: parseInt(e.target.value) || 8 }))}
+                      className="modern-input-field"
+                    />
+                  </div>
+                  {opportunityForm.startDate && opportunityForm.endDate && (
+                    <div className="total-hours-display">
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <circle cx="12" cy="12" r="10"/>
+                        <polyline points="12 6 12 12 16 14"/>
+                      </svg>
+                      <span>{isRTL ? 'إجمالي الساعات' : 'Total Hours'}</span>
+                      <strong>{calculateTotalHours(opportunityForm.startDate, opportunityForm.endDate, opportunityForm.dailyHours)}</strong>
+                    </div>
+                  )}
+                </div>
+
+                <div className="info-note-modern">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                     <circle cx="12" cy="12" r="10"/>
                     <line x1="12" y1="16" x2="12" y2="12"/>
                     <line x1="12" y1="8" x2="12.01" y2="8"/>
                   </svg>
-                  {isRTL
-                    ? 'ملاحظة: يمكنك تقييم المتطوع بعد انتهاء فرصة التطوع'
-                    : 'Note: You can rate the volunteer after the opportunity is completed'}
+                  <p>
+                    {isRTL
+                      ? 'ملاحظة: يمكنك تقييم المتطوع بعد انتهاء فرصة التطوع'
+                      : 'Note: You can rate the volunteer after the opportunity is completed'}
+                  </p>
                 </div>
               </div>
-              <div className="modal-footer">
-                <button className="modal-btn cancel" onClick={() => setShowOpportunityModal(false)}>
+              <div className="modern-modal-footer">
+                <button className="btn-cancel" onClick={() => setShowOpportunityModal(false)}>
                   {isRTL ? 'إلغاء' : 'Cancel'}
                 </button>
                 <button
-                  className="modal-btn save"
+                  className="btn-submit opportunity-submit"
                   onClick={handleCreateOpportunity}
                   disabled={volunteerLoading || (!opportunityForm.selectAllVolunteers && opportunityForm.volunteerIds.length === 0) || !opportunityForm.title || !opportunityForm.startDate || !opportunityForm.endDate}
                 >
-                  {volunteerLoading ? (isRTL ? 'جاري الحفظ...' : 'Saving...') : (isRTL ? 'حفظ' : 'Save')}
+                  {volunteerLoading ? (
+                    <>
+                      <span className="spinner"></span>
+                      {isRTL ? 'جاري الحفظ...' : 'Saving...'}
+                    </>
+                  ) : (
+                    <>
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <polyline points="20 6 9 17 4 12"/>
+                      </svg>
+                      {isRTL ? 'إنشاء فرصة التطوع' : 'Create Opportunity'}
+                    </>
+                  )}
                 </button>
               </div>
             </motion.div>
@@ -3379,85 +3556,176 @@ const ManagerDashboard = () => {
         {showInternModal && (
           <div className="modal-overlay" onClick={() => setShowInternModal(false)}>
             <motion.div
-              className="modal-content task-modal"
+              className="modal-content modern-modal intern-modal"
               onClick={(e) => e.stopPropagation()}
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              transition={{ type: "spring", damping: 25, stiffness: 300 }}
             >
-              <div className="modal-header">
-                <h2>{isRTL ? 'إضافة متدرب جديد' : 'Add New Intern'}</h2>
-                <button className="close-btn" onClick={() => setShowInternModal(false)}>×</button>
+              <div className="modern-modal-header intern-header-gradient">
+                <div className="modal-header-icon">
+                  <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M22 10v6M2 10l10-5 10 5-10 5z"/>
+                    <path d="M6 12v5c3 3 9 3 12 0v-5"/>
+                  </svg>
+                </div>
+                <div className="modal-header-text">
+                  <h2>{isRTL ? 'متدرب جديد' : 'New Intern'}</h2>
+                  <p>{isRTL ? 'تسجيل متدرب جامعي جديد' : 'Register a new university intern'}</p>
+                </div>
+                <button className="modal-close-modern" onClick={() => setShowInternModal(false)}>
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <line x1="18" y1="6" x2="6" y2="18"/>
+                    <line x1="6" y1="6" x2="18" y2="18"/>
+                  </svg>
+                </button>
               </div>
-              <div className="modal-body">
-                <div className="form-group">
-                  <label>{isRTL ? 'الاسم' : 'Name'} *</label>
-                  <input
-                    type="text"
-                    value={internForm.name}
-                    onChange={(e) => setInternForm(prev => ({ ...prev, name: e.target.value }))}
-                    placeholder={isRTL ? 'اسم المتدرب' : 'Intern name'}
-                  />
-                </div>
-                <div className="form-row">
-                  <div className="form-group">
-                    <label>{isRTL ? 'رقم الهوية' : 'National ID'} *</label>
-                    <input
-                      type="text"
-                      value={internForm.nationalId}
-                      onChange={(e) => setInternForm(prev => ({ ...prev, nationalId: e.target.value }))}
-                      placeholder={isRTL ? 'رقم الهوية الوطنية' : 'National ID number'}
-                    />
+              <div className="modern-modal-body">
+                <div className="form-section">
+                  <div className="section-header">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+                      <circle cx="12" cy="7" r="4"/>
+                    </svg>
+                    <span>{isRTL ? 'المعلومات الشخصية' : 'Personal Information'}</span>
                   </div>
-                  <div className="form-group">
-                    <label>{isRTL ? 'رقم الجوال' : 'Phone'} *</label>
-                    <input
-                      type="text"
-                      value={internForm.phone}
-                      onChange={(e) => setInternForm(prev => ({ ...prev, phone: e.target.value }))}
-                      placeholder={isRTL ? 'رقم الجوال' : 'Phone number'}
-                    />
+                  <div className="form-group modern-input">
+                    <label>{isRTL ? 'الاسم' : 'Name'} <span className="required">*</span></label>
+                    <div className="input-with-icon">
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+                        <circle cx="12" cy="7" r="4"/>
+                      </svg>
+                      <input
+                        type="text"
+                        value={internForm.name}
+                        onChange={(e) => setInternForm(prev => ({ ...prev, name: e.target.value }))}
+                        placeholder={isRTL ? 'الاسم الكامل' : 'Full name'}
+                        className="modern-input-field"
+                      />
+                    </div>
+                  </div>
+                  <div className="form-row">
+                    <div className="form-group modern-input">
+                      <label>{isRTL ? 'رقم الهوية' : 'National ID'} <span className="required">*</span></label>
+                      <div className="input-with-icon">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                          <rect x="3" y="4" width="18" height="16" rx="2"/>
+                          <line x1="7" y1="8" x2="17" y2="8"/>
+                          <line x1="7" y1="12" x2="13" y2="12"/>
+                        </svg>
+                        <input
+                          type="text"
+                          value={internForm.nationalId}
+                          onChange={(e) => setInternForm(prev => ({ ...prev, nationalId: e.target.value }))}
+                          placeholder={isRTL ? 'رقم الهوية' : 'ID number'}
+                          className="modern-input-field"
+                          dir="ltr"
+                        />
+                      </div>
+                    </div>
+                    <div className="form-group modern-input">
+                      <label>{isRTL ? 'رقم الجوال' : 'Phone'} <span className="required">*</span></label>
+                      <div className="input-with-icon">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                          <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/>
+                        </svg>
+                        <input
+                          type="text"
+                          value={internForm.phone}
+                          onChange={(e) => setInternForm(prev => ({ ...prev, phone: e.target.value }))}
+                          placeholder="05xxxxxxxx"
+                          className="modern-input-field"
+                          dir="ltr"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                  <div className="form-group modern-input">
+                    <label>{isRTL ? 'البريد الإلكتروني' : 'Email'}</label>
+                    <div className="input-with-icon">
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
+                        <polyline points="22,6 12,13 2,6"/>
+                      </svg>
+                      <input
+                        type="email"
+                        value={internForm.email}
+                        onChange={(e) => setInternForm(prev => ({ ...prev, email: e.target.value }))}
+                        placeholder={isRTL ? 'البريد الإلكتروني (اختياري)' : 'Email (optional)'}
+                        className="modern-input-field"
+                        dir="ltr"
+                      />
+                    </div>
                   </div>
                 </div>
-                <div className="form-group">
-                  <label>{isRTL ? 'البريد الإلكتروني' : 'Email'}</label>
-                  <input
-                    type="email"
-                    value={internForm.email}
-                    onChange={(e) => setInternForm(prev => ({ ...prev, email: e.target.value }))}
-                    placeholder={isRTL ? 'البريد الإلكتروني (اختياري)' : 'Email (optional)'}
-                  />
-                </div>
-                <div className="form-row">
-                  <div className="form-group">
-                    <label>{isRTL ? 'الجامعة' : 'University'}</label>
-                    <input
-                      type="text"
-                      value={internForm.university}
-                      onChange={(e) => setInternForm(prev => ({ ...prev, university: e.target.value }))}
-                      placeholder={isRTL ? 'اسم الجامعة' : 'University name'}
-                    />
+
+                <div className="form-section">
+                  <div className="section-header">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="M22 10v6M2 10l10-5 10 5-10 5z"/>
+                      <path d="M6 12v5c3 3 9 3 12 0v-5"/>
+                    </svg>
+                    <span>{isRTL ? 'المعلومات الأكاديمية' : 'Academic Information'}</span>
                   </div>
-                  <div className="form-group">
-                    <label>{isRTL ? 'التخصص' : 'Major'}</label>
-                    <input
-                      type="text"
-                      value={internForm.major}
-                      onChange={(e) => setInternForm(prev => ({ ...prev, major: e.target.value }))}
-                      placeholder={isRTL ? 'التخصص الدراسي' : 'Field of study'}
-                    />
+                  <div className="form-row">
+                    <div className="form-group modern-input">
+                      <label>{isRTL ? 'الجامعة' : 'University'}</label>
+                      <div className="input-with-icon">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                          <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+                          <polyline points="9 22 9 12 15 12 15 22"/>
+                        </svg>
+                        <input
+                          type="text"
+                          value={internForm.university}
+                          onChange={(e) => setInternForm(prev => ({ ...prev, university: e.target.value }))}
+                          placeholder={isRTL ? 'اسم الجامعة' : 'University name'}
+                          className="modern-input-field"
+                        />
+                      </div>
+                    </div>
+                    <div className="form-group modern-input">
+                      <label>{isRTL ? 'التخصص' : 'Major'}</label>
+                      <div className="input-with-icon">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                          <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/>
+                          <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
+                        </svg>
+                        <input
+                          type="text"
+                          value={internForm.major}
+                          onChange={(e) => setInternForm(prev => ({ ...prev, major: e.target.value }))}
+                          placeholder={isRTL ? 'التخصص الدراسي' : 'Field of study'}
+                          className="modern-input-field"
+                        />
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>
-              <div className="modal-footer">
-                <button className="modal-btn cancel" onClick={() => setShowInternModal(false)}>
+              <div className="modern-modal-footer">
+                <button className="btn-cancel" onClick={() => setShowInternModal(false)}>
                   {isRTL ? 'إلغاء' : 'Cancel'}
                 </button>
                 <button
-                  className="modal-btn save"
+                  className="btn-submit intern-submit"
                   onClick={handleCreateIntern}
-                  disabled={internLoading}
+                  disabled={internLoading || !internForm.name.trim() || !internForm.nationalId.trim() || !internForm.phone.trim()}
                 >
-                  {internLoading ? (isRTL ? 'جاري الحفظ...' : 'Saving...') : (isRTL ? 'حفظ' : 'Save')}
+                  {internLoading ? (
+                    <>
+                      <span className="spinner"></span>
+                      {isRTL ? 'جاري الحفظ...' : 'Saving...'}
+                    </>
+                  ) : (
+                    <>
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <polyline points="20 6 9 17 4 12"/>
+                      </svg>
+                      {isRTL ? 'إضافة متدرب' : 'Add Intern'}
+                    </>
+                  )}
                 </button>
               </div>
             </motion.div>
@@ -3468,21 +3736,45 @@ const ManagerDashboard = () => {
         {showTrainingModal && (
           <div className="modal-overlay" onClick={() => setShowTrainingModal(false)}>
             <motion.div
-              className="modal-content task-modal"
+              className="modal-content modern-modal training-modal"
               onClick={(e) => e.stopPropagation()}
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              transition={{ type: "spring", damping: 25, stiffness: 300 }}
             >
-              <div className="modal-header">
-                <h2>{isRTL ? 'إضافة فترة تدريب' : 'Add Training Period'}</h2>
-                <button className="close-btn" onClick={() => setShowTrainingModal(false)}>×</button>
+              <div className="modern-modal-header training-header-gradient">
+                <div className="modal-header-icon">
+                  <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+                    <line x1="16" y1="2" x2="16" y2="6"/>
+                    <line x1="8" y1="2" x2="8" y2="6"/>
+                    <line x1="3" y1="10" x2="21" y2="10"/>
+                  </svg>
+                </div>
+                <div className="modal-header-text">
+                  <h2>{isRTL ? 'فترة تدريب جديدة' : 'New Training Period'}</h2>
+                  <p>{isRTL ? 'إضافة فترة تدريب للمتدرب' : 'Add a training period for an intern'}</p>
+                </div>
+                <button className="modal-close-modern" onClick={() => setShowTrainingModal(false)}>
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <line x1="18" y1="6" x2="6" y2="18"/>
+                    <line x1="6" y1="6" x2="18" y2="18"/>
+                  </svg>
+                </button>
               </div>
-              <div className="modal-body">
-                <div className="form-group">
-                  <label>{isRTL ? 'المتدرب' : 'Intern'} *</label>
+              <div className="modern-modal-body">
+                <div className="form-group modern-input">
+                  <label>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+                      <circle cx="12" cy="7" r="4"/>
+                    </svg>
+                    {isRTL ? 'المتدرب' : 'Intern'} <span className="required">*</span>
+                  </label>
                   <select
                     value={trainingForm.internId}
                     onChange={(e) => setTrainingForm(prev => ({ ...prev, internId: e.target.value }))}
+                    className="modern-input-field"
                   >
                     <option value="">{isRTL ? 'اختر المتدرب' : 'Select Intern'}</option>
                     {interns.map(intern => (
@@ -3492,44 +3784,87 @@ const ManagerDashboard = () => {
                     ))}
                   </select>
                 </div>
-                <div className="form-group">
-                  <label>{isRTL ? 'عنوان التدريب' : 'Training Title'} *</label>
+
+                <div className="form-group modern-input">
+                  <label>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                      <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                    </svg>
+                    {isRTL ? 'عنوان التدريب' : 'Training Title'} <span className="required">*</span>
+                  </label>
                   <input
                     type="text"
                     value={trainingForm.title}
                     onChange={(e) => setTrainingForm(prev => ({ ...prev, title: e.target.value }))}
                     placeholder={isRTL ? 'عنوان فترة التدريب' : 'Training period title'}
+                    className="modern-input-field"
                   />
                 </div>
-                <div className="form-group">
-                  <label>{isRTL ? 'الوصف' : 'Description'}</label>
+
+                <div className="form-group modern-input">
+                  <label>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <line x1="17" y1="10" x2="3" y2="10"/>
+                      <line x1="21" y1="6" x2="3" y2="6"/>
+                      <line x1="21" y1="14" x2="3" y2="14"/>
+                      <line x1="17" y1="18" x2="3" y2="18"/>
+                    </svg>
+                    {isRTL ? 'الوصف' : 'Description'}
+                  </label>
                   <textarea
                     value={trainingForm.description}
                     onChange={(e) => setTrainingForm(prev => ({ ...prev, description: e.target.value }))}
                     placeholder={isRTL ? 'وصف التدريب (اختياري)' : 'Training description (optional)'}
                     rows="3"
+                    className="modern-textarea"
                   />
                 </div>
-                <div className="form-row">
-                  <div className="form-group">
-                    <label>{isRTL ? 'تاريخ البدء' : 'Start Date'} *</label>
-                    <input
-                      type="date"
-                      value={trainingForm.startDate}
-                      onChange={(e) => setTrainingForm(prev => ({ ...prev, startDate: e.target.value }))}
-                    />
+
+                <div className="form-section">
+                  <div className="section-header">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <circle cx="12" cy="12" r="10"/>
+                      <polyline points="12 6 12 12 16 14"/>
+                    </svg>
+                    <span>{isRTL ? 'فترة التدريب' : 'Training Period'}</span>
                   </div>
-                  <div className="form-group">
-                    <label>{isRTL ? 'تاريخ الانتهاء' : 'End Date'} *</label>
-                    <input
-                      type="date"
-                      value={trainingForm.endDate}
-                      onChange={(e) => setTrainingForm(prev => ({ ...prev, endDate: e.target.value }))}
-                    />
+                  <div className="period-grid">
+                    <div className="period-box start">
+                      <span className="period-label">{isRTL ? 'البداية' : 'Start'}</span>
+                      <input
+                        type="date"
+                        value={trainingForm.startDate}
+                        onChange={(e) => setTrainingForm(prev => ({ ...prev, startDate: e.target.value }))}
+                        className="modern-input-field"
+                      />
+                    </div>
+                    <div className={`period-arrow ${isRTL ? 'rtl' : ''}`}>
+                      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <line x1="5" y1="12" x2="19" y2="12"/>
+                        <polyline points={isRTL ? "12 5 5 12 12 19" : "12 5 19 12 12 19"}/>
+                      </svg>
+                    </div>
+                    <div className="period-box end">
+                      <span className="period-label">{isRTL ? 'النهاية' : 'End'}</span>
+                      <input
+                        type="date"
+                        value={trainingForm.endDate}
+                        onChange={(e) => setTrainingForm(prev => ({ ...prev, endDate: e.target.value }))}
+                        className="modern-input-field"
+                      />
+                    </div>
                   </div>
                 </div>
-                <div className="form-group">
-                  <label>{isRTL ? 'ساعات العمل اليومية' : 'Daily Hours'}</label>
+
+                <div className="form-group modern-input">
+                  <label>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <circle cx="12" cy="12" r="10"/>
+                      <polyline points="12 6 12 12 16 14"/>
+                    </svg>
+                    {isRTL ? 'ساعات العمل اليومية' : 'Daily Hours'}
+                  </label>
                   <input
                     type="number"
                     value={trainingForm.dailyHours}
@@ -3537,19 +3872,32 @@ const ManagerDashboard = () => {
                     min="1"
                     max="24"
                     step="0.5"
+                    className="modern-input-field"
                   />
                 </div>
               </div>
-              <div className="modal-footer">
-                <button className="modal-btn cancel" onClick={() => setShowTrainingModal(false)}>
+              <div className="modern-modal-footer">
+                <button className="btn-cancel" onClick={() => setShowTrainingModal(false)}>
                   {isRTL ? 'إلغاء' : 'Cancel'}
                 </button>
                 <button
-                  className="modal-btn save"
+                  className="btn-submit training-submit"
                   onClick={handleCreateTraining}
-                  disabled={internLoading}
+                  disabled={internLoading || !trainingForm.internId || !trainingForm.title.trim() || !trainingForm.startDate || !trainingForm.endDate}
                 >
-                  {internLoading ? (isRTL ? 'جاري الحفظ...' : 'Saving...') : (isRTL ? 'حفظ' : 'Save')}
+                  {internLoading ? (
+                    <>
+                      <span className="spinner"></span>
+                      {isRTL ? 'جاري الحفظ...' : 'Saving...'}
+                    </>
+                  ) : (
+                    <>
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <polyline points="20 6 9 17 4 12"/>
+                      </svg>
+                      {isRTL ? 'إضافة فترة التدريب' : 'Add Training'}
+                    </>
+                  )}
                 </button>
               </div>
             </motion.div>
@@ -3774,26 +4122,51 @@ const ManagerDashboard = () => {
         {showInternRatingModal && selectedIntern && (
           <div className="modal-overlay" onClick={() => setShowInternRatingModal(false)}>
             <motion.div
-              className="modal-content task-modal"
+              className="modal-content modern-modal rating-modal"
               onClick={(e) => e.stopPropagation()}
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              transition={{ type: "spring", damping: 25, stiffness: 300 }}
             >
-              <div className="modal-header">
-                <h2>{isRTL ? 'تقييم المتدرب' : 'Rate Intern'}</h2>
-                <button className="close-btn" onClick={() => setShowInternRatingModal(false)}>×</button>
+              <div className="modern-modal-header rating-header-gradient">
+                <div className="modal-header-icon">
+                  <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+                  </svg>
+                </div>
+                <div className="modal-header-text">
+                  <h2>{isRTL ? 'تقييم المتدرب' : 'Rate Intern'}</h2>
+                  <p>{isRTL ? 'منح أو خصم نقاط للمتدرب' : 'Award or deduct points for intern'}</p>
+                </div>
+                <button className="modal-close-modern" onClick={() => setShowInternRatingModal(false)}>
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <line x1="18" y1="6" x2="6" y2="18"/>
+                    <line x1="6" y1="6" x2="18" y2="18"/>
+                  </svg>
+                </button>
               </div>
-              <div className="modal-body">
-                <div className="opportunity-info-summary">
-                  <h4>{selectedIntern.name}</h4>
+              <div className="modern-modal-body">
+                <div className="workspace-info-card">
+                  <div className="info-card-item">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+                      <circle cx="12" cy="7" r="4"/>
+                    </svg>
+                    <span>{isRTL ? 'المتدرب' : 'Intern'}</span>
+                    <strong>{selectedIntern.name}</strong>
+                  </div>
                   {selectedTraining && (
-                    <p style={{ color: 'var(--text-secondary)', fontSize: '14px' }}>
-                      {isRTL ? 'تدريب: ' : 'Training: '}{selectedTraining.title}
-                    </p>
+                    <div className="info-card-item">
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <path d="M22 10v6M2 10l10-5 10 5-10 5z"/>
+                        <path d="M6 12v5c3 3 9 3 12 0v-5"/>
+                      </svg>
+                      <span>{isRTL ? 'التدريب' : 'Training'}</span>
+                      <strong>{selectedTraining.title}</strong>
+                    </div>
                   )}
                 </div>
 
-                {/* Rating Type Toggle (Award/Deduction) */}
                 <div className="form-group">
                   <label>{isRTL ? 'نوع التقييم' : 'Rating Type'}</label>
                   <div className="rating-type-toggle">
@@ -3816,20 +4189,19 @@ const ManagerDashboard = () => {
                         <circle cx="12" cy="12" r="10"/>
                         <line x1="8" y1="12" x2="16" y2="12"/>
                       </svg>
-                      <span>{isRTL ? 'خصم نقاط' : 'Deduction'}</span>
+                      <span>{isRTL ? 'خصم نقاط' : 'Deduct'}</span>
                     </button>
                   </div>
                 </div>
 
-                {/* Points Selector (1-5) */}
                 <div className="form-group">
-                  <label>{isRTL ? 'عدد النقاط' : 'Number of Points'}</label>
+                  <label>{isRTL ? 'عدد النقاط' : 'Points'}</label>
                   <div className="points-selector">
                     {[1, 2, 3, 4, 5].map(num => (
                       <button
                         key={num}
                         type="button"
-                        className={`point-btn ${internRatingForm.points === num ? 'active' : ''} ${internRatingForm.type}`}
+                        className={`point-btn ${internRatingForm.points === num ? 'active' : ''} ${internRatingForm.type === 'deduction' ? 'deduction' : 'award'}`}
                         onClick={() => setInternRatingForm(prev => ({ ...prev, points: num }))}
                       >
                         {internRatingForm.type === 'deduction' ? `-${num}` : `+${num}`}
@@ -3838,12 +4210,18 @@ const ManagerDashboard = () => {
                   </div>
                 </div>
 
-                <div className="form-group">
-                  <label>{isRTL ? 'المعيار' : 'Criteria'}</label>
+                <div className="form-group modern-input">
+                  <label>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                      <polyline points="14 2 14 8 20 8"/>
+                    </svg>
+                    {isRTL ? 'المعيار' : 'Criteria'} <span className="required">*</span>
+                  </label>
                   <select
                     value={internRatingForm.criteria}
                     onChange={(e) => setInternRatingForm(prev => ({ ...prev, criteria: e.target.value }))}
-                    className="criteria-select"
+                    className="modern-input-field"
                   >
                     {criteriaOptions.map(opt => (
                       <option key={opt.value} value={opt.value}>{opt.label}</option>
@@ -3851,35 +4229,64 @@ const ManagerDashboard = () => {
                   </select>
                 </div>
 
-                <div className="form-group">
-                  <label>{isRTL ? 'التاريخ' : 'Date'}</label>
+                <div className="form-group modern-input">
+                  <label>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+                      <line x1="16" y1="2" x2="16" y2="6"/>
+                      <line x1="8" y1="2" x2="8" y2="6"/>
+                      <line x1="3" y1="10" x2="21" y2="10"/>
+                    </svg>
+                    {isRTL ? 'التاريخ' : 'Date'}
+                  </label>
                   <input
                     type="date"
                     value={internRatingForm.ratingDate}
                     onChange={(e) => setInternRatingForm(prev => ({ ...prev, ratingDate: e.target.value }))}
+                    className="modern-input-field"
                   />
                 </div>
 
-                <div className="form-group">
-                  <label>{isRTL ? 'ملاحظات' : 'Notes'}</label>
+                <div className="form-group modern-input">
+                  <label>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                      <line x1="16" y1="13" x2="8" y2="13"/>
+                      <line x1="16" y1="17" x2="8" y2="17"/>
+                    </svg>
+                    {isRTL ? 'ملاحظات' : 'Notes'}
+                  </label>
                   <textarea
                     value={internRatingForm.notes}
                     onChange={(e) => setInternRatingForm(prev => ({ ...prev, notes: e.target.value }))}
                     placeholder={isRTL ? 'ملاحظات إضافية (اختياري)' : 'Additional notes (optional)'}
                     rows="3"
+                    className="modern-textarea"
                   />
                 </div>
               </div>
-              <div className="modal-footer">
-                <button className="modal-btn cancel" onClick={() => setShowInternRatingModal(false)}>
+              <div className="modern-modal-footer">
+                <button className="btn-cancel" onClick={() => setShowInternRatingModal(false)}>
                   {isRTL ? 'إلغاء' : 'Cancel'}
                 </button>
                 <button
-                  className="modal-btn save"
+                  className={`btn-submit ${internRatingForm.type === 'deduction' ? 'deduct-submit' : 'award-submit'}`}
                   onClick={handleCreateInternRating}
-                  disabled={internLoading}
+                  disabled={internLoading || !internRatingForm.criteria}
                 >
-                  {internLoading ? (isRTL ? 'جاري الحفظ...' : 'Saving...') : (isRTL ? 'حفظ التقييم' : 'Save Rating')}
+                  {internLoading ? (
+                    <>
+                      <span className="spinner"></span>
+                      {isRTL ? 'جاري الحفظ...' : 'Saving...'}
+                    </>
+                  ) : (
+                    <>
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <polyline points="20 6 9 17 4 12"/>
+                      </svg>
+                      {isRTL ? 'حفظ التقييم' : 'Save Rating'}
+                    </>
+                  )}
                 </button>
               </div>
             </motion.div>
@@ -3984,44 +4391,78 @@ const ManagerDashboard = () => {
         {showEmployeeModal && (
           <div className="modal-overlay" onClick={() => setShowEmployeeModal(false)}>
             <motion.div
-              className="modal-content"
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
+              className="modal-content modern-modal employee-modal"
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              transition={{ type: "spring", damping: 25, stiffness: 300 }}
               onClick={(e) => e.stopPropagation()}
             >
-              <div className="modal-header">
-                <h2>{selectedEmployee ? (isRTL ? 'تعديل موظف' : 'Edit Employee') : (isRTL ? 'إضافة موظف' : 'Add Employee')}</h2>
-                <button className="modal-close" onClick={() => setShowEmployeeModal(false)}>
-                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <div className="modern-modal-header employee-header-gradient">
+                <div className="modal-header-icon">
+                  <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+                    <circle cx="12" cy="7" r="4"/>
+                  </svg>
+                </div>
+                <div className="modal-header-text">
+                  <h2>{selectedEmployee ? (isRTL ? 'تعديل موظف' : 'Edit Employee') : (isRTL ? 'موظف جديد' : 'New Employee')}</h2>
+                  <p>{isRTL ? 'إضافة موظف جديد للنظام' : 'Add a new employee to the system'}</p>
+                </div>
+                <button className="modal-close-modern" onClick={() => setShowEmployeeModal(false)}>
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                     <line x1="18" y1="6" x2="6" y2="18"/>
                     <line x1="6" y1="6" x2="18" y2="18"/>
                   </svg>
                 </button>
               </div>
-              <div className="modal-body">
-                <div className="form-group">
-                  <label>{isRTL ? 'الاسم' : 'Name'}</label>
+              <div className="modern-modal-body">
+                <div className="form-group modern-input">
+                  <label>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+                      <circle cx="12" cy="7" r="4"/>
+                    </svg>
+                    {isRTL ? 'الاسم' : 'Name'} <span className="required">*</span>
+                  </label>
                   <input
                     type="text"
                     value={employeeForm.name}
                     onChange={(e) => setEmployeeForm({ ...employeeForm, name: e.target.value })}
-                    placeholder={isRTL ? 'اسم الموظف' : 'Employee name'}
+                    placeholder={isRTL ? 'اسم الموظف الكامل' : 'Full employee name'}
+                    className="modern-input-field"
                   />
                 </div>
-                <div className="form-group">
-                  <label>{isRTL ? 'البريد الإلكتروني' : 'Email'}</label>
+                <div className="form-group modern-input">
+                  <label>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
+                      <polyline points="22,6 12,13 2,6"/>
+                    </svg>
+                    {isRTL ? 'البريد الإلكتروني' : 'Email'} <span className="required">*</span>
+                  </label>
                   <input
                     type="email"
                     value={employeeForm.email}
                     onChange={(e) => setEmployeeForm({ ...employeeForm, email: e.target.value })}
                     placeholder={isRTL ? 'البريد الإلكتروني' : 'Email address'}
+                    className="modern-input-field"
+                    dir="ltr"
                   />
                 </div>
-                <div className="form-group">
-                  <label>{isRTL ? 'القسم' : 'Section'}</label>
+                <div className="form-group modern-input">
+                  <label>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <rect x="3" y="3" width="7" height="7"/>
+                      <rect x="14" y="3" width="7" height="7"/>
+                      <rect x="14" y="14" width="7" height="7"/>
+                      <rect x="3" y="14" width="7" height="7"/>
+                    </svg>
+                    {isRTL ? 'القسم' : 'Section'} <span className="required">*</span>
+                  </label>
                   <select
                     value={employeeForm.section}
                     onChange={(e) => setEmployeeForm({ ...employeeForm, section: e.target.value })}
+                    className="modern-input-field"
                   >
                     <option value="">{isRTL ? 'اختر القسم' : 'Select Section'}</option>
                     {Object.keys(SECTION_COLORS).map((section) => (
@@ -4032,16 +4473,28 @@ const ManagerDashboard = () => {
                   </select>
                 </div>
               </div>
-              <div className="modal-footer">
-                <button className="btn-secondary" onClick={() => setShowEmployeeModal(false)}>
+              <div className="modern-modal-footer">
+                <button className="btn-cancel" onClick={() => setShowEmployeeModal(false)}>
                   {isRTL ? 'إلغاء' : 'Cancel'}
                 </button>
                 <button
-                  className="btn-primary"
+                  className="btn-submit employee-submit"
                   onClick={selectedEmployee ? handleUpdateEmployee : handleCreateEmployee}
-                  disabled={employeeLoading}
+                  disabled={employeeLoading || !employeeForm.name.trim() || !employeeForm.email.trim()}
                 >
-                  {employeeLoading ? (isRTL ? 'جاري الحفظ...' : 'Saving...') : (selectedEmployee ? (isRTL ? 'تحديث' : 'Update') : (isRTL ? 'إضافة' : 'Add'))}
+                  {employeeLoading ? (
+                    <>
+                      <span className="spinner"></span>
+                      {isRTL ? 'جاري الحفظ...' : 'Saving...'}
+                    </>
+                  ) : (
+                    <>
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <polyline points="20 6 9 17 4 12"/>
+                      </svg>
+                      {selectedEmployee ? (isRTL ? 'تحديث' : 'Update') : (isRTL ? 'إضافة موظف' : 'Add Employee')}
+                    </>
+                  )}
                 </button>
               </div>
             </motion.div>
@@ -4758,10 +5211,10 @@ const ManagerDashboard = () => {
                         />
                       </div>
                     </div>
-                    <div className="period-arrow">
+                    <div className={`period-arrow ${isRTL ? 'rtl' : ''}`}>
                       <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                         <line x1="5" y1="12" x2="19" y2="12"/>
-                        <polyline points="12 5 19 12 12 19"/>
+                        <polyline points={isRTL ? "12 5 5 12 12 19" : "12 5 19 12 12 19"}/>
                       </svg>
                     </div>
                     <div className="period-box end">
@@ -4891,53 +5344,106 @@ const ManagerDashboard = () => {
         {showWorkspaceRatingModal && selectedWorkspace && (
           <div className="modal-overlay" onClick={() => setShowWorkspaceRatingModal(false)}>
             <motion.div
-              className="modal-content"
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
+              className="modal-content modern-modal rating-modal"
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              transition={{ type: "spring", damping: 25, stiffness: 300 }}
               onClick={(e) => e.stopPropagation()}
             >
-              <div className="modal-header">
-                <h2>{isRTL ? 'تقييم مساحة العمل' : 'Rate Workspace'}</h2>
-                <button className="modal-close" onClick={() => setShowWorkspaceRatingModal(false)}>
-                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <div className="modern-modal-header rating-header-gradient">
+                <div className="modal-header-icon">
+                  <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+                  </svg>
+                </div>
+                <div className="modal-header-text">
+                  <h2>{isRTL ? 'تقييم مساحة العمل' : 'Rate Workspace'}</h2>
+                  <p>{isRTL ? 'منح أو خصم نقاط للعميل' : 'Award or deduct points for the customer'}</p>
+                </div>
+                <button className="modal-close-modern" onClick={() => setShowWorkspaceRatingModal(false)}>
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                     <line x1="18" y1="6" x2="6" y2="18"/>
                     <line x1="6" y1="6" x2="18" y2="18"/>
                   </svg>
                 </button>
               </div>
-              <div className="modal-body">
-                <div className="workspace-rating-info">
-                  <span>{isRTL ? 'طاولة' : 'Table'}: <strong>{selectedWorkspace.tableNumber}</strong></span>
-                  <span>{isRTL ? 'المسؤول' : 'Person'}: <strong>{selectedWorkspace.personName}</strong></span>
-                </div>
-
-                <div className="form-row">
-                  <div className="form-group">
-                    <label>{isRTL ? 'نوع التقييم' : 'Rating Type'}</label>
-                    <select
-                      value={workspaceRatingForm.type}
-                      onChange={(e) => setWorkspaceRatingForm({ ...workspaceRatingForm, type: e.target.value })}
-                    >
-                      <option value="award">{isRTL ? 'منح نقاط' : 'Award Points'}</option>
-                      <option value="deduct">{isRTL ? 'خصم نقاط' : 'Deduct Points'}</option>
-                    </select>
+              <div className="modern-modal-body">
+                <div className="workspace-info-card">
+                  <div className="info-card-item">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <rect x="3" y="3" width="7" height="7"/>
+                      <rect x="14" y="3" width="7" height="7"/>
+                      <rect x="14" y="14" width="7" height="7"/>
+                      <rect x="3" y="14" width="7" height="7"/>
+                    </svg>
+                    <span>{isRTL ? 'طاولة' : 'Table'}</span>
+                    <strong>{selectedWorkspace.tableNumber}</strong>
                   </div>
-                  <div className="form-group">
-                    <label>{isRTL ? 'النقاط' : 'Points'}</label>
-                    <input
-                      type="number"
-                      min="1"
-                      value={workspaceRatingForm.points}
-                      onChange={(e) => setWorkspaceRatingForm({ ...workspaceRatingForm, points: parseInt(e.target.value) || 1 })}
-                    />
+                  <div className="info-card-item">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+                      <circle cx="12" cy="7" r="4"/>
+                    </svg>
+                    <span>{isRTL ? 'المسؤول' : 'Person'}</span>
+                    <strong>{selectedWorkspace.personName}</strong>
                   </div>
                 </div>
 
                 <div className="form-group">
-                  <label>{isRTL ? 'المعيار' : 'Criteria'} *</label>
+                  <label>{isRTL ? 'نوع التقييم' : 'Rating Type'}</label>
+                  <div className="rating-type-toggle">
+                    <button
+                      type="button"
+                      className={`rating-type-btn award ${workspaceRatingForm.type === 'award' ? 'active' : ''}`}
+                      onClick={() => setWorkspaceRatingForm({ ...workspaceRatingForm, type: 'award' })}
+                    >
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <path d="M12 2L15 8L22 9L17 14L18 21L12 18L6 21L7 14L2 9L9 8L12 2Z"/>
+                      </svg>
+                      <span>{isRTL ? 'منح نقاط' : 'Award'}</span>
+                    </button>
+                    <button
+                      type="button"
+                      className={`rating-type-btn deduction ${workspaceRatingForm.type === 'deduct' ? 'active' : ''}`}
+                      onClick={() => setWorkspaceRatingForm({ ...workspaceRatingForm, type: 'deduct' })}
+                    >
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <circle cx="12" cy="12" r="10"/>
+                        <line x1="8" y1="12" x2="16" y2="12"/>
+                      </svg>
+                      <span>{isRTL ? 'خصم نقاط' : 'Deduct'}</span>
+                    </button>
+                  </div>
+                </div>
+
+                <div className="form-group">
+                  <label>{isRTL ? 'عدد النقاط' : 'Points'}</label>
+                  <div className="points-selector">
+                    {[1, 2, 3, 4, 5].map(num => (
+                      <button
+                        key={num}
+                        type="button"
+                        className={`point-btn ${workspaceRatingForm.points === num ? 'active' : ''} ${workspaceRatingForm.type === 'deduct' ? 'deduction' : 'award'}`}
+                        onClick={() => setWorkspaceRatingForm({ ...workspaceRatingForm, points: num })}
+                      >
+                        {workspaceRatingForm.type === 'deduct' ? `-${num}` : `+${num}`}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="form-group modern-input">
+                  <label>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                      <polyline points="14 2 14 8 20 8"/>
+                    </svg>
+                    {isRTL ? 'المعيار' : 'Criteria'} <span className="required">*</span>
+                  </label>
                   <select
                     value={workspaceRatingForm.criteria}
                     onChange={(e) => setWorkspaceRatingForm({ ...workspaceRatingForm, criteria: e.target.value })}
+                    className="modern-input-field"
                   >
                     {workspaceCriteriaOptions.map(opt => (
                       <option key={opt.value} value={opt.value}>{opt.label}</option>
@@ -4946,46 +5452,76 @@ const ManagerDashboard = () => {
                 </div>
 
                 {workspaceRatingForm.criteria === 'other' && (
-                  <div className="form-group">
+                  <div className="form-group modern-input">
                     <label>{isRTL ? 'معيار مخصص' : 'Custom Criteria'}</label>
                     <input
                       type="text"
                       value={workspaceRatingForm.customCriteria || ''}
                       onChange={(e) => setWorkspaceRatingForm({ ...workspaceRatingForm, customCriteria: e.target.value })}
                       placeholder={isRTL ? 'أدخل المعيار' : 'Enter criteria'}
+                      className="modern-input-field"
                     />
                   </div>
                 )}
 
-                <div className="form-group">
-                  <label>{isRTL ? 'تاريخ التقييم' : 'Rating Date'}</label>
+                <div className="form-group modern-input">
+                  <label>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+                      <line x1="16" y1="2" x2="16" y2="6"/>
+                      <line x1="8" y1="2" x2="8" y2="6"/>
+                      <line x1="3" y1="10" x2="21" y2="10"/>
+                    </svg>
+                    {isRTL ? 'تاريخ التقييم' : 'Rating Date'}
+                  </label>
                   <input
                     type="date"
                     value={workspaceRatingForm.ratingDate}
                     onChange={(e) => setWorkspaceRatingForm({ ...workspaceRatingForm, ratingDate: e.target.value })}
+                    className="modern-input-field"
                   />
                 </div>
 
-                <div className="form-group">
-                  <label>{isRTL ? 'ملاحظات' : 'Notes'}</label>
+                <div className="form-group modern-input">
+                  <label>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                      <line x1="16" y1="13" x2="8" y2="13"/>
+                      <line x1="16" y1="17" x2="8" y2="17"/>
+                    </svg>
+                    {isRTL ? 'ملاحظات' : 'Notes'}
+                  </label>
                   <textarea
                     value={workspaceRatingForm.notes}
                     onChange={(e) => setWorkspaceRatingForm({ ...workspaceRatingForm, notes: e.target.value })}
-                    placeholder={isRTL ? 'ملاحظات إضافية' : 'Additional notes'}
+                    placeholder={isRTL ? 'ملاحظات إضافية (اختياري)' : 'Additional notes (optional)'}
                     rows={3}
+                    className="modern-textarea"
                   />
                 </div>
               </div>
-              <div className="modal-footer">
-                <button className="btn-secondary" onClick={() => setShowWorkspaceRatingModal(false)}>
+              <div className="modern-modal-footer">
+                <button className="btn-cancel" onClick={() => setShowWorkspaceRatingModal(false)}>
                   {isRTL ? 'إلغاء' : 'Cancel'}
                 </button>
                 <button
-                  className="btn-primary"
+                  className={`btn-submit ${workspaceRatingForm.type === 'deduct' ? 'deduct-submit' : 'award-submit'}`}
                   onClick={handleAddWorkspaceRating}
-                  disabled={workspaceLoading}
+                  disabled={workspaceLoading || !workspaceRatingForm.criteria}
                 >
-                  {workspaceLoading ? (isRTL ? 'جاري الحفظ...' : 'Saving...') : (isRTL ? 'إضافة التقييم' : 'Add Rating')}
+                  {workspaceLoading ? (
+                    <>
+                      <span className="spinner"></span>
+                      {isRTL ? 'جاري الحفظ...' : 'Saving...'}
+                    </>
+                  ) : (
+                    <>
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <polyline points="20 6 9 17 4 12"/>
+                      </svg>
+                      {isRTL ? 'إضافة التقييم' : 'Add Rating'}
+                    </>
+                  )}
                 </button>
               </div>
             </motion.div>

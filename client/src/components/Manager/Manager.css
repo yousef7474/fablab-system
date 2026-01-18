@@ -5013,6 +5013,456 @@
   justify-content: center;
 }
 
+/* Modal Header Gradients */
+[data-page="manager"] .employee-header-gradient {
+  background: linear-gradient(135deg, #8b5cf6, #6d28d9);
+}
+
+[data-page="manager"] .rating-header-gradient {
+  background: linear-gradient(135deg, #f59e0b, #d97706);
+}
+
+[data-page="manager"] .intern-header-gradient {
+  background: linear-gradient(135deg, #06b6d4, #0891b2);
+}
+
+[data-page="manager"] .training-header-gradient {
+  background: linear-gradient(135deg, #10b981, #059669);
+}
+
+[data-page="manager"] .volunteer-header-gradient {
+  background: linear-gradient(135deg, #ec4899, #db2777);
+}
+
+[data-page="manager"] .opportunity-header-gradient {
+  background: linear-gradient(135deg, #6366f1, #4f46e5);
+}
+
+/* Submit Button Variants */
+[data-page="manager"] .employee-submit {
+  background: linear-gradient(135deg, #8b5cf6, #6d28d9);
+}
+
+[data-page="manager"] .employee-submit:hover:not(:disabled) {
+  box-shadow: 0 4px 12px rgba(139, 92, 246, 0.3);
+}
+
+[data-page="manager"] .intern-submit {
+  background: linear-gradient(135deg, #06b6d4, #0891b2);
+}
+
+[data-page="manager"] .intern-submit:hover:not(:disabled) {
+  box-shadow: 0 4px 12px rgba(6, 182, 212, 0.3);
+}
+
+[data-page="manager"] .training-submit {
+  background: linear-gradient(135deg, #10b981, #059669);
+}
+
+[data-page="manager"] .training-submit:hover:not(:disabled) {
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+}
+
+[data-page="manager"] .volunteer-submit {
+  background: linear-gradient(135deg, #ec4899, #db2777);
+}
+
+[data-page="manager"] .volunteer-submit:hover:not(:disabled) {
+  box-shadow: 0 4px 12px rgba(236, 72, 153, 0.3);
+}
+
+[data-page="manager"] .opportunity-submit {
+  background: linear-gradient(135deg, #6366f1, #4f46e5);
+}
+
+[data-page="manager"] .opportunity-submit:hover:not(:disabled) {
+  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+}
+
+[data-page="manager"] .award-submit {
+  background: linear-gradient(135deg, #10b981, #059669);
+}
+
+[data-page="manager"] .award-submit:hover:not(:disabled) {
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+}
+
+[data-page="manager"] .deduct-submit {
+  background: linear-gradient(135deg, #ef4444, #dc2626);
+}
+
+[data-page="manager"] .deduct-submit:hover:not(:disabled) {
+  box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
+}
+
+/* Workspace Info Card */
+[data-page="manager"] .workspace-info-card {
+  display: flex;
+  gap: 1rem;
+  padding: 1rem;
+  background: linear-gradient(135deg, #f8fafc, #f1f5f9);
+  border-radius: 12px;
+  margin-bottom: 1.5rem;
+  border: 1px solid #e2e8f0;
+}
+
+[data-page="manager"] .workspace-info-card .info-card-item {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.25rem;
+  text-align: center;
+}
+
+[data-page="manager"] .workspace-info-card .info-card-item svg {
+  color: #64748b;
+  margin-bottom: 0.25rem;
+}
+
+[data-page="manager"] .workspace-info-card .info-card-item span {
+  font-size: 0.75rem;
+  color: #64748b;
+}
+
+[data-page="manager"] .workspace-info-card .info-card-item strong {
+  font-size: 1rem;
+  color: #1e293b;
+}
+
+/* Rating Type Toggle */
+[data-page="manager"] .rating-type-toggle {
+  display: flex;
+  gap: 0.75rem;
+}
+
+[data-page="manager"] .rating-type-btn {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.875rem 1rem;
+  border: 2px solid #e5e7eb;
+  border-radius: 12px;
+  background: #f9fafb;
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: #6b7280;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+[data-page="manager"] .rating-type-btn:hover {
+  background: #f3f4f6;
+}
+
+[data-page="manager"] .rating-type-btn.award.active {
+  border-color: #10b981;
+  background: #dcfce7;
+  color: #166534;
+}
+
+[data-page="manager"] .rating-type-btn.award.active svg {
+  color: #16a34a;
+}
+
+[data-page="manager"] .rating-type-btn.deduction.active {
+  border-color: #ef4444;
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+[data-page="manager"] .rating-type-btn.deduction.active svg {
+  color: #dc2626;
+}
+
+/* Points Selector */
+[data-page="manager"] .points-selector {
+  display: flex;
+  gap: 0.5rem;
+}
+
+[data-page="manager"] .point-btn {
+  flex: 1;
+  padding: 0.75rem;
+  border: 2px solid #e5e7eb;
+  border-radius: 10px;
+  background: #f9fafb;
+  font-size: 1rem;
+  font-weight: 600;
+  color: #6b7280;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+[data-page="manager"] .point-btn:hover {
+  background: #f3f4f6;
+}
+
+[data-page="manager"] .point-btn.active.award {
+  border-color: #10b981;
+  background: #dcfce7;
+  color: #166534;
+}
+
+[data-page="manager"] .point-btn.active.deduction {
+  border-color: #ef4444;
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+/* Select All Toggle */
+[data-page="manager"] .select-all-toggle {
+  margin-bottom: 1rem;
+}
+
+[data-page="manager"] .toggle-label {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  cursor: pointer;
+}
+
+[data-page="manager"] .toggle-checkbox {
+  display: none;
+}
+
+[data-page="manager"] .toggle-switch {
+  width: 48px;
+  height: 26px;
+  background: #e5e7eb;
+  border-radius: 13px;
+  position: relative;
+  transition: background 0.2s ease;
+}
+
+[data-page="manager"] .toggle-switch::after {
+  content: '';
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 20px;
+  height: 20px;
+  background: white;
+  border-radius: 50%;
+  transition: transform 0.2s ease;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+[data-page="manager"] .toggle-checkbox:checked + .toggle-switch {
+  background: #10b981;
+}
+
+[data-page="manager"] .toggle-checkbox:checked + .toggle-switch::after {
+  transform: translateX(22px);
+}
+
+[data-page="manager"] .toggle-text {
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: #374151;
+}
+
+/* Modern Volunteer Checkbox List */
+[data-page="manager"] .volunteer-checkbox-list.modern-list {
+  max-height: 200px;
+  overflow-y: auto;
+  border: 2px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 0.5rem;
+}
+
+[data-page="manager"] .volunteer-checkbox-item.modern {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border: 2px solid transparent;
+}
+
+[data-page="manager"] .volunteer-checkbox-item.modern:hover {
+  background: #f3f4f6;
+}
+
+[data-page="manager"] .volunteer-checkbox-item.modern.selected {
+  background: #dcfce7;
+  border-color: #10b981;
+}
+
+[data-page="manager"] .volunteer-checkbox-item.modern input {
+  display: none;
+}
+
+[data-page="manager"] .volunteer-checkbox-item.modern .checkbox-indicator {
+  width: 24px;
+  height: 24px;
+  border: 2px solid #d1d5db;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-left: auto;
+  transition: all 0.2s ease;
+}
+
+[data-page="manager"] .volunteer-checkbox-item.modern .checkbox-indicator svg {
+  opacity: 0;
+  color: white;
+  transition: opacity 0.2s ease;
+}
+
+[data-page="manager"] .volunteer-checkbox-item.modern.selected .checkbox-indicator {
+  background: #10b981;
+  border-color: #10b981;
+}
+
+[data-page="manager"] .volunteer-checkbox-item.modern.selected .checkbox-indicator svg {
+  opacity: 1;
+}
+
+/* Selected Count Badge */
+[data-page="manager"] .selected-count-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  background: #dbeafe;
+  border-radius: 20px;
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: #1d4ed8;
+  margin-top: 0.75rem;
+}
+
+/* Total Hours Display */
+[data-page="manager"] .total-hours-display {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 1rem;
+  background: linear-gradient(135deg, #dbeafe, #e0e7ff);
+  border-radius: 12px;
+  margin-top: 1rem;
+}
+
+[data-page="manager"] .total-hours-display svg {
+  color: #3b82f6;
+}
+
+[data-page="manager"] .total-hours-display span {
+  font-size: 0.9rem;
+  color: #64748b;
+}
+
+[data-page="manager"] .total-hours-display strong {
+  font-size: 1.25rem;
+  color: #1e40af;
+  margin-left: auto;
+}
+
+/* Info Note Modern */
+[data-page="manager"] .info-note-modern {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  padding: 1rem;
+  background: linear-gradient(135deg, #fef3c7, #fde68a);
+  border-radius: 12px;
+  margin-top: 1rem;
+}
+
+[data-page="manager"] .info-note-modern svg {
+  color: #d97706;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+[data-page="manager"] .info-note-modern p {
+  margin: 0;
+  font-size: 0.85rem;
+  color: #92400e;
+  line-height: 1.5;
+}
+
+/* Modern Upload Area */
+[data-page="manager"] .photo-upload-area.modern-upload {
+  border: 2px dashed #d1d5db;
+  border-radius: 12px;
+  overflow: hidden;
+  transition: all 0.2s ease;
+}
+
+[data-page="manager"] .photo-upload-area.modern-upload:hover {
+  border-color: #ec4899;
+}
+
+/* Modal Sizes */
+[data-page="manager"] .intern-modal,
+[data-page="manager"] .training-modal,
+[data-page="manager"] .volunteer-modal {
+  max-width: 550px;
+}
+
+[data-page="manager"] .opportunity-modal {
+  max-width: 600px;
+}
+
+[data-page="manager"] .rating-modal {
+  max-width: 480px;
+}
+
+/* Section header colors for different modals */
+[data-page="manager"] .intern-modal .section-header svg {
+  color: #06b6d4;
+}
+
+[data-page="manager"] .volunteer-modal .section-header svg {
+  color: #ec4899;
+}
+
+[data-page="manager"] .opportunity-modal .section-header svg {
+  color: #6366f1;
+}
+
+[data-page="manager"] .training-modal .section-header svg {
+  color: #10b981;
+}
+
+/* Focus states for different modals */
+[data-page="manager"] .intern-modal .modern-input-field:focus {
+  border-color: #06b6d4;
+  box-shadow: 0 0 0 3px rgba(6, 182, 212, 0.1);
+}
+
+[data-page="manager"] .volunteer-modal .modern-input-field:focus {
+  border-color: #ec4899;
+  box-shadow: 0 0 0 3px rgba(236, 72, 153, 0.1);
+}
+
+[data-page="manager"] .opportunity-modal .modern-input-field:focus {
+  border-color: #6366f1;
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+}
+
+[data-page="manager"] .training-modal .modern-input-field:focus {
+  border-color: #10b981;
+  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1);
+}
+
+[data-page="manager"] .employee-modal .modern-input-field:focus {
+  border-color: #8b5cf6;
+  box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.1);
+}
+
+[data-page="manager"] .rating-modal .modern-input-field:focus {
+  border-color: #f59e0b;
+  box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.1);
+}
+
 /* Responsive Modern Modal */
 @media (max-width: 768px) {
   [data-page="manager"] .modern-modal {
@@ -5036,6 +5486,18 @@
 
   [data-page="manager"] .period-arrow {
     transform: rotate(90deg);
+  }
+
+  [data-page="manager"] .rating-type-toggle {
+    flex-direction: column;
+  }
+
+  [data-page="manager"] .points-selector {
+    flex-wrap: wrap;
+  }
+
+  [data-page="manager"] .workspace-info-card {
+    flex-direction: column;
   }
 
   [data-page="manager"] .workspace-actions-bar {
