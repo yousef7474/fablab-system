@@ -27,104 +27,11 @@
 }
 
 /* ========================================
-   Calendar Fixes for Manager
+   Manager Calendar Color Overrides Only
+   (Layout inherited from Admin.css)
    ======================================== */
-[data-page="manager"] .calendar-section {
-  background: white;
-  border-radius: 16px;
-  padding: 1rem 1.25rem;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
-  border: 1px solid #e5e7eb;
-  max-height: 420px;
-  overflow: visible;
-}
-
-[data-page="manager"] .calendar-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 0.75rem;
-}
-
-[data-page="manager"] .calendar-title {
-  font-size: 1.25rem;
-  font-weight: 600;
-  color: #1f2937;
-  margin: 0;
-}
-
-[data-page="manager"] .calendar-nav-btn {
-  width: 36px;
-  height: 36px;
-  border: 1px solid #e5e7eb;
-  background: white;
-  border-radius: 10px;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all 0.2s;
-  color: #6b7280;
-}
-
-[data-page="manager"] .calendar-nav-btn:hover {
-  background: #f3f4f6;
-  border-color: #d1d5db;
-}
-
-[data-page="manager"] .calendar-weekdays {
-  display: grid;
-  grid-template-columns: repeat(7, 1fr);
-  gap: 2px;
-  margin-bottom: 4px;
-}
-
-[data-page="manager"] .calendar-weekdays .weekday {
-  text-align: center;
-  font-size: 0.7rem;
-  font-weight: 600;
-  color: #9ca3af;
-  padding: 4px 0;
-  text-transform: uppercase;
-}
-
-[data-page="manager"] .calendar-grid {
-  display: grid;
-  grid-template-columns: repeat(7, 1fr);
-  gap: 2px;
-}
-
-[data-page="manager"] .calendar-day {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 4px;
-  border-radius: 8px;
-  cursor: pointer;
-  transition: all 0.2s;
-  background: #f9fafb;
-  min-height: 40px;
-  max-height: 50px;
-}
-
-[data-page="manager"] .calendar-day:hover:not(.empty) {
-  background: #f3f4f6;
-  transform: scale(1.02);
-}
-
-[data-page="manager"] .calendar-day.empty {
-  background: transparent;
-  cursor: default;
-}
-
 [data-page="manager"] .calendar-day.today {
   background: linear-gradient(135deg, #e02529, #c41e24);
-  color: white;
-}
-
-[data-page="manager"] .calendar-day.today .day-number {
-  color: white;
 }
 
 [data-page="manager"] .calendar-day.has-events {
@@ -134,26 +41,11 @@
 [data-page="manager"] .calendar-day.selected {
   background: #e02529 !important;
   color: white !important;
-  transform: scale(1.05);
   box-shadow: 0 4px 12px rgba(224, 37, 41, 0.3);
 }
 
 [data-page="manager"] .calendar-day.selected .day-number {
   color: white;
-}
-
-[data-page="manager"] .calendar-day .day-number {
-  font-size: 0.8rem;
-  font-weight: 500;
-  color: #374151;
-}
-
-[data-page="manager"] .calendar-day .event-dots-container {
-  display: flex;
-  gap: 2px;
-  margin-top: 2px;
-  flex-wrap: wrap;
-  justify-content: center;
 }
 
 /* Selected Day Section */
@@ -508,6 +400,201 @@
 [data-page="manager"] .todo-action-btn.delete:hover {
   background: #fee2e2;
   color: #dc2626;
+}
+
+/* ========================================
+   Todo Calendar View Styles
+   ======================================== */
+[data-page="manager"] .todo-stats-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-top: 16px;
+}
+
+[data-page="manager"] .todo-stat-card {
+  padding: 16px;
+  border-radius: 12px;
+  text-align: center;
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+}
+
+[data-page="manager"] .todo-stat-card .stat-number {
+  display: block;
+  font-size: 1.75rem;
+  font-weight: 700;
+  margin-bottom: 4px;
+}
+
+[data-page="manager"] .todo-stat-card .stat-label {
+  font-size: 0.75rem;
+  color: #6b7280;
+  text-transform: uppercase;
+  font-weight: 600;
+}
+
+[data-page="manager"] .todo-stat-card.pending .stat-number {
+  color: #f59e0b;
+}
+
+[data-page="manager"] .todo-stat-card.completed .stat-number {
+  color: #22c55e;
+}
+
+[data-page="manager"] .todo-stat-card.high .stat-number {
+  color: #ef4444;
+}
+
+[data-page="manager"] .todo-stat-card.total .stat-number {
+  color: #6366f1;
+}
+
+[data-page="manager"] .upcoming-todos {
+  margin-top: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+[data-page="manager"] .upcoming-todo-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  background: #f9fafb;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all 0.2s;
+  border: 1px solid #e5e7eb;
+}
+
+[data-page="manager"] .upcoming-todo-item:hover {
+  background: #f3f4f6;
+  border-color: #d1d5db;
+}
+
+[data-page="manager"] .todo-priority-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+[data-page="manager"] .upcoming-todo-item .todo-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+[data-page="manager"] .upcoming-todo-item .todo-title {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #1f2937;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+[data-page="manager"] .upcoming-todo-item .todo-due {
+  font-size: 0.75rem;
+  color: #6b7280;
+}
+
+[data-page="manager"] .no-upcoming {
+  text-align: center;
+  color: #9ca3af;
+  font-size: 0.875rem;
+  padding: 20px 0;
+}
+
+/* Todo event in calendar selected day */
+[data-page="manager"] .todo-event.completed .event-title {
+  text-decoration: line-through;
+  color: #9ca3af;
+}
+
+[data-page="manager"] .todo-checkbox-small {
+  cursor: pointer;
+  padding: 2px;
+  border-radius: 4px;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+[data-page="manager"] .todo-checkbox-small:hover {
+  background: #f3f4f6;
+}
+
+[data-page="manager"] .event-item-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+[data-page="manager"] .event-item-header .event-title {
+  flex: 1;
+}
+
+[data-page="manager"] .event-description {
+  font-size: 0.8rem;
+  color: #6b7280;
+  margin: 8px 0 0 24px;
+}
+
+[data-page="manager"] .event-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+  margin-left: 24px;
+}
+
+[data-page="manager"] .event-actions button {
+  background: none;
+  border: none;
+  padding: 4px;
+  cursor: pointer;
+  color: #9ca3af;
+  border-radius: 4px;
+  transition: all 0.2s;
+}
+
+[data-page="manager"] .event-actions button:hover {
+  background: #f3f4f6;
+  color: #374151;
+}
+
+/* Dark theme for todo calendar */
+[data-theme="dark"] [data-page="manager"] .todo-stat-card {
+  background: #1f2937;
+  border-color: #374151;
+}
+
+[data-theme="dark"] [data-page="manager"] .todo-stat-card .stat-label {
+  color: #9ca3af;
+}
+
+[data-theme="dark"] [data-page="manager"] .upcoming-todo-item {
+  background: #1f2937;
+  border-color: #374151;
+}
+
+[data-theme="dark"] [data-page="manager"] .upcoming-todo-item:hover {
+  background: #374151;
+  border-color: #4b5563;
+}
+
+[data-theme="dark"] [data-page="manager"] .upcoming-todo-item .todo-title {
+  color: #f3f4f6;
+}
+
+[data-theme="dark"] [data-page="manager"] .event-actions button:hover {
+  background: #374151;
+  color: #f3f4f6;
 }
 
 /* Dark theme for todos */

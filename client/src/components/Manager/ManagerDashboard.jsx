@@ -212,6 +212,9 @@ const ManagerDashboard = () => {
     dueDate: '',
     priority: 'medium'
   });
+  // Todo calendar state
+  const [todoCalendarDate, setTodoCalendarDate] = useState(new Date());
+  const [selectedTodoDay, setSelectedTodoDay] = useState(null);
 
   // Predefined criteria options
   const criteriaOptions = [
@@ -519,6 +522,28 @@ const ManagerDashboard = () => {
   // Navigate months
   const handlePrevMonth = () => setSelectedDate(subMonths(selectedDate, 1));
   const handleNextMonth = () => setSelectedDate(addMonths(selectedDate, 1));
+
+  // Todo calendar helpers
+  const getTodoDaysInMonth = (date) => {
+    const start = startOfMonth(date);
+    const end = endOfMonth(date);
+    return eachDayOfInterval({ start, end });
+  };
+
+  const getTodosForDay = (day) => {
+    return myTodos.filter(todo => {
+      if (!todo.dueDate) return false;
+      try {
+        const todoDate = typeof todo.dueDate === 'string' ? parseISO(todo.dueDate) : todo.dueDate;
+        return isSameDay(todoDate, day);
+      } catch {
+        return false;
+      }
+    });
+  };
+
+  const handleTodoPrevMonth = () => setTodoCalendarDate(subMonths(todoCalendarDate, 1));
+  const handleTodoNextMonth = () => setTodoCalendarDate(addMonths(todoCalendarDate, 1));
 
   // Task CRUD operations
   const handleCreateTask = async () => {
@@ -3808,112 +3833,192 @@ const ManagerDashboard = () => {
           </div>
         )}
 
-        {/* My Tasks (Todos) Content */}
+        {/* My Tasks (Todos) Content - Calendar View */}
         {activeTab === 'todos' && (
-          <div className="volunteers-section">
-            <div className="volunteers-header">
-              <div className="volunteers-actions">
-                <button className="add-volunteer-btn" onClick={() => openTodoModal()}>
+          <div className="schedule-layout">
+            {/* Todo Calendar Section */}
+            <div className="calendar-section">
+              {/* Calendar Header */}
+              <div className="calendar-header">
+                <button className="calendar-nav" onClick={handleTodoPrevMonth}>
                   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <line x1="12" y1="5" x2="12" y2="19"/>
-                    <line x1="5" y1="12" x2="19" y2="12"/>
+                    <polyline points={isRTL ? "9 18 15 12 9 6" : "15 18 9 12 15 6"}/>
                   </svg>
-                  {isRTL ? 'إضافة مهمة' : 'Add Task'}
+                </button>
+                <h3>
+                  {format(todoCalendarDate, 'MMMM yyyy', { locale: isRTL ? ar : enUS })}
+                </h3>
+                <button className="calendar-nav" onClick={handleTodoNextMonth}>
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <polyline points={isRTL ? "15 18 9 12 15 6" : "9 18 15 12 9 6"}/>
+                  </svg>
                 </button>
               </div>
-              <div className="volunteers-stats">
-                <div className="stat-item">
-                  <span className="stat-value">{myTodos.filter(t => t.status === 'pending').length}</span>
-                  <span className="stat-label">{isRTL ? 'قيد الانتظار' : 'Pending'}</span>
-                </div>
-                <div className="stat-item">
-                  <span className="stat-value">{myTodos.filter(t => t.status === 'completed').length}</span>
-                  <span className="stat-label">{isRTL ? 'مكتمل' : 'Completed'}</span>
-                </div>
-              </div>
-            </div>
 
-            <div className="todo-list">
-              {myTodos.length === 0 ? (
-                <div className="empty-state">
-                  <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1">
-                    <line x1="8" y1="6" x2="21" y2="6"/>
-                    <line x1="8" y1="12" x2="21" y2="12"/>
-                    <line x1="8" y1="18" x2="21" y2="18"/>
-                    <line x1="3" y1="6" x2="3.01" y2="6"/>
-                    <line x1="3" y1="12" x2="3.01" y2="12"/>
-                    <line x1="3" y1="18" x2="3.01" y2="18"/>
-                  </svg>
-                  <p>{isRTL ? 'لا يوجد مهام' : 'No tasks yet'}</p>
-                  <button className="add-first-btn" onClick={() => openTodoModal()}>
-                    {isRTL ? 'إضافة مهمة' : 'Add Task'}
-                  </button>
-                </div>
-              ) : (
-                myTodos.map((todo) => (
-                  <motion.div
-                    key={todo.todoId}
-                    className={`todo-item ${todo.status === 'completed' ? 'completed' : ''}`}
-                    initial={{ opacity: 0, x: -20 }}
-                    animate={{ opacity: 1, x: 0 }}
-                  >
-                    <div className="todo-checkbox" onClick={() => handleToggleTodoStatus(todo.todoId)}>
-                      {todo.status === 'completed' ? (
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                          <path d="M9 11l3 3L22 4"/>
-                          <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>
-                        </svg>
-                      ) : (
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                          <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
-                        </svg>
+              {/* Week Days */}
+              <div className="calendar-weekdays">
+                {(isRTL ? ['أحد', 'اثنين', 'ثلاثاء', 'أربعاء', 'خميس', 'جمعة', 'سبت'] : ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']).map(day => (
+                  <div key={day} className="weekday">{day}</div>
+                ))}
+              </div>
+
+              {/* Calendar Grid */}
+              <div className="calendar-days">
+                {/* Empty cells for days before first of month */}
+                {Array(getTodoDaysInMonth(todoCalendarDate)[0].getDay()).fill(null).map((_, i) => (
+                  <div key={`empty-${i}`} className="calendar-day empty"></div>
+                ))}
+
+                {/* Days */}
+                {getTodoDaysInMonth(todoCalendarDate).map(day => {
+                  const dayTodos = getTodosForDay(day);
+                  const hasTodos = dayTodos.length > 0;
+                  const pendingCount = dayTodos.filter(t => t.status === 'pending').length;
+                  const completedCount = dayTodos.filter(t => t.status === 'completed').length;
+
+                  return (
+                    <motion.div
+                      key={day.toISOString()}
+                      className={`calendar-day ${isToday(day) ? 'today' : ''} ${hasTodos ? 'has-events' : ''} ${selectedTodoDay && isSameDay(day, selectedTodoDay) ? 'selected' : ''}`}
+                      onClick={() => setSelectedTodoDay(hasTodos ? day : null)}
+                      whileHover={{ scale: 1.05 }}
+                      whileTap={{ scale: 0.95 }}
+                    >
+                      <span className="day-number">{format(day, 'd')}</span>
+                      {hasTodos && (
+                        <div className="event-dots">
+                          {pendingCount > 0 && (
+                            <span className="event-dot" style={{ backgroundColor: '#f59e0b' }} title={`${pendingCount} pending`} />
+                          )}
+                          {completedCount > 0 && (
+                            <span className="event-dot" style={{ backgroundColor: '#22c55e' }} title={`${completedCount} completed`} />
+                          )}
+                        </div>
                       )}
+                    </motion.div>
+                  );
+                })}
+              </div>
+
+              {/* Selected Day Details */}
+              <AnimatePresence>
+                {selectedTodoDay && (
+                  <motion.div
+                    className="selected-day-section"
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -20 }}
+                  >
+                    <div className="selected-day-header">
+                      <h4>
+                        {format(selectedTodoDay, 'EEEE, d MMMM', { locale: isRTL ? ar : enUS })}
+                      </h4>
+                      <button onClick={() => setSelectedTodoDay(null)}>×</button>
                     </div>
-                    <div className="todo-content">
-                      <h4>{todo.title}</h4>
-                      {todo.description && <p>{todo.description}</p>}
-                      <div className="todo-meta">
-                        {todo.dueDate && (
-                          <span className="todo-date">
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                              <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
-                              <line x1="16" y1="2" x2="16" y2="6"/>
-                              <line x1="8" y1="2" x2="8" y2="6"/>
-                              <line x1="3" y1="10" x2="21" y2="10"/>
-                            </svg>
-                            {format(parseISO(todo.dueDate), 'MMM d, yyyy', { locale: isRTL ? ar : enUS })}
-                          </span>
-                        )}
-                        <span className={`todo-priority priority-${todo.priority}`}>
-                          {todo.priority === 'high' ? (isRTL ? 'عالي' : 'High') : todo.priority === 'medium' ? (isRTL ? 'متوسط' : 'Medium') : (isRTL ? 'منخفض' : 'Low')}
-                        </span>
-                      </div>
-                    </div>
-                    <div className="todo-actions">
-                      <button
-                        className="todo-action-btn edit"
-                        onClick={() => openTodoModal(todo)}
-                        title={isRTL ? 'تعديل' : 'Edit'}
-                      >
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                          <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
-                          <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
-                        </svg>
-                      </button>
-                      <button
-                        className="todo-action-btn delete"
-                        onClick={() => handleDeleteTodo(todo.todoId)}
-                        title={isRTL ? 'حذف' : 'Delete'}
-                      >
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                          <polyline points="3 6 5 6 21 6"/>
-                          <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
-                        </svg>
-                      </button>
+                    <div className="selected-day-events">
+                      {getTodosForDay(selectedTodoDay).map(todo => (
+                        <div
+                          key={todo.todoId}
+                          className={`event-item todo-event ${todo.status === 'completed' ? 'completed' : ''}`}
+                          style={{ borderLeftColor: todo.status === 'completed' ? '#22c55e' : PRIORITY_COLORS[todo.priority] }}
+                        >
+                          <div className="event-item-header">
+                            <div className="todo-checkbox-small" onClick={() => handleToggleTodoStatus(todo.todoId)}>
+                              {todo.status === 'completed' ? (
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#22c55e" strokeWidth="2">
+                                  <path d="M9 11l3 3L22 4"/>
+                                  <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>
+                                </svg>
+                              ) : (
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                  <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+                                </svg>
+                              )}
+                            </div>
+                            <span className={`event-title ${todo.status === 'completed' ? 'completed' : ''}`}>{todo.title}</span>
+                            <span className={`priority-badge ${todo.priority}`}>
+                              {todo.priority === 'high' ? (isRTL ? 'عالي' : 'High') : todo.priority === 'medium' ? (isRTL ? 'متوسط' : 'Med') : (isRTL ? 'منخفض' : 'Low')}
+                            </span>
+                          </div>
+                          {todo.description && <p className="event-description">{todo.description}</p>}
+                          <div className="event-actions">
+                            <button onClick={() => openTodoModal(todo)} title={isRTL ? 'تعديل' : 'Edit'}>
+                              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                                <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                              </svg>
+                            </button>
+                            <button onClick={() => handleDeleteTodo(todo.todoId)} title={isRTL ? 'حذف' : 'Delete'}>
+                              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                <polyline points="3 6 5 6 21 6"/>
+                                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+                              </svg>
+                            </button>
+                          </div>
+                        </div>
+                      ))}
                     </div>
                   </motion.div>
-                ))
-              )}
+                )}
+              </AnimatePresence>
+            </div>
+
+            {/* Todo Sidebar - Stats and Add Button */}
+            <div className="schedule-sidebar">
+              <div className="sidebar-card">
+                <div className="sidebar-card-header">
+                  <h3>{isRTL ? 'مهامي' : 'My Tasks'}</h3>
+                  <button className="add-task-btn" onClick={() => openTodoModal()}>
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <line x1="12" y1="5" x2="12" y2="19"/>
+                      <line x1="5" y1="12" x2="19" y2="12"/>
+                    </svg>
+                    {isRTL ? 'إضافة' : 'Add'}
+                  </button>
+                </div>
+                <div className="todo-stats-grid">
+                  <div className="todo-stat-card pending">
+                    <span className="stat-number">{myTodos.filter(t => t.status === 'pending').length}</span>
+                    <span className="stat-label">{isRTL ? 'قيد الانتظار' : 'Pending'}</span>
+                  </div>
+                  <div className="todo-stat-card completed">
+                    <span className="stat-number">{myTodos.filter(t => t.status === 'completed').length}</span>
+                    <span className="stat-label">{isRTL ? 'مكتمل' : 'Completed'}</span>
+                  </div>
+                  <div className="todo-stat-card high">
+                    <span className="stat-number">{myTodos.filter(t => t.priority === 'high' && t.status === 'pending').length}</span>
+                    <span className="stat-label">{isRTL ? 'أولوية عالية' : 'High Priority'}</span>
+                  </div>
+                  <div className="todo-stat-card total">
+                    <span className="stat-number">{myTodos.length}</span>
+                    <span className="stat-label">{isRTL ? 'الإجمالي' : 'Total'}</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Upcoming Tasks List */}
+              <div className="sidebar-card">
+                <h3>{isRTL ? 'المهام القادمة' : 'Upcoming Tasks'}</h3>
+                <div className="upcoming-todos">
+                  {myTodos
+                    .filter(t => t.status === 'pending' && t.dueDate)
+                    .sort((a, b) => new Date(a.dueDate) - new Date(b.dueDate))
+                    .slice(0, 5)
+                    .map(todo => (
+                      <div key={todo.todoId} className="upcoming-todo-item" onClick={() => openTodoModal(todo)}>
+                        <div className="todo-priority-dot" style={{ backgroundColor: PRIORITY_COLORS[todo.priority] }} />
+                        <div className="todo-info">
+                          <span className="todo-title">{todo.title}</span>
+                          <span className="todo-due">{format(parseISO(todo.dueDate), 'MMM d', { locale: isRTL ? ar : enUS })}</span>
+                        </div>
+                      </div>
+                    ))
+                  }
+                  {myTodos.filter(t => t.status === 'pending' && t.dueDate).length === 0 && (
+                    <p className="no-upcoming">{isRTL ? 'لا توجد مهام قادمة' : 'No upcoming tasks'}</p>
+                  )}
+                </div>
+              </div>
             </div>
           </div>
         )}
