@@ -19,7 +19,8 @@
       "Bash(dir:*)",
       "Bash(node -e:*)",
       "Bash(npm run build:*)",
-      "Bash(del \"F:\\\\fablab regiser\\\\.git\\\\index.lock\")"
+      "Bash(del \"F:\\\\fablab regiser\\\\.git\\\\index.lock\")",
+      "Bash(git rm:*)"
     ],
     "deny": [],
     "ask": []
