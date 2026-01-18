@@ -4473,6 +4473,588 @@
   max-width: 600px;
 }
 
+/* ========================================
+   Modern Modal Styles
+   ======================================== */
+
+[data-page="manager"] .modern-modal {
+  max-width: 520px;
+  width: 95%;
+  border-radius: 20px;
+  overflow: hidden;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+}
+
+[data-page="manager"] .workspace-modal {
+  max-width: 600px;
+}
+
+[data-page="manager"] .modern-modal-header {
+  display: flex;
+  align-items: flex-start;
+  gap: 1rem;
+  padding: 1.5rem;
+  background: linear-gradient(135deg, #e02529, #c41e24);
+  color: white;
+  position: relative;
+}
+
+[data-page="manager"] .todo-modal .modern-modal-header {
+  background: linear-gradient(135deg, #e02529, #b91c1c);
+}
+
+[data-page="manager"] .workspace-header-gradient {
+  background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+}
+
+[data-page="manager"] .modal-header-icon {
+  width: 52px;
+  height: 52px;
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+[data-page="manager"] .modal-header-text {
+  flex: 1;
+}
+
+[data-page="manager"] .modal-header-text h2 {
+  margin: 0 0 0.25rem 0;
+  font-size: 1.25rem;
+  font-weight: 600;
+}
+
+[data-page="manager"] .modal-header-text p {
+  margin: 0;
+  font-size: 0.85rem;
+  opacity: 0.9;
+}
+
+[data-page="manager"] .modal-close-modern {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.15);
+  border: none;
+  color: white;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+}
+
+[dir="rtl"] [data-page="manager"] .modal-close-modern {
+  right: auto;
+  left: 1rem;
+}
+
+[data-page="manager"] .modal-close-modern:hover {
+  background: rgba(255, 255, 255, 0.25);
+}
+
+[data-page="manager"] .modern-modal-body {
+  padding: 1.5rem;
+  max-height: 60vh;
+  overflow-y: auto;
+}
+
+[data-page="manager"] .workspace-form {
+  max-height: 55vh;
+}
+
+[data-page="manager"] .modern-input label {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: #374151;
+  margin-bottom: 0.5rem;
+}
+
+[data-page="manager"] .modern-input label svg {
+  color: #9ca3af;
+}
+
+[data-page="manager"] .modern-input-field {
+  width: 100%;
+  padding: 0.75rem 1rem;
+  border: 2px solid #e5e7eb;
+  border-radius: 10px;
+  font-size: 0.95rem;
+  transition: all 0.2s ease;
+  background: #f9fafb;
+}
+
+[data-page="manager"] .modern-input-field:focus {
+  outline: none;
+  border-color: #e02529;
+  background: white;
+  box-shadow: 0 0 0 3px rgba(224, 37, 41, 0.1);
+}
+
+[data-page="manager"] .workspace-modal .modern-input-field:focus {
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+[data-page="manager"] .modern-textarea {
+  width: 100%;
+  padding: 0.75rem 1rem;
+  border: 2px solid #e5e7eb;
+  border-radius: 10px;
+  font-size: 0.95rem;
+  transition: all 0.2s ease;
+  background: #f9fafb;
+  resize: vertical;
+  min-height: 80px;
+}
+
+[data-page="manager"] .modern-textarea:focus {
+  outline: none;
+  border-color: #3b82f6;
+  background: white;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+/* Priority Selector */
+[data-page="manager"] .priority-selector {
+  display: flex;
+  gap: 0.75rem;
+}
+
+[data-page="manager"] .priority-btn {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1rem;
+  border: 2px solid #e5e7eb;
+  border-radius: 10px;
+  background: #f9fafb;
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: #6b7280;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+[data-page="manager"] .priority-btn:hover {
+  background: #f3f4f6;
+}
+
+[data-page="manager"] .priority-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+}
+
+[data-page="manager"] .priority-btn.low .priority-dot {
+  background: #22c55e;
+}
+
+[data-page="manager"] .priority-btn.medium .priority-dot {
+  background: #f59e0b;
+}
+
+[data-page="manager"] .priority-btn.high .priority-dot {
+  background: #ef4444;
+}
+
+[data-page="manager"] .priority-btn.low.selected {
+  border-color: #22c55e;
+  background: #dcfce7;
+  color: #166534;
+}
+
+[data-page="manager"] .priority-btn.medium.selected {
+  border-color: #f59e0b;
+  background: #fef3c7;
+  color: #92400e;
+}
+
+[data-page="manager"] .priority-btn.high.selected {
+  border-color: #ef4444;
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+/* Modern Modal Footer */
+[data-page="manager"] .modern-modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.75rem;
+  padding: 1.25rem 1.5rem;
+  background: #f9fafb;
+  border-top: 1px solid #e5e7eb;
+}
+
+[data-page="manager"] .btn-cancel {
+  padding: 0.75rem 1.5rem;
+  border: 2px solid #e5e7eb;
+  border-radius: 10px;
+  background: white;
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: #6b7280;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+[data-page="manager"] .btn-cancel:hover {
+  background: #f3f4f6;
+  border-color: #d1d5db;
+}
+
+[data-page="manager"] .btn-submit {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1.5rem;
+  border: none;
+  border-radius: 10px;
+  background: linear-gradient(135deg, #e02529, #b91c1c);
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: white;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+[data-page="manager"] .btn-submit:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(224, 37, 41, 0.3);
+}
+
+[data-page="manager"] .btn-submit:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+[data-page="manager"] .workspace-submit {
+  background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+}
+
+[data-page="manager"] .workspace-submit:hover:not(:disabled) {
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+}
+
+[data-page="manager"] .spinner {
+  width: 16px;
+  height: 16px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-top-color: white;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* Form Sections */
+[data-page="manager"] .form-section {
+  margin-bottom: 1.5rem;
+}
+
+[data-page="manager"] .section-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding-bottom: 0.75rem;
+  margin-bottom: 1rem;
+  border-bottom: 2px solid #e5e7eb;
+  font-weight: 600;
+  color: #374151;
+}
+
+[data-page="manager"] .section-header svg {
+  color: #3b82f6;
+}
+
+[data-page="manager"] .required {
+  color: #ef4444;
+}
+
+/* Input with Icon */
+[data-page="manager"] .input-with-icon {
+  position: relative;
+}
+
+[data-page="manager"] .input-with-icon svg {
+  position: absolute;
+  left: 1rem;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #9ca3af;
+  pointer-events: none;
+}
+
+[dir="rtl"] [data-page="manager"] .input-with-icon svg {
+  left: auto;
+  right: 1rem;
+}
+
+[data-page="manager"] .input-with-icon .modern-input-field {
+  padding-left: 2.75rem;
+}
+
+[dir="rtl"] [data-page="manager"] .input-with-icon .modern-input-field {
+  padding-left: 1rem;
+  padding-right: 2.75rem;
+}
+
+/* Period Grid */
+[data-page="manager"] .period-grid {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+[data-page="manager"] .period-box {
+  flex: 1;
+  padding: 1rem;
+  background: #f9fafb;
+  border-radius: 12px;
+  border: 2px solid #e5e7eb;
+}
+
+[data-page="manager"] .period-box.start {
+  border-color: #22c55e;
+  background: #f0fdf4;
+}
+
+[data-page="manager"] .period-box.end {
+  border-color: #ef4444;
+  background: #fef2f2;
+}
+
+[data-page="manager"] .period-label {
+  display: block;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 0.5rem;
+  color: #6b7280;
+}
+
+[data-page="manager"] .period-box.start .period-label {
+  color: #166534;
+}
+
+[data-page="manager"] .period-box.end .period-label {
+  color: #991b1b;
+}
+
+[data-page="manager"] .period-inputs {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+[data-page="manager"] .period-inputs .modern-input-field {
+  padding: 0.5rem 0.75rem;
+  font-size: 0.85rem;
+}
+
+[data-page="manager"] .period-arrow {
+  color: #9ca3af;
+  flex-shrink: 0;
+}
+
+/* Photo Upload */
+[data-page="manager"] .photo-upload-area {
+  border: 2px dashed #d1d5db;
+  border-radius: 12px;
+  overflow: hidden;
+  transition: all 0.2s ease;
+}
+
+[data-page="manager"] .photo-upload-area:hover {
+  border-color: #3b82f6;
+}
+
+[data-page="manager"] .photo-upload-label {
+  display: block;
+  cursor: pointer;
+}
+
+[data-page="manager"] .upload-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+  text-align: center;
+}
+
+[data-page="manager"] .upload-content svg {
+  color: #9ca3af;
+  margin-bottom: 0.75rem;
+}
+
+[data-page="manager"] .upload-text {
+  font-weight: 500;
+  color: #374151;
+  margin-bottom: 0.25rem;
+}
+
+[data-page="manager"] .upload-hint {
+  font-size: 0.8rem;
+  color: #9ca3af;
+}
+
+[data-page="manager"] .photo-preview {
+  position: relative;
+  aspect-ratio: 16 / 9;
+  background: #f3f4f6;
+}
+
+[data-page="manager"] .photo-preview img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+[data-page="manager"] .remove-photo-btn {
+  position: absolute;
+  top: 0.5rem;
+  right: 0.5rem;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.6);
+  border: none;
+  color: white;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+}
+
+[data-page="manager"] .remove-photo-btn:hover {
+  background: #ef4444;
+}
+
+/* Workspace Actions Bar */
+[data-page="manager"] .workspace-actions-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.5rem;
+  padding: 1rem 1.25rem;
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  border: 1px solid #e5e7eb;
+}
+
+[data-page="manager"] .workspace-actions-bar .actions-left {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+[data-page="manager"] .workspace-actions-bar .actions-left h3 {
+  margin: 0;
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #1f2937;
+}
+
+[data-page="manager"] .workspace-count {
+  padding: 0.35rem 0.75rem;
+  background: #f3f4f6;
+  border-radius: 20px;
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: #6b7280;
+}
+
+[data-page="manager"] .add-workspace-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem 1.5rem;
+  background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+  color: white;
+  border: none;
+  border-radius: 12px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.25);
+}
+
+[data-page="manager"] .add-workspace-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(59, 130, 246, 0.35);
+}
+
+[data-page="manager"] .add-workspace-btn .btn-icon {
+  width: 28px;
+  height: 28px;
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Responsive Modern Modal */
+@media (max-width: 768px) {
+  [data-page="manager"] .modern-modal {
+    width: 100%;
+    max-width: 100%;
+    max-height: 100vh;
+    border-radius: 0;
+  }
+
+  [data-page="manager"] .modern-modal-body {
+    max-height: calc(100vh - 200px);
+  }
+
+  [data-page="manager"] .priority-selector {
+    flex-direction: column;
+  }
+
+  [data-page="manager"] .period-grid {
+    flex-direction: column;
+  }
+
+  [data-page="manager"] .period-arrow {
+    transform: rotate(90deg);
+  }
+
+  [data-page="manager"] .workspace-actions-bar {
+    flex-direction: column;
+    gap: 1rem;
+    text-align: center;
+  }
+
+  [data-page="manager"] .workspace-actions-bar .actions-left {
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  [data-page="manager"] .add-workspace-btn {
+    width: 100%;
+    justify-content: center;
+  }
+}
+
 /* Responsive Workspaces */
 @media (max-width: 1200px) {
   [data-page="manager"] .workspaces-content .stats-grid {
