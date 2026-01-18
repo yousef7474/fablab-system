@@ -140,6 +140,8 @@ const ManagerDashboard = () => {
   });
   const [opportunityForm, setOpportunityForm] = useState({
     volunteerId: '',
+    volunteerIds: [], // For multi-volunteer selection
+    selectAllVolunteers: false,
     title: '',
     description: '',
     startDate: '',
@@ -342,7 +344,7 @@ const ManagerDashboard = () => {
 
   // Task CRUD operations
   const handleCreateTask = async () => {
-    const hasValidEmployee = taskForm.selectAllEmployees || taskForm.employeeId;
+    const hasValidEmployee = taskForm.selectAllEmployees || taskForm.employeeIds.length > 0;
     if (!taskForm.title || !hasValidEmployee || !taskForm.dueDate) {
       toast.error(isRTL ? 'العنوان والموظف والتاريخ مطلوبة' : 'Title, employee, and date are required');
       return;
@@ -353,7 +355,7 @@ const ManagerDashboard = () => {
       // Get list of employees to assign
       const employeeIds = taskForm.selectAllEmployees
         ? employees.map(emp => emp.employeeId)
-        : [taskForm.employeeId];
+        : taskForm.employeeIds;
 
       // Create ONE task per employee (with date range if multi-day)
       const promises = [];
@@ -622,15 +624,31 @@ const ManagerDashboard = () => {
   };
 
   const handleCreateOpportunity = async () => {
-    if (!opportunityForm.volunteerId || !opportunityForm.title || !opportunityForm.startDate || !opportunityForm.endDate) {
+    const hasValidVolunteer = opportunityForm.selectAllVolunteers || opportunityForm.volunteerIds.length > 0;
+    if (!hasValidVolunteer || !opportunityForm.title || !opportunityForm.startDate || !opportunityForm.endDate) {
       toast.error(isRTL ? 'المتطوع والعنوان والتاريخ مطلوبة' : 'Volunteer, title, and dates are required');
       return;
     }
 
     setVolunteerLoading(true);
     try {
-      await api.post('/volunteers/opportunities', opportunityForm);
-      toast.success(isRTL ? 'تم إضافة فرصة التطوع بنجاح' : 'Opportunity added successfully');
+      // Get list of volunteers to assign
+      const volunteerIds = opportunityForm.selectAllVolunteers
+        ? volunteers.map(v => v.volunteerId)
+        : opportunityForm.volunteerIds;
+
+      // Create opportunity for each volunteer
+      const promises = volunteerIds.map(volunteerId =>
+        api.post('/volunteers/opportunities', {
+          ...opportunityForm,
+          volunteerId
+        })
+      );
+
+      await Promise.all(promises);
+      toast.success(isRTL
+        ? `تم إضافة فرصة التطوع لـ ${volunteerIds.length} متطوع بنجاح`
+        : `Opportunity added to ${volunteerIds.length} volunteer(s) successfully`);
       setShowOpportunityModal(false);
       resetOpportunityForm();
       fetchVolunteers();
@@ -979,6 +997,8 @@ const ManagerDashboard = () => {
   const resetOpportunityForm = () => {
     setOpportunityForm({
       volunteerId: '',
+      volunteerIds: [],
+      selectAllVolunteers: false,
       title: '',
       description: '',
       startDate: '',
@@ -2159,6 +2179,19 @@ const ManagerDashboard = () => {
                         </svg>
                         {isRTL ? 'تقييم' : 'Rate'}
                       </button>
+                      <button
+                        className="delete-volunteer-btn"
+                        onClick={() => handleDeleteVolunteer(volunteer.volunteerId)}
+                        title={isRTL ? 'حذف المتطوع' : 'Delete Volunteer'}
+                      >
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                          <polyline points="3 6 5 6 21 6"/>
+                          <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+                          <line x1="10" y1="11" x2="10" y2="17"/>
+                          <line x1="14" y1="11" x2="14" y2="17"/>
+                        </svg>
+                        {isRTL ? 'حذف' : 'Delete'}
+                      </button>
                     </div>
                   </div>
                 ))
@@ -2282,17 +2315,61 @@ const ManagerDashboard = () => {
               </div>
               <div className="modal-body">
                 <div className="form-group">
-                  <label>{isRTL ? 'المتطوع' : 'Volunteer'} *</label>
-                  <select
-                    value={opportunityForm.volunteerId}
-                    onChange={(e) => setOpportunityForm(prev => ({ ...prev, volunteerId: e.target.value }))}
-                    required
-                  >
-                    <option value="">{isRTL ? 'اختر متطوع' : 'Select Volunteer'}</option>
-                    {volunteers.map(v => (
-                      <option key={v.volunteerId} value={v.volunteerId}>{v.name} - {v.nationalId}</option>
-                    ))}
-                  </select>
+                  <label>{isRTL ? 'المتطوعين' : 'Volunteers'} *</label>
+                  <div className="select-all-checkbox">
+                    <label className="checkbox-label">
+                      <input
+                        type="checkbox"
+                        checked={opportunityForm.selectAllVolunteers}
+                        onChange={(e) => {
+                          const selectAll = e.target.checked;
+                          setOpportunityForm(prev => ({
+                            ...prev,
+                            selectAllVolunteers: selectAll,
+                            volunteerIds: selectAll ? volunteers.map(v => v.volunteerId) : []
+                          }));
+                        }}
+                      />
+                      <span>{isRTL ? 'تعيين لجميع المتطوعين' : 'Assign to all volunteers'}</span>
+                    </label>
+                  </div>
+                  {!opportunityForm.selectAllVolunteers && (
+                    <div className="volunteer-checkbox-list">
+                      {volunteers.map(v => (
+                        <label key={v.volunteerId} className="volunteer-checkbox-item">
+                          <input
+                            type="checkbox"
+                            checked={opportunityForm.volunteerIds.includes(v.volunteerId)}
+                            onChange={(e) => {
+                              const isChecked = e.target.checked;
+                              const newVolunteerIds = isChecked
+                                ? [...opportunityForm.volunteerIds, v.volunteerId]
+                                : opportunityForm.volunteerIds.filter(id => id !== v.volunteerId);
+                              setOpportunityForm(prev => ({
+                                ...prev,
+                                volunteerIds: newVolunteerIds,
+                                volunteerId: newVolunteerIds.length === 1 ? newVolunteerIds[0] : ''
+                              }));
+                            }}
+                          />
+                          <div className="volunteer-checkbox-avatar">
+                            {v.name?.charAt(0) || 'V'}
+                          </div>
+                          <div className="volunteer-checkbox-info">
+                            <span className="volunteer-checkbox-name">{v.name}</span>
+                            <span className="volunteer-checkbox-id">{v.nationalId}</span>
+                          </div>
+                        </label>
+                      ))}
+                    </div>
+                  )}
+                  {!opportunityForm.selectAllVolunteers && opportunityForm.volunteerIds.length > 0 && (
+                    <div className="selected-count">
+                      {isRTL
+                        ? `تم تحديد ${opportunityForm.volunteerIds.length} متطوع`
+                        : `${opportunityForm.volunteerIds.length} volunteer${opportunityForm.volunteerIds.length > 1 ? 's' : ''} selected`}
+                    </div>
+                  )}
                 </div>
                 <div className="form-group">
                   <label>{isRTL ? 'عنوان الفرصة' : 'Opportunity Title'} *</label>
@@ -2367,7 +2444,7 @@ const ManagerDashboard = () => {
                 <button
                   className="modal-btn save"
                   onClick={handleCreateOpportunity}
-                  disabled={volunteerLoading || !opportunityForm.volunteerId || !opportunityForm.title || !opportunityForm.startDate || !opportunityForm.endDate}
+                  disabled={volunteerLoading || (!opportunityForm.selectAllVolunteers && opportunityForm.volunteerIds.length === 0) || !opportunityForm.title || !opportunityForm.startDate || !opportunityForm.endDate}
                 >
                   {volunteerLoading ? (isRTL ? 'جاري الحفظ...' : 'Saving...') : (isRTL ? 'حفظ' : 'Save')}
                 </button>
@@ -3582,17 +3659,41 @@ const ManagerDashboard = () => {
                     </label>
                   </div>
                   {!taskForm.selectAllEmployees && (
-                    <select
-                      value={taskForm.employeeId}
-                      onChange={(e) => handleEmployeeSelect(e.target.value)}
-                    >
-                      <option value="">{isRTL ? 'اختر موظف' : 'Select employee'}</option>
+                    <div className="employee-checkbox-list">
                       {employees.map(emp => (
-                        <option key={emp.employeeId} value={emp.employeeId}>
-                          {emp.name} - {sectionLabels[emp.section] || emp.section}
-                        </option>
+                        <label key={emp.employeeId} className="employee-checkbox-item">
+                          <input
+                            type="checkbox"
+                            checked={taskForm.employeeIds.includes(emp.employeeId)}
+                            onChange={(e) => {
+                              const isChecked = e.target.checked;
+                              const newEmployeeIds = isChecked
+                                ? [...taskForm.employeeIds, emp.employeeId]
+                                : taskForm.employeeIds.filter(id => id !== emp.employeeId);
+                              setTaskForm({
+                                ...taskForm,
+                                employeeIds: newEmployeeIds,
+                                employeeId: newEmployeeIds.length === 1 ? newEmployeeIds[0] : ''
+                              });
+                            }}
+                          />
+                          <div className="employee-checkbox-avatar" style={{ background: SECTION_COLORS[emp.section] || '#6366f1' }}>
+                            {emp.name?.charAt(0) || 'E'}
+                          </div>
+                          <div className="employee-checkbox-info">
+                            <span className="employee-checkbox-name">{emp.name}</span>
+                            <span className="employee-checkbox-section">{sectionLabels[emp.section] || emp.section}</span>
+                          </div>
+                        </label>
                       ))}
-                    </select>
+                    </div>
+                  )}
+                  {!taskForm.selectAllEmployees && taskForm.employeeIds.length > 0 && (
+                    <div className="selected-count">
+                      {isRTL
+                        ? `تم تحديد ${taskForm.employeeIds.length} موظف`
+                        : `${taskForm.employeeIds.length} employee${taskForm.employeeIds.length > 1 ? 's' : ''} selected`}
+                    </div>
                   )}
                 </div>
 
