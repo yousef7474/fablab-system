@@ -18,7 +18,8 @@
       "Bash(del \"F:\\\\fablab regiser\\\\server\\\\utils\\\\whatsappService.js\")",
       "Bash(dir:*)",
       "Bash(node -e:*)",
-      "Bash(npm run build:*)"
+      "Bash(npm run build:*)",
+      "Bash(del \"F:\\\\fablab regiser\\\\.git\\\\index.lock\")"
     ],
     "deny": [],
     "ask": []

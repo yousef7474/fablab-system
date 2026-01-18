@@ -42,10 +42,13 @@ const AdminDashboard = () => {
   // Valid tabs for URL persistence
   const validTabs = ['dashboard', 'registrations', 'users', 'employees', 'schedule', 'analytics', 'settings'];
 
-  // Get initial tab from URL or default to 'dashboard'
+  // Get initial tab from URL, localStorage, or default to 'dashboard'
   const getInitialTab = () => {
     const tabFromUrl = searchParams.get('tab');
-    return validTabs.includes(tabFromUrl) ? tabFromUrl : 'dashboard';
+    if (validTabs.includes(tabFromUrl)) return tabFromUrl;
+    const savedTab = localStorage.getItem('adminActiveTab');
+    if (validTabs.includes(savedTab)) return savedTab;
+    return 'dashboard';
   };
 
   const [adminData, setAdminData] = useState(null);
@@ -119,8 +122,11 @@ const AdminDashboard = () => {
     localStorage.setItem('adminTheme', theme);
   }, [theme]);
 
-  // Sync URL with active tab
+  // Sync URL with active tab and save to localStorage
   useEffect(() => {
+    // Save to localStorage
+    localStorage.setItem('adminActiveTab', activeTab);
+
     const currentTab = searchParams.get('tab');
     if (activeTab !== currentTab) {
       if (activeTab === 'dashboard') {

@@ -4571,3 +4571,224 @@
     padding-bottom: max(0.75rem, env(safe-area-inset-bottom));
   }
 }
+
+/* ========================================
+   Enhanced Dark Mode Text Visibility
+   ======================================== */
+
+/* Ensure all text is clearly visible in dark mode */
+[data-theme="dark"] .page-title {
+  color: #f1f5f9 !important;
+}
+
+[data-theme="dark"] .admin-name {
+  color: #f1f5f9 !important;
+}
+
+[data-theme="dark"] .admin-role {
+  color: #cbd5e1 !important;
+}
+
+[data-theme="dark"] h1,
+[data-theme="dark"] h2,
+[data-theme="dark"] h3,
+[data-theme="dark"] h4 {
+  color: #f1f5f9;
+}
+
+[data-theme="dark"] p,
+[data-theme="dark"] span,
+[data-theme="dark"] label {
+  color: #e2e8f0;
+}
+
+[data-theme="dark"] .text-secondary,
+[data-theme="dark"] .text-muted {
+  color: #94a3b8 !important;
+}
+
+/* Dark mode form elements */
+[data-theme="dark"] input,
+[data-theme="dark"] select,
+[data-theme="dark"] textarea {
+  background: #1e293b;
+  border-color: #334155;
+  color: #f1f5f9;
+}
+
+[data-theme="dark"] input::placeholder,
+[data-theme="dark"] textarea::placeholder {
+  color: #64748b;
+}
+
+[data-theme="dark"] input:focus,
+[data-theme="dark"] select:focus,
+[data-theme="dark"] textarea:focus {
+  border-color: #6366f1;
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.2);
+}
+
+/* Dark mode buttons */
+[data-theme="dark"] .btn-secondary,
+[data-theme="dark"] .filter-btn {
+  background: #334155;
+  color: #e2e8f0;
+  border-color: #475569;
+}
+
+[data-theme="dark"] .btn-secondary:hover,
+[data-theme="dark"] .filter-btn:hover {
+  background: #475569;
+  color: #f1f5f9;
+}
+
+/* Dark mode stats card text */
+[data-theme="dark"] .stat-value {
+  color: #f1f5f9 !important;
+}
+
+[data-theme="dark"] .stat-label {
+  color: #94a3b8 !important;
+}
+
+/* Dark mode table text */
+[data-theme="dark"] .data-table th {
+  color: #e2e8f0 !important;
+}
+
+[data-theme="dark"] .data-table td {
+  color: #cbd5e1 !important;
+}
+
+[data-theme="dark"] .clickable-name,
+[data-theme="dark"] .user-link {
+  color: #f1f5f9 !important;
+}
+
+/* Dark mode calendar */
+[data-theme="dark"] .calendar-header h3 {
+  color: #f1f5f9 !important;
+}
+
+[data-theme="dark"] .day-number {
+  color: #e2e8f0 !important;
+}
+
+[data-theme="dark"] .calendar-day.today .day-number {
+  color: white !important;
+}
+
+[data-theme="dark"] .weekday {
+  color: #94a3b8 !important;
+}
+
+/* Dark mode settings text */
+[data-theme="dark"] .settings-card h3 {
+  color: #f1f5f9 !important;
+}
+
+[data-theme="dark"] .settings-form label {
+  color: #e2e8f0 !important;
+}
+
+[data-theme="dark"] .info-row span:first-child {
+  color: #94a3b8 !important;
+}
+
+[data-theme="dark"] .info-row span:last-child {
+  color: #f1f5f9 !important;
+}
+
+/* Dark mode employee list */
+[data-theme="dark"] .employee-name {
+  color: #f1f5f9 !important;
+}
+
+[data-theme="dark"] .employee-section {
+  color: #94a3b8 !important;
+}
+
+/* Dark mode appointments */
+[data-theme="dark"] .appointment-title {
+  color: #f1f5f9 !important;
+}
+
+[data-theme="dark"] .appointment-details {
+  color: #94a3b8 !important;
+}
+
+/* Dark mode analytics */
+[data-theme="dark"] .chart-card h3 {
+  color: #f1f5f9 !important;
+}
+
+/* Dark mode modal text */
+[data-theme="dark"] .modal-header h2 {
+  color: #f1f5f9 !important;
+}
+
+[data-theme="dark"] .detail-item label {
+  color: #94a3b8 !important;
+}
+
+[data-theme="dark"] .detail-item span {
+  color: #f1f5f9 !important;
+}
+
+/* Theme toggle button styles */
+.theme-option {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 1rem 1.5rem;
+  border: 2px solid var(--border-color);
+  border-radius: 12px;
+  background: var(--bg-tertiary);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-weight: 500;
+}
+
+.theme-option:hover {
+  border-color: var(--racing-red);
+  background: var(--bg-hover);
+}
+
+.theme-option.active {
+  border-color: var(--racing-red);
+  background: rgba(238, 35, 41, 0.1);
+  color: var(--racing-red);
+}
+
+[data-theme="dark"] .theme-option {
+  background: var(--bg-tertiary);
+  border-color: var(--border-color);
+  color: var(--text-secondary);
+}
+
+[data-theme="dark"] .theme-option:hover {
+  border-color: var(--racing-red);
+  background: var(--bg-hover);
+}
+
+[data-theme="dark"] .theme-option.active {
+  border-color: var(--racing-red);
+  background: rgba(238, 35, 41, 0.15);
+  color: var(--racing-red);
+}
+
+.theme-options {
+  display: flex;
+  gap: 12px;
+}
+
+@media (max-width: 768px) {
+  .theme-options {
+    flex-direction: column;
+  }
+
+  .theme-option {
+    justify-content: center;
+  }
+}

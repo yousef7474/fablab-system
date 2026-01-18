@@ -414,15 +414,27 @@ const resources = {
   }
 };
 
+// Get saved language from localStorage or default to 'ar'
+const savedLanguage = typeof window !== 'undefined'
+  ? localStorage.getItem('adminLanguage') || 'ar'
+  : 'ar';
+
 i18n
   .use(initReactI18next)
   .init({
     resources,
-    lng: 'ar', // Default language
+    lng: savedLanguage,
     fallbackLng: 'en',
     interpolation: {
       escapeValue: false
     }
   });
+
+// Save language to localStorage when it changes
+i18n.on('languageChanged', (lng) => {
+  if (typeof window !== 'undefined') {
+    localStorage.setItem('adminLanguage', lng);
+  }
+});
 
 export default i18n;

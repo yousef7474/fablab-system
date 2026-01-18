@@ -3536,3 +3536,247 @@
     padding-bottom: max(0.75rem, env(safe-area-inset-bottom));
   }
 }
+
+/* ========================================
+   Theme Toggle Styles
+   ======================================== */
+.theme-toggle-group {
+  display: flex;
+  gap: 8px;
+  background: var(--gray-100);
+  padding: 4px;
+  border-radius: 10px;
+}
+
+.theme-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  border: none;
+  background: transparent;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--gray-600);
+  transition: all 0.2s;
+}
+
+.theme-btn:hover {
+  color: var(--gray-800);
+}
+
+.theme-btn.active {
+  background: white;
+  color: #6366f1;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+[data-theme="dark"] .theme-toggle-group {
+  background: #252536;
+}
+
+[data-theme="dark"] .theme-btn {
+  color: #9ca3af;
+}
+
+[data-theme="dark"] .theme-btn:hover {
+  color: #e0e0e0;
+}
+
+[data-theme="dark"] .theme-btn.active {
+  background: #3a3a4e;
+  color: #8b5cf6;
+}
+
+/* ========================================
+   Enhanced Dark Mode Text Colors
+   ======================================== */
+[data-theme="dark"] .manager-layout .page-title,
+[data-theme="dark"] .manager-layout .header-title h1 {
+  color: #f1f5f9;
+}
+
+[data-theme="dark"] .manager-layout .header-title p {
+  color: #94a3b8;
+}
+
+[data-theme="dark"] .calendar-title,
+[data-theme="dark"] .manager-layout .calendar-header h3 {
+  color: #f1f5f9 !important;
+}
+
+[data-theme="dark"] .manager-layout .calendar-day .day-number {
+  color: #e2e8f0;
+}
+
+[data-theme="dark"] .manager-layout .calendar-day.today .day-number {
+  color: white;
+}
+
+[data-theme="dark"] .manager-layout .weekday {
+  color: #94a3b8;
+}
+
+[data-theme="dark"] .manager-layout .calendar-day {
+  background: #1e293b;
+}
+
+[data-theme="dark"] .manager-layout .calendar-day:hover:not(.empty) {
+  background: #334155;
+}
+
+[data-theme="dark"] .manager-layout .calendar-section {
+  background: #1e293b;
+  border-color: #334155;
+}
+
+[data-theme="dark"] .manager-layout .calendar-nav-btn {
+  background: #1e293b;
+  border-color: #334155;
+  color: #94a3b8;
+}
+
+[data-theme="dark"] .manager-layout .calendar-nav-btn:hover {
+  background: #334155;
+  color: #f1f5f9;
+}
+
+[data-theme="dark"] .selected-day-section {
+  background: #1e293b;
+  border-color: #334155;
+}
+
+[data-theme="dark"] .selected-day-header h4 {
+  color: #f1f5f9;
+}
+
+[data-theme="dark"] .event-title {
+  color: #f1f5f9;
+}
+
+[data-theme="dark"] .event-meta {
+  color: #94a3b8;
+}
+
+[data-theme="dark"] .event-item {
+  background: #0f172a;
+}
+
+[data-theme="dark"] .setting-description {
+  color: #94a3b8;
+}
+
+[data-theme="dark"] .settings-section-header h3 {
+  color: #f1f5f9;
+}
+
+[data-theme="dark"] .employees-section h3,
+[data-theme="dark"] .tasks-sidebar-header h3 {
+  color: #f1f5f9;
+}
+
+[data-theme="dark"] .employee-card span {
+  color: #e2e8f0;
+}
+
+[data-theme="dark"] .task-item-title {
+  color: #f1f5f9;
+}
+
+[data-theme="dark"] .task-item-due,
+[data-theme="dark"] .task-item-assignee {
+  color: #94a3b8;
+}
+
+[data-theme="dark"] .assignment-title {
+  color: #f1f5f9;
+}
+
+[data-theme="dark"] .assignment-meta {
+  color: #94a3b8;
+}
+
+[data-theme="dark"] .volunteer-card-name,
+[data-theme="dark"] .intern-card-name {
+  color: #f1f5f9;
+}
+
+[data-theme="dark"] .volunteer-card-info,
+[data-theme="dark"] .intern-card-info {
+  color: #94a3b8;
+}
+
+/* Mobile responsive fixes for manager sidebar */
+@media (max-width: 768px) {
+  .manager-layout .admin-sidebar {
+    position: fixed;
+    left: 0;
+    top: 0;
+    width: 280px;
+    height: 100vh;
+    transform: translateX(-100%);
+    transition: transform 0.3s ease;
+    z-index: 1001;
+  }
+
+  [dir="rtl"] .manager-layout .admin-sidebar {
+    left: auto;
+    right: 0;
+    transform: translateX(100%);
+  }
+
+  .manager-layout .admin-sidebar.open {
+    transform: translateX(0);
+  }
+
+  [dir="rtl"] .manager-layout .admin-sidebar.open {
+    transform: translateX(0);
+  }
+
+  .manager-layout .admin-sidebar.collapsed {
+    transform: translateX(-100%);
+  }
+
+  [dir="rtl"] .manager-layout .admin-sidebar.collapsed {
+    transform: translateX(100%);
+  }
+
+  .manager-layout .sidebar-overlay {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 1000;
+    backdrop-filter: blur(4px);
+    opacity: 0;
+    transition: opacity 0.3s ease;
+  }
+
+  .manager-layout .sidebar-overlay.active {
+    display: block;
+    opacity: 1;
+  }
+
+  .manager-layout .admin-main {
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+    padding: 0.75rem;
+  }
+
+  .setting-item {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+
+  .language-toggle-group,
+  .theme-toggle-group {
+    width: 100%;
+    justify-content: center;
+  }
+}
