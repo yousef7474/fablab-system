@@ -963,12 +963,40 @@
   width: 80px;
 }
 
+.admin-sidebar.collapsed .sidebar-header {
+  padding: 1rem;
+  justify-content: center;
+}
+
+.admin-sidebar.collapsed .sidebar-logo {
+  width: 40px;
+  height: 40px;
+}
+
+.admin-sidebar.collapsed .sidebar-nav {
+  padding: 1rem 0.5rem;
+}
+
+.admin-sidebar.collapsed .nav-item {
+  justify-content: center;
+  padding: 0.875rem;
+}
+
+.admin-sidebar.collapsed .sidebar-footer {
+  padding: 0.5rem;
+}
+
+.admin-sidebar.collapsed .sidebar-footer .nav-item {
+  justify-content: center;
+}
+
 .sidebar-header {
   padding: 1.5rem;
   display: flex;
   align-items: center;
   gap: 1rem;
   border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  overflow: hidden;
 }
 
 .sidebar-logo {
@@ -983,6 +1011,12 @@
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
+.sidebar-logo img {
+  width: 36px;
+  height: 36px;
+  object-fit: contain;
+}
+
 .sidebar-logo svg {
   width: 26px;
   height: 26px;
@@ -992,6 +1026,8 @@
   font-size: 1.25rem;
   font-weight: 700;
   white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .sidebar-nav {
@@ -1000,6 +1036,8 @@
   display: flex;
   flex-direction: column;
   gap: 0.25rem;
+  overflow-y: auto;
+  overflow-x: hidden;
 }
 
 .nav-item {
@@ -1016,6 +1054,11 @@
   white-space: nowrap;
   width: 100%;
   text-align: left;
+  flex-shrink: 0;
+}
+
+.nav-item svg {
+  flex-shrink: 0;
 }
 
 [dir="rtl"] .nav-item {
@@ -4109,6 +4152,7 @@
 
   .admin-sidebar.collapsed {
     transform: translateX(-100%);
+    width: 280px;
   }
 
   [dir="rtl"] .admin-sidebar {
@@ -4123,10 +4167,29 @@
 
   .admin-sidebar.open {
     transform: translateX(0);
+    width: 280px;
   }
 
   [dir="rtl"] .admin-sidebar.open {
     transform: translateX(0);
+  }
+
+  /* Reset collapsed styles on mobile - show full sidebar when open */
+  .admin-sidebar.open .sidebar-header,
+  .admin-sidebar.collapsed .sidebar-header {
+    padding: 1.5rem;
+    justify-content: flex-start;
+  }
+
+  .admin-sidebar.open .nav-item,
+  .admin-sidebar.collapsed .nav-item {
+    justify-content: flex-start;
+    padding: 0.875rem 1rem;
+  }
+
+  .admin-sidebar.open .sidebar-footer,
+  .admin-sidebar.collapsed .sidebar-footer {
+    padding: 0.75rem;
   }
 
   .admin-sidebar .sidebar-title,

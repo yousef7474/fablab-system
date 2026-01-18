@@ -70,20 +70,65 @@
 /* ========================================
    Sidebar Fixes
    ======================================== */
-.manager-layout .sidebar-header h2 {
-  color: white;
-  font-size: 1.1rem;
-  font-weight: 600;
-  margin: 0;
+
+/* Collapsed sidebar state for manager */
+.manager-layout .admin-sidebar.collapsed {
+  width: 80px;
+}
+
+.manager-layout .admin-sidebar.collapsed .sidebar-header {
+  padding: 1rem;
+  justify-content: center;
+}
+
+.manager-layout .admin-sidebar.collapsed .sidebar-logo {
+  width: 40px;
+  height: 40px;
+}
+
+.manager-layout .admin-sidebar.collapsed .sidebar-nav {
+  padding: 1rem 0.5rem;
+}
+
+.manager-layout .admin-sidebar.collapsed .nav-item {
+  justify-content: center;
+  padding: 12px;
+}
+
+.manager-layout .admin-sidebar.collapsed .sidebar-footer {
+  padding: 0.5rem;
+  justify-content: center;
+}
+
+.manager-layout .sidebar-header {
+  overflow: hidden;
 }
 
 .manager-layout .sidebar-logo {
-  width: 40px;
-  height: 40px;
-  object-fit: contain;
+  width: 45px;
+  height: 45px;
   background: white;
-  border-radius: 10px;
-  padding: 4px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.manager-layout .sidebar-logo img {
+  width: 36px;
+  height: 36px;
+  object-fit: contain;
+}
+
+.manager-layout .sidebar-title {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: white;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .manager-layout .sidebar-nav {
@@ -92,48 +137,15 @@
   display: flex;
   flex-direction: column;
   gap: 4px;
-}
-
-.manager-layout .logout-btn {
-  background: rgba(255, 255, 255, 0.1);
-  border: none;
-  color: white;
-  padding: 10px;
-  border-radius: 10px;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.manager-layout .logout-btn:hover {
-  background: rgba(239, 68, 68, 0.3);
+  overflow-y: auto;
+  overflow-x: hidden;
 }
 
 .manager-layout .sidebar-footer {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  padding: 1rem;
+  padding: 0.75rem;
   border-top: 1px solid rgba(255, 255, 255, 0.1);
-}
-
-.manager-layout .admin-profile {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  background: transparent;
-  padding: 0;
-}
-
-.manager-layout .admin-info {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
-.manager-layout .admin-info .admin-name {
-  color: white;
-  font-weight: 600;
-  font-size: 14px;
 }
 
 .manager-layout .nav-item {
@@ -151,6 +163,11 @@
   cursor: pointer;
   transition: all 0.2s;
   text-align: left;
+  flex-shrink: 0;
+}
+
+.manager-layout .nav-item svg {
+  flex-shrink: 0;
 }
 
 [dir="rtl"] .manager-layout .nav-item {
@@ -163,8 +180,17 @@
 }
 
 .manager-layout .nav-item.active {
-  background: rgba(255, 255, 255, 0.15);
+  background: linear-gradient(135deg, #e02529, #c41e24);
   color: white;
+}
+
+.manager-layout .nav-item.logout {
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.manager-layout .nav-item.logout:hover {
+  background: rgba(238, 35, 41, 0.2);
+  color: #ef4444;
 }
 
 .manager-layout .nav-item svg {
@@ -3729,6 +3755,7 @@
 
   .manager-layout .admin-sidebar.open {
     transform: translateX(0);
+    width: 280px;
   }
 
   [dir="rtl"] .manager-layout .admin-sidebar.open {
@@ -3737,10 +3764,30 @@
 
   .manager-layout .admin-sidebar.collapsed {
     transform: translateX(-100%);
+    width: 280px;
   }
 
   [dir="rtl"] .manager-layout .admin-sidebar.collapsed {
     transform: translateX(100%);
+  }
+
+  /* Reset collapsed styles on mobile - show full sidebar when open */
+  .manager-layout .admin-sidebar.open .sidebar-header,
+  .manager-layout .admin-sidebar.collapsed .sidebar-header {
+    padding: 1.5rem;
+    justify-content: flex-start;
+  }
+
+  .manager-layout .admin-sidebar.open .nav-item,
+  .manager-layout .admin-sidebar.collapsed .nav-item {
+    justify-content: flex-start;
+    padding: 12px 16px;
+  }
+
+  .manager-layout .admin-sidebar.open .sidebar-footer,
+  .manager-layout .admin-sidebar.collapsed .sidebar-footer {
+    padding: 0.75rem;
+    justify-content: flex-start;
   }
 
   .manager-layout .sidebar-overlay {
