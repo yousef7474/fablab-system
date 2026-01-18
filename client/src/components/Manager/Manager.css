@@ -85,129 +85,14 @@
 }
 
 /* ========================================
-   Sidebar Fixes
+   Sidebar - Inherits from Admin.css
+   Only override nav-item active color
    ======================================== */
 
-/* Collapsed sidebar state for manager */
-.manager-layout .admin-sidebar.collapsed {
-  width: 80px;
-}
-
-.manager-layout .admin-sidebar.collapsed .sidebar-header {
-  padding: 1rem;
-  justify-content: center;
-}
-
-.manager-layout .admin-sidebar.collapsed .sidebar-logo {
-  width: 40px;
-  height: 40px;
-}
-
-.manager-layout .admin-sidebar.collapsed .sidebar-nav {
-  padding: 1rem 0.5rem;
-}
-
-.manager-layout .admin-sidebar.collapsed .nav-item {
-  justify-content: center;
-  padding: 12px;
-}
-
-.manager-layout .admin-sidebar.collapsed .sidebar-footer {
-  padding: 0.5rem;
-  justify-content: center;
-}
-
-.manager-layout .sidebar-header {
-  overflow: hidden;
-}
-
-.manager-layout .sidebar-logo {
-  width: 45px;
-  height: 45px;
-  background: white;
-  border-radius: 12px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-}
-
-.manager-layout .sidebar-logo img {
-  width: 36px;
-  height: 36px;
-  object-fit: contain;
-}
-
-.manager-layout .sidebar-title {
-  font-size: 1.1rem;
-  font-weight: 600;
-  color: white;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.manager-layout .sidebar-nav {
-  flex: 1;
-  padding: 1rem;
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  overflow-y: auto;
-  overflow-x: hidden;
-}
-
-.manager-layout .sidebar-footer {
-  display: flex;
-  align-items: center;
-  padding: 0.75rem;
-  border-top: 1px solid rgba(255, 255, 255, 0.1);
-}
-
-.manager-layout .nav-item {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  width: 100%;
-  padding: 12px 16px;
-  border: none;
-  background: transparent;
-  color: rgba(255, 255, 255, 0.7);
-  font-size: 14px;
-  font-weight: 500;
-  border-radius: 10px;
-  cursor: pointer;
-  transition: all 0.2s;
-  text-align: left;
-  flex-shrink: 0;
-}
-
-.manager-layout .nav-item svg {
-  flex-shrink: 0;
-}
-
-[dir="rtl"] .manager-layout .nav-item {
-  text-align: right;
-}
-
-.manager-layout .nav-item:hover {
-  background: rgba(255, 255, 255, 0.1);
-  color: white;
-}
-
+/* Manager-specific active nav item color */
 .manager-layout .nav-item.active {
   background: linear-gradient(135deg, #e02529, #c41e24);
   color: white;
-}
-
-.manager-layout .nav-item.logout {
-  color: rgba(255, 255, 255, 0.5);
-}
-
-.manager-layout .nav-item.logout:hover {
-  background: rgba(238, 35, 41, 0.2);
-  color: #ef4444;
 }
 
 /* Main content area margin based on sidebar state */
@@ -238,10 +123,6 @@
 [dir="rtl"] .manager-layout .admin-sidebar.collapsed ~ .admin-main {
   margin-left: 0 !important;
   margin-right: 80px !important;
-}
-
-.manager-layout .nav-item svg {
-  flex-shrink: 0;
 }
 
 /* ========================================
