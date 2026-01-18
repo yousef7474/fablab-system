@@ -22,6 +22,7 @@ router.get('/users', authMiddleware, adminController.getAllUsers);
 router.get('/users/:userId', authMiddleware, adminController.getUserProfile);
 router.get('/users/:userId/registrations', authMiddleware, adminController.getUserWithRegistrations);
 router.put('/users/:userId', authMiddleware, adminController.updateUser);
+router.delete('/users/:userId', authMiddleware, adminController.deleteUser);
 
 // Employee routes
 router.get('/employees', authMiddleware, adminController.getAllEmployees);

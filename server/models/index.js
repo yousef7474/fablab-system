@@ -11,6 +11,7 @@ const VolunteerRating = require('./VolunteerRating');
 const Intern = require('./Intern');
 const InternTraining = require('./InternTraining');
 const InternRating = require('./InternRating');
+const ManagerTodo = require('./ManagerTodo');
 
 // Define relationships
 User.hasMany(Registration, { foreignKey: 'userId', as: 'registrations' });
@@ -64,6 +65,10 @@ InternTraining.hasMany(InternRating, { foreignKey: 'trainingId', as: 'ratings' }
 InternRating.belongsTo(Admin, { foreignKey: 'createdById', as: 'ratedBy' });
 Admin.hasMany(InternRating, { foreignKey: 'createdById', as: 'givenInternRatings' });
 
+// Manager Todo relationships
+ManagerTodo.belongsTo(Admin, { foreignKey: 'managerId', as: 'manager' });
+Admin.hasMany(ManagerTodo, { foreignKey: 'managerId', as: 'todos' });
+
 // Sync database
 const syncDatabase = async () => {
   try {
@@ -89,5 +94,6 @@ module.exports = {
   Intern,
   InternTraining,
   InternRating,
+  ManagerTodo,
   syncDatabase
 };

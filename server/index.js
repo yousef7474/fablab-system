@@ -10,6 +10,7 @@ const taskRoutes = require('./routes/taskRoutes');
 const ratingRoutes = require('./routes/ratingRoutes');
 const volunteerRoutes = require('./routes/volunteerRoutes');
 const internRoutes = require('./routes/internRoutes');
+const managerTodoRoutes = require('./routes/managerTodoRoutes');
 
 const app = express();
 
@@ -33,6 +34,7 @@ app.use('/api/tasks', taskRoutes);
 app.use('/api/ratings', ratingRoutes);
 app.use('/api/volunteers', volunteerRoutes);
 app.use('/api/interns', internRoutes);
+app.use('/api/manager-todos', managerTodoRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {

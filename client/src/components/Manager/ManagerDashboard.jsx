@@ -45,7 +45,7 @@ const ManagerDashboard = () => {
   const isRTL = i18n.language === 'ar';
 
   // Valid tabs for URL persistence
-  const validTabs = ['schedule', 'tasks', 'ratings', 'volunteers', 'interns', 'settings'];
+  const validTabs = ['schedule', 'tasks', 'employees', 'todos', 'ratings', 'volunteers', 'interns', 'settings'];
 
   // Get initial tab from URL, localStorage, or default to 'schedule'
   const getInitialTab = () => {
@@ -191,6 +191,28 @@ const ManagerDashboard = () => {
     ratingNotes: ''
   });
 
+  // Employee management state
+  const [showEmployeeModal, setShowEmployeeModal] = useState(false);
+  const [selectedEmployee, setSelectedEmployee] = useState(null);
+  const [employeeLoading, setEmployeeLoading] = useState(false);
+  const [employeeForm, setEmployeeForm] = useState({
+    name: '',
+    email: '',
+    section: ''
+  });
+
+  // Manager Todo state
+  const [myTodos, setMyTodos] = useState([]);
+  const [showTodoModal, setShowTodoModal] = useState(false);
+  const [selectedTodo, setSelectedTodo] = useState(null);
+  const [todoLoading, setTodoLoading] = useState(false);
+  const [todoForm, setTodoForm] = useState({
+    title: '',
+    description: '',
+    dueDate: '',
+    priority: 'medium'
+  });
+
   // Predefined criteria options
   const criteriaOptions = [
     { value: '', label: isRTL ? 'اختر المعيار' : 'Select Criteria' },
@@ -292,17 +314,173 @@ const ManagerDashboard = () => {
     }
   }, []);
 
+  // Fetch manager's personal todos
+  const fetchMyTodos = useCallback(async () => {
+    try {
+      const response = await api.get('/manager-todos');
+      setMyTodos(response.data || []);
+    } catch (error) {
+      console.error('Error fetching todos:', error);
+    }
+  }, []);
+
+  // Employee CRUD operations
+  const handleCreateEmployee = async () => {
+    if (!employeeForm.name || !employeeForm.email) {
+      toast.error(isRTL ? 'الاسم والبريد الإلكتروني مطلوبان' : 'Name and email are required');
+      return;
+    }
+
+    setEmployeeLoading(true);
+    try {
+      await api.post('/admin/employees', employeeForm);
+      toast.success(isRTL ? 'تم إضافة الموظف بنجاح' : 'Employee added successfully');
+      fetchEmployees();
+      setShowEmployeeModal(false);
+      setEmployeeForm({ name: '', email: '', section: '' });
+    } catch (error) {
+      toast.error(error.response?.data?.message || (isRTL ? 'خطأ في إضافة الموظف' : 'Error adding employee'));
+    } finally {
+      setEmployeeLoading(false);
+    }
+  };
+
+  const handleUpdateEmployee = async () => {
+    if (!selectedEmployee) return;
+
+    setEmployeeLoading(true);
+    try {
+      await api.put(`/admin/employees/${selectedEmployee.employeeId}`, employeeForm);
+      toast.success(isRTL ? 'تم تحديث الموظف بنجاح' : 'Employee updated successfully');
+      fetchEmployees();
+      setShowEmployeeModal(false);
+      setSelectedEmployee(null);
+      setEmployeeForm({ name: '', email: '', section: '' });
+    } catch (error) {
+      toast.error(isRTL ? 'خطأ في تحديث الموظف' : 'Error updating employee');
+    } finally {
+      setEmployeeLoading(false);
+    }
+  };
+
+  const handleDeleteEmployee = async (employeeId) => {
+    if (!window.confirm(isRTL ? 'هل أنت متأكد من حذف هذا الموظف؟' : 'Are you sure you want to delete this employee?')) {
+      return;
+    }
+
+    try {
+      await api.delete(`/admin/employees/${employeeId}`);
+      toast.success(isRTL ? 'تم حذف الموظف بنجاح' : 'Employee deleted successfully');
+      fetchEmployees();
+    } catch (error) {
+      toast.error(isRTL ? 'خطأ في حذف الموظف' : 'Error deleting employee');
+    }
+  };
+
+  const openEmployeeModal = (employee = null) => {
+    if (employee) {
+      setSelectedEmployee(employee);
+      setEmployeeForm({
+        name: employee.name || '',
+        email: employee.email || '',
+        section: employee.section || ''
+      });
+    } else {
+      setSelectedEmployee(null);
+      setEmployeeForm({ name: '', email: '', section: '' });
+    }
+    setShowEmployeeModal(true);
+  };
+
+  // Manager Todo CRUD operations
+  const handleCreateTodo = async () => {
+    if (!todoForm.title) {
+      toast.error(isRTL ? 'العنوان مطلوب' : 'Title is required');
+      return;
+    }
+
+    setTodoLoading(true);
+    try {
+      await api.post('/manager-todos', todoForm);
+      toast.success(isRTL ? 'تم إضافة المهمة بنجاح' : 'Todo added successfully');
+      fetchMyTodos();
+      setShowTodoModal(false);
+      setTodoForm({ title: '', description: '', dueDate: '', priority: 'medium' });
+    } catch (error) {
+      toast.error(isRTL ? 'خطأ في إضافة المهمة' : 'Error adding todo');
+    } finally {
+      setTodoLoading(false);
+    }
+  };
+
+  const handleUpdateTodo = async () => {
+    if (!selectedTodo) return;
+
+    setTodoLoading(true);
+    try {
+      await api.put(`/manager-todos/${selectedTodo.todoId}`, todoForm);
+      toast.success(isRTL ? 'تم تحديث المهمة بنجاح' : 'Todo updated successfully');
+      fetchMyTodos();
+      setShowTodoModal(false);
+      setSelectedTodo(null);
+      setTodoForm({ title: '', description: '', dueDate: '', priority: 'medium' });
+    } catch (error) {
+      toast.error(isRTL ? 'خطأ في تحديث المهمة' : 'Error updating todo');
+    } finally {
+      setTodoLoading(false);
+    }
+  };
+
+  const handleToggleTodoStatus = async (todoId) => {
+    try {
+      await api.patch(`/manager-todos/${todoId}/toggle`);
+      fetchMyTodos();
+    } catch (error) {
+      toast.error(isRTL ? 'خطأ في تحديث حالة المهمة' : 'Error updating todo status');
+    }
+  };
+
+  const handleDeleteTodo = async (todoId) => {
+    if (!window.confirm(isRTL ? 'هل أنت متأكد من حذف هذه المهمة؟' : 'Are you sure you want to delete this todo?')) {
+      return;
+    }
+
+    try {
+      await api.delete(`/manager-todos/${todoId}`);
+      toast.success(isRTL ? 'تم حذف المهمة بنجاح' : 'Todo deleted successfully');
+      fetchMyTodos();
+    } catch (error) {
+      toast.error(isRTL ? 'خطأ في حذف المهمة' : 'Error deleting todo');
+    }
+  };
+
+  const openTodoModal = (todo = null) => {
+    if (todo) {
+      setSelectedTodo(todo);
+      setTodoForm({
+        title: todo.title || '',
+        description: todo.description || '',
+        dueDate: todo.dueDate || '',
+        priority: todo.priority || 'medium'
+      });
+    } else {
+      setSelectedTodo(null);
+      setTodoForm({ title: '', description: '', dueDate: '', priority: 'medium' });
+    }
+    setShowTodoModal(true);
+  };
+
   // Initial data load
   useEffect(() => {
     const loadData = async () => {
       setLoading(true);
-      await Promise.all([fetchSchedule(), fetchEmployees()]);
+      await Promise.all([fetchSchedule(), fetchEmployees(), fetchMyTodos()]);
       setLoading(false);
     };
     if (managerData) {
       loadData();
     }
-  }, [managerData, fetchSchedule, fetchEmployees]);
+  }, [managerData, fetchSchedule, fetchEmployees, fetchMyTodos]);
 
   // Calendar helpers
   const getDaysInMonth = (date) => {
@@ -1293,6 +1471,32 @@ const ManagerDashboard = () => {
             {sidebarOpen && <span>{isRTL ? 'المهام' : 'Tasks'}</span>}
           </button>
           <button
+            className={`nav-item ${activeTab === 'employees' ? 'active' : ''}`}
+            onClick={() => { setActiveTab('employees'); if (window.innerWidth <= 768) setSidebarOpen(false); }}
+          >
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+              <circle cx="9" cy="7" r="4"/>
+              <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+              <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+            </svg>
+            {sidebarOpen && <span>{isRTL ? 'الموظفين' : 'Employees'}</span>}
+          </button>
+          <button
+            className={`nav-item ${activeTab === 'todos' ? 'active' : ''}`}
+            onClick={() => { setActiveTab('todos'); if (window.innerWidth <= 768) setSidebarOpen(false); }}
+          >
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <line x1="8" y1="6" x2="21" y2="6"/>
+              <line x1="8" y1="12" x2="21" y2="12"/>
+              <line x1="8" y1="18" x2="21" y2="18"/>
+              <line x1="3" y1="6" x2="3.01" y2="6"/>
+              <line x1="3" y1="12" x2="3.01" y2="12"/>
+              <line x1="3" y1="18" x2="3.01" y2="18"/>
+            </svg>
+            {sidebarOpen && <span>{isRTL ? 'مهامي' : 'My Tasks'}</span>}
+          </button>
+          <button
             className={`nav-item ${activeTab === 'ratings' ? 'active' : ''}`}
             onClick={() => { setActiveTab('ratings'); if (window.innerWidth <= 768) setSidebarOpen(false); }}
           >
@@ -1364,6 +1568,10 @@ const ManagerDashboard = () => {
               ? (isRTL ? 'الجدول' : 'Schedule')
               : activeTab === 'tasks'
               ? (isRTL ? 'المهام' : 'Tasks')
+              : activeTab === 'employees'
+              ? (isRTL ? 'الموظفين' : 'Employees')
+              : activeTab === 'todos'
+              ? (isRTL ? 'مهامي' : 'My Tasks')
               : activeTab === 'ratings'
               ? (isRTL ? 'تقييم الموظفين' : 'Employee Ratings')
               : activeTab === 'volunteers'
@@ -1376,6 +1584,10 @@ const ManagerDashboard = () => {
               ? (isRTL ? 'عرض جدول المواعيد' : 'View appointments schedule')
               : activeTab === 'tasks'
               ? (isRTL ? 'إدارة وتعيين المهام للموظفين' : 'Manage and assign tasks to employees')
+              : activeTab === 'employees'
+              ? (isRTL ? 'إدارة الموظفين وبياناتهم' : 'Manage employees and their data')
+              : activeTab === 'todos'
+              ? (isRTL ? 'قائمة مهامي الشخصية' : 'My personal task list')
               : activeTab === 'ratings'
               ? (isRTL ? 'إعطاء نقاط للموظفين وتصدير التقارير' : 'Give points to employees and export reports')
               : activeTab === 'volunteers'
@@ -3428,6 +3640,353 @@ const ManagerDashboard = () => {
                   disabled={internLoading}
                 >
                   {internLoading ? (isRTL ? 'جاري الحفظ...' : 'Saving...') : (isRTL ? 'حفظ التقييم' : 'Save Rating')}
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+
+        {/* Employees Content */}
+        {activeTab === 'employees' && (
+          <div className="volunteers-section">
+            <div className="volunteers-header">
+              <div className="volunteers-actions">
+                <button className="add-volunteer-btn" onClick={() => openEmployeeModal()}>
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                    <circle cx="8.5" cy="7" r="4"/>
+                    <line x1="20" y1="8" x2="20" y2="14"/>
+                    <line x1="23" y1="11" x2="17" y2="11"/>
+                  </svg>
+                  {isRTL ? 'إضافة موظف' : 'Add Employee'}
+                </button>
+              </div>
+              <div className="volunteers-stats">
+                <div className="stat-item">
+                  <span className="stat-value">{employees.length}</span>
+                  <span className="stat-label">{isRTL ? 'موظف' : 'Employees'}</span>
+                </div>
+              </div>
+            </div>
+
+            <div className="volunteers-grid">
+              {employees.length === 0 ? (
+                <div className="empty-state">
+                  <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1">
+                    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                    <circle cx="9" cy="7" r="4"/>
+                  </svg>
+                  <p>{isRTL ? 'لا يوجد موظفين' : 'No employees found'}</p>
+                  <button className="add-first-btn" onClick={() => openEmployeeModal()}>
+                    {isRTL ? 'إضافة موظف' : 'Add Employee'}
+                  </button>
+                </div>
+              ) : (
+                employees.map((employee) => (
+                  <motion.div
+                    key={employee.employeeId}
+                    className="volunteer-card"
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    whileHover={{ y: -4 }}
+                  >
+                    <div className="volunteer-card-header">
+                      <div className="volunteer-avatar">
+                        {employee.name?.charAt(0)?.toUpperCase() || 'E'}
+                      </div>
+                      <div className="volunteer-info">
+                        <h3>{employee.name}</h3>
+                        <span className="volunteer-id">{employee.email}</span>
+                      </div>
+                    </div>
+                    <div className="volunteer-card-body">
+                      <div className="volunteer-detail">
+                        <span className="detail-label">{isRTL ? 'القسم' : 'Section'}</span>
+                        <span className="detail-value">{sectionLabels[employee.section] || employee.section || '-'}</span>
+                      </div>
+                      <div className="volunteer-detail">
+                        <span className="detail-label">{isRTL ? 'الحالة' : 'Status'}</span>
+                        <span className={`status-badge ${employee.isActive !== false ? 'active' : 'inactive'}`}>
+                          {employee.isActive !== false ? (isRTL ? 'نشط' : 'Active') : (isRTL ? 'غير نشط' : 'Inactive')}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="volunteer-card-footer">
+                      <button
+                        className="card-action-btn edit"
+                        onClick={() => openEmployeeModal(employee)}
+                        title={isRTL ? 'تعديل' : 'Edit'}
+                      >
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                          <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                          <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                        </svg>
+                      </button>
+                      <button
+                        className="card-action-btn delete"
+                        onClick={() => handleDeleteEmployee(employee.employeeId)}
+                        title={isRTL ? 'حذف' : 'Delete'}
+                      >
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                          <polyline points="3 6 5 6 21 6"/>
+                          <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+                        </svg>
+                      </button>
+                    </div>
+                  </motion.div>
+                ))
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Employee Modal */}
+        {showEmployeeModal && (
+          <div className="modal-overlay" onClick={() => setShowEmployeeModal(false)}>
+            <motion.div
+              className="modal-content"
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="modal-header">
+                <h2>{selectedEmployee ? (isRTL ? 'تعديل موظف' : 'Edit Employee') : (isRTL ? 'إضافة موظف' : 'Add Employee')}</h2>
+                <button className="modal-close" onClick={() => setShowEmployeeModal(false)}>
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <line x1="18" y1="6" x2="6" y2="18"/>
+                    <line x1="6" y1="6" x2="18" y2="18"/>
+                  </svg>
+                </button>
+              </div>
+              <div className="modal-body">
+                <div className="form-group">
+                  <label>{isRTL ? 'الاسم' : 'Name'}</label>
+                  <input
+                    type="text"
+                    value={employeeForm.name}
+                    onChange={(e) => setEmployeeForm({ ...employeeForm, name: e.target.value })}
+                    placeholder={isRTL ? 'اسم الموظف' : 'Employee name'}
+                  />
+                </div>
+                <div className="form-group">
+                  <label>{isRTL ? 'البريد الإلكتروني' : 'Email'}</label>
+                  <input
+                    type="email"
+                    value={employeeForm.email}
+                    onChange={(e) => setEmployeeForm({ ...employeeForm, email: e.target.value })}
+                    placeholder={isRTL ? 'البريد الإلكتروني' : 'Email address'}
+                  />
+                </div>
+                <div className="form-group">
+                  <label>{isRTL ? 'القسم' : 'Section'}</label>
+                  <select
+                    value={employeeForm.section}
+                    onChange={(e) => setEmployeeForm({ ...employeeForm, section: e.target.value })}
+                  >
+                    <option value="">{isRTL ? 'اختر القسم' : 'Select Section'}</option>
+                    {Object.keys(SECTION_COLORS).map((section) => (
+                      <option key={section} value={section}>
+                        {sectionLabels[section] || section}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+              <div className="modal-footer">
+                <button className="btn-secondary" onClick={() => setShowEmployeeModal(false)}>
+                  {isRTL ? 'إلغاء' : 'Cancel'}
+                </button>
+                <button
+                  className="btn-primary"
+                  onClick={selectedEmployee ? handleUpdateEmployee : handleCreateEmployee}
+                  disabled={employeeLoading}
+                >
+                  {employeeLoading ? (isRTL ? 'جاري الحفظ...' : 'Saving...') : (selectedEmployee ? (isRTL ? 'تحديث' : 'Update') : (isRTL ? 'إضافة' : 'Add'))}
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+
+        {/* My Tasks (Todos) Content */}
+        {activeTab === 'todos' && (
+          <div className="volunteers-section">
+            <div className="volunteers-header">
+              <div className="volunteers-actions">
+                <button className="add-volunteer-btn" onClick={() => openTodoModal()}>
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <line x1="12" y1="5" x2="12" y2="19"/>
+                    <line x1="5" y1="12" x2="19" y2="12"/>
+                  </svg>
+                  {isRTL ? 'إضافة مهمة' : 'Add Task'}
+                </button>
+              </div>
+              <div className="volunteers-stats">
+                <div className="stat-item">
+                  <span className="stat-value">{myTodos.filter(t => t.status === 'pending').length}</span>
+                  <span className="stat-label">{isRTL ? 'قيد الانتظار' : 'Pending'}</span>
+                </div>
+                <div className="stat-item">
+                  <span className="stat-value">{myTodos.filter(t => t.status === 'completed').length}</span>
+                  <span className="stat-label">{isRTL ? 'مكتمل' : 'Completed'}</span>
+                </div>
+              </div>
+            </div>
+
+            <div className="todo-list">
+              {myTodos.length === 0 ? (
+                <div className="empty-state">
+                  <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1">
+                    <line x1="8" y1="6" x2="21" y2="6"/>
+                    <line x1="8" y1="12" x2="21" y2="12"/>
+                    <line x1="8" y1="18" x2="21" y2="18"/>
+                    <line x1="3" y1="6" x2="3.01" y2="6"/>
+                    <line x1="3" y1="12" x2="3.01" y2="12"/>
+                    <line x1="3" y1="18" x2="3.01" y2="18"/>
+                  </svg>
+                  <p>{isRTL ? 'لا يوجد مهام' : 'No tasks yet'}</p>
+                  <button className="add-first-btn" onClick={() => openTodoModal()}>
+                    {isRTL ? 'إضافة مهمة' : 'Add Task'}
+                  </button>
+                </div>
+              ) : (
+                myTodos.map((todo) => (
+                  <motion.div
+                    key={todo.todoId}
+                    className={`todo-item ${todo.status === 'completed' ? 'completed' : ''}`}
+                    initial={{ opacity: 0, x: -20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                  >
+                    <div className="todo-checkbox" onClick={() => handleToggleTodoStatus(todo.todoId)}>
+                      {todo.status === 'completed' ? (
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                          <path d="M9 11l3 3L22 4"/>
+                          <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>
+                        </svg>
+                      ) : (
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                          <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+                        </svg>
+                      )}
+                    </div>
+                    <div className="todo-content">
+                      <h4>{todo.title}</h4>
+                      {todo.description && <p>{todo.description}</p>}
+                      <div className="todo-meta">
+                        {todo.dueDate && (
+                          <span className="todo-date">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                              <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+                              <line x1="16" y1="2" x2="16" y2="6"/>
+                              <line x1="8" y1="2" x2="8" y2="6"/>
+                              <line x1="3" y1="10" x2="21" y2="10"/>
+                            </svg>
+                            {format(parseISO(todo.dueDate), 'MMM d, yyyy', { locale: isRTL ? ar : enUS })}
+                          </span>
+                        )}
+                        <span className={`todo-priority priority-${todo.priority}`}>
+                          {todo.priority === 'high' ? (isRTL ? 'عالي' : 'High') : todo.priority === 'medium' ? (isRTL ? 'متوسط' : 'Medium') : (isRTL ? 'منخفض' : 'Low')}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="todo-actions">
+                      <button
+                        className="todo-action-btn edit"
+                        onClick={() => openTodoModal(todo)}
+                        title={isRTL ? 'تعديل' : 'Edit'}
+                      >
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                          <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                          <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                        </svg>
+                      </button>
+                      <button
+                        className="todo-action-btn delete"
+                        onClick={() => handleDeleteTodo(todo.todoId)}
+                        title={isRTL ? 'حذف' : 'Delete'}
+                      >
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                          <polyline points="3 6 5 6 21 6"/>
+                          <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+                        </svg>
+                      </button>
+                    </div>
+                  </motion.div>
+                ))
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Todo Modal */}
+        {showTodoModal && (
+          <div className="modal-overlay" onClick={() => setShowTodoModal(false)}>
+            <motion.div
+              className="modal-content"
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="modal-header">
+                <h2>{selectedTodo ? (isRTL ? 'تعديل مهمة' : 'Edit Task') : (isRTL ? 'إضافة مهمة' : 'Add Task')}</h2>
+                <button className="modal-close" onClick={() => setShowTodoModal(false)}>
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <line x1="18" y1="6" x2="6" y2="18"/>
+                    <line x1="6" y1="6" x2="18" y2="18"/>
+                  </svg>
+                </button>
+              </div>
+              <div className="modal-body">
+                <div className="form-group">
+                  <label>{isRTL ? 'العنوان' : 'Title'}</label>
+                  <input
+                    type="text"
+                    value={todoForm.title}
+                    onChange={(e) => setTodoForm({ ...todoForm, title: e.target.value })}
+                    placeholder={isRTL ? 'عنوان المهمة' : 'Task title'}
+                  />
+                </div>
+                <div className="form-group">
+                  <label>{isRTL ? 'الوصف' : 'Description'}</label>
+                  <textarea
+                    value={todoForm.description}
+                    onChange={(e) => setTodoForm({ ...todoForm, description: e.target.value })}
+                    placeholder={isRTL ? 'وصف المهمة (اختياري)' : 'Task description (optional)'}
+                    rows={3}
+                  />
+                </div>
+                <div className="form-row">
+                  <div className="form-group">
+                    <label>{isRTL ? 'تاريخ الاستحقاق' : 'Due Date'}</label>
+                    <input
+                      type="date"
+                      value={todoForm.dueDate}
+                      onChange={(e) => setTodoForm({ ...todoForm, dueDate: e.target.value })}
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label>{isRTL ? 'الأولوية' : 'Priority'}</label>
+                    <select
+                      value={todoForm.priority}
+                      onChange={(e) => setTodoForm({ ...todoForm, priority: e.target.value })}
+                    >
+                      <option value="low">{isRTL ? 'منخفض' : 'Low'}</option>
+                      <option value="medium">{isRTL ? 'متوسط' : 'Medium'}</option>
+                      <option value="high">{isRTL ? 'عالي' : 'High'}</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+              <div className="modal-footer">
+                <button className="btn-secondary" onClick={() => setShowTodoModal(false)}>
+                  {isRTL ? 'إلغاء' : 'Cancel'}
+                </button>
+                <button
+                  className="btn-primary"
+                  onClick={selectedTodo ? handleUpdateTodo : handleCreateTodo}
+                  disabled={todoLoading}
+                >
+                  {todoLoading ? (isRTL ? 'جاري الحفظ...' : 'Saving...') : (selectedTodo ? (isRTL ? 'تحديث' : 'Update') : (isRTL ? 'إضافة' : 'Add'))}
                 </button>
               </div>
             </motion.div>

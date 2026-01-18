@@ -1024,4 +1024,33 @@ exports.exportToCSV = async (req, res) => {
   }
 };
 
+// Delete user and all their registrations
+exports.deleteUser = async (req, res) => {
+  try {
+    const { userId } = req.params;
+
+    const user = await User.findByPk(userId);
+    if (!user) {
+      return res.status(404).json({
+        message: 'User not found',
+        messageAr: 'المستخدم غير موجود'
+      });
+    }
+
+    // Delete all registrations first
+    await Registration.destroy({ where: { userId } });
+
+    // Delete user
+    await user.destroy();
+
+    res.json({
+      message: 'User and all registrations deleted successfully',
+      messageAr: 'تم حذف المستخدم وجميع التسجيلات بنجاح'
+    });
+  } catch (error) {
+    console.error('Error deleting user:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+};
+
 module.exports = exports;
