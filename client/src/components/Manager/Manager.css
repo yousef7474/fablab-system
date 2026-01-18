@@ -3,123 +3,37 @@
    Task-specific styles and overrides
    ======================================== */
 
-/* Manager Layout extends Admin Layout */
-.manager-layout {
-  display: flex;
-  min-height: 100vh;
-  width: 100%;
-  overflow-x: hidden;
-  background: var(--bg-primary);
-}
-
-/* Ensure the layout fills the viewport in RTL */
-[dir="rtl"].manager-layout,
-[dir="rtl"] .manager-layout {
-  width: 100%;
-}
-
-/* Header left section */
-.manager-layout .header-left {
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-}
-
-.manager-layout .header-title {
-  display: flex;
-  flex-direction: column;
-  gap: 0.25rem;
-}
-
-.manager-layout .header-title h1 {
-  font-size: 1.5rem;
-  font-weight: 700;
-  color: var(--text-primary);
-  margin: 0;
-}
-
-.manager-layout .header-title p {
-  font-size: 0.875rem;
-  color: var(--text-secondary);
-  margin: 0;
-}
-
-/* Menu toggle button - always visible for sidebar control */
-.manager-layout .menu-toggle {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 40px;
-  height: 40px;
-  background: var(--gray-100);
-  border: none;
-  border-radius: 10px;
-  color: var(--gray-600);
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.manager-layout .menu-toggle:hover {
-  background: var(--gray-200);
-  color: var(--gray-800);
-}
-
-[data-theme="dark"] .manager-layout .menu-toggle {
-  background: var(--bg-tertiary);
-  color: var(--text-secondary);
-}
-
-[data-theme="dark"] .manager-layout .menu-toggle:hover {
-  background: var(--bg-hover);
-  color: var(--text-primary);
-}
-
-@media (max-width: 768px) {
-  .manager-layout .header-title h1 {
-    font-size: 1.1rem;
-  }
-
-  .manager-layout .header-title p {
-    display: none;
-  }
-}
-
-/* ========================================
-   Sidebar - Inherits from Admin.css
-   Only override nav-item active color
-   ======================================== */
-
 /* Manager-specific active nav item color */
 .manager-layout .nav-item.active {
   background: linear-gradient(135deg, #e02529, #c41e24);
   color: white;
 }
 
-/* Main content area - default margin for open sidebar (260px) */
+/* ========================================
+   Main Content Margins - Override Admin.css
+   Manager uses explicit open/collapsed states
+   ======================================== */
+
+/* Default: Sidebar OPEN (260px) */
 .manager-layout .admin-main {
-  flex: 1 1 auto;
-  margin-left: 260px;
-  margin-right: 0;
-  transition: margin-left 0.3s ease, margin-right 0.3s ease;
-  min-width: 0;
-  box-sizing: border-box;
+  margin-left: 260px !important;
+  margin-right: 0 !important;
 }
 
-/* RTL default margin */
 [dir="rtl"] .manager-layout .admin-main {
-  margin-left: 0;
-  margin-right: 260px;
+  margin-left: 0 !important;
+  margin-right: 260px !important;
 }
 
-/* Sidebar COLLAPSED state (80px sidebar) */
+/* Sidebar COLLAPSED (80px) */
 .manager-layout .admin-sidebar.collapsed ~ .admin-main {
-  margin-left: 80px;
-  margin-right: 0;
+  margin-left: 80px !important;
+  margin-right: 0 !important;
 }
 
 [dir="rtl"] .manager-layout .admin-sidebar.collapsed ~ .admin-main {
-  margin-left: 0;
-  margin-right: 80px;
+  margin-left: 0 !important;
+  margin-right: 80px !important;
 }
 
 /* ========================================
