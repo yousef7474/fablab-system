@@ -34,30 +34,37 @@
   margin: 0;
 }
 
-/* Menu toggle button */
+/* Menu toggle button - always visible for sidebar control */
 .manager-layout .menu-toggle {
-  display: none;
+  display: flex;
   align-items: center;
   justify-content: center;
   width: 40px;
   height: 40px;
-  background: var(--bg-secondary);
-  border: 1px solid var(--border-color);
+  background: var(--gray-100);
+  border: none;
   border-radius: 10px;
-  color: var(--text-primary);
+  color: var(--gray-600);
   cursor: pointer;
   transition: all 0.2s;
 }
 
 .manager-layout .menu-toggle:hover {
+  background: var(--gray-200);
+  color: var(--gray-800);
+}
+
+[data-theme="dark"] .manager-layout .menu-toggle {
+  background: var(--bg-tertiary);
+  color: var(--text-secondary);
+}
+
+[data-theme="dark"] .manager-layout .menu-toggle:hover {
   background: var(--bg-hover);
+  color: var(--text-primary);
 }
 
 @media (max-width: 768px) {
-  .manager-layout .menu-toggle {
-    display: flex;
-  }
-
   .manager-layout .header-title h1 {
     font-size: 1.1rem;
   }
@@ -191,6 +198,29 @@
 .manager-layout .nav-item.logout:hover {
   background: rgba(238, 35, 41, 0.2);
   color: #ef4444;
+}
+
+/* Main content area margin based on sidebar state */
+.manager-layout .admin-main {
+  margin-left: 260px;
+  transition: margin-left 0.3s ease;
+}
+
+[dir="rtl"] .manager-layout .admin-main {
+  margin-left: 0;
+  margin-right: 260px;
+  transition: margin-right 0.3s ease;
+}
+
+.manager-layout .admin-sidebar.collapsed + .admin-main,
+.manager-layout .admin-sidebar.collapsed ~ .admin-main {
+  margin-left: 80px;
+}
+
+[dir="rtl"] .manager-layout .admin-sidebar.collapsed + .admin-main,
+[dir="rtl"] .manager-layout .admin-sidebar.collapsed ~ .admin-main {
+  margin-left: 0;
+  margin-right: 80px;
 }
 
 .manager-layout .nav-item svg {

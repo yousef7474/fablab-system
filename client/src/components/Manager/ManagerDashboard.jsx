@@ -65,7 +65,13 @@ const ManagerDashboard = () => {
   const [selectedCalendarDay, setSelectedCalendarDay] = useState(null);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState(getInitialTab);
-  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(() => {
+    // Start with sidebar open on desktop, closed on mobile
+    if (typeof window !== 'undefined') {
+      return window.innerWidth > 768;
+    }
+    return true;
+  });
   const [theme, setTheme] = useState(() => localStorage.getItem('adminTheme') || 'light');
 
   // Task modal state
