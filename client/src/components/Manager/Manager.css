@@ -1,75 +1,19 @@
 /* ========================================
    Manager Dashboard Styles
    Task-specific styles and overrides
+   Uses data-page="manager" attribute
    ======================================== */
 
 /* Manager-specific active nav item color */
-.manager-layout .nav-item.active {
+[data-page="manager"] .nav-item.active {
   background: linear-gradient(135deg, #e02529, #c41e24);
   color: white;
-}
-
-/* Menu toggle button - always visible on desktop */
-.manager-layout .menu-toggle {
-  display: flex !important;
-  align-items: center;
-  justify-content: center;
-  width: 40px;
-  height: 40px;
-  background: var(--gray-100);
-  border: none;
-  border-radius: 10px;
-  color: var(--gray-600);
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.manager-layout .menu-toggle:hover {
-  background: var(--gray-200);
-  color: var(--gray-800);
-}
-
-[data-theme="dark"] .manager-layout .menu-toggle {
-  background: var(--bg-tertiary);
-  color: var(--text-secondary);
-}
-
-[data-theme="dark"] .manager-layout .menu-toggle:hover {
-  background: var(--bg-hover);
-  color: var(--text-primary);
-}
-
-/* ========================================
-   Main Content Margins - Override Admin.css
-   Manager uses explicit open/collapsed states
-   ======================================== */
-
-/* Default: Sidebar OPEN (260px) */
-.manager-layout .admin-main {
-  margin-left: 260px !important;
-  margin-right: 0 !important;
-}
-
-[dir="rtl"] .manager-layout .admin-main {
-  margin-left: 0 !important;
-  margin-right: 260px !important;
-}
-
-/* Sidebar COLLAPSED (80px) */
-.manager-layout .admin-sidebar.collapsed ~ .admin-main {
-  margin-left: 80px !important;
-  margin-right: 0 !important;
-}
-
-[dir="rtl"] .manager-layout .admin-sidebar.collapsed ~ .admin-main {
-  margin-left: 0 !important;
-  margin-right: 80px !important;
 }
 
 /* ========================================
    Schedule Layout for Manager
    ======================================== */
-.manager-layout .schedule-layout {
+[data-page="manager"] .schedule-layout {
   display: grid;
   grid-template-columns: 1fr 350px;
   gap: 1.5rem;
@@ -77,7 +21,7 @@
 }
 
 @media (max-width: 1200px) {
-  .manager-layout .schedule-layout {
+  [data-page="manager"] .schedule-layout {
     grid-template-columns: 1fr;
   }
 }
@@ -85,7 +29,7 @@
 /* ========================================
    Calendar Fixes for Manager
    ======================================== */
-.manager-layout .calendar-section {
+[data-page="manager"] .calendar-section {
   background: white;
   border-radius: 16px;
   padding: 1.5rem;
@@ -93,21 +37,21 @@
   border: 1px solid #e5e7eb;
 }
 
-.manager-layout .calendar-header {
+[data-page="manager"] .calendar-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
   margin-bottom: 1.5rem;
 }
 
-.manager-layout .calendar-title {
+[data-page="manager"] .calendar-title {
   font-size: 1.25rem;
   font-weight: 600;
   color: #1f2937;
   margin: 0;
 }
 
-.manager-layout .calendar-nav-btn {
+[data-page="manager"] .calendar-nav-btn {
   width: 36px;
   height: 36px;
   border: 1px solid #e5e7eb;
@@ -121,19 +65,19 @@
   color: #6b7280;
 }
 
-.manager-layout .calendar-nav-btn:hover {
+[data-page="manager"] .calendar-nav-btn:hover {
   background: #f3f4f6;
   border-color: #d1d5db;
 }
 
-.manager-layout .calendar-weekdays {
+[data-page="manager"] .calendar-weekdays {
   display: grid;
   grid-template-columns: repeat(7, 1fr);
   gap: 4px;
   margin-bottom: 8px;
 }
 
-.manager-layout .calendar-weekdays .weekday {
+[data-page="manager"] .calendar-weekdays .weekday {
   text-align: center;
   font-size: 0.75rem;
   font-weight: 600;
@@ -142,13 +86,13 @@
   text-transform: uppercase;
 }
 
-.manager-layout .calendar-grid {
+[data-page="manager"] .calendar-grid {
   display: grid;
   grid-template-columns: repeat(7, 1fr);
   gap: 4px;
 }
 
-.manager-layout .calendar-day {
+[data-page="manager"] .calendar-day {
   aspect-ratio: 1;
   display: flex;
   flex-direction: column;
@@ -162,47 +106,47 @@
   min-height: 60px;
 }
 
-.manager-layout .calendar-day:hover:not(.empty) {
+[data-page="manager"] .calendar-day:hover:not(.empty) {
   background: #f3f4f6;
   transform: scale(1.02);
 }
 
-.manager-layout .calendar-day.empty {
+[data-page="manager"] .calendar-day.empty {
   background: transparent;
   cursor: default;
 }
 
-.manager-layout .calendar-day.today {
+[data-page="manager"] .calendar-day.today {
   background: linear-gradient(135deg, #e02529, #c41e24);
   color: white;
 }
 
-.manager-layout .calendar-day.today .day-number {
+[data-page="manager"] .calendar-day.today .day-number {
   color: white;
 }
 
-.manager-layout .calendar-day.has-events {
+[data-page="manager"] .calendar-day.has-events {
   border: 2px solid #e02529;
 }
 
-.manager-layout .calendar-day.selected {
+[data-page="manager"] .calendar-day.selected {
   background: #e02529 !important;
   color: white !important;
   transform: scale(1.05);
   box-shadow: 0 4px 12px rgba(224, 37, 41, 0.3);
 }
 
-.manager-layout .calendar-day.selected .day-number {
+[data-page="manager"] .calendar-day.selected .day-number {
   color: white;
 }
 
-.manager-layout .calendar-day .day-number {
+[data-page="manager"] .calendar-day .day-number {
   font-size: 0.9rem;
   font-weight: 500;
   color: #374151;
 }
 
-.manager-layout .calendar-day .event-dots-container {
+[data-page="manager"] .calendar-day .event-dots-container {
   display: flex;
   gap: 3px;
   margin-top: 4px;
@@ -211,7 +155,7 @@
 }
 
 /* Selected Day Section */
-.manager-layout .selected-day-section {
+[data-page="manager"] .selected-day-section {
   margin-top: 1.5rem;
   padding: 1.25rem;
   background: #f9fafb;
@@ -219,21 +163,21 @@
   border: 1px solid #e5e7eb;
 }
 
-.manager-layout .selected-day-header {
+[data-page="manager"] .selected-day-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
   margin-bottom: 1rem;
 }
 
-.manager-layout .selected-day-header h4 {
+[data-page="manager"] .selected-day-header h4 {
   margin: 0;
   font-size: 1rem;
   font-weight: 600;
   color: #1f2937;
 }
 
-.manager-layout .selected-day-header button {
+[data-page="manager"] .selected-day-header button {
   width: 28px;
   height: 28px;
   border: none;
@@ -247,13 +191,13 @@
   justify-content: center;
 }
 
-.manager-layout .selected-day-events {
+[data-page="manager"] .selected-day-events {
   display: flex;
   flex-direction: column;
   gap: 10px;
 }
 
-.manager-layout .event-item {
+[data-page="manager"] .event-item {
   background: white;
   padding: 12px;
   border-radius: 10px;
@@ -261,20 +205,20 @@
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
 }
 
-.manager-layout .event-header {
+[data-page="manager"] .event-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
   margin-bottom: 6px;
 }
 
-.manager-layout .event-title {
+[data-page="manager"] .event-title {
   font-weight: 600;
   font-size: 14px;
   color: #1f2937;
 }
 
-.manager-layout .event-meta {
+[data-page="manager"] .event-meta {
   display: flex;
   flex-wrap: wrap;
   gap: 12px;
@@ -2881,16 +2825,16 @@
 
 /* Small tablets and large phones */
 @media (max-width: 900px) {
-  .manager-layout .schedule-layout {
+  [data-page="manager"] .schedule-layout {
     grid-template-columns: 1fr;
     gap: 1rem;
   }
 
-  .manager-layout .calendar-section {
+  [data-page="manager"] .calendar-section {
     padding: 1rem;
   }
 
-  .manager-layout .calendar-day {
+  [data-page="manager"] .calendar-day {
     min-height: 50px;
   }
 
@@ -3016,48 +2960,48 @@
   }
 
   /* Calendar */
-  .manager-layout .calendar-section {
+  [data-page="manager"] .calendar-section {
     padding: 12px;
     border-radius: 12px;
   }
 
-  .manager-layout .calendar-header {
+  [data-page="manager"] .calendar-header {
     flex-wrap: wrap;
     gap: 10px;
     margin-bottom: 1rem;
   }
 
-  .manager-layout .calendar-title {
+  [data-page="manager"] .calendar-title {
     font-size: 1rem;
     width: 100%;
     text-align: center;
   }
 
-  .manager-layout .calendar-nav-btn {
+  [data-page="manager"] .calendar-nav-btn {
     width: 32px;
     height: 32px;
   }
 
-  .manager-layout .calendar-weekdays .weekday {
+  [data-page="manager"] .calendar-weekdays .weekday {
     font-size: 0.65rem;
     padding: 6px 0;
   }
 
-  .manager-layout .calendar-grid {
+  [data-page="manager"] .calendar-grid {
     gap: 3px;
   }
 
-  .manager-layout .calendar-day {
+  [data-page="manager"] .calendar-day {
     min-height: 42px;
     padding: 4px;
     border-radius: 8px;
   }
 
-  .manager-layout .calendar-day .day-number {
+  [data-page="manager"] .calendar-day .day-number {
     font-size: 0.8rem;
   }
 
-  .manager-layout .calendar-day .event-dots-container {
+  [data-page="manager"] .calendar-day .event-dots-container {
     margin-top: 2px;
     gap: 2px;
   }
@@ -3069,26 +3013,26 @@
   }
 
   /* Selected day section */
-  .manager-layout .selected-day-section {
+  [data-page="manager"] .selected-day-section {
     margin-top: 1rem;
     padding: 1rem;
     border-radius: 10px;
   }
 
-  .manager-layout .selected-day-header h4 {
+  [data-page="manager"] .selected-day-header h4 {
     font-size: 0.9rem;
   }
 
-  .manager-layout .event-item {
+  [data-page="manager"] .event-item {
     padding: 10px;
     border-radius: 8px;
   }
 
-  .manager-layout .event-title {
+  [data-page="manager"] .event-title {
     font-size: 13px;
   }
 
-  .manager-layout .event-meta {
+  [data-page="manager"] .event-meta {
     gap: 8px;
     font-size: 11px;
   }
@@ -3519,15 +3463,15 @@
 
 /* Extra small phones */
 @media (max-width: 400px) {
-  .manager-layout .calendar-day {
+  [data-page="manager"] .calendar-day {
     min-height: 38px;
   }
 
-  .manager-layout .calendar-day .day-number {
+  [data-page="manager"] .calendar-day .day-number {
     font-size: 0.75rem;
   }
 
-  .manager-layout .calendar-weekdays .weekday {
+  [data-page="manager"] .calendar-weekdays .weekday {
     font-size: 0.6rem;
   }
 
@@ -3593,7 +3537,7 @@
 
 /* Touch device optimizations */
 @media (hover: none) and (pointer: coarse) {
-  .manager-layout .nav-item,
+  [data-page="manager"] .nav-item,
   .add-task-btn,
   .add-volunteer-btn,
   .add-opportunity-btn,
@@ -3605,7 +3549,7 @@
     min-height: 44px;
   }
 
-  .manager-layout .calendar-day:active {
+  [data-page="manager"] .calendar-day:active {
     transform: scale(0.95);
   }
 
@@ -3642,12 +3586,12 @@
 
 /* Safe area insets for notched devices */
 @supports (padding: max(0px)) {
-  .manager-layout .admin-sidebar {
+  [data-page="manager"] .admin-sidebar {
     padding-left: max(1rem, env(safe-area-inset-left));
     padding-right: max(1rem, env(safe-area-inset-right));
   }
 
-  .manager-layout .admin-main {
+  [data-page="manager"] .admin-main {
     padding-left: max(0.75rem, env(safe-area-inset-left));
     padding-right: max(0.75rem, env(safe-area-inset-right));
     padding-bottom: max(0.75rem, env(safe-area-inset-bottom));
@@ -3710,52 +3654,52 @@
 /* ========================================
    Enhanced Dark Mode Text Colors
    ======================================== */
-[data-theme="dark"] .manager-layout .page-title,
-[data-theme="dark"] .manager-layout .header-title h1 {
+[data-theme="dark"] [data-page="manager"] .page-title,
+[data-theme="dark"] [data-page="manager"] .header-title h1 {
   color: #f1f5f9;
 }
 
-[data-theme="dark"] .manager-layout .header-title p {
+[data-theme="dark"] [data-page="manager"] .header-title p {
   color: #94a3b8;
 }
 
 [data-theme="dark"] .calendar-title,
-[data-theme="dark"] .manager-layout .calendar-header h3 {
+[data-theme="dark"] [data-page="manager"] .calendar-header h3 {
   color: #f1f5f9 !important;
 }
 
-[data-theme="dark"] .manager-layout .calendar-day .day-number {
+[data-theme="dark"] [data-page="manager"] .calendar-day .day-number {
   color: #e2e8f0;
 }
 
-[data-theme="dark"] .manager-layout .calendar-day.today .day-number {
+[data-theme="dark"] [data-page="manager"] .calendar-day.today .day-number {
   color: white;
 }
 
-[data-theme="dark"] .manager-layout .weekday {
+[data-theme="dark"] [data-page="manager"] .weekday {
   color: #94a3b8;
 }
 
-[data-theme="dark"] .manager-layout .calendar-day {
+[data-theme="dark"] [data-page="manager"] .calendar-day {
   background: #1e293b;
 }
 
-[data-theme="dark"] .manager-layout .calendar-day:hover:not(.empty) {
+[data-theme="dark"] [data-page="manager"] .calendar-day:hover:not(.empty) {
   background: #334155;
 }
 
-[data-theme="dark"] .manager-layout .calendar-section {
+[data-theme="dark"] [data-page="manager"] .calendar-section {
   background: #1e293b;
   border-color: #334155;
 }
 
-[data-theme="dark"] .manager-layout .calendar-nav-btn {
+[data-theme="dark"] [data-page="manager"] .calendar-nav-btn {
   background: #1e293b;
   border-color: #334155;
   color: #94a3b8;
 }
 
-[data-theme="dark"] .manager-layout .calendar-nav-btn:hover {
+[data-theme="dark"] [data-page="manager"] .calendar-nav-btn:hover {
   background: #334155;
   color: #f1f5f9;
 }
@@ -3827,7 +3771,7 @@
 
 /* Mobile responsive fixes for manager sidebar */
 @media (max-width: 768px) {
-  .manager-layout .admin-sidebar {
+  [data-page="manager"] .admin-sidebar {
     position: fixed;
     left: 0;
     top: 0;
@@ -3838,50 +3782,50 @@
     z-index: 1001;
   }
 
-  [dir="rtl"] .manager-layout .admin-sidebar {
+  [dir="rtl"] [data-page="manager"] .admin-sidebar {
     left: auto;
     right: 0;
     transform: translateX(100%);
   }
 
-  .manager-layout .admin-sidebar.open {
+  [data-page="manager"] .admin-sidebar.open {
     transform: translateX(0);
     width: 280px;
   }
 
-  [dir="rtl"] .manager-layout .admin-sidebar.open {
+  [dir="rtl"] [data-page="manager"] .admin-sidebar.open {
     transform: translateX(0);
   }
 
-  .manager-layout .admin-sidebar.collapsed {
+  [data-page="manager"] .admin-sidebar.collapsed {
     transform: translateX(-100%);
     width: 280px;
   }
 
-  [dir="rtl"] .manager-layout .admin-sidebar.collapsed {
+  [dir="rtl"] [data-page="manager"] .admin-sidebar.collapsed {
     transform: translateX(100%);
   }
 
   /* Reset collapsed styles on mobile - show full sidebar when open */
-  .manager-layout .admin-sidebar.open .sidebar-header,
-  .manager-layout .admin-sidebar.collapsed .sidebar-header {
+  [data-page="manager"] .admin-sidebar.open .sidebar-header,
+  [data-page="manager"] .admin-sidebar.collapsed .sidebar-header {
     padding: 1.5rem;
     justify-content: flex-start;
   }
 
-  .manager-layout .admin-sidebar.open .nav-item,
-  .manager-layout .admin-sidebar.collapsed .nav-item {
+  [data-page="manager"] .admin-sidebar.open .nav-item,
+  [data-page="manager"] .admin-sidebar.collapsed .nav-item {
     justify-content: flex-start;
     padding: 12px 16px;
   }
 
-  .manager-layout .admin-sidebar.open .sidebar-footer,
-  .manager-layout .admin-sidebar.collapsed .sidebar-footer {
+  [data-page="manager"] .admin-sidebar.open .sidebar-footer,
+  [data-page="manager"] .admin-sidebar.collapsed .sidebar-footer {
     padding: 0.75rem;
     justify-content: flex-start;
   }
 
-  .manager-layout .sidebar-overlay {
+  [data-page="manager"] .sidebar-overlay {
     display: none;
     position: fixed;
     top: 0;
@@ -3895,12 +3839,12 @@
     transition: opacity 0.3s ease;
   }
 
-  .manager-layout .sidebar-overlay.active {
+  [data-page="manager"] .sidebar-overlay.active {
     display: block;
     opacity: 1;
   }
 
-  .manager-layout .admin-main {
+  [data-page="manager"] .admin-main {
     margin-left: 0 !important;
     margin-right: 0 !important;
     padding: 0.75rem;

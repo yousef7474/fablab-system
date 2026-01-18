@@ -1253,7 +1253,7 @@ const ManagerDashboard = () => {
     : ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
   return (
-    <div className="admin-layout manager-layout" dir={isRTL ? 'rtl' : 'ltr'}>
+    <div className="admin-layout" data-page="manager" dir={isRTL ? 'rtl' : 'ltr'}>
       {/* Mobile Sidebar Overlay */}
       <div
         className={`sidebar-overlay ${sidebarOpen ? 'active' : ''}`}
