@@ -5,7 +5,17 @@
 
 /* Manager Layout extends Admin Layout */
 .manager-layout {
+  display: flex;
+  min-height: 100vh;
+  width: 100%;
+  overflow-x: hidden;
   background: var(--bg-primary);
+}
+
+/* Ensure the layout fills the viewport in RTL */
+[dir="rtl"].manager-layout,
+[dir="rtl"] .manager-layout {
+  width: 100%;
 }
 
 /* Header left section */
@@ -202,27 +212,32 @@
 
 /* Main content area margin based on sidebar state */
 .manager-layout .admin-main {
-  flex: 1;
-  margin-left: 260px;
-  transition: margin-left 0.3s ease;
+  flex: 1 1 auto;
+  transition: margin-left 0.3s ease, margin-right 0.3s ease;
   min-width: 0; /* Prevent flex item from overflowing */
+  box-sizing: border-box;
 }
 
-[dir="rtl"] .manager-layout .admin-main {
-  margin-left: 0;
-  margin-right: 260px;
-  transition: margin-right 0.3s ease;
+/* Sidebar OPEN state (260px sidebar) */
+.manager-layout .admin-sidebar.open ~ .admin-main {
+  margin-left: 260px;
+  margin-right: 0;
 }
 
-.manager-layout .admin-sidebar.collapsed + .admin-main,
+[dir="rtl"] .manager-layout .admin-sidebar.open ~ .admin-main {
+  margin-left: 0 !important;
+  margin-right: 260px !important;
+}
+
+/* Sidebar COLLAPSED state (80px sidebar) */
 .manager-layout .admin-sidebar.collapsed ~ .admin-main {
   margin-left: 80px;
+  margin-right: 0;
 }
 
-[dir="rtl"] .manager-layout .admin-sidebar.collapsed + .admin-main,
 [dir="rtl"] .manager-layout .admin-sidebar.collapsed ~ .admin-main {
-  margin-left: 0;
-  margin-right: 80px;
+  margin-left: 0 !important;
+  margin-right: 80px !important;
 }
 
 .manager-layout .nav-item svg {
