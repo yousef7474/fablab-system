@@ -116,6 +116,17 @@ const AdminDashboard = () => {
   // Selected calendar day for showing appointment details
   const [selectedCalendarDay, setSelectedCalendarDay] = useState(null);
 
+  // Section Availability states
+  const [sectionAvailability, setSectionAvailability] = useState([]);
+  const [showSectionModal, setShowSectionModal] = useState(false);
+  const [sectionForm, setSectionForm] = useState({
+    section: '',
+    startDate: '',
+    endDate: '',
+    reasonEn: '',
+    reasonAr: ''
+  });
+
   // Apply theme to document
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme);
@@ -278,6 +289,62 @@ const AdminDashboard = () => {
     }
   };
 
+  // Section Availability functions
+  const fetchSectionAvailability = async () => {
+    try {
+      const response = await api.get('/sections/availability');
+      setSectionAvailability(response.data || []);
+    } catch (error) {
+      console.error('Error fetching section availability:', error);
+    }
+  };
+
+  const handleDeactivateSection = async () => {
+    try {
+      if (!sectionForm.section || !sectionForm.startDate || !sectionForm.endDate || !sectionForm.reasonEn) {
+        toast.error(isRTL ? 'يرجى ملء جميع الحقول المطلوبة' : 'Please fill all required fields');
+        return;
+      }
+
+      await api.post('/sections/availability', sectionForm);
+      toast.success(isRTL ? 'تم تعطيل القسم بنجاح' : 'Section deactivated successfully');
+      setShowSectionModal(false);
+      setSectionForm({ section: '', startDate: '', endDate: '', reasonEn: '', reasonAr: '' });
+      fetchSectionAvailability();
+    } catch (error) {
+      console.error('Error deactivating section:', error);
+      toast.error(error.response?.data?.message || (isRTL ? 'خطأ في تعطيل القسم' : 'Error deactivating section'));
+    }
+  };
+
+  const handleReactivateSection = async (availabilityId) => {
+    if (!window.confirm(isRTL ? 'هل تريد إعادة تفعيل هذا القسم؟' : 'Do you want to reactivate this section?')) return;
+
+    try {
+      await api.patch(`/sections/availability/${availabilityId}/reactivate`);
+      toast.success(isRTL ? 'تم إعادة تفعيل القسم بنجاح' : 'Section reactivated successfully');
+      fetchSectionAvailability();
+    } catch (error) {
+      console.error('Error reactivating section:', error);
+      toast.error(isRTL ? 'خطأ في إعادة تفعيل القسم' : 'Error reactivating section');
+    }
+  };
+
+  const openDeactivateModal = (sectionName) => {
+    setSectionForm({
+      section: sectionName,
+      startDate: new Date().toISOString().split('T')[0],
+      endDate: '',
+      reasonEn: '',
+      reasonAr: ''
+    });
+    setShowSectionModal(true);
+  };
+
+  const getSectionStatus = (sectionName) => {
+    return sectionAvailability.find(s => s.section === sectionName) || { section: sectionName, isAvailable: true };
+  };
+
   useEffect(() => {
     if (activeTab === 'registrations') {
       fetchRegistrations();
@@ -288,6 +355,8 @@ const AdminDashboard = () => {
     } else if (activeTab === 'schedule') {
       fetchSchedule();
       fetchEmployees();
+    } else if (activeTab === 'settings') {
+      fetchSectionAvailability();
     }
   }, [activeTab, fetchRegistrations, analyticsPeriod, analyticsDateRange.startDate, analyticsDateRange.endDate]);
 
@@ -2980,6 +3049,95 @@ const AdminDashboard = () => {
                     </div>
                   </div>
                 </div>
+
+                {/* Section Availability Management */}
+                <div className="settings-card full-width section-availability-card">
+                  <h3>
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <rect x="3" y="3" width="7" height="7"/>
+                      <rect x="14" y="3" width="7" height="7"/>
+                      <rect x="14" y="14" width="7" height="7"/>
+                      <rect x="3" y="14" width="7" height="7"/>
+                    </svg>
+                    {isRTL ? 'إدارة توفر الأقسام' : 'Section Availability Management'}
+                  </h3>
+                  <p className="section-availability-desc">
+                    {isRTL
+                      ? 'يمكنك تعطيل الأقسام مؤقتاً (مثل للصيانة). الأقسام المعطلة ستكون مرئية ولكن غير قابلة للاختيار في نموذج التسجيل.'
+                      : 'You can temporarily deactivate sections (e.g., for maintenance). Deactivated sections will be visible but not selectable in the registration form.'}
+                  </p>
+
+                  <div className="sections-availability-grid">
+                    {[
+                      { value: 'Electronics and Programming', labelEn: 'Electronics & Programming', labelAr: 'الإلكترونيات والبرمجة' },
+                      { value: 'CNC Laser', labelEn: 'CNC Laser', labelAr: 'الليزر CNC' },
+                      { value: 'CNC Wood', labelEn: 'CNC Wood', labelAr: 'الخشب CNC' },
+                      { value: '3D', labelEn: '3D Printing', labelAr: 'الطباعة ثلاثية الأبعاد' },
+                      { value: 'Robotic and AI', labelEn: 'Robotics & AI', labelAr: 'الروبوتات والذكاء الاصطناعي' },
+                      { value: "Kid's Club", labelEn: "Kid's Club", labelAr: 'نادي الأطفال' },
+                      { value: 'Vinyl Cutting', labelEn: 'Vinyl Cutting', labelAr: 'قص الفينيل' }
+                    ].map(section => {
+                      const status = getSectionStatus(section.value);
+                      return (
+                        <div
+                          key={section.value}
+                          className={`section-status-card ${status.isAvailable ? 'available' : 'unavailable'}`}
+                        >
+                          <div className="section-status-header">
+                            <div className="section-info">
+                              <div
+                                className="section-color-dot"
+                                style={{ backgroundColor: SECTION_COLORS[section.value] }}
+                              />
+                              <span className="section-name">
+                                {isRTL ? section.labelAr : section.labelEn}
+                              </span>
+                            </div>
+                            <span className={`status-indicator ${status.isAvailable ? 'active' : 'inactive'}`}>
+                              {status.isAvailable
+                                ? (isRTL ? 'متاح' : 'Available')
+                                : (isRTL ? 'غير متاح' : 'Unavailable')}
+                            </span>
+                          </div>
+
+                          {!status.isAvailable && (
+                            <div className="section-status-details">
+                              <p className="unavailable-reason">
+                                <strong>{isRTL ? 'السبب:' : 'Reason:'}</strong> {isRTL ? status.reasonAr || status.reasonEn : status.reasonEn}
+                              </p>
+                              <p className="available-date">
+                                <strong>{isRTL ? 'متاح من:' : 'Available from:'}</strong> {status.endDate}
+                              </p>
+                              <button
+                                className="btn-reactivate"
+                                onClick={() => handleReactivateSection(status.availabilityId)}
+                              >
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                  <polyline points="23 4 23 10 17 10"/>
+                                  <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
+                                </svg>
+                                {isRTL ? 'إعادة التفعيل الآن' : 'Reactivate Now'}
+                              </button>
+                            </div>
+                          )}
+
+                          {status.isAvailable && (
+                            <button
+                              className="btn-deactivate"
+                              onClick={() => openDeactivateModal(section.value)}
+                            >
+                              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                <circle cx="12" cy="12" r="10"/>
+                                <line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/>
+                              </svg>
+                              {isRTL ? 'تعطيل القسم' : 'Deactivate Section'}
+                            </button>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
               </motion.div>
             )}
           </AnimatePresence>
@@ -3602,6 +3760,155 @@ const AdminDashboard = () => {
                   ? (isRTL ? 'قبول الطلب' : 'Approve')
                   : (isRTL ? 'رفض الطلب' : 'Reject')
                 }
+              </button>
+            </div>
+          </motion.div>
+        </div>
+      )}
+
+      {/* Section Deactivation Modal */}
+      {showSectionModal && (
+        <div className="modal-overlay" onClick={() => setShowSectionModal(false)}>
+          <motion.div
+            className="modal-content section-modal"
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="modal-header section-deactivate-header">
+              <div className="modal-header-icon">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <circle cx="12" cy="12" r="10"/>
+                  <line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/>
+                </svg>
+              </div>
+              <div className="modal-header-text">
+                <h2>{isRTL ? 'تعطيل القسم' : 'Deactivate Section'}</h2>
+                <p>{isRTL ? 'تحديد فترة التعطيل والسبب' : 'Set deactivation period and reason'}</p>
+              </div>
+              <button className="modal-close" onClick={() => setShowSectionModal(false)}>
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <line x1="18" y1="6" x2="6" y2="18"/>
+                  <line x1="6" y1="6" x2="18" y2="18"/>
+                </svg>
+              </button>
+            </div>
+
+            <div className="modal-body">
+              <div className="form-group">
+                <label>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <rect x="3" y="3" width="7" height="7"/>
+                    <rect x="14" y="3" width="7" height="7"/>
+                    <rect x="14" y="14" width="7" height="7"/>
+                    <rect x="3" y="14" width="7" height="7"/>
+                  </svg>
+                  {isRTL ? 'القسم' : 'Section'}
+                </label>
+                <input
+                  type="text"
+                  value={sectionForm.section}
+                  disabled
+                  className="disabled-input"
+                />
+              </div>
+
+              <div className="form-row">
+                <div className="form-group">
+                  <label>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+                      <line x1="16" y1="2" x2="16" y2="6"/>
+                      <line x1="8" y1="2" x2="8" y2="6"/>
+                      <line x1="3" y1="10" x2="21" y2="10"/>
+                    </svg>
+                    {isRTL ? 'تاريخ البدء' : 'Start Date'} <span className="required">*</span>
+                  </label>
+                  <input
+                    type="date"
+                    value={sectionForm.startDate}
+                    onChange={(e) => setSectionForm({ ...sectionForm, startDate: e.target.value })}
+                    min={new Date().toISOString().split('T')[0]}
+                  />
+                </div>
+                <div className="form-group">
+                  <label>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+                      <line x1="16" y1="2" x2="16" y2="6"/>
+                      <line x1="8" y1="2" x2="8" y2="6"/>
+                      <line x1="3" y1="10" x2="21" y2="10"/>
+                    </svg>
+                    {isRTL ? 'تاريخ الانتهاء' : 'End Date'} <span className="required">*</span>
+                  </label>
+                  <input
+                    type="date"
+                    value={sectionForm.endDate}
+                    onChange={(e) => setSectionForm({ ...sectionForm, endDate: e.target.value })}
+                    min={sectionForm.startDate || new Date().toISOString().split('T')[0]}
+                  />
+                </div>
+              </div>
+
+              <div className="form-group">
+                <label>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+                  </svg>
+                  {isRTL ? 'السبب (بالإنجليزية)' : 'Reason (English)'} <span className="required">*</span>
+                </label>
+                <input
+                  type="text"
+                  value={sectionForm.reasonEn}
+                  onChange={(e) => setSectionForm({ ...sectionForm, reasonEn: e.target.value })}
+                  placeholder={isRTL ? 'مثال: Under maintenance' : 'e.g., Under maintenance'}
+                />
+              </div>
+
+              <div className="form-group">
+                <label>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+                  </svg>
+                  {isRTL ? 'السبب (بالعربية)' : 'Reason (Arabic)'}
+                </label>
+                <input
+                  type="text"
+                  value={sectionForm.reasonAr}
+                  onChange={(e) => setSectionForm({ ...sectionForm, reasonAr: e.target.value })}
+                  placeholder={isRTL ? 'مثال: تحت الصيانة' : 'e.g., تحت الصيانة'}
+                  dir="rtl"
+                />
+              </div>
+
+              <div className="info-note">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <circle cx="12" cy="12" r="10"/>
+                  <line x1="12" y1="16" x2="12" y2="12"/>
+                  <line x1="12" y1="8" x2="12.01" y2="8"/>
+                </svg>
+                <span>
+                  {isRTL
+                    ? 'سيتم إعادة تفعيل القسم تلقائياً بعد انتهاء فترة التعطيل، أو يمكنك إعادة تفعيله يدوياً في أي وقت.'
+                    : 'The section will be automatically reactivated after the deactivation period ends, or you can manually reactivate it at any time.'}
+                </span>
+              </div>
+            </div>
+
+            <div className="modal-footer">
+              <button className="modal-btn cancel" onClick={() => setShowSectionModal(false)}>
+                {isRTL ? 'إلغاء' : 'Cancel'}
+              </button>
+              <button
+                className="modal-btn deactivate"
+                onClick={handleDeactivateSection}
+                disabled={!sectionForm.startDate || !sectionForm.endDate || !sectionForm.reasonEn}
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <circle cx="12" cy="12" r="10"/>
+                  <line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/>
+                </svg>
+                {isRTL ? 'تعطيل القسم' : 'Deactivate Section'}
               </button>
             </div>
           </motion.div>

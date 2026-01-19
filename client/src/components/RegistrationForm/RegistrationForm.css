@@ -2404,3 +2404,133 @@
     padding-bottom: max(0.5rem, env(safe-area-inset-bottom));
   }
 }
+
+/* ========== Section Availability - Disabled Sections ========== */
+
+.selection-card.disabled {
+  cursor: not-allowed;
+  opacity: 0.75;
+  position: relative;
+  overflow: hidden;
+}
+
+.selection-card.disabled:hover {
+  transform: none;
+  border-color: var(--gray-300);
+  box-shadow: none;
+}
+
+.selection-card.disabled .selection-card-icon {
+  filter: grayscale(100%);
+  opacity: 0.5;
+}
+
+.unavailable-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(255, 255, 255, 0.95);
+  border-radius: inherit;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  text-align: center;
+  z-index: 5;
+}
+
+.unavailable-badge {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: #fee2e2;
+  color: #dc2626;
+  padding: 0.35rem 0.75rem;
+  border-radius: 20px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+}
+
+.unavailable-badge svg {
+  width: 14px;
+  height: 14px;
+}
+
+.unavailable-reason {
+  font-size: 0.8rem;
+  color: var(--gray-700);
+  margin: 0 0 0.25rem;
+  font-weight: 500;
+  line-height: 1.3;
+}
+
+.available-from {
+  font-size: 0.75rem;
+  color: var(--gray-500);
+  margin: 0;
+}
+
+/* Info banner warning variant */
+.info-banner.warning {
+  background: linear-gradient(135deg, rgba(251, 191, 36, 0.1), rgba(245, 158, 11, 0.1));
+  border-color: rgba(245, 158, 11, 0.3);
+}
+
+.info-banner.warning svg {
+  color: #f59e0b;
+}
+
+/* Loading sections */
+.loading-sections {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 3rem;
+  gap: 1rem;
+  color: var(--gray-500);
+}
+
+.loading-sections .loading-spinner {
+  width: 32px;
+  height: 32px;
+  border: 3px solid var(--gray-200);
+  border-top-color: var(--racing-red);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* RTL Support for unavailable overlay */
+[dir="rtl"] .unavailable-overlay {
+  text-align: center;
+}
+
+/* Mobile adjustments for unavailable sections */
+@media (max-width: 768px) {
+  .unavailable-overlay {
+    padding: 0.75rem;
+  }
+
+  .unavailable-badge {
+    font-size: 0.7rem;
+    padding: 0.25rem 0.5rem;
+  }
+
+  .unavailable-reason {
+    font-size: 0.7rem;
+  }
+
+  .available-from {
+    font-size: 0.65rem;
+  }
+}

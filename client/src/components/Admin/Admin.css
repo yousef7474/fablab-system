@@ -4855,3 +4855,300 @@
     justify-content: center;
   }
 }
+
+/* ========== Section Availability Management ========== */
+
+.section-availability-card {
+  margin-top: 1.5rem;
+}
+
+.section-availability-card h3 {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.section-availability-card h3 svg {
+  color: var(--racing-red);
+}
+
+.section-availability-desc {
+  color: var(--text-secondary);
+  font-size: 0.875rem;
+  margin-bottom: 1.5rem;
+  line-height: 1.5;
+}
+
+.sections-availability-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 1rem;
+}
+
+.section-status-card {
+  background: var(--card-bg);
+  border: 2px solid var(--border-color);
+  border-radius: 12px;
+  padding: 1rem;
+  transition: all 0.2s ease;
+}
+
+.section-status-card.available {
+  border-color: #22c55e;
+}
+
+.section-status-card.unavailable {
+  border-color: #ef4444;
+  background: rgba(239, 68, 68, 0.05);
+}
+
+[data-theme="dark"] .section-status-card.unavailable {
+  background: rgba(239, 68, 68, 0.1);
+}
+
+.section-status-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.section-info {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.section-color-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+}
+
+.section-name {
+  font-weight: 600;
+  color: var(--text-primary);
+  font-size: 0.9rem;
+}
+
+.status-indicator {
+  padding: 0.25rem 0.75rem;
+  border-radius: 20px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.status-indicator.active {
+  background: rgba(34, 197, 94, 0.1);
+  color: #22c55e;
+}
+
+.status-indicator.inactive {
+  background: rgba(239, 68, 68, 0.1);
+  color: #ef4444;
+}
+
+.section-status-details {
+  margin-top: 0.75rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--border-color);
+}
+
+.section-status-details .unavailable-reason,
+.section-status-details .available-date {
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  margin-bottom: 0.25rem;
+}
+
+.section-status-details .unavailable-reason strong,
+.section-status-details .available-date strong {
+  color: var(--text-primary);
+}
+
+.btn-deactivate,
+.btn-reactivate {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.6rem;
+  border-radius: 8px;
+  font-size: 0.85rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border: none;
+  margin-top: 0.75rem;
+}
+
+.btn-deactivate {
+  background: var(--gray-100);
+  color: var(--gray-700);
+}
+
+[data-theme="dark"] .btn-deactivate {
+  background: var(--bg-tertiary);
+  color: var(--text-secondary);
+}
+
+.btn-deactivate:hover {
+  background: rgba(239, 68, 68, 0.1);
+  color: #ef4444;
+}
+
+.btn-reactivate {
+  background: rgba(34, 197, 94, 0.1);
+  color: #22c55e;
+}
+
+.btn-reactivate:hover {
+  background: rgba(34, 197, 94, 0.2);
+}
+
+/* Section Deactivation Modal */
+.section-modal {
+  max-width: 500px;
+}
+
+.section-deactivate-header {
+  background: linear-gradient(135deg, #ef4444, #dc2626) !important;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 1.25rem !important;
+}
+
+.section-deactivate-header .modal-header-icon {
+  width: 48px;
+  height: 48px;
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.section-deactivate-header .modal-header-icon svg {
+  width: 24px;
+  height: 24px;
+  color: white;
+}
+
+.section-deactivate-header .modal-header-text {
+  flex: 1;
+}
+
+.section-deactivate-header .modal-header-text h2 {
+  color: white;
+  margin: 0;
+  font-size: 1.1rem;
+}
+
+.section-deactivate-header .modal-header-text p {
+  color: rgba(255, 255, 255, 0.8);
+  margin: 0.25rem 0 0;
+  font-size: 0.85rem;
+}
+
+.section-deactivate-header .modal-close {
+  color: white;
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.section-deactivate-header .modal-close:hover {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+.section-modal .form-group label {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+.section-modal .form-group label svg {
+  color: var(--text-secondary);
+}
+
+.section-modal .form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+}
+
+.section-modal .disabled-input {
+  background: var(--gray-100);
+  color: var(--text-secondary);
+  cursor: not-allowed;
+}
+
+[data-theme="dark"] .section-modal .disabled-input {
+  background: var(--bg-tertiary);
+}
+
+.section-modal .required {
+  color: #ef4444;
+}
+
+.section-modal .info-note {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  background: rgba(59, 130, 246, 0.1);
+  border: 1px solid rgba(59, 130, 246, 0.2);
+  border-radius: 8px;
+  padding: 0.75rem 1rem;
+  margin-top: 1rem;
+}
+
+.section-modal .info-note svg {
+  color: #3b82f6;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.section-modal .info-note span {
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  line-height: 1.5;
+}
+
+.modal-btn.deactivate {
+  background: linear-gradient(135deg, #ef4444, #dc2626);
+  color: white;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.modal-btn.deactivate:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
+}
+
+.modal-btn.deactivate:disabled {
+  background: var(--gray-300);
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+/* Settings card full width for section availability */
+.settings-card.full-width {
+  grid-column: 1 / -1;
+}
+
+@media (max-width: 768px) {
+  .sections-availability-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .section-modal .form-row {
+    grid-template-columns: 1fr;
+  }
+}
