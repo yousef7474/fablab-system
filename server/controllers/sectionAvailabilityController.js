@@ -144,7 +144,6 @@ exports.deactivateSection = async (req, res) => {
     }
 
     // Check for overlapping active deactivations
-    const today = new Date().toISOString().split('T')[0];
     const overlapping = await SectionAvailability.findOne({
       where: {
         section,
