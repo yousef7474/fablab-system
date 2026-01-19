@@ -165,16 +165,16 @@ exports.deactivateSection = async (req, res) => {
       });
     }
 
-    // Determine if deactivation should be active now
-    const isActive = startDate <= today && endDate >= today;
-
+    // Always set isActive to true when creating a new deactivation
+    // The getAllSectionsStatus query will filter by date range to determine actual availability
+    // isActive becomes false only when manually reactivated or when auto-expired
     const deactivation = await SectionAvailability.create({
       section,
       startDate,
       endDate,
       reasonEn,
       reasonAr: reasonAr || null,
-      isActive,
+      isActive: true,
       createdById: req.admin.adminId
     });
 
@@ -268,9 +268,9 @@ exports.updateDeactivation = async (req, res) => {
       });
     }
 
-    // Determine if should be active based on new dates
-    const today = new Date().toISOString().split('T')[0];
-    const shouldBeActive = newStartDate <= today && newEndDate >= today && !deactivation.reactivatedAt;
+    // Keep isActive as true unless it was manually reactivated
+    // The date range check in getAllSectionsStatus handles actual availability
+    const shouldBeActive = !deactivation.reactivatedAt;
 
     await deactivation.update({
       startDate: startDate !== undefined ? startDate : deactivation.startDate,
