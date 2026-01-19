@@ -187,7 +187,7 @@ node createAdmin.js
    - Section: 3D
    - Service: In-person consultation
    - Date: Tomorrow
-   - Time: 10:00 AM
+   - Time: 12:00 PM
 4. Submit
 5. Check your email for confirmation
 

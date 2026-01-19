@@ -228,7 +228,7 @@ node scripts/createAdmin.js
 ## Working Hours
 
 - **Days:** Sunday to Thursday
-- **Hours:** 8:00 AM to 3:00 PM
+- **Hours:** 11:00 AM to 7:00 PM
 - **Note:** Friday and Saturday are not working days
 
 ## Application Types

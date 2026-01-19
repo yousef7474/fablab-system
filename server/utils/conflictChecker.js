@@ -99,7 +99,7 @@ const checkTimeSlotAvailability = async (section, date, startTime, endTime, excl
 // Get available time slots for a specific section and date
 const getAvailableTimeSlots = async (section, date) => {
   try {
-    // Working hours: Sunday to Thursday, 8 AM to 3 PM
+    // Working hours: Sunday to Thursday, 11 AM to 7 PM
     const dayOfWeek = moment(date).day();
 
     // Check if it's a working day (Sunday=0, Thursday=4 in moment.js)
@@ -107,10 +107,10 @@ const getAvailableTimeSlots = async (section, date) => {
       return []; // Friday and Saturday are not working days
     }
 
-    // Generate all possible 30-minute slots from 8 AM to 3 PM
+    // Generate all possible 30-minute slots from 11 AM to 7 PM
     const slots = [];
-    const startHour = 8;
-    const endHour = 15; // 3 PM
+    const startHour = 11;
+    const endHour = 19; // 7 PM
 
     for (let hour = startHour; hour < endHour; hour++) {
       for (let minute = 0; minute < 60; minute += 30) {

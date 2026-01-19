@@ -161,7 +161,7 @@ const DateTimeSelection = ({ formData, onChange, onNext, onBack }) => {
         {isRTL ? 'اختيار الموعد' : 'Schedule Appointment'}
       </h2>
       <p className="step-description">
-        {isRTL ? 'أوقات العمل: الأحد - الخميس، 8:00 صباحاً - 3:00 مساءً' : 'Working hours: Sunday - Thursday, 8:00 AM - 3:00 PM'}
+        {isRTL ? 'أوقات العمل: الأحد - الخميس، 11:00 صباحاً - 7:00 مساءً' : 'Working hours: Sunday - Thursday, 11:00 AM - 7:00 PM'}
       </p>
 
       <motion.div
@@ -446,8 +446,8 @@ const DateTimeSelection = ({ formData, onChange, onNext, onBack }) => {
               className="form-input"
               value={formData.startTime || ''}
               onChange={(e) => handleChange('startTime', e.target.value)}
-              min="08:00"
-              max="15:00"
+              min="11:00"
+              max="19:00"
             />
           </motion.div>
 
@@ -465,8 +465,8 @@ const DateTimeSelection = ({ formData, onChange, onNext, onBack }) => {
               className="form-input"
               value={formData.endTime || ''}
               onChange={(e) => handleChange('endTime', e.target.value)}
-              min="08:00"
-              max="15:00"
+              min="11:00"
+              max="19:00"
             />
           </motion.div>
         </div>

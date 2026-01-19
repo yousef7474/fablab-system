@@ -80,7 +80,7 @@ Abdulmonem Al-Rashed Humanitarian Foundation - Al-Ahsa
 
 ⏰ **أوقات التواصل:**
 الأحد - الخميس
-8:00 صباحاً - 3:00 مساءً
+11:00 صباحاً - 7:00 مساءً
 
 💬 فريقنا جاهز للإجابة على جميع استفساراتكم ومساعدتكم في أي وقت خلال ساعات العمل.
 
@@ -94,7 +94,7 @@ To contact our customer service team directly:
 
 ⏰ **Contact Hours:**
 Sunday - Thursday
-8:00 AM - 3:00 PM
+11:00 AM - 7:00 PM
 
 💬 Our team is ready to answer all your inquiries and assist you during working hours.
 
@@ -134,7 +134,7 @@ Would you like to know more about a specific service?`
         ar: `⏰ **أوقات العمل:**
 
 📅 الأحد - الخميس
-🕗 من 8:00 صباحاً حتى 3:00 مساءً
+🕗 من 11:00 صباحاً حتى 7:00 مساءً
 
 ❌ مغلق يومي الجمعة والسبت
 
@@ -142,7 +142,7 @@ Would you like to know more about a specific service?`
         en: `⏰ **Working Hours:**
 
 📅 Sunday - Thursday
-🕗 8:00 AM to 3:00 PM
+🕗 11:00 AM to 7:00 PM
 
 ❌ Closed on Friday and Saturday
 
@@ -185,7 +185,7 @@ Would you like to know more about a specific service?`
 
 🟢 الأيام الخضراء في التقويم متاحة للحجز
 🔴 أيام الجمعة والسبت غير متاحة
-⏰ المواعيد المتاحة من 8:00 ص - 3:00 م
+⏰ المواعيد المتاحة من 11:00 ص - 7:00 م
 
 **المدد المتاحة:**
 • 30 دقيقة
@@ -197,7 +197,7 @@ Would you like to know more about a specific service?`
 
 🟢 Green days on the calendar are available
 🔴 Friday and Saturday are unavailable
-⏰ Available times: 8:00 AM - 3:00 PM
+⏰ Available times: 11:00 AM - 7:00 PM
 
 **Available Durations:**
 • 30 minutes
@@ -298,7 +298,7 @@ Costs vary based on:
 📱 **خدمة العملاء (واتساب/اتصال):**
 0555022605
 
-⏰ أوقات التواصل: الأحد - الخميس، 8:00 ص - 3:00 م
+⏰ أوقات التواصل: الأحد - الخميس، 11:00 ص - 7:00 م
 
 💡 يمكنك أيضاً إرسال استفساراتك من خلال نموذج التسجيل!`,
         en: `📞 **Contact Information:**
@@ -311,7 +311,7 @@ Costs vary based on:
 📱 **Customer Service (WhatsApp/Call):**
 0555022605
 
-⏰ Contact Hours: Sunday - Thursday, 8:00 AM - 3:00 PM
+⏰ Contact Hours: Sunday - Thursday, 11:00 AM - 7:00 PM
 
 💡 You can also send inquiries through the registration form!`
       }
