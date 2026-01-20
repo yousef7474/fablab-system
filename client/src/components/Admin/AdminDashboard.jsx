@@ -136,6 +136,19 @@ const AdminDashboard = () => {
     reasonAr: ''
   });
 
+  // Employee Task Form states (for schedule tab)
+  const [employeeTaskForm, setEmployeeTaskForm] = useState({
+    employeeId: '',
+    title: '',
+    description: '',
+    dueDate: '',
+    dueTime: '',
+    dueTimeEnd: '',
+    priority: 'medium',
+    blocksCalendar: true
+  });
+  const [isSubmittingTask, setIsSubmittingTask] = useState(false);
+
   // Apply theme to document
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme);
@@ -1700,6 +1713,61 @@ const AdminDashboard = () => {
     }
   };
 
+  // Handle employee task creation from schedule tab
+  const handleCreateEmployeeTask = async (e) => {
+    e.preventDefault();
+
+    if (!employeeTaskForm.employeeId || !employeeTaskForm.title || !employeeTaskForm.dueDate) {
+      toast.error(isRTL ? 'يرجى ملء جميع الحقول المطلوبة' : 'Please fill all required fields');
+      return;
+    }
+
+    // Validate time range if blocking calendar
+    if (employeeTaskForm.blocksCalendar && (!employeeTaskForm.dueTime || !employeeTaskForm.dueTimeEnd)) {
+      toast.error(isRTL ? 'يرجى تحديد وقت البداية والنهاية لحجز الموعد' : 'Please specify start and end time to block calendar');
+      return;
+    }
+
+    setIsSubmittingTask(true);
+    try {
+      const selectedEmployee = employees.find(e => e.employeeId === employeeTaskForm.employeeId);
+
+      await api.post('/tasks', {
+        title: employeeTaskForm.title,
+        description: employeeTaskForm.description,
+        employeeId: employeeTaskForm.employeeId,
+        dueDate: employeeTaskForm.dueDate,
+        dueTime: employeeTaskForm.dueTime || null,
+        dueTimeEnd: employeeTaskForm.dueTimeEnd || null,
+        priority: employeeTaskForm.priority,
+        blocksCalendar: employeeTaskForm.blocksCalendar,
+        section: selectedEmployee?.section || ''
+      });
+
+      toast.success(isRTL ? 'تم إضافة المهمة بنجاح' : 'Task added successfully');
+
+      // Reset form
+      setEmployeeTaskForm({
+        employeeId: '',
+        title: '',
+        description: '',
+        dueDate: '',
+        dueTime: '',
+        dueTimeEnd: '',
+        priority: 'medium',
+        blocksCalendar: true
+      });
+
+      // Refresh schedule
+      fetchSchedule();
+    } catch (error) {
+      console.error('Error creating task:', error);
+      toast.error(isRTL ? 'خطأ في إضافة المهمة' : 'Error adding task');
+    } finally {
+      setIsSubmittingTask(false);
+    }
+  };
+
   const formatDate = (dateString) => {
     if (!dateString) return 'N/A';
     return new Date(dateString).toLocaleDateString(isRTL ? 'ar-SA' : 'en-US', {
@@ -2814,6 +2882,110 @@ const AdminDashboard = () => {
                           <p className="empty-message">{isRTL ? 'لا يوجد موظفين' : 'No employees yet'}</p>
                         )}
                       </div>
+                    </div>
+
+                    {/* Add Task Section */}
+                    <div className="add-task-section">
+                      <div className="section-header">
+                        <h3>{isRTL ? 'إضافة مهمة' : 'Add Task'}</h3>
+                      </div>
+                      <form onSubmit={handleCreateEmployeeTask} className="employee-task-form">
+                        <div className="form-group">
+                          <label>{isRTL ? 'الموظف' : 'Employee'} *</label>
+                          <select
+                            value={employeeTaskForm.employeeId}
+                            onChange={(e) => setEmployeeTaskForm({ ...employeeTaskForm, employeeId: e.target.value })}
+                            required
+                          >
+                            <option value="">{isRTL ? 'اختر الموظف' : 'Select Employee'}</option>
+                            {employees.map((emp) => (
+                              <option key={emp.employeeId} value={emp.employeeId}>
+                                {emp.name} - {sectionLabels[emp.section] || emp.section}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+
+                        <div className="form-group">
+                          <label>{isRTL ? 'عنوان المهمة' : 'Task Title'} *</label>
+                          <input
+                            type="text"
+                            value={employeeTaskForm.title}
+                            onChange={(e) => setEmployeeTaskForm({ ...employeeTaskForm, title: e.target.value })}
+                            placeholder={isRTL ? 'أدخل عنوان المهمة' : 'Enter task title'}
+                            required
+                          />
+                        </div>
+
+                        <div className="form-group">
+                          <label>{isRTL ? 'التاريخ' : 'Date'} *</label>
+                          <input
+                            type="date"
+                            value={employeeTaskForm.dueDate}
+                            onChange={(e) => setEmployeeTaskForm({ ...employeeTaskForm, dueDate: e.target.value })}
+                            required
+                          />
+                        </div>
+
+                        <div className="form-row">
+                          <div className="form-group">
+                            <label>{isRTL ? 'وقت البداية' : 'Start Time'}</label>
+                            <input
+                              type="time"
+                              value={employeeTaskForm.dueTime}
+                              onChange={(e) => setEmployeeTaskForm({ ...employeeTaskForm, dueTime: e.target.value })}
+                            />
+                          </div>
+                          <div className="form-group">
+                            <label>{isRTL ? 'وقت النهاية' : 'End Time'}</label>
+                            <input
+                              type="time"
+                              value={employeeTaskForm.dueTimeEnd}
+                              onChange={(e) => setEmployeeTaskForm({ ...employeeTaskForm, dueTimeEnd: e.target.value })}
+                              min={employeeTaskForm.dueTime}
+                            />
+                          </div>
+                        </div>
+
+                        <div className="form-group">
+                          <label>{isRTL ? 'الأولوية' : 'Priority'}</label>
+                          <select
+                            value={employeeTaskForm.priority}
+                            onChange={(e) => setEmployeeTaskForm({ ...employeeTaskForm, priority: e.target.value })}
+                          >
+                            <option value="low">{isRTL ? 'منخفضة' : 'Low'}</option>
+                            <option value="medium">{isRTL ? 'متوسطة' : 'Medium'}</option>
+                            <option value="high">{isRTL ? 'عالية' : 'High'}</option>
+                          </select>
+                        </div>
+
+                        <div className="form-group checkbox-group">
+                          <label className="checkbox-label">
+                            <input
+                              type="checkbox"
+                              checked={employeeTaskForm.blocksCalendar}
+                              onChange={(e) => setEmployeeTaskForm({ ...employeeTaskForm, blocksCalendar: e.target.checked })}
+                            />
+                            <span>{isRTL ? 'يحجز الموعد (يمنع العملاء من الحجز)' : 'Blocks Calendar (prevents customer bookings)'}</span>
+                          </label>
+                        </div>
+
+                        {employeeTaskForm.blocksCalendar && (!employeeTaskForm.dueTime || !employeeTaskForm.dueTimeEnd) && (
+                          <p className="warning-hint">
+                            {isRTL ? 'يجب تحديد وقت البداية والنهاية لحجز الموعد' : 'Start and end time required to block calendar'}
+                          </p>
+                        )}
+
+                        <button
+                          type="submit"
+                          className="submit-task-btn"
+                          disabled={isSubmittingTask}
+                        >
+                          {isSubmittingTask
+                            ? (isRTL ? 'جاري الإضافة...' : 'Adding...')
+                            : (isRTL ? 'إضافة المهمة' : 'Add Task')}
+                        </button>
+                      </form>
                     </div>
 
                     {/* Selected Day Appointments Section */}
