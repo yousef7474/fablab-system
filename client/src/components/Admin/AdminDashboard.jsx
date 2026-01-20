@@ -342,7 +342,18 @@ const AdminDashboard = () => {
   };
 
   const getSectionStatus = (sectionName) => {
-    return sectionAvailability.find(s => s.section === sectionName) || { section: sectionName, isAvailable: true };
+    const section = sectionAvailability.find(s => s.section === sectionName);
+    if (!section) {
+      return { section: sectionName, isAvailable: true, deactivationPeriods: [] };
+    }
+    // Check if there are any deactivation periods (current or future)
+    const hasDeactivations = section.deactivationPeriods && section.deactivationPeriods.length > 0;
+    return {
+      ...section,
+      hasDeactivations,
+      // For display, use the first deactivation period if exists
+      currentDeactivation: hasDeactivations ? section.deactivationPeriods[0] : null
+    };
   };
 
   useEffect(() => {
@@ -3063,8 +3074,8 @@ const AdminDashboard = () => {
                   </h3>
                   <p className="section-availability-desc">
                     {isRTL
-                      ? 'يمكنك تعطيل الأقسام مؤقتاً (مثل للصيانة). الأقسام المعطلة ستكون مرئية ولكن غير قابلة للاختيار في نموذج التسجيل.'
-                      : 'You can temporarily deactivate sections (e.g., for maintenance). Deactivated sections will be visible but not selectable in the registration form.'}
+                      ? 'يمكنك تعطيل الأقسام مؤقتاً (مثل للصيانة). المستخدمون يمكنهم اختيار القسم، لكن التواريخ المعطلة ستكون محظورة في التقويم.'
+                      : 'You can temporarily deactivate sections (e.g., for maintenance). Users can still select the section, but the deactivated dates will be blocked on the calendar.'}
                   </p>
 
                   <div className="sections-availability-grid">
@@ -3078,10 +3089,13 @@ const AdminDashboard = () => {
                       { value: 'Vinyl Cutting', labelEn: 'Vinyl Cutting', labelAr: 'قص الفينيل' }
                     ].map(section => {
                       const status = getSectionStatus(section.value);
+                      const hasDeactivations = status.hasDeactivations;
+                      const deactivation = status.currentDeactivation;
+
                       return (
                         <div
                           key={section.value}
-                          className={`section-status-card ${status.isAvailable ? 'available' : 'unavailable'}`}
+                          className={`section-status-card ${hasDeactivations ? 'unavailable' : 'available'}`}
                         >
                           <div className="section-status-header">
                             <div className="section-info">
@@ -3093,24 +3107,24 @@ const AdminDashboard = () => {
                                 {isRTL ? section.labelAr : section.labelEn}
                               </span>
                             </div>
-                            <span className={`status-indicator ${status.isAvailable ? 'active' : 'inactive'}`}>
-                              {status.isAvailable
-                                ? (isRTL ? 'متاح' : 'Available')
-                                : (isRTL ? 'غير متاح' : 'Unavailable')}
+                            <span className={`status-indicator ${hasDeactivations ? 'inactive' : 'active'}`}>
+                              {hasDeactivations
+                                ? (isRTL ? 'معطل' : 'Deactivated')
+                                : (isRTL ? 'متاح' : 'Available')}
                             </span>
                           </div>
 
-                          {!status.isAvailable && (
+                          {hasDeactivations && deactivation && (
                             <div className="section-status-details">
                               <p className="unavailable-reason">
-                                <strong>{isRTL ? 'السبب:' : 'Reason:'}</strong> {isRTL ? status.reasonAr || status.reasonEn : status.reasonEn}
+                                <strong>{isRTL ? 'السبب:' : 'Reason:'}</strong> {isRTL ? deactivation.reasonAr || deactivation.reasonEn : deactivation.reasonEn}
                               </p>
-                              <p className="available-date">
-                                <strong>{isRTL ? 'متاح من:' : 'Available from:'}</strong> {status.endDate}
+                              <p className="deactivation-period">
+                                <strong>{isRTL ? 'الفترة:' : 'Period:'}</strong> {new Date(deactivation.startDate).toLocaleDateString(isRTL ? 'ar-SA' : 'en-US')} - {new Date(deactivation.endDate).toLocaleDateString(isRTL ? 'ar-SA' : 'en-US')}
                               </p>
                               <button
                                 className="btn-reactivate"
-                                onClick={() => handleReactivateSection(status.availabilityId)}
+                                onClick={() => handleReactivateSection(deactivation.availabilityId)}
                               >
                                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                                   <polyline points="23 4 23 10 17 10"/>
@@ -3121,7 +3135,7 @@ const AdminDashboard = () => {
                             </div>
                           )}
 
-                          {status.isAvailable && (
+                          {!hasDeactivations && (
                             <button
                               className="btn-deactivate"
                               onClick={() => openDeactivateModal(section.value)}
