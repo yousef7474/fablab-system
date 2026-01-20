@@ -765,13 +765,16 @@ exports.getSchedule = async (req, res) => {
         ? `${reg.user.firstName} ${reg.user.lastName}`
         : reg.user.name;
 
+      // Use appointmentDuration if available, otherwise calculate from times
+      const duration = reg.appointmentDuration || calculateDuration(time, endTime);
+
       return {
         id: reg.registrationId,
         title: userName,
         date,
         startTime: time,
         endTime,
-        duration: calculateDuration(time, endTime),
+        duration,
         section: reg.fablabSection,
         services: reg.requiredServices,
         applicationType: reg.user.applicationType,
