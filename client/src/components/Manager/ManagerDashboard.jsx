@@ -37,6 +37,15 @@ const PRIORITY_COLORS = {
   high: '#ef4444'
 };
 
+// Helper function to format time as AM/PM
+const formatTimeAMPM = (time24) => {
+  if (!time24) return '';
+  const [hours, minutes] = time24.split(':').map(Number);
+  const period = hours >= 12 ? 'PM' : 'AM';
+  const hours12 = hours % 12 || 12;
+  return `${hours12}:${String(minutes).padStart(2, '0')} ${period}`;
+};
+
 const ManagerDashboard = () => {
   const navigate = useNavigate();
   const location = useLocation();
@@ -87,6 +96,8 @@ const ManagerDashboard = () => {
     dueDate: '',
     dueDateEnd: '', // For date range
     dueTime: '',
+    dueTimeEnd: '', // End time for time blocking
+    blocksCalendar: false, // Whether to block customer appointments
     priority: 'medium',
     section: '',
     notes: ''
@@ -150,6 +161,12 @@ const ManagerDashboard = () => {
     rating: 0,
     ratingCriteria: '',
     ratingNotes: ''
+  });
+  const [showHoursAdjustModal, setShowHoursAdjustModal] = useState(false);
+  const [hoursAdjustForm, setHoursAdjustForm] = useState({
+    opportunityId: '',
+    adjustment: 0,
+    reason: ''
   });
 
   // Intern state (University Training)
@@ -772,6 +789,8 @@ const ManagerDashboard = () => {
           dueDate: taskForm.dueDate,
           dueDateEnd: taskForm.dueDateEnd || null,
           dueTime: taskForm.dueTime,
+          dueTimeEnd: taskForm.dueTimeEnd || null,
+          blocksCalendar: taskForm.blocksCalendar,
           priority: taskForm.priority,
           section: employee?.section || taskForm.section,
           notes: taskForm.notes
@@ -1123,6 +1142,39 @@ const ManagerDashboard = () => {
     } catch (error) {
       console.error('Error deleting volunteer:', error);
       toast.error(isRTL ? 'خطأ في حذف المتطوع' : 'Error deleting volunteer');
+    }
+  };
+
+  const handleOpenHoursAdjust = (opportunity) => {
+    setHoursAdjustForm({
+      opportunityId: opportunity.opportunityId,
+      adjustment: 0,
+      reason: ''
+    });
+    setShowHoursAdjustModal(true);
+  };
+
+  const handleAdjustHours = async () => {
+    if (hoursAdjustForm.adjustment === 0) {
+      toast.error(isRTL ? 'يرجى إدخال قيمة التعديل' : 'Please enter an adjustment value');
+      return;
+    }
+    try {
+      await api.patch(`/volunteers/opportunities/${hoursAdjustForm.opportunityId}/hours`, {
+        adjustment: hoursAdjustForm.adjustment,
+        reason: hoursAdjustForm.reason
+      });
+      toast.success(isRTL ? 'تم تعديل الساعات بنجاح' : 'Hours adjusted successfully');
+      setShowHoursAdjustModal(false);
+      fetchVolunteers();
+      // Refresh selected volunteer data
+      if (selectedVolunteer) {
+        const updated = volunteers.find(v => v.volunteerId === selectedVolunteer.volunteerId);
+        if (updated) setSelectedVolunteer(updated);
+      }
+    } catch (error) {
+      console.error('Error adjusting hours:', error);
+      toast.error(isRTL ? 'خطأ في تعديل الساعات' : 'Error adjusting hours');
     }
   };
 
@@ -1975,7 +2027,7 @@ const ManagerDashboard = () => {
                           )}
                         </div>
                         <div className="event-meta">
-                          {event.startTime && <span>🕐 {event.startTime}</span>}
+                          {event.startTime && <span>🕐 {formatTimeAMPM(event.startTime)}</span>}
                           <span>📍 {sectionLabels[event.section] || event.section}</span>
                           {event.type === 'task' && event.assignee && (
                             <span>👤 {event.assignee}</span>
@@ -2096,7 +2148,7 @@ const ManagerDashboard = () => {
                           <line x1="8" y1="2" x2="8" y2="6"/>
                         </svg>
                         {formatDate(task.date)}
-                        {task.startTime && ` • ${task.startTime}`}
+                        {task.startTime && ` • ${formatTimeAMPM(task.startTime)}`}
                       </div>
                       {task.assignee && (
                         <div className="task-item-assignee">
@@ -3252,13 +3304,32 @@ const ManagerDashboard = () => {
                               </svg>
                               {opp.startDate} → {opp.endDate}
                             </span>
-                            <span>
+                            <span className="hours-display">
                               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                                 <circle cx="12" cy="12" r="10"/>
                                 <polyline points="12 6 12 12 16 14"/>
                               </svg>
-                              {opp.totalHours || 0} {isRTL ? 'ساعة' : 'hours'}
+                              {(opp.totalHours || 0) + (opp.hoursAdjustment || 0)} {isRTL ? 'ساعة' : 'hours'}
+                              {opp.hoursAdjustment !== 0 && opp.hoursAdjustment && (
+                                <span className={`hours-adjustment ${opp.hoursAdjustment > 0 ? 'positive' : 'negative'}`}>
+                                  ({opp.hoursAdjustment > 0 ? '+' : ''}{opp.hoursAdjustment})
+                                </span>
+                              )}
                             </span>
+                          </div>
+                          <div className="history-actions">
+                            <button
+                              className="adjust-hours-btn"
+                              onClick={() => handleOpenHoursAdjust(opp)}
+                              title={isRTL ? 'تعديل الساعات' : 'Adjust Hours'}
+                            >
+                              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                <circle cx="12" cy="12" r="10"/>
+                                <line x1="12" y1="8" x2="12" y2="16"/>
+                                <line x1="8" y1="12" x2="16" y2="12"/>
+                              </svg>
+                              {isRTL ? 'تعديل الساعات' : 'Adjust Hours'}
+                            </button>
                             <button
                               className="rate-opportunity-btn"
                               onClick={() => handleOpenVolunteerRating(selectedVolunteer, opp)}
@@ -3418,6 +3489,79 @@ const ManagerDashboard = () => {
                   disabled={volunteerLoading}
                 >
                   {volunteerLoading ? (isRTL ? 'جاري الحفظ...' : 'Saving...') : (isRTL ? 'حفظ التقييم' : 'Save Rating')}
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+
+        {/* Hours Adjustment Modal */}
+        {showHoursAdjustModal && (
+          <div className="modal-overlay" onClick={() => setShowHoursAdjustModal(false)}>
+            <motion.div
+              className="modal-content task-modal"
+              onClick={(e) => e.stopPropagation()}
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+            >
+              <div className="modal-header">
+                <h2>{isRTL ? 'تعديل ساعات التطوع' : 'Adjust Volunteering Hours'}</h2>
+                <button className="close-btn" onClick={() => setShowHoursAdjustModal(false)}>×</button>
+              </div>
+              <div className="modal-body">
+                <div className="form-group">
+                  <label>{isRTL ? 'قيمة التعديل (ساعات)' : 'Adjustment Value (hours)'}</label>
+                  <div className="hours-adjustment-input">
+                    <button
+                      type="button"
+                      className="adjust-btn decrease"
+                      onClick={() => setHoursAdjustForm(prev => ({ ...prev, adjustment: prev.adjustment - 1 }))}
+                    >
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <line x1="5" y1="12" x2="19" y2="12"/>
+                      </svg>
+                    </button>
+                    <input
+                      type="number"
+                      value={hoursAdjustForm.adjustment}
+                      onChange={(e) => setHoursAdjustForm(prev => ({ ...prev, adjustment: parseFloat(e.target.value) || 0 }))}
+                      className="adjustment-value-input"
+                    />
+                    <button
+                      type="button"
+                      className="adjust-btn increase"
+                      onClick={() => setHoursAdjustForm(prev => ({ ...prev, adjustment: prev.adjustment + 1 }))}
+                    >
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <line x1="12" y1="5" x2="12" y2="19"/>
+                        <line x1="5" y1="12" x2="19" y2="12"/>
+                      </svg>
+                    </button>
+                  </div>
+                  <small className="adjustment-hint">
+                    {isRTL ? 'أدخل رقم موجب للزيادة أو سالب للنقصان' : 'Enter positive number to add or negative to subtract hours'}
+                  </small>
+                </div>
+                <div className="form-group">
+                  <label>{isRTL ? 'سبب التعديل' : 'Reason for Adjustment'}</label>
+                  <textarea
+                    value={hoursAdjustForm.reason}
+                    onChange={(e) => setHoursAdjustForm(prev => ({ ...prev, reason: e.target.value }))}
+                    rows="3"
+                    placeholder={isRTL ? 'أدخل سبب تعديل الساعات...' : 'Enter reason for hours adjustment...'}
+                  />
+                </div>
+              </div>
+              <div className="modal-footer">
+                <button className="modal-btn cancel" onClick={() => setShowHoursAdjustModal(false)}>
+                  {isRTL ? 'إلغاء' : 'Cancel'}
+                </button>
+                <button
+                  className="modal-btn save"
+                  onClick={handleAdjustHours}
+                  disabled={hoursAdjustForm.adjustment === 0}
+                >
+                  {isRTL ? 'حفظ التعديل' : 'Save Adjustment'}
                 </button>
               </div>
             </motion.div>
@@ -4971,11 +5115,11 @@ const ManagerDashboard = () => {
                       <div className="workspace-period">
                         <div className="period-item">
                           <span className="period-label">{isRTL ? 'من' : 'From'}</span>
-                          <span className="period-value">{format(parseISO(workspace.startDate), 'MMM d', { locale: isRTL ? ar : enUS })} {workspace.startTime}</span>
+                          <span className="period-value">{format(parseISO(workspace.startDate), 'MMM d', { locale: isRTL ? ar : enUS })} {formatTimeAMPM(workspace.startTime)}</span>
                         </div>
                         <div className="period-item">
                           <span className="period-label">{isRTL ? 'إلى' : 'To'}</span>
-                          <span className="period-value">{format(parseISO(workspace.endDate), 'MMM d', { locale: isRTL ? ar : enUS })} {workspace.endTime}</span>
+                          <span className="period-value">{format(parseISO(workspace.endDate), 'MMM d', { locale: isRTL ? ar : enUS })} {formatTimeAMPM(workspace.endTime)}</span>
                         </div>
                       </div>
 
@@ -5809,14 +5953,45 @@ const ManagerDashboard = () => {
                       min={taskForm.dueDate}
                     />
                   </div>
+                </div>
+
+                <div className="task-form-row">
                   <div className="task-form-group">
-                    <label>{isRTL ? 'الوقت' : 'Time'}</label>
+                    <label>{isRTL ? 'من الساعة' : 'Start Time'}</label>
                     <input
                       type="time"
                       value={taskForm.dueTime}
                       onChange={(e) => setTaskForm({ ...taskForm, dueTime: e.target.value })}
                     />
                   </div>
+                  <div className="task-form-group">
+                    <label>{isRTL ? 'إلى الساعة' : 'End Time'}</label>
+                    <input
+                      type="time"
+                      value={taskForm.dueTimeEnd}
+                      onChange={(e) => setTaskForm({ ...taskForm, dueTimeEnd: e.target.value })}
+                      min={taskForm.dueTime}
+                    />
+                  </div>
+                </div>
+
+                {/* Block Calendar Checkbox */}
+                <div className="task-form-group checkbox-group">
+                  <label className="checkbox-label">
+                    <input
+                      type="checkbox"
+                      checked={taskForm.blocksCalendar}
+                      onChange={(e) => setTaskForm({ ...taskForm, blocksCalendar: e.target.checked })}
+                    />
+                    <span className="checkbox-text">
+                      {isRTL ? 'حجز الموعد (منع العملاء من الحجز في هذا الوقت)' : 'Block time slot (prevents customers from booking)'}
+                    </span>
+                  </label>
+                  {taskForm.blocksCalendar && (!taskForm.dueTime || !taskForm.dueTimeEnd) && (
+                    <span className="warning-hint">
+                      {isRTL ? 'يرجى تحديد وقت البداية والنهاية لحجز الموعد' : 'Please set start and end time to block the slot'}
+                    </span>
+                  )}
                 </div>
 
                 <div className="task-form-group">

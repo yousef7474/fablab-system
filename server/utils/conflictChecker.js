@@ -1,4 +1,4 @@
-const { Registration } = require('../models');
+const { Registration, Task } = require('../models');
 const { Op } = require('sequelize');
 const moment = require('moment');
 
@@ -88,6 +88,38 @@ const checkTimeSlotAvailability = async (section, date, startTime, endTime, excl
       }
     }
 
+    // Also check for employee tasks that block the calendar
+    const tasks = await Task.findAll({
+      where: {
+        section: section,
+        blocksCalendar: true,
+        status: { [Op.notIn]: ['completed', 'cancelled'] },
+        [Op.or]: [
+          { dueDate: date },
+          {
+            [Op.and]: [
+              { dueDate: { [Op.lte]: date } },
+              { dueDateEnd: { [Op.gte]: date } }
+            ]
+          }
+        ]
+      }
+    });
+
+    console.log(`Found ${tasks.length} blocking tasks to check`);
+
+    for (const task of tasks) {
+      if (task.dueTime && task.dueTimeEnd) {
+        const taskStartTime = normalizeTime(task.dueTime);
+        const taskEndTime = normalizeTime(task.dueTimeEnd);
+
+        if (doTimesOverlap(startTime, endTime, taskStartTime, taskEndTime)) {
+          console.log(`Conflict found with task ${task.taskId}: ${taskStartTime}-${taskEndTime}`);
+          return false;
+        }
+      }
+    }
+
     console.log('No conflicts found, slot is available');
     return true;
   } catch (error) {
@@ -171,6 +203,44 @@ const getAvailableTimeSlots = async (section, date) => {
           if (slot.timeInMinutes >= startMinutes && slot.timeInMinutes < endMinutes) {
             slot.available = false;
             console.log(`  Marking ${slot.time} as unavailable`);
+          }
+        });
+      }
+    });
+
+    // Also check for employee tasks that block the calendar
+    const tasks = await Task.findAll({
+      where: {
+        section: section,
+        blocksCalendar: true,
+        status: { [Op.notIn]: ['completed', 'cancelled'] },
+        [Op.or]: [
+          { dueDate: date },
+          {
+            [Op.and]: [
+              { dueDate: { [Op.lte]: date } },
+              { dueDateEnd: { [Op.gte]: date } }
+            ]
+          }
+        ]
+      }
+    });
+
+    console.log(`Found ${tasks.length} blocking tasks for section ${section} on ${date}`);
+
+    tasks.forEach(task => {
+      if (task.dueTime && task.dueTimeEnd) {
+        const taskStartTime = normalizeTime(task.dueTime);
+        const taskEndTime = normalizeTime(task.dueTimeEnd);
+        const startMinutes = timeToMinutes(taskStartTime);
+        const endMinutes = timeToMinutes(taskEndTime);
+
+        console.log(`Blocking slots from task: ${taskStartTime} (${startMinutes}min) to ${taskEndTime} (${endMinutes}min)`);
+
+        slots.forEach(slot => {
+          if (slot.timeInMinutes >= startMinutes && slot.timeInMinutes < endMinutes) {
+            slot.available = false;
+            console.log(`  Marking ${slot.time} as unavailable (task)`);
           }
         });
       }

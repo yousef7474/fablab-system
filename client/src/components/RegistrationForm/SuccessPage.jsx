@@ -3,6 +3,15 @@ import { useTranslation } from 'react-i18next';
 import { motion } from 'framer-motion';
 import QRCode from 'react-qr-code';
 
+// Helper function to format time as AM/PM
+const formatTimeAMPM = (time24) => {
+  if (!time24) return '';
+  const [hours, minutes] = time24.split(':').map(Number);
+  const period = hours >= 12 ? 'PM' : 'AM';
+  const hours12 = hours % 12 || 12;
+  return `${hours12}:${String(minutes).padStart(2, '0')} ${period}`;
+};
+
 const SuccessPage = ({ registration }) => {
   const { t, i18n } = useTranslation();
   const isRTL = i18n.language === 'ar';
@@ -98,7 +107,7 @@ const SuccessPage = ({ registration }) => {
             <span className="detail-label">
               {isRTL ? 'الوقت' : 'Time'}
             </span>
-            <span className="detail-value">{registration.appointmentTime || 'N/A'}</span>
+            <span className="detail-value">{formatTimeAMPM(registration.appointmentTime) || 'N/A'}</span>
           </div>
 
           <div className="detail-row">

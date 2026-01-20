@@ -31,6 +31,15 @@ const PRIORITY_COLORS = {
   high: '#ef4444'
 };
 
+// Helper function to format time as AM/PM
+const formatTimeAMPM = (time24) => {
+  if (!time24) return '';
+  const [hours, minutes] = time24.split(':').map(Number);
+  const period = hours >= 12 ? 'PM' : 'AM';
+  const hours12 = hours % 12 || 12;
+  return `${hours12}:${String(minutes).padStart(2, '0')} ${period}`;
+};
+
 const AdminDashboard = () => {
   const navigate = useNavigate();
   const location = useLocation();
@@ -526,10 +535,10 @@ const AdminDashboard = () => {
         return `${registration.appointmentDuration} ${isRTL ? 'دقيقة' : 'minutes'}`;
       }
       if (registration.visitEndTime && registration.visitStartTime) {
-        return `${registration.visitStartTime} - ${registration.visitEndTime}`;
+        return `${formatTimeAMPM(registration.visitStartTime)} - ${formatTimeAMPM(registration.visitEndTime)}`;
       }
       if (registration.endTime && registration.startTime) {
-        return `${registration.startTime} - ${registration.endTime}`;
+        return `${formatTimeAMPM(registration.startTime)} - ${formatTimeAMPM(registration.endTime)}`;
       }
       return isRTL ? 'غير متوفر' : 'N/A';
     };
@@ -859,7 +868,7 @@ const AdminDashboard = () => {
             </div>
             <div class="field">
               <div class="field-label">${isRTL ? 'الوقت' : 'Time'}</div>
-              <div class="field-value">${registration.appointmentTime || registration.visitStartTime || registration.startTime || na}</div>
+              <div class="field-value">${formatTimeAMPM(registration.appointmentTime || registration.visitStartTime || registration.startTime) || na}</div>
             </div>
             <div class="field">
               <div class="field-label">${isRTL ? 'المدة' : 'Duration'}</div>
@@ -2855,7 +2864,7 @@ const AdminDashboard = () => {
                                   {apt.title}
                                 </span>
                                 <span className="detailed-appointment-time">
-                                  {apt.startTime}{apt.endTime && ` - ${apt.endTime}`}
+                                  {formatTimeAMPM(apt.startTime)}{apt.endTime && ` - ${formatTimeAMPM(apt.endTime)}`}
                                 </span>
                               </div>
                               <div className="detailed-appointment-body">
@@ -2972,8 +2981,8 @@ const AdminDashboard = () => {
                             <div className="appointment-info">
                               <span className="appointment-title">{apt.title}</span>
                               <span className="appointment-datetime">
-                                {apt.date && formatDate(apt.date)} {apt.startTime && `• ${apt.startTime}`}
-                                {apt.endTime && ` - ${apt.endTime}`}
+                                {apt.date && formatDate(apt.date)} {apt.startTime && `• ${formatTimeAMPM(apt.startTime)}`}
+                                {apt.endTime && ` - ${formatTimeAMPM(apt.endTime)}`}
                               </span>
                               <span className="appointment-section">{sectionLabels[apt.section] || apt.section}</span>
                               {apt.services && apt.services.length > 0 && (
@@ -3263,7 +3272,7 @@ const AdminDashboard = () => {
                 </div>
                 <div className="detail-item">
                   <label>{isRTL ? 'الوقت' : 'Time'}</label>
-                  <span>{selectedRegistration.appointmentTime || selectedRegistration.visitStartTime || selectedRegistration.startTime || 'N/A'}</span>
+                  <span>{formatTimeAMPM(selectedRegistration.appointmentTime || selectedRegistration.visitStartTime || selectedRegistration.startTime) || 'N/A'}</span>
                 </div>
                 <div className="detail-item">
                   <label>{isRTL ? 'المدة' : 'Duration'}</label>
@@ -3271,9 +3280,9 @@ const AdminDashboard = () => {
                     {selectedRegistration.appointmentDuration
                       ? `${selectedRegistration.appointmentDuration} ${isRTL ? 'دقيقة' : 'minutes'}`
                       : (selectedRegistration.visitEndTime && selectedRegistration.visitStartTime)
-                        ? `${selectedRegistration.visitStartTime} - ${selectedRegistration.visitEndTime}`
+                        ? `${formatTimeAMPM(selectedRegistration.visitStartTime)} - ${formatTimeAMPM(selectedRegistration.visitEndTime)}`
                         : (selectedRegistration.endTime && selectedRegistration.startTime)
-                          ? `${selectedRegistration.startTime} - ${selectedRegistration.endTime}`
+                          ? `${formatTimeAMPM(selectedRegistration.startTime)} - ${formatTimeAMPM(selectedRegistration.endTime)}`
                           : 'N/A'
                     }
                   </span>
@@ -3701,7 +3710,7 @@ const AdminDashboard = () => {
                 <div className="info-item">
                   <span className="info-label">{isRTL ? 'الموعد:' : 'Appointment:'}</span>
                   <span className="info-value">
-                    {formatDate(statusModalRegistration.appointmentDate || statusModalRegistration.visitDate)} - {statusModalRegistration.appointmentTime || statusModalRegistration.visitStartTime || 'N/A'}
+                    {formatDate(statusModalRegistration.appointmentDate || statusModalRegistration.visitDate)} - {formatTimeAMPM(statusModalRegistration.appointmentTime || statusModalRegistration.visitStartTime) || 'N/A'}
                   </span>
                 </div>
               </div>
@@ -3768,7 +3777,7 @@ const AdminDashboard = () => {
                   const phone = statusModalRegistration.user?.phoneNumber;
                   const userId = statusModalRegistration.user?.uniqueId || statusModalRegistration.userId;
                   const appointmentDate = formatDate(statusModalRegistration.appointmentDate || statusModalRegistration.visitDate);
-                  const appointmentTime = statusModalRegistration.appointmentTime || statusModalRegistration.visitStartTime;
+                  const appointmentTime = formatTimeAMPM(statusModalRegistration.appointmentTime || statusModalRegistration.visitStartTime);
                   const applicationType = statusModalRegistration.user?.applicationType;
                   const services = statusModalRegistration.requiredServices;
 

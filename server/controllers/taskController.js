@@ -150,6 +150,8 @@ exports.createTask = async (req, res) => {
       });
     }
 
+    const { dueTimeEnd, blocksCalendar } = req.body;
+
     // Create a single task (with optional end date for multi-day assignments)
     const task = await Task.create({
       title,
@@ -159,6 +161,8 @@ exports.createTask = async (req, res) => {
       dueDate,
       dueDateEnd: dueDateEnd || null,
       dueTime: dueTime || null,
+      dueTimeEnd: dueTimeEnd || null,
+      blocksCalendar: blocksCalendar || false,
       priority: priority || 'medium',
       section: section || employee.section,
       notes
@@ -185,7 +189,7 @@ exports.createTask = async (req, res) => {
 exports.updateTask = async (req, res) => {
   try {
     const { id } = req.params;
-    const { title, description, employeeId, dueDate, dueTime, priority, status, section, notes } = req.body;
+    const { title, description, employeeId, dueDate, dueTime, dueTimeEnd, blocksCalendar, priority, status, section, notes } = req.body;
 
     const task = await Task.findByPk(id);
 
@@ -213,6 +217,8 @@ exports.updateTask = async (req, res) => {
       employeeId: employeeId !== undefined ? employeeId : task.employeeId,
       dueDate: dueDate !== undefined ? dueDate : task.dueDate,
       dueTime: dueTime !== undefined ? dueTime : task.dueTime,
+      dueTimeEnd: dueTimeEnd !== undefined ? dueTimeEnd : task.dueTimeEnd,
+      blocksCalendar: blocksCalendar !== undefined ? blocksCalendar : task.blocksCalendar,
       priority: priority !== undefined ? priority : task.priority,
       status: status !== undefined ? status : task.status,
       section: section !== undefined ? section : task.section,

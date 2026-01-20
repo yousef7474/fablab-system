@@ -38,6 +38,9 @@ router.post('/opportunities', requireManager, volunteerController.createOpportun
 // Update opportunity (manager or admin only)
 router.put('/opportunities/:id', requireManager, volunteerController.updateOpportunity);
 
+// Adjust hours for opportunity (manager or admin only)
+router.patch('/opportunities/:id/hours', requireManager, volunteerController.adjustOpportunityHours);
+
 // Delete opportunity (manager or admin only)
 router.delete('/opportunities/:id', requireManager, volunteerController.deleteOpportunity);
 

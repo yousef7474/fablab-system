@@ -3,6 +3,15 @@ import { useTranslation } from 'react-i18next';
 import { motion } from 'framer-motion';
 import api from '../../../config/api';
 
+// Helper function to format time as AM/PM
+const formatTimeAMPM = (time24) => {
+  if (!time24) return '';
+  const [hours, minutes] = time24.split(':').map(Number);
+  const period = hours >= 12 ? 'PM' : 'AM';
+  const hours12 = hours % 12 || 12;
+  return `${hours12}:${String(minutes).padStart(2, '0')} ${period}`;
+};
+
 const DateTimeSelection = ({ formData, onChange, onNext, onBack }) => {
   const { t, i18n } = useTranslation();
   const isRTL = i18n.language === 'ar';
@@ -184,9 +193,46 @@ const DateTimeSelection = ({ formData, onChange, onNext, onBack }) => {
     }
   };
 
+  // Check if a time slot is available for a given duration
+  const isSlotAvailableForDuration = (startTime, duration) => {
+    if (!startTime || !duration || availableSlots.length === 0) return true;
+
+    // Convert start time to minutes
+    const [startHour, startMin] = startTime.split(':').map(Number);
+    const startMinutes = startHour * 60 + startMin;
+    const endMinutes = startMinutes + duration;
+
+    // Check if all 30-minute slots within the duration are available
+    for (let m = startMinutes; m < endMinutes; m += 30) {
+      const slotHour = Math.floor(m / 60);
+      const slotMin = m % 60;
+      const slotTime = `${String(slotHour).padStart(2, '0')}:${String(slotMin).padStart(2, '0')}`;
+
+      const slot = availableSlots.find(s => s.time === slotTime);
+      if (!slot || !slot.available) {
+        return false;
+      }
+    }
+    return true;
+  };
+
+  // Get end time for display
+  const getEndTime = (startTime, duration) => {
+    if (!startTime || !duration) return '';
+    const [hours, mins] = startTime.split(':').map(Number);
+    const totalMins = hours * 60 + mins + duration;
+    const endHours = Math.floor(totalMins / 60);
+    const endMins = totalMins % 60;
+    return `${String(endHours).padStart(2, '0')}:${String(endMins).padStart(2, '0')}`;
+  };
+
   const handleTimeSlotSelect = (time) => {
     if (['Beneficiary', 'Talented', 'Visitor'].includes(formData.applicationType)) {
-      handleChange('appointmentTime', time);
+      // Clear duration when time changes, user needs to re-select
+      onChange({
+        appointmentTime: time,
+        appointmentDuration: ''
+      });
     } else if (formData.applicationType === 'FABLAB Visit') {
       if (!formData.visitStartTime) {
         handleChange('visitStartTime', time);
@@ -194,6 +240,18 @@ const DateTimeSelection = ({ formData, onChange, onNext, onBack }) => {
         handleChange('visitEndTime', time);
       }
     }
+  };
+
+  const handleDurationSelect = (duration) => {
+    // Check if the selected time + duration is available
+    if (!isSlotAvailableForDuration(formData.appointmentTime, duration)) {
+      // Show warning - this duration would overlap with an existing booking
+      alert(isRTL
+        ? 'هذه المدة غير متاحة - تتداخل مع حجز آخر. يرجى اختيار مدة أقصر أو وقت مختلف.'
+        : 'This duration is not available - it overlaps with another booking. Please select a shorter duration or different time.');
+      return;
+    }
+    handleChange('appointmentDuration', duration);
   };
 
   const selectedDate = formData.appointmentDate || formData.visitDate || formData.startDate;
@@ -399,7 +457,7 @@ const DateTimeSelection = ({ formData, onChange, onNext, onBack }) => {
                         className={`time-slot ${isSelected ? 'selected' : ''}`}
                         onClick={() => handleTimeSlotSelect(slot.time)}
                       >
-                        {slot.time}
+                        {formatTimeAMPM(slot.time)}
                       </button>
                     );
                   })}
@@ -427,9 +485,13 @@ const DateTimeSelection = ({ formData, onChange, onNext, onBack }) => {
                     <polyline points="22 4 12 14.01 9 11.01"/>
                   </svg>
                   <span>
-                    {isRTL
-                      ? `تم اختيار الوقت: ${formData.appointmentTime} - هذا الوقت متاح للحجز`
-                      : `Time selected: ${formData.appointmentTime} - This slot is available`}
+                    {formData.appointmentDuration
+                      ? (isRTL
+                          ? `تم اختيار الموعد: ${formatTimeAMPM(formData.appointmentTime)} - ${formatTimeAMPM(getEndTime(formData.appointmentTime, formData.appointmentDuration))}`
+                          : `Appointment: ${formatTimeAMPM(formData.appointmentTime)} - ${formatTimeAMPM(getEndTime(formData.appointmentTime, formData.appointmentDuration))}`)
+                      : (isRTL
+                          ? `تم اختيار الوقت: ${formatTimeAMPM(formData.appointmentTime)} - يرجى اختيار المدة`
+                          : `Time selected: ${formatTimeAMPM(formData.appointmentTime)} - Please select duration`)}
                   </span>
                 </motion.div>
               )}
@@ -450,7 +512,7 @@ const DateTimeSelection = ({ formData, onChange, onNext, onBack }) => {
                         key={option.value}
                         type="button"
                         className={`duration-option ${formData.appointmentDuration === option.value ? 'selected' : ''}`}
-                        onClick={() => handleChange('appointmentDuration', option.value)}
+                        onClick={() => handleDurationSelect(option.value)}
                       >
                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                           <circle cx="12" cy="12" r="10"/>
@@ -468,11 +530,11 @@ const DateTimeSelection = ({ formData, onChange, onNext, onBack }) => {
                 <div className="visit-time-summary">
                   <p>
                     {isRTL ? 'وقت البداية: ' : 'Start Time: '}
-                    <strong>{formData.visitStartTime || (isRTL ? 'لم يتم التحديد' : 'Not selected')}</strong>
+                    <strong>{formData.visitStartTime ? formatTimeAMPM(formData.visitStartTime) : (isRTL ? 'لم يتم التحديد' : 'Not selected')}</strong>
                   </p>
                   <p>
                     {isRTL ? 'وقت النهاية: ' : 'End Time: '}
-                    <strong>{formData.visitEndTime || (isRTL ? 'لم يتم التحديد' : 'Not selected')}</strong>
+                    <strong>{formData.visitEndTime ? formatTimeAMPM(formData.visitEndTime) : (isRTL ? 'لم يتم التحديد' : 'Not selected')}</strong>
                   </p>
                   {formData.visitStartTime && !formData.visitEndTime && (
                     <p className="hint">{isRTL ? 'اختر وقت النهاية' : 'Now select an end time'}</p>

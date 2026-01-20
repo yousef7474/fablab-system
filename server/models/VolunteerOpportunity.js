@@ -38,6 +38,17 @@ const VolunteerOpportunity = sequelize.define('VolunteerOpportunity', {
     allowNull: true,
     comment: 'Auto-calculated total hours'
   },
+  hoursAdjustment: {
+    type: DataTypes.FLOAT,
+    allowNull: true,
+    defaultValue: 0,
+    comment: 'Manual hours adjustment (+/-)'
+  },
+  adjustmentReason: {
+    type: DataTypes.STRING,
+    allowNull: true,
+    comment: 'Reason for hours adjustment'
+  },
   rating: {
     type: DataTypes.INTEGER,
     allowNull: true,

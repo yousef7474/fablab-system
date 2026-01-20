@@ -30,7 +30,7 @@ exports.getAllVolunteers = async (req, res) => {
         {
           model: VolunteerOpportunity,
           as: 'opportunities',
-          attributes: ['opportunityId', 'title', 'startDate', 'endDate', 'totalHours', 'rating', 'status']
+          attributes: ['opportunityId', 'title', 'startDate', 'endDate', 'totalHours', 'hoursAdjustment', 'rating', 'status']
         },
         {
           model: VolunteerRating,
@@ -47,8 +47,12 @@ exports.getAllVolunteers = async (req, res) => {
       const completedOpps = volunteer.opportunities.filter(o => o.status === 'completed');
       volunteer.totalOpportunities = volunteer.opportunities.length;
       volunteer.completedOpportunities = completedOpps.length;
-      // Count hours from ALL opportunities (active and completed)
-      volunteer.totalHours = volunteer.opportunities.reduce((sum, o) => sum + (o.totalHours || 0), 0);
+      // Count hours from ALL opportunities (active and completed), including adjustments
+      volunteer.totalHours = volunteer.opportunities.reduce((sum, o) => {
+        const baseHours = o.totalHours || 0;
+        const adjustment = o.hoursAdjustment || 0;
+        return sum + baseHours + adjustment;
+      }, 0);
 
       // Calculate points from new ratings system (awards - deductions)
       const awards = (volunteer.ratings || [])
@@ -376,6 +380,55 @@ exports.updateOpportunity = async (req, res) => {
   } catch (error) {
     console.error('Error updating opportunity:', error);
     res.status(500).json({ message: 'Error updating opportunity', error: error.message });
+  }
+};
+
+/**
+ * Adjust hours for an opportunity (increase/decrease)
+ */
+exports.adjustOpportunityHours = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { adjustment, reason } = req.body;
+
+    if (adjustment === undefined || adjustment === null) {
+      return res.status(400).json({
+        message: 'Adjustment value is required',
+        messageAr: 'قيمة التعديل مطلوبة'
+      });
+    }
+
+    const opportunity = await VolunteerOpportunity.findByPk(id);
+    if (!opportunity) {
+      return res.status(404).json({ message: 'Opportunity not found' });
+    }
+
+    // Update the adjustment
+    const currentAdjustment = opportunity.hoursAdjustment || 0;
+    const newAdjustment = currentAdjustment + parseFloat(adjustment);
+
+    await opportunity.update({
+      hoursAdjustment: newAdjustment,
+      adjustmentReason: reason || opportunity.adjustmentReason
+    });
+
+    // Fetch with associations
+    const updatedOpportunity = await VolunteerOpportunity.findByPk(id, {
+      include: [
+        { model: Volunteer, as: 'volunteer', attributes: ['volunteerId', 'name', 'nationalId', 'phone', 'email'] },
+        { model: Admin, as: 'creator', attributes: ['adminId', 'fullName'] }
+      ]
+    });
+
+    res.json({
+      message: 'Hours adjusted successfully',
+      messageAr: 'تم تعديل الساعات بنجاح',
+      opportunity: updatedOpportunity,
+      effectiveHours: (updatedOpportunity.totalHours || 0) + (updatedOpportunity.hoursAdjustment || 0)
+    });
+  } catch (error) {
+    console.error('Error adjusting opportunity hours:', error);
+    res.status(500).json({ message: 'Error adjusting hours', error: error.message });
   }
 };
 

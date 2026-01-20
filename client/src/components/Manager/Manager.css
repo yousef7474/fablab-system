@@ -733,6 +733,42 @@
   gap: 16px;
 }
 
+/* Checkbox Group */
+.task-form-group.checkbox-group {
+  background: var(--bg-secondary);
+  padding: 12px 16px;
+  border-radius: 10px;
+  border: 1px solid var(--border-color);
+}
+
+.checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+  font-weight: 500;
+}
+
+.checkbox-label input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  cursor: pointer;
+  accent-color: #3b82f6;
+}
+
+.checkbox-text {
+  font-size: 13px;
+  color: var(--text-primary);
+}
+
+.warning-hint {
+  display: block;
+  margin-top: 8px;
+  font-size: 12px;
+  color: #f59e0b;
+  padding-left: 28px;
+}
+
 /* Priority Selector */
 .priority-selector {
   display: flex;
@@ -2861,6 +2897,126 @@
 .rate-volunteer-btn svg {
   width: 14px;
   height: 14px;
+}
+
+/* History Actions */
+.history-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--border-color);
+}
+
+/* Adjust Hours Button */
+.adjust-hours-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  background: rgba(245, 158, 11, 0.1);
+  border: 1px solid #f59e0b;
+  border-radius: 6px;
+  color: #f59e0b;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.adjust-hours-btn:hover {
+  background: #f59e0b;
+  color: white;
+}
+
+.adjust-hours-btn svg {
+  width: 14px;
+  height: 14px;
+}
+
+/* Hours Display */
+.hours-display {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.hours-adjustment {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+.hours-adjustment.positive {
+  background: rgba(34, 197, 94, 0.1);
+  color: #22c55e;
+}
+
+.hours-adjustment.negative {
+  background: rgba(239, 68, 68, 0.1);
+  color: #ef4444;
+}
+
+/* Hours Adjustment Modal */
+.hours-adjustment-input {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  justify-content: center;
+}
+
+.adjust-btn {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  border: 2px solid var(--border-color);
+  background: var(--bg-secondary);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+}
+
+.adjust-btn.decrease {
+  border-color: #ef4444;
+  color: #ef4444;
+}
+
+.adjust-btn.decrease:hover {
+  background: #ef4444;
+  color: white;
+}
+
+.adjust-btn.increase {
+  border-color: #22c55e;
+  color: #22c55e;
+}
+
+.adjust-btn.increase:hover {
+  background: #22c55e;
+  color: white;
+}
+
+.adjustment-value-input {
+  width: 100px;
+  text-align: center;
+  font-size: 24px;
+  font-weight: 700;
+  padding: 10px;
+  border: 2px solid var(--border-color);
+  border-radius: 8px;
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+}
+
+.adjustment-hint {
+  display: block;
+  text-align: center;
+  margin-top: 8px;
+  color: var(--text-secondary);
+  font-size: 12px;
 }
 
 /* Delete Volunteer Button */

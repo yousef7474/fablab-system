@@ -36,6 +36,16 @@ const Task = sequelize.define('Task', {
     type: DataTypes.TIME,
     allowNull: true
   },
+  dueTimeEnd: {
+    type: DataTypes.TIME,
+    allowNull: true,
+    comment: 'End time for task (blocks calendar slot)'
+  },
+  blocksCalendar: {
+    type: DataTypes.BOOLEAN,
+    defaultValue: false,
+    comment: 'Whether this task blocks the calendar slot for customers'
+  },
   priority: {
     type: DataTypes.ENUM('low', 'medium', 'high'),
     defaultValue: 'medium'
