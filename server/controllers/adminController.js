@@ -745,6 +745,17 @@ exports.getSchedule = async (req, res) => {
       order: [['appointmentDate', 'ASC'], ['appointmentTime', 'ASC']]
     });
 
+    // Helper function to calculate duration in minutes from two time strings
+    const calculateDuration = (startTime, endTime) => {
+      if (!startTime || !endTime) return null;
+      const [startH, startM] = startTime.split(':').map(Number);
+      const [endH, endM] = endTime.split(':').map(Number);
+      const startMinutes = startH * 60 + startM;
+      const endMinutes = endH * 60 + endM;
+      const duration = endMinutes - startMinutes;
+      return duration > 0 ? duration : null;
+    };
+
     // Format for calendar view
     const scheduleItems = registrations.map(reg => {
       const date = reg.appointmentDate || reg.visitDate || reg.startDate;
@@ -760,6 +771,7 @@ exports.getSchedule = async (req, res) => {
         date,
         startTime: time,
         endTime,
+        duration: calculateDuration(time, endTime),
         section: reg.fablabSection,
         services: reg.requiredServices,
         applicationType: reg.user.applicationType,
@@ -796,7 +808,8 @@ exports.getSchedule = async (req, res) => {
         title: task.title,
         date: task.dueDate,
         startTime: task.dueTime,
-        endTime: null,
+        endTime: task.dueTimeEnd,
+        duration: calculateDuration(task.dueTime, task.dueTimeEnd),
         section: task.section,
         type: 'task',
         priority: task.priority,
