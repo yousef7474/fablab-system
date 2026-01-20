@@ -861,10 +861,14 @@ const AdminDashboard = () => {
               <div class="field-value">${getAppTypeLabel()}</div>
             </div>
             <div class="field">
+              <div class="field-label">${isRTL ? 'الجهة التابع لها' : 'Organization'}</div>
+              <div class="field-value">${registration.user?.currentJob || na}</div>
+            </div>
+            <div class="field">
               <div class="field-label">${isRTL ? 'رقم الهاتف' : 'Phone'}</div>
               <div class="field-value">${registration.user?.phoneNumber || na}</div>
             </div>
-            <div class="field field-full">
+            <div class="field field-full-2">
               <div class="field-label">${isRTL ? 'البريد الإلكتروني' : 'Email'}</div>
               <div class="field-value">${registration.user?.email || na}</div>
             </div>
@@ -1309,7 +1313,7 @@ const AdminDashboard = () => {
         <style>
           @page {
             size: A4;
-            margin: 8mm;
+            margin: 5mm;
           }
           * {
             margin: 0;
@@ -1320,8 +1324,9 @@ const AdminDashboard = () => {
             font-family: 'Segoe UI', Tahoma, Arial, sans-serif;
             background: white;
             color: #1a1a2e;
-            line-height: 1.4;
-            padding: 8px;
+            line-height: 1.3;
+            padding: 5px;
+            font-size: 9px;
           }
           .document {
             max-width: 100%;
@@ -1332,51 +1337,51 @@ const AdminDashboard = () => {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            padding-bottom: 10px;
-            border-bottom: 3px solid #e02529;
-            margin-bottom: 12px;
+            padding-bottom: 6px;
+            border-bottom: 2px solid #e02529;
+            margin-bottom: 8px;
           }
           .header .logo {
-            height: 45px;
+            height: 38px;
             width: auto;
           }
           .header-center {
             text-align: center;
             flex: 1;
-            padding: 0 15px;
+            padding: 0 10px;
           }
           .document-title {
-            font-size: 18px;
+            font-size: 14px;
             font-weight: 700;
             color: #e02529;
-            margin-bottom: 2px;
+            margin-bottom: 1px;
           }
           .document-subtitle {
-            font-size: 11px;
+            font-size: 9px;
             color: #666;
           }
           .user-info-section {
             background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
-            padding: 10px 14px;
-            border-radius: 6px;
-            margin-bottom: 12px;
-            border-${isRTL ? 'right' : 'left'}: 4px solid #e02529;
+            padding: 6px 10px;
+            border-radius: 4px;
+            margin-bottom: 8px;
+            border-${isRTL ? 'right' : 'left'}: 3px solid #e02529;
           }
           .user-info-title {
-            font-size: 12px;
+            font-size: 10px;
             font-weight: 600;
             color: #e02529;
-            margin-bottom: 8px;
+            margin-bottom: 5px;
           }
           .user-info-grid {
             display: grid;
             grid-template-columns: repeat(2, 1fr);
-            gap: 6px 20px;
+            gap: 3px 15px;
           }
           .user-info-item {
             display: flex;
-            gap: 6px;
-            font-size: 11px;
+            gap: 4px;
+            font-size: 9px;
           }
           .user-info-label {
             font-weight: 600;
@@ -1386,98 +1391,98 @@ const AdminDashboard = () => {
             color: #333;
           }
           .terms-section {
-            margin-bottom: 12px;
+            margin-bottom: 8px;
           }
           .terms-title {
-            font-size: 14px;
+            font-size: 11px;
             font-weight: 700;
             color: #1a1a2e;
-            margin-bottom: 8px;
-            padding-bottom: 5px;
-            border-bottom: 2px solid #e9ecef;
+            margin-bottom: 5px;
+            padding-bottom: 3px;
+            border-bottom: 1px solid #e9ecef;
           }
           .terms-intro {
-            font-size: 10px;
+            font-size: 8px;
             color: #444;
-            margin-bottom: 8px;
-            line-height: 1.5;
+            margin-bottom: 5px;
+            line-height: 1.4;
           }
           .terms-list {
             list-style: none;
             counter-reset: terms-counter;
             display: grid;
-            gap: 5px;
+            gap: 3px;
           }
           .terms-list li {
             counter-increment: terms-counter;
-            padding: 6px 10px;
+            padding: 4px 6px;
             background: #fafafa;
-            border-radius: 4px;
-            border-${isRTL ? 'right' : 'left'}: 3px solid #e02529;
-            font-size: 10px;
-            line-height: 1.4;
+            border-radius: 3px;
+            border-${isRTL ? 'right' : 'left'}: 2px solid #e02529;
+            font-size: 8px;
+            line-height: 1.3;
             position: relative;
-            padding-${isRTL ? 'right' : 'left'}: 32px;
+            padding-${isRTL ? 'right' : 'left'}: 22px;
           }
           .terms-list li::before {
             content: counter(terms-counter);
             position: absolute;
-            ${isRTL ? 'right' : 'left'}: 8px;
+            ${isRTL ? 'right' : 'left'}: 5px;
             top: 50%;
             transform: translateY(-50%);
-            width: 18px;
-            height: 18px;
+            width: 14px;
+            height: 14px;
             background: linear-gradient(135deg, #e02529, #c41e24);
             color: white;
             border-radius: 50%;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 9px;
+            font-size: 7px;
             font-weight: 600;
           }
           .agreement-section {
             background: #fff8f8;
-            border: 2px solid #e02529;
-            border-radius: 6px;
-            padding: 10px 12px;
-            margin-bottom: 12px;
+            border: 1px solid #e02529;
+            border-radius: 4px;
+            padding: 6px 8px;
+            margin-bottom: 8px;
           }
           .agreement-text {
-            font-size: 10px;
+            font-size: 8px;
             color: #333;
-            line-height: 1.4;
-            margin-bottom: 6px;
+            line-height: 1.3;
+            margin-bottom: 4px;
           }
           .checkbox-line {
             display: flex;
             align-items: center;
-            gap: 8px;
-            font-size: 11px;
+            gap: 6px;
+            font-size: 9px;
             font-weight: 600;
             color: #1a1a2e;
           }
           .checkbox-box {
-            width: 14px;
-            height: 14px;
+            width: 12px;
+            height: 12px;
             border: 2px solid #e02529;
-            border-radius: 3px;
+            border-radius: 2px;
             display: inline-block;
             flex-shrink: 0;
           }
           .signature-section {
-            padding-top: 12px;
-            border-top: 2px dashed #ddd;
+            padding-top: 8px;
+            border-top: 1px dashed #ddd;
           }
           .signature-date {
             text-align: center;
-            margin-bottom: 12px;
-            font-size: 11px;
+            margin-bottom: 8px;
+            font-size: 9px;
             font-weight: 600;
             color: #333;
             background: #f8f9fa;
-            padding: 6px 12px;
-            border-radius: 6px;
+            padding: 4px 10px;
+            border-radius: 4px;
             display: inline-block;
             width: 100%;
             box-sizing: border-box;
@@ -1485,55 +1490,55 @@ const AdminDashboard = () => {
           .signatures-grid {
             display: grid;
             grid-template-columns: 1fr 1fr;
-            gap: 30px;
+            gap: 20px;
           }
           .signature-box {
             text-align: center;
-            padding: 10px;
+            padding: 6px;
             border: 1px solid #e9ecef;
-            border-radius: 8px;
+            border-radius: 6px;
             background: #fafafa;
           }
           .signature-role {
-            font-size: 9px;
+            font-size: 8px;
             font-weight: 700;
             color: #e02529;
-            margin-bottom: 3px;
+            margin-bottom: 2px;
             display: block;
           }
           .signature-name-value {
-            font-size: 11px;
+            font-size: 9px;
             font-weight: 700;
             color: #1a1a2e;
-            margin-bottom: 20px;
+            margin-bottom: 12px;
             display: block;
-            min-height: 14px;
+            min-height: 12px;
           }
           .signature-line {
-            border-bottom: 2px solid #333;
-            margin-bottom: 3px;
+            border-bottom: 1px solid #333;
+            margin-bottom: 2px;
           }
           .signature-field-name {
-            font-size: 9px;
+            font-size: 7px;
             font-weight: 600;
             color: #555;
           }
           .footer {
-            margin-top: 10px;
-            padding-top: 8px;
-            border-top: 2px solid #e9ecef;
+            margin-top: 6px;
+            padding-top: 5px;
+            border-top: 1px solid #e9ecef;
             text-align: center;
             color: #888;
-            font-size: 8px;
+            font-size: 7px;
           }
           .footer-logos {
             display: flex;
             justify-content: center;
-            gap: 15px;
-            margin-bottom: 4px;
+            gap: 10px;
+            margin-bottom: 2px;
           }
           .footer-logos img {
-            height: 25px;
+            height: 18px;
             width: auto;
             opacity: 0.8;
           }
@@ -1545,10 +1550,6 @@ const AdminDashboard = () => {
             }
             .document {
               max-width: none;
-              page-break-inside: avoid;
-            }
-            .signature-section, .footer {
-              page-break-inside: avoid;
             }
           }
         </style>
@@ -3428,6 +3429,12 @@ const AdminDashboard = () => {
                   <label>{isRTL ? 'نوع الطلب' : 'Application Type'}</label>
                   <span>{applicationTypeLabels[selectedRegistration.user?.applicationType] || selectedRegistration.user?.applicationType}</span>
                 </div>
+                {selectedRegistration.user?.currentJob && (
+                  <div className="detail-item">
+                    <label>{isRTL ? 'الجهة التابع لها' : 'Organization'}</label>
+                    <span>{selectedRegistration.user.currentJob}</span>
+                  </div>
+                )}
                 <div className="detail-item">
                   <label>{isRTL ? 'القسم' : 'Section'}</label>
                   <span>{sectionLabels[selectedRegistration.fablabSection] || selectedRegistration.fablabSection}</span>
@@ -3650,11 +3657,12 @@ const AdminDashboard = () => {
                     />
                   </div>
                   <div className="form-group">
-                    <label>{isRTL ? 'العمل الحالي' : 'Current Job'}</label>
+                    <label>{isRTL ? 'الجهة التابع لها' : 'Organization'}</label>
                     <input
                       type="text"
                       value={userEditForm.currentJob || ''}
                       onChange={(e) => setUserEditForm({ ...userEditForm, currentJob: e.target.value })}
+                      placeholder={isRTL ? 'مدرسة/جامعة/شركة/إلخ' : 'School/University/Company/etc.'}
                     />
                   </div>
                   <div className="form-group full-width">

@@ -54,7 +54,8 @@ const ApplicationData = ({ formData, onChange, onNext, onBack }) => {
   const canProceed = () => {
     if (['Beneficiary', 'Visitor', 'Volunteer', 'Talented'].includes(formData.applicationType)) {
       return formData.firstName && formData.lastName && formData.sex &&
-             formData.nationality && formData.nationalId && formData.phoneNumber && formData.email;
+             formData.nationality && formData.nationalId && formData.phoneNumber && formData.email &&
+             formData.currentJob;
     } else if (formData.applicationType === 'Entity') {
       return formData.entityName && formData.name && formData.phoneNumber && formData.email;
     } else if (formData.applicationType === 'FABLAB Visit') {
@@ -218,13 +219,16 @@ const ApplicationData = ({ formData, onChange, onNext, onBack }) => {
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.35 }}
             >
-              <label className="form-label">{isRTL ? 'الوظيفة الحالية' : 'Current Job'}</label>
+              <label className="form-label">
+                {isRTL ? 'اسم الجهة التابع لها (مدرسة/جامعة/شركة/إلخ)' : 'Organization Name (School/University/Company/etc.)'} *
+              </label>
               <input
                 type="text"
                 className="form-input"
                 value={formData.currentJob}
                 onChange={(e) => handleChange('currentJob', e.target.value)}
-                placeholder={isRTL ? 'أدخل الوظيفة الحالية' : 'Enter current job'}
+                placeholder={isRTL ? 'أدخل اسم الجهة التابع لها' : 'Enter organization name'}
+                required
               />
             </motion.div>
 
