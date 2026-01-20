@@ -14,17 +14,23 @@ const ALL_SECTIONS = [
 
 // Helper: Auto-expire deactivations that have passed their end date
 const processExpiredDeactivations = async () => {
-  const today = new Date().toISOString().split('T')[0];
+  // Get all active deactivations
+  const activeDeactivations = await SectionAvailability.findAll({
+    where: { isActive: true }
+  });
 
-  await SectionAvailability.update(
-    { isActive: false },
-    {
-      where: {
-        isActive: true,
-        endDate: { [Op.lt]: today }
-      }
+  // Check each one and expire if end date has passed
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  for (const d of activeDeactivations) {
+    const endDate = new Date(d.endDate);
+    endDate.setHours(23, 59, 59, 999);
+
+    if (endDate < today) {
+      await d.update({ isActive: false });
     }
-  );
+  }
 };
 
 // GET /api/sections/availability - Public endpoint for checking all sections status
@@ -33,18 +39,27 @@ exports.getAllSectionsStatus = async (req, res) => {
     // Auto-expire old deactivations
     await processExpiredDeactivations();
 
-    const today = new Date().toISOString().split('T')[0];
-
-    // Get all active deactivations (current or future)
-    const activeDeactivations = await SectionAvailability.findAll({
+    // Get all active deactivations and filter by date in JavaScript
+    // This avoids any date comparison issues with different DB dialects
+    const allActiveDeactivations = await SectionAvailability.findAll({
       where: {
-        isActive: true,
-        startDate: { [Op.lte]: today },
-        endDate: { [Op.gte]: today }
+        isActive: true
       },
       include: [
         { model: Admin, as: 'creator', attributes: ['adminId', 'fullName'] }
       ]
+    });
+
+    // Filter to only include deactivations that are currently in effect
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const activeDeactivations = allActiveDeactivations.filter(d => {
+      const startDate = new Date(d.startDate);
+      const endDate = new Date(d.endDate);
+      startDate.setHours(0, 0, 0, 0);
+      endDate.setHours(23, 59, 59, 999);
+      return startDate <= today && endDate >= today;
     });
 
     // Create a map of section -> deactivation info
