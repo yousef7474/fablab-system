@@ -920,6 +920,88 @@
   white-space: pre-line;
 }
 
+/* Commitment Date */
+.commitment-date {
+  padding: 1rem 1.5rem;
+  border-top: 1px solid var(--gray-200);
+  font-size: 0.95rem;
+  color: var(--gray-700);
+}
+
+/* Signatures Section */
+.signatures-section {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 2rem;
+  padding: 1.5rem;
+  border-top: 1px solid var(--gray-200);
+  background: var(--gray-50);
+}
+
+.signature-block {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.signature-title {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--gray-600);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.signature-name {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--gray-800);
+  min-height: 1.5rem;
+}
+
+.signature-line {
+  display: flex;
+  align-items: flex-end;
+  gap: 0.75rem;
+  margin-top: 0.5rem;
+}
+
+.signature-line span {
+  font-size: 0.9rem;
+  color: var(--gray-600);
+  white-space: nowrap;
+}
+
+.signature-field {
+  flex: 1;
+  height: 40px;
+  border-bottom: 2px solid var(--gray-400);
+  background: white;
+  border-radius: 4px 4px 0 0;
+}
+
+/* RTL Support for Signatures */
+[dir="rtl"] .signatures-section {
+  direction: rtl;
+}
+
+/* Mobile adjustments for signatures */
+@media (max-width: 600px) {
+  .signatures-section {
+    grid-template-columns: 1fr;
+    gap: 1.5rem;
+    padding: 1rem;
+  }
+
+  .signature-name {
+    font-size: 1rem;
+  }
+
+  .signature-field {
+    height: 35px;
+  }
+}
+
 /* Button Submit */
 .btn-submit {
   min-width: 180px;

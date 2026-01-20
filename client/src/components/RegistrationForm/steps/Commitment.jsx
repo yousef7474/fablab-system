@@ -6,6 +6,27 @@ const Commitment = ({ formData, onChange, onBack, onSubmit, loading }) => {
   const { t, i18n } = useTranslation();
   const isRTL = i18n.language === 'ar';
 
+  // Get today's date formatted
+  const today = new Date();
+  const formattedDate = today.toLocaleDateString(isRTL ? 'ar-SA' : 'en-US', {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric'
+  });
+
+  // Get user's full name
+  const getUserFullName = () => {
+    if (formData.firstName && formData.lastName) {
+      return `${formData.firstName} ${formData.lastName}`;
+    }
+    if (formData.name) {
+      return formData.name;
+    }
+    return '';
+  };
+
+  const userFullName = getUserFullName();
+
   const commitmentTextEn = `I, the undersigned, confirm that all information provided is accurate and complete. I agree to:
 
 1. Follow all FABLAB safety rules and guidelines
@@ -31,10 +52,10 @@ I understand that failure to comply may result in suspension of privileges.`;
   return (
     <div>
       <h2 className="step-title">
-        {isRTL ? 'التعهد والالتزام' : 'Commitment Agreement'}
+        {isRTL ? 'وثيقة الاستفادة من خدمات فاب لاب الأحساء' : 'FABLAB Al-Ahsa Service Agreement'}
       </h2>
       <p className="step-description">
-        {isRTL ? 'يرجى قراءة التعهد والموافقة عليه' : 'Please read and agree to the commitment'}
+        {isRTL ? 'يرجى قراءة الوثيقة والتوقيع للموافقة' : 'Please read the document and sign to agree'}
       </p>
 
       <motion.div
@@ -51,10 +72,46 @@ I understand that failure to comply may result in suspension of privileges.`;
             <line x1="16" y1="17" x2="8" y2="17"/>
             <polyline points="10 9 9 9 8 9"/>
           </svg>
-          <span>{isRTL ? 'نص التعهد' : 'Commitment Text'}</span>
+          <span>{isRTL ? 'وثيقة الاستفادة من خدمات فاب لاب الأحساء' : 'FABLAB Al-Ahsa Service Agreement Document'}</span>
         </div>
         <div className="commitment-text">
           {isRTL ? commitmentTextAr : commitmentTextEn}
+        </div>
+
+        {/* Date Section */}
+        <div className="commitment-date">
+          <strong>{isRTL ? 'التاريخ:' : 'Date:'}</strong> {formattedDate}
+        </div>
+
+        {/* Signatures Section */}
+        <div className="signatures-section">
+          {/* User Signature */}
+          <div className="signature-block">
+            <div className="signature-title">
+              {isRTL ? 'المستفيد' : 'Beneficiary'}
+            </div>
+            <div className="signature-name">
+              {userFullName || (isRTL ? '(سيتم إضافة الاسم تلقائياً)' : '(Name will be auto-filled)')}
+            </div>
+            <div className="signature-line">
+              <span>{isRTL ? 'التوقيع:' : 'Signature:'}</span>
+              <div className="signature-field"></div>
+            </div>
+          </div>
+
+          {/* Manager Signature */}
+          <div className="signature-block">
+            <div className="signature-title">
+              {isRTL ? 'المسؤول التنفيذي للفاب لاب' : 'FABLAB Executive Manager'}
+            </div>
+            <div className="signature-name">
+              أ. زكي اللويم
+            </div>
+            <div className="signature-line">
+              <span>{isRTL ? 'التوقيع:' : 'Signature:'}</span>
+              <div className="signature-field"></div>
+            </div>
+          </div>
         </div>
       </motion.div>
 
@@ -66,14 +123,14 @@ I understand that failure to comply may result in suspension of privileges.`;
         style={{ marginTop: '1.5rem' }}
       >
         <label className="form-label">
-          {isRTL ? 'الاسم الكامل (للتوقيع)' : 'Full Name (as signature)'} <span className="required">*</span>
+          {isRTL ? 'أدخل اسمك الكامل للتأكيد على موافقتك' : 'Enter your full name to confirm your agreement'} <span className="required">*</span>
         </label>
         <input
           type="text"
           className="form-input signature-input"
           value={formData.commitmentName}
           onChange={(e) => onChange({ commitmentName: e.target.value })}
-          placeholder={isRTL ? 'أدخل اسمك الكامل للتأكيد على موافقتك' : 'Enter your full name to confirm your agreement'}
+          placeholder={userFullName || (isRTL ? 'أدخل اسمك الكامل' : 'Enter your full name')}
         />
       </motion.div>
 
