@@ -50,14 +50,19 @@ exports.getAllSectionsStatus = async (req, res) => {
       ]
     });
 
-    // TEMPORARILY: Use ALL active deactivations without date filtering
-    // to isolate if the issue is with date logic or something else
-    const activeDeactivations = allActiveDeactivations;
+    // Filter to only include deactivations that are currently in effect
+    // Get today's date in local timezone as YYYY-MM-DD string
+    const now = new Date();
+    const todayStr = now.getFullYear() + '-' +
+      String(now.getMonth() + 1).padStart(2, '0') + '-' +
+      String(now.getDate()).padStart(2, '0');
 
-    console.log('=== SECTION AVAILABILITY DEBUG ===');
-    console.log('Total active deactivations found:', allActiveDeactivations.length);
-    allActiveDeactivations.forEach(d => {
-      console.log(`- Section: ${d.section}, isActive: ${d.isActive}, start: ${d.startDate}, end: ${d.endDate}`);
+    const activeDeactivations = allActiveDeactivations.filter(d => {
+      // DATEONLY fields return strings in YYYY-MM-DD format
+      const startStr = String(d.startDate).substring(0, 10);
+      const endStr = String(d.endDate).substring(0, 10);
+      // String comparison works for YYYY-MM-DD format
+      return startStr <= todayStr && endStr >= todayStr;
     });
 
     // Create a map of section -> deactivation info

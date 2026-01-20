@@ -224,6 +224,9 @@ const FablabSection = ({ formData, onChange, onNext, onBack }) => {
                 {/* Unavailability overlay */}
                 {unavailable && status && (
                   <div className="unavailable-overlay">
+                    <div className="unavailable-section-name">
+                      {isRTL ? section.labelAr : section.labelEn}
+                    </div>
                     <div className="unavailable-badge">
                       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                         <circle cx="12" cy="12" r="10"/>

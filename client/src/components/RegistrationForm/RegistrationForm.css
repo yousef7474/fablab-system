@@ -2431,7 +2431,7 @@
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(255, 255, 255, 0.95);
+  background: rgba(255, 255, 255, 0.92);
   border-radius: inherit;
   display: flex;
   flex-direction: column;
@@ -2440,6 +2440,15 @@
   padding: 1rem;
   text-align: center;
   z-index: 5;
+}
+
+.unavailable-section-name {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--gray-800);
+  margin-bottom: 0.5rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
 }
 
 .unavailable-badge {
@@ -2476,12 +2485,18 @@
 
 /* Info banner warning variant */
 .info-banner.warning {
-  background: linear-gradient(135deg, rgba(251, 191, 36, 0.1), rgba(245, 158, 11, 0.1));
-  border-color: rgba(245, 158, 11, 0.3);
+  background: linear-gradient(135deg, rgba(251, 191, 36, 0.15), rgba(245, 158, 11, 0.15));
+  border: 1px solid rgba(245, 158, 11, 0.4);
+  color: #78350f;
 }
 
 .info-banner.warning svg {
-  color: #f59e0b;
+  color: #d97706;
+}
+
+.info-banner.warning span {
+  color: #78350f;
+  font-weight: 500;
 }
 
 /* Loading sections */
