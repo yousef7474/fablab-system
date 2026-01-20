@@ -50,31 +50,15 @@ exports.getAllSectionsStatus = async (req, res) => {
       ]
     });
 
-    // Filter to only include deactivations that are currently in effect
-    // Use simple string comparison for YYYY-MM-DD format (lexicographic order works)
-    const today = new Date();
-    const todayStr = today.getFullYear() + '-' +
-      String(today.getMonth() + 1).padStart(2, '0') + '-' +
-      String(today.getDate()).padStart(2, '0');
+    // TEMPORARILY: Use ALL active deactivations without date filtering
+    // to isolate if the issue is with date logic or something else
+    const activeDeactivations = allActiveDeactivations;
 
-    console.log('Today (local):', todayStr);
-    console.log('All active deactivations:', allActiveDeactivations.map(d => ({
-      section: d.section,
-      startDate: d.startDate,
-      endDate: d.endDate,
-      isActive: d.isActive
-    })));
-
-    const activeDeactivations = allActiveDeactivations.filter(d => {
-      // d.startDate and d.endDate are in YYYY-MM-DD format from DATEONLY
-      const startStr = String(d.startDate);
-      const endStr = String(d.endDate);
-      const isInRange = startStr <= todayStr && endStr >= todayStr;
-      console.log(`Section ${d.section}: start=${startStr}, end=${endStr}, today=${todayStr}, inRange=${isInRange}`);
-      return isInRange;
+    console.log('=== SECTION AVAILABILITY DEBUG ===');
+    console.log('Total active deactivations found:', allActiveDeactivations.length);
+    allActiveDeactivations.forEach(d => {
+      console.log(`- Section: ${d.section}, isActive: ${d.isActive}, start: ${d.startDate}, end: ${d.endDate}`);
     });
-
-    console.log('Filtered active deactivations:', activeDeactivations.length);
 
     // Create a map of section -> deactivation info
     const deactivationMap = {};
