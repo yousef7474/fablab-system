@@ -39,8 +39,7 @@ exports.getAllSectionsStatus = async (req, res) => {
     // Auto-expire old deactivations
     await processExpiredDeactivations();
 
-    // Get all active deactivations and filter by date in JavaScript
-    // This avoids any date comparison issues with different DB dialects
+    // Get all active deactivations (includes future ones for calendar blocking)
     const allActiveDeactivations = await SectionAvailability.findAll({
       where: {
         isActive: true
@@ -50,47 +49,66 @@ exports.getAllSectionsStatus = async (req, res) => {
       ]
     });
 
-    // Filter to only include deactivations that are currently in effect
-    // Get today's date in local timezone as YYYY-MM-DD string
+    // Get today's date for determining current availability
     const now = new Date();
     const todayStr = now.getFullYear() + '-' +
       String(now.getMonth() + 1).padStart(2, '0') + '-' +
       String(now.getDate()).padStart(2, '0');
 
-    const activeDeactivations = allActiveDeactivations.filter(d => {
-      // DATEONLY fields return strings in YYYY-MM-DD format
+    // Filter to only deactivations currently in effect (for isAvailable flag)
+    const currentDeactivations = allActiveDeactivations.filter(d => {
       const startStr = String(d.startDate).substring(0, 10);
       const endStr = String(d.endDate).substring(0, 10);
-      // String comparison works for YYYY-MM-DD format
       return startStr <= todayStr && endStr >= todayStr;
     });
 
-    // Create a map of section -> deactivation info
-    const deactivationMap = {};
-    activeDeactivations.forEach(d => {
-      deactivationMap[d.section] = {
+    // Create map of current deactivations (for isAvailable)
+    const currentDeactivationMap = {};
+    currentDeactivations.forEach(d => {
+      currentDeactivationMap[d.section] = true;
+    });
+
+    // Create map of ALL deactivations by section (for calendar blocking)
+    const allDeactivationsMap = {};
+    allActiveDeactivations.forEach(d => {
+      if (!allDeactivationsMap[d.section]) {
+        allDeactivationsMap[d.section] = [];
+      }
+      allDeactivationsMap[d.section].push({
         availabilityId: d.availabilityId,
-        reasonEn: d.reasonEn,
-        reasonAr: d.reasonAr,
         startDate: d.startDate,
         endDate: d.endDate,
+        reasonEn: d.reasonEn,
+        reasonAr: d.reasonAr,
         createdBy: d.creator?.fullName
-      };
+      });
     });
 
     // Build response with all sections
     const sectionsStatus = ALL_SECTIONS.map(section => {
-      const deactivation = deactivationMap[section];
+      const isCurrentlyDeactivated = currentDeactivationMap[section] || false;
+      const deactivationPeriods = allDeactivationsMap[section] || [];
+
+      // Get current deactivation info if exists
+      const currentDeactivation = deactivationPeriods.find(d => {
+        const startStr = String(d.startDate).substring(0, 10);
+        const endStr = String(d.endDate).substring(0, 10);
+        return startStr <= todayStr && endStr >= todayStr;
+      });
+
       return {
         section,
-        isAvailable: !deactivation,
-        ...(deactivation && {
-          availabilityId: deactivation.availabilityId,
-          reasonEn: deactivation.reasonEn,
-          reasonAr: deactivation.reasonAr,
-          startDate: deactivation.startDate,
-          endDate: deactivation.endDate,
-          createdBy: deactivation.createdBy
+        isAvailable: !isCurrentlyDeactivated,
+        // Include all deactivation periods for calendar blocking
+        deactivationPeriods: deactivationPeriods,
+        // Include current deactivation details if section is currently unavailable
+        ...(currentDeactivation && {
+          availabilityId: currentDeactivation.availabilityId,
+          reasonEn: currentDeactivation.reasonEn,
+          reasonAr: currentDeactivation.reasonAr,
+          startDate: currentDeactivation.startDate,
+          endDate: currentDeactivation.endDate,
+          createdBy: currentDeactivation.createdBy
         })
       };
     });

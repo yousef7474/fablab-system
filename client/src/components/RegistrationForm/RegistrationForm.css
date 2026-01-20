@@ -1702,6 +1702,72 @@
   background: var(--racing-red);
 }
 
+.legend-dot.section-closed {
+  background: rgba(249, 115, 22, 0.3);
+  border: 2px solid #f97316;
+}
+
+/* Section deactivated calendar days */
+.calendar-days-grid .calendar-day.section-deactivated {
+  background: rgba(249, 115, 22, 0.15) !important;
+  border-color: rgba(249, 115, 22, 0.4) !important;
+  color: var(--gray-500) !important;
+  cursor: not-allowed !important;
+  pointer-events: none !important;
+  position: relative;
+}
+
+.calendar-days-grid .calendar-day.section-deactivated .deactivated-indicator {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  font-size: 0.6rem;
+  font-weight: 700;
+  color: #ea580c;
+  background: rgba(249, 115, 22, 0.2);
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Section deactivation warning banner */
+.section-deactivation-warning {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  padding: 1rem;
+  margin-top: 1rem;
+  background: linear-gradient(135deg, rgba(249, 115, 22, 0.1), rgba(234, 88, 12, 0.1));
+  border: 1px solid rgba(249, 115, 22, 0.3);
+  border-radius: 12px;
+  font-size: 0.85rem;
+}
+
+.section-deactivation-warning svg {
+  color: #ea580c;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.section-deactivation-warning .warning-content {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.section-deactivation-warning .warning-content strong {
+  color: #9a3412;
+  font-weight: 600;
+}
+
+.section-deactivation-warning .warning-content span {
+  color: #78350f;
+  line-height: 1.4;
+}
+
 /* Time Selected Message */
 .time-selected-message {
   display: flex;

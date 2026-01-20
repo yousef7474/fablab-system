@@ -1,33 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { motion } from 'framer-motion';
-import api from '../../../config/api';
 
 const FablabSection = ({ formData, onChange, onNext, onBack }) => {
   const { t, i18n } = useTranslation();
   const isRTL = i18n.language === 'ar';
-
-  const [sectionStatus, setSectionStatus] = useState({});
-  const [loading, setLoading] = useState(true);
-
-  // Fetch section availability on mount
-  useEffect(() => {
-    const fetchAvailability = async () => {
-      try {
-        const response = await api.get('/sections/availability');
-        const statusMap = {};
-        response.data.forEach(s => {
-          statusMap[s.section] = s;
-        });
-        setSectionStatus(statusMap);
-      } catch (error) {
-        console.error('Error fetching section availability:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchAvailability();
-  }, []);
 
   const sections = [
     {
@@ -133,37 +110,11 @@ const FablabSection = ({ formData, onChange, onNext, onBack }) => {
     }
   ];
 
-  const isUnavailable = (sectionValue) => {
-    const status = sectionStatus[sectionValue];
-    return status && !status.isAvailable;
-  };
-
-  const getStatusInfo = (sectionValue) => {
-    return sectionStatus[sectionValue] || { section: sectionValue, isAvailable: true };
-  };
-
   const handleSelect = (sectionValue) => {
-    if (isUnavailable(sectionValue)) {
-      return; // Prevent selection of unavailable sections
-    }
     onChange({ fablabSection: sectionValue });
   };
 
-  const formatDate = (dateStr) => {
-    if (!dateStr) return '';
-    const date = new Date(dateStr);
-    return date.toLocaleDateString(isRTL ? 'ar-SA' : 'en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric'
-    });
-  };
-
-  const canProceed = formData.fablabSection !== '' && !isUnavailable(formData.fablabSection);
-
-  // Count available sections
-  const availableCount = sections.filter(s => !isUnavailable(s.value)).length;
-  const unavailableCount = sections.length - availableCount;
+  const canProceed = formData.fablabSection !== '';
 
   return (
     <div>
@@ -174,79 +125,25 @@ const FablabSection = ({ formData, onChange, onNext, onBack }) => {
         {isRTL ? 'اختر القسم الذي ترغب في الاستفادة من خدماته' : 'Select the section you want to benefit from'}
       </p>
 
-      {/* Show info banner if some sections are unavailable */}
-      {unavailableCount > 0 && (
-        <motion.div
-          className="info-banner warning"
-          initial={{ opacity: 0, y: -10 }}
-          animate={{ opacity: 1, y: 0 }}
-        >
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <circle cx="12" cy="12" r="10"/>
-            <line x1="12" y1="8" x2="12" y2="12"/>
-            <line x1="12" y1="16" x2="12.01" y2="16"/>
-          </svg>
-          <span>
-            {isRTL
-              ? `بعض الأقسام غير متاحة حالياً. ${availableCount} ${availableCount === 1 ? 'قسم متاح' : 'أقسام متاحة'} للاختيار.`
-              : `Some sections are currently unavailable. ${availableCount} section${availableCount === 1 ? '' : 's'} available to choose from.`}
-          </span>
-        </motion.div>
-      )}
-
-      {loading ? (
-        <div className="loading-sections">
-          <div className="loading-spinner"></div>
-          <span>{isRTL ? 'جاري تحميل الأقسام...' : 'Loading sections...'}</span>
-        </div>
-      ) : (
-        <div className="selection-grid">
-          {sections.map((section, index) => {
-            const unavailable = isUnavailable(section.value);
-            const status = getStatusInfo(section.value);
-
-            return (
-              <motion.div
-                key={section.value}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: index * 0.08 }}
-                className={`selection-card ${formData.fablabSection === section.value ? 'selected' : ''} ${unavailable ? 'disabled' : ''}`}
-                onClick={() => handleSelect(section.value)}
-              >
-                <div className="selection-card-icon">
-                  {section.icon}
-                </div>
-                <div className="selection-card-title">
-                  {isRTL ? section.labelAr : section.labelEn}
-                </div>
-
-                {/* Unavailability overlay */}
-                {unavailable && status && (
-                  <div className="unavailable-overlay">
-                    <div className="unavailable-section-name">
-                      {isRTL ? section.labelAr : section.labelEn}
-                    </div>
-                    <div className="unavailable-badge">
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                        <circle cx="12" cy="12" r="10"/>
-                        <line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/>
-                      </svg>
-                      <span>{isRTL ? 'غير متاح' : 'Unavailable'}</span>
-                    </div>
-                    <p className="unavailable-reason">
-                      {isRTL ? (status.reasonAr || status.reasonEn) : status.reasonEn}
-                    </p>
-                    <p className="available-from">
-                      {isRTL ? 'متاح من:' : 'Available:'} {formatDate(status.endDate)}
-                    </p>
-                  </div>
-                )}
-              </motion.div>
-            );
-          })}
-        </div>
-      )}
+      <div className="selection-grid">
+        {sections.map((section, index) => (
+          <motion.div
+            key={section.value}
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: index * 0.08 }}
+            className={`selection-card ${formData.fablabSection === section.value ? 'selected' : ''}`}
+            onClick={() => handleSelect(section.value)}
+          >
+            <div className="selection-card-icon">
+              {section.icon}
+            </div>
+            <div className="selection-card-title">
+              {isRTL ? section.labelAr : section.labelEn}
+            </div>
+          </motion.div>
+        ))}
+      </div>
 
       <div className="form-navigation">
         <button className="btn btn-secondary" onClick={onBack}>

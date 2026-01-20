@@ -11,6 +11,7 @@ const DateTimeSelection = ({ formData, onChange, onNext, onBack }) => {
   const [loadingSlots, setLoadingSlots] = useState(false);
   const [selectedMonth, setSelectedMonth] = useState(new Date());
   const [bookedDates, setBookedDates] = useState([]);
+  const [sectionDeactivations, setSectionDeactivations] = useState([]);
 
   const handleChange = (field, value) => {
     onChange({ [field]: value });
@@ -40,6 +41,55 @@ const DateTimeSelection = ({ formData, onChange, onNext, onBack }) => {
       fetchAvailableSlots(date);
     }
   }, [formData.appointmentDate, formData.visitDate, fetchAvailableSlots]);
+
+  // Fetch section deactivation periods
+  useEffect(() => {
+    const fetchSectionDeactivations = async () => {
+      if (!formData.fablabSection) return;
+
+      try {
+        const response = await api.get('/sections/availability');
+        const sectionData = response.data.find(s => s.section === formData.fablabSection);
+        // Use deactivationPeriods array which includes all active deactivations (including future ones)
+        if (sectionData && sectionData.deactivationPeriods && sectionData.deactivationPeriods.length > 0) {
+          setSectionDeactivations(sectionData.deactivationPeriods);
+        } else {
+          setSectionDeactivations([]);
+        }
+      } catch (error) {
+        console.error('Error fetching section deactivations:', error);
+        setSectionDeactivations([]);
+      }
+    };
+
+    fetchSectionDeactivations();
+  }, [formData.fablabSection]);
+
+  // Check if a date falls within a section deactivation period
+  const isDateInDeactivationPeriod = (date) => {
+    if (!date || sectionDeactivations.length === 0) return false;
+
+    const dateStr = formatDateForInput(date);
+
+    return sectionDeactivations.some(deactivation => {
+      const startStr = String(deactivation.startDate).substring(0, 10);
+      const endStr = String(deactivation.endDate).substring(0, 10);
+      return dateStr >= startStr && dateStr <= endStr;
+    });
+  };
+
+  // Get deactivation info for a date
+  const getDeactivationInfo = (date) => {
+    if (!date || sectionDeactivations.length === 0) return null;
+
+    const dateStr = formatDateForInput(date);
+
+    return sectionDeactivations.find(deactivation => {
+      const startStr = String(deactivation.startDate).substring(0, 10);
+      const endStr = String(deactivation.endDate).substring(0, 10);
+      return dateStr >= startStr && dateStr <= endStr;
+    });
+  };
 
   const canProceed = () => {
     if (['Beneficiary', 'Talented', 'Visitor'].includes(formData.applicationType)) {
@@ -105,7 +155,14 @@ const DateTimeSelection = ({ formData, onChange, onNext, onBack }) => {
     today.setHours(0, 0, 0, 0);
     const dateToCheck = new Date(date);
     dateToCheck.setHours(0, 0, 0, 0);
-    return dateToCheck > today && isWorkingDay(date);
+
+    // Check basic conditions: future date and working day
+    if (dateToCheck <= today || !isWorkingDay(date)) return false;
+
+    // Check if date falls within a section deactivation period
+    if (isDateInDeactivationPeriod(date)) return false;
+
+    return true;
   };
 
   const handleDateSelect = (date) => {
@@ -230,6 +287,8 @@ const DateTimeSelection = ({ formData, onChange, onNext, onBack }) => {
                 const isSelected = selectedDate === formatDateForInput(date);
                 const isToday = isSameDay(date, new Date());
                 const isWeekend = date.getDay() === 5 || date.getDay() === 6;
+                const isDeactivated = isDateInDeactivationPeriod(date);
+                const deactivationInfo = isDeactivated ? getDeactivationInfo(date) : null;
 
                 return (
                   <button
@@ -239,11 +298,14 @@ const DateTimeSelection = ({ formData, onChange, onNext, onBack }) => {
                       ${isSelectable ? 'available' : 'unavailable'}
                       ${isSelected ? 'selected' : ''}
                       ${isToday ? 'today' : ''}
-                      ${isWeekend ? 'weekend' : ''}`}
+                      ${isWeekend ? 'weekend' : ''}
+                      ${isDeactivated ? 'section-deactivated' : ''}`}
                     onClick={() => handleDateSelect(date)}
                     disabled={!isSelectable}
+                    title={isDeactivated ? (isRTL ? deactivationInfo?.reasonAr || deactivationInfo?.reasonEn : deactivationInfo?.reasonEn) : ''}
                   >
                     <span className="day-number">{date.getDate()}</span>
+                    {isDeactivated && <span className="deactivated-indicator">!</span>}
                   </button>
                 );
               })}
@@ -262,7 +324,36 @@ const DateTimeSelection = ({ formData, onChange, onNext, onBack }) => {
                 <span className="legend-dot selected"></span>
                 <span>{isRTL ? 'محدد' : 'Selected'}</span>
               </div>
+              {sectionDeactivations.length > 0 && (
+                <div className="legend-item">
+                  <span className="legend-dot section-closed"></span>
+                  <span>{isRTL ? 'القسم مغلق' : 'Section Closed'}</span>
+                </div>
+              )}
             </div>
+
+            {/* Section Deactivation Warning */}
+            {sectionDeactivations.length > 0 && (
+              <motion.div
+                className="section-deactivation-warning"
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+              >
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+                  <line x1="12" y1="9" x2="12" y2="13"/>
+                  <line x1="12" y1="17" x2="12.01" y2="17"/>
+                </svg>
+                <div className="warning-content">
+                  <strong>{isRTL ? 'ملاحظة:' : 'Notice:'}</strong>
+                  <span>
+                    {isRTL
+                      ? `القسم المحدد (${formData.fablabSection}) غير متاح في الفترة من ${new Date(sectionDeactivations[0].startDate).toLocaleDateString('ar-SA')} إلى ${new Date(sectionDeactivations[0].endDate).toLocaleDateString('ar-SA')}. السبب: ${sectionDeactivations[0].reasonAr || sectionDeactivations[0].reasonEn}`
+                      : `The selected section (${formData.fablabSection}) is unavailable from ${new Date(sectionDeactivations[0].startDate).toLocaleDateString('en-US')} to ${new Date(sectionDeactivations[0].endDate).toLocaleDateString('en-US')}. Reason: ${sectionDeactivations[0].reasonEn}`}
+                  </span>
+                </div>
+              </motion.div>
+            )}
           </motion.div>
 
           {/* Time Slots */}
