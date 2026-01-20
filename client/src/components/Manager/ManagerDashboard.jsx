@@ -2027,7 +2027,7 @@ const ManagerDashboard = () => {
                           )}
                         </div>
                         <div className="event-meta">
-                          {event.startTime && <span>🕐 {formatTimeAMPM(event.startTime)}</span>}
+                          {event.startTime && <span>🕐 {formatTimeAMPM(event.startTime)}{event.endTime && ` - ${formatTimeAMPM(event.endTime)}`}{event.duration && ` (${event.duration} ${isRTL ? 'د' : 'min'})`}</span>}
                           <span>📍 {sectionLabels[event.section] || event.section}</span>
                           {event.type === 'task' && event.assignee && (
                             <span>👤 {event.assignee}</span>
@@ -2149,6 +2149,7 @@ const ManagerDashboard = () => {
                         </svg>
                         {formatDate(task.date)}
                         {task.startTime && ` • ${formatTimeAMPM(task.startTime)}`}
+                        {task.duration && ` (${task.duration} ${isRTL ? 'د' : 'min'})`}
                       </div>
                       {task.assignee && (
                         <div className="task-item-assignee">

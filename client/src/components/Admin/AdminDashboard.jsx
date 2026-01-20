@@ -1313,7 +1313,7 @@ const AdminDashboard = () => {
         <style>
           @page {
             size: A4;
-            margin: 6mm;
+            margin: 12mm;
           }
           * {
             margin: 0;
@@ -1324,9 +1324,9 @@ const AdminDashboard = () => {
             font-family: 'Segoe UI', Tahoma, Arial, sans-serif;
             background: white;
             color: #1a1a2e;
-            line-height: 1.35;
-            padding: 5px;
-            font-size: 11px;
+            line-height: 1.5;
+            padding: 0;
+            font-size: 13px;
           }
           .document {
             max-width: 100%;
@@ -1337,51 +1337,51 @@ const AdminDashboard = () => {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            padding-bottom: 8px;
-            border-bottom: 2px solid #e02529;
-            margin-bottom: 10px;
+            padding-bottom: 12px;
+            border-bottom: 3px solid #e02529;
+            margin-bottom: 16px;
           }
           .header .logo {
-            height: 40px;
+            height: 55px;
             width: auto;
           }
           .header-center {
             text-align: center;
             flex: 1;
-            padding: 0 10px;
+            padding: 0 15px;
           }
           .document-title {
-            font-size: 16px;
+            font-size: 20px;
             font-weight: 700;
             color: #e02529;
-            margin-bottom: 2px;
+            margin-bottom: 4px;
           }
           .document-subtitle {
-            font-size: 10px;
+            font-size: 13px;
             color: #666;
           }
           .user-info-section {
             background: #f8f9fa;
-            padding: 8px 12px;
-            border-radius: 4px;
-            margin-bottom: 10px;
-            border-${isRTL ? 'right' : 'left'}: 3px solid #e02529;
+            padding: 12px 16px;
+            border-radius: 6px;
+            margin-bottom: 16px;
+            border-${isRTL ? 'right' : 'left'}: 4px solid #e02529;
           }
           .user-info-title {
-            font-size: 11px;
+            font-size: 14px;
             font-weight: 600;
             color: #e02529;
-            margin-bottom: 6px;
+            margin-bottom: 10px;
           }
           .user-info-grid {
             display: grid;
             grid-template-columns: repeat(2, 1fr);
-            gap: 4px 15px;
+            gap: 8px 20px;
           }
           .user-info-item {
             display: flex;
-            gap: 5px;
-            font-size: 10px;
+            gap: 8px;
+            font-size: 13px;
           }
           .user-info-label {
             font-weight: 600;
@@ -1391,98 +1391,98 @@ const AdminDashboard = () => {
             color: #333;
           }
           .terms-section {
-            margin-bottom: 8px;
+            margin-bottom: 14px;
           }
           .terms-title {
-            font-size: 12px;
+            font-size: 16px;
             font-weight: 700;
             color: #1a1a2e;
-            margin-bottom: 5px;
-            padding-bottom: 3px;
-            border-bottom: 1px solid #e9ecef;
+            margin-bottom: 10px;
+            padding-bottom: 5px;
+            border-bottom: 2px solid #e9ecef;
           }
           .terms-intro {
-            font-size: 10px;
+            font-size: 13px;
             color: #444;
-            margin-bottom: 6px;
-            line-height: 1.4;
+            margin-bottom: 12px;
+            line-height: 1.6;
           }
           .terms-list {
             list-style: none;
             counter-reset: terms-counter;
             display: grid;
-            gap: 4px;
+            gap: 8px;
           }
           .terms-list li {
             counter-increment: terms-counter;
-            padding: 5px 8px;
+            padding: 10px 12px;
             background: #fafafa;
-            border-radius: 3px;
-            border-${isRTL ? 'right' : 'left'}: 3px solid #e02529;
-            font-size: 10px;
-            line-height: 1.35;
+            border-radius: 5px;
+            border-${isRTL ? 'right' : 'left'}: 4px solid #e02529;
+            font-size: 13px;
+            line-height: 1.5;
             position: relative;
-            padding-${isRTL ? 'right' : 'left'}: 26px;
+            padding-${isRTL ? 'right' : 'left'}: 36px;
           }
           .terms-list li::before {
             content: counter(terms-counter);
             position: absolute;
-            ${isRTL ? 'right' : 'left'}: 6px;
+            ${isRTL ? 'right' : 'left'}: 8px;
             top: 50%;
             transform: translateY(-50%);
-            width: 16px;
-            height: 16px;
+            width: 22px;
+            height: 22px;
             background: linear-gradient(135deg, #e02529, #c41e24);
             color: white;
             border-radius: 50%;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 8px;
+            font-size: 11px;
             font-weight: 600;
           }
           .agreement-section {
             background: #fff8f8;
-            border: 1px solid #e02529;
-            border-radius: 4px;
-            padding: 8px 10px;
-            margin-bottom: 8px;
+            border: 2px solid #e02529;
+            border-radius: 6px;
+            padding: 14px 16px;
+            margin-bottom: 14px;
           }
           .agreement-text {
-            font-size: 10px;
+            font-size: 13px;
             color: #333;
-            line-height: 1.35;
-            margin-bottom: 5px;
+            line-height: 1.5;
+            margin-bottom: 10px;
           }
           .checkbox-line {
             display: flex;
             align-items: center;
-            gap: 6px;
-            font-size: 10px;
+            gap: 10px;
+            font-size: 13px;
             font-weight: 600;
             color: #1a1a2e;
           }
           .checkbox-box {
-            width: 12px;
-            height: 12px;
+            width: 18px;
+            height: 18px;
             border: 2px solid #e02529;
-            border-radius: 2px;
+            border-radius: 3px;
             display: inline-block;
             flex-shrink: 0;
           }
           .signature-section {
-            padding-top: 8px;
-            border-top: 1px dashed #ddd;
+            padding-top: 14px;
+            border-top: 2px dashed #ddd;
           }
           .signature-date {
             text-align: center;
-            margin-bottom: 8px;
-            font-size: 10px;
+            margin-bottom: 14px;
+            font-size: 13px;
             font-weight: 600;
             color: #333;
             background: #f8f9fa;
-            padding: 4px 10px;
-            border-radius: 4px;
+            padding: 8px 14px;
+            border-radius: 6px;
             display: inline-block;
             width: 100%;
             box-sizing: border-box;
@@ -1490,55 +1490,55 @@ const AdminDashboard = () => {
           .signatures-grid {
             display: grid;
             grid-template-columns: 1fr 1fr;
-            gap: 20px;
+            gap: 30px;
           }
           .signature-box {
             text-align: center;
-            padding: 8px;
-            border: 1px solid #e9ecef;
-            border-radius: 6px;
+            padding: 14px;
+            border: 2px solid #e9ecef;
+            border-radius: 8px;
             background: #fafafa;
           }
           .signature-role {
-            font-size: 9px;
+            font-size: 12px;
             font-weight: 700;
             color: #e02529;
-            margin-bottom: 2px;
+            margin-bottom: 4px;
             display: block;
           }
           .signature-name-value {
-            font-size: 10px;
+            font-size: 13px;
             font-weight: 700;
             color: #1a1a2e;
-            margin-bottom: 15px;
+            margin-bottom: 25px;
             display: block;
-            min-height: 12px;
+            min-height: 16px;
           }
           .signature-line {
-            border-bottom: 1px solid #333;
-            margin-bottom: 2px;
+            border-bottom: 2px solid #333;
+            margin-bottom: 4px;
           }
           .signature-field-name {
-            font-size: 8px;
+            font-size: 11px;
             font-weight: 600;
             color: #555;
           }
           .footer {
-            margin-top: 8px;
-            padding-top: 6px;
-            border-top: 1px solid #e9ecef;
+            margin-top: 14px;
+            padding-top: 10px;
+            border-top: 2px solid #e9ecef;
             text-align: center;
             color: #888;
-            font-size: 8px;
+            font-size: 11px;
           }
           .footer-logos {
             display: flex;
             justify-content: center;
-            gap: 12px;
-            margin-bottom: 3px;
+            gap: 20px;
+            margin-bottom: 6px;
           }
           .footer-logos img {
-            height: 20px;
+            height: 30px;
             width: auto;
             opacity: 0.8;
           }
