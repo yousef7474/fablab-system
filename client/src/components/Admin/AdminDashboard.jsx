@@ -348,11 +348,15 @@ const AdminDashboard = () => {
     }
     // Check if there are any deactivation periods (current or future)
     const hasDeactivations = section.deactivationPeriods && section.deactivationPeriods.length > 0;
+    // Sort deactivation periods by start date
+    const sortedPeriods = hasDeactivations
+      ? [...section.deactivationPeriods].sort((a, b) => new Date(a.startDate) - new Date(b.startDate))
+      : [];
     return {
       ...section,
       hasDeactivations,
-      // For display, use the first deactivation period if exists
-      currentDeactivation: hasDeactivations ? section.deactivationPeriods[0] : null
+      deactivationPeriods: sortedPeriods,
+      periodCount: sortedPeriods.length
     };
   };
 
@@ -1283,7 +1287,7 @@ const AdminDashboard = () => {
         <style>
           @page {
             size: A4;
-            margin: 8mm;
+            margin: 10mm;
           }
           * {
             margin: 0;
@@ -1294,63 +1298,69 @@ const AdminDashboard = () => {
             font-family: 'Segoe UI', Tahoma, Arial, sans-serif;
             background: white;
             color: #1a1a2e;
-            line-height: 1.4;
-            padding: 10px;
+            line-height: 1.5;
+            padding: 15px;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
           }
           .document {
             max-width: 100%;
             margin: 0 auto;
             background: white;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
           }
           .header {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            padding-bottom: 10px;
+            padding-bottom: 15px;
             border-bottom: 3px solid #e02529;
-            margin-bottom: 12px;
+            margin-bottom: 20px;
           }
           .header .logo {
-            height: 45px;
+            height: 55px;
             width: auto;
           }
           .header-center {
             text-align: center;
             flex: 1;
-            padding: 0 15px;
+            padding: 0 20px;
           }
           .document-title {
-            font-size: 18px;
+            font-size: 22px;
             font-weight: 700;
             color: #e02529;
-            margin-bottom: 2px;
+            margin-bottom: 4px;
           }
           .document-subtitle {
-            font-size: 11px;
+            font-size: 13px;
             color: #666;
           }
           .user-info-section {
             background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
-            padding: 10px 12px;
-            border-radius: 6px;
-            margin-bottom: 12px;
-            border-${isRTL ? 'right' : 'left'}: 4px solid #e02529;
+            padding: 15px 18px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            border-${isRTL ? 'right' : 'left'}: 5px solid #e02529;
           }
           .user-info-title {
-            font-size: 12px;
+            font-size: 14px;
             font-weight: 600;
             color: #e02529;
-            margin-bottom: 8px;
+            margin-bottom: 12px;
           }
           .user-info-grid {
             display: grid;
             grid-template-columns: repeat(2, 1fr);
-            gap: 6px 20px;
+            gap: 10px 30px;
           }
           .user-info-item {
             display: flex;
-            gap: 6px;
-            font-size: 11px;
+            gap: 8px;
+            font-size: 13px;
           }
           .user-info-label {
             font-weight: 600;
@@ -1360,98 +1370,100 @@ const AdminDashboard = () => {
             color: #333;
           }
           .terms-section {
-            margin-bottom: 12px;
+            margin-bottom: 20px;
+            flex: 1;
           }
           .terms-title {
-            font-size: 14px;
+            font-size: 16px;
             font-weight: 700;
             color: #1a1a2e;
-            margin-bottom: 8px;
-            padding-bottom: 6px;
+            margin-bottom: 12px;
+            padding-bottom: 8px;
             border-bottom: 2px solid #e9ecef;
           }
           .terms-intro {
-            font-size: 10px;
+            font-size: 12px;
             color: #444;
-            margin-bottom: 8px;
-            line-height: 1.5;
+            margin-bottom: 12px;
+            line-height: 1.6;
           }
           .terms-list {
             list-style: none;
             counter-reset: terms-counter;
             display: grid;
-            gap: 4px;
+            gap: 8px;
           }
           .terms-list li {
             counter-increment: terms-counter;
-            padding: 5px 10px;
+            padding: 10px 14px;
             background: #fafafa;
-            border-radius: 4px;
-            border-${isRTL ? 'right' : 'left'}: 3px solid #e02529;
-            font-size: 9px;
-            line-height: 1.35;
+            border-radius: 6px;
+            border-${isRTL ? 'right' : 'left'}: 4px solid #e02529;
+            font-size: 12px;
+            line-height: 1.5;
             position: relative;
-            padding-${isRTL ? 'right' : 'left'}: 30px;
+            padding-${isRTL ? 'right' : 'left'}: 40px;
           }
           .terms-list li::before {
             content: counter(terms-counter);
             position: absolute;
-            ${isRTL ? 'right' : 'left'}: 8px;
+            ${isRTL ? 'right' : 'left'}: 10px;
             top: 50%;
             transform: translateY(-50%);
-            width: 18px;
-            height: 18px;
+            width: 22px;
+            height: 22px;
             background: linear-gradient(135deg, #e02529, #c41e24);
             color: white;
             border-radius: 50%;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 9px;
+            font-size: 11px;
             font-weight: 600;
           }
           .agreement-section {
             background: #fff8f8;
             border: 2px solid #e02529;
-            border-radius: 6px;
-            padding: 8px 10px;
-            margin-bottom: 10px;
+            border-radius: 8px;
+            padding: 14px 16px;
+            margin-bottom: 20px;
           }
           .agreement-text {
-            font-size: 9px;
+            font-size: 12px;
             color: #333;
-            line-height: 1.4;
-            margin-bottom: 6px;
+            line-height: 1.5;
+            margin-bottom: 10px;
           }
           .checkbox-line {
             display: flex;
             align-items: center;
-            gap: 8px;
-            font-size: 11px;
+            gap: 10px;
+            font-size: 13px;
             font-weight: 600;
             color: #1a1a2e;
           }
           .checkbox-box {
-            width: 16px;
-            height: 16px;
+            width: 18px;
+            height: 18px;
             border: 2px solid #e02529;
-            border-radius: 3px;
+            border-radius: 4px;
             display: inline-block;
             flex-shrink: 0;
           }
           .signature-section {
-            padding-top: 10px;
+            padding-top: 20px;
             border-top: 2px dashed #ddd;
+            margin-top: auto;
           }
           .signature-date {
             text-align: center;
-            margin-bottom: 10px;
-            font-size: 11px;
+            margin-bottom: 20px;
+            font-size: 14px;
             font-weight: 600;
             color: #333;
             background: #f8f9fa;
-            padding: 6px 12px;
-            border-radius: 6px;
+            padding: 10px 16px;
+            border-radius: 8px;
             display: inline-block;
             width: 100%;
             box-sizing: border-box;
@@ -1459,55 +1471,55 @@ const AdminDashboard = () => {
           .signatures-grid {
             display: grid;
             grid-template-columns: 1fr 1fr;
-            gap: 40px;
+            gap: 50px;
           }
           .signature-box {
             text-align: center;
-            padding: 8px;
+            padding: 15px;
             border: 1px solid #e9ecef;
-            border-radius: 8px;
+            border-radius: 10px;
             background: #fafafa;
           }
           .signature-role {
-            font-size: 9px;
+            font-size: 11px;
             font-weight: 700;
             color: #e02529;
-            margin-bottom: 2px;
+            margin-bottom: 5px;
             display: block;
           }
           .signature-name-value {
-            font-size: 11px;
+            font-size: 14px;
             font-weight: 700;
             color: #1a1a2e;
-            margin-bottom: 20px;
+            margin-bottom: 35px;
             display: block;
-            min-height: 16px;
+            min-height: 20px;
           }
           .signature-line {
             border-bottom: 2px solid #333;
-            margin-bottom: 3px;
+            margin-bottom: 5px;
           }
           .signature-field-name {
-            font-size: 9px;
+            font-size: 11px;
             font-weight: 600;
             color: #555;
           }
           .footer {
-            margin-top: 8px;
-            padding-top: 8px;
+            margin-top: 20px;
+            padding-top: 15px;
             border-top: 2px solid #e9ecef;
             text-align: center;
             color: #888;
-            font-size: 8px;
+            font-size: 10px;
           }
           .footer-logos {
             display: flex;
             justify-content: center;
-            gap: 12px;
-            margin-bottom: 4px;
+            gap: 20px;
+            margin-bottom: 8px;
           }
           .footer-logos img {
-            height: 24px;
+            height: 35px;
             width: auto;
             opacity: 0.8;
           }
@@ -3122,12 +3134,12 @@ const AdminDashboard = () => {
                     ].map(section => {
                       const status = getSectionStatus(section.value);
                       const hasDeactivations = status.hasDeactivations;
-                      const deactivation = status.currentDeactivation;
+                      const deactivationPeriods = status.deactivationPeriods || [];
 
                       return (
                         <div
                           key={section.value}
-                          className={`section-status-card ${hasDeactivations ? 'unavailable' : 'available'}`}
+                          className={`section-status-card ${hasDeactivations ? 'has-periods' : 'available'}`}
                         >
                           <div className="section-status-header">
                             <div className="section-info">
@@ -3141,44 +3153,52 @@ const AdminDashboard = () => {
                             </div>
                             <span className={`status-indicator ${hasDeactivations ? 'inactive' : 'active'}`}>
                               {hasDeactivations
-                                ? (isRTL ? 'معطل' : 'Deactivated')
+                                ? `${deactivationPeriods.length} ${isRTL ? 'فترات معطلة' : 'period(s)'}`
                                 : (isRTL ? 'متاح' : 'Available')}
                             </span>
                           </div>
 
-                          {hasDeactivations && deactivation && (
-                            <div className="section-status-details">
-                              <p className="unavailable-reason">
-                                <strong>{isRTL ? 'السبب:' : 'Reason:'}</strong> {isRTL ? deactivation.reasonAr || deactivation.reasonEn : deactivation.reasonEn}
-                              </p>
-                              <p className="deactivation-period">
-                                <strong>{isRTL ? 'الفترة:' : 'Period:'}</strong> {new Date(deactivation.startDate).toLocaleDateString(isRTL ? 'ar-SA' : 'en-US')} - {new Date(deactivation.endDate).toLocaleDateString(isRTL ? 'ar-SA' : 'en-US')}
-                              </p>
-                              <button
-                                className="btn-reactivate"
-                                onClick={() => handleReactivateSection(deactivation.availabilityId)}
-                              >
-                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                  <polyline points="23 4 23 10 17 10"/>
-                                  <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
-                                </svg>
-                                {isRTL ? 'إعادة التفعيل الآن' : 'Reactivate Now'}
-                              </button>
+                          {/* Show all deactivation periods */}
+                          {hasDeactivations && (
+                            <div className="section-deactivation-periods">
+                              {deactivationPeriods.map((period, index) => (
+                                <div key={period.availabilityId} className="deactivation-period-item">
+                                  <div className="period-header">
+                                    <span className="period-number">#{index + 1}</span>
+                                    <span className="period-dates">
+                                      {new Date(period.startDate).toLocaleDateString(isRTL ? 'ar-SA' : 'en-US')} - {new Date(period.endDate).toLocaleDateString(isRTL ? 'ar-SA' : 'en-US')}
+                                    </span>
+                                  </div>
+                                  <p className="period-reason">
+                                    {isRTL ? period.reasonAr || period.reasonEn : period.reasonEn}
+                                  </p>
+                                  <button
+                                    className="btn-reactivate-small"
+                                    onClick={() => handleReactivateSection(period.availabilityId)}
+                                  >
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                      <polyline points="23 4 23 10 17 10"/>
+                                      <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
+                                    </svg>
+                                    {isRTL ? 'إلغاء' : 'Remove'}
+                                  </button>
+                                </div>
+                              ))}
                             </div>
                           )}
 
-                          {!hasDeactivations && (
-                            <button
-                              className="btn-deactivate"
-                              onClick={() => openDeactivateModal(section.value)}
-                            >
-                              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                <circle cx="12" cy="12" r="10"/>
-                                <line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/>
-                              </svg>
-                              {isRTL ? 'تعطيل القسم' : 'Deactivate Section'}
-                            </button>
-                          )}
+                          {/* Always show add deactivation button */}
+                          <button
+                            className="btn-add-deactivation"
+                            onClick={() => openDeactivateModal(section.value)}
+                          >
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                              <circle cx="12" cy="12" r="10"/>
+                              <line x1="12" y1="8" x2="12" y2="16"/>
+                              <line x1="8" y1="12" x2="16" y2="12"/>
+                            </svg>
+                            {isRTL ? 'إضافة فترة تعطيل' : 'Add Deactivation Period'}
+                          </button>
                         </div>
                       );
                     })}

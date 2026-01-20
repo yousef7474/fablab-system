@@ -4897,13 +4897,15 @@
   border-color: #22c55e;
 }
 
-.section-status-card.unavailable {
-  border-color: #ef4444;
-  background: rgba(239, 68, 68, 0.05);
+.section-status-card.unavailable,
+.section-status-card.has-periods {
+  border-color: #f59e0b;
+  background: rgba(245, 158, 11, 0.05);
 }
 
-[data-theme="dark"] .section-status-card.unavailable {
-  background: rgba(239, 68, 68, 0.1);
+[data-theme="dark"] .section-status-card.unavailable,
+[data-theme="dark"] .section-status-card.has-periods {
+  background: rgba(245, 158, 11, 0.1);
 }
 
 .section-status-header {
@@ -4945,8 +4947,8 @@
 }
 
 .status-indicator.inactive {
-  background: rgba(239, 68, 68, 0.1);
-  color: #ef4444;
+  background: rgba(245, 158, 11, 0.1);
+  color: #f59e0b;
 }
 
 .section-status-details {
@@ -5006,6 +5008,106 @@
 
 .btn-reactivate:hover {
   background: rgba(34, 197, 94, 0.2);
+}
+
+/* Multiple Deactivation Periods */
+.section-deactivation-periods {
+  margin-top: 0.75rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--border-color);
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.deactivation-period-item {
+  background: rgba(245, 158, 11, 0.08);
+  border: 1px solid rgba(245, 158, 11, 0.2);
+  border-radius: 8px;
+  padding: 0.6rem;
+}
+
+[data-theme="dark"] .deactivation-period-item {
+  background: rgba(245, 158, 11, 0.1);
+  border-color: rgba(245, 158, 11, 0.3);
+}
+
+.period-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.35rem;
+}
+
+.period-number {
+  background: #f59e0b;
+  color: white;
+  font-size: 0.65rem;
+  font-weight: 700;
+  padding: 0.15rem 0.4rem;
+  border-radius: 4px;
+}
+
+.period-dates {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.period-reason {
+  font-size: 0.7rem;
+  color: var(--text-secondary);
+  margin: 0 0 0.4rem 0;
+  line-height: 1.3;
+}
+
+.btn-reactivate-small {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.25rem 0.6rem;
+  background: rgba(239, 68, 68, 0.1);
+  color: #ef4444;
+  border: none;
+  border-radius: 4px;
+  font-size: 0.7rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-reactivate-small:hover {
+  background: rgba(239, 68, 68, 0.2);
+}
+
+.btn-add-deactivation {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.5rem;
+  border-radius: 8px;
+  font-size: 0.8rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border: 2px dashed var(--border-color);
+  background: transparent;
+  color: var(--text-secondary);
+  margin-top: 0.75rem;
+}
+
+.btn-add-deactivation:hover {
+  border-color: #f59e0b;
+  background: rgba(245, 158, 11, 0.05);
+  color: #f59e0b;
+}
+
+[data-theme="dark"] .btn-add-deactivation:hover {
+  background: rgba(245, 158, 11, 0.1);
 }
 
 /* Section Deactivation Modal */
