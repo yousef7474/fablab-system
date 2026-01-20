@@ -1440,14 +1440,35 @@ const AdminDashboard = () => {
             flex-shrink: 0;
           }
           .signature-section {
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 25px;
             padding-top: 15px;
             border-top: 2px dashed #ddd;
           }
+          .signature-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 25px;
+            margin-bottom: 25px;
+          }
+          .signature-row:last-child {
+            margin-bottom: 0;
+          }
           .signature-box {
             text-align: center;
+          }
+          .signature-role {
+            font-size: 11px;
+            font-weight: 700;
+            color: #e02529;
+            margin-bottom: 5px;
+            display: block;
+          }
+          .signature-name-value {
+            font-size: 13px;
+            font-weight: 700;
+            color: #1a1a2e;
+            margin-bottom: 8px;
+            display: block;
+            min-height: 20px;
           }
           .signature-label {
             font-size: 10px;
@@ -1559,20 +1580,48 @@ const AdminDashboard = () => {
           </div>
 
           <div class="signature-section">
-            <div class="signature-box">
-              <span class="signature-label">${isRTL ? 'الاسم الكامل' : 'Full Name'}</span>
-              <div class="signature-line"></div>
-              <span class="signature-field-name">${isRTL ? 'اسم المستفيد' : 'Beneficiary Name'}</span>
+            <!-- Beneficiary Signature Row -->
+            <div class="signature-row">
+              <div class="signature-box">
+                <span class="signature-role">${isRTL ? 'المستفيد' : 'Beneficiary'}</span>
+                <span class="signature-name-value">${userName}</span>
+                <div class="signature-line"></div>
+                <span class="signature-field-name">${isRTL ? 'الاسم' : 'Name'}</span>
+              </div>
+              <div class="signature-box">
+                <span class="signature-role">&nbsp;</span>
+                <span class="signature-name-value">&nbsp;</span>
+                <div class="signature-line"></div>
+                <span class="signature-field-name">${isRTL ? 'التوقيع' : 'Signature'}</span>
+              </div>
+              <div class="signature-box">
+                <span class="signature-role">&nbsp;</span>
+                <span class="signature-name-value">${today}</span>
+                <div class="signature-line"></div>
+                <span class="signature-field-name">${isRTL ? 'التاريخ' : 'Date'}</span>
+              </div>
             </div>
-            <div class="signature-box">
-              <span class="signature-label">${isRTL ? 'التوقيع' : 'Signature'}</span>
-              <div class="signature-line"></div>
-              <span class="signature-field-name">${isRTL ? 'التوقيع' : 'Signature'}</span>
-            </div>
-            <div class="signature-box">
-              <span class="signature-label">${isRTL ? 'التاريخ' : 'Date'}</span>
-              <div class="signature-line"></div>
-              <span class="signature-field-name">${today}</span>
+
+            <!-- Manager Signature Row -->
+            <div class="signature-row">
+              <div class="signature-box">
+                <span class="signature-role">${isRTL ? 'المسؤول التنفيذي للفاب لاب' : 'FABLAB Executive Manager'}</span>
+                <span class="signature-name-value">أ. زكي اللويم</span>
+                <div class="signature-line"></div>
+                <span class="signature-field-name">${isRTL ? 'الاسم' : 'Name'}</span>
+              </div>
+              <div class="signature-box">
+                <span class="signature-role">&nbsp;</span>
+                <span class="signature-name-value">&nbsp;</span>
+                <div class="signature-line"></div>
+                <span class="signature-field-name">${isRTL ? 'التوقيع' : 'Signature'}</span>
+              </div>
+              <div class="signature-box">
+                <span class="signature-role">&nbsp;</span>
+                <span class="signature-name-value">&nbsp;</span>
+                <div class="signature-line"></div>
+                <span class="signature-field-name">${isRTL ? 'التاريخ' : 'Date'}</span>
+              </div>
             </div>
           </div>
 
