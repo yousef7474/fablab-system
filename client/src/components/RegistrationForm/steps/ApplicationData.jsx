@@ -220,7 +220,7 @@ const ApplicationData = ({ formData, onChange, onNext, onBack }) => {
               transition={{ delay: 0.35 }}
             >
               <label className="form-label">
-                {isRTL ? 'اسم الجهة التابع لها (مدرسة/جامعة/شركة/إلخ)' : 'Organization Name (School/University/Company/etc.)'} *
+                {isRTL ? 'اسم الجهة التابع لها (مدرسة/جامعة/شركة/إلخ)' : 'Organization Name (School/University/Company/etc.)'} <span style={{ color: '#dc2626' }}>*</span>
               </label>
               <input
                 type="text"

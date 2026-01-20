@@ -3212,6 +3212,16 @@
   color: white;
 }
 
+.action-btn.whatsapp {
+  background: rgba(37, 211, 102, 0.15);
+  color: #25d366;
+}
+
+.action-btn.whatsapp:hover {
+  background: #25d366;
+  color: white;
+}
+
 /* Clickable user name in tables */
 .clickable-name,
 .user-link {
