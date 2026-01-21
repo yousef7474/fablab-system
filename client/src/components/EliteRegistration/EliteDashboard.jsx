@@ -16,6 +16,7 @@ const EliteDashboard = () => {
   const [statusFilter, setStatusFilter] = useState('all');
   const [selectedUser, setSelectedUser] = useState(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(null);
+  const [showIdCard, setShowIdCard] = useState(null);
   const isRTL = language === 'ar';
 
   // Translations
@@ -62,7 +63,11 @@ const EliteDashboard = () => {
       deleteWarning: 'هل أنت متأكد من حذف هذا العضو؟ هذا الإجراء لا يمكن التراجع عنه.',
       cancel: 'إلغاء',
       backHome: 'العودة للرئيسية',
-      refresh: 'تحديث'
+      refresh: 'تحديث',
+      printId: 'طباعة البطاقة',
+      membershipCard: 'بطاقة العضوية',
+      eliteMember: 'عضو النخبة',
+      print: 'طباعة'
     },
     en: {
       title: 'Elite Management Dashboard',
@@ -106,7 +111,11 @@ const EliteDashboard = () => {
       deleteWarning: 'Are you sure you want to delete this member? This action cannot be undone.',
       cancel: 'Cancel',
       backHome: 'Back to Home',
-      refresh: 'Refresh'
+      refresh: 'Refresh',
+      printId: 'Print ID',
+      membershipCard: 'Membership Card',
+      eliteMember: 'Elite Member',
+      print: 'Print'
     }
   };
 
@@ -401,6 +410,20 @@ const EliteDashboard = () => {
                               <circle cx="12" cy="12" r="3"/>
                             </svg>
                           </button>
+                          <button
+                            className="action-btn print-id"
+                            onClick={() => setShowIdCard(user)}
+                            title={text.printId}
+                          >
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                              <rect x="2" y="4" width="20" height="16" rx="2"/>
+                              <circle cx="8" cy="10" r="2"/>
+                              <path d="M22 12h-4"/>
+                              <path d="M22 8h-4"/>
+                              <path d="M22 16h-4"/>
+                              <path d="M6 16h4"/>
+                            </svg>
+                          </button>
                           {user.status !== 'active' && (
                             <button
                               className="action-btn activate"
@@ -585,6 +608,285 @@ const EliteDashboard = () => {
                 </button>
                 <button className="btn-delete" onClick={() => handleDelete(showDeleteConfirm)}>
                   {text.delete}
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* ID Card Modal */}
+      <AnimatePresence>
+        {showIdCard && (
+          <motion.div
+            className="modal-overlay"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => setShowIdCard(null)}
+          >
+            <motion.div
+              className="modal-content id-card-modal"
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              onClick={e => e.stopPropagation()}
+            >
+              <div className="modal-header">
+                <h2>{text.membershipCard}</h2>
+                <button className="close-btn" onClick={() => setShowIdCard(null)}>
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <line x1="18" y1="6" x2="6" y2="18"/>
+                    <line x1="6" y1="6" x2="18" y2="18"/>
+                  </svg>
+                </button>
+              </div>
+
+              {/* Printable ID Card */}
+              <div className="id-card-wrapper">
+                <div className="elite-id-card" id="elite-id-card">
+                  {/* Card Front */}
+                  <div className="id-card-front">
+                    {/* Green Header with Logos */}
+                    <div className="id-card-header">
+                      <img src="/fablab.png" alt="FABLAB" className="id-logo fablab-logo" />
+                      <div className="id-header-text">
+                        <span className="id-header-title">FABLAB Al-Ahsa</span>
+                        <span className="id-header-subtitle">{text.eliteMember}</span>
+                      </div>
+                      <img src="/found.png" alt="Foundation" className="id-logo found-logo" />
+                    </div>
+
+                    {/* Card Body */}
+                    <div className="id-card-body">
+                      {/* Profile Photo */}
+                      <div className="id-photo-section">
+                        {showIdCard.profilePicture ? (
+                          <img src={showIdCard.profilePicture} alt="" className="id-photo" />
+                        ) : (
+                          <div className="id-photo-placeholder">
+                            <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+                              <circle cx="12" cy="7" r="4"/>
+                            </svg>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Member Info */}
+                      <div className="id-info-section">
+                        <div className="id-name">{showIdCard.firstName} {showIdCard.lastName}</div>
+                        <div className="id-member-number">{showIdCard.uniqueId}</div>
+                        <div className="id-details">
+                          <div className="id-detail-row">
+                            <span className="id-label">{isRTL ? 'الهوية:' : 'ID:'}</span>
+                            <span className="id-value">{showIdCard.nationalId}</span>
+                          </div>
+                          <div className="id-detail-row">
+                            <span className="id-label">{isRTL ? 'الهاتف:' : 'Phone:'}</span>
+                            <span className="id-value" dir="ltr">{showIdCard.phoneNumber}</span>
+                          </div>
+                          {showIdCard.organization && (
+                            <div className="id-detail-row">
+                              <span className="id-label">{isRTL ? 'المنظمة:' : 'Org:'}</span>
+                              <span className="id-value">{showIdCard.organization}</span>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Card Footer */}
+                    <div className="id-card-footer">
+                      <div className="id-valid-date">
+                        <span>{isRTL ? 'تاريخ الانضمام:' : 'Member Since:'}</span>
+                        <span>{formatDate(showIdCard.createdAt)}</span>
+                      </div>
+                      <div className="id-star-badge">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                          <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+                        </svg>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="modal-footer">
+                <button className="btn-print" onClick={() => {
+                  const printContent = document.getElementById('elite-id-card');
+                  const printWindow = window.open('', '', 'width=600,height=400');
+                  printWindow.document.write(`
+                    <html>
+                      <head>
+                        <title>Elite Member ID Card</title>
+                        <style>
+                          @page { size: 85.6mm 53.98mm; margin: 0; }
+                          * { margin: 0; padding: 0; box-sizing: border-box; }
+                          body {
+                            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+                            display: flex;
+                            justify-content: center;
+                            align-items: center;
+                            min-height: 100vh;
+                            background: #f0f0f0;
+                          }
+                          .elite-id-card {
+                            width: 85.6mm;
+                            height: 53.98mm;
+                            background: white;
+                            border-radius: 10px;
+                            overflow: hidden;
+                            box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+                          }
+                          .id-card-front {
+                            height: 100%;
+                            display: flex;
+                            flex-direction: column;
+                          }
+                          .id-card-header {
+                            background: linear-gradient(135deg, #006c35 0%, #00a651 100%);
+                            padding: 8px 12px;
+                            display: flex;
+                            align-items: center;
+                            justify-content: space-between;
+                            gap: 8px;
+                          }
+                          .id-logo {
+                            width: 35px;
+                            height: 35px;
+                            object-fit: contain;
+                            background: white;
+                            border-radius: 6px;
+                            padding: 3px;
+                          }
+                          .id-header-text {
+                            flex: 1;
+                            text-align: center;
+                            color: white;
+                          }
+                          .id-header-title {
+                            display: block;
+                            font-size: 12px;
+                            font-weight: 700;
+                            letter-spacing: 0.5px;
+                          }
+                          .id-header-subtitle {
+                            display: block;
+                            font-size: 9px;
+                            opacity: 0.9;
+                            margin-top: 2px;
+                          }
+                          .id-card-body {
+                            flex: 1;
+                            display: flex;
+                            padding: 10px 12px;
+                            gap: 12px;
+                            background: linear-gradient(180deg, #f8fdf9 0%, #ffffff 100%);
+                          }
+                          .id-photo-section {
+                            flex-shrink: 0;
+                          }
+                          .id-photo {
+                            width: 55px;
+                            height: 65px;
+                            object-fit: cover;
+                            border-radius: 6px;
+                            border: 2px solid #006c35;
+                          }
+                          .id-photo-placeholder {
+                            width: 55px;
+                            height: 65px;
+                            background: #e8f5e9;
+                            border: 2px solid #006c35;
+                            border-radius: 6px;
+                            display: flex;
+                            align-items: center;
+                            justify-content: center;
+                            color: #006c35;
+                          }
+                          .id-info-section {
+                            flex: 1;
+                            display: flex;
+                            flex-direction: column;
+                            min-width: 0;
+                          }
+                          .id-name {
+                            font-size: 13px;
+                            font-weight: 700;
+                            color: #1a1a1a;
+                            margin-bottom: 2px;
+                            white-space: nowrap;
+                            overflow: hidden;
+                            text-overflow: ellipsis;
+                          }
+                          .id-member-number {
+                            font-size: 11px;
+                            font-weight: 600;
+                            color: #006c35;
+                            margin-bottom: 6px;
+                            letter-spacing: 1px;
+                          }
+                          .id-details {
+                            font-size: 8px;
+                            color: #444;
+                          }
+                          .id-detail-row {
+                            display: flex;
+                            gap: 4px;
+                            margin-bottom: 2px;
+                          }
+                          .id-label {
+                            color: #666;
+                            font-weight: 500;
+                          }
+                          .id-value {
+                            color: #1a1a1a;
+                            font-weight: 600;
+                          }
+                          .id-card-footer {
+                            background: linear-gradient(135deg, #006c35 0%, #00a651 100%);
+                            padding: 5px 12px;
+                            display: flex;
+                            justify-content: space-between;
+                            align-items: center;
+                          }
+                          .id-valid-date {
+                            color: white;
+                            font-size: 7px;
+                            display: flex;
+                            flex-direction: column;
+                          }
+                          .id-star-badge {
+                            color: #ffd700;
+                          }
+                          @media print {
+                            body { background: white; }
+                            .elite-id-card { box-shadow: none; }
+                          }
+                        </style>
+                      </head>
+                      <body>
+                        ${printContent.outerHTML}
+                      </body>
+                    </html>
+                  `);
+                  printWindow.document.close();
+                  printWindow.focus();
+                  setTimeout(() => {
+                    printWindow.print();
+                    printWindow.close();
+                  }, 250);
+                }}>
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <polyline points="6 9 6 2 18 2 18 9"/>
+                    <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/>
+                    <rect x="6" y="14" width="12" height="8"/>
+                  </svg>
+                  {text.print}
+                </button>
+                <button className="btn-close" onClick={() => setShowIdCard(null)}>
+                  {text.close}
                 </button>
               </div>
             </motion.div>

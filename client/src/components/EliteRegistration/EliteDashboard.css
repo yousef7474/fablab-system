@@ -715,6 +715,209 @@
   background: #dc2626;
 }
 
+/* Print ID Button */
+.action-btn.print-id {
+  background: rgba(0, 108, 53, 0.1);
+  color: #006c35;
+}
+
+.action-btn.print-id:hover {
+  background: #006c35;
+  color: white;
+}
+
+/* ID Card Modal */
+.id-card-modal {
+  max-width: 500px;
+}
+
+.id-card-wrapper {
+  display: flex;
+  justify-content: center;
+  padding: 20px;
+  background: linear-gradient(135deg, #f5f7fa 0%, #e4e8ec 100%);
+  border-radius: 12px;
+}
+
+.elite-id-card {
+  width: 324px;
+  height: 204px;
+  background: white;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
+}
+
+.id-card-front {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.id-card-header {
+  background: linear-gradient(135deg, #006c35 0%, #00a651 100%);
+  padding: 10px 14px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.id-logo {
+  width: 38px;
+  height: 38px;
+  object-fit: contain;
+  background: white;
+  border-radius: 8px;
+  padding: 4px;
+}
+
+.id-header-text {
+  flex: 1;
+  text-align: center;
+  color: white;
+}
+
+.id-header-title {
+  display: block;
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+}
+
+.id-header-subtitle {
+  display: block;
+  font-size: 10px;
+  opacity: 0.9;
+  margin-top: 2px;
+}
+
+.id-card-body {
+  flex: 1;
+  display: flex;
+  padding: 12px 14px;
+  gap: 14px;
+  background: linear-gradient(180deg, #f8fdf9 0%, #ffffff 100%);
+}
+
+.id-photo-section {
+  flex-shrink: 0;
+}
+
+.id-photo {
+  width: 65px;
+  height: 80px;
+  object-fit: cover;
+  border-radius: 8px;
+  border: 2px solid #006c35;
+}
+
+.id-photo-placeholder {
+  width: 65px;
+  height: 80px;
+  background: #e8f5e9;
+  border: 2px solid #006c35;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #006c35;
+}
+
+.id-info-section {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.id-name {
+  font-size: 15px;
+  font-weight: 700;
+  color: #1a1a1a;
+  margin-bottom: 2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.id-member-number {
+  font-size: 13px;
+  font-weight: 600;
+  color: #006c35;
+  margin-bottom: 8px;
+  letter-spacing: 1px;
+  font-family: monospace;
+}
+
+.id-details {
+  font-size: 10px;
+  color: #444;
+}
+
+.id-detail-row {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 3px;
+}
+
+.id-label {
+  color: #666;
+  font-weight: 500;
+}
+
+.id-value {
+  color: #1a1a1a;
+  font-weight: 600;
+}
+
+.id-card-footer {
+  background: linear-gradient(135deg, #006c35 0%, #00a651 100%);
+  padding: 6px 14px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.id-valid-date {
+  color: white;
+  font-size: 9px;
+  display: flex;
+  flex-direction: column;
+}
+
+.id-star-badge {
+  color: #ffd700;
+}
+
+.btn-print {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 24px;
+  background: #006c35;
+  color: white;
+  border: none;
+  border-radius: 10px;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  margin-right: 12px;
+}
+
+[dir="rtl"] .btn-print {
+  margin-right: 0;
+  margin-left: 12px;
+}
+
+.btn-print:hover {
+  background: #005528;
+}
+
+.modal-footer {
+  gap: 12px;
+}
+
 /* Responsive */
 @media (max-width: 1024px) {
   .stats-grid {

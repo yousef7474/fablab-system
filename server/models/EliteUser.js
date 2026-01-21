@@ -105,23 +105,33 @@ EliteUser.prototype.comparePassword = async function(candidatePassword) {
   return bcrypt.compare(candidatePassword, this.password);
 };
 
-// Generate unique ID for elite users (ELITE-XXXX format)
+// Generate unique ID for elite users (ELITE-0001 format, sequential)
 EliteUser.generateUniqueId = async () => {
   const prefix = 'ELITE';
-  let unique = false;
-  let uniqueId;
 
-  while (!unique) {
-    const randomNum = Math.floor(1000 + Math.random() * 9000);
-    uniqueId = `${prefix}-${randomNum}`;
+  // Find the highest existing ID number
+  const lastUser = await EliteUser.findOne({
+    where: {
+      uniqueId: {
+        [require('sequelize').Op.like]: `${prefix}-%`
+      }
+    },
+    order: [['uniqueId', 'DESC']]
+  });
 
-    const existing = await EliteUser.findOne({ where: { uniqueId } });
-    if (!existing) {
-      unique = true;
+  let nextNumber = 1;
+
+  if (lastUser && lastUser.uniqueId) {
+    // Extract number from last ID (e.g., "ELITE-0042" -> 42)
+    const match = lastUser.uniqueId.match(/ELITE-(\d+)/);
+    if (match) {
+      nextNumber = parseInt(match[1], 10) + 1;
     }
   }
 
-  return uniqueId;
+  // Format with leading zeros (4 digits: 0001, 0002, etc.)
+  const paddedNumber = String(nextNumber).padStart(4, '0');
+  return `${prefix}-${paddedNumber}`;
 };
 
 module.exports = EliteUser;
