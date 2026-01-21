@@ -691,12 +691,12 @@ const EliteDashboard = () => {
                         <div className="id-member-number">{showIdCard.uniqueId}</div>
                         <div className="id-details">
                           <div className="id-detail-row">
+                            <span className="id-label">الهوية:</span>
                             <span className="id-value">{showIdCard.nationalId}</span>
-                            <span className="id-label">:الهوية</span>
                           </div>
                           <div className="id-detail-row">
+                            <span className="id-label">الهاتف:</span>
                             <span className="id-value">{showIdCard.phoneNumber}</span>
-                            <span className="id-label">:الهاتف</span>
                           </div>
                         </div>
                       </div>
