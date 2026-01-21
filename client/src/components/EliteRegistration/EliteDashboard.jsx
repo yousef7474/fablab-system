@@ -186,7 +186,7 @@ const EliteDashboard = () => {
 
   const formatDate = (date) => {
     if (!date) return '-';
-    return format(new Date(date), 'dd MMM yyyy', { locale: isRTL ? ar : enUS });
+    return format(new Date(date), 'dd/MM/yyyy');
   };
 
   const getStatusBadge = (status) => {
@@ -246,10 +246,22 @@ const EliteDashboard = () => {
               </svg>
               {text.refresh}
             </button>
-            <button className="back-btn" onClick={() => navigate('/')}>
+            <button className="back-btn" onClick={() => {
+              // Check if user came from admin or manager dashboard
+              const adminData = localStorage.getItem('adminData');
+              if (adminData) {
+                const parsed = JSON.parse(adminData);
+                if (parsed.role === 'manager') {
+                  navigate('/manager/dashboard');
+                } else {
+                  navigate('/admin/dashboard');
+                }
+              } else {
+                navigate('/');
+              }
+            }}>
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
-                <polyline points="9 22 9 12 15 12 15 22"/>
+                <path d="M19 12H5M12 19l-7-7 7-7"/>
               </svg>
               {text.backHome}
             </button>
@@ -782,15 +794,15 @@ const EliteDashboard = () => {
                             flex-shrink: 0;
                           }
                           .id-photo {
-                            width: 70px;
-                            height: 85px;
+                            width: 80px;
+                            height: 95px;
                             object-fit: cover;
                             border-radius: 6px;
                             border: 2px solid #006c35;
                           }
                           .id-photo-placeholder {
-                            width: 70px;
-                            height: 85px;
+                            width: 80px;
+                            height: 95px;
                             background: #e8f5e9;
                             border: 2px solid #006c35;
                             border-radius: 6px;
@@ -804,7 +816,7 @@ const EliteDashboard = () => {
                             display: flex;
                             flex-direction: column;
                             min-width: 0;
-                            text-align: left;
+                            text-align: right;
                           }
                           .id-name {
                             font-size: 13px;
