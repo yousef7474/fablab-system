@@ -224,25 +224,45 @@ const UserLookup = ({ onUserFound, onNewUser }) => {
               <p style={{ color: 'rgba(255,255,255,0.9)', marginBottom: '24px', fontSize: '14px' }}>
                 {isRTL ? 'أدخل كلمة المرور للدخول' : 'Enter password to access'}
               </p>
-              <input
-                type="password"
-                placeholder={isRTL ? 'كلمة المرور' : 'Password'}
-                value={elitePassword}
-                onChange={(e) => setElitePassword(e.target.value)}
-                onKeyPress={(e) => e.key === 'Enter' && handleEliteAccess()}
-                style={{
-                  width: '100%',
-                  padding: '14px 18px',
-                  borderRadius: '12px',
-                  border: '2px solid rgba(255,255,255,0.3)',
-                  background: 'rgba(255,255,255,0.15)',
-                  color: 'white',
-                  fontSize: '16px',
-                  textAlign: 'center',
-                  marginBottom: '20px',
-                  outline: 'none'
-                }}
-              />
+              <div style={{ position: 'relative', marginBottom: '20px' }}>
+                <svg
+                  width="20"
+                  height="20"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="rgba(255,255,255,0.6)"
+                  strokeWidth="2"
+                  style={{
+                    position: 'absolute',
+                    left: '14px',
+                    top: '50%',
+                    transform: 'translateY(-50%)',
+                    pointerEvents: 'none'
+                  }}
+                >
+                  <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+                  <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+                </svg>
+                <input
+                  type="password"
+                  placeholder={isRTL ? '● ● ● ● ● ●' : '● ● ● ● ● ●'}
+                  value={elitePassword}
+                  onChange={(e) => setElitePassword(e.target.value)}
+                  onKeyPress={(e) => e.key === 'Enter' && handleEliteAccess()}
+                  autoFocus
+                  style={{
+                    width: '100%',
+                    padding: '14px 18px 14px 44px',
+                    borderRadius: '12px',
+                    border: '2px solid rgba(255,255,255,0.3)',
+                    background: 'rgba(255,255,255,0.15)',
+                    color: 'white',
+                    fontSize: '16px',
+                    textAlign: 'center',
+                    outline: 'none'
+                  }}
+                />
+              </div>
               <div style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
                 <button
                   onClick={handleEliteAccess}

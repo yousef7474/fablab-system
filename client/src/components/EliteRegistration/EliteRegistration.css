@@ -581,4 +581,207 @@
   .elite-btn.primary {
     margin-right: 0;
   }
+
+  .elite-language-switch {
+    top: 10px;
+    right: 10px;
+  }
+}
+
+/* Language Switch */
+.elite-language-switch {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  z-index: 100;
+  display: flex;
+  gap: 8px;
+  background: rgba(255, 255, 255, 0.15);
+  padding: 6px;
+  border-radius: 12px;
+  backdrop-filter: blur(10px);
+}
+
+.elite-language-switch .lang-btn {
+  padding: 8px 16px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.8);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.elite-language-switch .lang-btn:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.elite-language-switch .lang-btn.active {
+  background: white;
+  color: #006c35;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+}
+
+/* Floating Orbs Animation */
+.elite-floating-orbs {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.elite-orb {
+  position: absolute;
+  border-radius: 50%;
+  background: radial-gradient(circle at 30% 30%, rgba(255, 255, 255, 0.3), rgba(255, 255, 255, 0.05));
+  animation: float-orb 15s ease-in-out infinite;
+}
+
+.elite-orb:nth-child(1) {
+  width: 300px;
+  height: 300px;
+  top: -100px;
+  left: -100px;
+  animation-delay: 0s;
+}
+
+.elite-orb:nth-child(2) {
+  width: 200px;
+  height: 200px;
+  top: 20%;
+  right: -50px;
+  animation-delay: -3s;
+  animation-duration: 18s;
+}
+
+.elite-orb:nth-child(3) {
+  width: 150px;
+  height: 150px;
+  bottom: 10%;
+  left: 10%;
+  animation-delay: -6s;
+  animation-duration: 12s;
+}
+
+.elite-orb:nth-child(4) {
+  width: 250px;
+  height: 250px;
+  bottom: -80px;
+  right: 20%;
+  animation-delay: -9s;
+  animation-duration: 20s;
+}
+
+.elite-orb:nth-child(5) {
+  width: 100px;
+  height: 100px;
+  top: 40%;
+  left: 30%;
+  animation-delay: -4s;
+  animation-duration: 14s;
+}
+
+.elite-orb:nth-child(6) {
+  width: 180px;
+  height: 180px;
+  top: 60%;
+  right: 10%;
+  animation-delay: -7s;
+  animation-duration: 16s;
+}
+
+@keyframes float-orb {
+  0%, 100% {
+    transform: translate(0, 0) scale(1);
+    opacity: 0.5;
+  }
+  25% {
+    transform: translate(30px, -30px) scale(1.1);
+    opacity: 0.7;
+  }
+  50% {
+    transform: translate(-20px, 20px) scale(0.9);
+    opacity: 0.4;
+  }
+  75% {
+    transform: translate(10px, 40px) scale(1.05);
+    opacity: 0.6;
+  }
+}
+
+/* Stars Animation */
+.elite-stars {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.elite-star {
+  position: absolute;
+  width: 4px;
+  height: 4px;
+  background: white;
+  border-radius: 50%;
+  animation: twinkle 3s ease-in-out infinite;
+  box-shadow: 0 0 6px rgba(255, 255, 255, 0.8);
+}
+
+@keyframes twinkle {
+  0%, 100% {
+    opacity: 0.2;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.5);
+  }
+}
+
+/* Shimmer effect for logo */
+.elite-logo::after {
+  content: '';
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: linear-gradient(
+    45deg,
+    transparent 40%,
+    rgba(255, 255, 255, 0.3) 50%,
+    transparent 60%
+  );
+  animation: shimmer 3s ease-in-out infinite;
+}
+
+@keyframes shimmer {
+  0% {
+    transform: translateX(-100%) rotate(45deg);
+  }
+  100% {
+    transform: translateX(100%) rotate(45deg);
+  }
+}
+
+/* Pulse animation for success icon */
+.elite-success-card .success-icon {
+  animation: pulse-success 2s ease-in-out infinite;
+}
+
+@keyframes pulse-success {
+  0%, 100% {
+    box-shadow: 0 0 0 0 rgba(0, 166, 81, 0.4);
+  }
+  50% {
+    box-shadow: 0 0 0 20px rgba(0, 166, 81, 0);
+  }
 }

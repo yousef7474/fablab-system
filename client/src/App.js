@@ -7,6 +7,7 @@ import './i18n';
 import { lightTheme } from './config/theme';
 import RegistrationForm from './components/RegistrationForm/RegistrationForm';
 import EliteRegistrationForm from './components/EliteRegistration/EliteRegistrationForm';
+import EliteDashboard from './components/EliteRegistration/EliteDashboard';
 import AdminLogin from './components/Admin/AdminLogin';
 import AdminDashboard from './components/Admin/AdminDashboard';
 import ManagerDashboard from './components/Manager/ManagerDashboard';
@@ -29,6 +30,7 @@ const AppContent = () => {
         <Route path="/" element={<RegistrationForm />} />
         <Route path="/register" element={<RegistrationForm />} />
         <Route path="/elite-registration" element={<EliteRegistrationForm />} />
+        <Route path="/elite-dashboard" element={<EliteDashboard />} />
         <Route path="/admin/login" element={<AdminLogin />} />
         <Route path="/admin/dashboard/*" element={<AdminDashboard />} />
         <Route path="/manager/dashboard/*" element={<ManagerDashboard />} />
