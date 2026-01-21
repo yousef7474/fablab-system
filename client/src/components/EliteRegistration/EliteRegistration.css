@@ -1,0 +1,584 @@
+/* Elite Registration - Green Saudi Theme */
+
+.elite-page {
+  min-height: 100vh;
+  background: linear-gradient(135deg, #004d26 0%, #006c35 30%, #00a651 70%, #00c853 100%);
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 20px;
+  direction: rtl;
+}
+
+.elite-bg-pattern {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-image:
+    radial-gradient(circle at 20% 80%, rgba(255, 255, 255, 0.1) 0%, transparent 50%),
+    radial-gradient(circle at 80% 20%, rgba(255, 255, 255, 0.1) 0%, transparent 50%),
+    radial-gradient(circle at 40% 40%, rgba(255, 255, 255, 0.05) 0%, transparent 30%),
+    radial-gradient(circle at 60% 60%, rgba(255, 255, 255, 0.05) 0%, transparent 30%);
+  pointer-events: none;
+}
+
+/* Saudi Decorative Elements - Palm/Geometric Pattern */
+.saudi-decoration {
+  position: absolute;
+  width: 150px;
+  height: 150px;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 50%;
+  pointer-events: none;
+}
+
+.saudi-decoration.top-left {
+  top: -50px;
+  left: -50px;
+  width: 200px;
+  height: 200px;
+}
+
+.saudi-decoration.top-right {
+  top: -30px;
+  right: -30px;
+  width: 120px;
+  height: 120px;
+}
+
+.saudi-decoration.bottom-left {
+  bottom: -40px;
+  left: -40px;
+  width: 160px;
+  height: 160px;
+}
+
+.saudi-decoration.bottom-right {
+  bottom: -60px;
+  right: -60px;
+  width: 180px;
+  height: 180px;
+}
+
+.elite-container {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  max-width: 600px;
+}
+
+/* Header */
+.elite-header {
+  text-align: center;
+  margin-bottom: 30px;
+}
+
+.elite-logo {
+  width: 100px;
+  height: 100px;
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 20px;
+  backdrop-filter: blur(10px);
+  border: 3px solid rgba(255, 255, 255, 0.3);
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+}
+
+.elite-logo svg {
+  stroke: #ffd700;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3));
+}
+
+.elite-title {
+  font-size: 42px;
+  font-weight: 800;
+  color: white;
+  margin: 0 0 8px;
+  text-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+  letter-spacing: 2px;
+}
+
+.elite-subtitle {
+  font-size: 18px;
+  color: rgba(255, 255, 255, 0.9);
+  margin: 0;
+}
+
+/* Progress Steps */
+.elite-progress {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 30px;
+  gap: 8px;
+}
+
+.progress-step {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.progress-step .step-number {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.2);
+  color: rgba(255, 255, 255, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 16px;
+  transition: all 0.3s ease;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+}
+
+.progress-step.active .step-number {
+  background: white;
+  color: #006c35;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+  border-color: white;
+}
+
+.progress-step.completed .step-number {
+  background: #ffd700;
+  color: #006c35;
+  border-color: #ffd700;
+}
+
+.progress-step span {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.7);
+  white-space: nowrap;
+}
+
+.progress-step.active span {
+  color: white;
+  font-weight: 600;
+}
+
+.progress-line {
+  width: 40px;
+  height: 3px;
+  background: rgba(255, 255, 255, 0.3);
+  border-radius: 2px;
+  margin-bottom: 28px;
+}
+
+/* Form Card */
+.elite-form-card {
+  background: rgba(255, 255, 255, 0.95);
+  border-radius: 24px;
+  padding: 40px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+  backdrop-filter: blur(20px);
+}
+
+.step-title {
+  font-size: 24px;
+  font-weight: 700;
+  color: #006c35;
+  margin: 0 0 30px;
+  text-align: center;
+  position: relative;
+  padding-bottom: 15px;
+}
+
+.step-title::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 60px;
+  height: 4px;
+  background: linear-gradient(90deg, #006c35, #00a651);
+  border-radius: 2px;
+}
+
+/* Profile Upload */
+.profile-upload-section {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-bottom: 30px;
+}
+
+.profile-upload-circle {
+  width: 120px;
+  height: 120px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #e8f5e9, #c8e6c9);
+  border: 4px dashed #006c35;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  position: relative;
+  overflow: hidden;
+  transition: all 0.3s ease;
+}
+
+.profile-upload-circle:hover {
+  border-style: solid;
+  transform: scale(1.05);
+}
+
+.profile-upload-circle img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.profile-upload-circle svg {
+  stroke: #006c35;
+  opacity: 0.6;
+}
+
+.upload-overlay {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: rgba(0, 108, 53, 0.8);
+  padding: 8px;
+  display: flex;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.profile-upload-circle:hover .upload-overlay {
+  opacity: 1;
+}
+
+.upload-overlay svg {
+  stroke: white;
+  opacity: 1;
+}
+
+.upload-hint {
+  font-size: 13px;
+  color: #666;
+  margin-top: 10px;
+}
+
+/* Form Elements */
+.form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+}
+
+.form-group {
+  margin-bottom: 20px;
+}
+
+.form-group label {
+  display: block;
+  font-size: 14px;
+  font-weight: 600;
+  color: #333;
+  margin-bottom: 8px;
+}
+
+.form-group label .required {
+  color: #dc2626;
+}
+
+.form-group input,
+.form-group select,
+.form-group textarea {
+  width: 100%;
+  padding: 14px 18px;
+  border: 2px solid #e0e0e0;
+  border-radius: 12px;
+  font-size: 15px;
+  transition: all 0.3s ease;
+  background: #fafafa;
+  color: #333;
+}
+
+.form-group input:focus,
+.form-group select:focus,
+.form-group textarea:focus {
+  outline: none;
+  border-color: #006c35;
+  background: white;
+  box-shadow: 0 0 0 4px rgba(0, 108, 53, 0.1);
+}
+
+.form-group input::placeholder,
+.form-group textarea::placeholder {
+  color: #999;
+}
+
+.form-group textarea {
+  resize: vertical;
+  min-height: 100px;
+}
+
+/* Password Section */
+.password-info {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  background: linear-gradient(135deg, #e8f5e9, #c8e6c9);
+  padding: 20px;
+  border-radius: 12px;
+  margin-bottom: 25px;
+}
+
+.password-info svg {
+  stroke: #006c35;
+  flex-shrink: 0;
+}
+
+.password-info p {
+  margin: 0;
+  color: #006c35;
+  font-size: 14px;
+}
+
+.password-requirements {
+  background: #f5f5f5;
+  padding: 15px 20px;
+  border-radius: 10px;
+  margin-top: 15px;
+}
+
+.password-requirements p {
+  margin: 0 0 10px;
+  font-size: 13px;
+  color: #666;
+  font-weight: 600;
+}
+
+.password-requirements ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.password-requirements li {
+  font-size: 13px;
+  color: #999;
+  padding: 5px 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.password-requirements li::before {
+  content: '○';
+  font-size: 10px;
+}
+
+.password-requirements li.met {
+  color: #006c35;
+}
+
+.password-requirements li.met::before {
+  content: '✓';
+  color: #006c35;
+  font-weight: bold;
+}
+
+/* Navigation Buttons */
+.form-navigation {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 30px;
+  gap: 15px;
+}
+
+.elite-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 14px 28px;
+  border-radius: 12px;
+  font-size: 16px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  border: none;
+}
+
+.elite-btn.primary {
+  background: linear-gradient(135deg, #006c35, #00a651);
+  color: white;
+  margin-right: auto;
+  box-shadow: 0 4px 15px rgba(0, 108, 53, 0.3);
+}
+
+.elite-btn.primary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(0, 108, 53, 0.4);
+}
+
+.elite-btn.secondary {
+  background: transparent;
+  color: #006c35;
+  border: 2px solid #006c35;
+}
+
+.elite-btn.secondary:hover {
+  background: rgba(0, 108, 53, 0.1);
+}
+
+.elite-btn:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.loading-spinner {
+  width: 20px;
+  height: 20px;
+  border: 3px solid rgba(255, 255, 255, 0.3);
+  border-top-color: white;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* Back Home Button */
+.back-home-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin: 30px auto 0;
+  padding: 12px 24px;
+  background: rgba(255, 255, 255, 0.15);
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-radius: 12px;
+  color: white;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.back-home-btn:hover {
+  background: rgba(255, 255, 255, 0.25);
+  border-color: rgba(255, 255, 255, 0.5);
+}
+
+/* Success Card */
+.elite-success-card {
+  background: rgba(255, 255, 255, 0.95);
+  border-radius: 24px;
+  padding: 50px 40px;
+  text-align: center;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+}
+
+.elite-success-card .success-icon {
+  width: 120px;
+  height: 120px;
+  background: linear-gradient(135deg, #e8f5e9, #c8e6c9);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 30px;
+}
+
+.elite-success-card .success-icon svg {
+  stroke: #006c35;
+}
+
+.elite-success-card h2 {
+  font-size: 32px;
+  color: #006c35;
+  margin: 0 0 10px;
+}
+
+.elite-success-card p {
+  font-size: 16px;
+  color: #666;
+  margin: 0 0 30px;
+}
+
+.user-info-display {
+  background: #f5f5f5;
+  border-radius: 12px;
+  padding: 20px;
+  margin-bottom: 30px;
+}
+
+.user-info-display .info-item {
+  display: flex;
+  justify-content: space-between;
+  padding: 10px 0;
+  border-bottom: 1px solid #e0e0e0;
+}
+
+.user-info-display .info-item:last-child {
+  border-bottom: none;
+}
+
+.user-info-display .info-label {
+  color: #666;
+  font-size: 14px;
+}
+
+.user-info-display .info-value {
+  color: #006c35;
+  font-weight: 700;
+  font-size: 14px;
+}
+
+/* Responsive */
+@media (max-width: 600px) {
+  .elite-page {
+    padding: 20px 15px;
+  }
+
+  .elite-form-card {
+    padding: 25px 20px;
+  }
+
+  .form-row {
+    grid-template-columns: 1fr;
+  }
+
+  .elite-title {
+    font-size: 32px;
+  }
+
+  .elite-progress {
+    flex-wrap: wrap;
+    gap: 15px;
+  }
+
+  .progress-line {
+    display: none;
+  }
+
+  .form-navigation {
+    flex-direction: column-reverse;
+  }
+
+  .elite-btn {
+    width: 100%;
+  }
+
+  .elite-btn.primary {
+    margin-right: 0;
+  }
+}

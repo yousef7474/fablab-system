@@ -6,16 +6,17 @@ import 'react-toastify/dist/ReactToastify.css';
 import './i18n';
 import { lightTheme } from './config/theme';
 import RegistrationForm from './components/RegistrationForm/RegistrationForm';
+import EliteRegistrationForm from './components/EliteRegistration/EliteRegistrationForm';
 import AdminLogin from './components/Admin/AdminLogin';
 import AdminDashboard from './components/Admin/AdminDashboard';
 import ManagerDashboard from './components/Manager/ManagerDashboard';
 import LanguageSelector from './components/LanguageSelector';
 
-// Wrapper to conditionally show LanguageSelector (hide on admin/manager pages)
+// Wrapper to conditionally show LanguageSelector (hide on admin/manager/elite pages)
 const ConditionalLanguageSelector = () => {
   const location = useLocation();
-  // Hide on admin login page and manager dashboard (they have their own language toggle)
-  if (location.pathname === '/admin/login' || location.pathname.startsWith('/manager')) return null;
+  // Hide on admin login page, manager dashboard, and elite registration (they have their own language toggle or are Arabic only)
+  if (location.pathname === '/admin/login' || location.pathname.startsWith('/manager') || location.pathname.startsWith('/elite')) return null;
   return <LanguageSelector />;
 };
 
@@ -27,6 +28,7 @@ const AppContent = () => {
       <Routes>
         <Route path="/" element={<RegistrationForm />} />
         <Route path="/register" element={<RegistrationForm />} />
+        <Route path="/elite-registration" element={<EliteRegistrationForm />} />
         <Route path="/admin/login" element={<AdminLogin />} />
         <Route path="/admin/dashboard/*" element={<AdminDashboard />} />
         <Route path="/manager/dashboard/*" element={<ManagerDashboard />} />

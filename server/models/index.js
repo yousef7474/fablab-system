@@ -15,6 +15,7 @@ const ManagerTodo = require('./ManagerTodo');
 const Workspace = require('./Workspace');
 const WorkspaceRating = require('./WorkspaceRating');
 const SectionAvailability = require('./SectionAvailability');
+const EliteUser = require('./EliteUser');
 
 // Define relationships
 User.hasMany(Registration, { foreignKey: 'userId', as: 'registrations' });
@@ -118,5 +119,6 @@ module.exports = {
   Workspace,
   WorkspaceRating,
   SectionAvailability,
+  EliteUser,
   syncDatabase
 };

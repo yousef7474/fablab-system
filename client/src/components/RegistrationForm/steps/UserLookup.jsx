@@ -1,14 +1,30 @@
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { motion } from 'framer-motion';
+import { useNavigate } from 'react-router-dom';
+import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'react-toastify';
 import api from '../../../config/api';
+
+const ELITE_PASSWORD = 'fabstar123';
 
 const UserLookup = ({ onUserFound, onNewUser }) => {
   const { t, i18n } = useTranslation();
   const isRTL = i18n.language === 'ar';
+  const navigate = useNavigate();
   const [identifier, setIdentifier] = useState('');
   const [loading, setLoading] = useState(false);
+  const [showEliteModal, setShowEliteModal] = useState(false);
+  const [elitePassword, setElitePassword] = useState('');
+
+  const handleEliteAccess = () => {
+    if (elitePassword === ELITE_PASSWORD) {
+      setShowEliteModal(false);
+      setElitePassword('');
+      navigate('/elite-registration');
+    } else {
+      toast.error(isRTL ? 'كلمة المرور غير صحيحة' : 'Incorrect password');
+    }
+  };
 
   const handleCheck = async () => {
     if (!identifier.trim()) {
@@ -124,6 +140,148 @@ const UserLookup = ({ onUserFound, onNewUser }) => {
           {isRTL ? 'تسجيل جديد' : 'New Registration'}
         </button>
       </motion.div>
+
+      {/* Elite Button */}
+      <motion.div
+        className="elite-button-container"
+        initial={{ y: 20, opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        transition={{ delay: 0.6 }}
+        style={{ marginTop: '24px', textAlign: 'center' }}
+      >
+        <button
+          className="btn btn-elite"
+          onClick={() => setShowEliteModal(true)}
+          style={{
+            background: 'linear-gradient(135deg, #006c35, #00a651)',
+            color: 'white',
+            border: 'none',
+            padding: '12px 32px',
+            borderRadius: '12px',
+            fontSize: '16px',
+            fontWeight: '700',
+            cursor: 'pointer',
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '10px',
+            boxShadow: '0 4px 15px rgba(0, 166, 81, 0.3)',
+            transition: 'all 0.3s ease'
+          }}
+        >
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+          </svg>
+          النخبة
+        </button>
+      </motion.div>
+
+      {/* Elite Password Modal */}
+      <AnimatePresence>
+        {showEliteModal && (
+          <motion.div
+            className="elite-modal-overlay"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => setShowEliteModal(false)}
+            style={{
+              position: 'fixed',
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              background: 'rgba(0, 0, 0, 0.7)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              zIndex: 1000
+            }}
+          >
+            <motion.div
+              className="elite-modal"
+              initial={{ scale: 0.8, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.8, opacity: 0 }}
+              onClick={(e) => e.stopPropagation()}
+              style={{
+                background: 'linear-gradient(135deg, #006c35, #00a651)',
+                borderRadius: '20px',
+                padding: '32px',
+                maxWidth: '400px',
+                width: '90%',
+                textAlign: 'center',
+                boxShadow: '0 20px 60px rgba(0, 0, 0, 0.4)'
+              }}
+            >
+              <div style={{ marginBottom: '20px' }}>
+                <svg width="60" height="60" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2">
+                  <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+                </svg>
+              </div>
+              <h3 style={{ color: 'white', fontSize: '24px', marginBottom: '8px', fontWeight: '700' }}>
+                النخبة
+              </h3>
+              <p style={{ color: 'rgba(255,255,255,0.9)', marginBottom: '24px', fontSize: '14px' }}>
+                {isRTL ? 'أدخل كلمة المرور للدخول' : 'Enter password to access'}
+              </p>
+              <input
+                type="password"
+                placeholder={isRTL ? 'كلمة المرور' : 'Password'}
+                value={elitePassword}
+                onChange={(e) => setElitePassword(e.target.value)}
+                onKeyPress={(e) => e.key === 'Enter' && handleEliteAccess()}
+                style={{
+                  width: '100%',
+                  padding: '14px 18px',
+                  borderRadius: '12px',
+                  border: '2px solid rgba(255,255,255,0.3)',
+                  background: 'rgba(255,255,255,0.15)',
+                  color: 'white',
+                  fontSize: '16px',
+                  textAlign: 'center',
+                  marginBottom: '20px',
+                  outline: 'none'
+                }}
+              />
+              <div style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
+                <button
+                  onClick={handleEliteAccess}
+                  style={{
+                    background: 'white',
+                    color: '#006c35',
+                    border: 'none',
+                    padding: '12px 32px',
+                    borderRadius: '10px',
+                    fontSize: '16px',
+                    fontWeight: '700',
+                    cursor: 'pointer'
+                  }}
+                >
+                  {isRTL ? 'دخول' : 'Enter'}
+                </button>
+                <button
+                  onClick={() => {
+                    setShowEliteModal(false);
+                    setElitePassword('');
+                  }}
+                  style={{
+                    background: 'rgba(255,255,255,0.2)',
+                    color: 'white',
+                    border: '2px solid rgba(255,255,255,0.3)',
+                    padding: '12px 32px',
+                    borderRadius: '10px',
+                    fontSize: '16px',
+                    fontWeight: '600',
+                    cursor: 'pointer'
+                  }}
+                >
+                  {isRTL ? 'إلغاء' : 'Cancel'}
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };
