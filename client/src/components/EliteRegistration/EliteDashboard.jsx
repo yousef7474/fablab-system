@@ -665,7 +665,7 @@ const EliteDashboard = () => {
                           <img src={showIdCard.profilePicture} alt="" className="id-photo" />
                         ) : (
                           <div className="id-photo-placeholder">
-                            <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                            <svg width="50" height="50" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
                               <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
                               <circle cx="12" cy="7" r="4"/>
                             </svg>
@@ -686,12 +686,6 @@ const EliteDashboard = () => {
                             <span className="id-label">{isRTL ? 'الهاتف:' : 'Phone:'}</span>
                             <span className="id-value" dir="ltr">{showIdCard.phoneNumber}</span>
                           </div>
-                          {showIdCard.organization && (
-                            <div className="id-detail-row">
-                              <span className="id-label">{isRTL ? 'المنظمة:' : 'Org:'}</span>
-                              <span className="id-value">{showIdCard.organization}</span>
-                            </div>
-                          )}
                         </div>
                       </div>
                     </div>
@@ -788,15 +782,15 @@ const EliteDashboard = () => {
                             flex-shrink: 0;
                           }
                           .id-photo {
-                            width: 55px;
-                            height: 65px;
+                            width: 70px;
+                            height: 85px;
                             object-fit: cover;
                             border-radius: 6px;
                             border: 2px solid #006c35;
                           }
                           .id-photo-placeholder {
-                            width: 55px;
-                            height: 65px;
+                            width: 70px;
+                            height: 85px;
                             background: #e8f5e9;
                             border: 2px solid #006c35;
                             border-radius: 6px;
@@ -810,6 +804,7 @@ const EliteDashboard = () => {
                             display: flex;
                             flex-direction: column;
                             min-width: 0;
+                            text-align: left;
                           }
                           .id-name {
                             font-size: 13px;
