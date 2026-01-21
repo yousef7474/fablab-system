@@ -669,9 +669,9 @@ const EliteDashboard = () => {
                       <img src="/found.png" alt="Foundation" className="id-logo found-logo" />
                     </div>
 
-                    {/* Card Body */}
-                    <div className="id-card-body">
-                      {/* Profile Photo */}
+                    {/* Card Body - RTL Layout */}
+                    <div className="id-card-body" dir="rtl">
+                      {/* Profile Photo - Right Side */}
                       <div className="id-photo-section">
                         {showIdCard.profilePicture ? (
                           <img src={showIdCard.profilePicture} alt="" className="id-photo" />
@@ -685,27 +685,27 @@ const EliteDashboard = () => {
                         )}
                       </div>
 
-                      {/* Member Info */}
+                      {/* Member Info - Left Side, Right Aligned */}
                       <div className="id-info-section">
                         <div className="id-name">{showIdCard.firstName} {showIdCard.lastName}</div>
                         <div className="id-member-number">{showIdCard.uniqueId}</div>
                         <div className="id-details">
                           <div className="id-detail-row">
-                            <span className="id-label">{isRTL ? 'الهوية:' : 'ID:'}</span>
                             <span className="id-value">{showIdCard.nationalId}</span>
+                            <span className="id-label">:الهوية</span>
                           </div>
                           <div className="id-detail-row">
-                            <span className="id-label">{isRTL ? 'الهاتف:' : 'Phone:'}</span>
-                            <span className="id-value" dir="ltr">{showIdCard.phoneNumber}</span>
+                            <span className="id-value">{showIdCard.phoneNumber}</span>
+                            <span className="id-label">:الهاتف</span>
                           </div>
                         </div>
                       </div>
                     </div>
 
-                    {/* Card Footer */}
-                    <div className="id-card-footer">
+                    {/* Card Footer - RTL */}
+                    <div className="id-card-footer" dir="rtl">
                       <div className="id-valid-date">
-                        <span>{isRTL ? 'تاريخ الانضمام:' : 'Member Since:'}</span>
+                        <span>:تاريخ الانضمام</span>
                         <span>{formatDate(showIdCard.createdAt)}</span>
                       </div>
                       <div className="id-star-badge">
@@ -789,6 +789,7 @@ const EliteDashboard = () => {
                             padding: 10px 12px;
                             gap: 12px;
                             background: linear-gradient(180deg, #f8fdf9 0%, #ffffff 100%);
+                            direction: rtl;
                           }
                           .id-photo-section {
                             flex-shrink: 0;
@@ -817,6 +818,7 @@ const EliteDashboard = () => {
                             flex-direction: column;
                             min-width: 0;
                             text-align: right;
+                            direction: rtl;
                           }
                           .id-name {
                             font-size: 13px;
@@ -842,6 +844,8 @@ const EliteDashboard = () => {
                             display: flex;
                             gap: 4px;
                             margin-bottom: 2px;
+                            justify-content: flex-start;
+                            direction: rtl;
                           }
                           .id-label {
                             color: #666;
@@ -857,12 +861,14 @@ const EliteDashboard = () => {
                             display: flex;
                             justify-content: space-between;
                             align-items: center;
+                            direction: rtl;
                           }
                           .id-valid-date {
                             color: white;
                             font-size: 7px;
                             display: flex;
                             flex-direction: column;
+                            text-align: right;
                           }
                           .id-star-badge {
                             color: #ffd700;

@@ -798,6 +798,7 @@
   padding: 12px 14px;
   gap: 14px;
   background: linear-gradient(180deg, #f8fdf9 0%, #ffffff 100%);
+  direction: rtl;
 }
 
 .id-photo-section {
@@ -830,6 +831,7 @@
   flex-direction: column;
   min-width: 0;
   text-align: right;
+  direction: rtl;
 }
 
 .id-name {
@@ -860,6 +862,8 @@
   display: flex;
   gap: 6px;
   margin-bottom: 3px;
+  justify-content: flex-start;
+  direction: rtl;
 }
 
 .id-label {
@@ -878,6 +882,7 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
+  direction: rtl;
 }
 
 .id-valid-date {
@@ -885,6 +890,7 @@
   font-size: 9px;
   display: flex;
   flex-direction: column;
+  text-align: right;
 }
 
 .id-star-badge {
