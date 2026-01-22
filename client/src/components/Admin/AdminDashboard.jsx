@@ -1769,6 +1769,18 @@ const AdminDashboard = () => {
     }
   };
 
+  // Handle task status update
+  const handleUpdateTaskStatus = async (taskId, newStatus) => {
+    try {
+      await api.patch(`/tasks/${taskId}/status`, { status: newStatus });
+      toast.success(isRTL ? 'تم تحديث حالة المهمة' : 'Task status updated');
+      fetchSchedule();
+    } catch (error) {
+      console.error('Error updating task status:', error);
+      toast.error(isRTL ? 'خطأ في تحديث حالة المهمة' : 'Error updating task status');
+    }
+  };
+
   const formatDate = (dateString) => {
     if (!dateString) return 'N/A';
     return new Date(dateString).toLocaleDateString(isRTL ? 'ar-SA' : 'en-US', {
@@ -3141,29 +3153,38 @@ const AdminDashboard = () => {
                                     <span>{isRTL ? 'مسند إلى: ' : 'Assigned to: '}{apt.assignee}</span>
                                   </div>
                                 )}
-                                {apt.type === 'task' && apt.status && (
-                                  <div className="apt-detail-row">
+                                {apt.type === 'task' && (
+                                  <div className="apt-detail-row task-status-row">
                                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                                       <path d="M9 11l3 3L22 4"/>
                                       <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>
                                     </svg>
-                                    <span style={{
-                                      padding: '2px 8px',
-                                      borderRadius: '8px',
-                                      fontSize: '11px',
-                                      background: apt.status === 'completed' ? 'rgba(34, 197, 94, 0.15)' :
-                                                 apt.status === 'in_progress' ? 'rgba(59, 130, 246, 0.15)' :
-                                                 apt.status === 'pending' ? 'rgba(245, 158, 11, 0.15)' :
-                                                 'rgba(107, 114, 128, 0.15)',
-                                      color: apt.status === 'completed' ? '#16a34a' :
-                                             apt.status === 'in_progress' ? '#2563eb' :
-                                             apt.status === 'pending' ? '#d97706' : '#6b7280'
-                                    }}>
-                                      {apt.status === 'pending' ? (isRTL ? 'قيد الانتظار' : 'Pending') :
-                                       apt.status === 'in_progress' ? (isRTL ? 'قيد التنفيذ' : 'In Progress') :
-                                       apt.status === 'completed' ? (isRTL ? 'مكتمل' : 'Completed') :
-                                       (isRTL ? 'ملغى' : 'Cancelled')}
-                                    </span>
+                                    <select
+                                      className="task-status-select"
+                                      value={apt.status || 'pending'}
+                                      onChange={(e) => handleUpdateTaskStatus(apt.id, e.target.value)}
+                                      onClick={(e) => e.stopPropagation()}
+                                      style={{
+                                        padding: '4px 8px',
+                                        borderRadius: '8px',
+                                        fontSize: '11px',
+                                        fontWeight: '500',
+                                        border: 'none',
+                                        cursor: 'pointer',
+                                        background: apt.status === 'completed' ? 'rgba(34, 197, 94, 0.15)' :
+                                                   apt.status === 'in_progress' ? 'rgba(59, 130, 246, 0.15)' :
+                                                   apt.status === 'pending' ? 'rgba(245, 158, 11, 0.15)' :
+                                                   'rgba(107, 114, 128, 0.15)',
+                                        color: apt.status === 'completed' ? '#16a34a' :
+                                               apt.status === 'in_progress' ? '#2563eb' :
+                                               apt.status === 'pending' ? '#d97706' : '#6b7280'
+                                      }}
+                                    >
+                                      <option value="pending">{isRTL ? 'قيد الانتظار' : 'Pending'}</option>
+                                      <option value="in_progress">{isRTL ? 'قيد التنفيذ' : 'In Progress'}</option>
+                                      <option value="completed">{isRTL ? 'مكتمل' : 'Completed'}</option>
+                                      <option value="cancelled">{isRTL ? 'ملغى' : 'Cancelled'}</option>
+                                    </select>
                                   </div>
                                 )}
                                 {apt.type === 'task' && apt.description && (

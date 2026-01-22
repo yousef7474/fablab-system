@@ -2664,6 +2664,39 @@
   font-weight: 500;
 }
 
+/* Task Status Select */
+.task-status-row {
+  align-items: center;
+}
+
+.task-status-select {
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  outline: none;
+  transition: all 0.2s;
+}
+
+.task-status-select:hover {
+  opacity: 0.8;
+  transform: scale(1.02);
+}
+
+.task-status-select:focus {
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.3);
+}
+
+.task-status-select option {
+  background: white;
+  color: var(--gray-700);
+  padding: 8px;
+}
+
+[data-theme="dark"] .task-status-select option {
+  background: var(--dark-bg);
+  color: var(--dark-text-primary);
+}
+
 /* Enhanced Appointment Item for list */
 .appointment-item-detailed {
   display: flex;
