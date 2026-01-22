@@ -1130,18 +1130,36 @@ const ManagerDashboard = () => {
     }
   };
 
-  const handleDeleteVolunteer = async (volunteerId) => {
-    if (!window.confirm(isRTL ? 'هل أنت متأكد من حذف هذا المتطوع؟ سيتم حذف جميع سجلاته.' : 'Are you sure you want to delete this volunteer? All their records will be deleted.')) return;
+  const handleDeleteVolunteer = async (volunteerId, forceDelete = false) => {
+    const confirmMessage = forceDelete
+      ? (isRTL ? 'هل أنت متأكد؟ سيتم حذف المتطوع وجميع سجلات التطوع الخاصة به نهائياً!' : 'Are you sure? This will permanently delete the volunteer and ALL their volunteer records!')
+      : (isRTL ? 'هل أنت متأكد من حذف هذا المتطوع؟' : 'Are you sure you want to delete this volunteer?');
+
+    if (!window.confirm(confirmMessage)) return;
 
     try {
-      await api.delete(`/volunteers/${volunteerId}`);
+      const url = forceDelete ? `/volunteers/${volunteerId}?force=true` : `/volunteers/${volunteerId}`;
+      await api.delete(url);
       toast.success(isRTL ? 'تم حذف المتطوع بنجاح' : 'Volunteer deleted successfully');
       setShowVolunteerDetailModal(false);
       setSelectedVolunteer(null);
       fetchVolunteers();
     } catch (error) {
       console.error('Error deleting volunteer:', error);
-      toast.error(isRTL ? 'خطأ في حذف المتطوع' : 'Error deleting volunteer');
+      // Check if it's because of existing opportunities
+      if (error.response?.data?.requiresForce) {
+        const count = error.response.data.opportunityCount;
+        const forceConfirm = window.confirm(
+          isRTL
+            ? `هذا المتطوع لديه ${count} سجل تطوع. هل تريد حذف المتطوع مع جميع سجلاته؟`
+            : `This volunteer has ${count} volunteer record(s). Do you want to delete the volunteer along with all their records?`
+        );
+        if (forceConfirm) {
+          handleDeleteVolunteer(volunteerId, true);
+        }
+      } else {
+        toast.error(isRTL ? 'خطأ في حذف المتطوع' : 'Error deleting volunteer');
+      }
     }
   };
 

@@ -192,6 +192,7 @@ exports.updateVolunteer = async (req, res) => {
 exports.deleteVolunteer = async (req, res) => {
   try {
     const { id } = req.params;
+    const { force } = req.query;
 
     const volunteer = await Volunteer.findByPk(id);
     if (!volunteer) {
@@ -200,12 +201,25 @@ exports.deleteVolunteer = async (req, res) => {
 
     // Check if volunteer has opportunities
     const opportunityCount = await VolunteerOpportunity.count({ where: { volunteerId: id } });
-    if (opportunityCount > 0) {
+    if (opportunityCount > 0 && force !== 'true') {
       return res.status(400).json({
-        message: 'Cannot delete volunteer with existing opportunities. Deactivate instead.',
-        messageAr: 'لا يمكن حذف متطوع لديه فرص تطوعية. قم بتعطيله بدلاً من ذلك.',
-        opportunityCount
+        message: 'Cannot delete volunteer with existing opportunities. Use force=true to delete all records.',
+        messageAr: 'لا يمكن حذف متطوع لديه فرص تطوعية. استخدم الحذف القسري لحذف جميع السجلات.',
+        opportunityCount,
+        requiresForce: true
       });
+    }
+
+    // If force delete, delete all related records first
+    if (opportunityCount > 0 && force === 'true') {
+      // Delete ratings for this volunteer's opportunities
+      await VolunteerRating.destroy({
+        where: {
+          volunteerId: id
+        }
+      });
+      // Delete all opportunities
+      await VolunteerOpportunity.destroy({ where: { volunteerId: id } });
     }
 
     await volunteer.destroy();
