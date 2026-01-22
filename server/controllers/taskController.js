@@ -48,12 +48,18 @@ exports.getAllTasks = async (req, res) => {
  */
 exports.getGroupedTasks = async (req, res) => {
   try {
-    const { status, employeeId, section } = req.query;
+    const { status, employeeId, section, showAll } = req.query;
     const whereClause = {};
 
     if (status) whereClause.status = status;
     if (employeeId) whereClause.employeeId = employeeId;
     if (section) whereClause.section = section;
+
+    // If user is a manager and not requesting all tasks, only show tasks they created
+    // Admins can see all tasks
+    if (req.admin && req.admin.role === 'manager' && showAll !== 'true') {
+      whereClause.createdById = req.admin.adminId;
+    }
 
     const tasks = await Task.findAll({
       where: whereClause,
