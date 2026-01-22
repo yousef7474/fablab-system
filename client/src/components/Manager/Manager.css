@@ -202,6 +202,83 @@
   color: #6b7280;
 }
 
+/* Task Status Groups */
+.tasks-grouped-container {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.task-status-group {
+  background: var(--card-bg);
+  border-radius: 12px;
+  padding: 16px;
+  border: 1px solid var(--border-color);
+}
+
+.status-group-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 16px;
+  font-weight: 600;
+  margin-bottom: 16px;
+  padding-bottom: 12px;
+  border-bottom: 2px solid var(--border-color);
+}
+
+.status-group-title .status-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+}
+
+.status-group-title.in_progress {
+  color: #2563eb;
+  border-bottom-color: #2563eb;
+}
+
+.status-group-title.in_progress .status-dot {
+  background: #2563eb;
+}
+
+.status-group-title.pending {
+  color: #f59e0b;
+  border-bottom-color: #f59e0b;
+}
+
+.status-group-title.pending .status-dot {
+  background: #f59e0b;
+}
+
+.status-group-title.completed {
+  color: #16a34a;
+  border-bottom-color: #16a34a;
+}
+
+.status-group-title.completed .status-dot {
+  background: #16a34a;
+}
+
+.status-group-title.cancelled {
+  color: #6b7280;
+  border-bottom-color: #6b7280;
+}
+
+.status-group-title.cancelled .status-dot {
+  background: #6b7280;
+}
+
+.assignment-card.completed-task {
+  opacity: 0.8;
+  background: rgba(34, 197, 94, 0.05);
+}
+
+.assignment-card.cancelled-task {
+  opacity: 0.6;
+  background: rgba(107, 114, 128, 0.05);
+}
+
 /* Calendar Task Dots (Square vs Circle for appointments) */
 .calendar-day .task-dot {
   width: 6px;

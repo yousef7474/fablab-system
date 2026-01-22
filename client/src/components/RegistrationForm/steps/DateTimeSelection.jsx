@@ -113,7 +113,7 @@ const DateTimeSelection = ({ formData, onChange, onNext, onBack }) => {
 
   const getMinDate = () => {
     const today = new Date();
-    today.setDate(today.getDate() + 1);
+    // Allow same-day registration
     return today.toISOString().split('T')[0];
   };
 
@@ -165,8 +165,8 @@ const DateTimeSelection = ({ formData, onChange, onNext, onBack }) => {
     const dateToCheck = new Date(date);
     dateToCheck.setHours(0, 0, 0, 0);
 
-    // Check basic conditions: future date and working day
-    if (dateToCheck <= today || !isWorkingDay(date)) return false;
+    // Check basic conditions: today or future date and working day
+    if (dateToCheck < today || !isWorkingDay(date)) return false;
 
     // Check if date falls within a section deactivation period
     if (isDateInDeactivationPeriod(date)) return false;

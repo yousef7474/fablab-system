@@ -2224,6 +2224,36 @@ const AdminDashboard = () => {
                     <option value="female">{isRTL ? 'أنثى' : 'Female'}</option>
                   </select>
 
+                  <div className="date-range-filter">
+                    <div className="date-input-group">
+                      <label>{isRTL ? 'من:' : 'From:'}</label>
+                      <input
+                        type="date"
+                        value={filters.dateFrom}
+                        onChange={(e) => setFilters({ ...filters, dateFrom: e.target.value })}
+                        className="date-input"
+                      />
+                    </div>
+                    <div className="date-input-group">
+                      <label>{isRTL ? 'إلى:' : 'To:'}</label>
+                      <input
+                        type="date"
+                        value={filters.dateTo}
+                        onChange={(e) => setFilters({ ...filters, dateTo: e.target.value })}
+                        className="date-input"
+                      />
+                    </div>
+                    {(filters.dateFrom || filters.dateTo) && (
+                      <button
+                        className="clear-dates-btn"
+                        onClick={() => setFilters({ ...filters, dateFrom: '', dateTo: '' })}
+                        title={isRTL ? 'مسح التواريخ' : 'Clear dates'}
+                      >
+                        ×
+                      </button>
+                    )}
+                  </div>
+
                   <button className="filter-btn" onClick={fetchRegistrations}>
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                       <polyline points="1 4 1 10 7 10"/>

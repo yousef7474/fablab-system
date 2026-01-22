@@ -1491,6 +1491,85 @@
   background-position: left 0.75rem center;
 }
 
+/* Date Range Filter */
+.date-range-filter {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.5rem 1rem;
+  background: var(--gray-50);
+  border-radius: 10px;
+  border: 1px solid var(--border-color);
+}
+
+.date-input-group {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.date-input-group label {
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+
+.date-input {
+  padding: 0.5rem 0.75rem;
+  background: var(--card-bg);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  font-size: 0.85rem;
+  color: var(--text-primary);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.date-input:hover {
+  border-color: var(--primary-color);
+}
+
+.date-input:focus {
+  outline: none;
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.clear-dates-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  background: var(--gray-200);
+  border: none;
+  border-radius: 50%;
+  font-size: 1.2rem;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.clear-dates-btn:hover {
+  background: var(--danger-color);
+  color: white;
+}
+
+[data-theme="dark"] .date-range-filter {
+  background: var(--bg-tertiary);
+}
+
+[data-theme="dark"] .date-input {
+  background: var(--bg-secondary);
+  border-color: var(--border-color);
+  color: var(--text-primary);
+}
+
+[data-theme="dark"] .clear-dates-btn {
+  background: var(--bg-hover);
+}
+
 .filter-btn,
 .export-btn {
   display: flex;
