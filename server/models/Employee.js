@@ -20,16 +20,14 @@ const Employee = sequelize.define('Employee', {
     }
   },
   section: {
-    type: DataTypes.ENUM(
-      'Electronics and Programming',
-      'CNC Laser',
-      'CNC Wood',
-      '3D',
-      'Robotic and AI',
-      "Kid's Club",
-      'Vinyl Cutting'
-    ),
-    allowNull: false
+    type: DataTypes.STRING,
+    allowNull: false,
+    comment: 'Can be predefined sections or custom sections added by manager'
+  },
+  isCustomSection: {
+    type: DataTypes.BOOLEAN,
+    defaultValue: false,
+    comment: 'True if this is a custom section added by manager'
   },
   isActive: {
     type: DataTypes.BOOLEAN,
