@@ -404,6 +404,81 @@ exports.exportSelectedCSV = async (req, res) => {
   }
 };
 
+// Export selected users to CSV
+exports.exportSelectedUsersCSV = async (req, res) => {
+  try {
+    const { ids } = req.body;
+
+    if (!ids || !Array.isArray(ids) || ids.length === 0) {
+      return res.status(400).json({ message: 'No user IDs provided' });
+    }
+
+    const users = await User.findAll({
+      where: {
+        userId: {
+          [Op.in]: ids
+        }
+      },
+      order: [['createdAt', 'DESC']]
+    });
+
+    // Generate CSV with all personal data
+    const headers = [
+      'User ID',
+      'First Name',
+      'Last Name',
+      'Full Name',
+      'Email',
+      'Phone Number',
+      'National ID',
+      'Application Type',
+      'Entity Name',
+      'Sex',
+      'Age',
+      'Education Level',
+      'Specialization',
+      'Address',
+      'City',
+      'Created At'
+    ];
+
+    const rows = users.map(user => {
+      return [
+        user.userId || user.uniqueId || 'N/A',
+        user.firstName || 'N/A',
+        user.lastName || 'N/A',
+        user.name || (user.firstName && user.lastName ? `${user.firstName} ${user.lastName}` : 'N/A'),
+        user.email || 'N/A',
+        user.phoneNumber || 'N/A',
+        user.nationalId || 'N/A',
+        user.applicationType || 'N/A',
+        user.entityName || 'N/A',
+        user.sex || 'N/A',
+        user.age || 'N/A',
+        user.educationLevel || 'N/A',
+        user.specialization || 'N/A',
+        user.address || 'N/A',
+        user.city || 'N/A',
+        user.createdAt ? new Date(user.createdAt).toISOString() : 'N/A'
+      ];
+    });
+
+    // Add BOM for Excel to recognize UTF-8 encoding (required for Arabic text)
+    const BOM = '\uFEFF';
+    const csvContent = BOM + [
+      headers.join(','),
+      ...rows.map(row => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(','))
+    ].join('\n');
+
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader('Content-Disposition', `attachment; filename=users_${new Date().toISOString().split('T')[0]}.csv`);
+    res.send(csvContent);
+  } catch (error) {
+    console.error('Error exporting selected users CSV:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
 // Update registration
 exports.updateRegistration = async (req, res) => {
   try {

@@ -44,5 +44,6 @@ router.get('/export/csv', authMiddleware, adminController.exportToCSV);
 // Bulk operations
 router.post('/registrations/bulk-delete', authMiddleware, adminController.bulkDeleteRegistrations);
 router.post('/registrations/export-selected', authMiddleware, adminController.exportSelectedCSV);
+router.post('/users/export-selected', authMiddleware, adminController.exportSelectedUsersCSV);
 
 module.exports = router;

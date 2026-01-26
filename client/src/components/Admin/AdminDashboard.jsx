@@ -134,6 +134,7 @@ const AdminDashboard = () => {
 
   // Bulk selection states
   const [selectedRegistrations, setSelectedRegistrations] = useState(new Set());
+  const [selectedUsers, setSelectedUsers] = useState(new Set());
 
   // Selected calendar day for showing appointment details
   const [selectedCalendarDay, setSelectedCalendarDay] = useState(null);
@@ -590,6 +591,52 @@ const AdminDashboard = () => {
     } catch (error) {
       console.error('Error exporting selected:', error);
       toast.error(isRTL ? 'خطأ في تصدير التسجيلات' : 'Error exporting registrations');
+    }
+  };
+
+  // User selection functions
+  const handleSelectAllUsers = () => {
+    const allIds = users.map(u => u.userId);
+    setSelectedUsers(new Set(allIds));
+  };
+
+  const handleDeselectAllUsers = () => {
+    setSelectedUsers(new Set());
+  };
+
+  const handleToggleUser = (userId) => {
+    const newSelected = new Set(selectedUsers);
+    if (newSelected.has(userId)) {
+      newSelected.delete(userId);
+    } else {
+      newSelected.add(userId);
+    }
+    setSelectedUsers(newSelected);
+  };
+
+  const handleExportSelectedUsers = async () => {
+    if (selectedUsers.size === 0) {
+      toast.warning(isRTL ? 'يرجى اختيار مستخدمين للتصدير' : 'Please select users to export');
+      return;
+    }
+
+    try {
+      const response = await api.post('/admin/users/export-selected', {
+        ids: Array.from(selectedUsers)
+      }, { responseType: 'blob' });
+
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `selected_users_${new Date().toISOString().split('T')[0]}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+
+      toast.success(isRTL ? 'تم تصدير المستخدمين المحددين' : 'Selected users exported');
+    } catch (error) {
+      console.error('Error exporting selected users:', error);
+      toast.error(isRTL ? 'خطأ في تصدير المستخدمين' : 'Error exporting users');
     }
   };
 
@@ -2632,6 +2679,30 @@ const AdminDashboard = () => {
                 </div>
 
                 <div className="table-container">
+                  {/* Selection Info Bar */}
+                  {selectedUsers.size > 0 && (
+                    <div className="selection-bar">
+                      <span>
+                        {isRTL
+                          ? `${selectedUsers.size} مستخدم محدد`
+                          : `${selectedUsers.size} selected`}
+                      </span>
+                      <div className="selection-actions">
+                        <button className="export-btn" onClick={handleExportSelectedUsers}>
+                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                            <polyline points="7 10 12 15 17 10"/>
+                            <line x1="12" y1="15" x2="12" y2="3"/>
+                          </svg>
+                          {isRTL ? 'تصدير المحدد' : 'Export Selected'}
+                        </button>
+                        <button className="deselect-btn" onClick={handleDeselectAllUsers}>
+                          {isRTL ? 'إلغاء التحديد' : 'Deselect All'}
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
                   {loading ? (
                     <div className="loading-container">
                       <div className="loading-spinner large" />
@@ -2649,6 +2720,14 @@ const AdminDashboard = () => {
                     <table className="data-table">
                       <thead>
                         <tr>
+                          <th className="checkbox-cell">
+                            <input
+                              type="checkbox"
+                              checked={selectedUsers.size === users.length && users.length > 0}
+                              onChange={(e) => e.target.checked ? handleSelectAllUsers() : handleDeselectAllUsers()}
+                              title={isRTL ? 'تحديد الكل' : 'Select All'}
+                            />
+                          </th>
                           <th>{isRTL ? 'رقم المستخدم' : 'User ID'}</th>
                           <th>{isRTL ? 'الاسم' : 'Name'}</th>
                           <th>{isRTL ? 'البريد الإلكتروني' : 'Email'}</th>
@@ -2660,7 +2739,14 @@ const AdminDashboard = () => {
                       </thead>
                       <tbody>
                         {users.map((user) => (
-                          <tr key={user.userId}>
+                          <tr key={user.userId} className={selectedUsers.has(user.userId) ? 'selected' : ''}>
+                            <td className="checkbox-cell">
+                              <input
+                                type="checkbox"
+                                checked={selectedUsers.has(user.userId)}
+                                onChange={() => handleToggleUser(user.userId)}
+                              />
+                            </td>
                             <td><span className="reg-id">{user.userId}</span></td>
                             <td>
                               <span
