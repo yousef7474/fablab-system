@@ -98,6 +98,13 @@ const AdminDashboard = () => {
     pages: 0,
     limit: 50
   });
+  const [userPagination, setUserPagination] = useState({
+    page: 1,
+    total: 0,
+    pages: 0,
+    limit: 50
+  });
+  const [userSearch, setUserSearch] = useState('');
   const [analyticsDateRange, setAnalyticsDateRange] = useState({
     startDate: '',
     endDate: ''
@@ -264,16 +271,39 @@ const AdminDashboard = () => {
     }
   };
 
-  const fetchUsers = async () => {
+  const fetchUsers = async (page = 1) => {
     setLoading(true);
     try {
-      const response = await api.get('/admin/users');
+      const params = new URLSearchParams();
+      params.append('page', page);
+      params.append('limit', userPagination.limit);
+      if (userSearch) params.append('search', userSearch);
+      const response = await api.get(`/admin/users?${params.toString()}`);
       setUsers(response.data.users || []);
+      if (response.data.pagination) {
+        setUserPagination(prev => ({
+          ...prev,
+          page: response.data.pagination.page,
+          total: response.data.pagination.total,
+          pages: response.data.pagination.pages
+        }));
+      }
     } catch (error) {
       console.error('Error fetching users:', error);
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleUserPageChange = (newPage) => {
+    if (newPage >= 1 && newPage <= userPagination.pages) {
+      fetchUsers(newPage);
+    }
+  };
+
+  const handleUserSearch = () => {
+    setUserPagination(prev => ({ ...prev, page: 1 }));
+    fetchUsers(1);
   };
 
   const fetchUserWithRegistrations = async (userId) => {
@@ -2579,10 +2609,20 @@ const AdminDashboard = () => {
                     </svg>
                     <input
                       type="text"
-                      placeholder={isRTL ? 'بحث بالاسم أو البريد...' : 'Search by name or email...'}
+                      value={userSearch}
+                      onChange={(e) => setUserSearch(e.target.value)}
+                      onKeyPress={(e) => e.key === 'Enter' && handleUserSearch()}
+                      placeholder={isRTL ? 'بحث بالاسم أو البريد أو الهاتف...' : 'Search by name, email, or phone...'}
                     />
                   </div>
-                  <button className="filter-btn" onClick={fetchUsers}>
+                  <button className="filter-btn" onClick={handleUserSearch}>
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <circle cx="11" cy="11" r="8"/>
+                      <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+                    </svg>
+                    {isRTL ? 'بحث' : 'Search'}
+                  </button>
+                  <button className="filter-btn" onClick={() => { setUserSearch(''); fetchUsers(1); }}>
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                       <polyline points="1 4 1 10 7 10"/>
                       <path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/>
@@ -2689,6 +2729,68 @@ const AdminDashboard = () => {
                         ))}
                       </tbody>
                     </table>
+                  )}
+
+                  {/* Users Pagination */}
+                  {userPagination.pages > 1 && (
+                    <div className="pagination-container">
+                      <div className="pagination-info">
+                        {isRTL
+                          ? `عرض ${((userPagination.page - 1) * userPagination.limit) + 1} - ${Math.min(userPagination.page * userPagination.limit, userPagination.total)} من ${userPagination.total} مستخدم`
+                          : `Showing ${((userPagination.page - 1) * userPagination.limit) + 1} - ${Math.min(userPagination.page * userPagination.limit, userPagination.total)} of ${userPagination.total} users`
+                        }
+                      </div>
+                      <div className="pagination-controls">
+                        <button
+                          className="pagination-btn"
+                          onClick={() => handleUserPageChange(1)}
+                          disabled={userPagination.page === 1}
+                          title={isRTL ? 'الصفحة الأولى' : 'First page'}
+                        >
+                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                            <polyline points="11 17 6 12 11 7"/>
+                            <polyline points="18 17 13 12 18 7"/>
+                          </svg>
+                        </button>
+                        <button
+                          className="pagination-btn"
+                          onClick={() => handleUserPageChange(userPagination.page - 1)}
+                          disabled={userPagination.page === 1}
+                          title={isRTL ? 'السابق' : 'Previous'}
+                        >
+                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                            <polyline points="15 18 9 12 15 6"/>
+                          </svg>
+                        </button>
+                        <span className="pagination-pages">
+                          {isRTL
+                            ? `صفحة ${userPagination.page} من ${userPagination.pages}`
+                            : `Page ${userPagination.page} of ${userPagination.pages}`
+                          }
+                        </span>
+                        <button
+                          className="pagination-btn"
+                          onClick={() => handleUserPageChange(userPagination.page + 1)}
+                          disabled={userPagination.page === userPagination.pages}
+                          title={isRTL ? 'التالي' : 'Next'}
+                        >
+                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                            <polyline points="9 18 15 12 9 6"/>
+                          </svg>
+                        </button>
+                        <button
+                          className="pagination-btn"
+                          onClick={() => handleUserPageChange(userPagination.pages)}
+                          disabled={userPagination.page === userPagination.pages}
+                          title={isRTL ? 'الصفحة الأخيرة' : 'Last page'}
+                        >
+                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                            <polyline points="13 17 18 12 13 7"/>
+                            <polyline points="6 17 11 12 6 7"/>
+                          </svg>
+                        </button>
+                      </div>
+                    </div>
                   )}
                 </div>
               </motion.div>

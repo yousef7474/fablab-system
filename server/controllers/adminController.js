@@ -621,7 +621,7 @@ exports.updateUser = async (req, res) => {
 // Get all users
 exports.getAllUsers = async (req, res) => {
   try {
-    const { search, applicationType, page = 1, limit = 20 } = req.query;
+    const { search, applicationType, page = 1, limit = 50 } = req.query;
 
     const whereClause = {};
 
