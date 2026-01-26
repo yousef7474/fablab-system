@@ -92,6 +92,12 @@ const AdminDashboard = () => {
     dateFrom: '',
     dateTo: ''
   });
+  const [pagination, setPagination] = useState({
+    page: 1,
+    total: 0,
+    pages: 0,
+    limit: 50
+  });
   const [analyticsDateRange, setAnalyticsDateRange] = useState({
     startDate: '',
     endDate: ''
@@ -220,22 +226,43 @@ const AdminDashboard = () => {
     }
   };
 
-  const fetchRegistrations = useCallback(async () => {
+  const fetchRegistrations = useCallback(async (page = 1) => {
     setLoading(true);
     try {
       const params = new URLSearchParams();
       Object.entries(filters).forEach(([key, value]) => {
         if (value) params.append(key, value);
       });
+      params.append('page', page);
+      params.append('limit', pagination.limit);
       const response = await api.get(`/admin/registrations?${params.toString()}`);
       setRegistrations(response.data.registrations || []);
+      if (response.data.pagination) {
+        setPagination(prev => ({
+          ...prev,
+          page: response.data.pagination.page,
+          total: response.data.pagination.total,
+          pages: response.data.pagination.pages
+        }));
+      }
     } catch (error) {
       console.error('Error fetching registrations:', error);
       toast.error(isRTL ? 'خطأ في تحميل التسجيلات' : 'Error loading registrations');
     } finally {
       setLoading(false);
     }
-  }, [filters, isRTL]);
+  }, [filters, isRTL, pagination.limit]);
+
+  // Reset page when filters change
+  useEffect(() => {
+    setPagination(prev => ({ ...prev, page: 1 }));
+  }, [filters]);
+
+  const handlePageChange = (newPage) => {
+    if (newPage >= 1 && newPage <= pagination.pages) {
+      fetchRegistrations(newPage);
+    }
+  };
 
   const fetchUsers = async () => {
     setLoading(true);
@@ -2468,6 +2495,68 @@ const AdminDashboard = () => {
                         </tbody>
                       </table>
                     </>
+                  )}
+
+                  {/* Pagination */}
+                  {pagination.pages > 1 && (
+                    <div className="pagination-container">
+                      <div className="pagination-info">
+                        {isRTL
+                          ? `عرض ${((pagination.page - 1) * pagination.limit) + 1} - ${Math.min(pagination.page * pagination.limit, pagination.total)} من ${pagination.total} تسجيل`
+                          : `Showing ${((pagination.page - 1) * pagination.limit) + 1} - ${Math.min(pagination.page * pagination.limit, pagination.total)} of ${pagination.total} registrations`
+                        }
+                      </div>
+                      <div className="pagination-controls">
+                        <button
+                          className="pagination-btn"
+                          onClick={() => handlePageChange(1)}
+                          disabled={pagination.page === 1}
+                          title={isRTL ? 'الصفحة الأولى' : 'First page'}
+                        >
+                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                            <polyline points="11 17 6 12 11 7"/>
+                            <polyline points="18 17 13 12 18 7"/>
+                          </svg>
+                        </button>
+                        <button
+                          className="pagination-btn"
+                          onClick={() => handlePageChange(pagination.page - 1)}
+                          disabled={pagination.page === 1}
+                          title={isRTL ? 'السابق' : 'Previous'}
+                        >
+                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                            <polyline points="15 18 9 12 15 6"/>
+                          </svg>
+                        </button>
+                        <span className="pagination-pages">
+                          {isRTL
+                            ? `صفحة ${pagination.page} من ${pagination.pages}`
+                            : `Page ${pagination.page} of ${pagination.pages}`
+                          }
+                        </span>
+                        <button
+                          className="pagination-btn"
+                          onClick={() => handlePageChange(pagination.page + 1)}
+                          disabled={pagination.page === pagination.pages}
+                          title={isRTL ? 'التالي' : 'Next'}
+                        >
+                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                            <polyline points="9 18 15 12 9 6"/>
+                          </svg>
+                        </button>
+                        <button
+                          className="pagination-btn"
+                          onClick={() => handlePageChange(pagination.pages)}
+                          disabled={pagination.page === pagination.pages}
+                          title={isRTL ? 'الصفحة الأخيرة' : 'Last page'}
+                        >
+                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                            <polyline points="13 17 18 12 13 7"/>
+                            <polyline points="6 17 11 12 6 7"/>
+                          </svg>
+                        </button>
+                      </div>
+                    </div>
                   )}
                 </div>
               </motion.div>

@@ -109,8 +109,10 @@ exports.getAllRegistrations = async (req, res) => {
       sex,
       status,
       search,
+      dateFrom,
+      dateTo,
       page = 1,
-      limit = 20
+      limit = 50
     } = req.query;
 
     const whereClause = {};
@@ -123,8 +125,22 @@ exports.getAllRegistrations = async (req, res) => {
     if (entity) userWhereClause.entityName = entity;
     if (sex) userWhereClause.sex = sex;
 
-    // Time period filter
-    if (timePeriod) {
+    // Date range filter
+    if (dateFrom || dateTo) {
+      whereClause.createdAt = {};
+      if (dateFrom) {
+        whereClause.createdAt[Op.gte] = new Date(dateFrom);
+      }
+      if (dateTo) {
+        // Add one day to include the end date fully
+        const endDate = new Date(dateTo);
+        endDate.setDate(endDate.getDate() + 1);
+        whereClause.createdAt[Op.lt] = endDate;
+      }
+    }
+
+    // Time period filter (only if date range not specified)
+    if (timePeriod && !dateFrom && !dateTo) {
       const now = new Date();
       let startDate;
 
