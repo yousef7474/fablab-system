@@ -422,7 +422,7 @@ exports.exportSelectedUsersCSV = async (req, res) => {
       order: [['createdAt', 'DESC']]
     });
 
-    // Generate CSV with all personal data
+    // Generate CSV with all personal data (using actual User model fields)
     const headers = [
       'User ID',
       'First Name',
@@ -432,19 +432,19 @@ exports.exportSelectedUsersCSV = async (req, res) => {
       'Phone Number',
       'National ID',
       'Application Type',
-      'Entity Name',
       'Sex',
-      'Age',
-      'Education Level',
-      'Specialization',
-      'Address',
-      'City',
+      'Nationality',
+      'Current Job',
+      'National Address',
+      'Entity Name',
+      'Visiting Entity',
+      'Person In Charge',
       'Created At'
     ];
 
     const rows = users.map(user => {
       return [
-        user.userId || user.uniqueId || 'N/A',
+        user.userId || 'N/A',
         user.firstName || 'N/A',
         user.lastName || 'N/A',
         user.name || (user.firstName && user.lastName ? `${user.firstName} ${user.lastName}` : 'N/A'),
@@ -452,13 +452,13 @@ exports.exportSelectedUsersCSV = async (req, res) => {
         user.phoneNumber || 'N/A',
         user.nationalId || 'N/A',
         user.applicationType || 'N/A',
-        user.entityName || 'N/A',
         user.sex || 'N/A',
-        user.age || 'N/A',
-        user.educationLevel || 'N/A',
-        user.specialization || 'N/A',
-        user.address || 'N/A',
-        user.city || 'N/A',
+        user.nationality || 'N/A',
+        user.currentJob || 'N/A',
+        user.nationalAddress || 'N/A',
+        user.entityName || 'N/A',
+        user.visitingEntity || 'N/A',
+        user.personInCharge || 'N/A',
         user.createdAt ? new Date(user.createdAt).toISOString() : 'N/A'
       ];
     });
