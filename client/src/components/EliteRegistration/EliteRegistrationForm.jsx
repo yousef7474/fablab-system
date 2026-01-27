@@ -12,6 +12,8 @@ const EliteRegistrationForm = () => {
   const [showSuccess, setShowSuccess] = useState(false);
   const [createdUser, setCreatedUser] = useState(null);
   const [language, setLanguage] = useState('ar');
+  const [termsAccepted, setTermsAccepted] = useState(false);
+  const [showTermsModal, setShowTermsModal] = useState(false);
   const isRTL = language === 'ar';
 
   // Translations
@@ -22,6 +24,7 @@ const EliteRegistrationForm = () => {
       step1: 'المعلومات الأساسية',
       step2: 'البيانات الشخصية',
       step3: 'كلمة المرور',
+      step4: 'الشروط والأحكام',
       firstName: 'الاسم الأول',
       lastName: 'الاسم الأخير',
       email: 'البريد الإلكتروني',
@@ -71,7 +74,14 @@ const EliteRegistrationForm = () => {
       minPassword: 'كلمة المرور يجب أن تكون 6 أحرف على الأقل',
       passwordMismatch: 'كلمتا المرور غير متطابقتين',
       imageTooLarge: 'حجم الصورة يجب أن يكون أقل من 5 ميجابايت',
-      successMessage: 'تم إنشاء حسابك بنجاح!'
+      successMessage: 'تم إنشاء حسابك بنجاح!',
+      termsTitle: 'الشروط والأحكام',
+      termsSubtitle: 'يرجى قراءة الشروط والأحكام بعناية قبل الموافقة',
+      readTerms: 'قراءة الشروط والأحكام كاملة',
+      acceptTerms: 'أوافق على جميع الشروط والأحكام',
+      mustAcceptTerms: 'يجب الموافقة على الشروط والأحكام للمتابعة',
+      termsModalTitle: 'الشروط والأحكام - برنامج النخبة',
+      close: 'إغلاق'
     },
     en: {
       elite: 'Elite',
@@ -79,6 +89,7 @@ const EliteRegistrationForm = () => {
       step1: 'Basic Information',
       step2: 'Personal Data',
       step3: 'Password',
+      step4: 'Terms & Conditions',
       firstName: 'First Name',
       lastName: 'Last Name',
       email: 'Email',
@@ -128,7 +139,206 @@ const EliteRegistrationForm = () => {
       minPassword: 'Password must be at least 6 characters',
       passwordMismatch: 'Passwords do not match',
       imageTooLarge: 'Image size must be less than 5MB',
-      successMessage: 'Your account has been created successfully!'
+      successMessage: 'Your account has been created successfully!',
+      termsTitle: 'Terms & Conditions',
+      termsSubtitle: 'Please read the terms and conditions carefully before agreeing',
+      readTerms: 'Read Full Terms & Conditions',
+      acceptTerms: 'I agree to all Terms and Conditions',
+      mustAcceptTerms: 'You must accept the terms and conditions to continue',
+      termsModalTitle: 'Terms & Conditions - Elite Program',
+      close: 'Close'
+    }
+  };
+
+  // Terms and Conditions Content
+  const termsContent = {
+    ar: {
+      intro: 'مرحباً بك في برنامج النخبة المقدم من مؤسسة عبدالمنعم الراشد الإنسانية وفاب لاب الأحساء',
+      sections: [
+        {
+          title: '1. نظرة عامة على البرنامج',
+          content: `برنامج النخبة هو برنامج دعم متكامل يهدف إلى رعاية المواهب والطلاب المتميزين من خلال توفير الدعم المالي والتقني والتعليمي. يتم تقديم هذا البرنامج بالشراكة بين مؤسسة عبدالمنعم الراشد الإنسانية وفاب لاب الأحساء.`
+        },
+        {
+          title: '2. أنواع الدعم المقدم',
+          content: `يشمل الدعم المقدم لأعضاء النخبة:
+• الدعم المالي: منح مالية لتغطية تكاليف المشاريع والمواد
+• دعم المعدات: استخدام جميع معدات وأجهزة فاب لاب بجميع أقسامه
+• الدعم التعليمي: دورات تدريبية وورش عمل متخصصة
+• المسابقات: دعم المشاركة في المسابقات المحلية والدولية
+• الإرشاد: جلسات إرشادية مع مهندسين ومتخصصين في جميع الأقسام
+• جدول خاص: جدول زمني مخصص لكل عضو نخبة للاستفادة من خدمات المختبر`
+        },
+        {
+          title: '3. أقسام فاب لاب المتاحة',
+          content: `يحق لأعضاء النخبة الوصول إلى جميع أقسام فاب لاب:
+• قسم الإلكترونيات والبرمجة
+• قسم CNC الليزر
+• قسم CNC الخشب
+• قسم الطباعة ثلاثية الأبعاد (3D)
+• قسم الروبوتات والذكاء الاصطناعي
+• نادي الأطفال
+• قسم قص الفينيل`
+        },
+        {
+          title: '4. نظام التصنيف والفئات',
+          content: `يتم تصنيف أعضاء النخبة إلى أربع فئات بناءً على الأداء:
+
+الفئة A (90% - 100%): دعم كامل في جميع المجالات
+الفئة B (80% - 89%): دعم عالي مع بعض القيود
+الفئة C (70% - 79%): دعم متوسط
+الفئة D (60% - 69%): دعم أساسي
+
+يتم تحديد نسبة الدعم بناءً على فئة العضو.`
+        },
+        {
+          title: '5. معايير التقييم',
+          content: `يتم تقييم أعضاء النخبة بناءً على المعايير التالية:
+• الحضور والالتزام: الالتزام بالمواعيد وجدول التدريب (20%)
+• جودة المشاريع: مستوى الإبداع والإتقان في المشاريع المنفذة (25%)
+• التطور والتعلم: مدى التحسن واكتساب مهارات جديدة (20%)
+• المشاركة الفعالة: المشاركة في الفعاليات والمسابقات (15%)
+• العمل الجماعي: التعاون والعمل مع الآخرين (10%)
+• السلوك والأخلاق: الالتزام بقواعد السلوك والآداب (10%)`
+        },
+        {
+          title: '6. مدة العضوية والتجديد',
+          content: `• مدة العضوية في برنامج النخبة سنة واحدة من تاريخ القبول
+• يتم تجديد العضوية سنوياً بناءً على تقييم الأداء
+• يجب الحفاظ على نسبة 60% كحد أدنى للبقاء في البرنامج
+• يتم إجراء تقييم شامل في نهاية كل فصل دراسي`
+        },
+        {
+          title: '7. شروط الاستبعاد',
+          content: `يحق للمؤسسة استبعاد العضو من برنامج النخبة في الحالات التالية:
+• انخفاض نسبة التقييم عن 60%
+• مخالفة الشروط والأحكام
+• سوء السلوك أو الإخلال بآداب التعامل
+• الغياب المتكرر بدون عذر مقبول
+• إساءة استخدام المعدات أو المرافق`
+        },
+        {
+          title: '8. في حالة الاستبعاد',
+          content: `عند استبعاد العضو من برنامج النخبة:
+• يتم إصدار تقرير مفصل يوضح أداء العضو مع البيانات والنسب
+• يمكن للعضو الاستمرار في الاستفادة من خدمات فاب لاب كمستخدم عادي
+• يمكن للعضو التقدم مرة أخرى لبرنامج النخبة بعد تحسين أدائه
+• يجب إثبات تحسن ملموس للقبول مرة أخرى في البرنامج`
+        },
+        {
+          title: '9. حقوق المؤسسة',
+          content: `تحتفظ مؤسسة عبدالمنعم الراشد الإنسانية وفاب لاب الأحساء بالحقوق التالية:
+• تعديل الشروط والأحكام في أي وقت مع إشعار الأعضاء
+• تغيير نظام التصنيف أو معايير التقييم
+• إيقاف أو تعديل برنامج الدعم
+• استخدام مشاريع الأعضاء للأغراض الترويجية (مع ذكر المصدر)`
+        },
+        {
+          title: '10. التزامات العضو',
+          content: `يلتزم عضو النخبة بما يلي:
+• احترام جميع الشروط والأحكام
+• الالتزام بالجدول الزمني المحدد
+• المحافظة على المعدات والمرافق
+• التعامل باحترام مع جميع المنتسبين والموظفين
+• عدم إفشاء أي معلومات سرية
+• المشاركة في الفعاليات والمسابقات عند الطلب`
+        }
+      ],
+      footer: 'بالموافقة على هذه الشروط والأحكام، أقر بأنني قرأت وفهمت جميع البنود وأوافق على الالتزام بها.'
+    },
+    en: {
+      intro: 'Welcome to the Elite Program provided by Abdulmonem Alrashed Humanitarian Foundation and FABLAB Al-Ahsa',
+      sections: [
+        {
+          title: '1. Program Overview',
+          content: `The Elite Program is a comprehensive support initiative aimed at nurturing talented students through financial, technical, and educational support. This program is offered in partnership between Abdulmonem Alrashed Humanitarian Foundation and FABLAB Al-Ahsa.`
+        },
+        {
+          title: '2. Types of Support Provided',
+          content: `Support provided to Elite members includes:
+• Financial Support: Grants to cover project and material costs
+• Equipment Support: Access to all FABLAB equipment across all sections
+• Educational Support: Specialized training courses and workshops
+• Competitions: Support for participation in local and international competitions
+• Mentorship: Advisory sessions with engineers and specialists across all sections
+• Personal Schedule: Dedicated time slots for each Elite member to utilize lab services`
+        },
+        {
+          title: '3. Available FABLAB Sections',
+          content: `Elite members have access to all FABLAB sections:
+• Electronics and Programming
+• CNC Laser
+• CNC Wood
+• 3D Printing
+• Robotics and AI
+• Kids Club
+• Vinyl Cutting`
+        },
+        {
+          title: '4. Classification System and Categories',
+          content: `Elite members are classified into four categories based on performance:
+
+Category A (90% - 100%): Full support in all areas
+Category B (80% - 89%): High support with some limitations
+Category C (70% - 79%): Medium support
+Category D (60% - 69%): Basic support
+
+Support percentage is determined based on the member's category.`
+        },
+        {
+          title: '5. Evaluation Criteria',
+          content: `Elite members are evaluated based on the following criteria:
+• Attendance & Commitment: Adherence to schedules and training sessions (20%)
+• Project Quality: Level of creativity and excellence in executed projects (25%)
+• Growth & Learning: Progress and acquisition of new skills (20%)
+• Active Participation: Involvement in events and competitions (15%)
+• Teamwork: Collaboration and working with others (10%)
+• Behavior & Ethics: Adherence to conduct rules and etiquette (10%)`
+        },
+        {
+          title: '6. Membership Duration and Renewal',
+          content: `• Elite Program membership is valid for one year from acceptance date
+• Membership is renewed annually based on performance evaluation
+• A minimum of 60% must be maintained to remain in the program
+• Comprehensive evaluation is conducted at the end of each semester`
+        },
+        {
+          title: '7. Exclusion Conditions',
+          content: `The Foundation reserves the right to exclude members from the Elite Program in the following cases:
+• Evaluation score dropping below 60%
+• Violation of terms and conditions
+• Misconduct or breach of behavioral standards
+• Repeated absence without acceptable excuse
+• Misuse of equipment or facilities`
+        },
+        {
+          title: '8. In Case of Exclusion',
+          content: `When a member is excluded from the Elite Program:
+• A detailed report is issued showing the member's performance with data and percentages
+• The member may continue to use FABLAB services as a regular user
+• The member may reapply to the Elite Program after improving their performance
+• Demonstrable improvement must be shown for re-acceptance into the program`
+        },
+        {
+          title: '9. Foundation Rights',
+          content: `Abdulmonem Alrashed Humanitarian Foundation and FABLAB Al-Ahsa reserve the following rights:
+• Modify terms and conditions at any time with member notification
+• Change the classification system or evaluation criteria
+• Suspend or modify the support program
+• Use member projects for promotional purposes (with attribution)`
+        },
+        {
+          title: '10. Member Obligations',
+          content: `Elite members are obligated to:
+• Respect all terms and conditions
+• Adhere to the designated schedule
+• Maintain equipment and facilities
+• Treat all staff and members with respect
+• Not disclose any confidential information
+• Participate in events and competitions when requested`
+        }
+      ],
+      footer: 'By agreeing to these terms and conditions, I acknowledge that I have read and understood all clauses and agree to abide by them.'
     }
   };
 
@@ -214,11 +424,21 @@ const EliteRegistrationForm = () => {
       setStep(2);
     } else if (step === 2 && validateStep2()) {
       setStep(3);
+    } else if (step === 3 && validateStep3()) {
+      setStep(4);
     }
   };
 
+  const validateStep4 = () => {
+    if (!termsAccepted) {
+      toast.error(text.mustAcceptTerms);
+      return false;
+    }
+    return true;
+  };
+
   const handleSubmit = async () => {
-    if (!validateStep3()) return;
+    if (!validateStep4()) return;
 
     setLoading(true);
     try {
@@ -379,7 +599,7 @@ const EliteRegistrationForm = () => {
         </motion.div>
 
         {/* Progress Steps */}
-        <div className="elite-progress">
+        <div className="elite-progress elite-progress-4">
           <div className={`progress-step ${step >= 1 ? 'active' : ''} ${step > 1 ? 'completed' : ''}`}>
             <div className="step-number">{step > 1 ? '✓' : '1'}</div>
             <span>{text.step1}</span>
@@ -390,9 +610,14 @@ const EliteRegistrationForm = () => {
             <span>{text.step2}</span>
           </div>
           <div className="progress-line"></div>
-          <div className={`progress-step ${step >= 3 ? 'active' : ''}`}>
-            <div className="step-number">3</div>
+          <div className={`progress-step ${step >= 3 ? 'active' : ''} ${step > 3 ? 'completed' : ''}`}>
+            <div className="step-number">{step > 3 ? '✓' : '3'}</div>
             <span>{text.step3}</span>
+          </div>
+          <div className="progress-line"></div>
+          <div className={`progress-step ${step >= 4 ? 'active' : ''}`}>
+            <div className="step-number">4</div>
+            <span>{text.step4}</span>
           </div>
         </div>
 
@@ -648,6 +873,106 @@ const EliteRegistrationForm = () => {
                 </div>
               </motion.div>
             )}
+
+            {step === 4 && (
+              <motion.div
+                key="step4"
+                className="form-step"
+                initial={{ x: isRTL ? -50 : 50, opacity: 0 }}
+                animate={{ x: 0, opacity: 1 }}
+                exit={{ x: isRTL ? 50 : -50, opacity: 0 }}
+              >
+                <h3 className="step-title">{text.termsTitle}</h3>
+
+                <div className="terms-info">
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                    <polyline points="14 2 14 8 20 8"/>
+                    <line x1="16" y1="13" x2="8" y2="13"/>
+                    <line x1="16" y1="17" x2="8" y2="17"/>
+                    <polyline points="10 9 9 9 8 9"/>
+                  </svg>
+                  <p>{text.termsSubtitle}</p>
+                </div>
+
+                {/* Terms Summary */}
+                <div className="terms-summary">
+                  <div className="terms-summary-header">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+                    </svg>
+                    <span>{termsContent[language].intro}</span>
+                  </div>
+
+                  <div className="terms-highlights">
+                    <div className="terms-highlight-item">
+                      <div className="highlight-icon support">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                          <circle cx="12" cy="12" r="10"/>
+                          <path d="M8 14s1.5 2 4 2 4-2 4-2"/>
+                          <line x1="9" y1="9" x2="9.01" y2="9"/>
+                          <line x1="15" y1="9" x2="15.01" y2="9"/>
+                        </svg>
+                      </div>
+                      <span>{isRTL ? 'دعم مالي وتقني وتعليمي' : 'Financial, Technical & Educational Support'}</span>
+                    </div>
+                    <div className="terms-highlight-item">
+                      <div className="highlight-icon categories">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                          <path d="M12 20V10"/>
+                          <path d="M18 20V4"/>
+                          <path d="M6 20v-4"/>
+                        </svg>
+                      </div>
+                      <span>{isRTL ? '4 فئات: A (90-100%) B (80-89%) C (70-79%) D (60-69%)' : '4 Categories: A (90-100%) B (80-89%) C (70-79%) D (60-69%)'}</span>
+                    </div>
+                    <div className="terms-highlight-item">
+                      <div className="highlight-icon duration">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                          <circle cx="12" cy="12" r="10"/>
+                          <polyline points="12 6 12 12 16 14"/>
+                        </svg>
+                      </div>
+                      <span>{isRTL ? 'العضوية سنة واحدة قابلة للتجديد' : 'One Year Membership, Renewable'}</span>
+                    </div>
+                    <div className="terms-highlight-item">
+                      <div className="highlight-icon minimum">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                          <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+                          <polyline points="22 4 12 14.01 9 11.01"/>
+                        </svg>
+                      </div>
+                      <span>{isRTL ? 'الحد الأدنى للبقاء 60%' : 'Minimum 60% to Stay in Program'}</span>
+                    </div>
+                  </div>
+
+                  <button
+                    type="button"
+                    className="read-terms-btn"
+                    onClick={() => setShowTermsModal(true)}
+                  >
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                      <circle cx="12" cy="12" r="3"/>
+                    </svg>
+                    {text.readTerms}
+                  </button>
+                </div>
+
+                {/* Accept Checkbox */}
+                <div className="terms-accept">
+                  <label className="terms-checkbox">
+                    <input
+                      type="checkbox"
+                      checked={termsAccepted}
+                      onChange={(e) => setTermsAccepted(e.target.checked)}
+                    />
+                    <span className="checkmark"></span>
+                    <span className="checkbox-label">{text.acceptTerms}</span>
+                  </label>
+                </div>
+              </motion.div>
+            )}
           </AnimatePresence>
 
           {/* Navigation Buttons */}
@@ -664,7 +989,7 @@ const EliteRegistrationForm = () => {
               </button>
             )}
 
-            {step < 3 ? (
+            {step < 4 ? (
               <button
                 className="elite-btn primary"
                 onClick={handleNext}
@@ -678,7 +1003,7 @@ const EliteRegistrationForm = () => {
               <button
                 className="elite-btn primary"
                 onClick={handleSubmit}
-                disabled={loading}
+                disabled={loading || !termsAccepted}
               >
                 {loading ? (
                   <span className="loading-spinner"></span>
@@ -732,6 +1057,71 @@ const EliteRegistrationForm = () => {
           {text.backHome}
         </motion.button>
       </div>
+
+      {/* Terms and Conditions Modal */}
+      <AnimatePresence>
+        {showTermsModal && (
+          <motion.div
+            className="terms-modal-overlay"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => setShowTermsModal(false)}
+          >
+            <motion.div
+              className="terms-modal"
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="terms-modal-header">
+                <h2>{text.termsModalTitle}</h2>
+                <button
+                  className="terms-modal-close"
+                  onClick={() => setShowTermsModal(false)}
+                >
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <line x1="18" y1="6" x2="6" y2="18"/>
+                    <line x1="6" y1="6" x2="18" y2="18"/>
+                  </svg>
+                </button>
+              </div>
+
+              <div className="terms-modal-content">
+                <p className="terms-intro">{termsContent[language].intro}</p>
+
+                {termsContent[language].sections.map((section, index) => (
+                  <div key={index} className="terms-section">
+                    <h3>{section.title}</h3>
+                    <p>{section.content}</p>
+                  </div>
+                ))}
+
+                <p className="terms-footer">{termsContent[language].footer}</p>
+              </div>
+
+              <div className="terms-modal-footer">
+                <button
+                  className="elite-btn primary"
+                  onClick={() => {
+                    setTermsAccepted(true);
+                    setShowTermsModal(false);
+                  }}
+                >
+                  {text.acceptTerms}
+                </button>
+                <button
+                  className="elite-btn secondary"
+                  onClick={() => setShowTermsModal(false)}
+                >
+                  {text.close}
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };
