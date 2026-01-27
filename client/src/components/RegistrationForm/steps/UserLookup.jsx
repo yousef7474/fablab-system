@@ -221,8 +221,52 @@ const UserLookup = ({ onUserFound, onNewUser }) => {
               <h3 style={{ color: 'white', fontSize: '24px', marginBottom: '8px', fontWeight: '700' }}>
                 النخبة
               </h3>
-              <p style={{ color: 'rgba(255,255,255,0.9)', marginBottom: '24px', fontSize: '14px' }}>
-                {isRTL ? 'أدخل كلمة المرور للدخول' : 'Enter password to access'}
+              {/* Login Button for Existing Users */}
+              <button
+                onClick={() => {
+                  setShowEliteModal(false);
+                  navigate('/elite/login');
+                }}
+                style={{
+                  width: '100%',
+                  background: 'white',
+                  color: '#006c35',
+                  border: 'none',
+                  padding: '14px 24px',
+                  borderRadius: '12px',
+                  fontSize: '16px',
+                  fontWeight: '700',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '10px',
+                  marginBottom: '16px',
+                  boxShadow: '0 4px 15px rgba(0,0,0,0.2)'
+                }}
+              >
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/>
+                  <polyline points="10 17 15 12 10 7"/>
+                  <line x1="15" y1="12" x2="3" y2="12"/>
+                </svg>
+                {isRTL ? 'تسجيل الدخول لحسابي' : 'Login to My Account'}
+              </button>
+
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '12px',
+                margin: '16px 0',
+                color: 'rgba(255,255,255,0.7)'
+              }}>
+                <div style={{ flex: 1, height: '1px', background: 'rgba(255,255,255,0.3)' }}></div>
+                <span style={{ fontSize: '13px' }}>{isRTL ? 'أو إنشاء حساب جديد' : 'or create new account'}</span>
+                <div style={{ flex: 1, height: '1px', background: 'rgba(255,255,255,0.3)' }}></div>
+              </div>
+
+              <p style={{ color: 'rgba(255,255,255,0.9)', marginBottom: '16px', fontSize: '13px' }}>
+                {isRTL ? 'أدخل كلمة المرور للتسجيل' : 'Enter password to register'}
               </p>
               <div style={{ position: 'relative', marginBottom: '20px' }}>
                 <svg
@@ -249,7 +293,6 @@ const UserLookup = ({ onUserFound, onNewUser }) => {
                   value={elitePassword}
                   onChange={(e) => setElitePassword(e.target.value)}
                   onKeyPress={(e) => e.key === 'Enter' && handleEliteAccess()}
-                  autoFocus
                   style={{
                     width: '100%',
                     padding: '14px 18px 14px 44px',
@@ -267,9 +310,9 @@ const UserLookup = ({ onUserFound, onNewUser }) => {
                 <button
                   onClick={handleEliteAccess}
                   style={{
-                    background: 'white',
-                    color: '#006c35',
-                    border: 'none',
+                    background: 'rgba(255,255,255,0.2)',
+                    color: 'white',
+                    border: '2px solid rgba(255,255,255,0.5)',
                     padding: '12px 32px',
                     borderRadius: '10px',
                     fontSize: '16px',
@@ -277,7 +320,7 @@ const UserLookup = ({ onUserFound, onNewUser }) => {
                     cursor: 'pointer'
                   }}
                 >
-                  {isRTL ? 'دخول' : 'Enter'}
+                  {isRTL ? 'تسجيل جديد' : 'Register'}
                 </button>
                 <button
                   onClick={() => {
@@ -285,7 +328,7 @@ const UserLookup = ({ onUserFound, onNewUser }) => {
                     setElitePassword('');
                   }}
                   style={{
-                    background: 'rgba(255,255,255,0.2)',
+                    background: 'rgba(255,255,255,0.1)',
                     color: 'white',
                     border: '2px solid rgba(255,255,255,0.3)',
                     padding: '12px 32px',

@@ -48,6 +48,9 @@ const EliteRegistrationForm = () => {
       previous: 'السابق',
       createAccount: 'إنشاء الحساب',
       backHome: 'العودة للرئيسية',
+      goToLogin: 'تسجيل الدخول',
+      alreadyHaveAccount: 'لديك حساب بالفعل؟',
+      loginHere: 'سجل دخولك هنا',
       uploadPhoto: 'اضغط لرفع صورة شخصية',
       welcomeElite: 'مرحباً بك في النخبة!',
       accountCreated: 'تم إنشاء حسابك بنجاح',
@@ -102,6 +105,9 @@ const EliteRegistrationForm = () => {
       previous: 'Previous',
       createAccount: 'Create Account',
       backHome: 'Back to Home',
+      goToLogin: 'Login',
+      alreadyHaveAccount: 'Already have an account?',
+      loginHere: 'Login here',
       uploadPhoto: 'Click to upload photo',
       welcomeElite: 'Welcome to Elite!',
       accountCreated: 'Your account has been created successfully',
@@ -282,12 +288,25 @@ const EliteRegistrationForm = () => {
                 </div>
               </div>
             )}
-            <button
-              className="elite-btn primary"
-              onClick={() => navigate('/')}
-            >
-              {text.backHome}
-            </button>
+            <div className="success-buttons">
+              <button
+                className="elite-btn primary"
+                onClick={() => navigate('/elite/login')}
+              >
+                {text.goToLogin}
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/>
+                  <polyline points="10 17 15 12 10 7"/>
+                  <line x1="15" y1="12" x2="3" y2="12"/>
+                </svg>
+              </button>
+              <button
+                className="elite-btn secondary"
+                onClick={() => navigate('/')}
+              >
+                {text.backHome}
+              </button>
+            </div>
           </motion.div>
         </div>
       </div>
@@ -675,6 +694,27 @@ const EliteRegistrationForm = () => {
               </button>
             )}
           </div>
+        </motion.div>
+
+        {/* Already have account - Login Link */}
+        <motion.div
+          className="elite-login-prompt"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.4 }}
+        >
+          <span>{text.alreadyHaveAccount}</span>
+          <button
+            className="elite-login-link-btn"
+            onClick={() => navigate('/elite/login')}
+          >
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/>
+              <polyline points="10 17 15 12 10 7"/>
+              <line x1="15" y1="12" x2="3" y2="12"/>
+            </svg>
+            {text.loginHere}
+          </button>
         </motion.div>
 
         {/* Back to Home */}

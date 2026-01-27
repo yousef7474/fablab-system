@@ -785,3 +785,505 @@
     box-shadow: 0 0 0 20px rgba(0, 166, 81, 0);
   }
 }
+
+/* ============ Login Page Styles ============ */
+.elite-login-links {
+  text-align: center;
+  margin-top: 25px;
+  padding-top: 25px;
+  border-top: 1px solid #e0e0e0;
+}
+
+.elite-login-links p {
+  margin: 0 0 10px;
+  color: #666;
+  font-size: 14px;
+}
+
+.elite-link {
+  color: #006c35;
+  font-weight: 600;
+  text-decoration: none;
+  transition: color 0.3s ease;
+}
+
+.elite-link:hover {
+  color: #00a651;
+  text-decoration: underline;
+}
+
+/* Success Page Buttons */
+.success-buttons {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.success-buttons .elite-btn {
+  width: 100%;
+  margin: 0;
+}
+
+.success-buttons .elite-btn.primary {
+  margin-right: 0;
+}
+
+/* Login Prompt on Registration Page */
+.elite-login-prompt {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  margin-top: 25px;
+  padding: 15px 25px;
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 12px;
+  backdrop-filter: blur(10px);
+}
+
+.elite-login-prompt span {
+  color: rgba(255, 255, 255, 0.9);
+  font-size: 14px;
+}
+
+.elite-login-link-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  background: white;
+  border: none;
+  border-radius: 8px;
+  color: #006c35;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.elite-login-link-btn:hover {
+  background: #ffd700;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+}
+
+.elite-login-link-btn svg {
+  stroke: #006c35;
+}
+
+/* ============ Account Page Styles ============ */
+.elite-account-page {
+  padding: 20px;
+  align-items: flex-start;
+}
+
+.elite-account-container {
+  display: flex;
+  gap: 30px;
+  width: 100%;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding-top: 60px;
+}
+
+.elite-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+}
+
+.loading-spinner.large {
+  width: 50px;
+  height: 50px;
+  border-width: 4px;
+}
+
+/* Sidebar */
+.elite-sidebar {
+  width: 280px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.elite-user-card {
+  background: rgba(255, 255, 255, 0.95);
+  border-radius: 20px;
+  padding: 30px;
+  text-align: center;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+}
+
+.elite-user-avatar {
+  width: 100px;
+  height: 100px;
+  border-radius: 50%;
+  margin: 0 auto 15px;
+  overflow: hidden;
+  border: 4px solid #006c35;
+  box-shadow: 0 4px 15px rgba(0, 108, 53, 0.3);
+}
+
+.elite-user-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.elite-user-avatar .avatar-placeholder {
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(135deg, #006c35, #00a651);
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 32px;
+  font-weight: 700;
+}
+
+.elite-user-name {
+  font-size: 20px;
+  font-weight: 700;
+  color: #333;
+  margin: 0 0 5px;
+}
+
+.elite-user-id {
+  font-size: 14px;
+  color: #006c35;
+  margin: 0 0 15px;
+  font-weight: 600;
+}
+
+.elite-status-badge {
+  display: inline-block;
+  padding: 6px 16px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.elite-status-badge.status-active {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.elite-status-badge.status-inactive {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.elite-status-badge.status-suspended {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+/* Navigation */
+.elite-nav {
+  background: rgba(255, 255, 255, 0.95);
+  border-radius: 16px;
+  padding: 10px;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+}
+
+.elite-nav-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 14px 18px;
+  border: none;
+  background: transparent;
+  border-radius: 12px;
+  font-size: 15px;
+  font-weight: 600;
+  color: #666;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.elite-nav-item:hover {
+  background: #f5f5f5;
+  color: #006c35;
+}
+
+.elite-nav-item.active {
+  background: linear-gradient(135deg, #006c35, #00a651);
+  color: white;
+}
+
+.elite-nav-item svg {
+  flex-shrink: 0;
+}
+
+/* Logout Button */
+.elite-logout-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  width: 100%;
+  padding: 14px;
+  background: rgba(255, 255, 255, 0.15);
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-radius: 12px;
+  color: white;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.elite-logout-btn:hover {
+  background: rgba(220, 38, 38, 0.9);
+  border-color: rgba(220, 38, 38, 0.9);
+}
+
+/* Main Content */
+.elite-main-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.elite-content-header {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  margin-bottom: 30px;
+  padding: 25px 30px;
+  background: rgba(255, 255, 255, 0.95);
+  border-radius: 20px;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+}
+
+.elite-logo-small {
+  width: 60px;
+  height: 60px;
+  background: linear-gradient(135deg, #006c35, #00a651);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.elite-logo-small svg {
+  stroke: #ffd700;
+}
+
+.elite-content-header h1 {
+  margin: 0;
+  font-size: 28px;
+  color: #006c35;
+}
+
+.elite-content-header p {
+  margin: 5px 0 0;
+  color: #666;
+  font-size: 14px;
+}
+
+/* Tab Content */
+.elite-tab-content {
+  background: rgba(255, 255, 255, 0.95);
+  border-radius: 20px;
+  padding: 30px;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+  min-height: 400px;
+}
+
+/* Info Sections */
+.elite-info-section {
+  margin-bottom: 30px;
+  padding-bottom: 30px;
+  border-bottom: 1px solid #e0e0e0;
+}
+
+.elite-info-section:last-of-type {
+  border-bottom: none;
+  margin-bottom: 0;
+  padding-bottom: 0;
+}
+
+.elite-info-section h3 {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0 0 20px;
+  font-size: 18px;
+  color: #006c35;
+}
+
+.elite-info-section h3 svg {
+  stroke: #006c35;
+}
+
+.elite-info-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+  gap: 20px;
+}
+
+.elite-info-item {
+  background: #f9f9f9;
+  padding: 15px 20px;
+  border-radius: 12px;
+  border: 1px solid #e8e8e8;
+}
+
+.elite-info-item.full-width {
+  grid-column: 1 / -1;
+}
+
+.elite-info-item .info-label {
+  display: block;
+  font-size: 12px;
+  color: #888;
+  margin-bottom: 5px;
+  font-weight: 500;
+}
+
+.elite-info-item .info-value {
+  display: block;
+  font-size: 15px;
+  color: #333;
+  font-weight: 600;
+}
+
+.elite-info-item .info-value.highlight {
+  color: #006c35;
+  font-size: 16px;
+}
+
+.elite-info-item .info-value.bio {
+  font-weight: 400;
+  line-height: 1.6;
+}
+
+/* Membership Info */
+.elite-membership-info {
+  display: flex;
+  gap: 20px;
+  margin-top: 25px;
+  padding: 20px;
+  background: linear-gradient(135deg, #e8f5e9, #c8e6c9);
+  border-radius: 12px;
+}
+
+.elite-membership-info .membership-item {
+  flex: 1;
+  text-align: center;
+}
+
+.elite-membership-info .membership-item span {
+  display: block;
+  font-size: 12px;
+  color: #006c35;
+  margin-bottom: 5px;
+}
+
+.elite-membership-info .membership-item strong {
+  display: block;
+  font-size: 14px;
+  color: #004d26;
+}
+
+/* Coming Soon */
+.elite-coming-soon {
+  text-align: center;
+  padding: 60px 20px;
+}
+
+.elite-coming-soon .coming-soon-icon {
+  width: 140px;
+  height: 140px;
+  background: linear-gradient(135deg, #e8f5e9, #c8e6c9);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 30px;
+  animation: pulse-success 2s ease-in-out infinite;
+}
+
+.elite-coming-soon .coming-soon-icon svg {
+  stroke: #006c35;
+}
+
+.elite-coming-soon h2 {
+  font-size: 28px;
+  color: #006c35;
+  margin: 0 0 10px;
+}
+
+.elite-coming-soon p {
+  font-size: 16px;
+  color: #666;
+  margin: 0;
+}
+
+/* Responsive for Account Page */
+@media (max-width: 900px) {
+  .elite-account-container {
+    flex-direction: column;
+    padding-top: 70px;
+  }
+
+  .elite-sidebar {
+    width: 100%;
+    flex-direction: row;
+    flex-wrap: wrap;
+  }
+
+  .elite-user-card {
+    flex: 1;
+    min-width: 250px;
+  }
+
+  .elite-nav {
+    flex: 1;
+    min-width: 250px;
+  }
+
+  .elite-logout-btn {
+    width: auto;
+    flex: 1;
+    min-width: 150px;
+  }
+}
+
+@media (max-width: 600px) {
+  .elite-account-page {
+    padding: 10px;
+  }
+
+  .elite-sidebar {
+    flex-direction: column;
+  }
+
+  .elite-user-card,
+  .elite-nav,
+  .elite-logout-btn {
+    width: 100%;
+  }
+
+  .elite-info-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .elite-membership-info {
+    flex-direction: column;
+    gap: 15px;
+  }
+
+  .elite-content-header {
+    flex-direction: column;
+    text-align: center;
+  }
+
+  .elite-content-header h1 {
+    font-size: 22px;
+  }
+}
