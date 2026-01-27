@@ -3810,11 +3810,67 @@ const AdminDashboard = () => {
                   <label>{isRTL ? 'نوع الطلب' : 'Application Type'}</label>
                   <span>{applicationTypeLabels[selectedRegistration.user?.applicationType] || selectedRegistration.user?.applicationType}</span>
                 </div>
+                <div className="detail-item">
+                  <label>{isRTL ? 'البريد الإلكتروني' : 'Email'}</label>
+                  <span>{selectedRegistration.user?.email || 'N/A'}</span>
+                </div>
+                <div className="detail-item">
+                  <label>{isRTL ? 'رقم الهاتف' : 'Phone'}</label>
+                  <span dir="ltr">{selectedRegistration.user?.phoneNumber || 'N/A'}</span>
+                </div>
+                {selectedRegistration.user?.nationalId && (
+                  <div className="detail-item">
+                    <label>{isRTL ? 'رقم الهوية' : 'National ID'}</label>
+                    <span dir="ltr">{selectedRegistration.user.nationalId}</span>
+                  </div>
+                )}
+                {selectedRegistration.user?.sex && (
+                  <div className="detail-item">
+                    <label>{isRTL ? 'الجنس' : 'Sex'}</label>
+                    <span>{selectedRegistration.user.sex === 'Male' ? (isRTL ? 'ذكر' : 'Male') : (isRTL ? 'أنثى' : 'Female')}</span>
+                  </div>
+                )}
+                {selectedRegistration.user?.nationality && (
+                  <div className="detail-item">
+                    <label>{isRTL ? 'الجنسية' : 'Nationality'}</label>
+                    <span>{selectedRegistration.user.nationality}</span>
+                  </div>
+                )}
                 {selectedRegistration.user?.currentJob && (
                   <div className="detail-item">
-                    <label>{isRTL ? 'الجهة التابع لها' : 'Organization'}</label>
+                    <label>{isRTL ? 'الوظيفة الحالية' : 'Current Job'}</label>
                     <span>{selectedRegistration.user.currentJob}</span>
                   </div>
+                )}
+                {selectedRegistration.user?.nationalAddress && (
+                  <div className="detail-item full-width">
+                    <label>{isRTL ? 'العنوان الوطني' : 'National Address'}</label>
+                    <span>{selectedRegistration.user.nationalAddress}</span>
+                  </div>
+                )}
+                {/* Entity specific fields */}
+                {selectedRegistration.user?.applicationType === 'Entity' && selectedRegistration.user?.entityName && (
+                  <div className="detail-item">
+                    <label>{isRTL ? 'اسم الجهة' : 'Entity Name'}</label>
+                    <span>{selectedRegistration.user.entityName}</span>
+                  </div>
+                )}
+                {/* FABLAB Visit specific fields */}
+                {selectedRegistration.user?.applicationType === 'FABLAB Visit' && (
+                  <>
+                    {selectedRegistration.user?.visitingEntity && (
+                      <div className="detail-item">
+                        <label>{isRTL ? 'الجهة الزائرة' : 'Visiting Entity'}</label>
+                        <span>{selectedRegistration.user.visitingEntity}</span>
+                      </div>
+                    )}
+                    {selectedRegistration.user?.personInCharge && (
+                      <div className="detail-item">
+                        <label>{isRTL ? 'المسؤول' : 'Person In Charge'}</label>
+                        <span>{selectedRegistration.user.personInCharge}</span>
+                      </div>
+                    )}
+                  </>
                 )}
                 <div className="detail-item">
                   <label>{isRTL ? 'القسم' : 'Section'}</label>
