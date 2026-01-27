@@ -1935,10 +1935,27 @@ const AdminDashboard = () => {
     });
   };
 
-  // Get filtered schedule for upcoming appointments
+  // Get filtered schedule for upcoming appointments (today and future only)
   const getFilteredSchedule = () => {
-    if (scheduleFilter === 'all') return schedule;
-    return schedule.filter(event => event.section === scheduleFilter);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    // Filter to only include today and future appointments
+    const upcomingSchedule = schedule.filter(event => {
+      const eventDate = new Date(event.date || event.appointmentDate || event.visitDate || event.startDate || event.dueDate);
+      eventDate.setHours(0, 0, 0, 0);
+      return eventDate >= today;
+    });
+
+    // Sort by date (earliest first)
+    upcomingSchedule.sort((a, b) => {
+      const dateA = new Date(a.date || a.appointmentDate || a.visitDate || a.startDate || a.dueDate);
+      const dateB = new Date(b.date || b.appointmentDate || b.visitDate || b.startDate || b.dueDate);
+      return dateA - dateB;
+    });
+
+    if (scheduleFilter === 'all') return upcomingSchedule;
+    return upcomingSchedule.filter(event => event.section === scheduleFilter);
   };
 
   const sectionLabels = {
