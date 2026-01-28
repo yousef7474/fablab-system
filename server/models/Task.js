@@ -55,16 +55,9 @@ const Task = sequelize.define('Task', {
     defaultValue: 'pending'
   },
   section: {
-    type: DataTypes.ENUM(
-      'Electronics and Programming',
-      'CNC Laser',
-      'CNC Wood',
-      '3D',
-      'Robotic and AI',
-      "Kid's Club",
-      'Vinyl Cutting'
-    ),
-    allowNull: true
+    type: DataTypes.STRING,
+    allowNull: true,
+    comment: 'Section can be predefined or custom'
   },
   notes: {
     type: DataTypes.TEXT,

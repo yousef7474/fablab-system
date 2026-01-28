@@ -93,6 +93,24 @@ SectionAvailability.belongsTo(Admin, { foreignKey: 'reactivatedById', as: 'react
 // Sync database
 const syncDatabase = async () => {
   try {
+    // Run migrations for ENUM to VARCHAR conversions
+    try {
+      // Check if tasks table exists and section column is ENUM, then convert to VARCHAR
+      const [taskColumns] = await sequelize.query(
+        "SELECT DATA_TYPE FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'tasks' AND COLUMN_NAME = 'section'"
+      );
+      if (taskColumns.length > 0 && taskColumns[0].DATA_TYPE === 'enum') {
+        console.log('🔄 Migrating tasks.section from ENUM to VARCHAR...');
+        await sequelize.query('ALTER TABLE tasks MODIFY COLUMN section VARCHAR(255)');
+        console.log('✅ tasks.section migrated to VARCHAR successfully.');
+      }
+    } catch (migrationError) {
+      // Table might not exist yet, that's okay
+      if (!migrationError.message.includes("doesn't exist")) {
+        console.log('Migration note:', migrationError.message);
+      }
+    }
+
     await sequelize.sync({ alter: true });
     console.log('✅ Database synchronized successfully.');
   } catch (error) {
