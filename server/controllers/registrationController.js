@@ -177,6 +177,8 @@ exports.createRegistration = async (req, res) => {
       visitDate,
       visitStartTime,
       visitEndTime,
+      volunteerSection,
+      volunteerSkills,
       serviceDetails,
       serviceType,
       commitmentName
@@ -264,6 +266,8 @@ exports.createRegistration = async (req, res) => {
       visitDate,
       visitStartTime,
       visitEndTime,
+      volunteerSection,
+      volunteerSkills,
       serviceDetails,
       serviceType,
       commitmentName,

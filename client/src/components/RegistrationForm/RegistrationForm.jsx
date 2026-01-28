@@ -75,6 +75,8 @@ const defaultFormData = {
   visitDate: '',
   visitStartTime: '',
   visitEndTime: '',
+  volunteerSection: '',
+  volunteerSkills: '',
   serviceDetails: '',
   serviceType: '',
   commitmentName: ''

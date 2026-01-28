@@ -104,7 +104,8 @@ const DateTimeSelection = ({ formData, onChange, onNext, onBack }) => {
     if (['Beneficiary', 'Talented', 'Visitor'].includes(formData.applicationType)) {
       return formData.appointmentDate && formData.appointmentTime && formData.appointmentDuration;
     } else if (formData.applicationType === 'Volunteer') {
-      return formData.startDate && formData.endDate && formData.startTime && formData.endTime;
+      return formData.startDate && formData.endDate && formData.startTime && formData.endTime &&
+             formData.volunteerSection && formData.volunteerSkills;
     } else if (formData.applicationType === 'FABLAB Visit') {
       return formData.visitDate && formData.visitStartTime && formData.visitEndTime;
     }
@@ -620,6 +621,52 @@ const DateTimeSelection = ({ formData, onChange, onNext, onBack }) => {
               onChange={(e) => handleChange('endTime', e.target.value)}
               min="11:00"
               max="19:00"
+            />
+          </motion.div>
+
+          {/* Volunteer Section Selection */}
+          <motion.div
+            className="form-group full-width"
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.3 }}
+          >
+            <label className="form-label">
+              {isRTL ? 'اختر مجال التطوع' : 'Select Volunteer Section'} <span className="required">*</span>
+            </label>
+            <select
+              className="form-select"
+              value={formData.volunteerSection || ''}
+              onChange={(e) => handleChange('volunteerSection', e.target.value)}
+            >
+              <option value="">{isRTL ? 'اختر المجال' : 'Select section'}</option>
+              <option value="Electronics and Programming">{isRTL ? 'الإلكترونيات والبرمجة' : 'Electronics and Programming'}</option>
+              <option value="CNC Laser">{isRTL ? 'الليزر CNC' : 'CNC Laser'}</option>
+              <option value="CNC Wood">{isRTL ? 'الخشب CNC' : 'CNC Wood'}</option>
+              <option value="3D">{isRTL ? 'الطباعة ثلاثية الأبعاد' : '3D Printing'}</option>
+              <option value="Robotic and AI">{isRTL ? 'الروبوتات والذكاء الاصطناعي' : 'Robotic and AI'}</option>
+              <option value="Kid's Club">{isRTL ? 'نادي الأطفال' : "Kid's Club"}</option>
+              <option value="Vinyl Cutting">{isRTL ? 'قص الفينيل' : 'Vinyl Cutting'}</option>
+              <option value="General">{isRTL ? 'عام / متعدد الأقسام' : 'General / Multiple Sections'}</option>
+            </select>
+          </motion.div>
+
+          {/* Volunteer Skills and Experience */}
+          <motion.div
+            className="form-group full-width"
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.35 }}
+          >
+            <label className="form-label">
+              {isRTL ? 'اذكر خبراتك ومهاراتك' : 'Describe Your Skills and Experience'} <span className="required">*</span>
+            </label>
+            <textarea
+              className="form-textarea"
+              value={formData.volunteerSkills || ''}
+              onChange={(e) => handleChange('volunteerSkills', e.target.value)}
+              placeholder={isRTL ? 'اذكر خبراتك ومهاراتك السابقة في هذا المجال...' : 'Describe your previous experience and skills in this field...'}
+              rows={4}
             />
           </motion.div>
         </div>

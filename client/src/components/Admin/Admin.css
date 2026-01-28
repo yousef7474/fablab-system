@@ -4034,6 +4034,44 @@
   cursor: not-allowed;
 }
 
+/* All Day Button */
+.all-day-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.6rem 1rem;
+  background: var(--bg-tertiary);
+  border: 2px solid var(--border-color);
+  border-radius: 8px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  width: 100%;
+}
+
+.all-day-btn:hover {
+  background: rgba(220, 38, 38, 0.1);
+  border-color: #dc2626;
+  color: #dc2626;
+}
+
+.all-day-btn.active {
+  background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
+  border-color: #dc2626;
+  color: white;
+}
+
+.all-day-btn.active svg {
+  stroke: white;
+}
+
+.all-day-btn svg {
+  stroke: currentColor;
+}
+
 /* ========== Schedule Layout Fix ========== */
 .schedule-layout {
   display: flex;

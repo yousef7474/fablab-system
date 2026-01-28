@@ -74,6 +74,16 @@ const Registration = sequelize.define('Registration', {
     type: DataTypes.TIME,
     allowNull: true
   },
+  volunteerSection: {
+    type: DataTypes.STRING,
+    allowNull: true,
+    comment: 'Section the volunteer wants to volunteer in'
+  },
+  volunteerSkills: {
+    type: DataTypes.TEXT,
+    allowNull: true,
+    comment: 'Volunteer skills and experience'
+  },
   // For visits
   visitDate: {
     type: DataTypes.DATEONLY,
@@ -144,7 +154,7 @@ const Registration = sequelize.define('Registration', {
       const nullableFields = [
         'otherServiceDetails', 'appointmentDate', 'appointmentTime', 'appointmentDuration',
         'startDate', 'endDate', 'startTime', 'endTime', 'visitDate', 'visitStartTime',
-        'visitEndTime', 'rejectionReason', 'adminNotes', 'approvedBy', 'approvedAt'
+        'visitEndTime', 'volunteerSection', 'volunteerSkills', 'rejectionReason', 'adminNotes', 'approvedBy', 'approvedAt'
       ];
       nullableFields.forEach(field => {
         if (registration[field] === '') registration[field] = null;

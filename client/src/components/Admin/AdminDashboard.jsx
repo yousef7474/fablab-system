@@ -1004,6 +1004,23 @@ const AdminDashboard = () => {
           </div>
         </div>
 
+        ${registration.user?.applicationType === 'Volunteer' && (registration.volunteerSection || registration.volunteerSkills) ? `
+        <!-- Volunteer Information Section -->
+        <div class="section">
+          <div class="section-title">${isRTL ? 'معلومات التطوع' : 'Volunteer Information'}</div>
+          <div class="field-grid">
+            <div class="field">
+              <div class="field-label">${isRTL ? 'مجال التطوع' : 'Volunteer Section'}</div>
+              <div class="field-value">${registration.volunteerSection || na}</div>
+            </div>
+            <div class="field field-full-2">
+              <div class="field-label">${isRTL ? 'المهارات والخبرات' : 'Skills & Experience'}</div>
+              <div class="field-value">${registration.volunteerSkills || na}</div>
+            </div>
+          </div>
+        </div>
+        ` : ''}
+
         ${registration.serviceDetails ? `
         <!-- Additional Details Section -->
         <div class="section">
@@ -3395,6 +3412,24 @@ const AdminDashboard = () => {
                           </div>
                         )}
 
+                        <div className="form-group">
+                          <button
+                            type="button"
+                            className={`all-day-btn ${employeeTaskForm.dueTime === '11:00' && employeeTaskForm.dueTimeEnd === '20:00' ? 'active' : ''}`}
+                            onClick={() => setEmployeeTaskForm({
+                              ...employeeTaskForm,
+                              dueTime: '11:00',
+                              dueTimeEnd: '20:00'
+                            })}
+                          >
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                              <circle cx="12" cy="12" r="10"/>
+                              <polyline points="12 6 12 12 16 14"/>
+                            </svg>
+                            {isRTL ? 'طوال اليوم (11 ص - 8 م)' : 'All Day (11 AM - 8 PM)'}
+                          </button>
+                        </div>
+
                         <div className="form-row">
                           <div className="form-group">
                             <label>{isRTL ? 'وقت البداية' : 'Start Time'}</label>
@@ -4004,6 +4039,23 @@ const AdminDashboard = () => {
                   <label>{isRTL ? 'الخدمات المطلوبة' : 'Required Services'}</label>
                   <span>{translateServices(selectedRegistration.requiredServices)}</span>
                 </div>
+                {/* Volunteer specific fields */}
+                {selectedRegistration.user?.applicationType === 'Volunteer' && (
+                  <>
+                    {selectedRegistration.volunteerSection && (
+                      <div className="detail-item">
+                        <label>{isRTL ? 'مجال التطوع' : 'Volunteer Section'}</label>
+                        <span>{selectedRegistration.volunteerSection}</span>
+                      </div>
+                    )}
+                    {selectedRegistration.volunteerSkills && (
+                      <div className="detail-item full-width">
+                        <label>{isRTL ? 'المهارات والخبرات' : 'Skills & Experience'}</label>
+                        <span>{selectedRegistration.volunteerSkills}</span>
+                      </div>
+                    )}
+                  </>
+                )}
                 <div className="detail-item full-width">
                   <label>{isRTL ? 'تفاصيل الخدمة' : 'Service Details'}</label>
                   <span>{selectedRegistration.serviceDetails || 'N/A'}</span>
