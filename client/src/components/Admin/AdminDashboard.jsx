@@ -156,10 +156,12 @@ const AdminDashboard = () => {
     title: '',
     description: '',
     dueDate: '',
+    dueDateEnd: '',
     dueTime: '',
     dueTimeEnd: '',
     priority: 'medium',
-    blocksCalendar: true
+    blocksCalendar: true,
+    isMultipleDays: false
   });
   const [isSubmittingTask, setIsSubmittingTask] = useState(false);
 
@@ -1827,6 +1829,12 @@ const AdminDashboard = () => {
       return;
     }
 
+    // Validate end date for multiple days
+    if (employeeTaskForm.isMultipleDays && !employeeTaskForm.dueDateEnd) {
+      toast.error(isRTL ? 'يرجى تحديد تاريخ النهاية' : 'Please specify end date');
+      return;
+    }
+
     // Validate time range if blocking calendar
     if (employeeTaskForm.blocksCalendar && (!employeeTaskForm.dueTime || !employeeTaskForm.dueTimeEnd)) {
       toast.error(isRTL ? 'يرجى تحديد وقت البداية والنهاية لحجز الموعد' : 'Please specify start and end time to block calendar');
@@ -1837,19 +1845,50 @@ const AdminDashboard = () => {
     try {
       const selectedEmployee = employees.find(e => e.employeeId === employeeTaskForm.employeeId);
 
-      await api.post('/tasks', {
-        title: employeeTaskForm.title,
-        description: employeeTaskForm.description,
-        employeeId: employeeTaskForm.employeeId,
-        dueDate: employeeTaskForm.dueDate,
-        dueTime: employeeTaskForm.dueTime || null,
-        dueTimeEnd: employeeTaskForm.dueTimeEnd || null,
-        priority: employeeTaskForm.priority,
-        blocksCalendar: employeeTaskForm.blocksCalendar,
-        section: selectedEmployee?.section || ''
-      });
+      // Generate array of dates if multiple days selected
+      const dates = [];
+      if (employeeTaskForm.isMultipleDays && employeeTaskForm.dueDateEnd) {
+        const startDate = new Date(employeeTaskForm.dueDate);
+        const endDate = new Date(employeeTaskForm.dueDateEnd);
 
-      toast.success(isRTL ? 'تم إضافة المهمة بنجاح' : 'Task added successfully');
+        // Validate date range
+        if (endDate < startDate) {
+          toast.error(isRTL ? 'تاريخ النهاية يجب أن يكون بعد تاريخ البداية' : 'End date must be after start date');
+          setIsSubmittingTask(false);
+          return;
+        }
+
+        // Generate all dates in range
+        const currentDate = new Date(startDate);
+        while (currentDate <= endDate) {
+          dates.push(currentDate.toISOString().split('T')[0]);
+          currentDate.setDate(currentDate.getDate() + 1);
+        }
+      } else {
+        dates.push(employeeTaskForm.dueDate);
+      }
+
+      // Create task for each date
+      const taskPromises = dates.map(date =>
+        api.post('/tasks', {
+          title: employeeTaskForm.title,
+          description: employeeTaskForm.description,
+          employeeId: employeeTaskForm.employeeId,
+          dueDate: date,
+          dueTime: employeeTaskForm.dueTime || null,
+          dueTimeEnd: employeeTaskForm.dueTimeEnd || null,
+          priority: employeeTaskForm.priority,
+          blocksCalendar: employeeTaskForm.blocksCalendar,
+          section: selectedEmployee?.section || ''
+        })
+      );
+
+      await Promise.all(taskPromises);
+
+      const successMsg = dates.length > 1
+        ? (isRTL ? `تم إضافة ${dates.length} مهام بنجاح` : `${dates.length} tasks added successfully`)
+        : (isRTL ? 'تم إضافة المهمة بنجاح' : 'Task added successfully');
+      toast.success(successMsg);
 
       // Reset form
       setEmployeeTaskForm({
@@ -1857,10 +1896,12 @@ const AdminDashboard = () => {
         title: '',
         description: '',
         dueDate: '',
+        dueDateEnd: '',
         dueTime: '',
         dueTimeEnd: '',
         priority: 'medium',
-        blocksCalendar: true
+        blocksCalendar: true,
+        isMultipleDays: false
       });
 
       // Refresh schedule
@@ -3305,15 +3346,54 @@ const AdminDashboard = () => {
                           />
                         </div>
 
-                        <div className="form-group">
-                          <label>{isRTL ? 'التاريخ' : 'Date'} *</label>
-                          <input
-                            type="date"
-                            value={employeeTaskForm.dueDate}
-                            onChange={(e) => setEmployeeTaskForm({ ...employeeTaskForm, dueDate: e.target.value })}
-                            required
-                          />
+                        <div className="form-group checkbox-group">
+                          <label className="checkbox-label">
+                            <input
+                              type="checkbox"
+                              checked={employeeTaskForm.isMultipleDays}
+                              onChange={(e) => setEmployeeTaskForm({
+                                ...employeeTaskForm,
+                                isMultipleDays: e.target.checked,
+                                dueDateEnd: e.target.checked ? employeeTaskForm.dueDateEnd : ''
+                              })}
+                            />
+                            <span>{isRTL ? 'أيام متعددة' : 'Multiple Days'}</span>
+                          </label>
                         </div>
+
+                        {employeeTaskForm.isMultipleDays ? (
+                          <div className="form-row">
+                            <div className="form-group">
+                              <label>{isRTL ? 'من تاريخ' : 'From Date'} *</label>
+                              <input
+                                type="date"
+                                value={employeeTaskForm.dueDate}
+                                onChange={(e) => setEmployeeTaskForm({ ...employeeTaskForm, dueDate: e.target.value })}
+                                required
+                              />
+                            </div>
+                            <div className="form-group">
+                              <label>{isRTL ? 'إلى تاريخ' : 'To Date'} *</label>
+                              <input
+                                type="date"
+                                value={employeeTaskForm.dueDateEnd}
+                                onChange={(e) => setEmployeeTaskForm({ ...employeeTaskForm, dueDateEnd: e.target.value })}
+                                min={employeeTaskForm.dueDate}
+                                required
+                              />
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="form-group">
+                            <label>{isRTL ? 'التاريخ' : 'Date'} *</label>
+                            <input
+                              type="date"
+                              value={employeeTaskForm.dueDate}
+                              onChange={(e) => setEmployeeTaskForm({ ...employeeTaskForm, dueDate: e.target.value })}
+                              required
+                            />
+                          </div>
+                        )}
 
                         <div className="form-row">
                           <div className="form-group">
