@@ -673,6 +673,7 @@ const AdminDashboard = () => {
         'Machine/Device reservation': isRTL ? 'حجز جهاز / آلة' : 'Machine/Device Reservation',
         'Personal workspace': isRTL ? 'مساحة عمل شخصية' : 'Personal Workspace',
         'Support in project implementation': isRTL ? 'دعم في تنفيذ المشروع' : 'Project Implementation Support',
+        'Volunteering': isRTL ? 'تطوع' : 'Volunteering',
         'Other': isRTL ? 'أخرى' : 'Other'
       };
       return registration.requiredServices.map(s => printServiceLabels[s] || s).join('، ');
@@ -2056,6 +2057,7 @@ const AdminDashboard = () => {
     'Personal workspace': isRTL ? 'مساحة عمل شخصية' : 'Personal Workspace',
     'Support in project implementation': isRTL ? 'دعم في تنفيذ المشروع' : 'Project Implementation Support',
     'FABLAB Visit': isRTL ? 'زيارة فاب لاب' : 'FABLAB Visit',
+    'Volunteering': isRTL ? 'تطوع' : 'Volunteering',
     'Other': isRTL ? 'أخرى' : 'Other',
     // Additional services
     'PCB Design': isRTL ? 'تصميم الدوائر المطبوعة' : 'PCB Design',
