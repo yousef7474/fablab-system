@@ -671,7 +671,7 @@ exports.updateUser = async (req, res) => {
     const allowedFields = [
       'firstName', 'lastName', 'name', 'email', 'phoneNumber',
       'sex', 'nationality', 'nationalId', 'currentJob', 'nationalAddress',
-      'applicationType', 'entityName', 'personInCharge'
+      'applicationType', 'entityName', 'personInCharge', 'profilePicture'
     ];
 
     const filteredData = {};

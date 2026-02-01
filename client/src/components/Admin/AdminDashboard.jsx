@@ -4185,6 +4185,72 @@ const AdminDashboard = () => {
 
               {isEditingUser ? (
                 <div className="user-edit-form">
+                  {/* Profile Picture Upload */}
+                  <div className="form-group full-width profile-picture-upload">
+                    <label>{isRTL ? 'الصورة الشخصية' : 'Profile Picture'}</label>
+                    <div className="profile-upload-container">
+                      <div className="profile-preview">
+                        {userEditForm.profilePicture ? (
+                          <img src={userEditForm.profilePicture} alt="Profile" />
+                        ) : (
+                          <div className="no-profile-pic">
+                            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                              <circle cx="12" cy="8" r="4"/>
+                              <path d="M4 20c0-4 4-6 8-6s8 2 8 6"/>
+                            </svg>
+                          </div>
+                        )}
+                      </div>
+                      <div className="upload-actions">
+                        <input
+                          type="file"
+                          id="user-profile-upload"
+                          accept="image/*"
+                          style={{ display: 'none' }}
+                          onChange={(e) => {
+                            const file = e.target.files[0];
+                            if (file) {
+                              if (file.size > 5 * 1024 * 1024) {
+                                toast.error(isRTL ? 'حجم الصورة يجب أن يكون أقل من 5 ميجابايت' : 'Image size must be less than 5MB');
+                                return;
+                              }
+                              const reader = new FileReader();
+                              reader.onloadend = () => {
+                                setUserEditForm({ ...userEditForm, profilePicture: reader.result });
+                              };
+                              reader.readAsDataURL(file);
+                            }
+                          }}
+                        />
+                        <button
+                          type="button"
+                          className="upload-btn"
+                          onClick={() => document.getElementById('user-profile-upload').click()}
+                        >
+                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                            <polyline points="17 8 12 3 7 8"/>
+                            <line x1="12" y1="3" x2="12" y2="15"/>
+                          </svg>
+                          {isRTL ? 'رفع صورة' : 'Upload Photo'}
+                        </button>
+                        {userEditForm.profilePicture && (
+                          <button
+                            type="button"
+                            className="remove-btn"
+                            onClick={() => setUserEditForm({ ...userEditForm, profilePicture: '' })}
+                          >
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                              <polyline points="3 6 5 6 21 6"/>
+                              <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+                            </svg>
+                            {isRTL ? 'إزالة' : 'Remove'}
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
                   <div className="form-group">
                     <label>{isRTL ? 'الاسم الأول' : 'First Name'}</label>
                     <input

@@ -188,6 +188,7 @@ const RegistrationForm = () => {
 
   const handleUserFound = (userData) => {
     // Auto-fill all user fields from existing user data
+    // User can still change application type, but personal info is pre-filled
     setFormData({
       ...formData,
       existingUserId: userData.userId,
@@ -207,7 +208,7 @@ const RegistrationForm = () => {
       personInCharge: userData.personInCharge || '',
       profilePicture: userData.profilePicture || ''
     });
-    setActiveStep(2); // Skip to FablabSection since user data is already filled
+    setActiveStep(0); // Go to Application Type step - user can change type but personal info is pre-filled
   };
 
   const handleSubmit = async () => {
