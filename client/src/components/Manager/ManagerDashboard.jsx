@@ -1798,6 +1798,19 @@ const ManagerDashboard = () => {
         </div>
         ` : ''}
 
+        ${volunteer.nationalIdPhoto ? `
+        <div class="section" style="page-break-before: always; margin-top: 30px;">
+          <div class="section-title">${isRTL ? 'صورة الهوية الوطنية' : 'National ID Photo'}</div>
+          <div style="display: flex; justify-content: center; align-items: center; padding: 20px; background: #f8f9fa; border-radius: 12px; border: 2px solid #e02529;">
+            <img src="${volunteer.nationalIdPhoto}" alt="National ID" style="max-width: 100%; max-height: 500px; object-fit: contain; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15);" />
+          </div>
+          <div style="text-align: center; margin-top: 15px; padding: 10px; background: linear-gradient(135deg, #e02529 0%, #c41e24 100%); color: white; border-radius: 8px;">
+            <div style="font-size: 16px; font-weight: 700;">${volunteer.name}</div>
+            <div style="font-size: 14px; margin-top: 5px;">${isRTL ? 'رقم الهوية:' : 'National ID:'} ${volunteer.nationalId}</div>
+          </div>
+        </div>
+        ` : ''}
+
         <div class="footer">
           <p>${isRTL ? 'مؤسسة عبدالمنعم الراشد الإنسانية - فاب لاب الأحساء' : 'Abdulmonem Alrashed Humanitarian Foundation - FABLAB Al-Ahsa'}</p>
           <p>${isRTL ? 'تم الطباعة في' : 'Printed on'}: ${new Date().toLocaleString(isRTL ? 'ar-SA' : 'en-US')}</p>
