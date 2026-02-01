@@ -222,7 +222,17 @@ const RegistrationForm = () => {
       toast.success(t('registrationSuccess'));
     } catch (error) {
       console.error('Registration error:', error);
-      toast.error(error.response?.data?.message || t('registrationError'));
+      // Show bilingual error message based on current language
+      const errorData = error.response?.data;
+      let errorMessage;
+
+      if (errorData) {
+        // Use Arabic or English message based on current language
+        errorMessage = isRTL ? (errorData.messageAr || errorData.message) : errorData.message;
+      }
+
+      // Fallback to translation key if no specific message
+      toast.error(errorMessage || t('registrationError'));
     } finally {
       setLoading(false);
     }

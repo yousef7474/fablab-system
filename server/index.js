@@ -27,8 +27,8 @@ const corsOptions = {
 
 // Middleware
 app.use(cors(corsOptions));
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+app.use(express.json({ limit: '10mb' })); // Increased for base64 image uploads (5MB image ≈ 6.7MB base64)
+app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
 // Routes
 app.use('/api/registration', registrationRoutes);
@@ -49,9 +49,38 @@ app.get('/api/health', (req, res) => {
 
 // Error handling middleware
 app.use((err, req, res, next) => {
+  console.error('Error:', err.message);
   console.error(err.stack);
-  res.status(500).json({
-    message: 'Something went wrong!',
+
+  // Handle specific error types with bilingual messages
+  let message = 'Something went wrong';
+  let messageAr = 'حدث خطأ ما';
+  let statusCode = 500;
+
+  if (err.type === 'entity.too.large') {
+    statusCode = 413;
+    message = 'File size is too large. Maximum allowed is 5MB.';
+    messageAr = 'حجم الملف كبير جداً. الحد الأقصى المسموح به هو 5 ميجابايت.';
+  } else if (err.name === 'SequelizeValidationError') {
+    statusCode = 400;
+    message = 'Invalid data provided: ' + err.errors.map(e => e.message).join(', ');
+    messageAr = 'بيانات غير صالحة: ' + err.errors.map(e => e.message).join(', ');
+  } else if (err.name === 'SequelizeUniqueConstraintError') {
+    statusCode = 409;
+    message = 'This record already exists.';
+    messageAr = 'هذا السجل موجود بالفعل.';
+  } else if (err.name === 'SequelizeDatabaseError') {
+    statusCode = 500;
+    message = 'Database error occurred. Please try again.';
+    messageAr = 'حدث خطأ في قاعدة البيانات. يرجى المحاولة مرة أخرى.';
+  } else if (err.message) {
+    message = err.message;
+    messageAr = err.messageAr || err.message;
+  }
+
+  res.status(statusCode).json({
+    message,
+    messageAr,
     error: process.env.NODE_ENV === 'development' ? err.message : undefined
   });
 });

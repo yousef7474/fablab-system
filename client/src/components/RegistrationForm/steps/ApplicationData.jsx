@@ -24,15 +24,15 @@ const ApplicationData = ({ formData, onChange, onNext, onBack }) => {
     const file = e.target.files[0];
     if (!file) return;
 
-    // Validate file type
+    // Validate file type - accept all image formats
     if (!file.type.startsWith('image/')) {
-      toast.error(isRTL ? 'يرجى اختيار صورة صالحة' : 'Please select a valid image');
+      toast.error(isRTL ? 'يرجى اختيار صورة صالحة' : 'Please select a valid image file');
       return;
     }
 
-    // Validate file size (max 2MB)
-    if (file.size > 2 * 1024 * 1024) {
-      toast.error(isRTL ? 'حجم الصورة يجب أن يكون أقل من 2 ميجابايت' : 'Image size must be less than 2MB');
+    // Validate file size (max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error(isRTL ? 'حجم الصورة يجب أن يكون أقل من 5 ميجابايت' : 'Image size must be less than 5MB');
       return;
     }
 
@@ -40,6 +40,9 @@ const ApplicationData = ({ formData, onChange, onNext, onBack }) => {
     const reader = new FileReader();
     reader.onload = (event) => {
       onChange({ profilePicture: event.target.result });
+    };
+    reader.onerror = () => {
+      toast.error(isRTL ? 'فشل في قراءة الصورة. يرجى المحاولة مرة أخرى.' : 'Failed to read image. Please try again.');
     };
     reader.readAsDataURL(file);
   };
@@ -352,14 +355,14 @@ const ApplicationData = ({ formData, onChange, onNext, onBack }) => {
                     {isRTL ? (
                       <>
                         📷 الصورة ستُطبع على بطاقة الهوية الخاصة بك<br />
-                        • الحجم الأقصى: 2 ميجابايت<br />
-                        • الصيغ المدعومة: JPG, PNG
+                        • الحجم الأقصى: 5 ميجابايت<br />
+                        • جميع صيغ الصور مدعومة
                       </>
                     ) : (
                       <>
                         📷 Photo will be printed on your ID card<br />
-                        • Max size: 2MB<br />
-                        • Supported formats: JPG, PNG
+                        • Max size: 5MB<br />
+                        • All image formats supported
                       </>
                     )}
                   </p>
