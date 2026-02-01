@@ -4395,7 +4395,8 @@ const AdminDashboard = () => {
                               <button
                                 className="action-btn view"
                                 onClick={() => {
-                                  setSelectedRegistration(reg);
+                                  // Include user data with registration for proper display
+                                  setSelectedRegistration({ ...reg, user: selectedUser });
                                   setShowUserModal(false);
                                   setShowModal(true);
                                 }}
