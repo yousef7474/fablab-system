@@ -1,4 +1,4 @@
-const { Task, Employee, Admin } = require('../models');
+const { Task, Employee, Admin, Rating } = require('../models');
 const { Op } = require('sequelize');
 
 /**
@@ -320,6 +320,7 @@ exports.getTasksForCalendar = async (req, res) => {
 
 /**
  * Update task status only
+ * When status changes to 'completed', automatically awards 1 point to the employee
  */
 exports.updateTaskStatus = async (req, res) => {
   try {
@@ -342,12 +343,41 @@ exports.updateTaskStatus = async (req, res) => {
       });
     }
 
+    // Check if task is being marked as completed (and wasn't already completed)
+    const wasCompleted = task.status === 'completed';
+    const isBeingCompleted = status === 'completed';
+
     await task.update({ status });
 
+    // Auto-award 1 point to employee when task is completed
+    let awardedRating = null;
+    if (isBeingCompleted && !wasCompleted && task.employeeId) {
+      try {
+        awardedRating = await Rating.create({
+          employeeId: task.employeeId,
+          createdById: req.admin?.adminId || task.createdById,
+          type: 'award',
+          points: 1,
+          criteria: 'Task Completion',
+          notes: `Completed task: "${task.title}"`,
+          ratingDate: new Date().toISOString().split('T')[0]
+        });
+        console.log(`Auto-awarded 1 point to employee ${task.employeeId} for completing task: ${task.title}`);
+      } catch (ratingError) {
+        console.error('Error creating auto-rating for task completion:', ratingError);
+        // Don't fail the request if rating creation fails
+      }
+    }
+
     res.json({
-      message: 'Task status updated',
-      messageAr: 'تم تحديث حالة المهمة',
-      task
+      message: isBeingCompleted && awardedRating
+        ? 'Task completed and 1 point awarded to employee'
+        : 'Task status updated',
+      messageAr: isBeingCompleted && awardedRating
+        ? 'تم إكمال المهمة ومنح نقطة واحدة للموظف'
+        : 'تم تحديث حالة المهمة',
+      task,
+      awardedRating
     });
   } catch (error) {
     console.error('Error updating task status:', error);

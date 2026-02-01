@@ -1485,8 +1485,22 @@ const ManagerDashboard = () => {
 
   const handleUpdateTaskStatus = async (taskId, newStatus) => {
     try {
-      await api.patch(`/tasks/${taskId}/status`, { status: newStatus });
-      toast.success(isRTL ? 'تم تحديث حالة المهمة' : 'Task status updated');
+      const response = await api.patch(`/tasks/${taskId}/status`, { status: newStatus });
+
+      // Check if a point was awarded (when task is completed)
+      if (response.data.awardedRating) {
+        toast.success(
+          isRTL
+            ? `تم إكمال المهمة ومنح نقطة واحدة للموظف (${response.data.task.title})`
+            : `Task completed! 1 point awarded to employee (${response.data.task.title})`,
+          { autoClose: 5000 }
+        );
+        // Refresh employee data to show updated points
+        fetchEmployees();
+      } else {
+        toast.success(isRTL ? 'تم تحديث حالة المهمة' : 'Task status updated');
+      }
+
       fetchGroupedTasks();
       fetchSchedule();
     } catch (error) {
