@@ -1812,7 +1812,7 @@ const ManagerDashboard = () => {
     setTimeout(() => printWindow.print(), 250);
   };
 
-  // Print volunteer certificate - modern professional design
+  // Print volunteer certificate - modern colorful professional design
   const handlePrintVolunteerCertificate = (volunteer, opportunity) => {
     if (!opportunity) {
       toast.error(isRTL ? 'يرجى اختيار فرصة تطوعية لطباعة الشهادة' : 'Please select an opportunity to print certificate');
@@ -1821,6 +1821,7 @@ const ManagerDashboard = () => {
 
     const printWindow = window.open('', '_blank');
     const totalHours = (opportunity.totalHours || 0) + (opportunity.hoursAdjustment || 0);
+    const certId = 'VOL-' + (opportunity.opportunityId?.substring(0, 8).toUpperCase() || Date.now());
 
     const printContent = `
       <!DOCTYPE html>
@@ -1828,258 +1829,403 @@ const ManagerDashboard = () => {
       <head>
         <title>شهادة تطوع - ${volunteer.name}</title>
         <style>
-          @page { size: A4 landscape; margin: 0; }
+          @page {
+            size: A4 landscape;
+            margin: 0;
+          }
           * { margin: 0; padding: 0; box-sizing: border-box; }
+          html, body {
+            width: 297mm;
+            height: 210mm;
+            overflow: hidden;
+          }
           body {
             font-family: 'Segoe UI', Tahoma, Arial, sans-serif;
-            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
-            min-height: 100vh;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%);
             display: flex;
             align-items: center;
             justify-content: center;
-            padding: 20px;
+            padding: 10mm;
           }
           .certificate {
-            width: 100%;
-            max-width: 1000px;
-            background: white;
-            border-radius: 20px;
-            overflow: hidden;
-            box-shadow: 0 25px 80px rgba(0,0,0,0.3);
+            width: 277mm;
+            height: 190mm;
+            background: linear-gradient(145deg, #ffffff 0%, #f8fafc 100%);
+            border-radius: 16px;
             position: relative;
+            overflow: hidden;
+            box-shadow: 0 30px 60px rgba(0,0,0,0.3);
           }
+
+          /* Colorful border effect */
           .certificate::before {
             content: '';
             position: absolute;
-            top: 0; left: 0; right: 0;
-            height: 8px;
-            background: linear-gradient(90deg, #e02529, #ff6b6b, #e02529);
+            top: 0; left: 0; right: 0; bottom: 0;
+            border: 6px solid transparent;
+            border-image: linear-gradient(135deg, #e02529, #ff6b6b, #feca57, #48dbfb, #e02529) 1;
+            border-radius: 16px;
+            pointer-events: none;
           }
-          .certificate-inner {
-            padding: 40px 50px;
-            position: relative;
-          }
-          .corner-decoration {
+
+          /* Decorative circles */
+          .decor-circle {
             position: absolute;
-            width: 120px; height: 120px;
+            border-radius: 50%;
             opacity: 0.1;
           }
-          .corner-decoration.top-left { top: 20px; left: 20px; }
-          .corner-decoration.top-right { top: 20px; right: 20px; transform: scaleX(-1); }
-          .corner-decoration.bottom-left { bottom: 20px; left: 20px; transform: scaleY(-1); }
-          .corner-decoration.bottom-right { bottom: 20px; right: 20px; transform: scale(-1); }
+          .decor-circle.c1 {
+            width: 200px; height: 200px;
+            background: linear-gradient(135deg, #e02529, #ff6b6b);
+            top: -50px; right: -50px;
+          }
+          .decor-circle.c2 {
+            width: 150px; height: 150px;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            bottom: -30px; left: -30px;
+          }
+          .decor-circle.c3 {
+            width: 100px; height: 100px;
+            background: linear-gradient(135deg, #feca57, #ff9f43);
+            top: 50%; left: 20px;
+            transform: translateY(-50%);
+          }
+          .decor-circle.c4 {
+            width: 80px; height: 80px;
+            background: linear-gradient(135deg, #48dbfb, #0abde3);
+            bottom: 60px; right: 40px;
+          }
+
+          .certificate-inner {
+            padding: 20mm 25mm;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+            z-index: 1;
+          }
+
+          /* Header */
           .header {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 30px;
+            margin-bottom: 12mm;
           }
-          .logo { height: 70px; }
+          .logo-container {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+          }
+          .logo {
+            height: 55px;
+            filter: drop-shadow(0 2px 4px rgba(0,0,0,0.1));
+          }
           .header-center {
             text-align: center;
             flex: 1;
+            padding: 0 20px;
           }
           .org-name {
-            font-size: 14px;
-            color: #666;
+            font-size: 11px;
+            color: #64748b;
+            letter-spacing: 2px;
+            text-transform: uppercase;
             margin-bottom: 5px;
           }
           .cert-title {
-            font-size: 42px;
-            font-weight: 700;
-            color: #e02529;
-            text-shadow: 2px 2px 4px rgba(224, 37, 41, 0.1);
+            font-size: 44px;
+            font-weight: 800;
+            background: linear-gradient(135deg, #e02529, #ff6b6b);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            text-shadow: none;
+            margin-bottom: 4px;
           }
           .cert-subtitle {
-            font-size: 18px;
-            color: #1a1a2e;
-            margin-top: 5px;
+            font-size: 16px;
+            color: #475569;
+            font-weight: 500;
+            letter-spacing: 3px;
           }
+
+          /* Divider */
           .divider {
-            height: 3px;
-            background: linear-gradient(90deg, transparent, #e02529, transparent);
-            margin: 25px 0;
+            height: 4px;
+            background: linear-gradient(90deg, #e02529, #ff6b6b, #feca57, #48dbfb, #667eea, #764ba2);
+            border-radius: 2px;
+            margin-bottom: 10mm;
           }
+
+          /* Main Content */
           .main-content {
             text-align: center;
-            padding: 20px 0;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
           }
           .presents-text {
-            font-size: 16px;
-            color: #666;
-            margin-bottom: 15px;
+            font-size: 14px;
+            color: #64748b;
+            margin-bottom: 8px;
           }
           .volunteer-name {
-            font-size: 48px;
+            font-size: 42px;
             font-weight: 700;
-            color: #1a1a2e;
-            margin-bottom: 20px;
-            text-decoration: underline;
-            text-decoration-color: #e02529;
-            text-underline-offset: 8px;
+            color: #1e293b;
+            margin-bottom: 8px;
+            position: relative;
+            display: inline-block;
+          }
+          .volunteer-name::after {
+            content: '';
+            position: absolute;
+            bottom: -4px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 80%;
+            height: 4px;
+            background: linear-gradient(90deg, #e02529, #ff6b6b, #feca57);
+            border-radius: 2px;
           }
           .appreciation-text {
-            font-size: 18px;
-            line-height: 2;
-            color: #444;
-            max-width: 800px;
-            margin: 0 auto 25px;
+            font-size: 15px;
+            line-height: 1.8;
+            color: #475569;
+            max-width: 600px;
+            margin: 15px auto;
           }
           .highlight {
             color: #e02529;
-            font-weight: 600;
-          }
-          .details-box {
-            display: inline-flex;
-            gap: 40px;
-            background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
-            padding: 20px 40px;
-            border-radius: 12px;
-            margin: 20px 0;
-            border: 2px solid #e02529;
-          }
-          .detail-item {
-            text-align: center;
-          }
-          .detail-label {
-            font-size: 12px;
-            color: #888;
-            margin-bottom: 5px;
-          }
-          .detail-value {
-            font-size: 20px;
             font-weight: 700;
-            color: #1a1a2e;
+            font-size: 17px;
           }
-          .thank-you {
-            font-size: 16px;
-            color: #666;
-            margin-top: 25px;
-            font-style: italic;
-          }
-          .signature-section {
+
+          /* Stats Cards */
+          .stats-container {
             display: flex;
             justify-content: center;
-            margin-top: 40px;
-            padding-top: 20px;
+            gap: 30px;
+            margin: 12px 0;
+          }
+          .stat-card {
+            background: linear-gradient(135deg, #e02529, #ff6b6b);
+            color: white;
+            padding: 12px 30px;
+            border-radius: 12px;
+            text-align: center;
+            box-shadow: 0 8px 20px rgba(224, 37, 41, 0.3);
+            min-width: 140px;
+          }
+          .stat-card.alt {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            box-shadow: 0 8px 20px rgba(102, 126, 234, 0.3);
+          }
+          .stat-card.gold {
+            background: linear-gradient(135deg, #f59e0b, #fbbf24);
+            box-shadow: 0 8px 20px rgba(245, 158, 11, 0.3);
+          }
+          .stat-value {
+            font-size: 22px;
+            font-weight: 700;
+          }
+          .stat-label {
+            font-size: 10px;
+            opacity: 0.9;
+            margin-top: 2px;
+          }
+
+          .thank-you {
+            font-size: 13px;
+            color: #64748b;
+            margin-top: 10px;
+            font-style: italic;
+          }
+          .hadith {
+            color: #e02529;
+            font-weight: 600;
+          }
+
+          /* Footer */
+          .footer-section {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+            margin-top: auto;
+            padding-top: 10mm;
           }
           .signature-box {
             text-align: center;
-            min-width: 250px;
+            min-width: 200px;
           }
-          .signature-title {
-            font-size: 12px;
-            color: #888;
-            margin-bottom: 40px;
+          .signature-line {
+            width: 180px;
+            height: 2px;
+            background: linear-gradient(90deg, #e02529, #ff6b6b);
+            margin: 0 auto 8px;
           }
           .signature-name {
-            font-size: 18px;
-            font-weight: 600;
-            color: #1a1a2e;
-            border-top: 2px solid #333;
-            padding-top: 10px;
+            font-size: 16px;
+            font-weight: 700;
+            color: #1e293b;
           }
           .signature-role {
-            font-size: 12px;
-            color: #666;
-            margin-top: 5px;
-          }
-          .footer {
-            text-align: center;
-            margin-top: 30px;
             font-size: 11px;
-            color: #999;
+            color: #64748b;
+            margin-top: 3px;
+          }
+
+          .cert-info {
+            text-align: left;
           }
           .cert-id {
-            font-family: monospace;
-            background: #f0f0f0;
-            padding: 5px 15px;
+            font-family: 'Courier New', monospace;
+            font-size: 10px;
+            color: #94a3b8;
+            background: linear-gradient(135deg, #f1f5f9, #e2e8f0);
+            padding: 6px 14px;
             border-radius: 20px;
             display: inline-block;
-            margin-top: 10px;
           }
+          .cert-date {
+            font-size: 10px;
+            color: #94a3b8;
+            margin-top: 5px;
+          }
+
+          .org-footer {
+            text-align: center;
+            flex: 1;
+          }
+          .org-footer-text {
+            font-size: 10px;
+            color: #94a3b8;
+          }
+
+          /* Ribbon decoration */
+          .ribbon {
+            position: absolute;
+            top: 25px;
+            left: -35px;
+            width: 150px;
+            height: 30px;
+            background: linear-gradient(135deg, #e02529, #c41e24);
+            transform: rotate(-45deg);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 10px;
+            font-weight: 600;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+          }
+
           @media print {
+            html, body {
+              width: 297mm;
+              height: 210mm;
+              -webkit-print-color-adjust: exact !important;
+              print-color-adjust: exact !important;
+              color-adjust: exact !important;
+            }
             body {
               padding: 0;
-              background: white;
-              -webkit-print-color-adjust: exact;
-              print-color-adjust: exact;
+              background: linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%) !important;
             }
-            .certificate { box-shadow: none; }
+            .certificate {
+              box-shadow: none;
+              margin: auto;
+            }
+            .cert-title {
+              -webkit-text-fill-color: #e02529;
+              color: #e02529;
+            }
           }
         </style>
       </head>
       <body>
         <div class="certificate">
-          <div class="certificate-inner">
-            <!-- Corner Decorations -->
-            <svg class="corner-decoration top-left" viewBox="0 0 100 100">
-              <path d="M0 0 L100 0 L100 20 L20 20 L20 100 L0 100 Z" fill="#e02529"/>
-            </svg>
-            <svg class="corner-decoration top-right" viewBox="0 0 100 100">
-              <path d="M0 0 L100 0 L100 20 L20 20 L20 100 L0 100 Z" fill="#e02529"/>
-            </svg>
-            <svg class="corner-decoration bottom-left" viewBox="0 0 100 100">
-              <path d="M0 0 L100 0 L100 20 L20 20 L20 100 L0 100 Z" fill="#e02529"/>
-            </svg>
-            <svg class="corner-decoration bottom-right" viewBox="0 0 100 100">
-              <path d="M0 0 L100 0 L100 20 L20 20 L20 100 L0 100 Z" fill="#e02529"/>
-            </svg>
+          <!-- Decorative elements -->
+          <div class="decor-circle c1"></div>
+          <div class="decor-circle c2"></div>
+          <div class="decor-circle c3"></div>
+          <div class="decor-circle c4"></div>
+          <div class="ribbon">متطوع متميز</div>
 
+          <div class="certificate-inner">
+            <!-- Header -->
             <div class="header">
-              <img src="/found.png" alt="Foundation" class="logo" />
+              <div class="logo-container">
+                <img src="/found.png" alt="Foundation" class="logo" />
+              </div>
               <div class="header-center">
                 <div class="org-name">مؤسسة عبدالمنعم الراشد الإنسانية</div>
-                <div class="cert-title">شهادة تقدير</div>
-                <div class="cert-subtitle">Certificate of Appreciation</div>
+                <div class="cert-title">شهادة تطوع</div>
+                <div class="cert-subtitle">VOLUNTEERING CERTIFICATE</div>
               </div>
-              <img src="/fablab.png" alt="FABLAB" class="logo" />
+              <div class="logo-container">
+                <img src="/fablab.png" alt="FABLAB" class="logo" />
+              </div>
             </div>
 
             <div class="divider"></div>
 
+            <!-- Main Content -->
             <div class="main-content">
-              <div class="presents-text">تتقدم إدارة فاب لاب الأحساء بخالص الشكر والتقدير إلى</div>
-
+              <div class="presents-text">تشهد إدارة فاب لاب الأحساء بأن</div>
               <div class="volunteer-name">${volunteer.name}</div>
 
               <div class="appreciation-text">
-                وذلك تقديراً لجهودكم المتميزة وتفانيكم في العمل التطوعي من خلال مشاركتكم الفعّالة في
-                <br/>
+                قد شارك في العمل التطوعي من خلال
                 <span class="highlight">"${opportunity.title}"</span>
                 <br/>
-                نثمّن عطاءكم ونقدّر روح المبادرة والتعاون التي أظهرتموها، سائلين المولى عز وجل أن يجعل ذلك في موازين حسناتكم
+                وأبدى تفانياً وإخلاصاً في خدمة المجتمع، ونثمّن جهوده المتميزة وروح المبادرة والتعاون
               </div>
 
-              <div class="details-box">
-                <div class="detail-item">
-                  <div class="detail-label">فترة التطوع</div>
-                  <div class="detail-value">${opportunity.startDate} - ${opportunity.endDate}</div>
+              <div class="stats-container">
+                <div class="stat-card">
+                  <div class="stat-value">${totalHours}</div>
+                  <div class="stat-label">ساعة تطوعية</div>
                 </div>
-                <div class="detail-item">
-                  <div class="detail-label">إجمالي الساعات</div>
-                  <div class="detail-value">${totalHours} ساعة</div>
+                <div class="stat-card alt">
+                  <div class="stat-value">${opportunity.startDate?.split('-').reverse().join('/')}</div>
+                  <div class="stat-label">تاريخ البداية</div>
+                </div>
+                <div class="stat-card gold">
+                  <div class="stat-value">${opportunity.endDate?.split('-').reverse().join('/')}</div>
+                  <div class="stat-label">تاريخ النهاية</div>
                 </div>
               </div>
 
               <div class="thank-you">
-                "من لا يشكر الناس لا يشكر الله"
+                <span class="hadith">"من لا يشكر الناس لا يشكر الله"</span>
                 <br/>
-                شكراً لكم على تفانيكم وإخلاصكم في خدمة المجتمع
+                شكراً لعطائك وتفانيك في خدمة المجتمع
               </div>
             </div>
 
-            <div class="signature-section">
+            <!-- Footer -->
+            <div class="footer-section">
+              <div class="cert-info">
+                <div class="cert-id">${certId}</div>
+                <div class="cert-date">${new Date().toLocaleDateString('ar-SA')}</div>
+              </div>
+
+              <div class="org-footer">
+                <div class="org-footer-text">
+                  فاب لاب الأحساء - مختبر التصنيع الرقمي
+                  <br/>
+                  FABLAB Al-Ahsa - Digital Fabrication Laboratory
+                </div>
+              </div>
+
               <div class="signature-box">
-                <div class="signature-title">التوقيع</div>
+                <div class="signature-line"></div>
                 <div class="signature-name">أ. زكي اللويم</div>
                 <div class="signature-role">المسؤول التنفيذي لفاب لاب الأحساء</div>
               </div>
-            </div>
-
-            <div class="footer">
-              <div>فاب لاب الأحساء - مختبر التصنيع الرقمي | FABLAB Al-Ahsa - Digital Fabrication Laboratory</div>
-              <div class="cert-id">رقم الشهادة: VOL-${opportunity.opportunityId?.substring(0, 8).toUpperCase() || Date.now()}</div>
             </div>
           </div>
         </div>
@@ -2090,7 +2236,7 @@ const ManagerDashboard = () => {
     printWindow.document.write(printContent);
     printWindow.document.close();
     printWindow.focus();
-    setTimeout(() => printWindow.print(), 250);
+    setTimeout(() => printWindow.print(), 300);
   };
 
   // Export all volunteers as CSV
