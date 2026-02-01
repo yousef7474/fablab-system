@@ -259,7 +259,8 @@ const ManagerDashboard = () => {
     points: 1,
     criteria: '',
     notes: '',
-    ratingDate: new Date().toISOString().split('T')[0]
+    ratingDate: new Date().toISOString().split('T')[0],
+    photoAfter: ''
   });
   const [workspaceStats, setWorkspaceStats] = useState({
     totalWorkspaces: 0,
@@ -593,6 +594,13 @@ const ManagerDashboard = () => {
       return;
     }
 
+    // Check workspace limit (max 8 workspaces)
+    const activeWorkspaces = workspaces.filter(w => w.status === 'active').length;
+    if (activeWorkspaces >= 8) {
+      toast.error(isRTL ? 'تم الوصول للحد الأقصى من مساحات العمل (8)' : 'Maximum number of workspaces reached (8)');
+      return;
+    }
+
     setWorkspaceLoading(true);
     try {
       await api.post('/workspaces', workspaceForm);
@@ -697,14 +705,24 @@ const ManagerDashboard = () => {
         criteria: criteria
       };
       delete ratingData.customCriteria;
+      delete ratingData.photoAfter; // Remove from rating data
 
       await api.post(`/workspaces/${selectedWorkspace.workspaceId}/ratings`, ratingData);
+
+      // If photo after is provided, update the workspace
+      if (workspaceRatingForm.photoAfter) {
+        await api.put(`/workspaces/${selectedWorkspace.workspaceId}`, {
+          photoAfter: workspaceRatingForm.photoAfter
+        });
+      }
+
       toast.success(isRTL ? 'تم إضافة التقييم بنجاح' : 'Rating added successfully');
       fetchWorkspaces();
       setShowWorkspaceRatingModal(false);
       setWorkspaceRatingForm({
         type: 'award', points: 1, criteria: '', notes: '',
-        ratingDate: new Date().toISOString().split('T')[0]
+        ratingDate: new Date().toISOString().split('T')[0],
+        photoAfter: ''
       });
     } catch (error) {
       toast.error(isRTL ? 'خطأ في إضافة التقييم' : 'Error adding rating');
@@ -717,7 +735,8 @@ const ManagerDashboard = () => {
     setSelectedWorkspace(workspace);
     setWorkspaceRatingForm({
       type: 'award', points: 1, criteria: '', notes: '',
-      ratingDate: new Date().toISOString().split('T')[0]
+      ratingDate: new Date().toISOString().split('T')[0],
+      photoAfter: ''
     });
     setShowWorkspaceRatingModal(true);
   };
@@ -1615,6 +1634,463 @@ const ManagerDashboard = () => {
     link.click();
     URL.revokeObjectURL(link.href);
     toast.success(isRTL ? 'تم تصدير السجل بنجاح' : 'History exported successfully');
+  };
+
+  // Print volunteer profile with all info including national ID photo
+  const handlePrintVolunteerProfile = (volunteer, opportunity = null) => {
+    const printWindow = window.open('', '_blank');
+    const totalHours = (volunteer.opportunities || []).reduce((sum, o) => sum + ((o.totalHours || 0) + (o.hoursAdjustment || 0)), 0);
+
+    const printContent = `
+      <!DOCTYPE html>
+      <html dir="${isRTL ? 'rtl' : 'ltr'}" lang="${isRTL ? 'ar' : 'en'}">
+      <head>
+        <title>${isRTL ? 'ملف المتطوع' : 'Volunteer Profile'} - ${volunteer.name}</title>
+        <style>
+          @page { size: A4; margin: 15mm; }
+          * { margin: 0; padding: 0; box-sizing: border-box; }
+          body {
+            font-family: 'Segoe UI', Tahoma, Arial, sans-serif;
+            padding: 20px;
+            background: #fff;
+            font-size: 12px;
+            line-height: 1.5;
+            color: #333;
+          }
+          .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding-bottom: 15px;
+            border-bottom: 3px solid #e02529;
+            margin-bottom: 20px;
+          }
+          .logo { height: 60px; }
+          .header-center { text-align: center; flex: 1; }
+          .header-title { font-size: 20px; font-weight: 700; color: #e02529; }
+          .header-subtitle { font-size: 12px; color: #666; margin-top: 5px; }
+          .profile-section {
+            display: flex;
+            gap: 20px;
+            margin-bottom: 20px;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 8px;
+          }
+          .profile-photo {
+            width: 150px;
+            height: 180px;
+            border: 2px solid #e02529;
+            border-radius: 8px;
+            overflow: hidden;
+          }
+          .profile-photo img { width: 100%; height: 100%; object-fit: cover; }
+          .profile-info { flex: 1; }
+          .profile-name { font-size: 24px; font-weight: 700; color: #1a1a2e; margin-bottom: 15px; }
+          .info-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
+          .info-item { background: white; padding: 10px; border-radius: 6px; border: 1px solid #eee; }
+          .info-label { font-size: 10px; color: #888; text-transform: uppercase; }
+          .info-value { font-size: 14px; font-weight: 600; color: #333; }
+          .section { margin-bottom: 20px; }
+          .section-title {
+            font-size: 14px; font-weight: 700; color: #e02529;
+            padding-bottom: 8px; margin-bottom: 12px;
+            border-bottom: 2px solid #e02529;
+          }
+          .stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+          .stat-card {
+            text-align: center; padding: 15px;
+            background: linear-gradient(135deg, #e02529 0%, #c41e24 100%);
+            color: white; border-radius: 8px;
+          }
+          .stat-value { font-size: 28px; font-weight: 700; }
+          .stat-label { font-size: 11px; opacity: 0.9; }
+          .opportunity-card {
+            background: #f8f9fa; padding: 12px;
+            border-radius: 8px; margin-bottom: 10px;
+            border-${isRTL ? 'right' : 'left'}: 4px solid #e02529;
+          }
+          .opp-title { font-size: 14px; font-weight: 600; color: #1a1a2e; }
+          .opp-meta { display: flex; gap: 20px; margin-top: 8px; font-size: 12px; color: #666; }
+          .footer {
+            margin-top: 30px; text-align: center;
+            font-size: 10px; color: #888;
+            padding-top: 15px; border-top: 1px solid #eee;
+          }
+          @media print {
+            body { padding: 0; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+          }
+        </style>
+      </head>
+      <body>
+        <div class="header">
+          <img src="/found.png" alt="Foundation" class="logo" />
+          <div class="header-center">
+            <div class="header-title">${isRTL ? 'ملف المتطوع' : 'Volunteer Profile'}</div>
+            <div class="header-subtitle">${isRTL ? 'فاب لاب الأحساء - مختبر التصنيع الرقمي' : 'FABLAB Al-Ahsa - Digital Fabrication Laboratory'}</div>
+          </div>
+          <img src="/fablab.png" alt="FABLAB" class="logo" />
+        </div>
+
+        <div class="profile-section">
+          <div class="profile-photo">
+            ${volunteer.nationalIdPhoto ? `<img src="${volunteer.nationalIdPhoto}" alt="ID Photo" />` : '<div style="display:flex;align-items:center;justify-content:center;height:100%;background:#f0f0f0;font-size:48px;color:#999;">' + (volunteer.name?.charAt(0) || 'V') + '</div>'}
+          </div>
+          <div class="profile-info">
+            <div class="profile-name">${volunteer.name}</div>
+            <div class="info-grid">
+              <div class="info-item">
+                <div class="info-label">${isRTL ? 'رقم الهوية' : 'National ID'}</div>
+                <div class="info-value">${volunteer.nationalId}</div>
+              </div>
+              <div class="info-item">
+                <div class="info-label">${isRTL ? 'رقم الهاتف' : 'Phone'}</div>
+                <div class="info-value">${volunteer.phone}</div>
+              </div>
+              <div class="info-item">
+                <div class="info-label">${isRTL ? 'البريد الإلكتروني' : 'Email'}</div>
+                <div class="info-value">${volunteer.email || (isRTL ? 'غير متوفر' : 'N/A')}</div>
+              </div>
+              <div class="info-item">
+                <div class="info-label">${isRTL ? 'الحالة' : 'Status'}</div>
+                <div class="info-value">${volunteer.isActive ? (isRTL ? 'نشط' : 'Active') : (isRTL ? 'غير نشط' : 'Inactive')}</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="section">
+          <div class="section-title">${isRTL ? 'إحصائيات التطوع' : 'Volunteering Statistics'}</div>
+          <div class="stats-grid">
+            <div class="stat-card">
+              <div class="stat-value">${volunteer.totalOpportunities || 0}</div>
+              <div class="stat-label">${isRTL ? 'فرص تطوعية' : 'Opportunities'}</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-value">${totalHours}</div>
+              <div class="stat-label">${isRTL ? 'ساعة تطوع' : 'Total Hours'}</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-value">+${volunteer.totalAwards || 0}</div>
+              <div class="stat-label">${isRTL ? 'نقاط مكتسبة' : 'Awards'}</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-value">${volunteer.totalPoints || 0}</div>
+              <div class="stat-label">${isRTL ? 'صافي النقاط' : 'Net Points'}</div>
+            </div>
+          </div>
+        </div>
+
+        ${(volunteer.opportunities && volunteer.opportunities.length > 0) ? `
+        <div class="section">
+          <div class="section-title">${isRTL ? 'سجل التطوع' : 'Volunteering History'}</div>
+          ${volunteer.opportunities.map(opp => `
+            <div class="opportunity-card">
+              <div class="opp-title">${opp.title}</div>
+              ${opp.description ? `<p style="margin: 8px 0; color: #666; font-size: 12px;">${opp.description}</p>` : ''}
+              <div class="opp-meta">
+                <span>📅 ${opp.startDate} → ${opp.endDate}</span>
+                <span>⏱️ ${(opp.totalHours || 0) + (opp.hoursAdjustment || 0)} ${isRTL ? 'ساعة' : 'hours'}</span>
+                <span>📊 ${opp.status === 'completed' ? (isRTL ? 'مكتمل' : 'Completed') : (isRTL ? 'نشط' : 'Active')}</span>
+              </div>
+            </div>
+          `).join('')}
+        </div>
+        ` : ''}
+
+        <div class="footer">
+          <p>${isRTL ? 'مؤسسة عبدالمنعم الراشد الإنسانية - فاب لاب الأحساء' : 'Abdulmonem Alrashed Humanitarian Foundation - FABLAB Al-Ahsa'}</p>
+          <p>${isRTL ? 'تم الطباعة في' : 'Printed on'}: ${new Date().toLocaleString(isRTL ? 'ar-SA' : 'en-US')}</p>
+        </div>
+      </body>
+      </html>
+    `;
+
+    printWindow.document.write(printContent);
+    printWindow.document.close();
+    printWindow.focus();
+    setTimeout(() => printWindow.print(), 250);
+  };
+
+  // Print volunteer certificate - modern professional design
+  const handlePrintVolunteerCertificate = (volunteer, opportunity) => {
+    if (!opportunity) {
+      toast.error(isRTL ? 'يرجى اختيار فرصة تطوعية لطباعة الشهادة' : 'Please select an opportunity to print certificate');
+      return;
+    }
+
+    const printWindow = window.open('', '_blank');
+    const totalHours = (opportunity.totalHours || 0) + (opportunity.hoursAdjustment || 0);
+
+    const printContent = `
+      <!DOCTYPE html>
+      <html dir="rtl" lang="ar">
+      <head>
+        <title>شهادة تطوع - ${volunteer.name}</title>
+        <style>
+          @page { size: A4 landscape; margin: 0; }
+          * { margin: 0; padding: 0; box-sizing: border-box; }
+          body {
+            font-family: 'Segoe UI', Tahoma, Arial, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+          }
+          .certificate {
+            width: 100%;
+            max-width: 1000px;
+            background: white;
+            border-radius: 20px;
+            overflow: hidden;
+            box-shadow: 0 25px 80px rgba(0,0,0,0.3);
+            position: relative;
+          }
+          .certificate::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0;
+            height: 8px;
+            background: linear-gradient(90deg, #e02529, #ff6b6b, #e02529);
+          }
+          .certificate-inner {
+            padding: 40px 50px;
+            position: relative;
+          }
+          .corner-decoration {
+            position: absolute;
+            width: 120px; height: 120px;
+            opacity: 0.1;
+          }
+          .corner-decoration.top-left { top: 20px; left: 20px; }
+          .corner-decoration.top-right { top: 20px; right: 20px; transform: scaleX(-1); }
+          .corner-decoration.bottom-left { bottom: 20px; left: 20px; transform: scaleY(-1); }
+          .corner-decoration.bottom-right { bottom: 20px; right: 20px; transform: scale(-1); }
+          .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+          }
+          .logo { height: 70px; }
+          .header-center {
+            text-align: center;
+            flex: 1;
+          }
+          .org-name {
+            font-size: 14px;
+            color: #666;
+            margin-bottom: 5px;
+          }
+          .cert-title {
+            font-size: 42px;
+            font-weight: 700;
+            color: #e02529;
+            text-shadow: 2px 2px 4px rgba(224, 37, 41, 0.1);
+          }
+          .cert-subtitle {
+            font-size: 18px;
+            color: #1a1a2e;
+            margin-top: 5px;
+          }
+          .divider {
+            height: 3px;
+            background: linear-gradient(90deg, transparent, #e02529, transparent);
+            margin: 25px 0;
+          }
+          .main-content {
+            text-align: center;
+            padding: 20px 0;
+          }
+          .presents-text {
+            font-size: 16px;
+            color: #666;
+            margin-bottom: 15px;
+          }
+          .volunteer-name {
+            font-size: 48px;
+            font-weight: 700;
+            color: #1a1a2e;
+            margin-bottom: 20px;
+            text-decoration: underline;
+            text-decoration-color: #e02529;
+            text-underline-offset: 8px;
+          }
+          .appreciation-text {
+            font-size: 18px;
+            line-height: 2;
+            color: #444;
+            max-width: 800px;
+            margin: 0 auto 25px;
+          }
+          .highlight {
+            color: #e02529;
+            font-weight: 600;
+          }
+          .details-box {
+            display: inline-flex;
+            gap: 40px;
+            background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+            padding: 20px 40px;
+            border-radius: 12px;
+            margin: 20px 0;
+            border: 2px solid #e02529;
+          }
+          .detail-item {
+            text-align: center;
+          }
+          .detail-label {
+            font-size: 12px;
+            color: #888;
+            margin-bottom: 5px;
+          }
+          .detail-value {
+            font-size: 20px;
+            font-weight: 700;
+            color: #1a1a2e;
+          }
+          .thank-you {
+            font-size: 16px;
+            color: #666;
+            margin-top: 25px;
+            font-style: italic;
+          }
+          .signature-section {
+            display: flex;
+            justify-content: center;
+            margin-top: 40px;
+            padding-top: 20px;
+          }
+          .signature-box {
+            text-align: center;
+            min-width: 250px;
+          }
+          .signature-title {
+            font-size: 12px;
+            color: #888;
+            margin-bottom: 40px;
+          }
+          .signature-name {
+            font-size: 18px;
+            font-weight: 600;
+            color: #1a1a2e;
+            border-top: 2px solid #333;
+            padding-top: 10px;
+          }
+          .signature-role {
+            font-size: 12px;
+            color: #666;
+            margin-top: 5px;
+          }
+          .footer {
+            text-align: center;
+            margin-top: 30px;
+            font-size: 11px;
+            color: #999;
+          }
+          .cert-id {
+            font-family: monospace;
+            background: #f0f0f0;
+            padding: 5px 15px;
+            border-radius: 20px;
+            display: inline-block;
+            margin-top: 10px;
+          }
+          @media print {
+            body {
+              padding: 0;
+              background: white;
+              -webkit-print-color-adjust: exact;
+              print-color-adjust: exact;
+            }
+            .certificate { box-shadow: none; }
+          }
+        </style>
+      </head>
+      <body>
+        <div class="certificate">
+          <div class="certificate-inner">
+            <!-- Corner Decorations -->
+            <svg class="corner-decoration top-left" viewBox="0 0 100 100">
+              <path d="M0 0 L100 0 L100 20 L20 20 L20 100 L0 100 Z" fill="#e02529"/>
+            </svg>
+            <svg class="corner-decoration top-right" viewBox="0 0 100 100">
+              <path d="M0 0 L100 0 L100 20 L20 20 L20 100 L0 100 Z" fill="#e02529"/>
+            </svg>
+            <svg class="corner-decoration bottom-left" viewBox="0 0 100 100">
+              <path d="M0 0 L100 0 L100 20 L20 20 L20 100 L0 100 Z" fill="#e02529"/>
+            </svg>
+            <svg class="corner-decoration bottom-right" viewBox="0 0 100 100">
+              <path d="M0 0 L100 0 L100 20 L20 20 L20 100 L0 100 Z" fill="#e02529"/>
+            </svg>
+
+            <div class="header">
+              <img src="/found.png" alt="Foundation" class="logo" />
+              <div class="header-center">
+                <div class="org-name">مؤسسة عبدالمنعم الراشد الإنسانية</div>
+                <div class="cert-title">شهادة تقدير</div>
+                <div class="cert-subtitle">Certificate of Appreciation</div>
+              </div>
+              <img src="/fablab.png" alt="FABLAB" class="logo" />
+            </div>
+
+            <div class="divider"></div>
+
+            <div class="main-content">
+              <div class="presents-text">تتقدم إدارة فاب لاب الأحساء بخالص الشكر والتقدير إلى</div>
+
+              <div class="volunteer-name">${volunteer.name}</div>
+
+              <div class="appreciation-text">
+                وذلك تقديراً لجهودكم المتميزة وتفانيكم في العمل التطوعي من خلال مشاركتكم الفعّالة في
+                <br/>
+                <span class="highlight">"${opportunity.title}"</span>
+                <br/>
+                نثمّن عطاءكم ونقدّر روح المبادرة والتعاون التي أظهرتموها، سائلين المولى عز وجل أن يجعل ذلك في موازين حسناتكم
+              </div>
+
+              <div class="details-box">
+                <div class="detail-item">
+                  <div class="detail-label">فترة التطوع</div>
+                  <div class="detail-value">${opportunity.startDate} - ${opportunity.endDate}</div>
+                </div>
+                <div class="detail-item">
+                  <div class="detail-label">إجمالي الساعات</div>
+                  <div class="detail-value">${totalHours} ساعة</div>
+                </div>
+              </div>
+
+              <div class="thank-you">
+                "من لا يشكر الناس لا يشكر الله"
+                <br/>
+                شكراً لكم على تفانيكم وإخلاصكم في خدمة المجتمع
+              </div>
+            </div>
+
+            <div class="signature-section">
+              <div class="signature-box">
+                <div class="signature-title">التوقيع</div>
+                <div class="signature-name">أ. زكي اللويم</div>
+                <div class="signature-role">المسؤول التنفيذي لفاب لاب الأحساء</div>
+              </div>
+            </div>
+
+            <div class="footer">
+              <div>فاب لاب الأحساء - مختبر التصنيع الرقمي | FABLAB Al-Ahsa - Digital Fabrication Laboratory</div>
+              <div class="cert-id">رقم الشهادة: VOL-${opportunity.opportunityId?.substring(0, 8).toUpperCase() || Date.now()}</div>
+            </div>
+          </div>
+        </div>
+      </body>
+      </html>
+    `;
+
+    printWindow.document.write(printContent);
+    printWindow.document.close();
+    printWindow.focus();
+    setTimeout(() => printWindow.print(), 250);
   };
 
   // Export all volunteers as CSV
@@ -3601,6 +4077,29 @@ const ManagerDashboard = () => {
                               </svg>
                               {isRTL ? 'تقييم' : 'Rate'}
                             </button>
+                            <button
+                              className="print-certificate-btn"
+                              onClick={() => handlePrintVolunteerCertificate(selectedVolunteer, opp)}
+                              title={isRTL ? 'طباعة شهادة' : 'Print Certificate'}
+                              style={{
+                                background: 'linear-gradient(135deg, #e02529, #c41e24)',
+                                color: 'white',
+                                border: 'none',
+                                padding: '6px 12px',
+                                borderRadius: '6px',
+                                cursor: 'pointer',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '4px',
+                                fontSize: '12px'
+                              }}
+                            >
+                              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                <circle cx="12" cy="8" r="7"/>
+                                <polyline points="8.21 13.89 7 23 12 20 17 23 15.79 13.88"/>
+                              </svg>
+                              {isRTL ? 'شهادة' : 'Certificate'}
+                            </button>
                           </div>
                         </div>
                       ))}
@@ -3608,7 +4107,7 @@ const ManagerDashboard = () => {
                   )}
                 </div>
               </div>
-              <div className="modal-footer">
+              <div className="modal-footer" style={{ flexWrap: 'wrap', gap: '8px' }}>
                 <button
                   className="modal-btn delete"
                   onClick={() => handleDeleteVolunteer(selectedVolunteer.volunteerId)}
@@ -3620,7 +4119,7 @@ const ManagerDashboard = () => {
                     <path d="M14 11v6"/>
                     <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/>
                   </svg>
-                  {isRTL ? 'حذف المتطوع' : 'Delete Volunteer'}
+                  {isRTL ? 'حذف' : 'Delete'}
                 </button>
                 <button
                   className="modal-btn export"
@@ -3631,7 +4130,43 @@ const ManagerDashboard = () => {
                     <polyline points="7 10 12 15 17 10"/>
                     <line x1="12" y1="15" x2="12" y2="3"/>
                   </svg>
-                  {isRTL ? 'تصدير السجل' : 'Export History'}
+                  {isRTL ? 'تصدير' : 'Export'}
+                </button>
+                <button
+                  className="modal-btn"
+                  onClick={() => handlePrintVolunteerProfile(selectedVolunteer)}
+                  style={{ background: 'linear-gradient(135deg, #3b82f6, #1d4ed8)', color: 'white' }}
+                >
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <polyline points="6 9 6 2 18 2 18 9"/>
+                    <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/>
+                    <rect x="6" y="14" width="12" height="8"/>
+                  </svg>
+                  {isRTL ? 'طباعة الملف' : 'Print Profile'}
+                </button>
+                <button
+                  className="modal-btn"
+                  onClick={() => {
+                    if (selectedVolunteer.opportunities && selectedVolunteer.opportunities.length > 0) {
+                      // If there's only one opportunity, print it directly
+                      if (selectedVolunteer.opportunities.length === 1) {
+                        handlePrintVolunteerCertificate(selectedVolunteer, selectedVolunteer.opportunities[0]);
+                      } else {
+                        // Show selection modal or use first completed opportunity
+                        const completedOpp = selectedVolunteer.opportunities.find(o => o.status === 'completed') || selectedVolunteer.opportunities[0];
+                        handlePrintVolunteerCertificate(selectedVolunteer, completedOpp);
+                      }
+                    } else {
+                      toast.error(isRTL ? 'لا توجد فرص تطوعية لطباعة الشهادة' : 'No opportunities to print certificate');
+                    }
+                  }}
+                  style={{ background: 'linear-gradient(135deg, #e02529, #c41e24)', color: 'white' }}
+                >
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <circle cx="12" cy="8" r="7"/>
+                    <polyline points="8.21 13.89 7 23 12 20 17 23 15.79 13.88"/>
+                  </svg>
+                  {isRTL ? 'طباعة شهادة' : 'Print Certificate'}
                 </button>
                 <button className="modal-btn cancel" onClick={() => setShowVolunteerDetailModal(false)}>
                   {isRTL ? 'إغلاق' : 'Close'}
@@ -5911,6 +6446,99 @@ const ManagerDashboard = () => {
                     onChange={(e) => setWorkspaceRatingForm({ ...workspaceRatingForm, ratingDate: e.target.value })}
                     className="modern-input-field"
                   />
+                </div>
+
+                <div className="form-group modern-input">
+                  <label>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+                      <circle cx="8.5" cy="8.5" r="1.5"/>
+                      <polyline points="21 15 16 10 5 21"/>
+                    </svg>
+                    {isRTL ? 'صورة مساحة العمل بعد الانتهاء' : 'Workspace Photo After Finishing'}
+                  </label>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                    {workspaceRatingForm.photoAfter ? (
+                      <div style={{ position: 'relative' }}>
+                        <img
+                          src={workspaceRatingForm.photoAfter}
+                          alt="Workspace"
+                          style={{
+                            width: '120px',
+                            height: '90px',
+                            objectFit: 'cover',
+                            borderRadius: '8px',
+                            border: '2px solid var(--border-color)'
+                          }}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setWorkspaceRatingForm({ ...workspaceRatingForm, photoAfter: '' })}
+                          style={{
+                            position: 'absolute',
+                            top: '-8px',
+                            right: '-8px',
+                            width: '24px',
+                            height: '24px',
+                            borderRadius: '50%',
+                            background: '#ef4444',
+                            color: 'white',
+                            border: 'none',
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            fontSize: '14px'
+                          }}
+                        >×</button>
+                      </div>
+                    ) : (
+                      <label style={{
+                        display: 'flex',
+                        flexDirection: 'column',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        width: '120px',
+                        height: '90px',
+                        border: '2px dashed var(--border-color)',
+                        borderRadius: '8px',
+                        cursor: 'pointer',
+                        transition: 'all 0.2s',
+                        background: 'var(--bg-secondary)'
+                      }}>
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                          <polyline points="17 8 12 3 7 8"/>
+                          <line x1="12" y1="3" x2="12" y2="15"/>
+                        </svg>
+                        <span style={{ fontSize: '11px', marginTop: '4px', color: 'var(--text-secondary)' }}>
+                          {isRTL ? 'رفع صورة' : 'Upload'}
+                        </span>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          style={{ display: 'none' }}
+                          onChange={(e) => {
+                            const file = e.target.files[0];
+                            if (file) {
+                              if (file.size > 5 * 1024 * 1024) {
+                                toast.error(isRTL ? 'حجم الصورة كبير جداً (الحد الأقصى 5MB)' : 'Image too large (max 5MB)');
+                                return;
+                              }
+                              const reader = new FileReader();
+                              reader.onload = (ev) => {
+                                setWorkspaceRatingForm({ ...workspaceRatingForm, photoAfter: ev.target.result });
+                              };
+                              reader.readAsDataURL(file);
+                            }
+                          }}
+                        />
+                      </label>
+                    )}
+                    <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
+                      {isRTL ? 'صورة توثيقية لحالة مساحة العمل' : 'Documentation photo of workspace condition'}
+                    </span>
+                  </div>
                 </div>
 
                 <div className="form-group modern-input">
