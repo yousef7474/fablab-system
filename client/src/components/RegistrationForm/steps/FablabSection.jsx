@@ -1,10 +1,55 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { motion } from 'framer-motion';
+import api from '../../../config/api';
 
 const FablabSection = ({ formData, onChange, onNext, onBack }) => {
   const { t, i18n } = useTranslation();
   const isRTL = i18n.language === 'ar';
+
+  const [sectionStatus, setSectionStatus] = useState({});
+  const [loading, setLoading] = useState(true);
+
+  // Fetch section availability on mount
+  useEffect(() => {
+    const fetchSectionAvailability = async () => {
+      try {
+        const response = await api.get('/sections/availability');
+        // Convert array to map for easy lookup
+        const statusMap = {};
+        response.data.forEach(section => {
+          statusMap[section.section] = section;
+        });
+        setSectionStatus(statusMap);
+
+        // Clear selection if the previously selected section is now unavailable
+        if (formData.fablabSection) {
+          const selectedStatus = statusMap[formData.fablabSection];
+          if (selectedStatus && !selectedStatus.isAvailable) {
+            onChange({ fablabSection: '' });
+          }
+        }
+      } catch (error) {
+        console.error('Error fetching section availability:', error);
+        // On error, assume all sections are available
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchSectionAvailability();
+  }, []);
+
+  // Format date for display
+  const formatDate = (dateStr) => {
+    if (!dateStr) return '';
+    const date = new Date(dateStr);
+    return date.toLocaleDateString(isRTL ? 'ar-SA' : 'en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric'
+    });
+  };
 
   const sections = [
     {
@@ -111,8 +156,33 @@ const FablabSection = ({ formData, onChange, onNext, onBack }) => {
   ];
 
   const handleSelect = (sectionValue) => {
+    // Check if section is available
+    const status = sectionStatus[sectionValue];
+    if (status && !status.isAvailable) {
+      return; // Don't allow selection of unavailable sections
+    }
     onChange({ fablabSection: sectionValue });
   };
+
+  // Check if a section is unavailable
+  const isSectionUnavailable = (sectionValue) => {
+    const status = sectionStatus[sectionValue];
+    return status && !status.isAvailable;
+  };
+
+  // Get unavailable section details
+  const getUnavailableDetails = (sectionValue) => {
+    const status = sectionStatus[sectionValue];
+    if (!status || status.isAvailable) return null;
+    return {
+      reasonEn: status.reasonEn,
+      reasonAr: status.reasonAr,
+      endDate: status.endDate
+    };
+  };
+
+  // Count available sections
+  const availableSectionsCount = sections.filter(s => !isSectionUnavailable(s.value)).length;
 
   const canProceed = formData.fablabSection !== '';
 
@@ -125,24 +195,64 @@ const FablabSection = ({ formData, onChange, onNext, onBack }) => {
         {isRTL ? 'اختر القسم الذي ترغب في الاستفادة من خدماته' : 'Select the section you want to benefit from'}
       </p>
 
+      {/* Info banner when some sections are unavailable */}
+      {!loading && availableSectionsCount < sections.length && (
+        <div className="section-availability-info">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <circle cx="12" cy="12" r="10"/>
+            <line x1="12" y1="8" x2="12" y2="12"/>
+            <line x1="12" y1="16" x2="12.01" y2="16"/>
+          </svg>
+          <span>
+            {isRTL
+              ? `${availableSectionsCount} من ${sections.length} أقسام متاحة حالياً`
+              : `${availableSectionsCount} of ${sections.length} sections currently available`}
+          </span>
+        </div>
+      )}
+
       <div className="selection-grid">
-        {sections.map((section, index) => (
-          <motion.div
-            key={section.value}
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: index * 0.08 }}
-            className={`selection-card ${formData.fablabSection === section.value ? 'selected' : ''}`}
-            onClick={() => handleSelect(section.value)}
-          >
-            <div className="selection-card-icon">
-              {section.icon}
-            </div>
-            <div className="selection-card-title">
-              {isRTL ? section.labelAr : section.labelEn}
-            </div>
-          </motion.div>
-        ))}
+        {sections.map((section, index) => {
+          const unavailable = isSectionUnavailable(section.value);
+          const unavailableDetails = getUnavailableDetails(section.value);
+
+          return (
+            <motion.div
+              key={section.value}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: index * 0.08 }}
+              className={`selection-card ${formData.fablabSection === section.value ? 'selected' : ''} ${unavailable ? 'disabled' : ''}`}
+              onClick={() => handleSelect(section.value)}
+            >
+              <div className="selection-card-icon">
+                {section.icon}
+              </div>
+              <div className="selection-card-title">
+                {isRTL ? section.labelAr : section.labelEn}
+              </div>
+
+              {/* Unavailable overlay */}
+              {unavailable && unavailableDetails && (
+                <div className="unavailable-overlay">
+                  <div className="unavailable-badge">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <circle cx="12" cy="12" r="10"/>
+                      <line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/>
+                    </svg>
+                    <span>{isRTL ? 'غير متاح' : 'Unavailable'}</span>
+                  </div>
+                  <p className="unavailable-reason">
+                    {isRTL ? (unavailableDetails.reasonAr || unavailableDetails.reasonEn) : unavailableDetails.reasonEn}
+                  </p>
+                  <p className="available-from">
+                    {isRTL ? 'متاح من:' : 'Available:'} {formatDate(unavailableDetails.endDate)}
+                  </p>
+                </div>
+              )}
+            </motion.div>
+          );
+        })}
       </div>
 
       <div className="form-navigation">
