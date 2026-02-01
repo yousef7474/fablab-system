@@ -1,4 +1,4 @@
-const { Registration, Task } = require('../models');
+const { Registration, Task, User } = require('../models');
 const { Op } = require('sequelize');
 const moment = require('moment');
 
@@ -44,6 +44,7 @@ const checkTimeSlotAvailability = async (section, date, startTime, endTime, excl
     }
 
     // Get all registrations for this section that might conflict
+    // Include User to filter out Volunteer registrations
     const registrations = await Registration.findAll({
       where: {
         ...whereClause,
@@ -57,14 +58,24 @@ const checkTimeSlotAvailability = async (section, date, startTime, endTime, excl
           },
           { visitDate: date }
         ]
-      }
+      },
+      include: [{
+        model: User,
+        as: 'user',
+        attributes: ['applicationType']
+      }]
+    });
+
+    // Filter out Volunteer registrations - they don't block calendar slots
+    const blockingRegistrations = registrations.filter(reg => {
+      return reg.user?.applicationType !== 'Volunteer';
     });
 
     console.log(`Checking availability: section=${section}, date=${date}, time=${startTime}-${endTime}`);
-    console.log(`Found ${registrations.length} existing registrations to check`);
+    console.log(`Found ${registrations.length} existing registrations (${blockingRegistrations.length} blocking)`);
 
-    // Check each registration for time overlap
-    for (const reg of registrations) {
+    // Check each non-volunteer registration for time overlap
+    for (const reg of blockingRegistrations) {
       let regStartTime, regEndTime;
 
       if (reg.appointmentTime) {
@@ -156,6 +167,7 @@ const getAvailableTimeSlots = async (section, date) => {
     }
 
     // Get all registrations for this section and date
+    // Include User to filter out Volunteer registrations (volunteers don't block calendar slots)
     const registrations = await Registration.findAll({
       where: {
         fablabSection: section,
@@ -170,13 +182,23 @@ const getAvailableTimeSlots = async (section, date) => {
           },
           { visitDate: date }
         ]
-      }
+      },
+      include: [{
+        model: User,
+        as: 'user',
+        attributes: ['applicationType']
+      }]
     });
 
-    console.log(`Found ${registrations.length} registrations for section ${section} on ${date}`);
+    // Filter out Volunteer registrations - they don't block calendar slots for regular users
+    const blockingRegistrations = registrations.filter(reg => {
+      return reg.user?.applicationType !== 'Volunteer';
+    });
 
-    // Mark unavailable slots
-    registrations.forEach(reg => {
+    console.log(`Found ${registrations.length} registrations for section ${section} on ${date} (${blockingRegistrations.length} blocking, ${registrations.length - blockingRegistrations.length} volunteers excluded)`);
+
+    // Mark unavailable slots (only from non-volunteer registrations)
+    blockingRegistrations.forEach(reg => {
       let regStartTime, regEndTime;
 
       if (reg.appointmentTime) {
