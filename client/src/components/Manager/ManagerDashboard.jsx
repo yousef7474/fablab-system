@@ -1915,11 +1915,11 @@ const ManagerDashboard = () => {
           .logo-container {
             display: flex;
             align-items: center;
-            gap: 10px;
+            gap: 15px;
           }
           .logo {
-            height: 55px;
-            filter: drop-shadow(0 2px 4px rgba(0,0,0,0.1));
+            height: 85px;
+            filter: drop-shadow(0 4px 8px rgba(0,0,0,0.15));
           }
           .header-center {
             text-align: center;
