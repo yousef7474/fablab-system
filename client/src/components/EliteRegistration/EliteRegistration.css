@@ -1965,3 +1965,726 @@
     gap: 10px;
   }
 }
+
+/* ============================================
+   Elite User Tasks, Works, Schedules Styles
+   ============================================ */
+
+/* Section Header with Action */
+.section-header-with-action {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.section-header-with-action h3 {
+  margin: 0;
+}
+
+/* Add Button */
+.elite-add-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 18px;
+  background: linear-gradient(135deg, #006c35, #00a651);
+  color: white;
+  border: none;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.elite-add-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 15px rgba(0, 108, 53, 0.3);
+}
+
+/* Empty State */
+.elite-empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 60px 20px;
+  color: #999;
+}
+
+.elite-empty-state svg {
+  stroke: #ccc;
+  margin-bottom: 16px;
+}
+
+.elite-empty-state p {
+  font-size: 16px;
+  margin: 0;
+}
+
+/* Loading Small */
+.elite-loading-small {
+  display: flex;
+  justify-content: center;
+  padding: 40px;
+}
+
+/* Tasks List */
+.elite-tasks-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.elite-task-card {
+  background: white;
+  border-radius: 12px;
+  padding: 20px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+  border: 1px solid #e9ecef;
+  transition: all 0.3s ease;
+}
+
+.elite-task-card:hover {
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+}
+
+.task-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.task-type-badge {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 4px 10px;
+  border-radius: 20px;
+  text-transform: capitalize;
+}
+
+.task-type-badge.task {
+  background: rgba(59, 130, 246, 0.1);
+  color: #3b82f6;
+}
+
+.task-type-badge.course {
+  background: rgba(168, 85, 247, 0.1);
+  color: #a855f7;
+}
+
+.task-type-badge.project {
+  background: rgba(34, 197, 94, 0.1);
+  color: #22c55e;
+}
+
+.task-type-badge.assignment {
+  background: rgba(249, 115, 22, 0.1);
+  color: #f97316;
+}
+
+.task-status-badge {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 4px 10px;
+  border-radius: 20px;
+}
+
+.task-status-badge.task-pending {
+  background: rgba(249, 115, 22, 0.1);
+  color: #f97316;
+}
+
+.task-status-badge.task-progress {
+  background: rgba(59, 130, 246, 0.1);
+  color: #3b82f6;
+}
+
+.task-status-badge.task-completed {
+  background: rgba(34, 197, 94, 0.1);
+  color: #22c55e;
+}
+
+.task-status-badge.task-cancelled {
+  background: rgba(107, 114, 128, 0.1);
+  color: #6b7280;
+}
+
+.task-title {
+  font-size: 18px;
+  font-weight: 600;
+  color: #1a1a1a;
+  margin: 0 0 8px;
+}
+
+.task-description {
+  font-size: 14px;
+  color: #666;
+  margin: 0 0 16px;
+  line-height: 1.5;
+}
+
+.task-progress-section {
+  margin-bottom: 16px;
+}
+
+.task-progress-section .progress-header {
+  display: flex;
+  justify-content: space-between;
+  font-size: 13px;
+  color: #666;
+  margin-bottom: 8px;
+}
+
+.progress-bar-track {
+  height: 8px;
+  background: #e9ecef;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.progress-bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #006c35, #00a651);
+  border-radius: 4px;
+  transition: width 0.3s ease;
+}
+
+.progress-slider {
+  margin-top: 12px;
+}
+
+.progress-slider input[type="range"] {
+  width: 100%;
+  accent-color: #006c35;
+}
+
+.task-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-top: 12px;
+  border-top: 1px solid #e9ecef;
+}
+
+.task-date {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: #666;
+}
+
+.task-credits {
+  font-size: 13px;
+  font-weight: 600;
+  color: #006c35;
+}
+
+/* Works Grid */
+.elite-works-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 20px;
+}
+
+.elite-work-card {
+  background: white;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+  border: 1px solid #e9ecef;
+  transition: all 0.3s ease;
+}
+
+.elite-work-card:hover {
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+  transform: translateY(-3px);
+}
+
+.elite-work-card .work-thumbnail {
+  width: 100%;
+  height: 150px;
+  background: #f5f5f5;
+  overflow: hidden;
+}
+
+.elite-work-card .work-thumbnail img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.elite-work-card .thumbnail-placeholder {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #e8f5e9 0%, #f5f5f5 100%);
+  color: #006c35;
+}
+
+.elite-work-card .work-info {
+  padding: 16px;
+}
+
+.elite-work-card .work-info h4 {
+  font-size: 16px;
+  font-weight: 600;
+  color: #1a1a1a;
+  margin: 0 0 8px;
+}
+
+.work-category {
+  display: inline-block;
+  font-size: 12px;
+  color: #666;
+  margin-bottom: 8px;
+}
+
+.work-status-badge {
+  display: inline-block;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 4px 10px;
+  border-radius: 20px;
+}
+
+.work-status-badge.work-draft {
+  background: rgba(107, 114, 128, 0.1);
+  color: #6b7280;
+}
+
+.work-status-badge.work-submitted {
+  background: rgba(59, 130, 246, 0.1);
+  color: #3b82f6;
+}
+
+.work-status-badge.work-approved {
+  background: rgba(34, 197, 94, 0.1);
+  color: #22c55e;
+}
+
+.work-status-badge.work-rejected {
+  background: rgba(239, 68, 68, 0.1);
+  color: #ef4444;
+}
+
+.work-actions {
+  display: flex;
+  gap: 8px;
+  padding: 12px 16px;
+  border-top: 1px solid #e9ecef;
+}
+
+.work-edit-btn {
+  width: 36px;
+  height: 36px;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  background: white;
+  color: #666;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.3s ease;
+}
+
+.work-edit-btn:hover {
+  background: #006c35;
+  color: white;
+  border-color: #006c35;
+}
+
+.work-submit-btn {
+  flex: 1;
+  padding: 8px 16px;
+  background: linear-gradient(135deg, #006c35, #00a651);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.work-submit-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 108, 53, 0.3);
+}
+
+/* Schedules List */
+.elite-schedules-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.elite-schedule-card {
+  display: flex;
+  background: white;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+  border: 1px solid #e9ecef;
+  border-left: 4px solid #006c35;
+  transition: all 0.3s ease;
+}
+
+[dir="rtl"] .elite-schedule-card {
+  border-left: none;
+  border-right: 4px solid #006c35;
+}
+
+.elite-schedule-card.today {
+  border-left-color: #f97316;
+  box-shadow: 0 4px 20px rgba(249, 115, 22, 0.15);
+}
+
+[dir="rtl"] .elite-schedule-card.today {
+  border-left: none;
+  border-right-color: #f97316;
+}
+
+.schedule-date-badge {
+  width: 80px;
+  padding: 16px 12px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  text-align: center;
+}
+
+.schedule-date-badge .date-day {
+  font-size: 28px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.schedule-date-badge .date-month {
+  font-size: 12px;
+  text-transform: uppercase;
+  opacity: 0.9;
+  margin-top: 4px;
+}
+
+.schedule-date-badge .today-badge {
+  font-size: 10px;
+  padding: 2px 6px;
+  background: rgba(255, 255, 255, 0.3);
+  border-radius: 10px;
+  margin-top: 6px;
+}
+
+.schedule-content {
+  flex: 1;
+  padding: 16px;
+}
+
+.schedule-header {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.schedule-type-badge {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 4px 10px;
+  border-radius: 20px;
+  text-transform: capitalize;
+}
+
+.schedule-type-badge.session {
+  background: rgba(0, 108, 53, 0.1);
+  color: #006c35;
+}
+
+.schedule-type-badge.deadline {
+  background: rgba(239, 68, 68, 0.1);
+  color: #ef4444;
+}
+
+.schedule-type-badge.meeting {
+  background: rgba(59, 130, 246, 0.1);
+  color: #3b82f6;
+}
+
+.schedule-type-badge.workshop {
+  background: rgba(168, 85, 247, 0.1);
+  color: #a855f7;
+}
+
+.schedule-type-badge.other {
+  background: rgba(107, 114, 128, 0.1);
+  color: #6b7280;
+}
+
+.elite-schedule-card .all-day-badge {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 4px 10px;
+  border-radius: 20px;
+  background: rgba(168, 85, 247, 0.1);
+  color: #a855f7;
+}
+
+.schedule-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: #1a1a1a;
+  margin: 0 0 6px;
+}
+
+.schedule-description {
+  font-size: 13px;
+  color: #666;
+  margin: 0 0 12px;
+  line-height: 1.4;
+}
+
+.schedule-footer {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+.schedule-time,
+.schedule-online,
+.schedule-location {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: #666;
+}
+
+.schedule-online {
+  color: #3b82f6;
+}
+
+.join-link {
+  display: inline-block;
+  margin-top: 12px;
+  padding: 8px 16px;
+  background: rgba(59, 130, 246, 0.1);
+  color: #3b82f6;
+  text-decoration: none;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  transition: all 0.3s ease;
+}
+
+.join-link:hover {
+  background: #3b82f6;
+  color: white;
+}
+
+/* Elite Modal */
+.elite-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 20px;
+}
+
+.elite-modal-content {
+  background: white;
+  border-radius: 20px;
+  width: 100%;
+  max-width: 500px;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+}
+
+.elite-modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px 24px;
+  border-bottom: 1px solid #e9ecef;
+}
+
+.elite-modal-header h2 {
+  font-size: 20px;
+  font-weight: 700;
+  color: #1a1a1a;
+  margin: 0;
+}
+
+.elite-modal-close {
+  width: 36px;
+  height: 36px;
+  border: none;
+  border-radius: 10px;
+  background: #f5f5f5;
+  color: #666;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.3s ease;
+}
+
+.elite-modal-close:hover {
+  background: #ef4444;
+  color: white;
+}
+
+.elite-modal-body {
+  padding: 24px;
+}
+
+.elite-form-group {
+  margin-bottom: 20px;
+}
+
+.elite-form-group label {
+  display: block;
+  font-size: 14px;
+  font-weight: 600;
+  color: #333;
+  margin-bottom: 8px;
+}
+
+.elite-form-group input,
+.elite-form-group textarea {
+  width: 100%;
+  padding: 12px 16px;
+  border: 1px solid #e0e0e0;
+  border-radius: 10px;
+  font-size: 14px;
+  transition: all 0.3s ease;
+}
+
+.elite-form-group input:focus,
+.elite-form-group textarea:focus {
+  outline: none;
+  border-color: #006c35;
+  box-shadow: 0 0 0 3px rgba(0, 108, 53, 0.1);
+}
+
+.elite-form-group textarea {
+  resize: vertical;
+  min-height: 80px;
+}
+
+.elite-modal-footer {
+  display: flex;
+  gap: 12px;
+  padding: 20px 24px;
+  border-top: 1px solid #e9ecef;
+}
+
+.elite-btn-primary {
+  flex: 1;
+  padding: 12px 20px;
+  background: linear-gradient(135deg, #006c35, #00a651);
+  color: white;
+  border: none;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.elite-btn-primary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 15px rgba(0, 108, 53, 0.3);
+}
+
+.elite-btn-secondary {
+  flex: 1;
+  padding: 12px 20px;
+  background: #f5f5f5;
+  color: #333;
+  border: 1px solid #e0e0e0;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.elite-btn-secondary:hover {
+  background: #e9ecef;
+}
+
+.elite-btn-cancel {
+  padding: 12px 20px;
+  background: transparent;
+  color: #666;
+  border: none;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.elite-btn-cancel:hover {
+  background: #f5f5f5;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .elite-tasks-list,
+  .elite-schedules-list {
+    gap: 12px;
+  }
+
+  .elite-works-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .section-header-with-action {
+    flex-direction: column;
+    gap: 12px;
+    align-items: stretch;
+  }
+
+  .elite-add-btn {
+    justify-content: center;
+  }
+
+  .elite-schedule-card {
+    flex-direction: column;
+  }
+
+  .schedule-date-badge {
+    width: 100%;
+    flex-direction: row;
+    gap: 8px;
+    padding: 12px 16px;
+  }
+
+  .schedule-date-badge .date-day {
+    font-size: 20px;
+  }
+
+  .schedule-date-badge .today-badge {
+    margin-top: 0;
+    margin-left: 8px;
+  }
+
+  .elite-modal-footer {
+    flex-direction: column;
+  }
+}

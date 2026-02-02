@@ -43,6 +43,51 @@ const EliteDashboard = () => {
     reason: ''
   });
 
+  // Main dashboard tab
+  const [mainTab, setMainTab] = useState('members'); // members, tasks, works, schedules
+
+  // Tasks state
+  const [tasks, setTasks] = useState([]);
+  const [tasksLoading, setTasksLoading] = useState(false);
+  const [showTaskModal, setShowTaskModal] = useState(null); // null, 'create', or task object for edit
+  const [taskForm, setTaskForm] = useState({
+    eliteId: '',
+    title: '',
+    description: '',
+    type: 'task',
+    category: '',
+    startDate: '',
+    endDate: '',
+    priority: 'medium',
+    creditsAwarded: 0,
+    attachments: []
+  });
+
+  // Works state
+  const [works, setWorks] = useState([]);
+  const [worksLoading, setWorksLoading] = useState(false);
+  const [selectedWork, setSelectedWork] = useState(null);
+
+  // Schedules state
+  const [schedules, setSchedules] = useState([]);
+  const [schedulesLoading, setSchedulesLoading] = useState(false);
+  const [showScheduleModal, setShowScheduleModal] = useState(null);
+  const [scheduleForm, setScheduleForm] = useState({
+    eliteId: '',
+    title: '',
+    description: '',
+    type: 'session',
+    date: '',
+    startTime: '',
+    endTime: '',
+    isAllDay: false,
+    location: '',
+    isOnline: false,
+    onlineLink: '',
+    notes: '',
+    color: '#006c35'
+  });
+
   const isRTL = language === 'ar';
 
   // Translations
@@ -128,7 +173,56 @@ const EliteDashboard = () => {
       categoryB: 'الفئة B - دعم عالي',
       categoryC: 'الفئة C - دعم متوسط',
       categoryD: 'الفئة D - دعم أساسي',
-      belowD: 'أقل من D - يحتاج تحسين'
+      belowD: 'أقل من D - يحتاج تحسين',
+      // Tabs
+      members: 'الأعضاء',
+      tasksTab: 'المهام والدورات',
+      worksTab: 'أعمال الأعضاء',
+      schedulesTab: 'الجداول',
+      // Tasks
+      createTask: 'إنشاء مهمة',
+      editTask: 'تعديل المهمة',
+      taskTitle: 'عنوان المهمة',
+      taskType: 'نوع المهمة',
+      task: 'مهمة',
+      course: 'دورة',
+      project: 'مشروع',
+      assignment: 'واجب',
+      startDate: 'تاريخ البدء',
+      endDate: 'تاريخ الانتهاء',
+      progressLabel: 'التقدم',
+      creditsToAward: 'النقاط المكتسبة',
+      pending: 'قيد الانتظار',
+      in_progress: 'قيد التنفيذ',
+      completed: 'مكتمل',
+      cancelled: 'ملغي',
+      noTasks: 'لا توجد مهام',
+      // Works
+      workPortfolio: 'أعمال الأعضاء',
+      approveWork: 'موافقة',
+      rejectWork: 'رفض',
+      draft: 'مسودة',
+      submitted: 'مقدم',
+      reviewed: 'تمت المراجعة',
+      approved: 'معتمد',
+      rejected: 'مرفوض',
+      noWorks: 'لا توجد أعمال',
+      reviewNotes: 'ملاحظات المراجعة',
+      // Schedules
+      createSchedule: 'إنشاء جدول',
+      session: 'جلسة',
+      deadline: 'موعد نهائي',
+      meeting: 'اجتماع',
+      workshop: 'ورشة عمل',
+      other: 'أخرى',
+      time: 'الوقت',
+      location: 'الموقع',
+      online: 'عبر الإنترنت',
+      onlineLink: 'رابط الاجتماع',
+      allDay: 'طوال اليوم',
+      scheduled: 'مجدول',
+      noSchedules: 'لا توجد جداول',
+      selectUser: 'اختر العضو'
     },
     en: {
       title: 'Elite Management Dashboard',
@@ -211,7 +305,56 @@ const EliteDashboard = () => {
       categoryB: 'Category B - High Support',
       categoryC: 'Category C - Medium Support',
       categoryD: 'Category D - Basic Support',
-      belowD: 'Below D - Needs Improvement'
+      belowD: 'Below D - Needs Improvement',
+      // Tabs
+      members: 'Members',
+      tasksTab: 'Tasks & Courses',
+      worksTab: 'Member Works',
+      schedulesTab: 'Schedules',
+      // Tasks
+      createTask: 'Create Task',
+      editTask: 'Edit Task',
+      taskTitle: 'Task Title',
+      taskType: 'Task Type',
+      task: 'Task',
+      course: 'Course',
+      project: 'Project',
+      assignment: 'Assignment',
+      startDate: 'Start Date',
+      endDate: 'End Date',
+      progressLabel: 'Progress',
+      creditsToAward: 'Credits to Award',
+      pending: 'Pending',
+      in_progress: 'In Progress',
+      completed: 'Completed',
+      cancelled: 'Cancelled',
+      noTasks: 'No tasks found',
+      // Works
+      workPortfolio: 'Member Works',
+      approveWork: 'Approve',
+      rejectWork: 'Reject',
+      draft: 'Draft',
+      submitted: 'Submitted',
+      reviewed: 'Reviewed',
+      approved: 'Approved',
+      rejected: 'Rejected',
+      noWorks: 'No works found',
+      reviewNotes: 'Review Notes',
+      // Schedules
+      createSchedule: 'Create Schedule',
+      session: 'Session',
+      deadline: 'Deadline',
+      meeting: 'Meeting',
+      workshop: 'Workshop',
+      other: 'Other',
+      time: 'Time',
+      location: 'Location',
+      online: 'Online',
+      onlineLink: 'Meeting Link',
+      allDay: 'All Day',
+      scheduled: 'Scheduled',
+      noSchedules: 'No schedules found',
+      selectUser: 'Select Member'
     }
   };
 
@@ -232,6 +375,258 @@ const EliteDashboard = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  // Fetch all tasks
+  const fetchTasks = async () => {
+    setTasksLoading(true);
+    try {
+      const response = await api.get('/elite/tasks');
+      setTasks(response.data || []);
+    } catch (error) {
+      console.error('Error fetching tasks:', error);
+      toast.error(isRTL ? 'خطأ في تحميل المهام' : 'Error loading tasks');
+    } finally {
+      setTasksLoading(false);
+    }
+  };
+
+  // Fetch all works
+  const fetchWorks = async () => {
+    setWorksLoading(true);
+    try {
+      const response = await api.get('/elite/works');
+      setWorks(response.data || []);
+    } catch (error) {
+      console.error('Error fetching works:', error);
+      toast.error(isRTL ? 'خطأ في تحميل الأعمال' : 'Error loading works');
+    } finally {
+      setWorksLoading(false);
+    }
+  };
+
+  // Fetch all schedules
+  const fetchSchedules = async () => {
+    setSchedulesLoading(true);
+    try {
+      const response = await api.get('/elite/schedules');
+      setSchedules(response.data || []);
+    } catch (error) {
+      console.error('Error fetching schedules:', error);
+      toast.error(isRTL ? 'خطأ في تحميل الجداول' : 'Error loading schedules');
+    } finally {
+      setSchedulesLoading(false);
+    }
+  };
+
+  // Handle tab change
+  const handleMainTabChange = (tab) => {
+    setMainTab(tab);
+    if (tab === 'tasks' && tasks.length === 0) fetchTasks();
+    if (tab === 'works' && works.length === 0) fetchWorks();
+    if (tab === 'schedules' && schedules.length === 0) fetchSchedules();
+  };
+
+  // Create task
+  const handleCreateTask = async () => {
+    try {
+      if (!taskForm.eliteId || !taskForm.title) {
+        toast.error(isRTL ? 'اختر العضو وأدخل العنوان' : 'Select member and enter title');
+        return;
+      }
+      await api.post('/elite/tasks', taskForm);
+      toast.success(isRTL ? 'تم إنشاء المهمة بنجاح' : 'Task created successfully');
+      setShowTaskModal(null);
+      setTaskForm({
+        eliteId: '',
+        title: '',
+        description: '',
+        type: 'task',
+        category: '',
+        startDate: '',
+        endDate: '',
+        priority: 'medium',
+        creditsAwarded: 0,
+        attachments: []
+      });
+      fetchTasks();
+    } catch (error) {
+      console.error('Error creating task:', error);
+      toast.error(isRTL ? 'خطأ في إنشاء المهمة' : 'Error creating task');
+    }
+  };
+
+  // Update task
+  const handleUpdateTask = async () => {
+    try {
+      if (!showTaskModal?.taskId) return;
+      await api.put(`/elite/tasks/${showTaskModal.taskId}`, taskForm);
+      toast.success(isRTL ? 'تم تحديث المهمة بنجاح' : 'Task updated successfully');
+      setShowTaskModal(null);
+      fetchTasks();
+    } catch (error) {
+      console.error('Error updating task:', error);
+      toast.error(isRTL ? 'خطأ في تحديث المهمة' : 'Error updating task');
+    }
+  };
+
+  // Delete task
+  const handleDeleteTask = async (taskId) => {
+    try {
+      await api.delete(`/elite/tasks/${taskId}`);
+      toast.success(isRTL ? 'تم حذف المهمة' : 'Task deleted');
+      fetchTasks();
+    } catch (error) {
+      console.error('Error deleting task:', error);
+      toast.error(isRTL ? 'خطأ في حذف المهمة' : 'Error deleting task');
+    }
+  };
+
+  // Complete task
+  const handleCompleteTask = async (taskId) => {
+    try {
+      await api.patch(`/elite/tasks/${taskId}/complete`);
+      toast.success(isRTL ? 'تم إكمال المهمة' : 'Task completed');
+      fetchTasks();
+    } catch (error) {
+      console.error('Error completing task:', error);
+      toast.error(isRTL ? 'خطأ في إكمال المهمة' : 'Error completing task');
+    }
+  };
+
+  // Review work (approve/reject)
+  const handleReviewWork = async (workId, status, reviewNotes = '') => {
+    try {
+      await api.patch(`/elite/works/${workId}/review`, { status, reviewNotes });
+      toast.success(
+        status === 'approved'
+          ? (isRTL ? 'تم الموافقة على العمل' : 'Work approved')
+          : (isRTL ? 'تم رفض العمل' : 'Work rejected')
+      );
+      setSelectedWork(null);
+      fetchWorks();
+    } catch (error) {
+      console.error('Error reviewing work:', error);
+      toast.error(isRTL ? 'خطأ في مراجعة العمل' : 'Error reviewing work');
+    }
+  };
+
+  // Create schedule
+  const handleCreateSchedule = async () => {
+    try {
+      if (!scheduleForm.eliteId || !scheduleForm.title || !scheduleForm.date) {
+        toast.error(isRTL ? 'اختر العضو وأدخل العنوان والتاريخ' : 'Select member and enter title and date');
+        return;
+      }
+      await api.post('/elite/schedules', scheduleForm);
+      toast.success(isRTL ? 'تم إنشاء الجدول بنجاح' : 'Schedule created successfully');
+      setShowScheduleModal(null);
+      setScheduleForm({
+        eliteId: '',
+        title: '',
+        description: '',
+        type: 'session',
+        date: '',
+        startTime: '',
+        endTime: '',
+        isAllDay: false,
+        location: '',
+        isOnline: false,
+        onlineLink: '',
+        notes: '',
+        color: '#006c35'
+      });
+      fetchSchedules();
+    } catch (error) {
+      console.error('Error creating schedule:', error);
+      toast.error(isRTL ? 'خطأ في إنشاء الجدول' : 'Error creating schedule');
+    }
+  };
+
+  // Update schedule
+  const handleUpdateSchedule = async () => {
+    try {
+      if (!showScheduleModal?.scheduleId) return;
+      await api.put(`/elite/schedules/${showScheduleModal.scheduleId}`, scheduleForm);
+      toast.success(isRTL ? 'تم تحديث الجدول بنجاح' : 'Schedule updated successfully');
+      setShowScheduleModal(null);
+      fetchSchedules();
+    } catch (error) {
+      console.error('Error updating schedule:', error);
+      toast.error(isRTL ? 'خطأ في تحديث الجدول' : 'Error updating schedule');
+    }
+  };
+
+  // Delete schedule
+  const handleDeleteSchedule = async (scheduleId) => {
+    try {
+      await api.delete(`/elite/schedules/${scheduleId}`);
+      toast.success(isRTL ? 'تم حذف الجدول' : 'Schedule deleted');
+      fetchSchedules();
+    } catch (error) {
+      console.error('Error deleting schedule:', error);
+      toast.error(isRTL ? 'خطأ في حذف الجدول' : 'Error deleting schedule');
+    }
+  };
+
+  // Open task modal for editing
+  const openEditTaskModal = (task) => {
+    setTaskForm({
+      eliteId: task.eliteId,
+      title: task.title,
+      description: task.description || '',
+      type: task.type,
+      category: task.category || '',
+      startDate: task.startDate || '',
+      endDate: task.endDate || '',
+      priority: task.priority || 'medium',
+      creditsAwarded: task.creditsAwarded || 0,
+      attachments: task.attachments || []
+    });
+    setShowTaskModal(task);
+  };
+
+  // Open schedule modal for editing
+  const openEditScheduleModal = (schedule) => {
+    setScheduleForm({
+      eliteId: schedule.eliteId,
+      title: schedule.title,
+      description: schedule.description || '',
+      type: schedule.type,
+      date: schedule.date || '',
+      startTime: schedule.startTime || '',
+      endTime: schedule.endTime || '',
+      isAllDay: schedule.isAllDay || false,
+      location: schedule.location || '',
+      isOnline: schedule.isOnline || false,
+      onlineLink: schedule.onlineLink || '',
+      notes: schedule.notes || '',
+      color: schedule.color || '#006c35'
+    });
+    setShowScheduleModal(schedule);
+  };
+
+  // Get status badge for tasks
+  const getTaskStatusBadge = (status) => {
+    const config = {
+      pending: { label: text.pending, class: 'status-pending' },
+      in_progress: { label: text.in_progress, class: 'status-progress' },
+      completed: { label: text.completed, class: 'status-completed' },
+      cancelled: { label: text.cancelled, class: 'status-cancelled' }
+    };
+    return config[status] || config.pending;
+  };
+
+  // Get status badge for works
+  const getWorkStatusBadge = (status) => {
+    const config = {
+      draft: { label: text.draft, class: 'status-draft' },
+      submitted: { label: text.submitted, class: 'status-submitted' },
+      reviewed: { label: text.reviewed, class: 'status-reviewed' },
+      approved: { label: text.approved, class: 'status-approved' },
+      rejected: { label: text.rejected, class: 'status-rejected' }
+    };
+    return config[status] || config.draft;
   };
 
   const handleStatusChange = async (userId, newStatus) => {
@@ -562,7 +957,64 @@ const EliteDashboard = () => {
           </div>
         </motion.div>
 
-        {/* Filters */}
+        {/* Main Tabs */}
+        <motion.div
+          className="main-tabs"
+          initial={{ y: 20, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          transition={{ delay: 0.15 }}
+        >
+          <button
+            className={`main-tab ${mainTab === 'members' ? 'active' : ''}`}
+            onClick={() => handleMainTabChange('members')}
+          >
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+              <circle cx="9" cy="7" r="4"/>
+              <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+              <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+            </svg>
+            {text.members}
+          </button>
+          <button
+            className={`main-tab ${mainTab === 'tasks' ? 'active' : ''}`}
+            onClick={() => handleMainTabChange('tasks')}
+          >
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M9 11l3 3L22 4"/>
+              <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>
+            </svg>
+            {text.tasksTab}
+          </button>
+          <button
+            className={`main-tab ${mainTab === 'works' ? 'active' : ''}`}
+            onClick={() => handleMainTabChange('works')}
+          >
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/>
+              <polyline points="14 2 14 8 20 8"/>
+              <line x1="16" y1="13" x2="8" y2="13"/>
+              <line x1="16" y1="17" x2="8" y2="17"/>
+              <line x1="10" y1="9" x2="8" y2="9"/>
+            </svg>
+            {text.worksTab}
+          </button>
+          <button
+            className={`main-tab ${mainTab === 'schedules' ? 'active' : ''}`}
+            onClick={() => handleMainTabChange('schedules')}
+          >
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+              <line x1="16" y1="2" x2="16" y2="6"/>
+              <line x1="8" y1="2" x2="8" y2="6"/>
+              <line x1="3" y1="10" x2="21" y2="10"/>
+            </svg>
+            {text.schedulesTab}
+          </button>
+        </motion.div>
+
+        {/* Filters - Only show for members tab */}
+        {mainTab === 'members' && (
         <motion.div
           className="filters-section"
           initial={{ y: 20, opacity: 0 }}
@@ -593,8 +1045,10 @@ const EliteDashboard = () => {
             ))}
           </div>
         </motion.div>
+        )}
 
-        {/* Users Table */}
+        {/* Members Tab - Users Table */}
+        {mainTab === 'members' && (
         <motion.div
           className="users-table-container"
           initial={{ y: 20, opacity: 0 }}
@@ -747,6 +1201,333 @@ const EliteDashboard = () => {
             </table>
           )}
         </motion.div>
+        )}
+
+        {/* Tasks Tab */}
+        {mainTab === 'tasks' && (
+          <motion.div
+            className="tasks-tab-content"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+          >
+            <div className="tab-header">
+              <h3>{text.tasksTab}</h3>
+              <button className="create-btn" onClick={() => {
+                setTaskForm({
+                  eliteId: '',
+                  title: '',
+                  description: '',
+                  type: 'task',
+                  category: '',
+                  startDate: '',
+                  endDate: '',
+                  priority: 'medium',
+                  creditsAwarded: 0,
+                  attachments: []
+                });
+                setShowTaskModal('create');
+              }}>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <line x1="12" y1="5" x2="12" y2="19"/>
+                  <line x1="5" y1="12" x2="19" y2="12"/>
+                </svg>
+                {text.createTask}
+              </button>
+            </div>
+
+            {tasksLoading ? (
+              <div className="loading-state">
+                <div className="spinner"></div>
+              </div>
+            ) : tasks.length === 0 ? (
+              <div className="empty-state">
+                <svg width="60" height="60" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                  <path d="M9 11l3 3L22 4"/>
+                  <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>
+                </svg>
+                <p>{text.noTasks}</p>
+              </div>
+            ) : (
+              <table className="data-table tasks-table">
+                <thead>
+                  <tr>
+                    <th>{text.name}</th>
+                    <th>{text.taskTitle}</th>
+                    <th>{text.taskType}</th>
+                    <th>{text.status}</th>
+                    <th>{text.progressLabel}</th>
+                    <th>{text.endDate}</th>
+                    <th>{text.actions}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {tasks.map(task => {
+                    const statusBadge = getTaskStatusBadge(task.status);
+                    return (
+                      <tr key={task.taskId}>
+                        <td>
+                          <div className="name-cell">
+                            <span>{task.eliteUser?.firstName} {task.eliteUser?.lastName}</span>
+                            <small>{task.eliteUser?.uniqueId}</small>
+                          </div>
+                        </td>
+                        <td>{task.title}</td>
+                        <td>
+                          <span className={`type-badge ${task.type}`}>
+                            {text[task.type] || task.type}
+                          </span>
+                        </td>
+                        <td>
+                          <span className={`status-badge ${statusBadge.class}`}>
+                            {statusBadge.label}
+                          </span>
+                        </td>
+                        <td>
+                          <div className="progress-bar-container">
+                            <div className="progress-bar" style={{ width: `${task.progress || 0}%` }}></div>
+                            <span className="progress-text">{task.progress || 0}%</span>
+                          </div>
+                        </td>
+                        <td>{formatDate(task.endDate)}</td>
+                        <td>
+                          <div className="action-buttons">
+                            <button
+                              className="action-btn edit"
+                              onClick={() => openEditTaskModal(task)}
+                              title={text.editTask}
+                            >
+                              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                                <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                              </svg>
+                            </button>
+                            {task.status !== 'completed' && (
+                              <button
+                                className="action-btn complete"
+                                onClick={() => handleCompleteTask(task.taskId)}
+                                title={text.completed}
+                              >
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                  <polyline points="20 6 9 17 4 12"/>
+                                </svg>
+                              </button>
+                            )}
+                            <button
+                              className="action-btn delete"
+                              onClick={() => handleDeleteTask(task.taskId)}
+                              title={text.delete}
+                            >
+                              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                <polyline points="3 6 5 6 21 6"/>
+                                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+                              </svg>
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            )}
+          </motion.div>
+        )}
+
+        {/* Works Tab */}
+        {mainTab === 'works' && (
+          <motion.div
+            className="works-tab-content"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+          >
+            <div className="tab-header">
+              <h3>{text.worksTab}</h3>
+            </div>
+
+            {worksLoading ? (
+              <div className="loading-state">
+                <div className="spinner"></div>
+              </div>
+            ) : works.length === 0 ? (
+              <div className="empty-state">
+                <svg width="60" height="60" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                  <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/>
+                  <polyline points="14 2 14 8 20 8"/>
+                </svg>
+                <p>{text.noWorks}</p>
+              </div>
+            ) : (
+              <div className="works-grid">
+                {works.map(work => {
+                  const statusBadge = getWorkStatusBadge(work.status);
+                  return (
+                    <div key={work.workId} className="work-card" onClick={() => setSelectedWork(work)}>
+                      <div className="work-thumbnail">
+                        {work.thumbnail ? (
+                          <img src={work.thumbnail} alt={work.title} />
+                        ) : (
+                          <div className="thumbnail-placeholder">
+                            <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                              <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+                              <circle cx="8.5" cy="8.5" r="1.5"/>
+                              <polyline points="21 15 16 10 5 21"/>
+                            </svg>
+                          </div>
+                        )}
+                      </div>
+                      <div className="work-info">
+                        <h4>{work.title}</h4>
+                        <p className="work-member">{work.eliteUser?.firstName} {work.eliteUser?.lastName}</p>
+                        <div className="work-meta">
+                          <span className={`status-badge ${statusBadge.class}`}>
+                            {statusBadge.label}
+                          </span>
+                          <span className="work-date">{formatDate(work.createdAt)}</span>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </motion.div>
+        )}
+
+        {/* Schedules Tab */}
+        {mainTab === 'schedules' && (
+          <motion.div
+            className="schedules-tab-content"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+          >
+            <div className="tab-header">
+              <h3>{text.schedulesTab}</h3>
+              <button className="create-btn" onClick={() => {
+                setScheduleForm({
+                  eliteId: '',
+                  title: '',
+                  description: '',
+                  type: 'session',
+                  date: '',
+                  startTime: '',
+                  endTime: '',
+                  isAllDay: false,
+                  location: '',
+                  isOnline: false,
+                  onlineLink: '',
+                  notes: '',
+                  color: '#006c35'
+                });
+                setShowScheduleModal('create');
+              }}>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <line x1="12" y1="5" x2="12" y2="19"/>
+                  <line x1="5" y1="12" x2="19" y2="12"/>
+                </svg>
+                {text.createSchedule}
+              </button>
+            </div>
+
+            {schedulesLoading ? (
+              <div className="loading-state">
+                <div className="spinner"></div>
+              </div>
+            ) : schedules.length === 0 ? (
+              <div className="empty-state">
+                <svg width="60" height="60" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                  <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+                  <line x1="16" y1="2" x2="16" y2="6"/>
+                  <line x1="8" y1="2" x2="8" y2="6"/>
+                  <line x1="3" y1="10" x2="21" y2="10"/>
+                </svg>
+                <p>{text.noSchedules}</p>
+              </div>
+            ) : (
+              <table className="data-table schedules-table">
+                <thead>
+                  <tr>
+                    <th>{text.name}</th>
+                    <th>{text.taskTitle}</th>
+                    <th>{text.taskType}</th>
+                    <th>{text.startDate}</th>
+                    <th>{text.time}</th>
+                    <th>{text.location}</th>
+                    <th>{text.status}</th>
+                    <th>{text.actions}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {schedules.map(schedule => (
+                    <tr key={schedule.scheduleId}>
+                      <td>
+                        <div className="name-cell">
+                          <span>{schedule.eliteUser?.firstName} {schedule.eliteUser?.lastName}</span>
+                          <small>{schedule.eliteUser?.uniqueId}</small>
+                        </div>
+                      </td>
+                      <td>{schedule.title}</td>
+                      <td>
+                        <span className={`type-badge ${schedule.type}`} style={{ borderColor: schedule.color }}>
+                          {text[schedule.type] || schedule.type}
+                        </span>
+                      </td>
+                      <td>{formatDate(schedule.date)}</td>
+                      <td>
+                        {schedule.isAllDay ? (
+                          <span className="all-day-badge">{text.allDay}</span>
+                        ) : (
+                          <span>{schedule.startTime} - {schedule.endTime}</span>
+                        )}
+                      </td>
+                      <td>
+                        {schedule.isOnline ? (
+                          <span className="online-badge">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                              <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+                              <circle cx="12" cy="13" r="4"/>
+                            </svg>
+                            {text.online}
+                          </span>
+                        ) : (
+                          schedule.location || '-'
+                        )}
+                      </td>
+                      <td>
+                        <span className={`status-badge status-${schedule.status}`}>
+                          {text[schedule.status] || schedule.status}
+                        </span>
+                      </td>
+                      <td>
+                        <div className="action-buttons">
+                          <button
+                            className="action-btn edit"
+                            onClick={() => openEditScheduleModal(schedule)}
+                            title={text.editTask}
+                          >
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                              <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                              <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                            </svg>
+                          </button>
+                          <button
+                            className="action-btn delete"
+                            onClick={() => handleDeleteSchedule(schedule.scheduleId)}
+                            title={text.delete}
+                          >
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                              <polyline points="3 6 5 6 21 6"/>
+                              <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+                            </svg>
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </motion.div>
+        )}
       </div>
 
       {/* User Details Modal */}
@@ -1592,6 +2373,455 @@ const EliteDashboard = () => {
                   {text.submit}
                 </button>
                 <button className="btn-close" onClick={() => setShowCreditModal(null)}>
+                  {text.cancel}
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Task Modal */}
+      <AnimatePresence>
+        {showTaskModal && (
+          <motion.div
+            className="modal-overlay"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => setShowTaskModal(null)}
+          >
+            <motion.div
+              className="modal-content task-modal"
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              onClick={e => e.stopPropagation()}
+            >
+              <div className="modal-header">
+                <h2>{showTaskModal === 'create' ? text.createTask : text.editTask}</h2>
+                <button className="close-btn" onClick={() => setShowTaskModal(null)}>
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <line x1="18" y1="6" x2="6" y2="18"/>
+                    <line x1="6" y1="6" x2="18" y2="18"/>
+                  </svg>
+                </button>
+              </div>
+              <div className="modal-body">
+                <div className="form-group">
+                  <label>{text.selectUser} *</label>
+                  <select
+                    value={taskForm.eliteId}
+                    onChange={e => setTaskForm({...taskForm, eliteId: e.target.value})}
+                    disabled={showTaskModal !== 'create'}
+                  >
+                    <option value="">{text.selectUser}</option>
+                    {users.map(user => (
+                      <option key={user.eliteId} value={user.eliteId}>
+                        {user.firstName} {user.lastName} ({user.uniqueId})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div className="form-group">
+                  <label>{text.taskTitle} *</label>
+                  <input
+                    type="text"
+                    value={taskForm.title}
+                    onChange={e => setTaskForm({...taskForm, title: e.target.value})}
+                  />
+                </div>
+                <div className="form-group">
+                  <label>{isRTL ? 'الوصف' : 'Description'}</label>
+                  <textarea
+                    value={taskForm.description}
+                    onChange={e => setTaskForm({...taskForm, description: e.target.value})}
+                    rows="3"
+                  />
+                </div>
+                <div className="form-row">
+                  <div className="form-group">
+                    <label>{text.taskType}</label>
+                    <select
+                      value={taskForm.type}
+                      onChange={e => setTaskForm({...taskForm, type: e.target.value})}
+                    >
+                      <option value="task">{text.task}</option>
+                      <option value="course">{text.course}</option>
+                      <option value="project">{text.project}</option>
+                      <option value="assignment">{text.assignment}</option>
+                    </select>
+                  </div>
+                  <div className="form-group">
+                    <label>{text.category}</label>
+                    <input
+                      type="text"
+                      value={taskForm.category}
+                      onChange={e => setTaskForm({...taskForm, category: e.target.value})}
+                      placeholder={isRTL ? 'مثال: برمجة، تصميم' : 'e.g., Programming, Design'}
+                    />
+                  </div>
+                </div>
+                <div className="form-row">
+                  <div className="form-group">
+                    <label>{text.startDate}</label>
+                    <input
+                      type="date"
+                      value={taskForm.startDate}
+                      onChange={e => setTaskForm({...taskForm, startDate: e.target.value})}
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label>{text.endDate}</label>
+                    <input
+                      type="date"
+                      value={taskForm.endDate}
+                      onChange={e => setTaskForm({...taskForm, endDate: e.target.value})}
+                    />
+                  </div>
+                </div>
+                <div className="form-row">
+                  <div className="form-group">
+                    <label>{isRTL ? 'الأولوية' : 'Priority'}</label>
+                    <select
+                      value={taskForm.priority}
+                      onChange={e => setTaskForm({...taskForm, priority: e.target.value})}
+                    >
+                      <option value="low">{isRTL ? 'منخفضة' : 'Low'}</option>
+                      <option value="medium">{isRTL ? 'متوسطة' : 'Medium'}</option>
+                      <option value="high">{isRTL ? 'عالية' : 'High'}</option>
+                    </select>
+                  </div>
+                  <div className="form-group">
+                    <label>{text.creditsToAward}</label>
+                    <input
+                      type="number"
+                      min="0"
+                      value={taskForm.creditsAwarded}
+                      onChange={e => setTaskForm({...taskForm, creditsAwarded: parseInt(e.target.value) || 0})}
+                    />
+                  </div>
+                </div>
+              </div>
+              <div className="modal-footer">
+                <button
+                  className="btn-submit"
+                  onClick={showTaskModal === 'create' ? handleCreateTask : handleUpdateTask}
+                >
+                  {showTaskModal === 'create' ? text.createTask : text.submit}
+                </button>
+                <button className="btn-close" onClick={() => setShowTaskModal(null)}>
+                  {text.cancel}
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Work Details Modal */}
+      <AnimatePresence>
+        {selectedWork && (
+          <motion.div
+            className="modal-overlay"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => setSelectedWork(null)}
+          >
+            <motion.div
+              className="modal-content work-modal"
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              onClick={e => e.stopPropagation()}
+            >
+              <div className="modal-header">
+                <h2>{selectedWork.title}</h2>
+                <button className="close-btn" onClick={() => setSelectedWork(null)}>
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <line x1="18" y1="6" x2="6" y2="18"/>
+                    <line x1="6" y1="6" x2="18" y2="18"/>
+                  </svg>
+                </button>
+              </div>
+              <div className="modal-body">
+                <div className="work-detail-header">
+                  <div className="work-member-info">
+                    <span className="member-name">{selectedWork.eliteUser?.firstName} {selectedWork.eliteUser?.lastName}</span>
+                    <span className="member-id">{selectedWork.eliteUser?.uniqueId}</span>
+                  </div>
+                  <span className={`status-badge ${getWorkStatusBadge(selectedWork.status).class}`}>
+                    {getWorkStatusBadge(selectedWork.status).label}
+                  </span>
+                </div>
+
+                {selectedWork.thumbnail && (
+                  <div className="work-thumbnail-large">
+                    <img src={selectedWork.thumbnail} alt={selectedWork.title} />
+                  </div>
+                )}
+
+                <div className="work-detail-section">
+                  <h4>{isRTL ? 'الوصف' : 'Description'}</h4>
+                  <p>{selectedWork.description || (isRTL ? 'لا يوجد وصف' : 'No description')}</p>
+                </div>
+
+                {selectedWork.category && (
+                  <div className="work-detail-section">
+                    <h4>{text.category}</h4>
+                    <p>{selectedWork.category}</p>
+                  </div>
+                )}
+
+                {selectedWork.documentation && (
+                  <div className="work-detail-section">
+                    <h4>{isRTL ? 'التوثيق' : 'Documentation'}</h4>
+                    <p className="documentation-text">{selectedWork.documentation}</p>
+                  </div>
+                )}
+
+                {selectedWork.files && selectedWork.files.length > 0 && (
+                  <div className="work-detail-section">
+                    <h4>{isRTL ? 'الملفات المرفقة' : 'Attached Files'}</h4>
+                    <div className="files-list">
+                      {selectedWork.files.map((file, index) => (
+                        <div key={index} className="file-item">
+                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                            <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/>
+                            <polyline points="14 2 14 8 20 8"/>
+                          </svg>
+                          <span>{file.name || `File ${index + 1}`}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {selectedWork.task && (
+                  <div className="work-detail-section">
+                    <h4>{isRTL ? 'المهمة المرتبطة' : 'Related Task'}</h4>
+                    <p>{selectedWork.task.title}</p>
+                  </div>
+                )}
+
+                {selectedWork.status === 'submitted' && (
+                  <div className="review-section">
+                    <h4>{text.reviewNotes}</h4>
+                    <textarea
+                      id="reviewNotes"
+                      placeholder={isRTL ? 'أدخل ملاحظات المراجعة...' : 'Enter review notes...'}
+                      rows="3"
+                    />
+                  </div>
+                )}
+              </div>
+              <div className="modal-footer">
+                {selectedWork.status === 'submitted' && (
+                  <>
+                    <button
+                      className="btn-approve"
+                      onClick={() => {
+                        const notes = document.getElementById('reviewNotes')?.value || '';
+                        handleReviewWork(selectedWork.workId, 'approved', notes);
+                      }}
+                    >
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <polyline points="20 6 9 17 4 12"/>
+                      </svg>
+                      {text.approveWork}
+                    </button>
+                    <button
+                      className="btn-reject"
+                      onClick={() => {
+                        const notes = document.getElementById('reviewNotes')?.value || '';
+                        handleReviewWork(selectedWork.workId, 'rejected', notes);
+                      }}
+                    >
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <line x1="18" y1="6" x2="6" y2="18"/>
+                        <line x1="6" y1="6" x2="18" y2="18"/>
+                      </svg>
+                      {text.rejectWork}
+                    </button>
+                  </>
+                )}
+                <button className="btn-close" onClick={() => setSelectedWork(null)}>
+                  {text.close}
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Schedule Modal */}
+      <AnimatePresence>
+        {showScheduleModal && (
+          <motion.div
+            className="modal-overlay"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => setShowScheduleModal(null)}
+          >
+            <motion.div
+              className="modal-content schedule-modal"
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              onClick={e => e.stopPropagation()}
+            >
+              <div className="modal-header">
+                <h2>{showScheduleModal === 'create' ? text.createSchedule : text.editTask}</h2>
+                <button className="close-btn" onClick={() => setShowScheduleModal(null)}>
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <line x1="18" y1="6" x2="6" y2="18"/>
+                    <line x1="6" y1="6" x2="18" y2="18"/>
+                  </svg>
+                </button>
+              </div>
+              <div className="modal-body">
+                <div className="form-group">
+                  <label>{text.selectUser} *</label>
+                  <select
+                    value={scheduleForm.eliteId}
+                    onChange={e => setScheduleForm({...scheduleForm, eliteId: e.target.value})}
+                    disabled={showScheduleModal !== 'create'}
+                  >
+                    <option value="">{text.selectUser}</option>
+                    {users.map(user => (
+                      <option key={user.eliteId} value={user.eliteId}>
+                        {user.firstName} {user.lastName} ({user.uniqueId})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div className="form-group">
+                  <label>{text.taskTitle} *</label>
+                  <input
+                    type="text"
+                    value={scheduleForm.title}
+                    onChange={e => setScheduleForm({...scheduleForm, title: e.target.value})}
+                  />
+                </div>
+                <div className="form-group">
+                  <label>{isRTL ? 'الوصف' : 'Description'}</label>
+                  <textarea
+                    value={scheduleForm.description}
+                    onChange={e => setScheduleForm({...scheduleForm, description: e.target.value})}
+                    rows="2"
+                  />
+                </div>
+                <div className="form-row">
+                  <div className="form-group">
+                    <label>{text.taskType}</label>
+                    <select
+                      value={scheduleForm.type}
+                      onChange={e => setScheduleForm({...scheduleForm, type: e.target.value})}
+                    >
+                      <option value="session">{text.session}</option>
+                      <option value="deadline">{text.deadline}</option>
+                      <option value="meeting">{text.meeting}</option>
+                      <option value="workshop">{text.workshop}</option>
+                      <option value="other">{text.other}</option>
+                    </select>
+                  </div>
+                  <div className="form-group">
+                    <label>{text.startDate} *</label>
+                    <input
+                      type="date"
+                      value={scheduleForm.date}
+                      onChange={e => setScheduleForm({...scheduleForm, date: e.target.value})}
+                    />
+                  </div>
+                </div>
+                <div className="form-group checkbox-group">
+                  <label>
+                    <input
+                      type="checkbox"
+                      checked={scheduleForm.isAllDay}
+                      onChange={e => setScheduleForm({...scheduleForm, isAllDay: e.target.checked})}
+                    />
+                    {text.allDay}
+                  </label>
+                </div>
+                {!scheduleForm.isAllDay && (
+                  <div className="form-row">
+                    <div className="form-group">
+                      <label>{isRTL ? 'وقت البدء' : 'Start Time'}</label>
+                      <input
+                        type="time"
+                        value={scheduleForm.startTime}
+                        onChange={e => setScheduleForm({...scheduleForm, startTime: e.target.value})}
+                      />
+                    </div>
+                    <div className="form-group">
+                      <label>{isRTL ? 'وقت الانتهاء' : 'End Time'}</label>
+                      <input
+                        type="time"
+                        value={scheduleForm.endTime}
+                        onChange={e => setScheduleForm({...scheduleForm, endTime: e.target.value})}
+                      />
+                    </div>
+                  </div>
+                )}
+                <div className="form-group checkbox-group">
+                  <label>
+                    <input
+                      type="checkbox"
+                      checked={scheduleForm.isOnline}
+                      onChange={e => setScheduleForm({...scheduleForm, isOnline: e.target.checked})}
+                    />
+                    {text.online}
+                  </label>
+                </div>
+                {scheduleForm.isOnline ? (
+                  <div className="form-group">
+                    <label>{text.onlineLink}</label>
+                    <input
+                      type="url"
+                      value={scheduleForm.onlineLink}
+                      onChange={e => setScheduleForm({...scheduleForm, onlineLink: e.target.value})}
+                      placeholder="https://..."
+                    />
+                  </div>
+                ) : (
+                  <div className="form-group">
+                    <label>{text.location}</label>
+                    <input
+                      type="text"
+                      value={scheduleForm.location}
+                      onChange={e => setScheduleForm({...scheduleForm, location: e.target.value})}
+                    />
+                  </div>
+                )}
+                <div className="form-group">
+                  <label>{text.notes}</label>
+                  <textarea
+                    value={scheduleForm.notes}
+                    onChange={e => setScheduleForm({...scheduleForm, notes: e.target.value})}
+                    rows="2"
+                  />
+                </div>
+                <div className="form-group">
+                  <label>{isRTL ? 'اللون' : 'Color'}</label>
+                  <input
+                    type="color"
+                    value={scheduleForm.color}
+                    onChange={e => setScheduleForm({...scheduleForm, color: e.target.value})}
+                    className="color-input"
+                  />
+                </div>
+              </div>
+              <div className="modal-footer">
+                <button
+                  className="btn-submit"
+                  onClick={showScheduleModal === 'create' ? handleCreateSchedule : handleUpdateSchedule}
+                >
+                  {showScheduleModal === 'create' ? text.createSchedule : text.submit}
+                </button>
+                <button className="btn-close" onClick={() => setShowScheduleModal(null)}>
                   {text.cancel}
                 </button>
               </div>
