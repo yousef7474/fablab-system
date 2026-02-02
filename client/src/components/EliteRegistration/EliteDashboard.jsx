@@ -17,6 +17,32 @@ const EliteDashboard = () => {
   const [selectedUser, setSelectedUser] = useState(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(null);
   const [showIdCard, setShowIdCard] = useState(null);
+
+  // Rating and Credit states
+  const [showRatingModal, setShowRatingModal] = useState(null);
+  const [showCreditModal, setShowCreditModal] = useState(null);
+  const [userPerformance, setUserPerformance] = useState(null);
+  const [userRatings, setUserRatings] = useState([]);
+  const [userCredits, setUserCredits] = useState([]);
+  const [performanceTab, setPerformanceTab] = useState('overview'); // overview, admin-ratings, engineer-ratings, credits
+  const [ratingForm, setRatingForm] = useState({
+    raterType: 'admin',
+    period: '',
+    attendanceScore: 0,
+    projectQualityScore: 0,
+    developmentScore: 0,
+    participationScore: 0,
+    teamworkScore: 0,
+    behaviorScore: 0,
+    notes: ''
+  });
+  const [creditForm, setCreditForm] = useState({
+    type: 'award',
+    source: 'admin',
+    points: 1,
+    reason: ''
+  });
+
   const isRTL = language === 'ar';
 
   // Translations
@@ -67,7 +93,42 @@ const EliteDashboard = () => {
       printId: 'طباعة البطاقة',
       membershipCard: 'بطاقة العضوية',
       eliteMember: 'عضو النخبة',
-      print: 'طباعة'
+      print: 'طباعة',
+      performance: 'الأداء والتقييم',
+      category: 'الفئة',
+      percentage: 'النسبة',
+      adminRating: 'تقييم الإدارة',
+      engineerRating: 'تقييم المهندس',
+      credits: 'النقاط',
+      addRating: 'إضافة تقييم',
+      addCredit: 'إضافة/خصم نقاط',
+      raterType: 'نوع التقييم',
+      period: 'الفترة',
+      attendance: 'الحضور والالتزام',
+      projectQuality: 'جودة المشاريع',
+      development: 'التطور والتعلم',
+      participation: 'المشاركة الفعالة',
+      teamwork: 'العمل الجماعي',
+      behavior: 'السلوك والأخلاق',
+      notes: 'ملاحظات',
+      totalScore: 'المجموع',
+      award: 'منحة',
+      deduction: 'خصم',
+      source: 'المصدر',
+      points: 'النقاط',
+      reason: 'السبب',
+      submit: 'إرسال',
+      overview: 'نظرة عامة',
+      adminRatings: 'تقييمات الإدارة',
+      engineerRatings: 'تقييمات المهندسين',
+      netCredits: 'صافي النقاط',
+      noRatings: 'لا توجد تقييمات',
+      noCredits: 'لا توجد نقاط',
+      categoryA: 'الفئة A - دعم كامل',
+      categoryB: 'الفئة B - دعم عالي',
+      categoryC: 'الفئة C - دعم متوسط',
+      categoryD: 'الفئة D - دعم أساسي',
+      belowD: 'أقل من D - يحتاج تحسين'
     },
     en: {
       title: 'Elite Management Dashboard',
@@ -115,7 +176,42 @@ const EliteDashboard = () => {
       printId: 'Print ID',
       membershipCard: 'Membership Card',
       eliteMember: 'Elite Member',
-      print: 'Print'
+      print: 'Print',
+      performance: 'Performance & Rating',
+      category: 'Category',
+      percentage: 'Percentage',
+      adminRating: 'Admin Rating',
+      engineerRating: 'Engineer Rating',
+      credits: 'Credits',
+      addRating: 'Add Rating',
+      addCredit: 'Add/Deduct Credits',
+      raterType: 'Rating Type',
+      period: 'Period',
+      attendance: 'Attendance & Commitment',
+      projectQuality: 'Project Quality',
+      development: 'Development & Learning',
+      participation: 'Active Participation',
+      teamwork: 'Teamwork',
+      behavior: 'Behavior & Ethics',
+      notes: 'Notes',
+      totalScore: 'Total Score',
+      award: 'Award',
+      deduction: 'Deduction',
+      source: 'Source',
+      points: 'Points',
+      reason: 'Reason',
+      submit: 'Submit',
+      overview: 'Overview',
+      adminRatings: 'Admin Ratings',
+      engineerRatings: 'Engineer Ratings',
+      netCredits: 'Net Credits',
+      noRatings: 'No ratings yet',
+      noCredits: 'No credits yet',
+      categoryA: 'Category A - Full Support',
+      categoryB: 'Category B - High Support',
+      categoryC: 'Category C - Medium Support',
+      categoryD: 'Category D - Basic Support',
+      belowD: 'Below D - Needs Improvement'
     }
   };
 
@@ -159,6 +255,155 @@ const EliteDashboard = () => {
       console.error('Error deleting user:', error);
       toast.error(isRTL ? 'خطأ في حذف العضو' : 'Error deleting member');
     }
+  };
+
+  // Fetch performance data for a user
+  const fetchUserPerformance = async (eliteId) => {
+    try {
+      const [perfResponse, ratingsResponse, creditsResponse] = await Promise.all([
+        api.get(`/elite/performance/${eliteId}`),
+        api.get(`/elite/ratings/${eliteId}`),
+        api.get(`/elite/credits/${eliteId}`)
+      ]);
+      setUserPerformance(perfResponse.data);
+      setUserRatings(ratingsResponse.data.ratings || []);
+      setUserCredits(creditsResponse.data.credits || []);
+    } catch (error) {
+      console.error('Error fetching performance:', error);
+      toast.error(isRTL ? 'خطأ في تحميل بيانات الأداء' : 'Error loading performance data');
+    }
+  };
+
+  // Open rating modal for user
+  const openRatingModal = (user) => {
+    const now = new Date();
+    const periodOptions = [
+      `${now.toLocaleString('default', { month: 'long' })} ${now.getFullYear()}`,
+      `Q${Math.ceil((now.getMonth() + 1) / 3)} ${now.getFullYear()}`
+    ];
+    setRatingForm({
+      raterType: 'admin',
+      period: periodOptions[0],
+      attendanceScore: 50,
+      projectQualityScore: 50,
+      developmentScore: 50,
+      participationScore: 50,
+      teamworkScore: 50,
+      behaviorScore: 50,
+      notes: ''
+    });
+    setShowRatingModal(user);
+  };
+
+  // Submit rating
+  const handleSubmitRating = async () => {
+    try {
+      if (!ratingForm.period) {
+        toast.error(isRTL ? 'الفترة مطلوبة' : 'Period is required');
+        return;
+      }
+      await api.post('/elite/ratings', {
+        eliteId: showRatingModal.eliteId,
+        ...ratingForm
+      });
+      toast.success(isRTL ? 'تم إضافة التقييم بنجاح' : 'Rating added successfully');
+      setShowRatingModal(null);
+      if (selectedUser) {
+        fetchUserPerformance(selectedUser.eliteId);
+      }
+    } catch (error) {
+      console.error('Error submitting rating:', error);
+      const errMsg = error.response?.data?.messageAr || error.response?.data?.message || 'Error';
+      toast.error(isRTL ? errMsg : (error.response?.data?.message || 'Error submitting rating'));
+    }
+  };
+
+  // Open credit modal for user
+  const openCreditModal = (user) => {
+    setCreditForm({
+      type: 'award',
+      source: 'admin',
+      points: 1,
+      reason: ''
+    });
+    setShowCreditModal(user);
+  };
+
+  // Submit credit
+  const handleSubmitCredit = async () => {
+    try {
+      if (!creditForm.reason) {
+        toast.error(isRTL ? 'السبب مطلوب' : 'Reason is required');
+        return;
+      }
+      await api.post('/elite/credits', {
+        eliteId: showCreditModal.eliteId,
+        ...creditForm
+      });
+      toast.success(
+        creditForm.type === 'award'
+          ? (isRTL ? 'تم منح النقاط بنجاح' : 'Credits awarded successfully')
+          : (isRTL ? 'تم خصم النقاط بنجاح' : 'Credits deducted successfully')
+      );
+      setShowCreditModal(null);
+      if (selectedUser) {
+        fetchUserPerformance(selectedUser.eliteId);
+      }
+    } catch (error) {
+      console.error('Error submitting credit:', error);
+      toast.error(isRTL ? 'خطأ في إضافة النقاط' : 'Error adding credits');
+    }
+  };
+
+  // Delete a rating
+  const handleDeleteRating = async (ratingId) => {
+    try {
+      await api.delete(`/elite/ratings/${ratingId}`);
+      toast.success(isRTL ? 'تم حذف التقييم' : 'Rating deleted');
+      if (selectedUser) {
+        fetchUserPerformance(selectedUser.eliteId);
+      }
+    } catch (error) {
+      console.error('Error deleting rating:', error);
+      toast.error(isRTL ? 'خطأ في حذف التقييم' : 'Error deleting rating');
+    }
+  };
+
+  // Delete a credit
+  const handleDeleteCredit = async (creditId) => {
+    try {
+      await api.delete(`/elite/credits/${creditId}`);
+      toast.success(isRTL ? 'تم حذف النقاط' : 'Credit deleted');
+      if (selectedUser) {
+        fetchUserPerformance(selectedUser.eliteId);
+      }
+    } catch (error) {
+      console.error('Error deleting credit:', error);
+      toast.error(isRTL ? 'خطأ في حذف النقاط' : 'Error deleting credit');
+    }
+  };
+
+  // Get category color
+  const getCategoryColor = (category) => {
+    switch(category) {
+      case 'A': return '#22c55e';
+      case 'B': return '#3b82f6';
+      case 'C': return '#f59e0b';
+      case 'D': return '#ef4444';
+      default: return '#6b7280';
+    }
+  };
+
+  // Get category badge text
+  const getCategoryBadge = (category) => {
+    const badges = {
+      'A': { ar: 'الفئة A', en: 'Category A' },
+      'B': { ar: 'الفئة B', en: 'Category B' },
+      'C': { ar: 'الفئة C', en: 'Category C' },
+      'D': { ar: 'الفئة D', en: 'Category D' },
+      'Below D': { ar: 'أقل من D', en: 'Below D' }
+    };
+    return badges[category]?.[isRTL ? 'ar' : 'en'] || category;
   };
 
   const filteredUsers = users.filter(user => {
@@ -414,7 +659,11 @@ const EliteDashboard = () => {
                         <div className="action-buttons">
                           <button
                             className="action-btn view"
-                            onClick={() => setSelectedUser(user)}
+                            onClick={() => {
+                              setSelectedUser(user);
+                              setPerformanceTab('overview');
+                              fetchUserPerformance(user.eliteId);
+                            }}
                             title={text.view}
                           >
                             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -434,6 +683,26 @@ const EliteDashboard = () => {
                               <path d="M22 8h-4"/>
                               <path d="M22 16h-4"/>
                               <path d="M6 16h4"/>
+                            </svg>
+                          </button>
+                          <button
+                            className="action-btn rating"
+                            onClick={() => openRatingModal(user)}
+                            title={text.addRating}
+                          >
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                              <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+                            </svg>
+                          </button>
+                          <button
+                            className="action-btn credit"
+                            onClick={() => openCreditModal(user)}
+                            title={text.addCredit}
+                          >
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                              <circle cx="12" cy="12" r="10"/>
+                              <line x1="12" y1="8" x2="12" y2="16"/>
+                              <line x1="8" y1="12" x2="16" y2="12"/>
                             </svg>
                           </button>
                           {user.status !== 'active' && (
@@ -506,7 +775,190 @@ const EliteDashboard = () => {
                   </svg>
                 </button>
               </div>
+
+              {/* Performance Tabs */}
+              <div className="performance-tabs">
+                <button
+                  className={`perf-tab ${performanceTab === 'overview' ? 'active' : ''}`}
+                  onClick={() => setPerformanceTab('overview')}
+                >
+                  {text.overview}
+                </button>
+                <button
+                  className={`perf-tab ${performanceTab === 'admin-ratings' ? 'active' : ''}`}
+                  onClick={() => setPerformanceTab('admin-ratings')}
+                >
+                  {text.adminRatings}
+                </button>
+                <button
+                  className={`perf-tab ${performanceTab === 'engineer-ratings' ? 'active' : ''}`}
+                  onClick={() => setPerformanceTab('engineer-ratings')}
+                >
+                  {text.engineerRatings}
+                </button>
+                <button
+                  className={`perf-tab ${performanceTab === 'credits' ? 'active' : ''}`}
+                  onClick={() => setPerformanceTab('credits')}
+                >
+                  {text.credits}
+                </button>
+              </div>
+
               <div className="modal-body">
+                {/* Performance Overview */}
+                {performanceTab === 'overview' && userPerformance && (
+                  <div className="performance-overview">
+                    <div className="category-badge-large" style={{ backgroundColor: getCategoryColor(userPerformance.category) }}>
+                      <span className="category-letter">{userPerformance.category}</span>
+                      <span className="category-percentage">{userPerformance.finalPercentage}%</span>
+                    </div>
+                    <div className="performance-breakdown">
+                      <div className="perf-item">
+                        <span className="perf-label">{text.adminRating}</span>
+                        <div className="perf-bar">
+                          <div className="perf-fill admin" style={{ width: `${userPerformance.adminRatingAvg}%` }}></div>
+                        </div>
+                        <span className="perf-value">{userPerformance.adminRatingAvg}%</span>
+                      </div>
+                      <div className="perf-item">
+                        <span className="perf-label">{text.engineerRating}</span>
+                        <div className="perf-bar">
+                          <div className="perf-fill engineer" style={{ width: `${userPerformance.engineerRatingAvg}%` }}></div>
+                        </div>
+                        <span className="perf-value">{userPerformance.engineerRatingAvg}%</span>
+                      </div>
+                      <div className="perf-item">
+                        <span className="perf-label">{text.netCredits}</span>
+                        <div className="credits-display">
+                          <span className="credit-awards">+{userPerformance.totalAwards}</span>
+                          <span className="credit-deductions">-{userPerformance.totalDeductions}</span>
+                          <span className="credit-net">= {userPerformance.netCredits}</span>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="category-description">
+                      <p>{userPerformance.categoryInfo?.support}</p>
+                    </div>
+                  </div>
+                )}
+
+                {/* Admin Ratings Tab */}
+                {performanceTab === 'admin-ratings' && (
+                  <div className="ratings-list">
+                    {userRatings.filter(r => r.raterType === 'admin').length === 0 ? (
+                      <div className="empty-ratings">{text.noRatings}</div>
+                    ) : (
+                      userRatings.filter(r => r.raterType === 'admin').map(rating => (
+                        <div key={rating.ratingId} className="rating-card">
+                          <div className="rating-header">
+                            <span className="rating-period">{rating.period}</span>
+                            <span className="rating-total">{rating.totalScore}%</span>
+                            <button className="delete-rating-btn" onClick={() => handleDeleteRating(rating.ratingId)}>
+                              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                <polyline points="3 6 5 6 21 6"/>
+                                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+                              </svg>
+                            </button>
+                          </div>
+                          <div className="rating-scores">
+                            <div className="score-item"><span>{text.attendance}</span><span>{rating.attendanceScore}%</span></div>
+                            <div className="score-item"><span>{text.projectQuality}</span><span>{rating.projectQualityScore}%</span></div>
+                            <div className="score-item"><span>{text.development}</span><span>{rating.developmentScore}%</span></div>
+                            <div className="score-item"><span>{text.participation}</span><span>{rating.participationScore}%</span></div>
+                            <div className="score-item"><span>{text.teamwork}</span><span>{rating.teamworkScore}%</span></div>
+                            <div className="score-item"><span>{text.behavior}</span><span>{rating.behaviorScore}%</span></div>
+                          </div>
+                          {rating.notes && <div className="rating-notes">{rating.notes}</div>}
+                          <div className="rating-footer">
+                            <span>{rating.ratedBy?.fullName}</span>
+                            <span>{formatDate(rating.ratingDate)}</span>
+                          </div>
+                        </div>
+                      ))
+                    )}
+                    <button className="add-rating-btn" onClick={() => openRatingModal({ ...selectedUser, presetType: 'admin' })}>
+                      + {text.addRating} ({text.adminRating})
+                    </button>
+                  </div>
+                )}
+
+                {/* Engineer Ratings Tab */}
+                {performanceTab === 'engineer-ratings' && (
+                  <div className="ratings-list">
+                    {userRatings.filter(r => r.raterType === 'engineer').length === 0 ? (
+                      <div className="empty-ratings">{text.noRatings}</div>
+                    ) : (
+                      userRatings.filter(r => r.raterType === 'engineer').map(rating => (
+                        <div key={rating.ratingId} className="rating-card">
+                          <div className="rating-header">
+                            <span className="rating-period">{rating.period}</span>
+                            <span className="rating-total">{rating.totalScore}%</span>
+                            <button className="delete-rating-btn" onClick={() => handleDeleteRating(rating.ratingId)}>
+                              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                <polyline points="3 6 5 6 21 6"/>
+                                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+                              </svg>
+                            </button>
+                          </div>
+                          <div className="rating-scores">
+                            <div className="score-item"><span>{text.attendance}</span><span>{rating.attendanceScore}%</span></div>
+                            <div className="score-item"><span>{text.projectQuality}</span><span>{rating.projectQualityScore}%</span></div>
+                            <div className="score-item"><span>{text.development}</span><span>{rating.developmentScore}%</span></div>
+                            <div className="score-item"><span>{text.participation}</span><span>{rating.participationScore}%</span></div>
+                            <div className="score-item"><span>{text.teamwork}</span><span>{rating.teamworkScore}%</span></div>
+                            <div className="score-item"><span>{text.behavior}</span><span>{rating.behaviorScore}%</span></div>
+                          </div>
+                          {rating.notes && <div className="rating-notes">{rating.notes}</div>}
+                          <div className="rating-footer">
+                            <span>{rating.ratedBy?.fullName}</span>
+                            <span>{formatDate(rating.ratingDate)}</span>
+                          </div>
+                        </div>
+                      ))
+                    )}
+                    <button className="add-rating-btn" onClick={() => openRatingModal({ ...selectedUser, presetType: 'engineer' })}>
+                      + {text.addRating} ({text.engineerRating})
+                    </button>
+                  </div>
+                )}
+
+                {/* Credits Tab */}
+                {performanceTab === 'credits' && (
+                  <div className="credits-list">
+                    {userCredits.length === 0 ? (
+                      <div className="empty-credits">{text.noCredits}</div>
+                    ) : (
+                      userCredits.map(credit => (
+                        <div key={credit.creditId} className={`credit-card ${credit.type}`}>
+                          <div className="credit-header">
+                            <span className={`credit-type ${credit.type}`}>
+                              {credit.type === 'award' ? '+' : '-'}{credit.points}
+                            </span>
+                            <span className="credit-source">{credit.source}</span>
+                            <button className="delete-credit-btn" onClick={() => handleDeleteCredit(credit.creditId)}>
+                              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                <polyline points="3 6 5 6 21 6"/>
+                                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+                              </svg>
+                            </button>
+                          </div>
+                          <div className="credit-reason">{credit.reason}</div>
+                          <div className="credit-footer">
+                            <span>{credit.createdBy?.fullName || 'System'}</span>
+                            <span>{formatDate(credit.creditDate)}</span>
+                          </div>
+                        </div>
+                      ))
+                    )}
+                    <button className="add-credit-btn" onClick={() => openCreditModal(selectedUser)}>
+                      + {text.addCredit}
+                    </button>
+                  </div>
+                )}
+
+                {/* Personal Info (only shown in overview) */}
+                {performanceTab === 'overview' && (
+                  <>
                 <div className="user-profile-header">
                   {selectedUser.profilePicture ? (
                     <img src={selectedUser.profilePicture} alt="" className="profile-image" />
@@ -576,6 +1028,8 @@ const EliteDashboard = () => {
                     <span className="detail-label">{text.bio}</span>
                     <p className="bio-text">{selectedUser.bio}</p>
                   </div>
+                )}
+                  </>
                 )}
               </div>
               <div className="modal-footer">
@@ -900,6 +1354,245 @@ const EliteDashboard = () => {
                 </button>
                 <button className="btn-close" onClick={() => setShowIdCard(null)}>
                   {text.close}
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Rating Modal */}
+      <AnimatePresence>
+        {showRatingModal && (
+          <motion.div
+            className="modal-overlay"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => setShowRatingModal(null)}
+          >
+            <motion.div
+              className="modal-content rating-modal"
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              onClick={e => e.stopPropagation()}
+            >
+              <div className="modal-header">
+                <h2>{text.addRating} - {showRatingModal.firstName} {showRatingModal.lastName}</h2>
+                <button className="close-btn" onClick={() => setShowRatingModal(null)}>
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <line x1="18" y1="6" x2="6" y2="18"/>
+                    <line x1="6" y1="6" x2="18" y2="18"/>
+                  </svg>
+                </button>
+              </div>
+              <div className="modal-body">
+                <div className="form-group">
+                  <label>{text.raterType}</label>
+                  <select
+                    value={ratingForm.raterType}
+                    onChange={e => setRatingForm({...ratingForm, raterType: e.target.value})}
+                  >
+                    <option value="admin">{text.adminRating}</option>
+                    <option value="engineer">{text.engineerRating}</option>
+                  </select>
+                </div>
+                <div className="form-group">
+                  <label>{text.period}</label>
+                  <input
+                    type="text"
+                    value={ratingForm.period}
+                    onChange={e => setRatingForm({...ratingForm, period: e.target.value})}
+                    placeholder={isRTL ? 'مثال: يناير 2026' : 'e.g., January 2026'}
+                  />
+                </div>
+                <div className="rating-sliders">
+                  <div className="slider-group">
+                    <label>{text.attendance} (20%)</label>
+                    <input
+                      type="range"
+                      min="0"
+                      max="100"
+                      value={ratingForm.attendanceScore}
+                      onChange={e => setRatingForm({...ratingForm, attendanceScore: parseInt(e.target.value)})}
+                    />
+                    <span className="slider-value">{ratingForm.attendanceScore}%</span>
+                  </div>
+                  <div className="slider-group">
+                    <label>{text.projectQuality} (25%)</label>
+                    <input
+                      type="range"
+                      min="0"
+                      max="100"
+                      value={ratingForm.projectQualityScore}
+                      onChange={e => setRatingForm({...ratingForm, projectQualityScore: parseInt(e.target.value)})}
+                    />
+                    <span className="slider-value">{ratingForm.projectQualityScore}%</span>
+                  </div>
+                  <div className="slider-group">
+                    <label>{text.development} (20%)</label>
+                    <input
+                      type="range"
+                      min="0"
+                      max="100"
+                      value={ratingForm.developmentScore}
+                      onChange={e => setRatingForm({...ratingForm, developmentScore: parseInt(e.target.value)})}
+                    />
+                    <span className="slider-value">{ratingForm.developmentScore}%</span>
+                  </div>
+                  <div className="slider-group">
+                    <label>{text.participation} (15%)</label>
+                    <input
+                      type="range"
+                      min="0"
+                      max="100"
+                      value={ratingForm.participationScore}
+                      onChange={e => setRatingForm({...ratingForm, participationScore: parseInt(e.target.value)})}
+                    />
+                    <span className="slider-value">{ratingForm.participationScore}%</span>
+                  </div>
+                  <div className="slider-group">
+                    <label>{text.teamwork} (10%)</label>
+                    <input
+                      type="range"
+                      min="0"
+                      max="100"
+                      value={ratingForm.teamworkScore}
+                      onChange={e => setRatingForm({...ratingForm, teamworkScore: parseInt(e.target.value)})}
+                    />
+                    <span className="slider-value">{ratingForm.teamworkScore}%</span>
+                  </div>
+                  <div className="slider-group">
+                    <label>{text.behavior} (10%)</label>
+                    <input
+                      type="range"
+                      min="0"
+                      max="100"
+                      value={ratingForm.behaviorScore}
+                      onChange={e => setRatingForm({...ratingForm, behaviorScore: parseInt(e.target.value)})}
+                    />
+                    <span className="slider-value">{ratingForm.behaviorScore}%</span>
+                  </div>
+                </div>
+                <div className="calculated-total">
+                  <span>{text.totalScore}:</span>
+                  <span className="total-value">
+                    {(
+                      (ratingForm.attendanceScore * 0.20) +
+                      (ratingForm.projectQualityScore * 0.25) +
+                      (ratingForm.developmentScore * 0.20) +
+                      (ratingForm.participationScore * 0.15) +
+                      (ratingForm.teamworkScore * 0.10) +
+                      (ratingForm.behaviorScore * 0.10)
+                    ).toFixed(2)}%
+                  </span>
+                </div>
+                <div className="form-group">
+                  <label>{text.notes}</label>
+                  <textarea
+                    value={ratingForm.notes}
+                    onChange={e => setRatingForm({...ratingForm, notes: e.target.value})}
+                    rows="3"
+                  />
+                </div>
+              </div>
+              <div className="modal-footer">
+                <button className="btn-submit" onClick={handleSubmitRating}>
+                  {text.submit}
+                </button>
+                <button className="btn-close" onClick={() => setShowRatingModal(null)}>
+                  {text.cancel}
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Credit Modal */}
+      <AnimatePresence>
+        {showCreditModal && (
+          <motion.div
+            className="modal-overlay"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => setShowCreditModal(null)}
+          >
+            <motion.div
+              className="modal-content credit-modal"
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              onClick={e => e.stopPropagation()}
+            >
+              <div className="modal-header">
+                <h2>{text.addCredit} - {showCreditModal.firstName} {showCreditModal.lastName}</h2>
+                <button className="close-btn" onClick={() => setShowCreditModal(null)}>
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <line x1="18" y1="6" x2="6" y2="18"/>
+                    <line x1="6" y1="6" x2="18" y2="18"/>
+                  </svg>
+                </button>
+              </div>
+              <div className="modal-body">
+                <div className="form-group">
+                  <label>{text.raterType}</label>
+                  <div className="credit-type-toggle">
+                    <button
+                      className={`type-btn award ${creditForm.type === 'award' ? 'active' : ''}`}
+                      onClick={() => setCreditForm({...creditForm, type: 'award'})}
+                    >
+                      + {text.award}
+                    </button>
+                    <button
+                      className={`type-btn deduction ${creditForm.type === 'deduction' ? 'active' : ''}`}
+                      onClick={() => setCreditForm({...creditForm, type: 'deduction'})}
+                    >
+                      - {text.deduction}
+                    </button>
+                  </div>
+                </div>
+                <div className="form-group">
+                  <label>{text.source}</label>
+                  <select
+                    value={creditForm.source}
+                    onChange={e => setCreditForm({...creditForm, source: e.target.value})}
+                  >
+                    <option value="admin">{isRTL ? 'إداري' : 'Admin'}</option>
+                    <option value="engineer">{isRTL ? 'مهندس' : 'Engineer'}</option>
+                    <option value="system">{isRTL ? 'النظام' : 'System'}</option>
+                    <option value="task">{isRTL ? 'مهمة' : 'Task'}</option>
+                    <option value="course">{isRTL ? 'دورة' : 'Course'}</option>
+                  </select>
+                </div>
+                <div className="form-group">
+                  <label>{text.points}</label>
+                  <input
+                    type="number"
+                    min="1"
+                    max="100"
+                    value={creditForm.points}
+                    onChange={e => setCreditForm({...creditForm, points: parseInt(e.target.value) || 1})}
+                  />
+                </div>
+                <div className="form-group">
+                  <label>{text.reason}</label>
+                  <textarea
+                    value={creditForm.reason}
+                    onChange={e => setCreditForm({...creditForm, reason: e.target.value})}
+                    rows="3"
+                    placeholder={isRTL ? 'سبب المنحة أو الخصم...' : 'Reason for award or deduction...'}
+                  />
+                </div>
+              </div>
+              <div className="modal-footer">
+                <button className="btn-submit" onClick={handleSubmitCredit}>
+                  {text.submit}
+                </button>
+                <button className="btn-close" onClick={() => setShowCreditModal(null)}>
+                  {text.cancel}
                 </button>
               </div>
             </motion.div>

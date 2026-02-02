@@ -10,7 +10,10 @@ const EliteUserAccount = () => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [language, setLanguage] = useState('ar');
-  const [activeTab, setActiveTab] = useState('profile');
+  const [activeTab, setActiveTab] = useState('performance');
+  const [performance, setPerformance] = useState(null);
+  const [ratings, setRatings] = useState([]);
+  const [credits, setCredits] = useState([]);
   const isRTL = language === 'ar';
 
   // Translations
@@ -52,7 +55,31 @@ const EliteUserAccount = () => {
       personalInfo: 'المعلومات الشخصية',
       contactInfo: 'معلومات التواصل',
       professionalInfo: 'المعلومات المهنية',
-      notProvided: 'غير محدد'
+      notProvided: 'غير محدد',
+      performance: 'الأداء',
+      category: 'الفئة',
+      percentage: 'النسبة',
+      adminRating: 'تقييم الإدارة',
+      engineerRating: 'تقييم المهندس',
+      systemCredits: 'النقاط',
+      netCredits: 'صافي النقاط',
+      categoryA: 'الفئة A - دعم كامل في جميع المجالات',
+      categoryB: 'الفئة B - دعم عالي مع بعض القيود',
+      categoryC: 'الفئة C - دعم متوسط',
+      categoryD: 'الفئة D - دعم أساسي',
+      belowD: 'أقل من D - يحتاج إلى تحسين',
+      noRatings: 'لا توجد تقييمات بعد',
+      noCredits: 'لا توجد نقاط بعد',
+      recentRatings: 'التقييمات الأخيرة',
+      recentCredits: 'النقاط الأخيرة',
+      award: 'منحة',
+      deduction: 'خصم',
+      attendance: 'الحضور والالتزام',
+      projectQuality: 'جودة المشاريع',
+      development: 'التطور والتعلم',
+      participation: 'المشاركة الفعالة',
+      teamwork: 'العمل الجماعي',
+      behavior: 'السلوك والأخلاق'
     },
     en: {
       elite: 'Elite',
@@ -91,7 +118,31 @@ const EliteUserAccount = () => {
       personalInfo: 'Personal Information',
       contactInfo: 'Contact Information',
       professionalInfo: 'Professional Information',
-      notProvided: 'Not provided'
+      notProvided: 'Not provided',
+      performance: 'Performance',
+      category: 'Category',
+      percentage: 'Percentage',
+      adminRating: 'Admin Rating',
+      engineerRating: 'Engineer Rating',
+      systemCredits: 'Credits',
+      netCredits: 'Net Credits',
+      categoryA: 'Category A - Full support in all areas',
+      categoryB: 'Category B - High support with some limitations',
+      categoryC: 'Category C - Medium support',
+      categoryD: 'Category D - Basic support',
+      belowD: 'Below D - Needs improvement',
+      noRatings: 'No ratings yet',
+      noCredits: 'No credits yet',
+      recentRatings: 'Recent Ratings',
+      recentCredits: 'Recent Credits',
+      award: 'Award',
+      deduction: 'Deduction',
+      attendance: 'Attendance & Commitment',
+      projectQuality: 'Project Quality',
+      development: 'Development & Learning',
+      participation: 'Active Participation',
+      teamwork: 'Teamwork',
+      behavior: 'Behavior & Ethics'
     }
   };
 
@@ -114,6 +165,9 @@ const EliteUserAccount = () => {
         const response = await api.get(`/elite/users/${userData.eliteId}`);
         setUser(response.data);
         localStorage.setItem('eliteUser', JSON.stringify(response.data));
+
+        // Fetch performance data
+        await fetchPerformanceData(userData.eliteId);
       } catch (error) {
         console.error('Error fetching user data:', error);
       } finally {
@@ -123,6 +177,42 @@ const EliteUserAccount = () => {
 
     fetchUserData();
   }, [navigate]);
+
+  const fetchPerformanceData = async (eliteId) => {
+    try {
+      const [perfResponse, ratingsResponse, creditsResponse] = await Promise.all([
+        api.get(`/elite/performance/${eliteId}`),
+        api.get(`/elite/ratings/${eliteId}`),
+        api.get(`/elite/credits/${eliteId}`)
+      ]);
+      setPerformance(perfResponse.data);
+      setRatings(ratingsResponse.data.ratings || []);
+      setCredits(creditsResponse.data.credits || []);
+    } catch (error) {
+      console.error('Error fetching performance data:', error);
+    }
+  };
+
+  const getCategoryColor = (category) => {
+    switch(category) {
+      case 'A': return '#22c55e';
+      case 'B': return '#3b82f6';
+      case 'C': return '#f59e0b';
+      case 'D': return '#ef4444';
+      default: return '#6b7280';
+    }
+  };
+
+  const getCategoryDescription = (category) => {
+    const descriptions = {
+      'A': text.categoryA,
+      'B': text.categoryB,
+      'C': text.categoryC,
+      'D': text.categoryD,
+      'Below D': text.belowD
+    };
+    return descriptions[category] || text.belowD;
+  };
 
   const handleLogout = () => {
     if (window.confirm(text.logoutConfirm)) {
@@ -235,6 +325,15 @@ const EliteUserAccount = () => {
           {/* Navigation */}
           <nav className="elite-nav">
             <button
+              className={`elite-nav-item ${activeTab === 'performance' ? 'active' : ''}`}
+              onClick={() => setActiveTab('performance')}
+            >
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+              </svg>
+              {text.performance}
+            </button>
+            <button
               className={`elite-nav-item ${activeTab === 'profile' ? 'active' : ''}`}
               onClick={() => setActiveTab('profile')}
             >
@@ -301,6 +400,148 @@ const EliteUserAccount = () => {
 
           {/* Tab Content */}
           <div className="elite-tab-content">
+            {activeTab === 'performance' && (
+              <motion.div
+                className="elite-performance-content"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+              >
+                {/* Category Badge */}
+                {performance && (
+                  <div
+                    className="elite-category-card"
+                    style={{ background: `linear-gradient(135deg, ${getCategoryColor(performance.category)}, ${getCategoryColor(performance.category)}dd)` }}
+                  >
+                    <div className="category-main">
+                      <span className="category-letter">{performance.category}</span>
+                      <div className="category-details">
+                        <span className="category-percentage">{performance.finalPercentage}%</span>
+                        <span className="category-label">{getCategoryDescription(performance.category)}</span>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Performance Breakdown */}
+                <div className="elite-info-section performance-section">
+                  <h3>
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="M21.21 15.89A10 10 0 1 1 8 2.83"/>
+                      <path d="M22 12A10 10 0 0 0 12 2v10z"/>
+                    </svg>
+                    {text.performance}
+                  </h3>
+                  {performance && (
+                    <div className="performance-bars">
+                      <div className="perf-row">
+                        <span className="perf-label">{text.adminRating}</span>
+                        <div className="perf-bar-track">
+                          <div
+                            className="perf-bar-fill admin"
+                            style={{ width: `${performance.adminRatingAvg}%` }}
+                          ></div>
+                        </div>
+                        <span className="perf-value">{performance.adminRatingAvg}%</span>
+                      </div>
+                      <div className="perf-row">
+                        <span className="perf-label">{text.engineerRating}</span>
+                        <div className="perf-bar-track">
+                          <div
+                            className="perf-bar-fill engineer"
+                            style={{ width: `${performance.engineerRatingAvg}%` }}
+                          ></div>
+                        </div>
+                        <span className="perf-value">{performance.engineerRatingAvg}%</span>
+                      </div>
+                      <div className="perf-row credits-row">
+                        <span className="perf-label">{text.systemCredits}</span>
+                        <div className="credits-summary">
+                          <span className="credit-award">+{performance.totalAwards}</span>
+                          <span className="credit-deduct">-{performance.totalDeductions}</span>
+                          <span className="credit-net">= {performance.netCredits}</span>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Recent Ratings */}
+                <div className="elite-info-section">
+                  <h3>
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+                    </svg>
+                    {text.recentRatings}
+                  </h3>
+                  {ratings.length === 0 ? (
+                    <p className="empty-message">{text.noRatings}</p>
+                  ) : (
+                    <div className="ratings-grid">
+                      {ratings.slice(0, 4).map(rating => (
+                        <div key={rating.ratingId} className="rating-item">
+                          <div className="rating-item-header">
+                            <span className="rating-type-badge">
+                              {rating.raterType === 'admin' ? text.adminRating : text.engineerRating}
+                            </span>
+                            <span className="rating-score">{rating.totalScore}%</span>
+                          </div>
+                          <span className="rating-period">{rating.period}</span>
+                          <div className="rating-scores-mini">
+                            <div className="score-mini">
+                              <span>{text.attendance}</span>
+                              <span>{rating.attendanceScore}%</span>
+                            </div>
+                            <div className="score-mini">
+                              <span>{text.projectQuality}</span>
+                              <span>{rating.projectQualityScore}%</span>
+                            </div>
+                            <div className="score-mini">
+                              <span>{text.development}</span>
+                              <span>{rating.developmentScore}%</span>
+                            </div>
+                            <div className="score-mini">
+                              <span>{text.participation}</span>
+                              <span>{rating.participationScore}%</span>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* Recent Credits */}
+                <div className="elite-info-section">
+                  <h3>
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <circle cx="12" cy="12" r="10"/>
+                      <line x1="12" y1="8" x2="12" y2="16"/>
+                      <line x1="8" y1="12" x2="16" y2="12"/>
+                    </svg>
+                    {text.recentCredits}
+                  </h3>
+                  {credits.length === 0 ? (
+                    <p className="empty-message">{text.noCredits}</p>
+                  ) : (
+                    <div className="credits-grid">
+                      {credits.slice(0, 6).map(credit => (
+                        <div key={credit.creditId} className={`credit-item ${credit.type}`}>
+                          <div className="credit-item-header">
+                            <span className={`credit-points ${credit.type}`}>
+                              {credit.type === 'award' ? '+' : '-'}{credit.points}
+                            </span>
+                            <span className="credit-source-badge">{credit.source}</span>
+                          </div>
+                          <p className="credit-reason">{credit.reason}</p>
+                          <span className="credit-date">{formatDate(credit.creditDate)}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </motion.div>
+            )}
+
             {activeTab === 'profile' && (
               <motion.div
                 className="elite-profile-content"

@@ -1660,3 +1660,308 @@
     font-size: 22px;
   }
 }
+
+/* Performance Tab Styles */
+.elite-performance-content {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.elite-category-card {
+  padding: 32px;
+  border-radius: 20px;
+  color: white;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+}
+
+.category-main {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+}
+
+.category-letter {
+  font-size: 72px;
+  font-weight: 800;
+  line-height: 1;
+  text-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+}
+
+.category-details {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.category-percentage {
+  font-size: 36px;
+  font-weight: 700;
+}
+
+.category-label {
+  font-size: 16px;
+  opacity: 0.9;
+}
+
+.performance-section {
+  background: white;
+  border-radius: 16px;
+  padding: 24px;
+}
+
+.performance-bars {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.perf-row {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.perf-row .perf-label {
+  min-width: 120px;
+  font-size: 14px;
+  color: #666;
+}
+
+.perf-bar-track {
+  flex: 1;
+  height: 10px;
+  background: #e9ecef;
+  border-radius: 5px;
+  overflow: hidden;
+}
+
+.perf-bar-fill {
+  height: 100%;
+  border-radius: 5px;
+  transition: width 0.8s ease;
+}
+
+.perf-bar-fill.admin {
+  background: linear-gradient(90deg, #22c55e, #16a34a);
+}
+
+.perf-bar-fill.engineer {
+  background: linear-gradient(90deg, #3b82f6, #1d4ed8);
+}
+
+.perf-row .perf-value {
+  min-width: 60px;
+  font-size: 16px;
+  font-weight: 600;
+  text-align: right;
+  color: #1a1a2e;
+}
+
+.credits-row .credits-summary {
+  flex: 1;
+  display: flex;
+  gap: 20px;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.credit-award {
+  color: #22c55e;
+}
+
+.credit-deduct {
+  color: #ef4444;
+}
+
+.credit-net {
+  color: #1a1a2e;
+}
+
+.empty-message {
+  text-align: center;
+  padding: 24px;
+  color: #999;
+  font-style: italic;
+}
+
+/* Ratings Grid */
+.ratings-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px;
+}
+
+.rating-item {
+  background: #f8f9fa;
+  border-radius: 12px;
+  padding: 16px;
+  border: 1px solid #e9ecef;
+}
+
+.rating-item-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.rating-type-badge {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 4px 10px;
+  border-radius: 20px;
+  background: rgba(0, 108, 53, 0.1);
+  color: #006c35;
+}
+
+.rating-score {
+  font-size: 20px;
+  font-weight: 700;
+  color: #006c35;
+}
+
+.rating-period {
+  display: block;
+  font-size: 13px;
+  color: #666;
+  margin-bottom: 12px;
+}
+
+.rating-scores-mini {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.score-mini {
+  display: flex;
+  justify-content: space-between;
+  font-size: 12px;
+}
+
+.score-mini span:first-child {
+  color: #888;
+}
+
+.score-mini span:last-child {
+  font-weight: 600;
+  color: #333;
+}
+
+/* Credits Grid */
+.credits-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+}
+
+.credit-item {
+  background: #f8f9fa;
+  border-radius: 12px;
+  padding: 14px;
+  border: 1px solid #e9ecef;
+}
+
+.credit-item.award {
+  border-left: 4px solid #22c55e;
+}
+
+.credit-item.deduction {
+  border-left: 4px solid #ef4444;
+}
+
+[dir="rtl"] .credit-item.award {
+  border-left: none;
+  border-right: 4px solid #22c55e;
+}
+
+[dir="rtl"] .credit-item.deduction {
+  border-left: none;
+  border-right: 4px solid #ef4444;
+}
+
+.credit-item-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.credit-points {
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.credit-points.award {
+  color: #22c55e;
+}
+
+.credit-points.deduction {
+  color: #ef4444;
+}
+
+.credit-source-badge {
+  font-size: 10px;
+  font-weight: 600;
+  padding: 3px 8px;
+  border-radius: 10px;
+  background: #e9ecef;
+  color: #666;
+  text-transform: uppercase;
+}
+
+.credit-item .credit-reason {
+  font-size: 13px;
+  color: #333;
+  margin: 0 0 8px;
+  line-height: 1.4;
+}
+
+.credit-date {
+  font-size: 11px;
+  color: #999;
+}
+
+@media (max-width: 768px) {
+  .ratings-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .credits-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .category-main {
+    flex-direction: column;
+    text-align: center;
+  }
+
+  .category-letter {
+    font-size: 56px;
+  }
+
+  .category-percentage {
+    font-size: 28px;
+  }
+}
+
+@media (max-width: 480px) {
+  .credits-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .perf-row {
+    flex-wrap: wrap;
+  }
+
+  .perf-row .perf-label {
+    width: 100%;
+    margin-bottom: 8px;
+  }
+
+  .credits-row .credits-summary {
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+}

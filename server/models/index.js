@@ -16,6 +16,8 @@ const Workspace = require('./Workspace');
 const WorkspaceRating = require('./WorkspaceRating');
 const SectionAvailability = require('./SectionAvailability');
 const EliteUser = require('./EliteUser');
+const EliteRating = require('./EliteRating');
+const EliteCredit = require('./EliteCredit');
 
 // Define relationships
 User.hasMany(Registration, { foreignKey: 'userId', as: 'registrations' });
@@ -90,6 +92,20 @@ Admin.hasMany(SectionAvailability, { foreignKey: 'createdById', as: 'createdDeac
 
 SectionAvailability.belongsTo(Admin, { foreignKey: 'reactivatedById', as: 'reactivatedBy' });
 
+// Elite Rating relationships
+EliteRating.belongsTo(EliteUser, { foreignKey: 'eliteId', as: 'eliteUser' });
+EliteUser.hasMany(EliteRating, { foreignKey: 'eliteId', as: 'ratings' });
+
+EliteRating.belongsTo(Admin, { foreignKey: 'ratedById', as: 'ratedBy' });
+Admin.hasMany(EliteRating, { foreignKey: 'ratedById', as: 'givenEliteRatings' });
+
+// Elite Credit relationships
+EliteCredit.belongsTo(EliteUser, { foreignKey: 'eliteId', as: 'eliteUser' });
+EliteUser.hasMany(EliteCredit, { foreignKey: 'eliteId', as: 'credits' });
+
+EliteCredit.belongsTo(Admin, { foreignKey: 'createdById', as: 'createdBy' });
+Admin.hasMany(EliteCredit, { foreignKey: 'createdById', as: 'givenEliteCredits' });
+
 // Sync database
 const syncDatabase = async () => {
   try {
@@ -138,5 +154,7 @@ module.exports = {
   WorkspaceRating,
   SectionAvailability,
   EliteUser,
+  EliteRating,
+  EliteCredit,
   syncDatabase
 };
