@@ -174,7 +174,7 @@ exports.createSchedule = async (req, res) => {
 
     const schedule = await EliteSchedule.create({
       eliteId,
-      createdById: req.admin.adminId,
+      createdById: req.admin?.adminId || null,
       title,
       description,
       type: type || 'session',
@@ -210,7 +210,7 @@ exports.createSchedule = async (req, res) => {
         if (currentDate <= endRecurrence) {
           additionalSchedules.push({
             eliteId,
-            createdById: req.admin.adminId,
+            createdById: req.admin?.adminId || null,
             title,
             description,
             type: type || 'session',

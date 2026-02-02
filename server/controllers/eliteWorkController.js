@@ -261,7 +261,7 @@ exports.reviewWork = async (req, res) => {
 
     await work.update({
       status,
-      reviewedById: req.admin.adminId,
+      reviewedById: req.admin?.adminId || null,
       reviewDate: new Date(),
       reviewNotes: reviewNotes || null
     });

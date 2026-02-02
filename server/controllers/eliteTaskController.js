@@ -122,7 +122,7 @@ exports.createTask = async (req, res) => {
 
     const task = await EliteTask.create({
       eliteId,
-      createdById: req.admin.adminId,
+      createdById: req.admin?.adminId || null,
       title,
       description,
       type: type || 'task',
