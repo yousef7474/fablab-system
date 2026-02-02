@@ -18,6 +18,9 @@ const SectionAvailability = require('./SectionAvailability');
 const EliteUser = require('./EliteUser');
 const EliteRating = require('./EliteRating');
 const EliteCredit = require('./EliteCredit');
+const EliteTask = require('./EliteTask');
+const EliteWork = require('./EliteWork');
+const EliteSchedule = require('./EliteSchedule');
 
 // Define relationships
 User.hasMany(Registration, { foreignKey: 'userId', as: 'registrations' });
@@ -106,6 +109,30 @@ EliteUser.hasMany(EliteCredit, { foreignKey: 'eliteId', as: 'credits' });
 EliteCredit.belongsTo(Admin, { foreignKey: 'createdById', as: 'createdBy' });
 Admin.hasMany(EliteCredit, { foreignKey: 'createdById', as: 'givenEliteCredits' });
 
+// Elite Task relationships
+EliteTask.belongsTo(EliteUser, { foreignKey: 'eliteId', as: 'eliteUser' });
+EliteUser.hasMany(EliteTask, { foreignKey: 'eliteId', as: 'tasks' });
+
+EliteTask.belongsTo(Admin, { foreignKey: 'createdById', as: 'creator' });
+Admin.hasMany(EliteTask, { foreignKey: 'createdById', as: 'createdEliteTasks' });
+
+// Elite Work relationships
+EliteWork.belongsTo(EliteUser, { foreignKey: 'eliteId', as: 'eliteUser' });
+EliteUser.hasMany(EliteWork, { foreignKey: 'eliteId', as: 'works' });
+
+EliteWork.belongsTo(EliteTask, { foreignKey: 'taskId', as: 'task' });
+EliteTask.hasMany(EliteWork, { foreignKey: 'taskId', as: 'submissions' });
+
+EliteWork.belongsTo(Admin, { foreignKey: 'reviewedById', as: 'reviewer' });
+Admin.hasMany(EliteWork, { foreignKey: 'reviewedById', as: 'reviewedWorks' });
+
+// Elite Schedule relationships
+EliteSchedule.belongsTo(EliteUser, { foreignKey: 'eliteId', as: 'eliteUser' });
+EliteUser.hasMany(EliteSchedule, { foreignKey: 'eliteId', as: 'schedules' });
+
+EliteSchedule.belongsTo(Admin, { foreignKey: 'createdById', as: 'creator' });
+Admin.hasMany(EliteSchedule, { foreignKey: 'createdById', as: 'createdSchedules' });
+
 // Sync database
 const syncDatabase = async () => {
   try {
@@ -156,5 +183,8 @@ module.exports = {
   EliteUser,
   EliteRating,
   EliteCredit,
+  EliteTask,
+  EliteWork,
+  EliteSchedule,
   syncDatabase
 };
