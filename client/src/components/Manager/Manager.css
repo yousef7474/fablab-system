@@ -2976,6 +2976,62 @@
   height: 14px;
 }
 
+/* Certificate Button in Opportunity/Training Cards */
+.certificate-opportunity-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px 8px;
+  background: rgba(245, 158, 11, 0.1);
+  border: 1px solid #f59e0b;
+  border-radius: 6px;
+  color: #f59e0b;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.certificate-opportunity-btn:hover {
+  background: #f59e0b;
+  color: white;
+}
+
+.certificate-opportunity-btn svg {
+  width: 14px;
+  height: 14px;
+}
+
+/* Modal Button Styles for Print and Certificate */
+.modal-btn.print {
+  background: linear-gradient(135deg, #6366f1, #4f46e5);
+  color: white;
+  border: none;
+}
+
+.modal-btn.print:hover {
+  background: linear-gradient(135deg, #4f46e5, #4338ca);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+}
+
+.modal-btn.certificate {
+  background: linear-gradient(135deg, #f59e0b, #d97706);
+  color: white;
+  border: none;
+}
+
+.modal-btn.certificate:hover {
+  background: linear-gradient(135deg, #d97706, #b45309);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(245, 158, 11, 0.3);
+}
+
+.modal-btn.certificate:disabled {
+  background: #d1d5db;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
 /* History Actions */
 .history-actions {
   display: flex;

@@ -2266,6 +2266,611 @@ const ManagerDashboard = () => {
     setTimeout(() => printWindow.print(), 300);
   };
 
+  // Print intern profile
+  const handlePrintInternProfile = (intern) => {
+    const printWindow = window.open('', '_blank');
+    const totalHours = (intern.trainings || []).reduce((sum, t) => sum + ((t.totalHours || 0) + (t.hoursAdjustment || 0)), 0);
+
+    const printContent = `
+      <!DOCTYPE html>
+      <html dir="${isRTL ? 'rtl' : 'ltr'}" lang="${isRTL ? 'ar' : 'en'}">
+      <head>
+        <title>${isRTL ? 'ملف المتدرب' : 'Intern Profile'} - ${intern.name}</title>
+        <style>
+          @page { size: A4; margin: 15mm; }
+          * { margin: 0; padding: 0; box-sizing: border-box; }
+          body {
+            font-family: 'Segoe UI', Tahoma, Arial, sans-serif;
+            padding: 20px;
+            background: #fff;
+            font-size: 12px;
+            line-height: 1.5;
+            color: #333;
+          }
+          .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding-bottom: 15px;
+            border-bottom: 3px solid #2563eb;
+            margin-bottom: 20px;
+          }
+          .logo { height: 60px; }
+          .header-center { text-align: center; flex: 1; }
+          .header-title { font-size: 20px; font-weight: 700; color: #2563eb; }
+          .header-subtitle { font-size: 12px; color: #666; margin-top: 5px; }
+          .profile-section {
+            display: flex;
+            gap: 20px;
+            margin-bottom: 20px;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 8px;
+          }
+          .profile-photo {
+            width: 150px;
+            height: 180px;
+            border: 2px solid #2563eb;
+            border-radius: 8px;
+            overflow: hidden;
+          }
+          .profile-photo img { width: 100%; height: 100%; object-fit: cover; }
+          .profile-info { flex: 1; }
+          .profile-name { font-size: 24px; font-weight: 700; color: #1a1a2e; margin-bottom: 15px; }
+          .info-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
+          .info-item { background: white; padding: 10px; border-radius: 6px; border: 1px solid #eee; }
+          .info-label { font-size: 10px; color: #888; text-transform: uppercase; }
+          .info-value { font-size: 14px; font-weight: 600; color: #333; }
+          .section { margin-bottom: 20px; }
+          .section-title {
+            font-size: 14px; font-weight: 700; color: #2563eb;
+            padding-bottom: 8px; margin-bottom: 12px;
+            border-bottom: 2px solid #2563eb;
+          }
+          .stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+          .stat-card {
+            text-align: center; padding: 15px;
+            background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+            color: white; border-radius: 8px;
+          }
+          .stat-value { font-size: 28px; font-weight: 700; }
+          .stat-label { font-size: 11px; opacity: 0.9; }
+          .training-card {
+            background: #f8f9fa; padding: 12px;
+            border-radius: 8px; margin-bottom: 10px;
+            border-${isRTL ? 'right' : 'left'}: 4px solid #2563eb;
+          }
+          .training-title { font-size: 14px; font-weight: 600; color: #1a1a2e; }
+          .training-meta { display: flex; gap: 20px; margin-top: 8px; font-size: 12px; color: #666; }
+          .footer {
+            margin-top: 30px; text-align: center;
+            font-size: 10px; color: #888;
+            padding-top: 15px; border-top: 1px solid #eee;
+          }
+          @media print {
+            body { padding: 0; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+          }
+        </style>
+      </head>
+      <body>
+        <div class="header">
+          <img src="/found.png" alt="Foundation" class="logo" />
+          <div class="header-center">
+            <div class="header-title">${isRTL ? 'ملف المتدرب الجامعي' : 'University Intern Profile'}</div>
+            <div class="header-subtitle">${isRTL ? 'فاب لاب الأحساء - مختبر التصنيع الرقمي' : 'FABLAB Al-Ahsa - Digital Fabrication Laboratory'}</div>
+          </div>
+          <img src="/fablab.png" alt="FABLAB" class="logo" />
+        </div>
+
+        <div class="profile-section">
+          <div class="profile-photo">
+            ${intern.nationalIdPhoto ? `<img src="${intern.nationalIdPhoto}" alt="ID Photo" />` : '<div style="display:flex;align-items:center;justify-content:center;height:100%;background:#f0f0f0;font-size:48px;color:#999;">' + (intern.name?.charAt(0) || 'I') + '</div>'}
+          </div>
+          <div class="profile-info">
+            <div class="profile-name">${intern.name}</div>
+            <div class="info-grid">
+              <div class="info-item">
+                <div class="info-label">${isRTL ? 'رقم الهوية' : 'National ID'}</div>
+                <div class="info-value">${intern.nationalId}</div>
+              </div>
+              <div class="info-item">
+                <div class="info-label">${isRTL ? 'رقم الهاتف' : 'Phone'}</div>
+                <div class="info-value">${intern.phone}</div>
+              </div>
+              <div class="info-item">
+                <div class="info-label">${isRTL ? 'البريد الإلكتروني' : 'Email'}</div>
+                <div class="info-value">${intern.email || (isRTL ? 'غير متوفر' : 'N/A')}</div>
+              </div>
+              <div class="info-item">
+                <div class="info-label">${isRTL ? 'الجامعة' : 'University'}</div>
+                <div class="info-value">${intern.university || (isRTL ? 'غير متوفر' : 'N/A')}</div>
+              </div>
+              <div class="info-item">
+                <div class="info-label">${isRTL ? 'التخصص' : 'Major'}</div>
+                <div class="info-value">${intern.major || (isRTL ? 'غير متوفر' : 'N/A')}</div>
+              </div>
+              <div class="info-item">
+                <div class="info-label">${isRTL ? 'الحالة' : 'Status'}</div>
+                <div class="info-value">${intern.isActive ? (isRTL ? 'نشط' : 'Active') : (isRTL ? 'غير نشط' : 'Inactive')}</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="section">
+          <div class="section-title">${isRTL ? 'إحصائيات التدريب' : 'Training Statistics'}</div>
+          <div class="stats-grid">
+            <div class="stat-card">
+              <div class="stat-value">${intern.totalTrainings || 0}</div>
+              <div class="stat-label">${isRTL ? 'دورات تدريبية' : 'Trainings'}</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-value">${totalHours}</div>
+              <div class="stat-label">${isRTL ? 'ساعة تدريب' : 'Total Hours'}</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-value">+${intern.totalAwards || 0}</div>
+              <div class="stat-label">${isRTL ? 'نقاط مكتسبة' : 'Awards'}</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-value">${intern.totalPoints || 0}</div>
+              <div class="stat-label">${isRTL ? 'صافي النقاط' : 'Net Points'}</div>
+            </div>
+          </div>
+        </div>
+
+        ${(intern.trainings && intern.trainings.length > 0) ? `
+        <div class="section">
+          <div class="section-title">${isRTL ? 'سجل التدريب' : 'Training History'}</div>
+          ${intern.trainings.map(training => `
+            <div class="training-card">
+              <div class="training-title">${training.title}</div>
+              ${training.description ? `<p style="margin: 8px 0; color: #666; font-size: 12px;">${training.description}</p>` : ''}
+              <div class="training-meta">
+                <span>📅 ${training.startDate} → ${training.endDate}</span>
+                <span>⏱️ ${(training.totalHours || 0) + (training.hoursAdjustment || 0)} ${isRTL ? 'ساعة' : 'hours'}</span>
+                <span>📊 ${training.status === 'completed' ? (isRTL ? 'مكتمل' : 'Completed') : (isRTL ? 'نشط' : 'Active')}</span>
+              </div>
+            </div>
+          `).join('')}
+        </div>
+        ` : ''}
+
+        ${intern.nationalIdPhoto ? `
+        <div class="section" style="page-break-before: always; margin-top: 30px;">
+          <div class="section-title">${isRTL ? 'صورة الهوية الوطنية' : 'National ID Photo'}</div>
+          <div style="display: flex; justify-content: center; align-items: center; padding: 20px; background: #f8f9fa; border-radius: 12px; border: 2px solid #2563eb;">
+            <img src="${intern.nationalIdPhoto}" alt="National ID" style="max-width: 100%; max-height: 500px; object-fit: contain; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15);" />
+          </div>
+          <div style="text-align: center; margin-top: 15px; padding: 10px; background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%); color: white; border-radius: 8px;">
+            <div style="font-size: 16px; font-weight: 700;">${intern.name}</div>
+            <div style="font-size: 14px; margin-top: 5px;">${isRTL ? 'رقم الهوية:' : 'National ID:'} ${intern.nationalId}</div>
+          </div>
+        </div>
+        ` : ''}
+
+        <div class="footer">
+          <p>${isRTL ? 'مؤسسة عبدالمنعم الراشد الإنسانية - فاب لاب الأحساء' : 'Abdulmonem Alrashed Humanitarian Foundation - FABLAB Al-Ahsa'}</p>
+          <p>${isRTL ? 'تم الطباعة في' : 'Printed on'}: ${new Date().toLocaleString(isRTL ? 'ar-SA' : 'en-US')}</p>
+        </div>
+      </body>
+      </html>
+    `;
+
+    printWindow.document.write(printContent);
+    printWindow.document.close();
+    printWindow.focus();
+    setTimeout(() => printWindow.print(), 250);
+  };
+
+  // Print intern certificate - modern colorful professional design
+  const handlePrintInternCertificate = (intern, training) => {
+    if (!training) {
+      toast.error(isRTL ? 'يرجى اختيار دورة تدريبية لطباعة الشهادة' : 'Please select a training to print certificate');
+      return;
+    }
+
+    const printWindow = window.open('', '_blank');
+    const totalHours = (training.totalHours || 0) + (training.hoursAdjustment || 0);
+    const certId = 'TRN-' + (training.trainingId?.substring(0, 8).toUpperCase() || Date.now());
+
+    const printContent = `
+      <!DOCTYPE html>
+      <html dir="rtl" lang="ar">
+      <head>
+        <title>شهادة تدريب - ${intern.name}</title>
+        <style>
+          @page {
+            size: A4 landscape;
+            margin: 0;
+          }
+          * { margin: 0; padding: 0; box-sizing: border-box; }
+          html, body {
+            width: 297mm;
+            height: 210mm;
+            overflow: hidden;
+          }
+          body {
+            font-family: 'Segoe UI', Tahoma, Arial, sans-serif;
+            background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 50%, #60a5fa 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 10mm;
+          }
+          .certificate {
+            width: 277mm;
+            height: 190mm;
+            background: linear-gradient(145deg, #ffffff 0%, #f8fafc 100%);
+            border-radius: 16px;
+            position: relative;
+            overflow: hidden;
+            box-shadow: 0 30px 60px rgba(0,0,0,0.3);
+          }
+
+          /* Colorful border effect */
+          .certificate::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            border: 6px solid transparent;
+            border-image: linear-gradient(135deg, #1e3a8a, #3b82f6, #60a5fa, #22d3ee, #1e3a8a) 1;
+            border-radius: 16px;
+            pointer-events: none;
+          }
+
+          /* Decorative circles */
+          .decor-circle {
+            position: absolute;
+            border-radius: 50%;
+            opacity: 0.1;
+          }
+          .decor-circle.c1 {
+            width: 200px; height: 200px;
+            background: linear-gradient(135deg, #1e3a8a, #3b82f6);
+            top: -50px; right: -50px;
+          }
+          .decor-circle.c2 {
+            width: 150px; height: 150px;
+            background: linear-gradient(135deg, #22d3ee, #06b6d4);
+            bottom: -30px; left: -30px;
+          }
+          .decor-circle.c3 {
+            width: 100px; height: 100px;
+            background: linear-gradient(135deg, #f59e0b, #fbbf24);
+            top: 50%; left: 20px;
+            transform: translateY(-50%);
+          }
+          .decor-circle.c4 {
+            width: 80px; height: 80px;
+            background: linear-gradient(135deg, #10b981, #34d399);
+            bottom: 60px; right: 40px;
+          }
+
+          .certificate-inner {
+            padding: 20mm 25mm;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+            z-index: 1;
+          }
+
+          /* Header */
+          .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12mm;
+          }
+          .logo-container {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+          }
+          .logo {
+            height: 85px;
+            filter: drop-shadow(0 4px 8px rgba(0,0,0,0.15));
+          }
+          .header-center {
+            text-align: center;
+            flex: 1;
+            padding: 0 20px;
+          }
+          .org-name {
+            font-size: 11px;
+            color: #64748b;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            margin-bottom: 5px;
+          }
+          .cert-title {
+            font-size: 44px;
+            font-weight: 800;
+            background: linear-gradient(135deg, #1e3a8a, #3b82f6);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            text-shadow: none;
+            margin-bottom: 4px;
+          }
+          .cert-subtitle {
+            font-size: 16px;
+            color: #475569;
+            font-weight: 500;
+            letter-spacing: 3px;
+          }
+
+          /* Divider */
+          .divider {
+            height: 4px;
+            background: linear-gradient(90deg, #1e3a8a, #3b82f6, #60a5fa, #22d3ee, #10b981);
+            border-radius: 2px;
+            margin-bottom: 10mm;
+          }
+
+          /* Main Content */
+          .main-content {
+            text-align: center;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+          }
+          .presents-text {
+            font-size: 14px;
+            color: #64748b;
+            margin-bottom: 8px;
+          }
+          .intern-name {
+            font-size: 42px;
+            font-weight: 700;
+            color: #1e293b;
+            margin-bottom: 8px;
+            position: relative;
+            display: inline-block;
+          }
+          .intern-name::after {
+            content: '';
+            position: absolute;
+            bottom: -4px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 80%;
+            height: 4px;
+            background: linear-gradient(90deg, #1e3a8a, #3b82f6, #60a5fa);
+            border-radius: 2px;
+          }
+          .appreciation-text {
+            font-size: 15px;
+            line-height: 1.8;
+            color: #475569;
+            max-width: 600px;
+            margin: 15px auto;
+          }
+          .highlight {
+            color: #1e3a8a;
+            font-weight: 700;
+            font-size: 17px;
+          }
+
+          /* Stats Cards */
+          .stats-container {
+            display: flex;
+            justify-content: center;
+            gap: 30px;
+            margin: 12px 0;
+          }
+          .stat-card {
+            background: linear-gradient(135deg, #1e3a8a, #3b82f6);
+            color: white;
+            padding: 12px 30px;
+            border-radius: 12px;
+            text-align: center;
+            box-shadow: 0 8px 20px rgba(30, 58, 138, 0.3);
+            min-width: 140px;
+          }
+          .stat-card.alt {
+            background: linear-gradient(135deg, #22d3ee, #06b6d4);
+            box-shadow: 0 8px 20px rgba(34, 211, 238, 0.3);
+          }
+          .stat-card.gold {
+            background: linear-gradient(135deg, #f59e0b, #fbbf24);
+            box-shadow: 0 8px 20px rgba(245, 158, 11, 0.3);
+          }
+          .stat-value {
+            font-size: 22px;
+            font-weight: 700;
+          }
+          .stat-label {
+            font-size: 10px;
+            opacity: 0.9;
+            margin-top: 2px;
+          }
+
+          .thank-you {
+            font-size: 13px;
+            color: #64748b;
+            margin-top: 10px;
+          }
+
+          /* Footer */
+          .footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+            margin-top: auto;
+            padding-top: 8mm;
+          }
+          .signature-section {
+            text-align: center;
+            min-width: 200px;
+          }
+          .signature-line {
+            width: 180px;
+            height: 2px;
+            background: linear-gradient(90deg, #1e3a8a, #3b82f6);
+            margin: 0 auto 8px;
+          }
+          .signature-name {
+            font-size: 16px;
+            font-weight: 700;
+            color: #1e293b;
+          }
+          .signature-role {
+            font-size: 11px;
+            color: #64748b;
+            margin-top: 3px;
+          }
+
+          .cert-info {
+            text-align: left;
+          }
+          .cert-id {
+            font-family: 'Courier New', monospace;
+            font-size: 10px;
+            color: #94a3b8;
+            background: linear-gradient(135deg, #f1f5f9, #e2e8f0);
+            padding: 6px 14px;
+            border-radius: 20px;
+            display: inline-block;
+          }
+          .cert-date {
+            font-size: 10px;
+            color: #94a3b8;
+            margin-top: 5px;
+          }
+
+          .org-footer {
+            text-align: center;
+            flex: 1;
+          }
+          .org-footer-text {
+            font-size: 10px;
+            color: #94a3b8;
+          }
+
+          /* Ribbon decoration */
+          .ribbon {
+            position: absolute;
+            top: 25px;
+            left: -35px;
+            background: linear-gradient(135deg, #10b981, #34d399);
+            color: white;
+            padding: 8px 50px;
+            font-size: 12px;
+            font-weight: 700;
+            transform: rotate(-45deg);
+            box-shadow: 0 4px 15px rgba(16, 185, 129, 0.4);
+          }
+
+          @media print {
+            html, body {
+              width: 297mm;
+              height: 210mm;
+              -webkit-print-color-adjust: exact !important;
+              print-color-adjust: exact !important;
+              color-adjust: exact !important;
+            }
+            body {
+              padding: 0;
+              background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 50%, #60a5fa 100%) !important;
+            }
+            .certificate {
+              box-shadow: none;
+              margin: auto;
+            }
+            .cert-title {
+              -webkit-text-fill-color: #1e3a8a;
+              color: #1e3a8a;
+            }
+          }
+        </style>
+      </head>
+      <body>
+        <div class="certificate">
+          <!-- Decorative elements -->
+          <div class="decor-circle c1"></div>
+          <div class="decor-circle c2"></div>
+          <div class="decor-circle c3"></div>
+          <div class="decor-circle c4"></div>
+          <div class="ribbon">متدرب متميز</div>
+
+          <div class="certificate-inner">
+            <!-- Header -->
+            <div class="header">
+              <div class="logo-container">
+                <img src="/found.png" alt="Foundation" class="logo" />
+              </div>
+              <div class="header-center">
+                <div class="org-name">مؤسسة عبدالمنعم الراشد الإنسانية</div>
+                <div class="cert-title">شهادة تدريب</div>
+                <div class="cert-subtitle">TRAINING CERTIFICATE</div>
+              </div>
+              <div class="logo-container">
+                <img src="/fablab.png" alt="FABLAB" class="logo" />
+              </div>
+            </div>
+
+            <div class="divider"></div>
+
+            <!-- Main Content -->
+            <div class="main-content">
+              <div class="presents-text">تشهد إدارة فاب لاب الأحساء بأن</div>
+              <div class="intern-name">${intern.name}</div>
+
+              <div class="appreciation-text">
+                قد أتم بنجاح التدريب الصيفي الجامعي في برنامج
+                <span class="highlight">"${training.title}"</span>
+                <br/>
+                وأظهر التزاماً وتميزاً خلال فترة التدريب، ونثمّن جهوده ومشاركته الفعّالة
+              </div>
+
+              <div class="stats-container">
+                <div class="stat-card">
+                  <div class="stat-value">${totalHours}</div>
+                  <div class="stat-label">ساعة تدريب</div>
+                </div>
+                <div class="stat-card alt">
+                  <div class="stat-value">${training.startDate}</div>
+                  <div class="stat-label">تاريخ البدء</div>
+                </div>
+                <div class="stat-card gold">
+                  <div class="stat-value">${training.endDate}</div>
+                  <div class="stat-label">تاريخ الانتهاء</div>
+                </div>
+              </div>
+
+              ${intern.university ? `<div class="thank-you">${intern.university}${intern.major ? ' - ' + intern.major : ''}</div>` : ''}
+            </div>
+
+            <!-- Footer -->
+            <div class="footer">
+              <div class="cert-info">
+                <div class="cert-id">${certId}</div>
+                <div class="cert-date">${new Date().toLocaleDateString('ar-SA')}</div>
+              </div>
+              <div class="org-footer">
+                <div class="org-footer-text">مؤسسة عبدالمنعم الراشد الإنسانية - فاب لاب الأحساء</div>
+              </div>
+              <div class="signature-section">
+                <div class="signature-line"></div>
+                <div class="signature-name">أ. زكي اللويم</div>
+                <div class="signature-role">المسؤول التنفيذي لفاب لاب الأحساء</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </body>
+      </html>
+    `;
+
+    printWindow.document.write(printContent);
+    printWindow.document.close();
+    printWindow.focus();
+    setTimeout(() => printWindow.print(), 300);
+  };
+
   // Export all volunteers as CSV
   const handleExportAllVolunteers = () => {
     const headers = [
@@ -5192,6 +5797,16 @@ const ManagerDashboard = () => {
                               </svg>
                               {isRTL ? 'تقييم' : 'Rate'}
                             </button>
+                            <button
+                              className="certificate-opportunity-btn"
+                              onClick={() => handlePrintInternCertificate(selectedIntern, training)}
+                              title={isRTL ? 'طباعة شهادة' : 'Print Certificate'}
+                            >
+                              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                <circle cx="12" cy="8" r="6"/>
+                                <path d="M15.477 12.89L17 22l-5-3-5 3 1.523-9.11"/>
+                              </svg>
+                            </button>
                           </div>
                         </div>
                       ))}
@@ -5212,6 +5827,30 @@ const ManagerDashboard = () => {
                     <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/>
                   </svg>
                   {isRTL ? 'حذف المتدرب' : 'Delete Intern'}
+                </button>
+                <button
+                  className="modal-btn print"
+                  onClick={() => handlePrintInternProfile(selectedIntern)}
+                >
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/>
+                    <rect x="8" y="2" width="8" height="4" rx="1" ry="1"/>
+                  </svg>
+                  {isRTL ? 'طباعة الملف' : 'Print Profile'}
+                </button>
+                <button
+                  className="modal-btn certificate"
+                  onClick={() => {
+                    const completedTraining = selectedIntern.trainings?.find(t => t.status === 'completed') || selectedIntern.trainings?.[0];
+                    handlePrintInternCertificate(selectedIntern, completedTraining);
+                  }}
+                  disabled={!selectedIntern.trainings || selectedIntern.trainings.length === 0}
+                >
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <circle cx="12" cy="8" r="6"/>
+                    <path d="M15.477 12.89L17 22l-5-3-5 3 1.523-9.11"/>
+                  </svg>
+                  {isRTL ? 'طباعة شهادة' : 'Print Certificate'}
                 </button>
                 <button
                   className="modal-btn export"
