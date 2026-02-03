@@ -17,7 +17,7 @@ const EliteSchedule = sequelize.define('EliteSchedule', {
   },
   createdById: {
     type: DataTypes.UUID,
-    allowNull: false,
+    allowNull: true,
     references: {
       model: 'admins',
       key: 'adminId'
