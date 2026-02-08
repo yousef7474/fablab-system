@@ -240,7 +240,15 @@ exports.getRegistrationById = async (req, res) => {
 exports.updateRegistrationStatus = async (req, res) => {
   try {
     const { id } = req.params;
-    const { status, rejectionReason, adminMessage, sendMessageInEmail } = req.body;
+    const {
+      status,
+      rejectionReason,
+      adminMessage,
+      sendMessageInEmail,
+      statusChangeReason,
+      isStatusChange,
+      previousStatus
+    } = req.body;
 
     const registration = await Registration.findByPk(id, {
       include: [{
@@ -253,13 +261,16 @@ exports.updateRegistrationStatus = async (req, res) => {
       return res.status(404).json({ message: 'Registration not found' });
     }
 
+    // Store previous status for email context
+    const oldStatus = registration.status;
+
     // Update registration
     registration.status = status;
     registration.rejectionReason = rejectionReason || null;
     registration.adminNotes = adminMessage || null;
 
     if (status === 'approved') {
-      registration.approvedBy = req.admin.fullName;
+      registration.approvedBy = req.admin?.fullName || 'Admin';
       registration.approvedAt = new Date();
     }
 
@@ -286,12 +297,15 @@ exports.updateRegistrationStatus = async (req, res) => {
         appointmentDate: appointmentDate,
         appointmentTime: appointmentTime,
         appointmentDuration: registration.appointmentDuration,
-        fablabSection: registration.fablabSection
+        fablabSection: registration.fablabSection,
+        statusChangeReason: statusChangeReason || null,
+        isStatusChange: isStatusChange || false,
+        previousStatus: previousStatus || oldStatus
       }
     );
 
     res.json({
-      message: 'Registration status updated successfully',
+      message: isStatusChange ? 'Registration status changed successfully' : 'Registration status updated successfully',
       registration
     });
   } catch (error) {

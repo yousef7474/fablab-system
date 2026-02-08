@@ -233,11 +233,25 @@ const sendStatusUpdateEmail = async (userEmail, userName, registrationId, status
     appointmentTime = null,
     appointmentDuration = null,
     fablabSection = null,
-    sendMessage = false
+    sendMessage = false,
+    statusChangeReason = null,
+    isStatusChange = false,
+    previousStatus = null
   } = options;
 
   const isApproved = status === 'approved';
   const isRejected = status === 'rejected';
+
+  // Translate previous status for display
+  const getPreviousStatusAr = (prevStatus) => {
+    const statusMap = {
+      'pending': 'قيد الانتظار',
+      'approved': 'مقبول',
+      'rejected': 'مرفوض',
+      'on-hold': 'معلق'
+    };
+    return statusMap[prevStatus] || prevStatus;
+  };
 
   // Format date for display
   const formatDateStr = (dateStr) => {
@@ -315,17 +329,51 @@ const sendStatusUpdateEmail = async (userEmail, userName, registrationId, status
     </div>
   ` : '';
 
+  // Status change notice (when changing from approved to rejected or vice versa)
+  const statusChangeNotice = isStatusChange ? `
+    <div style="background: #fef3c7; padding: 15px; border-radius: 8px; margin: 15px 0; border-right: 4px solid #f59e0b;">
+      <h4 style="margin: 0 0 10px 0; color: #92400e;">⚠️ إشعار تغيير الحالة:</h4>
+      <p style="margin: 0; color: #333;">تم تغيير حالة طلبك من <strong>${getPreviousStatusAr(previousStatus)}</strong> إلى <strong>${isApproved ? 'مقبول' : 'مرفوض'}</strong></p>
+    </div>
+  ` : '';
+
+  const statusChangeNoticeEn = isStatusChange ? `
+    <div style="background: #fef3c7; padding: 15px; border-radius: 8px; margin: 15px 0; border-left: 4px solid #f59e0b;">
+      <h4 style="margin: 0 0 10px 0; color: #92400e;">⚠️ Status Change Notice:</h4>
+      <p style="margin: 0; color: #333;">Your registration status has been changed from <strong>${previousStatus}</strong> to <strong>${status}</strong></p>
+    </div>
+  ` : '';
+
+  // Status change reason (optional)
+  const statusChangeReasonBlock = (isStatusChange && statusChangeReason) ? `
+    <div style="background: #fff7ed; padding: 15px; border-radius: 8px; margin: 15px 0; border-right: 4px solid #ea580c;">
+      <h4 style="margin: 0 0 10px 0; color: #c2410c;">سبب تغيير الحالة:</h4>
+      <p style="margin: 0; color: #333;">${statusChangeReason}</p>
+    </div>
+  ` : '';
+
+  const statusChangeReasonBlockEn = (isStatusChange && statusChangeReason) ? `
+    <div style="background: #fff7ed; padding: 15px; border-radius: 8px; margin: 15px 0; border-left: 4px solid #ea580c;">
+      <h4 style="margin: 0 0 10px 0; color: #c2410c;">Reason for Status Change:</h4>
+      <p style="margin: 0; color: #333;">${statusChangeReason}</p>
+    </div>
+  ` : '';
+
   const msg = {
     to: userEmail,
     from: {
       email: process.env.SENDGRID_FROM_EMAIL,
       name: process.env.SENDGRID_FROM_NAME
     },
-    subject: isApproved
-      ? 'تم الموافقة على طلب التسجيل - Registration Approved ✅'
-      : isRejected
-        ? 'تم رفض طلب التسجيل - Registration Rejected ❌'
-        : 'حالة طلب التسجيل - Registration Status Update',
+    subject: isStatusChange
+      ? (isApproved
+          ? 'تغيير حالة التسجيل: مقبول - Status Changed: Approved ✅'
+          : 'تغيير حالة التسجيل: مرفوض - Status Changed: Rejected ❌')
+      : (isApproved
+          ? 'تم الموافقة على طلب التسجيل - Registration Approved ✅'
+          : isRejected
+            ? 'تم رفض طلب التسجيل - Registration Rejected ❌'
+            : 'حالة طلب التسجيل - Registration Status Update'),
     html: `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
         <!-- Header -->
@@ -338,19 +386,23 @@ const sendStatusUpdateEmail = async (userEmail, userName, registrationId, status
         <div dir="rtl" style="padding: 25px; background: #ffffff; border: 1px solid #e5e5e5;">
           <h2 style="color: #333; margin-top: 0;">مرحباً ${userName}</h2>
 
+          ${statusChangeNotice}
+
           ${isApproved
             ? `<div style="background: #d4edda; padding: 15px; border-radius: 8px; text-align: center;">
-                 <p style="color: #155724; font-size: 20px; margin: 0; font-weight: bold;">✅ تم الموافقة على طلب التسجيل الخاص بك!</p>
+                 <p style="color: #155724; font-size: 20px; margin: 0; font-weight: bold;">✅ ${isStatusChange ? 'تم تغيير حالة طلبك إلى مقبول!' : 'تم الموافقة على طلب التسجيل الخاص بك!'}</p>
                </div>
                <p style="margin-top: 15px;">رقم التسجيل: <strong style="color: #EE2329;">${registrationId}</strong></p>
+               ${statusChangeReasonBlock}
                ${appointmentInfo}
                ${adminMessageBlock}
                <p>نتطلع لرؤيتك في الموعد المحدد. يرجى الحضور في الوقت المحدد.</p>`
             : isRejected
               ? `<div style="background: #f8d7da; padding: 15px; border-radius: 8px; text-align: center;">
-                   <p style="color: #721c24; font-size: 20px; margin: 0; font-weight: bold;">❌ تم رفض طلب التسجيل</p>
+                   <p style="color: #721c24; font-size: 20px; margin: 0; font-weight: bold;">❌ ${isStatusChange ? 'تم تغيير حالة طلبك إلى مرفوض' : 'تم رفض طلب التسجيل'}</p>
                  </div>
                  <p style="margin-top: 15px;">رقم التسجيل: <strong style="color: #EE2329;">${registrationId}</strong></p>
+                 ${statusChangeReasonBlock}
                  ${rejectionBlock}
                  ${adminMessageBlock}
                  <p>يمكنك التقديم مرة أخرى أو التواصل معنا للمزيد من المعلومات.</p>`
@@ -366,19 +418,23 @@ const sendStatusUpdateEmail = async (userEmail, userName, registrationId, status
         <div dir="ltr" style="padding: 25px; background: #ffffff; border: 1px solid #e5e5e5;">
           <h2 style="color: #333; margin-top: 0;">Hello ${userName}</h2>
 
+          ${statusChangeNoticeEn}
+
           ${isApproved
             ? `<div style="background: #d4edda; padding: 15px; border-radius: 8px; text-align: center;">
-                 <p style="color: #155724; font-size: 20px; margin: 0; font-weight: bold;">✅ Your registration has been approved!</p>
+                 <p style="color: #155724; font-size: 20px; margin: 0; font-weight: bold;">✅ ${isStatusChange ? 'Your registration status has been changed to Approved!' : 'Your registration has been approved!'}</p>
                </div>
                <p style="margin-top: 15px;">Registration ID: <strong style="color: #EE2329;">${registrationId}</strong></p>
+               ${statusChangeReasonBlockEn}
                ${appointmentInfoEn}
                ${adminMessageBlockEn}
                <p>We look forward to seeing you at your scheduled appointment. Please arrive on time.</p>`
             : isRejected
               ? `<div style="background: #f8d7da; padding: 15px; border-radius: 8px; text-align: center;">
-                   <p style="color: #721c24; font-size: 20px; margin: 0; font-weight: bold;">❌ Registration Rejected</p>
+                   <p style="color: #721c24; font-size: 20px; margin: 0; font-weight: bold;">❌ ${isStatusChange ? 'Your registration status has been changed to Rejected' : 'Registration Rejected'}</p>
                  </div>
                  <p style="margin-top: 15px;">Registration ID: <strong style="color: #EE2329;">${registrationId}</strong></p>
+                 ${statusChangeReasonBlockEn}
                  ${rejectionBlockEn}
                  ${adminMessageBlockEn}
                  <p>You may submit a new application or contact us for more information.</p>`

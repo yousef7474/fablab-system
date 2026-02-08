@@ -130,7 +130,9 @@ const AdminDashboard = () => {
   const [statusModalRegistration, setStatusModalRegistration] = useState(null);
   const [statusMessage, setStatusMessage] = useState('');
   const [rejectionReason, setRejectionReason] = useState('');
+  const [statusChangeReason, setStatusChangeReason] = useState(''); // Optional reason for status change
   const [sendMessageInEmail, setSendMessageInEmail] = useState(false);
+  const [isStatusChange, setIsStatusChange] = useState(false); // True when changing from approved/rejected
 
   // Bulk selection states
   const [selectedRegistrations, setSelectedRegistrations] = useState(new Set());
@@ -470,7 +472,10 @@ const AdminDashboard = () => {
     setStatusModalAction(action);
     setStatusMessage('');
     setRejectionReason('');
+    setStatusChangeReason('');
     setSendMessageInEmail(false);
+    // Track if this is a status change (not initial decision)
+    setIsStatusChange(registration.status === 'approved' || registration.status === 'rejected');
     setShowStatusModal(true);
   };
 
@@ -490,13 +495,24 @@ const AdminDashboard = () => {
         status: statusModalAction === 'approve' ? 'approved' : 'rejected',
         rejectionReason: statusModalAction === 'reject' ? rejectionReason : null,
         adminMessage: statusMessage || null,
-        sendMessageInEmail: sendMessageInEmail
+        sendMessageInEmail: sendMessageInEmail,
+        statusChangeReason: isStatusChange ? (statusChangeReason || null) : null,
+        isStatusChange: isStatusChange,
+        previousStatus: isStatusChange ? statusModalRegistration.status : null
       });
 
-      toast.success(isRTL
-        ? (statusModalAction === 'approve' ? 'تم قبول الطلب بنجاح' : 'تم رفض الطلب بنجاح')
-        : (statusModalAction === 'approve' ? 'Registration approved successfully' : 'Registration rejected successfully')
-      );
+      // Different success messages for status changes vs initial decisions
+      if (isStatusChange) {
+        toast.success(isRTL
+          ? (statusModalAction === 'approve' ? 'تم تغيير الحالة إلى مقبول' : 'تم تغيير الحالة إلى مرفوض')
+          : (statusModalAction === 'approve' ? 'Status changed to approved' : 'Status changed to rejected')
+        );
+      } else {
+        toast.success(isRTL
+          ? (statusModalAction === 'approve' ? 'تم قبول الطلب بنجاح' : 'تم رفض الطلب بنجاح')
+          : (statusModalAction === 'approve' ? 'Registration approved successfully' : 'Registration rejected successfully')
+        );
+      }
 
       fetchRegistrations();
       fetchAnalytics();
@@ -2447,7 +2463,7 @@ const AdminDashboard = () => {
                     )}
                   </div>
 
-                  <button className="filter-btn" onClick={fetchRegistrations}>
+                  <button className="filter-btn" onClick={() => fetchRegistrations(1)}>
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                       <polyline points="1 4 1 10 7 10"/>
                       <path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/>
@@ -2619,28 +2635,36 @@ const AdminDashboard = () => {
                                       </svg>
                                     </button>
                                   )}
-                                  {reg.status === 'pending' && (
-                                    <>
-                                      <button
-                                        className="action-btn approve"
-                                        onClick={() => handleOpenStatusModal(reg, 'approve')}
-                                        title={isRTL ? 'قبول' : 'Approve'}
-                                      >
-                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                          <polyline points="20 6 9 17 4 12"/>
-                                        </svg>
-                                      </button>
-                                      <button
-                                        className="action-btn reject"
-                                        onClick={() => handleOpenStatusModal(reg, 'reject')}
-                                        title={isRTL ? 'رفض' : 'Reject'}
-                                      >
-                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                          <line x1="18" y1="6" x2="6" y2="18"/>
-                                          <line x1="6" y1="6" x2="18" y2="18"/>
-                                        </svg>
-                                      </button>
-                                    </>
+                                  {/* Show approve button for pending or rejected */}
+                                  {(reg.status === 'pending' || reg.status === 'rejected') && (
+                                    <button
+                                      className="action-btn approve"
+                                      onClick={() => handleOpenStatusModal(reg, 'approve')}
+                                      title={reg.status === 'rejected'
+                                        ? (isRTL ? 'تغيير إلى مقبول' : 'Change to Approved')
+                                        : (isRTL ? 'قبول' : 'Approve')
+                                      }
+                                    >
+                                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                        <polyline points="20 6 9 17 4 12"/>
+                                      </svg>
+                                    </button>
+                                  )}
+                                  {/* Show reject button for pending or approved */}
+                                  {(reg.status === 'pending' || reg.status === 'approved') && (
+                                    <button
+                                      className="action-btn reject"
+                                      onClick={() => handleOpenStatusModal(reg, 'reject')}
+                                      title={reg.status === 'approved'
+                                        ? (isRTL ? 'تغيير إلى مرفوض' : 'Change to Rejected')
+                                        : (isRTL ? 'رفض' : 'Reject')
+                                      }
+                                    >
+                                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                        <line x1="18" y1="6" x2="6" y2="18"/>
+                                        <line x1="6" y1="6" x2="18" y2="18"/>
+                                      </svg>
+                                    </button>
                                   )}
                                 </div>
                               </td>
@@ -4077,28 +4101,36 @@ const AdminDashboard = () => {
                 </svg>
                 {isRTL ? 'طباعة' : 'Print'}
               </button>
-              {selectedRegistration.status === 'pending' && (
-                <>
-                  <button
-                    className="modal-btn approve"
-                    onClick={() => handleStatusChange(selectedRegistration.registrationId, 'approved')}
-                  >
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                      <polyline points="20 6 9 17 4 12"/>
-                    </svg>
-                    {isRTL ? 'قبول' : 'Approve'}
-                  </button>
-                  <button
-                    className="modal-btn reject"
-                    onClick={() => handleStatusChange(selectedRegistration.registrationId, 'rejected')}
-                  >
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                      <line x1="18" y1="6" x2="6" y2="18"/>
-                      <line x1="6" y1="6" x2="18" y2="18"/>
-                    </svg>
-                    {isRTL ? 'رفض' : 'Reject'}
-                  </button>
-                </>
+              {/* Show approve button if status is pending or rejected */}
+              {(selectedRegistration.status === 'pending' || selectedRegistration.status === 'rejected') && (
+                <button
+                  className="modal-btn approve"
+                  onClick={() => handleStatusChange(selectedRegistration.registrationId, 'approved')}
+                >
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <polyline points="20 6 9 17 4 12"/>
+                  </svg>
+                  {selectedRegistration.status === 'rejected'
+                    ? (isRTL ? 'تغيير إلى مقبول' : 'Change to Approved')
+                    : (isRTL ? 'قبول' : 'Approve')
+                  }
+                </button>
+              )}
+              {/* Show reject button if status is pending or approved */}
+              {(selectedRegistration.status === 'pending' || selectedRegistration.status === 'approved') && (
+                <button
+                  className="modal-btn reject"
+                  onClick={() => handleStatusChange(selectedRegistration.registrationId, 'rejected')}
+                >
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <line x1="18" y1="6" x2="6" y2="18"/>
+                    <line x1="6" y1="6" x2="18" y2="18"/>
+                  </svg>
+                  {selectedRegistration.status === 'approved'
+                    ? (isRTL ? 'تغيير إلى مرفوض' : 'Change to Rejected')
+                    : (isRTL ? 'رفض' : 'Reject')
+                  }
+                </button>
               )}
             </div>
           </motion.div>
@@ -4514,9 +4546,13 @@ const AdminDashboard = () => {
           >
             <div className="modal-header">
               <h2>
-                {statusModalAction === 'approve'
-                  ? (isRTL ? 'قبول الطلب' : 'Approve Registration')
-                  : (isRTL ? 'رفض الطلب' : 'Reject Registration')
+                {isStatusChange
+                  ? (statusModalAction === 'approve'
+                      ? (isRTL ? 'تغيير الحالة إلى مقبول' : 'Change Status to Approved')
+                      : (isRTL ? 'تغيير الحالة إلى مرفوض' : 'Change Status to Rejected'))
+                  : (statusModalAction === 'approve'
+                      ? (isRTL ? 'قبول الطلب' : 'Approve Registration')
+                      : (isRTL ? 'رفض الطلب' : 'Reject Registration'))
                 }
               </h2>
               <button className="modal-close" onClick={() => setShowStatusModal(false)}>
@@ -4528,6 +4564,32 @@ const AdminDashboard = () => {
             </div>
 
             <div className="modal-body">
+              {/* Status Change Notice */}
+              {isStatusChange && (
+                <div className="status-change-notice" style={{
+                  background: '#fef3c7',
+                  border: '1px solid #f59e0b',
+                  borderRadius: '8px',
+                  padding: '12px',
+                  marginBottom: '15px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '10px'
+                }}>
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#d97706" strokeWidth="2">
+                    <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+                    <line x1="12" y1="9" x2="12" y2="13"/>
+                    <line x1="12" y1="17" x2="12.01" y2="17"/>
+                  </svg>
+                  <span style={{ color: '#92400e', fontSize: '14px' }}>
+                    {isRTL
+                      ? `الحالة الحالية: ${statusModalRegistration.status === 'approved' ? 'مقبول' : 'مرفوض'}`
+                      : `Current status: ${statusModalRegistration.status}`
+                    }
+                  </span>
+                </div>
+              )}
+
               {/* Registration Info Summary */}
               <div className="status-modal-info">
                 <div className="info-item">
@@ -4549,6 +4611,23 @@ const AdminDashboard = () => {
                   </span>
                 </div>
               </div>
+
+              {/* Reason for Status Change (Optional, shown only for status changes) */}
+              {isStatusChange && (
+                <div className="form-group">
+                  <label>{isRTL ? 'سبب تغيير الحالة (اختياري)' : 'Reason for Status Change (Optional)'}</label>
+                  <textarea
+                    value={statusChangeReason}
+                    onChange={(e) => setStatusChangeReason(e.target.value)}
+                    placeholder={isRTL ? 'أدخل سبب تغيير حالة الطلب...' : 'Enter the reason for changing the status...'}
+                    rows={2}
+                    className="form-textarea"
+                  />
+                  <small className="form-hint">
+                    {isRTL ? 'سيتم إرسال هذا السبب للمستخدم في البريد الإلكتروني' : 'This will be sent to the user in the email notification'}
+                  </small>
+                </div>
+              )}
 
               {/* Rejection Reason (Required for rejection) */}
               {statusModalAction === 'reject' && (
