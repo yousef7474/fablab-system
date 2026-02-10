@@ -321,6 +321,9 @@ exports.getTasksForCalendar = async (req, res) => {
 /**
  * Update task status only
  * When status changes to 'completed', automatically awards 1 point to the employee
+ * Points are ONLY awarded when:
+ * - The task was assigned by a manager to an employee (not self-assigned)
+ * - The manager (different person) marks the task as completed
  */
 exports.updateTaskStatus = async (req, res) => {
   try {
@@ -350,19 +353,36 @@ exports.updateTaskStatus = async (req, res) => {
     await task.update({ status });
 
     // Auto-award 1 point to employee when task is completed
+    // Only award points if:
+    // 1. Task is being completed and wasn't already completed
+    // 2. Task has an assigned employee
+    // 3. The admin/manager marking it complete is NOT the same person as the employee
+    //    (prevents employees from giving themselves points by creating and completing their own tasks)
     let awardedRating = null;
-    if (isBeingCompleted && !wasCompleted && task.employeeId) {
+    if (isBeingCompleted && !wasCompleted && task.employeeId && req.admin) {
       try {
-        awardedRating = await Rating.create({
-          employeeId: task.employeeId,
-          createdById: req.admin?.adminId || task.createdById,
-          type: 'award',
-          points: 1,
-          criteria: 'Task Completion',
-          notes: `Completed task: "${task.title}"`,
-          ratingDate: new Date().toISOString().split('T')[0]
-        });
-        console.log(`Auto-awarded 1 point to employee ${task.employeeId} for completing task: ${task.title}`);
+        // Fetch the employee to compare emails
+        const employee = await Employee.findByPk(task.employeeId);
+
+        // Only award points if the admin's email is different from the employee's email
+        // This ensures points are only given when a manager completes a task assigned to someone else
+        const isSamePerson = employee && req.admin.email && employee.email &&
+                            req.admin.email.toLowerCase() === employee.email.toLowerCase();
+
+        if (!isSamePerson) {
+          awardedRating = await Rating.create({
+            employeeId: task.employeeId,
+            createdById: req.admin.adminId,
+            type: 'award',
+            points: 1,
+            criteria: 'Task Completion',
+            notes: `Completed task: "${task.title}"`,
+            ratingDate: new Date().toISOString().split('T')[0]
+          });
+          console.log(`Auto-awarded 1 point to employee ${task.employeeId} for completing task: ${task.title}`);
+        } else {
+          console.log(`No points awarded - task completed by same person (self-assigned task): ${task.title}`);
+        }
       } catch (ratingError) {
         console.error('Error creating auto-rating for task completion:', ratingError);
         // Don't fail the request if rating creation fails
