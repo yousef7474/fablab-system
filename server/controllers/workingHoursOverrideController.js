@@ -70,8 +70,8 @@ const createOverride = async (req, res) => {
       return res.status(400).json({ message: 'Invalid time format. Use HH:mm.' });
     }
 
-    // Validate startTime < endTime
-    if (startTime >= endTime) {
+    // Validate startTime < endTime (endTime "00:00" means midnight = end of day)
+    if (endTime !== '00:00' && startTime >= endTime) {
       return res.status(400).json({ message: 'Start time must be before end time.' });
     }
 

@@ -14,7 +14,9 @@ const getWorkingHoursSettings = async (date) => {
         const [startH, startM] = override.startTime.split(':').map(Number);
         const [endH, endM] = override.endTime.split(':').map(Number);
         const startMinutes = startH * 60 + (startM || 0);
-        const endMinutes = endH * 60 + (endM || 0);
+        let endMinutes = endH * 60 + (endM || 0);
+        // Treat 00:00 as midnight (end of day = 1440 minutes)
+        if (endMinutes === 0) endMinutes = 1440;
 
         return {
           startHour: startH, endHour: endH,
@@ -36,7 +38,9 @@ const getWorkingHoursSettings = async (date) => {
     const [startH, startM] = startTime.split(':').map(Number);
     const [endH, endM] = endTime.split(':').map(Number);
     const startMinutes = startH * 60 + (startM || 0);
-    const endMinutes = endH * 60 + (endM || 0);
+    let endMinutes = endH * 60 + (endM || 0);
+    // Treat 00:00 as midnight (end of day = 1440 minutes)
+    if (endMinutes === 0) endMinutes = 1440;
 
     return { startHour: startH, endHour: endH, startMinutes, endMinutes, startTime, endTime, workingDays };
   } catch (error) {
