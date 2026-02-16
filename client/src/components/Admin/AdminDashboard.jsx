@@ -595,7 +595,7 @@ const AdminDashboard = () => {
 
   const handleApproveBorrowing = async (borrowingId) => {
     try {
-      await api.put(`/borrowing/${borrowingId}/status`, { status: 'approved', adminNotes: borrowingAdminNotes });
+      await api.put(`/borrowing/${encodeURIComponent(borrowingId)}/status`, { status: 'approved', adminNotes: borrowingAdminNotes });
       toast.success(isRTL ? 'تمت الموافقة على طلب الاستعارة' : 'Borrowing request approved');
       setShowBorrowingModal(false);
       setBorrowingAdminNotes('');
@@ -607,7 +607,7 @@ const AdminDashboard = () => {
 
   const handleRejectBorrowing = async (borrowingId) => {
     try {
-      await api.put(`/borrowing/${borrowingId}/status`, { status: 'rejected', adminNotes: borrowingAdminNotes });
+      await api.put(`/borrowing/${encodeURIComponent(borrowingId)}/status`, { status: 'rejected', adminNotes: borrowingAdminNotes });
       toast.success(isRTL ? 'تم رفض طلب الاستعارة' : 'Borrowing request rejected');
       setShowBorrowingModal(false);
       setBorrowingAdminNotes('');
@@ -619,7 +619,7 @@ const AdminDashboard = () => {
 
   const handleMarkReturned = async (borrowingId) => {
     try {
-      await api.put(`/borrowing/${borrowingId}/return`, { componentPhotoAfter: returnPhotoData, adminNotes: borrowingAdminNotes });
+      await api.put(`/borrowing/${encodeURIComponent(borrowingId)}/return`, { componentPhotoAfter: returnPhotoData, adminNotes: borrowingAdminNotes });
       toast.success(isRTL ? 'تم تسجيل الإرجاع بنجاح' : 'Return recorded successfully');
       setShowBorrowingModal(false);
       setBorrowingAdminNotes('');
@@ -663,115 +663,206 @@ const AdminDashboard = () => {
       { en: 'By signing, the borrower acknowledges and agrees to all terms above.', ar: 'بالتوقيع، يقر المستعير ويوافق على جميع الشروط المذكورة أعلاه.' }
     ];
 
+    const borrowDays = borrowing.borrowDate && borrowing.expectedReturnDate
+      ? Math.ceil((new Date(borrowing.expectedReturnDate) - new Date(borrowing.borrowDate)) / (1000 * 60 * 60 * 24))
+      : 'N/A';
+
+    const statusLabelsMap = {
+      pending: { ar: 'قيد المراجعة', en: 'Pending' },
+      approved: { ar: 'مقبول', en: 'Approved' },
+      borrowed: { ar: 'مستعار', en: 'Borrowed' },
+      returned: { ar: 'تم الإرجاع', en: 'Returned' },
+      overdue: { ar: 'متأخر', en: 'Overdue' },
+      rejected: { ar: 'مرفوض', en: 'Rejected' }
+    };
+    const statusDisplay = statusLabelsMap[borrowing.status] || { ar: borrowing.status, en: borrowing.status };
+
     const printContent = `
       <!DOCTYPE html>
       <html dir="rtl" lang="ar">
       <head>
         <title>Borrowing Agreement - ${borrowing.borrowingId}</title>
         <style>
-          @page { size: A4; margin: 12mm; }
+          @page { size: A4; margin: 15mm 12mm; }
           * { margin: 0; padding: 0; box-sizing: border-box; }
-          body { font-family: 'Segoe UI', Tahoma, Arial, sans-serif; padding: 15px; background: #fff; font-size: 11px; line-height: 1.5; color: #333; }
-          .header { background: linear-gradient(135deg, #1a56db, #2563eb); color: white; padding: 15px 20px; border-radius: 8px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
+          body { font-family: 'Segoe UI', Tahoma, Arial, sans-serif; background: #fff; font-size: 12px; line-height: 1.6; color: #333; }
+          .page { width: 100%; min-height: 267mm; padding: 0 5px; position: relative; }
+          .page-break { page-break-before: always; }
+          .header { background: linear-gradient(135deg, #1a56db, #2563eb); color: white; padding: 20px 25px; border-radius: 10px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
           .header-center { text-align: center; flex: 1; }
-          .header-center h1 { font-size: 18px; margin: 0; }
-          .header-center p { font-size: 11px; opacity: 0.9; margin: 3px 0 0 0; }
-          .header img { width: 55px; height: 55px; object-fit: contain; }
-          .id-bar { display: flex; justify-content: space-between; margin-bottom: 12px; font-size: 11px; }
-          .id-bar span { background: #eff6ff; padding: 4px 12px; border-radius: 6px; color: #1e40af; font-weight: 600; }
-          .section-title { background: #1e40af; color: white; padding: 6px 14px; border-radius: 6px; font-size: 12px; font-weight: 700; margin: 12px 0 8px 0; }
-          .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 15px; }
-          .info-item { display: flex; justify-content: space-between; padding: 5px 8px; background: #f8fafc; border-radius: 4px; border: 1px solid #e2e8f0; }
-          .info-item .label { color: #64748b; font-weight: 600; }
-          .info-item .value { color: #1e293b; font-weight: 500; }
-          .photo-section { text-align: center; margin: 10px 0; }
-          .photo-section img { max-width: 250px; max-height: 180px; border-radius: 8px; border: 2px solid #e2e8f0; }
-          .terms-list { margin: 8px 0; }
-          .term-item { display: flex; gap: 8px; margin-bottom: 6px; align-items: flex-start; }
-          .term-num { background: #1e40af; color: white; border-radius: 50%; min-width: 20px; height: 20px; display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 700; margin-top: 2px; }
-          .term-text { font-size: 10px; line-height: 1.5; }
-          .term-text .ar { color: #333; }
-          .term-text .en { color: #64748b; font-size: 9px; }
-          .signatures { display: flex; justify-content: space-around; margin-top: 20px; padding-top: 15px; border-top: 2px solid #e2e8f0; }
-          .sig-block { text-align: center; width: 40%; }
-          .sig-line { border-bottom: 1px solid #333; margin: 35px 0 5px 0; }
-          .sig-label { font-size: 11px; font-weight: 600; color: #333; }
-          .sig-typed { font-style: italic; font-family: 'Brush Script MT', cursive, serif; font-size: 16px; color: #1e40af; margin-top: 5px; }
-          @media print { body { padding: 0; } }
+          .header-center h1 { font-size: 22px; margin: 0; font-weight: 800; }
+          .header-center h2 { font-size: 14px; font-weight: 600; opacity: 0.9; margin: 6px 0 0 0; }
+          .header img { width: 65px; height: 65px; object-fit: contain; }
+          .id-bar { display: flex; justify-content: space-between; margin-bottom: 18px; font-size: 13px; }
+          .id-bar span { background: #eff6ff; padding: 8px 16px; border-radius: 8px; color: #1e40af; font-weight: 700; border: 1px solid #bfdbfe; }
+          .section-title { background: #1e40af; color: white; padding: 8px 18px; border-radius: 8px; font-size: 14px; font-weight: 700; margin: 18px 0 12px 0; }
+          .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 18px; }
+          .info-item { display: flex; justify-content: space-between; padding: 10px 14px; background: #f8fafc; border-radius: 8px; border: 1px solid #e2e8f0; }
+          .info-item .label { color: #64748b; font-weight: 600; font-size: 12px; }
+          .info-item .value { color: #1e293b; font-weight: 600; font-size: 13px; }
+          .info-block { padding: 12px 14px; background: #f8fafc; border-radius: 8px; border: 1px solid #e2e8f0; margin-top: 10px; }
+          .info-block .label { color: #64748b; font-weight: 600; font-size: 12px; display: block; margin-bottom: 6px; }
+          .info-block .value { color: #1e293b; font-weight: 500; font-size: 13px; line-height: 1.7; }
+          .photo-section { text-align: center; margin: 15px 0; }
+          .photo-section img { max-width: 320px; max-height: 220px; border-radius: 10px; border: 3px solid #e2e8f0; }
+          .period-summary { display: flex; justify-content: center; gap: 30px; margin: 15px 0; padding: 15px; background: #eff6ff; border-radius: 10px; border: 1px solid #bfdbfe; }
+          .period-item { text-align: center; }
+          .period-item .period-label { font-size: 11px; color: #64748b; font-weight: 600; }
+          .period-item .period-value { font-size: 16px; color: #1e40af; font-weight: 700; margin-top: 4px; }
+          .terms-list { margin: 12px 0; }
+          .term-item { display: flex; gap: 10px; margin-bottom: 10px; align-items: flex-start; }
+          .term-num { background: #1e40af; color: white; border-radius: 50%; min-width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; margin-top: 2px; }
+          .term-text { font-size: 12px; line-height: 1.6; }
+          .term-text .ar { color: #333; font-weight: 500; }
+          .term-text .en { color: #64748b; font-size: 11px; margin-top: 2px; }
+          .acknowledgment { background: #eff6ff; border: 2px solid #1e40af; border-radius: 10px; padding: 18px; margin: 20px 0; text-align: center; }
+          .acknowledgment p { font-size: 13px; color: #1e40af; font-weight: 600; line-height: 1.8; }
+          .signatures { display: flex; justify-content: space-around; margin-top: 30px; padding-top: 20px; }
+          .sig-block { text-align: center; width: 42%; }
+          .sig-line { border-bottom: 2px solid #333; margin: 40px 0 8px 0; }
+          .sig-label { font-size: 13px; font-weight: 700; color: #333; margin-bottom: 5px; }
+          .sig-typed { font-style: italic; font-family: 'Brush Script MT', cursive, serif; font-size: 20px; color: #1e40af; margin-top: 8px; }
+          .sig-name { font-size: 11px; color: #666; margin-top: 4px; }
+          .sig-date { font-size: 10px; color: #999; margin-top: 2px; }
+          .footer { text-align: center; margin-top: 25px; padding-top: 15px; border-top: 2px solid #e2e8f0; color: #94a3b8; font-size: 10px; }
+          .footer p { margin: 2px 0; }
+          .stamp-area { display: flex; justify-content: center; margin: 15px 0; }
+          .stamp-box { width: 120px; height: 120px; border: 2px dashed #cbd5e1; border-radius: 10px; display: flex; align-items: center; justify-content: center; color: #94a3b8; font-size: 11px; font-weight: 600; }
+          @media print { body { padding: 0; } .page { min-height: auto; } }
         </style>
       </head>
       <body>
-        <div class="header">
-          <img src="/logo.png" alt="FABLAB" />
-          <div class="header-center">
-            <h1>فاب لاب الأحساء | FABLAB Al-Ahsa</h1>
-            <p>اتفاقية استعارة مكونات | Component Borrowing Agreement</p>
+        <!-- PAGE 1: Borrowing Details -->
+        <div class="page">
+          <div class="header">
+            <img src="/logo.png" alt="FABLAB" />
+            <div class="header-center">
+              <h1>فاب لاب الأحساء | FABLAB Al-Ahsa</h1>
+              <h2>اتفاقية استعارة مكونات | Component Borrowing Agreement</h2>
+            </div>
+            <img src="/found.png" alt="Foundation" />
           </div>
-          <img src="/logo.png" alt="Foundation" />
-        </div>
 
-        <div class="id-bar">
-          <span>رقم الاستعارة | Borrowing ID: ${borrowing.borrowingId}</span>
-          <span>التاريخ | Date: ${formatDatePrint(borrowing.createdAt)}</span>
-        </div>
+          <div class="id-bar">
+            <span>رقم الاستعارة | Borrowing ID: ${borrowing.borrowingId}</span>
+            <span>الحالة | Status: ${statusDisplay.ar} | ${statusDisplay.en}</span>
+            <span>التاريخ | Date: ${formatDatePrint(borrowing.createdAt)}</span>
+          </div>
 
-        <div class="section-title">المعلومات الشخصية | Personal Information</div>
-        <div class="info-grid">
-          <div class="info-item"><span class="label">الاسم | Name</span><span class="value">${userName}</span></div>
-          <div class="info-item"><span class="label">رقم الهوية | ID</span><span class="value">${borrowing.user?.nationalId || 'N/A'}</span></div>
-          <div class="info-item"><span class="label">الهاتف | Phone</span><span class="value">${borrowing.user?.phoneNumber || 'N/A'}</span></div>
-          <div class="info-item"><span class="label">البريد | Email</span><span class="value">${borrowing.user?.email || 'N/A'}</span></div>
-        </div>
+          <div class="section-title">المعلومات الشخصية | Personal Information</div>
+          <div class="info-grid">
+            <div class="info-item"><span class="label">الاسم الكامل | Full Name</span><span class="value">${userName}</span></div>
+            <div class="info-item"><span class="label">رقم الهوية | National ID</span><span class="value">${borrowing.user?.nationalId || 'N/A'}</span></div>
+            <div class="info-item"><span class="label">رقم الهاتف | Phone</span><span class="value">${borrowing.user?.phoneNumber || 'N/A'}</span></div>
+            <div class="info-item"><span class="label">البريد الإلكتروني | Email</span><span class="value">${borrowing.user?.email || 'N/A'}</span></div>
+            <div class="info-item"><span class="label">الجنسية | Nationality</span><span class="value">${borrowing.user?.nationality || 'N/A'}</span></div>
+            <div class="info-item"><span class="label">الجنس | Gender</span><span class="value">${borrowing.user?.sex || 'N/A'}</span></div>
+          </div>
 
-        <div class="section-title">تفاصيل الاستعارة | Borrowing Details</div>
-        <div class="info-grid">
-          <div class="info-item"><span class="label">القسم | Section</span><span class="value">${sectionLabel}</span></div>
-          <div class="info-item"><span class="label">الحالة | Status</span><span class="value">${borrowing.status}</span></div>
-          <div class="info-item"><span class="label">تاريخ الاستعارة | Borrow Date</span><span class="value">${formatDatePrint(borrowing.borrowDate)}</span></div>
-          <div class="info-item"><span class="label">تاريخ الإرجاع | Return Date</span><span class="value">${formatDatePrint(borrowing.expectedReturnDate)}</span></div>
-        </div>
-        <div style="margin-top: 8px;">
-          <div class="info-item" style="display: block; padding: 8px;">
-            <span class="label">الغرض | Purpose:</span><br/>
+          <div class="section-title">تفاصيل الاستعارة | Borrowing Details</div>
+          <div class="info-grid">
+            <div class="info-item"><span class="label">القسم | Section</span><span class="value">${sectionLabel}</span></div>
+            <div class="info-item"><span class="label">مدة الاستعارة | Duration</span><span class="value">${borrowDays} يوم | ${borrowDays} days</span></div>
+            <div class="info-item"><span class="label">تاريخ الاستعارة | Borrow Date</span><span class="value">${formatDatePrint(borrowing.borrowDate)}</span></div>
+            <div class="info-item"><span class="label">تاريخ الإرجاع المتوقع | Expected Return</span><span class="value">${formatDatePrint(borrowing.expectedReturnDate)}</span></div>
+          </div>
+
+          <div class="info-block">
+            <span class="label">الغرض من الاستعارة | Purpose of Borrowing:</span>
             <span class="value">${borrowing.purpose}</span>
           </div>
-          <div class="info-item" style="display: block; padding: 8px; margin-top: 4px;">
-            <span class="label">وصف المكونات | Components:</span><br/>
+          <div class="info-block">
+            <span class="label">وصف المكونات المستعارة | Description of Borrowed Components:</span>
             <span class="value">${borrowing.componentDescription}</span>
           </div>
-        </div>
 
-        ${borrowing.componentPhotoBefore ? `
-          <div class="section-title">صورة المكونات | Component Photo</div>
-          <div class="photo-section">
-            <img src="${borrowing.componentPhotoBefore}" alt="Components" />
-          </div>
-        ` : ''}
-
-        <div class="section-title">الشروط والأحكام | Terms & Conditions</div>
-        <div class="terms-list">
-          ${termsContent.map((t, i) => `
-            <div class="term-item">
-              <span class="term-num">${i + 1}</span>
-              <div class="term-text">
-                <div class="ar">${t.ar}</div>
-                <div class="en">${t.en}</div>
-              </div>
+          ${borrowing.componentPhotoBefore ? `
+            <div class="section-title">صورة المكونات عند الاستلام | Component Photo at Checkout</div>
+            <div class="photo-section">
+              <img src="${borrowing.componentPhotoBefore}" alt="Components" />
             </div>
-          `).join('')}
+          ` : ''}
+
+          <div class="period-summary">
+            <div class="period-item">
+              <div class="period-label">تاريخ الاستعارة | Borrow Date</div>
+              <div class="period-value">${formatDatePrint(borrowing.borrowDate)}</div>
+            </div>
+            <div class="period-item">
+              <div class="period-label">مدة الاستعارة | Duration</div>
+              <div class="period-value">${borrowDays} يوم | days</div>
+            </div>
+            <div class="period-item">
+              <div class="period-label">تاريخ الإرجاع | Return Date</div>
+              <div class="period-value">${formatDatePrint(borrowing.expectedReturnDate)}</div>
+            </div>
+          </div>
+
+          <div class="footer">
+            <p>فاب لاب الأحساء - مؤسسة الأحساء | FABLAB Al-Ahsa - Al-Ahsa Foundation</p>
+            <p>صفحة 1 من 2 | Page 1 of 2</p>
+          </div>
         </div>
 
-        <div class="signatures">
-          <div class="sig-block">
-            <div class="sig-label">توقيع المستعير | Borrower Signature</div>
-            <div class="sig-typed">${borrowing.signature || ''}</div>
-            <div class="sig-line"></div>
-            <div style="font-size: 10px; color: #666;">${userName}</div>
+        <!-- PAGE 2: Terms, Conditions & Signatures -->
+        <div class="page page-break">
+          <div class="header">
+            <img src="/logo.png" alt="FABLAB" />
+            <div class="header-center">
+              <h1>فاب لاب الأحساء | FABLAB Al-Ahsa</h1>
+              <h2>الشروط والأحكام | Terms & Conditions</h2>
+            </div>
+            <img src="/found.png" alt="Foundation" />
           </div>
-          <div class="sig-block">
-            <div class="sig-label">توقيع موظف فاب لاب | FABLAB Employee</div>
-            <div class="sig-line"></div>
-            <div style="font-size: 10px; color: #666;">____________________</div>
+
+          <div class="id-bar">
+            <span>رقم الاستعارة | Borrowing ID: ${borrowing.borrowingId}</span>
+            <span>المستعير | Borrower: ${userName}</span>
+          </div>
+
+          <div class="section-title">الشروط والأحكام | Terms & Conditions</div>
+          <div class="terms-list">
+            ${termsContent.map((t, i) => `
+              <div class="term-item">
+                <span class="term-num">${i + 1}</span>
+                <div class="term-text">
+                  <div class="ar">${t.ar}</div>
+                  <div class="en">${t.en}</div>
+                </div>
+              </div>
+            `).join('')}
+          </div>
+
+          <div class="acknowledgment">
+            <p>أقر أنا الموقع أدناه بأنني قد قرأت وفهمت جميع الشروط والأحكام المذكورة أعلاه وأوافق على الالتزام بها</p>
+            <p>I, the undersigned, acknowledge that I have read, understood, and agree to comply with all the above terms and conditions.</p>
+          </div>
+
+          <div class="signatures">
+            <div class="sig-block">
+              <div class="sig-label">توقيع المستعير | Borrower Signature</div>
+              <div class="sig-typed">${borrowing.signature || ''}</div>
+              <div class="sig-line"></div>
+              <div class="sig-name">${userName}</div>
+              <div class="sig-date">${formatDatePrint(borrowing.createdAt)}</div>
+            </div>
+            <div class="sig-block">
+              <div class="sig-label">توقيع موظف فاب لاب | FABLAB Employee</div>
+              <div class="sig-line"></div>
+              <div class="sig-name">____________________</div>
+              <div class="sig-date">${formatDatePrint(new Date())}</div>
+            </div>
+          </div>
+
+          <div class="stamp-area">
+            <div class="stamp-box">ختم فاب لاب<br/>FABLAB Stamp</div>
+          </div>
+
+          <div class="footer" style="margin-top: 40px;">
+            <p>هذه الوثيقة صادرة من نظام فاب لاب الأحساء لإدارة الاستعارات</p>
+            <p>This document is issued by the FABLAB Al-Ahsa Borrowing Management System</p>
+            <p style="margin-top: 6px;">فاب لاب الأحساء - مؤسسة الأحساء | FABLAB Al-Ahsa - Al-Ahsa Foundation</p>
+            <p>صفحة 2 من 2 | Page 2 of 2</p>
           </div>
         </div>
       </body>
