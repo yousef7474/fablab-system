@@ -15,6 +15,7 @@ const workspaceRoutes = require('./routes/workspaceRoutes');
 const sectionAvailabilityRoutes = require('./routes/sectionAvailabilityRoutes');
 const eliteRoutes = require('./routes/eliteRoutes');
 const settingsRoutes = require('./routes/settingsRoutes');
+const workingHoursOverrideRoutes = require('./routes/workingHoursOverrideRoutes');
 
 const app = express();
 
@@ -43,6 +44,7 @@ app.use('/api/workspaces', workspaceRoutes);
 app.use('/api/sections', sectionAvailabilityRoutes);
 app.use('/api/elite', eliteRoutes);
 app.use('/api/settings', settingsRoutes);
+app.use('/api/settings/working-hours-overrides', workingHoursOverrideRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {

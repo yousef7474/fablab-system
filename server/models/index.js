@@ -22,6 +22,7 @@ const EliteTask = require('./EliteTask');
 const EliteWork = require('./EliteWork');
 const EliteSchedule = require('./EliteSchedule');
 const Settings = require('./Settings');
+const WorkingHoursOverride = require('./WorkingHoursOverride');
 
 // Define relationships
 User.hasMany(Registration, { foreignKey: 'userId', as: 'registrations' });
@@ -134,6 +135,10 @@ EliteUser.hasMany(EliteSchedule, { foreignKey: 'eliteId', as: 'schedules' });
 EliteSchedule.belongsTo(Admin, { foreignKey: 'createdById', as: 'creator' });
 Admin.hasMany(EliteSchedule, { foreignKey: 'createdById', as: 'createdSchedules' });
 
+// Working Hours Override relationships
+WorkingHoursOverride.belongsTo(Admin, { foreignKey: 'createdById', as: 'creator' });
+Admin.hasMany(WorkingHoursOverride, { foreignKey: 'createdById', as: 'createdOverrides' });
+
 // Sync database
 const syncDatabase = async () => {
   try {
@@ -191,5 +196,6 @@ module.exports = {
   EliteWork,
   EliteSchedule,
   Settings,
+  WorkingHoursOverride,
   syncDatabase
 };

@@ -22,6 +22,8 @@ const DateTimeSelection = ({ formData, onChange, onNext, onBack }) => {
   const [bookedDates, setBookedDates] = useState([]);
   const [sectionDeactivations, setSectionDeactivations] = useState([]);
   const [workingHours, setWorkingHours] = useState({ startTime: '11:00', endTime: '19:00', workingDays: [0, 1, 2, 3, 4] });
+  const [activeOverrides, setActiveOverrides] = useState([]);
+  const [effectiveHours, setEffectiveHours] = useState(null);
 
   const handleChange = (field, value) => {
     onChange({ [field]: value });
@@ -64,6 +66,38 @@ const DateTimeSelection = ({ formData, onChange, onNext, onBack }) => {
     };
     fetchWorkingHours();
   }, []);
+
+  // Fetch active working hours overrides
+  useEffect(() => {
+    const fetchActiveOverrides = async () => {
+      try {
+        const response = await api.get('/settings/working-hours-overrides/active');
+        setActiveOverrides(response.data);
+      } catch (error) {
+        console.error('Error fetching active overrides:', error);
+      }
+    };
+    fetchActiveOverrides();
+  }, []);
+
+  // Fetch effective hours when a date is selected
+  useEffect(() => {
+    const date = formData.appointmentDate || formData.visitDate;
+    if (!date) {
+      setEffectiveHours(null);
+      return;
+    }
+    const fetchEffectiveHours = async () => {
+      try {
+        const response = await api.get('/settings/working-hours', { params: { date } });
+        setEffectiveHours(response.data);
+      } catch (error) {
+        console.error('Error fetching effective hours:', error);
+        setEffectiveHours(null);
+      }
+    };
+    fetchEffectiveHours();
+  }, [formData.appointmentDate, formData.visitDate]);
 
   // Fetch section deactivation periods
   useEffect(() => {
@@ -132,9 +166,19 @@ const DateTimeSelection = ({ formData, onChange, onNext, onBack }) => {
     return today.toISOString().split('T')[0];
   };
 
-  // Check if a date is a working day (dynamic from settings)
+  // Check if a date is a working day (dynamic from settings, with override support)
   const isWorkingDay = (date) => {
     const day = date.getDay();
+    const dateStr = formatDateForInput(date);
+
+    // Check if date falls within an active override
+    const override = activeOverrides.find(ov =>
+      ov.startDate <= dateStr && ov.endDate >= dateStr
+    );
+    if (override) {
+      return override.workingDays.includes(day);
+    }
+
     return workingHours.workingDays.includes(day);
   };
 
@@ -451,6 +495,27 @@ const DateTimeSelection = ({ formData, onChange, onNext, onBack }) => {
                 </span>
               </div>
 
+              {/* Override info banner */}
+              {effectiveHours?.isOverride && (
+                <motion.div
+                  className="info-banner"
+                  initial={{ opacity: 0, y: -10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  style={{ background: '#fef3c7', border: '1px solid #f59e0b', color: '#92400e', marginBottom: '12px' }}
+                >
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <circle cx="12" cy="12" r="10"/>
+                    <line x1="12" y1="16" x2="12" y2="12"/>
+                    <line x1="12" y1="8" x2="12.01" y2="8"/>
+                  </svg>
+                  <span>
+                    {isRTL
+                      ? `ساعات خاصة: ${effectiveHours.override.labelAr || effectiveHours.override.labelEn} (${formatTimeAMPM(effectiveHours.startTime)} - ${formatTimeAMPM(effectiveHours.endTime)})`
+                      : `Special hours: ${effectiveHours.override.labelEn} (${formatTimeAMPM(effectiveHours.startTime)} - ${formatTimeAMPM(effectiveHours.endTime)})`}
+                  </span>
+                </motion.div>
+              )}
+
               <h4 className="time-slots-title">
                 {isRTL ? 'اختر الوقت المتاح' : 'Select Available Time'}
               </h4>
@@ -616,8 +681,8 @@ const DateTimeSelection = ({ formData, onChange, onNext, onBack }) => {
               className="form-input"
               value={formData.startTime || ''}
               onChange={(e) => handleChange('startTime', e.target.value)}
-              min={workingHours.startTime}
-              max={workingHours.endTime}
+              min={(effectiveHours || workingHours).startTime}
+              max={(effectiveHours || workingHours).endTime}
             />
           </motion.div>
 
@@ -635,8 +700,8 @@ const DateTimeSelection = ({ formData, onChange, onNext, onBack }) => {
               className="form-input"
               value={formData.endTime || ''}
               onChange={(e) => handleChange('endTime', e.target.value)}
-              min={workingHours.startTime}
-              max={workingHours.endTime}
+              min={(effectiveHours || workingHours).startTime}
+              max={(effectiveHours || workingHours).endTime}
             />
           </motion.div>
 

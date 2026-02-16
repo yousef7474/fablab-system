@@ -1,8 +1,32 @@
 const { Settings } = require('../models');
+const { findActiveOverrideForDate } = require('./workingHoursOverrideController');
 
 // GET /api/settings/working-hours (public)
 const getWorkingHours = async (req, res) => {
   try {
+    const { date } = req.query;
+
+    // If a date is provided, check for an active override
+    if (date) {
+      const override = await findActiveOverrideForDate(date);
+      if (override) {
+        return res.json({
+          startTime: override.startTime,
+          endTime: override.endTime,
+          workingDays: override.workingDays,
+          isOverride: true,
+          override: {
+            overrideId: override.overrideId,
+            labelEn: override.labelEn,
+            labelAr: override.labelAr,
+            startDate: override.startDate,
+            endDate: override.endDate
+          }
+        });
+      }
+    }
+
+    // Default working hours
     const startTime = await Settings.findByPk('working_hours_start');
     const endTime = await Settings.findByPk('working_hours_end');
     const workingDays = await Settings.findByPk('working_days');

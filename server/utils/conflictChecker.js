@@ -1,10 +1,30 @@
 const { Registration, Task, User, Settings } = require('../models');
 const { Op } = require('sequelize');
 const moment = require('moment');
+const { findActiveOverrideForDate } = require('../controllers/workingHoursOverrideController');
 
 // Helper to fetch working hours from DB with fallback defaults
-const getWorkingHoursSettings = async () => {
+// If a date is provided, checks for an active override first
+const getWorkingHoursSettings = async (date) => {
   try {
+    // Check for active override for the given date
+    if (date) {
+      const override = await findActiveOverrideForDate(date);
+      if (override) {
+        const [startH, startM] = override.startTime.split(':').map(Number);
+        const [endH, endM] = override.endTime.split(':').map(Number);
+        const startMinutes = startH * 60 + (startM || 0);
+        const endMinutes = endH * 60 + (endM || 0);
+
+        return {
+          startHour: startH, endHour: endH,
+          startMinutes, endMinutes,
+          startTime: override.startTime, endTime: override.endTime,
+          workingDays: override.workingDays
+        };
+      }
+    }
+
     const startSetting = await Settings.findByPk('working_hours_start');
     const endSetting = await Settings.findByPk('working_hours_end');
     const daysSetting = await Settings.findByPk('working_days');
@@ -165,8 +185,8 @@ const checkTimeSlotAvailability = async (section, date, startTime, endTime, excl
 // Get available time slots for a specific section and date
 const getAvailableTimeSlots = async (section, date) => {
   try {
-    // Fetch dynamic working hours from DB
-    const workingHoursSettings = await getWorkingHoursSettings();
+    // Fetch dynamic working hours from DB (with override support for this date)
+    const workingHoursSettings = await getWorkingHoursSettings(date);
     const dayOfWeek = moment(date).day();
 
     // Check if it's a working day

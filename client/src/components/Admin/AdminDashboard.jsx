@@ -139,6 +139,13 @@ const AdminDashboard = () => {
   const [workingHours, setWorkingHours] = useState({ startTime: '11:00', endTime: '19:00', workingDays: [0, 1, 2, 3, 4] });
   const [savingWorkingHours, setSavingWorkingHours] = useState(false);
 
+  // Working hours overrides
+  const [overrides, setOverrides] = useState([]);
+  const [loadingOverrides, setLoadingOverrides] = useState(false);
+  const [showOverrideForm, setShowOverrideForm] = useState(false);
+  const [overrideForm, setOverrideForm] = useState({ labelEn: '', labelAr: '', startDate: '', endDate: '', startTime: '09:00', endTime: '15:00', workingDays: [0, 1, 2, 3, 4] });
+  const [savingOverride, setSavingOverride] = useState(false);
+
   // Status modal states
   const [showStatusModal, setShowStatusModal] = useState(false);
   const [statusModalAction, setStatusModalAction] = useState(''); // 'approve' or 'reject'
@@ -233,6 +240,7 @@ const AdminDashboard = () => {
     fetchAnalytics();
     fetchRegistrations();
     fetchWorkingHours();
+    fetchOverrides();
   }, [navigate]);
 
   const fetchAnalytics = async () => {
@@ -279,6 +287,46 @@ const AdminDashboard = () => {
       toast.error(isRTL ? 'خطأ في تحديث ساعات العمل' : 'Error updating working hours');
     } finally {
       setSavingWorkingHours(false);
+    }
+  };
+
+  const fetchOverrides = async () => {
+    setLoadingOverrides(true);
+    try {
+      const response = await api.get('/settings/working-hours-overrides');
+      setOverrides(response.data);
+    } catch (error) {
+      console.error('Error fetching overrides:', error);
+    } finally {
+      setLoadingOverrides(false);
+    }
+  };
+
+  const handleCreateOverride = async () => {
+    setSavingOverride(true);
+    try {
+      await api.post('/settings/working-hours-overrides', overrideForm);
+      toast.success(isRTL ? 'تم إنشاء فترة التجاوز بنجاح' : 'Override created successfully');
+      setShowOverrideForm(false);
+      setOverrideForm({ labelEn: '', labelAr: '', startDate: '', endDate: '', startTime: '09:00', endTime: '15:00', workingDays: [0, 1, 2, 3, 4] });
+      fetchOverrides();
+    } catch (error) {
+      console.error('Error creating override:', error);
+      const msg = error.response?.data?.message || (isRTL ? 'خطأ في إنشاء فترة التجاوز' : 'Error creating override');
+      toast.error(msg);
+    } finally {
+      setSavingOverride(false);
+    }
+  };
+
+  const handleDeleteOverride = async (id) => {
+    try {
+      await api.delete(`/settings/working-hours-overrides/${id}`);
+      toast.success(isRTL ? 'تم حذف فترة التجاوز' : 'Override deleted');
+      fetchOverrides();
+    } catch (error) {
+      console.error('Error deleting override:', error);
+      toast.error(isRTL ? 'خطأ في حذف فترة التجاوز' : 'Error deleting override');
     }
   };
 
@@ -4008,6 +4056,152 @@ const AdminDashboard = () => {
                           : (isRTL ? 'حفظ ساعات العمل' : 'Save Working Hours')}
                       </button>
                     </div>
+                  </div>
+
+                  <div className="settings-card">
+                    <h3>{isRTL ? 'فترات تجاوز ساعات العمل' : 'Working Hours Overrides'}</h3>
+                    <p style={{ fontSize: '13px', color: 'var(--text-secondary, #64748b)', marginBottom: '12px' }}>
+                      {isRTL ? 'إضافة فترات مؤقتة بساعات عمل مختلفة (مثل رمضان أو العطلات)' : 'Add temporary periods with different working hours (e.g., Ramadan, holidays)'}
+                    </p>
+                    <button
+                      className="btn btn-primary"
+                      onClick={() => setShowOverrideForm(!showOverrideForm)}
+                      style={{ marginBottom: '12px' }}
+                    >
+                      {showOverrideForm ? (isRTL ? 'إلغاء' : 'Cancel') : (isRTL ? '+ إضافة فترة تجاوز' : '+ Add Override')}
+                    </button>
+
+                    {showOverrideForm && (
+                      <div className="settings-form" style={{ background: 'var(--bg-secondary, #f8fafc)', padding: '16px', borderRadius: '8px', marginBottom: '16px' }}>
+                        <div className="form-group">
+                          <label>{isRTL ? 'الاسم (إنجليزي)' : 'Label (English)'}</label>
+                          <input
+                            type="text"
+                            value={overrideForm.labelEn}
+                            onChange={(e) => setOverrideForm(prev => ({ ...prev, labelEn: e.target.value }))}
+                            placeholder={isRTL ? 'مثال: ساعات رمضان' : 'e.g., Ramadan Hours'}
+                          />
+                        </div>
+                        <div className="form-group">
+                          <label>{isRTL ? 'الاسم (عربي)' : 'Label (Arabic)'}</label>
+                          <input
+                            type="text"
+                            value={overrideForm.labelAr}
+                            onChange={(e) => setOverrideForm(prev => ({ ...prev, labelAr: e.target.value }))}
+                            placeholder={isRTL ? 'ساعات رمضان' : 'e.g., ساعات رمضان'}
+                          />
+                        </div>
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                          <div className="form-group">
+                            <label>{isRTL ? 'تاريخ البداية' : 'Start Date'}</label>
+                            <input
+                              type="date"
+                              value={overrideForm.startDate}
+                              onChange={(e) => setOverrideForm(prev => ({ ...prev, startDate: e.target.value }))}
+                            />
+                          </div>
+                          <div className="form-group">
+                            <label>{isRTL ? 'تاريخ النهاية' : 'End Date'}</label>
+                            <input
+                              type="date"
+                              value={overrideForm.endDate}
+                              onChange={(e) => setOverrideForm(prev => ({ ...prev, endDate: e.target.value }))}
+                            />
+                          </div>
+                          <div className="form-group">
+                            <label>{isRTL ? 'وقت البداية' : 'Start Time'}</label>
+                            <input
+                              type="time"
+                              value={overrideForm.startTime}
+                              onChange={(e) => setOverrideForm(prev => ({ ...prev, startTime: e.target.value }))}
+                            />
+                          </div>
+                          <div className="form-group">
+                            <label>{isRTL ? 'وقت النهاية' : 'End Time'}</label>
+                            <input
+                              type="time"
+                              value={overrideForm.endTime}
+                              onChange={(e) => setOverrideForm(prev => ({ ...prev, endTime: e.target.value }))}
+                            />
+                          </div>
+                        </div>
+                        <div className="form-group">
+                          <label>{isRTL ? 'أيام العمل' : 'Working Days'}</label>
+                          <div className="working-days-checkboxes" style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginTop: '8px' }}>
+                            {[
+                              { value: 0, en: 'Sun', ar: 'أحد' },
+                              { value: 1, en: 'Mon', ar: 'إثن' },
+                              { value: 2, en: 'Tue', ar: 'ثلا' },
+                              { value: 3, en: 'Wed', ar: 'أرب' },
+                              { value: 4, en: 'Thu', ar: 'خمي' },
+                              { value: 5, en: 'Fri', ar: 'جمع' },
+                              { value: 6, en: 'Sat', ar: 'سبت' }
+                            ].map(day => (
+                              <label key={day.value} style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer', padding: '4px 8px', borderRadius: '6px', background: overrideForm.workingDays.includes(day.value) ? 'var(--primary-color, #6366f1)' : 'var(--bg-secondary, #f1f5f9)', color: overrideForm.workingDays.includes(day.value) ? '#fff' : 'inherit', transition: 'all 0.2s' }}>
+                                <input
+                                  type="checkbox"
+                                  checked={overrideForm.workingDays.includes(day.value)}
+                                  onChange={(e) => {
+                                    setOverrideForm(prev => ({
+                                      ...prev,
+                                      workingDays: e.target.checked
+                                        ? [...prev.workingDays, day.value].sort()
+                                        : prev.workingDays.filter(d => d !== day.value)
+                                    }));
+                                  }}
+                                  style={{ display: 'none' }}
+                                />
+                                {isRTL ? day.ar : day.en}
+                              </label>
+                            ))}
+                          </div>
+                        </div>
+                        <button
+                          className="btn btn-primary"
+                          onClick={handleCreateOverride}
+                          disabled={savingOverride || !overrideForm.labelEn || !overrideForm.startDate || !overrideForm.endDate}
+                          style={{ marginTop: '12px' }}
+                        >
+                          {savingOverride ? (isRTL ? 'جاري الحفظ...' : 'Saving...') : (isRTL ? 'حفظ فترة التجاوز' : 'Save Override')}
+                        </button>
+                      </div>
+                    )}
+
+                    {loadingOverrides ? (
+                      <p style={{ color: 'var(--text-secondary)' }}>{isRTL ? 'جاري التحميل...' : 'Loading...'}</p>
+                    ) : overrides.length === 0 ? (
+                      <p style={{ color: 'var(--text-secondary)', fontSize: '13px' }}>{isRTL ? 'لا توجد فترات تجاوز' : 'No overrides configured'}</p>
+                    ) : (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                        {overrides.map(ov => {
+                          const today = new Date().toISOString().split('T')[0];
+                          const isActiveNow = ov.isActive && ov.startDate <= today && ov.endDate >= today;
+                          const isExpired = ov.endDate < today;
+                          return (
+                            <div key={ov.overrideId} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 14px', borderRadius: '8px', background: 'var(--bg-secondary, #f8fafc)', border: isActiveNow ? '2px solid var(--primary-color, #6366f1)' : '1px solid var(--border-color, #e2e8f0)' }}>
+                              <div>
+                                <strong style={{ fontSize: '14px' }}>{isRTL ? (ov.labelAr || ov.labelEn) : ov.labelEn}</strong>
+                                <div style={{ fontSize: '12px', color: 'var(--text-secondary, #64748b)', marginTop: '2px' }}>
+                                  {ov.startDate} → {ov.endDate} | {ov.startTime} - {ov.endTime}
+                                </div>
+                                <span style={{ display: 'inline-block', marginTop: '4px', padding: '2px 8px', borderRadius: '10px', fontSize: '11px', fontWeight: '600', background: isActiveNow ? '#dcfce7' : isExpired ? '#fee2e2' : '#fef9c3', color: isActiveNow ? '#166534' : isExpired ? '#991b1b' : '#854d0e' }}>
+                                  {isActiveNow ? (isRTL ? 'نشط الآن' : 'Active Now') : isExpired ? (isRTL ? 'منتهي' : 'Expired') : !ov.isActive ? (isRTL ? 'محذوف' : 'Deleted') : (isRTL ? 'قادم' : 'Upcoming')}
+                                </span>
+                              </div>
+                              {ov.isActive && (
+                                <button
+                                  className="btn btn-danger"
+                                  style={{ padding: '4px 12px', fontSize: '12px' }}
+                                  onClick={() => handleDeleteOverride(ov.overrideId)}
+                                >
+                                  {isRTL ? 'حذف' : 'Delete'}
+                                </button>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
                   </div>
 
                   <div className="settings-card">
