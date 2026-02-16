@@ -272,6 +272,67 @@ const sendOverdueWarning = async (borrowing, user, warningNumber) => {
   }
 };
 
+// Send return confirmation to borrower (proof of return)
+const sendReturnConfirmation = async (borrowing, user) => {
+  const userName = getUserName(user);
+  const sectionAr = translateSection(borrowing.section);
+  const borrowDays = borrowing.borrowDate && borrowing.actualReturnDate
+    ? Math.ceil((new Date(borrowing.actualReturnDate) - new Date(borrowing.borrowDate)) / (1000 * 60 * 60 * 24))
+    : 'N/A';
+
+  const msg = {
+    to: user.email,
+    from: { email: process.env.SENDGRID_FROM_EMAIL, name: process.env.SENDGRID_FROM_NAME },
+    subject: 'تأكيد إرجاع المكونات - Return Confirmation',
+    html: emailWrapper(`
+      <div dir="rtl" style="padding: 25px; background: #ffffff; border: 1px solid #e5e5e5;">
+        <h2 style="color: #333; margin-top: 0;">مرحباً ${userName}</h2>
+        <div style="background: #d4edda; padding: 15px; border-radius: 8px; text-align: center; border-right: 4px solid #22c55e;">
+          <p style="color: #155724; font-size: 18px; margin: 0; font-weight: bold;">✓ تم تأكيد إرجاع المكونات بنجاح</p>
+        </div>
+        <div style="background: #f0f7ff; padding: 15px; border-radius: 8px; margin: 15px 0; border-right: 4px solid #2563eb;">
+          <table style="width: 100%; border-collapse: collapse;">
+            <tr><td style="padding: 5px 0;"><strong>رقم الاستعارة:</strong></td><td>${borrowing.borrowingId}</td></tr>
+            <tr><td style="padding: 5px 0;"><strong>القسم:</strong></td><td>${sectionAr}</td></tr>
+            <tr><td style="padding: 5px 0;"><strong>وصف المكونات:</strong></td><td>${borrowing.componentDescription}</td></tr>
+            <tr><td style="padding: 5px 0;"><strong>تاريخ الاستعارة:</strong></td><td>${formatDateAr(borrowing.borrowDate)}</td></tr>
+            <tr><td style="padding: 5px 0;"><strong>تاريخ الإرجاع:</strong></td><td>${formatDateAr(borrowing.actualReturnDate)}</td></tr>
+            <tr><td style="padding: 5px 0;"><strong>مدة الاستعارة:</strong></td><td>${borrowDays} يوم</td></tr>
+          </table>
+        </div>
+        <p>هذا البريد الإلكتروني يعد إثباتاً على إرجاع المكونات المستعارة بنجاح. يرجى الاحتفاظ بهذه الرسالة كمرجع.</p>
+        <p style="color: #16a34a; font-weight: bold;">شكراً لالتزامك بالإرجاع. نتطلع لخدمتك مرة أخرى!</p>
+      </div>
+      <div style="border-top: 2px solid #22c55e; margin: 0;"></div>
+      <div dir="ltr" style="padding: 25px; background: #ffffff; border: 1px solid #e5e5e5;">
+        <h2 style="color: #333; margin-top: 0;">Hello ${userName}</h2>
+        <div style="background: #d4edda; padding: 15px; border-radius: 8px; text-align: center; border-left: 4px solid #22c55e;">
+          <p style="color: #155724; font-size: 18px; margin: 0; font-weight: bold;">✓ Component Return Confirmed Successfully</p>
+        </div>
+        <div style="background: #f0f7ff; padding: 15px; border-radius: 8px; margin: 15px 0; border-left: 4px solid #2563eb;">
+          <table style="width: 100%; border-collapse: collapse;">
+            <tr><td style="padding: 5px 0;"><strong>Borrowing ID:</strong></td><td>${borrowing.borrowingId}</td></tr>
+            <tr><td style="padding: 5px 0;"><strong>Section:</strong></td><td>${borrowing.section}</td></tr>
+            <tr><td style="padding: 5px 0;"><strong>Components:</strong></td><td>${borrowing.componentDescription}</td></tr>
+            <tr><td style="padding: 5px 0;"><strong>Borrow Date:</strong></td><td>${formatDate(borrowing.borrowDate)}</td></tr>
+            <tr><td style="padding: 5px 0;"><strong>Return Date:</strong></td><td>${formatDate(borrowing.actualReturnDate)}</td></tr>
+            <tr><td style="padding: 5px 0;"><strong>Borrowing Duration:</strong></td><td>${borrowDays} day(s)</td></tr>
+          </table>
+        </div>
+        <p>This email serves as proof that the borrowed components have been returned successfully. Please keep this message for your records.</p>
+        <p style="color: #16a34a; font-weight: bold;">Thank you for returning the items. We look forward to serving you again!</p>
+      </div>
+    `)
+  };
+
+  try {
+    await sgMail.send(msg);
+    console.log(`Return confirmation email sent to ${user.email}`);
+  } catch (error) {
+    console.error('Error sending return confirmation email:', error);
+  }
+};
+
 // Send admin alert for 3rd overdue warning
 const sendAdminOverdueAlert = async (borrowing, user) => {
   const userName = getUserName(user);
@@ -325,6 +386,7 @@ const sendAdminOverdueAlert = async (borrowing, user) => {
 module.exports = {
   sendBorrowingConfirmation,
   sendBorrowingStatusUpdate,
+  sendReturnConfirmation,
   sendReturnReminder,
   sendOverdueWarning,
   sendAdminOverdueAlert

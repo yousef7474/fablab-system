@@ -1,6 +1,6 @@
 const { User, Borrowing, Admin } = require('../models');
 const { generateUserId, generateBorrowingId } = require('../utils/idGenerator');
-const { sendBorrowingConfirmation, sendBorrowingStatusUpdate } = require('../utils/borrowingEmailService');
+const { sendBorrowingConfirmation, sendBorrowingStatusUpdate, sendReturnConfirmation } = require('../utils/borrowingEmailService');
 const { Op } = require('sequelize');
 
 // Check if user exists (reuse pattern from registrationController)
@@ -287,6 +287,13 @@ exports.markAsReturned = async (req, res) => {
       adminNotes: adminNotes || borrowing.adminNotes,
       returnedById: req.admin.adminId
     });
+
+    // Send return confirmation email as proof (non-blocking)
+    try {
+      await sendReturnConfirmation(borrowing, borrowing.user);
+    } catch (emailError) {
+      console.error('Failed to send return confirmation email:', emailError);
+    }
 
     res.json({ message: 'Borrowing marked as returned successfully', borrowing });
   } catch (error) {
