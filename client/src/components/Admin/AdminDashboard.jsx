@@ -631,12 +631,38 @@ const AdminDashboard = () => {
 
   // User selection functions
   const handleSelectAllUsers = () => {
-    const allIds = users.map(u => u.userId);
-    setSelectedUsers(new Set(allIds));
+    const newSelected = new Set(selectedUsers);
+    users.forEach(u => newSelected.add(u.userId));
+    setSelectedUsers(newSelected);
   };
 
   const handleDeselectAllUsers = () => {
+    const newSelected = new Set(selectedUsers);
+    users.forEach(u => newSelected.delete(u.userId));
+    setSelectedUsers(newSelected);
+  };
+
+  const handleDeselectAllUsersGlobal = () => {
     setSelectedUsers(new Set());
+  };
+
+  const handleSelectAllUsersAllPages = async () => {
+    try {
+      const params = new URLSearchParams();
+      params.append('page', 1);
+      params.append('limit', userPagination.total || 10000);
+      if (userSearch) params.append('search', userSearch);
+      const response = await api.get(`/admin/users?${params.toString()}`);
+      const allUsers = response.data.users || [];
+      const allIds = new Set(allUsers.map(u => u.userId));
+      setSelectedUsers(allIds);
+      toast.success(isRTL
+        ? `تم تحديد ${allIds.size} مستخدم`
+        : `Selected all ${allIds.size} users`);
+    } catch (error) {
+      console.error('Error selecting all users:', error);
+      toast.error(isRTL ? 'خطأ في تحديد جميع المستخدمين' : 'Error selecting all users');
+    }
   };
 
   const handleToggleUser = (userId) => {
@@ -2848,6 +2874,25 @@ const AdminDashboard = () => {
                         {isRTL
                           ? `${selectedUsers.size} مستخدم محدد`
                           : `${selectedUsers.size} selected`}
+                        {userPagination.total > userPagination.limit && selectedUsers.size < userPagination.total && (
+                          <button
+                            onClick={handleSelectAllUsersAllPages}
+                            style={{
+                              background: 'none',
+                              border: 'none',
+                              color: '#3b82f6',
+                              cursor: 'pointer',
+                              textDecoration: 'underline',
+                              fontSize: '13px',
+                              marginInlineStart: '8px',
+                              padding: 0
+                            }}
+                          >
+                            {isRTL
+                              ? `تحديد الكل (${userPagination.total})`
+                              : `Select all ${userPagination.total} users`}
+                          </button>
+                        )}
                       </span>
                       <div className="selection-actions">
                         <button className="export-btn" onClick={handleExportSelectedUsers}>
@@ -2869,7 +2914,7 @@ const AdminDashboard = () => {
                           </svg>
                           {isRTL ? 'إرسال بريد' : 'Send Email'}
                         </button>
-                        <button className="deselect-btn" onClick={handleDeselectAllUsers}>
+                        <button className="deselect-btn" onClick={handleDeselectAllUsersGlobal}>
                           {isRTL ? 'إلغاء التحديد' : 'Deselect All'}
                         </button>
                       </div>
@@ -2896,9 +2941,9 @@ const AdminDashboard = () => {
                           <th className="checkbox-cell">
                             <input
                               type="checkbox"
-                              checked={selectedUsers.size === users.length && users.length > 0}
+                              checked={users.length > 0 && users.every(u => selectedUsers.has(u.userId))}
                               onChange={(e) => e.target.checked ? handleSelectAllUsers() : handleDeselectAllUsers()}
-                              title={isRTL ? 'تحديد الكل' : 'Select All'}
+                              title={isRTL ? 'تحديد الكل في هذه الصفحة' : 'Select All on This Page'}
                             />
                           </th>
                           <th>{isRTL ? 'رقم المستخدم' : 'User ID'}</th>
