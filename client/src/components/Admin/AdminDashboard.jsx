@@ -31,6 +31,17 @@ const PRIORITY_COLORS = {
   high: '#ef4444'
 };
 
+const PREDEFINED_REJECTION_REASONS = [
+  { en: 'Incomplete application information', ar: 'معلومات الطلب غير مكتملة' },
+  { en: 'Selected time slot is no longer available', ar: 'الموعد المحدد لم يعد متاحاً' },
+  { en: 'Does not meet eligibility requirements', ar: 'لا يستوفي متطلبات الأهلية' },
+  { en: 'Duplicate registration', ar: 'تسجيل مكرر' },
+  { en: 'Service requested is currently unavailable', ar: 'الخدمة المطلوبة غير متاحة حالياً' },
+  { en: 'Section is at full capacity', ar: 'القسم مكتمل العدد' },
+  { en: 'Appointment date conflicts with maintenance schedule', ar: 'تاريخ الموعد يتعارض مع جدول الصيانة' },
+  { en: 'Required documents not provided', ar: 'لم يتم تقديم المستندات المطلوبة' }
+];
+
 // Helper function to format time as AM/PM
 const formatTimeAMPM = (time24) => {
   if (!time24) return '';
@@ -137,6 +148,12 @@ const AdminDashboard = () => {
   // Bulk selection states
   const [selectedRegistrations, setSelectedRegistrations] = useState(new Set());
   const [selectedUsers, setSelectedUsers] = useState(new Set());
+
+  // Email modal states
+  const [showEmailModal, setShowEmailModal] = useState(false);
+  const [emailSubject, setEmailSubject] = useState('');
+  const [emailMessage, setEmailMessage] = useState('');
+  const [isSendingEmail, setIsSendingEmail] = useState(false);
 
   // Selected calendar day for showing appointment details
   const [selectedCalendarDay, setSelectedCalendarDay] = useState(null);
@@ -655,6 +672,50 @@ const AdminDashboard = () => {
     } catch (error) {
       console.error('Error exporting selected users:', error);
       toast.error(isRTL ? 'خطأ في تصدير المستخدمين' : 'Error exporting users');
+    }
+  };
+
+  const handleSendEmailToUsers = async () => {
+    if (selectedUsers.size === 0) {
+      toast.warning(isRTL ? 'يرجى اختيار مستخدمين' : 'Please select users');
+      return;
+    }
+    if (!emailSubject.trim()) {
+      toast.error(isRTL ? 'يرجى إدخال عنوان الرسالة' : 'Please enter a subject');
+      return;
+    }
+    if (!emailMessage.trim()) {
+      toast.error(isRTL ? 'يرجى إدخال نص الرسالة' : 'Please enter a message');
+      return;
+    }
+
+    setIsSendingEmail(true);
+    try {
+      const response = await api.post('/admin/users/send-email', {
+        userIds: Array.from(selectedUsers),
+        subject: emailSubject,
+        message: emailMessage
+      });
+
+      const { successCount, failCount } = response.data;
+      if (failCount === 0) {
+        toast.success(isRTL
+          ? `تم إرسال البريد بنجاح إلى ${successCount} مستخدم`
+          : `Email sent successfully to ${successCount} user(s)`);
+      } else {
+        toast.warning(isRTL
+          ? `تم الإرسال: ${successCount} نجاح، ${failCount} فشل`
+          : `Sent: ${successCount} successful, ${failCount} failed`);
+      }
+
+      setShowEmailModal(false);
+      setEmailSubject('');
+      setEmailMessage('');
+    } catch (error) {
+      console.error('Error sending email:', error);
+      toast.error(isRTL ? 'خطأ في إرسال البريد الإلكتروني' : 'Error sending email');
+    } finally {
+      setIsSendingEmail(false);
     }
   };
 
@@ -2797,6 +2858,17 @@ const AdminDashboard = () => {
                           </svg>
                           {isRTL ? 'تصدير المحدد' : 'Export Selected'}
                         </button>
+                        <button
+                          className="export-btn"
+                          onClick={() => setShowEmailModal(true)}
+                          style={{ background: 'linear-gradient(135deg, #3b82f6, #2563eb)' }}
+                        >
+                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                            <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
+                            <polyline points="22,6 12,13 2,6"/>
+                          </svg>
+                          {isRTL ? 'إرسال بريد' : 'Send Email'}
+                        </button>
                         <button className="deselect-btn" onClick={handleDeselectAllUsers}>
                           {isRTL ? 'إلغاء التحديد' : 'Deselect All'}
                         </button>
@@ -4635,6 +4707,38 @@ const AdminDashboard = () => {
                   <label>
                     {isRTL ? 'سبب الرفض' : 'Rejection Reason'} <span className="required">*</span>
                   </label>
+                  <div style={{
+                    display: 'flex',
+                    flexWrap: 'wrap',
+                    gap: '8px',
+                    marginBottom: '10px'
+                  }}>
+                    {PREDEFINED_REJECTION_REASONS.map((reason, index) => {
+                      const reasonText = isRTL ? reason.ar : reason.en;
+                      const isActive = rejectionReason === reasonText;
+                      return (
+                        <button
+                          key={index}
+                          type="button"
+                          onClick={() => setRejectionReason(reasonText)}
+                          style={{
+                            padding: '6px 12px',
+                            borderRadius: '20px',
+                            border: isActive ? '2px solid #EE2329' : '1px solid #d1d5db',
+                            background: isActive ? '#fef2f2' : '#f9fafb',
+                            color: isActive ? '#EE2329' : '#4b5563',
+                            fontSize: '13px',
+                            cursor: 'pointer',
+                            fontWeight: isActive ? '600' : '400',
+                            transition: 'all 0.2s ease',
+                            direction: isRTL ? 'rtl' : 'ltr'
+                          }}
+                        >
+                          {reasonText}
+                        </button>
+                      );
+                    })}
+                  </div>
                   <textarea
                     value={rejectionReason}
                     onChange={(e) => setRejectionReason(e.target.value)}
@@ -4745,6 +4849,103 @@ const AdminDashboard = () => {
                   ? (isRTL ? 'قبول الطلب' : 'Approve')
                   : (isRTL ? 'رفض الطلب' : 'Reject')
                 }
+              </button>
+            </div>
+          </motion.div>
+        </div>
+      )}
+
+      {/* Email Modal */}
+      {showEmailModal && (
+        <div className="modal-overlay" onClick={() => setShowEmailModal(false)}>
+          <motion.div
+            className="modal-content"
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            onClick={(e) => e.stopPropagation()}
+            style={{ maxWidth: '550px' }}
+          >
+            <div className="modal-header">
+              <h2>{isRTL ? 'إرسال بريد إلكتروني' : 'Send Email'}</h2>
+              <button className="modal-close" onClick={() => setShowEmailModal(false)}>
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <line x1="18" y1="6" x2="6" y2="18"/>
+                  <line x1="6" y1="6" x2="18" y2="18"/>
+                </svg>
+              </button>
+            </div>
+
+            <div className="modal-body">
+              <div style={{
+                background: '#eff6ff',
+                border: '1px solid #bfdbfe',
+                borderRadius: '8px',
+                padding: '10px 14px',
+                marginBottom: '15px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px'
+              }}>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" strokeWidth="2">
+                  <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                  <circle cx="9" cy="7" r="4"/>
+                  <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+                  <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+                </svg>
+                <span style={{ color: '#1e40af', fontSize: '14px' }}>
+                  {isRTL
+                    ? `سيتم الإرسال إلى ${selectedUsers.size} مستخدم`
+                    : `Will be sent to ${selectedUsers.size} user(s)`}
+                </span>
+              </div>
+
+              <div className="form-group">
+                <label>{isRTL ? 'العنوان' : 'Subject'} <span className="required">*</span></label>
+                <input
+                  type="text"
+                  value={emailSubject}
+                  onChange={(e) => setEmailSubject(e.target.value)}
+                  placeholder={isRTL ? 'عنوان الرسالة...' : 'Email subject...'}
+                  style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #d1d5db', fontSize: '14px' }}
+                />
+              </div>
+
+              <div className="form-group">
+                <label>{isRTL ? 'الرسالة' : 'Message'} <span className="required">*</span></label>
+                <textarea
+                  value={emailMessage}
+                  onChange={(e) => setEmailMessage(e.target.value)}
+                  placeholder={isRTL ? 'اكتب رسالتك هنا...' : 'Write your message here...'}
+                  rows={6}
+                  className="form-textarea"
+                />
+              </div>
+            </div>
+
+            <div className="modal-footer">
+              <button className="modal-btn cancel" onClick={() => setShowEmailModal(false)}>
+                {isRTL ? 'إلغاء' : 'Cancel'}
+              </button>
+              <button
+                className="modal-btn approve"
+                onClick={handleSendEmailToUsers}
+                disabled={isSendingEmail || !emailSubject.trim() || !emailMessage.trim()}
+                style={{ background: 'linear-gradient(135deg, #3b82f6, #2563eb)' }}
+              >
+                {isSendingEmail ? (
+                  <>
+                    <div className="loading-spinner" style={{ width: '16px', height: '16px', marginRight: '6px' }} />
+                    {isRTL ? 'جاري الإرسال...' : 'Sending...'}
+                  </>
+                ) : (
+                  <>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <line x1="22" y1="2" x2="11" y2="13"/>
+                      <polygon points="22 2 15 22 11 13 2 9 22 2"/>
+                    </svg>
+                    {isRTL ? 'إرسال' : 'Send'}
+                  </>
+                )}
               </button>
             </div>
           </motion.div>

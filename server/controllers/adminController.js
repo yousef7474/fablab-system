@@ -1,7 +1,7 @@
 const { Admin, User, Registration, Employee } = require('../models');
 const jwt = require('jsonwebtoken');
 const { Op } = require('sequelize');
-const { sendStatusUpdateEmail } = require('../utils/emailService');
+const { sendStatusUpdateEmail, sendCustomEmail } = require('../utils/emailService');
 const QRCode = require('qrcode');
 const PDFDocument = require('pdfkit');
 const fs = require('fs');
@@ -1171,6 +1171,63 @@ exports.deleteUser = async (req, res) => {
   } catch (error) {
     console.error('Error deleting user:', error);
     res.status(500).json({ message: 'Server error', error: error.message });
+  }
+};
+
+// Send bulk email to selected users
+exports.sendBulkEmail = async (req, res) => {
+  try {
+    const { userIds, subject, message } = req.body;
+
+    if (!userIds || !Array.isArray(userIds) || userIds.length === 0) {
+      return res.status(400).json({ message: 'No user IDs provided' });
+    }
+
+    if (!subject || !subject.trim()) {
+      return res.status(400).json({ message: 'Subject is required' });
+    }
+
+    if (!message || !message.trim()) {
+      return res.status(400).json({ message: 'Message is required' });
+    }
+
+    const users = await User.findAll({
+      where: {
+        userId: {
+          [Op.in]: userIds
+        }
+      }
+    });
+
+    if (users.length === 0) {
+      return res.status(404).json({ message: 'No users found' });
+    }
+
+    let successCount = 0;
+    let failCount = 0;
+
+    for (const user of users) {
+      try {
+        const userName = user.firstName && user.lastName
+          ? `${user.firstName} ${user.lastName}`
+          : user.name || 'User';
+
+        await sendCustomEmail(user.email, userName, subject.trim(), message.trim());
+        successCount++;
+      } catch (error) {
+        console.error(`Failed to send email to ${user.email}:`, error);
+        failCount++;
+      }
+    }
+
+    res.json({
+      message: `Emails sent: ${successCount} successful, ${failCount} failed`,
+      successCount,
+      failCount
+    });
+  } catch (error) {
+    console.error('Error sending bulk email:', error);
+    res.status(500).json({ message: 'Server error' });
   }
 };
 

@@ -461,8 +461,65 @@ const sendStatusUpdateEmail = async (userEmail, userName, registrationId, status
   }
 };
 
+// Send custom email from admin to user
+const sendCustomEmail = async (userEmail, userName, subject, messageBody) => {
+  const htmlBody = messageBody.replace(/\n/g, '<br>');
+
+  const msg = {
+    to: userEmail,
+    from: {
+      email: process.env.SENDGRID_FROM_EMAIL,
+      name: process.env.SENDGRID_FROM_NAME
+    },
+    subject: subject,
+    html: `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+        <!-- Header -->
+        <div style="background: linear-gradient(135deg, #EE2329, #c41e24); padding: 20px; text-align: center; border-radius: 8px 8px 0 0;">
+          <h1 style="color: white; margin: 0; font-size: 24px;">فاب لاب الأحساء</h1>
+          <p style="color: rgba(255,255,255,0.9); margin: 5px 0 0 0;">FABLAB Al-Ahsa</p>
+        </div>
+
+        <!-- Arabic Content -->
+        <div dir="rtl" style="padding: 25px; background: #ffffff; border: 1px solid #e5e5e5;">
+          <h2 style="color: #333; margin-top: 0;">مرحباً ${userName}</h2>
+          <div style="color: #333; line-height: 1.8; font-size: 15px;">
+            ${htmlBody}
+          </div>
+        </div>
+
+        <!-- Divider -->
+        <div style="border-top: 2px solid #EE2329; margin: 0;"></div>
+
+        <!-- English Content -->
+        <div dir="ltr" style="padding: 25px; background: #ffffff; border: 1px solid #e5e5e5;">
+          <h2 style="color: #333; margin-top: 0;">Hello ${userName}</h2>
+          <div style="color: #333; line-height: 1.8; font-size: 15px;">
+            ${htmlBody}
+          </div>
+        </div>
+
+        <!-- Footer -->
+        <div style="background: #1a1a2e; padding: 20px; text-align: center; border-radius: 0 0 8px 8px;">
+          <p style="color: #fff; margin: 0;">فاب لاب الأحساء | FABLAB Al-Ahsa</p>
+          <p style="color: rgba(255,255,255,0.6); margin: 10px 0 0 0; font-size: 12px;">مختبر التصنيع الرقمي | Digital Fabrication Laboratory</p>
+        </div>
+      </div>
+    `
+  };
+
+  try {
+    await sgMail.send(msg);
+    console.log(`✅ Custom email sent to ${userEmail}`);
+  } catch (error) {
+    console.error('❌ Error sending custom email:', error);
+    throw error;
+  }
+};
+
 module.exports = {
   sendRegistrationConfirmation,
   sendEngineerNotification,
-  sendStatusUpdateEmail
+  sendStatusUpdateEmail,
+  sendCustomEmail
 };
