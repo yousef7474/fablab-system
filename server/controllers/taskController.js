@@ -353,23 +353,43 @@ exports.updateTaskStatus = async (req, res) => {
     await task.update({ status });
 
     // Auto-award 1 point to employee when task is completed
-    // Only award points if:
-    // 1. Task is being completed and wasn't already completed
-    // 2. Task has an assigned employee
-    // 3. The admin/manager marking it complete is NOT the same person as the employee
-    //    (prevents employees from giving themselves points by creating and completing their own tasks)
+    // Points are ONLY awarded when:
+    // 1. The task was created by a DIFFERENT person than the assigned employee (manager-assigned)
+    // 2. The person marking it complete is the manager (not the employee themselves)
+    // This prevents employees from earning points by creating and completing their own tasks
     let awardedRating = null;
     if (isBeingCompleted && !wasCompleted && task.employeeId && req.admin) {
       try {
-        // Fetch the employee to compare emails
+        // Fetch the employee assigned to this task
         const employee = await Employee.findByPk(task.employeeId);
+        // Fetch the admin who originally created the task
+        const creator = await Admin.findByPk(task.createdById);
 
-        // Only award points if the admin's email is different from the employee's email
-        // This ensures points are only given when a manager completes a task assigned to someone else
-        const isSamePerson = employee && req.admin.email && employee.email &&
-                            req.admin.email.toLowerCase() === employee.email.toLowerCase();
+        // Check if the task creator is the same person as the assigned employee
+        // Compare by email and name to cover cases where they differ
+        let isSelfAssigned = false;
+        if (employee && creator) {
+          const emailMatch = creator.email && employee.email &&
+            creator.email.toLowerCase() === employee.email.toLowerCase();
+          const nameMatch = creator.fullName && employee.name &&
+            creator.fullName.toLowerCase() === employee.name.toLowerCase();
+          isSelfAssigned = emailMatch || nameMatch;
+        }
 
-        if (!isSamePerson) {
+        // Also check if the person completing the task is the same person as the employee
+        let isCompletedBySelf = false;
+        if (employee && req.admin) {
+          const emailMatch = req.admin.email && employee.email &&
+            req.admin.email.toLowerCase() === employee.email.toLowerCase();
+          const nameMatch = req.admin.fullName && employee.name &&
+            req.admin.fullName.toLowerCase() === employee.name.toLowerCase();
+          isCompletedBySelf = emailMatch || nameMatch;
+        }
+
+        // Only award points if:
+        // - Task was NOT self-assigned (created by a different person)
+        // - AND task was NOT completed by the employee themselves
+        if (!isSelfAssigned && !isCompletedBySelf) {
           awardedRating = await Rating.create({
             employeeId: task.employeeId,
             createdById: req.admin.adminId,
@@ -381,7 +401,7 @@ exports.updateTaskStatus = async (req, res) => {
           });
           console.log(`Auto-awarded 1 point to employee ${task.employeeId} for completing task: ${task.title}`);
         } else {
-          console.log(`No points awarded - task completed by same person (self-assigned task): ${task.title}`);
+          console.log(`No points awarded - self-assigned: ${isSelfAssigned}, completed by self: ${isCompletedBySelf}, task: ${task.title}`);
         }
       } catch (ratingError) {
         console.error('Error creating auto-rating for task completion:', ratingError);
