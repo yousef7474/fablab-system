@@ -60,7 +60,7 @@ const AdminDashboard = () => {
   const printRef = useRef();
 
   // Valid tabs for URL persistence
-  const validTabs = ['dashboard', 'registrations', 'users', 'employees', 'schedule', 'analytics', 'settings'];
+  const validTabs = ['dashboard', 'registrations', 'users', 'employees', 'schedule', 'analytics', 'borrowing', 'settings'];
 
   // Get initial tab from URL, localStorage, or default to 'dashboard'
   const getInitialTab = () => {
@@ -145,6 +145,17 @@ const AdminDashboard = () => {
   const [showOverrideForm, setShowOverrideForm] = useState(false);
   const [overrideForm, setOverrideForm] = useState({ labelEn: '', labelAr: '', startDate: '', endDate: '', startTime: '09:00', endTime: '15:00', workingDays: [0, 1, 2, 3, 4] });
   const [savingOverride, setSavingOverride] = useState(false);
+
+  // Borrowing states
+  const [borrowings, setBorrowings] = useState([]);
+  const [borrowingFilters, setBorrowingFilters] = useState({ status: '', section: '', search: '' });
+  const [loadingBorrowings, setLoadingBorrowings] = useState(false);
+  const [selectedBorrowing, setSelectedBorrowing] = useState(null);
+  const [borrowingPagination, setBorrowingPagination] = useState({ page: 1, total: 0, pages: 0, limit: 50 });
+  const [showBorrowingModal, setShowBorrowingModal] = useState(false);
+  const [borrowingModalAction, setBorrowingModalAction] = useState('');
+  const [borrowingAdminNotes, setBorrowingAdminNotes] = useState('');
+  const [returnPhotoData, setReturnPhotoData] = useState('');
 
   // Status modal states
   const [showStatusModal, setShowStatusModal] = useState(false);
@@ -548,6 +559,8 @@ const AdminDashboard = () => {
       fetchEmployees();
     } else if (activeTab === 'settings') {
       fetchSectionAvailability();
+    } else if (activeTab === 'borrowing') {
+      fetchBorrowings();
     }
   }, [activeTab, fetchRegistrations, analyticsPeriod, analyticsDateRange.startDate, analyticsDateRange.endDate]);
 
@@ -556,6 +569,218 @@ const AdminDashboard = () => {
     localStorage.removeItem('adminData');
     toast.success(isRTL ? 'تم تسجيل الخروج بنجاح' : 'Logged out successfully');
     navigate('/admin/login');
+  };
+
+  // Borrowing functions
+  const fetchBorrowings = async (page = 1) => {
+    setLoadingBorrowings(true);
+    try {
+      const params = new URLSearchParams();
+      Object.entries(borrowingFilters).forEach(([key, value]) => {
+        if (value) params.append(key, value);
+      });
+      params.append('page', page);
+      params.append('limit', borrowingPagination.limit);
+      const response = await api.get(`/borrowing?${params.toString()}`);
+      setBorrowings(response.data.borrowings || []);
+      if (response.data.pagination) {
+        setBorrowingPagination(prev => ({ ...prev, ...response.data.pagination }));
+      }
+    } catch (error) {
+      console.error('Error fetching borrowings:', error);
+    } finally {
+      setLoadingBorrowings(false);
+    }
+  };
+
+  const handleApproveBorrowing = async (borrowingId) => {
+    try {
+      await api.put(`/borrowing/${borrowingId}/status`, { status: 'approved', adminNotes: borrowingAdminNotes });
+      toast.success(isRTL ? 'تمت الموافقة على طلب الاستعارة' : 'Borrowing request approved');
+      setShowBorrowingModal(false);
+      setBorrowingAdminNotes('');
+      fetchBorrowings();
+    } catch (error) {
+      toast.error(isRTL ? 'خطأ في الموافقة' : 'Error approving');
+    }
+  };
+
+  const handleRejectBorrowing = async (borrowingId) => {
+    try {
+      await api.put(`/borrowing/${borrowingId}/status`, { status: 'rejected', adminNotes: borrowingAdminNotes });
+      toast.success(isRTL ? 'تم رفض طلب الاستعارة' : 'Borrowing request rejected');
+      setShowBorrowingModal(false);
+      setBorrowingAdminNotes('');
+      fetchBorrowings();
+    } catch (error) {
+      toast.error(isRTL ? 'خطأ في الرفض' : 'Error rejecting');
+    }
+  };
+
+  const handleMarkReturned = async (borrowingId) => {
+    try {
+      await api.put(`/borrowing/${borrowingId}/return`, { componentPhotoAfter: returnPhotoData, adminNotes: borrowingAdminNotes });
+      toast.success(isRTL ? 'تم تسجيل الإرجاع بنجاح' : 'Return recorded successfully');
+      setShowBorrowingModal(false);
+      setBorrowingAdminNotes('');
+      setReturnPhotoData('');
+      fetchBorrowings();
+    } catch (error) {
+      toast.error(isRTL ? 'خطأ في تسجيل الإرجاع' : 'Error recording return');
+    }
+  };
+
+  const handleReturnPhotoUpload = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error(isRTL ? 'حجم الصورة يجب أن يكون أقل من 5 ميجابايت' : 'Image must be less than 5MB');
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = (event) => setReturnPhotoData(event.target.result);
+    reader.readAsDataURL(file);
+  };
+
+  const handlePrintBorrowingDocument = (borrowing) => {
+    const printWindow = window.open('', '_blank');
+    const userName = borrowing.user?.firstName && borrowing.user?.lastName
+      ? `${borrowing.user.firstName} ${borrowing.user.lastName}`
+      : borrowing.user?.name || 'N/A';
+    const sectionLabel = sectionLabels[borrowing.section] || borrowing.section;
+    const formatDatePrint = (d) => d ? new Date(d).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }) : 'N/A';
+
+    const termsContent = [
+      { en: 'The borrower is fully responsible for the borrowed items and must return them in the same condition.', ar: 'يتحمل المستعير المسؤولية الكاملة عن العناصر المستعارة ويجب إعادتها بنفس الحالة.' },
+      { en: 'Items must be returned by the specified return date.', ar: 'يجب إعادة العناصر في تاريخ الإرجاع المحدد.' },
+      { en: 'Maximum borrowing period is 30 days. For longer periods, a new request must be submitted.', ar: 'الحد الأقصى لفترة الاستعارة 30 يومًا. للفترات الأطول، يجب تقديم طلب جديد.' },
+      { en: 'Late returns will result in warning emails. After 3 warnings, FABLAB will contact the borrower directly.', ar: 'سيؤدي التأخير في الإرجاع إلى رسائل تحذيرية. بعد 3 تحذيرات، سيتواصل فاب لاب مع المستعير مباشرة.' },
+      { en: 'Any damage or loss of borrowed items must be reported immediately.', ar: 'يجب الإبلاغ فورًا عن أي ضرر أو فقدان للعناصر المستعارة.' },
+      { en: 'The borrower is liable for repair or replacement costs of damaged/lost items.', ar: 'يتحمل المستعير تكاليف إصلاح أو استبدال العناصر التالفة أو المفقودة.' },
+      { en: 'Borrowed items may not be transferred to third parties.', ar: 'لا يجوز نقل العناصر المستعارة إلى أطراف ثالثة.' },
+      { en: 'FABLAB reserves the right to request early return of items if needed.', ar: 'يحتفظ فاب لاب بالحق في طلب الإرجاع المبكر للعناصر عند الحاجة.' },
+      { en: 'Repeated late returns may result in suspension of borrowing privileges.', ar: 'قد يؤدي التأخير المتكرر في الإرجاع إلى تعليق صلاحيات الاستعارة.' },
+      { en: 'By signing, the borrower acknowledges and agrees to all terms above.', ar: 'بالتوقيع، يقر المستعير ويوافق على جميع الشروط المذكورة أعلاه.' }
+    ];
+
+    const printContent = `
+      <!DOCTYPE html>
+      <html dir="rtl" lang="ar">
+      <head>
+        <title>Borrowing Agreement - ${borrowing.borrowingId}</title>
+        <style>
+          @page { size: A4; margin: 12mm; }
+          * { margin: 0; padding: 0; box-sizing: border-box; }
+          body { font-family: 'Segoe UI', Tahoma, Arial, sans-serif; padding: 15px; background: #fff; font-size: 11px; line-height: 1.5; color: #333; }
+          .header { background: linear-gradient(135deg, #1a56db, #2563eb); color: white; padding: 15px 20px; border-radius: 8px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
+          .header-center { text-align: center; flex: 1; }
+          .header-center h1 { font-size: 18px; margin: 0; }
+          .header-center p { font-size: 11px; opacity: 0.9; margin: 3px 0 0 0; }
+          .header img { width: 55px; height: 55px; object-fit: contain; }
+          .id-bar { display: flex; justify-content: space-between; margin-bottom: 12px; font-size: 11px; }
+          .id-bar span { background: #eff6ff; padding: 4px 12px; border-radius: 6px; color: #1e40af; font-weight: 600; }
+          .section-title { background: #1e40af; color: white; padding: 6px 14px; border-radius: 6px; font-size: 12px; font-weight: 700; margin: 12px 0 8px 0; }
+          .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 15px; }
+          .info-item { display: flex; justify-content: space-between; padding: 5px 8px; background: #f8fafc; border-radius: 4px; border: 1px solid #e2e8f0; }
+          .info-item .label { color: #64748b; font-weight: 600; }
+          .info-item .value { color: #1e293b; font-weight: 500; }
+          .photo-section { text-align: center; margin: 10px 0; }
+          .photo-section img { max-width: 250px; max-height: 180px; border-radius: 8px; border: 2px solid #e2e8f0; }
+          .terms-list { margin: 8px 0; }
+          .term-item { display: flex; gap: 8px; margin-bottom: 6px; align-items: flex-start; }
+          .term-num { background: #1e40af; color: white; border-radius: 50%; min-width: 20px; height: 20px; display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 700; margin-top: 2px; }
+          .term-text { font-size: 10px; line-height: 1.5; }
+          .term-text .ar { color: #333; }
+          .term-text .en { color: #64748b; font-size: 9px; }
+          .signatures { display: flex; justify-content: space-around; margin-top: 20px; padding-top: 15px; border-top: 2px solid #e2e8f0; }
+          .sig-block { text-align: center; width: 40%; }
+          .sig-line { border-bottom: 1px solid #333; margin: 35px 0 5px 0; }
+          .sig-label { font-size: 11px; font-weight: 600; color: #333; }
+          .sig-typed { font-style: italic; font-family: 'Brush Script MT', cursive, serif; font-size: 16px; color: #1e40af; margin-top: 5px; }
+          @media print { body { padding: 0; } }
+        </style>
+      </head>
+      <body>
+        <div class="header">
+          <img src="/logo.png" alt="FABLAB" />
+          <div class="header-center">
+            <h1>فاب لاب الأحساء | FABLAB Al-Ahsa</h1>
+            <p>اتفاقية استعارة مكونات | Component Borrowing Agreement</p>
+          </div>
+          <img src="/logo.png" alt="Foundation" />
+        </div>
+
+        <div class="id-bar">
+          <span>رقم الاستعارة | Borrowing ID: ${borrowing.borrowingId}</span>
+          <span>التاريخ | Date: ${formatDatePrint(borrowing.createdAt)}</span>
+        </div>
+
+        <div class="section-title">المعلومات الشخصية | Personal Information</div>
+        <div class="info-grid">
+          <div class="info-item"><span class="label">الاسم | Name</span><span class="value">${userName}</span></div>
+          <div class="info-item"><span class="label">رقم الهوية | ID</span><span class="value">${borrowing.user?.nationalId || 'N/A'}</span></div>
+          <div class="info-item"><span class="label">الهاتف | Phone</span><span class="value">${borrowing.user?.phoneNumber || 'N/A'}</span></div>
+          <div class="info-item"><span class="label">البريد | Email</span><span class="value">${borrowing.user?.email || 'N/A'}</span></div>
+        </div>
+
+        <div class="section-title">تفاصيل الاستعارة | Borrowing Details</div>
+        <div class="info-grid">
+          <div class="info-item"><span class="label">القسم | Section</span><span class="value">${sectionLabel}</span></div>
+          <div class="info-item"><span class="label">الحالة | Status</span><span class="value">${borrowing.status}</span></div>
+          <div class="info-item"><span class="label">تاريخ الاستعارة | Borrow Date</span><span class="value">${formatDatePrint(borrowing.borrowDate)}</span></div>
+          <div class="info-item"><span class="label">تاريخ الإرجاع | Return Date</span><span class="value">${formatDatePrint(borrowing.expectedReturnDate)}</span></div>
+        </div>
+        <div style="margin-top: 8px;">
+          <div class="info-item" style="display: block; padding: 8px;">
+            <span class="label">الغرض | Purpose:</span><br/>
+            <span class="value">${borrowing.purpose}</span>
+          </div>
+          <div class="info-item" style="display: block; padding: 8px; margin-top: 4px;">
+            <span class="label">وصف المكونات | Components:</span><br/>
+            <span class="value">${borrowing.componentDescription}</span>
+          </div>
+        </div>
+
+        ${borrowing.componentPhotoBefore ? `
+          <div class="section-title">صورة المكونات | Component Photo</div>
+          <div class="photo-section">
+            <img src="${borrowing.componentPhotoBefore}" alt="Components" />
+          </div>
+        ` : ''}
+
+        <div class="section-title">الشروط والأحكام | Terms & Conditions</div>
+        <div class="terms-list">
+          ${termsContent.map((t, i) => `
+            <div class="term-item">
+              <span class="term-num">${i + 1}</span>
+              <div class="term-text">
+                <div class="ar">${t.ar}</div>
+                <div class="en">${t.en}</div>
+              </div>
+            </div>
+          `).join('')}
+        </div>
+
+        <div class="signatures">
+          <div class="sig-block">
+            <div class="sig-label">توقيع المستعير | Borrower Signature</div>
+            <div class="sig-typed">${borrowing.signature || ''}</div>
+            <div class="sig-line"></div>
+            <div style="font-size: 10px; color: #666;">${userName}</div>
+          </div>
+          <div class="sig-block">
+            <div class="sig-label">توقيع موظف فاب لاب | FABLAB Employee</div>
+            <div class="sig-line"></div>
+            <div style="font-size: 10px; color: #666;">____________________</div>
+          </div>
+        </div>
+      </body>
+      </html>
+    `;
+
+    printWindow.document.write(printContent);
+    printWindow.document.close();
+    printWindow.onload = () => { printWindow.print(); };
   };
 
   // Open status modal for approval/rejection
@@ -2137,6 +2362,7 @@ const AdminDashboard = () => {
     { id: 'users', icon: 'users', labelEn: 'Users', labelAr: 'المستخدمين' },
     { id: 'analytics', icon: 'analytics', labelEn: 'Analytics', labelAr: 'التحليلات' },
     { id: 'schedule', icon: 'schedule', labelEn: 'Schedule', labelAr: 'الجدول' },
+    { id: 'borrowing', icon: 'borrowing', labelEn: 'Borrowing', labelAr: 'الاستعارة' },
     { id: 'settings', icon: 'settings', labelEn: 'Settings', labelAr: 'الإعدادات' }
   ];
 
@@ -2147,6 +2373,7 @@ const AdminDashboard = () => {
       users: <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>,
       analytics: <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>,
       schedule: <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>,
+      borrowing: <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>,
       settings: <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
     };
     return icons[iconName] || null;
@@ -3909,6 +4136,340 @@ const AdminDashboard = () => {
                   </div>
                 </div>
               </motion.div>
+            )}
+
+            {/* Borrowing Tab */}
+            {activeTab === 'borrowing' && (
+              <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }}>
+                <div className="content-header">
+                  <h2>{isRTL ? 'إدارة الاستعارات' : 'Borrowing Management'}</h2>
+                </div>
+
+                {/* Borrowing Filters */}
+                <div className="filters-bar" style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', marginBottom: '20px' }}>
+                  <select
+                    className="filter-select"
+                    value={borrowingFilters.status}
+                    onChange={(e) => { setBorrowingFilters({ ...borrowingFilters, status: e.target.value }); }}
+                    style={{ padding: '8px 12px', borderRadius: '8px', border: '1px solid var(--border-color)', background: 'var(--card-bg)', color: 'var(--text-primary)' }}
+                  >
+                    <option value="">{isRTL ? 'جميع الحالات' : 'All Statuses'}</option>
+                    <option value="pending">{isRTL ? 'قيد الانتظار' : 'Pending'}</option>
+                    <option value="approved">{isRTL ? 'مقبول' : 'Approved'}</option>
+                    <option value="borrowed">{isRTL ? 'مُستعار' : 'Borrowed'}</option>
+                    <option value="returned">{isRTL ? 'مُرجع' : 'Returned'}</option>
+                    <option value="overdue">{isRTL ? 'متأخر' : 'Overdue'}</option>
+                    <option value="rejected">{isRTL ? 'مرفوض' : 'Rejected'}</option>
+                  </select>
+                  <select
+                    className="filter-select"
+                    value={borrowingFilters.section}
+                    onChange={(e) => { setBorrowingFilters({ ...borrowingFilters, section: e.target.value }); }}
+                    style={{ padding: '8px 12px', borderRadius: '8px', border: '1px solid var(--border-color)', background: 'var(--card-bg)', color: 'var(--text-primary)' }}
+                  >
+                    <option value="">{isRTL ? 'جميع الأقسام' : 'All Sections'}</option>
+                    {Object.entries(sectionLabels).map(([key, label]) => (
+                      <option key={key} value={key}>{label}</option>
+                    ))}
+                  </select>
+                  <input
+                    type="text"
+                    placeholder={isRTL ? 'بحث بالاسم أو الهاتف...' : 'Search by name or phone...'}
+                    value={borrowingFilters.search}
+                    onChange={(e) => { setBorrowingFilters({ ...borrowingFilters, search: e.target.value }); }}
+                    style={{ padding: '8px 12px', borderRadius: '8px', border: '1px solid var(--border-color)', background: 'var(--card-bg)', color: 'var(--text-primary)', flex: 1, minWidth: '200px' }}
+                  />
+                  <button
+                    className="btn-action"
+                    onClick={() => fetchBorrowings()}
+                    style={{ padding: '8px 16px', borderRadius: '8px', background: '#2563eb', color: 'white', border: 'none', cursor: 'pointer', fontWeight: '600' }}
+                  >
+                    {isRTL ? 'بحث' : 'Search'}
+                  </button>
+                </div>
+
+                {/* Borrowing List */}
+                {loadingBorrowings ? (
+                  <div style={{ textAlign: 'center', padding: '40px' }}>
+                    <div className="loading-spinner" style={{ margin: '0 auto' }}></div>
+                  </div>
+                ) : selectedBorrowing ? (
+                  /* Borrowing Detail View */
+                  <div className="detail-view">
+                    <button
+                      onClick={() => setSelectedBorrowing(null)}
+                      style={{ display: 'flex', alignItems: 'center', gap: '6px', background: 'none', border: 'none', cursor: 'pointer', color: '#2563eb', fontWeight: '600', marginBottom: '16px', fontSize: '14px' }}
+                    >
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ transform: isRTL ? 'rotate(180deg)' : 'none' }}>
+                        <path d="m15 18-6-6 6-6"/>
+                      </svg>
+                      {isRTL ? 'العودة للقائمة' : 'Back to List'}
+                    </button>
+
+                    <div className="card" style={{ background: 'var(--card-bg)', border: '1px solid var(--border-color)', borderRadius: '12px', padding: '24px' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '12px' }}>
+                        <div>
+                          <h3 style={{ margin: 0, color: 'var(--text-primary)' }}>{selectedBorrowing.borrowingId}</h3>
+                          <span style={{
+                            display: 'inline-block', marginTop: '6px', padding: '4px 12px', borderRadius: '20px', fontSize: '12px', fontWeight: '600',
+                            background: selectedBorrowing.status === 'pending' ? '#fef3c7' : selectedBorrowing.status === 'approved' ? '#d1fae5' : selectedBorrowing.status === 'returned' ? '#dbeafe' : selectedBorrowing.status === 'overdue' ? '#fee2e2' : selectedBorrowing.status === 'rejected' ? '#fee2e2' : '#e0e7ff',
+                            color: selectedBorrowing.status === 'pending' ? '#92400e' : selectedBorrowing.status === 'approved' ? '#065f46' : selectedBorrowing.status === 'returned' ? '#1e40af' : selectedBorrowing.status === 'overdue' ? '#991b1b' : selectedBorrowing.status === 'rejected' ? '#991b1b' : '#3730a3'
+                          }}>
+                            {selectedBorrowing.status === 'pending' ? (isRTL ? 'قيد الانتظار' : 'Pending') :
+                             selectedBorrowing.status === 'approved' ? (isRTL ? 'مقبول' : 'Approved') :
+                             selectedBorrowing.status === 'borrowed' ? (isRTL ? 'مُستعار' : 'Borrowed') :
+                             selectedBorrowing.status === 'returned' ? (isRTL ? 'مُرجع' : 'Returned') :
+                             selectedBorrowing.status === 'overdue' ? (isRTL ? 'متأخر' : 'Overdue') :
+                             selectedBorrowing.status === 'rejected' ? (isRTL ? 'مرفوض' : 'Rejected') : selectedBorrowing.status}
+                          </span>
+                        </div>
+                        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                          <button onClick={() => handlePrintBorrowingDocument(selectedBorrowing)} style={{ padding: '8px 14px', borderRadius: '8px', background: '#2563eb', color: 'white', border: 'none', cursor: 'pointer', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px' }}>
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+                            {isRTL ? 'طباعة' : 'Print'}
+                          </button>
+                          {selectedBorrowing.status === 'pending' && (
+                            <>
+                              <button onClick={() => { setBorrowingModalAction('approve'); setShowBorrowingModal(true); }} style={{ padding: '8px 14px', borderRadius: '8px', background: '#22c55e', color: 'white', border: 'none', cursor: 'pointer', fontWeight: '600', fontSize: '13px' }}>
+                                {isRTL ? 'موافقة' : 'Approve'}
+                              </button>
+                              <button onClick={() => { setBorrowingModalAction('reject'); setShowBorrowingModal(true); }} style={{ padding: '8px 14px', borderRadius: '8px', background: '#ef4444', color: 'white', border: 'none', cursor: 'pointer', fontWeight: '600', fontSize: '13px' }}>
+                                {isRTL ? 'رفض' : 'Reject'}
+                              </button>
+                            </>
+                          )}
+                          {['approved', 'borrowed', 'overdue'].includes(selectedBorrowing.status) && (
+                            <button onClick={() => { setBorrowingModalAction('return'); setShowBorrowingModal(true); }} style={{ padding: '8px 14px', borderRadius: '8px', background: '#8b5cf6', color: 'white', border: 'none', cursor: 'pointer', fontWeight: '600', fontSize: '13px' }}>
+                              {isRTL ? 'تسجيل إرجاع' : 'Mark Returned'}
+                            </button>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* User Info */}
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '12px', marginBottom: '16px' }}>
+                        <div style={{ padding: '12px', background: 'var(--bg-secondary, #f8fafc)', borderRadius: '8px' }}>
+                          <div style={{ fontSize: '12px', color: 'var(--text-secondary, #64748b)' }}>{isRTL ? 'الاسم' : 'Name'}</div>
+                          <div style={{ fontWeight: '600', color: 'var(--text-primary)' }}>{selectedBorrowing.user?.firstName} {selectedBorrowing.user?.lastName}</div>
+                        </div>
+                        <div style={{ padding: '12px', background: 'var(--bg-secondary, #f8fafc)', borderRadius: '8px' }}>
+                          <div style={{ fontSize: '12px', color: 'var(--text-secondary, #64748b)' }}>{isRTL ? 'الهاتف' : 'Phone'}</div>
+                          <div style={{ fontWeight: '600', color: 'var(--text-primary)' }}>{selectedBorrowing.user?.phoneNumber || 'N/A'}</div>
+                        </div>
+                        <div style={{ padding: '12px', background: 'var(--bg-secondary, #f8fafc)', borderRadius: '8px' }}>
+                          <div style={{ fontSize: '12px', color: 'var(--text-secondary, #64748b)' }}>{isRTL ? 'البريد' : 'Email'}</div>
+                          <div style={{ fontWeight: '600', color: 'var(--text-primary)' }}>{selectedBorrowing.user?.email || 'N/A'}</div>
+                        </div>
+                        <div style={{ padding: '12px', background: 'var(--bg-secondary, #f8fafc)', borderRadius: '8px' }}>
+                          <div style={{ fontSize: '12px', color: 'var(--text-secondary, #64748b)' }}>{isRTL ? 'رقم الهوية' : 'National ID'}</div>
+                          <div style={{ fontWeight: '600', color: 'var(--text-primary)' }}>{selectedBorrowing.user?.nationalId || 'N/A'}</div>
+                        </div>
+                      </div>
+
+                      {/* Borrowing Details */}
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '12px', marginBottom: '16px' }}>
+                        <div style={{ padding: '12px', background: '#eff6ff', borderRadius: '8px', border: '1px solid #bfdbfe' }}>
+                          <div style={{ fontSize: '12px', color: '#1e40af' }}>{isRTL ? 'القسم' : 'Section'}</div>
+                          <div style={{ fontWeight: '600', color: '#1e3a8a' }}>{sectionLabels[selectedBorrowing.section] || selectedBorrowing.section}</div>
+                        </div>
+                        <div style={{ padding: '12px', background: '#eff6ff', borderRadius: '8px', border: '1px solid #bfdbfe' }}>
+                          <div style={{ fontSize: '12px', color: '#1e40af' }}>{isRTL ? 'تاريخ الاستعارة' : 'Borrow Date'}</div>
+                          <div style={{ fontWeight: '600', color: '#1e3a8a' }}>{selectedBorrowing.borrowDate}</div>
+                        </div>
+                        <div style={{ padding: '12px', background: '#eff6ff', borderRadius: '8px', border: '1px solid #bfdbfe' }}>
+                          <div style={{ fontSize: '12px', color: '#1e40af' }}>{isRTL ? 'تاريخ الإرجاع المتوقع' : 'Expected Return'}</div>
+                          <div style={{ fontWeight: '600', color: '#1e3a8a' }}>{selectedBorrowing.expectedReturnDate}</div>
+                        </div>
+                        {selectedBorrowing.actualReturnDate && (
+                          <div style={{ padding: '12px', background: '#d1fae5', borderRadius: '8px', border: '1px solid #6ee7b7' }}>
+                            <div style={{ fontSize: '12px', color: '#065f46' }}>{isRTL ? 'تاريخ الإرجاع الفعلي' : 'Actual Return'}</div>
+                            <div style={{ fontWeight: '600', color: '#064e3b' }}>{selectedBorrowing.actualReturnDate}</div>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Purpose & Description */}
+                      <div style={{ marginBottom: '16px' }}>
+                        <div style={{ padding: '12px', background: 'var(--bg-secondary, #f8fafc)', borderRadius: '8px', marginBottom: '8px' }}>
+                          <div style={{ fontSize: '12px', color: 'var(--text-secondary, #64748b)', marginBottom: '4px' }}>{isRTL ? 'الغرض' : 'Purpose'}</div>
+                          <div style={{ color: 'var(--text-primary)' }}>{selectedBorrowing.purpose}</div>
+                        </div>
+                        <div style={{ padding: '12px', background: 'var(--bg-secondary, #f8fafc)', borderRadius: '8px' }}>
+                          <div style={{ fontSize: '12px', color: 'var(--text-secondary, #64748b)', marginBottom: '4px' }}>{isRTL ? 'وصف المكونات' : 'Component Description'}</div>
+                          <div style={{ color: 'var(--text-primary)' }}>{selectedBorrowing.componentDescription}</div>
+                        </div>
+                      </div>
+
+                      {/* Photos */}
+                      <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap' }}>
+                        {selectedBorrowing.componentPhotoBefore && (
+                          <div>
+                            <div style={{ fontSize: '12px', color: 'var(--text-secondary, #64748b)', marginBottom: '6px' }}>{isRTL ? 'صورة قبل الاستعارة' : 'Before Photo'}</div>
+                            <img src={selectedBorrowing.componentPhotoBefore} alt="Before" style={{ maxWidth: '200px', maxHeight: '150px', borderRadius: '8px', border: '2px solid #e2e8f0', objectFit: 'cover' }} />
+                          </div>
+                        )}
+                        {selectedBorrowing.componentPhotoAfter && (
+                          <div>
+                            <div style={{ fontSize: '12px', color: 'var(--text-secondary, #64748b)', marginBottom: '6px' }}>{isRTL ? 'صورة بعد الإرجاع' : 'After Photo'}</div>
+                            <img src={selectedBorrowing.componentPhotoAfter} alt="After" style={{ maxWidth: '200px', maxHeight: '150px', borderRadius: '8px', border: '2px solid #e2e8f0', objectFit: 'cover' }} />
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Admin Notes */}
+                      {selectedBorrowing.adminNotes && (
+                        <div style={{ marginTop: '16px', padding: '12px', background: '#fef3c7', borderRadius: '8px', border: '1px solid #fcd34d' }}>
+                          <div style={{ fontSize: '12px', color: '#92400e', marginBottom: '4px' }}>{isRTL ? 'ملاحظات الإدارة' : 'Admin Notes'}</div>
+                          <div style={{ color: '#78350f' }}>{selectedBorrowing.adminNotes}</div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ) : (
+                  /* Borrowing Table */
+                  <div className="data-table-container" style={{ overflowX: 'auto' }}>
+                    {borrowings.length === 0 ? (
+                      <div style={{ textAlign: 'center', padding: '40px', color: 'var(--text-secondary, #64748b)' }}>
+                        {isRTL ? 'لا توجد طلبات استعارة' : 'No borrowing requests found'}
+                      </div>
+                    ) : (
+                      <table className="data-table" style={{ width: '100%', borderCollapse: 'collapse' }}>
+                        <thead>
+                          <tr>
+                            <th style={{ padding: '12px', textAlign: isRTL ? 'right' : 'left', borderBottom: '2px solid var(--border-color)', color: 'var(--text-secondary, #64748b)', fontSize: '12px', fontWeight: '600' }}>{isRTL ? 'الرقم' : 'ID'}</th>
+                            <th style={{ padding: '12px', textAlign: isRTL ? 'right' : 'left', borderBottom: '2px solid var(--border-color)', color: 'var(--text-secondary, #64748b)', fontSize: '12px', fontWeight: '600' }}>{isRTL ? 'المستعير' : 'Borrower'}</th>
+                            <th style={{ padding: '12px', textAlign: isRTL ? 'right' : 'left', borderBottom: '2px solid var(--border-color)', color: 'var(--text-secondary, #64748b)', fontSize: '12px', fontWeight: '600' }}>{isRTL ? 'القسم' : 'Section'}</th>
+                            <th style={{ padding: '12px', textAlign: isRTL ? 'right' : 'left', borderBottom: '2px solid var(--border-color)', color: 'var(--text-secondary, #64748b)', fontSize: '12px', fontWeight: '600' }}>{isRTL ? 'تاريخ الإرجاع' : 'Return Date'}</th>
+                            <th style={{ padding: '12px', textAlign: isRTL ? 'right' : 'left', borderBottom: '2px solid var(--border-color)', color: 'var(--text-secondary, #64748b)', fontSize: '12px', fontWeight: '600' }}>{isRTL ? 'الحالة' : 'Status'}</th>
+                            <th style={{ padding: '12px', textAlign: 'center', borderBottom: '2px solid var(--border-color)', color: 'var(--text-secondary, #64748b)', fontSize: '12px', fontWeight: '600' }}>{isRTL ? 'إجراءات' : 'Actions'}</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {borrowings.map((b) => (
+                            <tr key={b.borrowingId} style={{ borderBottom: '1px solid var(--border-color)', cursor: 'pointer' }} onClick={() => setSelectedBorrowing(b)}>
+                              <td style={{ padding: '12px', fontWeight: '600', color: '#2563eb' }}>{b.borrowingId}</td>
+                              <td style={{ padding: '12px', color: 'var(--text-primary)' }}>{b.user?.firstName} {b.user?.lastName}</td>
+                              <td style={{ padding: '12px', color: 'var(--text-primary)' }}>{sectionLabels[b.section] || b.section}</td>
+                              <td style={{ padding: '12px', color: 'var(--text-primary)' }}>{b.expectedReturnDate}</td>
+                              <td style={{ padding: '12px' }}>
+                                <span style={{
+                                  padding: '4px 10px', borderRadius: '20px', fontSize: '11px', fontWeight: '600',
+                                  background: b.status === 'pending' ? '#fef3c7' : b.status === 'approved' ? '#d1fae5' : b.status === 'returned' ? '#dbeafe' : b.status === 'overdue' ? '#fee2e2' : b.status === 'rejected' ? '#fee2e2' : '#e0e7ff',
+                                  color: b.status === 'pending' ? '#92400e' : b.status === 'approved' ? '#065f46' : b.status === 'returned' ? '#1e40af' : b.status === 'overdue' ? '#991b1b' : b.status === 'rejected' ? '#991b1b' : '#3730a3'
+                                }}>
+                                  {b.status === 'pending' ? (isRTL ? 'قيد الانتظار' : 'Pending') :
+                                   b.status === 'approved' ? (isRTL ? 'مقبول' : 'Approved') :
+                                   b.status === 'borrowed' ? (isRTL ? 'مُستعار' : 'Borrowed') :
+                                   b.status === 'returned' ? (isRTL ? 'مُرجع' : 'Returned') :
+                                   b.status === 'overdue' ? (isRTL ? 'متأخر' : 'Overdue') :
+                                   b.status === 'rejected' ? (isRTL ? 'مرفوض' : 'Rejected') : b.status}
+                                </span>
+                              </td>
+                              <td style={{ padding: '12px', textAlign: 'center' }} onClick={(e) => e.stopPropagation()}>
+                                <div style={{ display: 'flex', gap: '6px', justifyContent: 'center' }}>
+                                  <button onClick={() => setSelectedBorrowing(b)} style={{ padding: '6px 10px', borderRadius: '6px', background: '#eff6ff', color: '#2563eb', border: 'none', cursor: 'pointer', fontSize: '12px', fontWeight: '600' }}>
+                                    {isRTL ? 'عرض' : 'View'}
+                                  </button>
+                                  <button onClick={() => handlePrintBorrowingDocument(b)} style={{ padding: '6px 10px', borderRadius: '6px', background: '#f0fdf4', color: '#16a34a', border: 'none', cursor: 'pointer', fontSize: '12px', fontWeight: '600' }}>
+                                    {isRTL ? 'طباعة' : 'Print'}
+                                  </button>
+                                </div>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    )}
+
+                    {/* Pagination */}
+                    {borrowingPagination.pages > 1 && (
+                      <div style={{ display: 'flex', justifyContent: 'center', gap: '8px', marginTop: '16px' }}>
+                        {Array.from({ length: borrowingPagination.pages }, (_, i) => i + 1).map(pageNum => (
+                          <button
+                            key={pageNum}
+                            onClick={() => fetchBorrowings(pageNum)}
+                            style={{
+                              padding: '6px 12px', borderRadius: '6px', border: '1px solid var(--border-color)', cursor: 'pointer',
+                              background: pageNum === borrowingPagination.page ? '#2563eb' : 'var(--card-bg)',
+                              color: pageNum === borrowingPagination.page ? 'white' : 'var(--text-primary)',
+                              fontWeight: '600', fontSize: '13px'
+                            }}
+                          >
+                            {pageNum}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </motion.div>
+            )}
+
+            {/* Borrowing Action Modal */}
+            {showBorrowingModal && selectedBorrowing && (
+              <div className="modal-overlay" style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }} onClick={() => setShowBorrowingModal(false)}>
+                <motion.div
+                  initial={{ scale: 0.9, opacity: 0 }}
+                  animate={{ scale: 1, opacity: 1 }}
+                  style={{ background: 'var(--card-bg, white)', borderRadius: '16px', padding: '28px', maxWidth: '500px', width: '90%', maxHeight: '80vh', overflowY: 'auto' }}
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <h3 style={{ margin: '0 0 16px 0', color: 'var(--text-primary)' }}>
+                    {borrowingModalAction === 'approve' ? (isRTL ? 'الموافقة على الاستعارة' : 'Approve Borrowing') :
+                     borrowingModalAction === 'reject' ? (isRTL ? 'رفض الاستعارة' : 'Reject Borrowing') :
+                     (isRTL ? 'تسجيل الإرجاع' : 'Record Return')}
+                  </h3>
+
+                  <div style={{ marginBottom: '16px' }}>
+                    <label style={{ display: 'block', marginBottom: '6px', fontWeight: '600', fontSize: '14px', color: 'var(--text-secondary, #64748b)' }}>
+                      {isRTL ? 'ملاحظات (اختياري)' : 'Notes (optional)'}
+                    </label>
+                    <textarea
+                      value={borrowingAdminNotes}
+                      onChange={(e) => setBorrowingAdminNotes(e.target.value)}
+                      rows="3"
+                      style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid var(--border-color)', background: 'var(--bg-secondary, #f8fafc)', color: 'var(--text-primary)', resize: 'vertical', fontSize: '14px' }}
+                      placeholder={isRTL ? 'أضف ملاحظات...' : 'Add notes...'}
+                    />
+                  </div>
+
+                  {borrowingModalAction === 'return' && (
+                    <div style={{ marginBottom: '16px' }}>
+                      <label style={{ display: 'block', marginBottom: '6px', fontWeight: '600', fontSize: '14px', color: 'var(--text-secondary, #64748b)' }}>
+                        {isRTL ? 'صورة الإرجاع (اختياري)' : 'Return Photo (optional)'}
+                      </label>
+                      <input type="file" accept="image/*" onChange={handleReturnPhotoUpload} style={{ fontSize: '14px' }} />
+                      {returnPhotoData && (
+                        <img src={returnPhotoData} alt="Return" style={{ marginTop: '8px', maxWidth: '150px', maxHeight: '100px', borderRadius: '8px', objectFit: 'cover' }} />
+                      )}
+                    </div>
+                  )}
+
+                  <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
+                    <button
+                      onClick={() => { setShowBorrowingModal(false); setBorrowingAdminNotes(''); setReturnPhotoData(''); }}
+                      style={{ padding: '10px 20px', borderRadius: '8px', border: '1px solid var(--border-color)', background: 'transparent', color: 'var(--text-primary)', cursor: 'pointer', fontWeight: '600' }}
+                    >
+                      {isRTL ? 'إلغاء' : 'Cancel'}
+                    </button>
+                    <button
+                      onClick={() => {
+                        if (borrowingModalAction === 'approve') handleApproveBorrowing(selectedBorrowing.borrowingId);
+                        else if (borrowingModalAction === 'reject') handleRejectBorrowing(selectedBorrowing.borrowingId);
+                        else if (borrowingModalAction === 'return') handleMarkReturned(selectedBorrowing.borrowingId);
+                      }}
+                      style={{
+                        padding: '10px 20px', borderRadius: '8px', border: 'none', cursor: 'pointer', fontWeight: '600', color: 'white',
+                        background: borrowingModalAction === 'approve' ? '#22c55e' : borrowingModalAction === 'reject' ? '#ef4444' : '#8b5cf6'
+                      }}
+                    >
+                      {borrowingModalAction === 'approve' ? (isRTL ? 'موافقة' : 'Approve') :
+                       borrowingModalAction === 'reject' ? (isRTL ? 'رفض' : 'Reject') :
+                       (isRTL ? 'تسجيل الإرجاع' : 'Record Return')}
+                    </button>
+                  </div>
+                </motion.div>
+              </div>
             )}
 
             {/* Settings Tab */}

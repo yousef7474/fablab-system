@@ -23,6 +23,7 @@ const EliteWork = require('./EliteWork');
 const EliteSchedule = require('./EliteSchedule');
 const Settings = require('./Settings');
 const WorkingHoursOverride = require('./WorkingHoursOverride');
+const Borrowing = require('./Borrowing');
 
 // Define relationships
 User.hasMany(Registration, { foreignKey: 'userId', as: 'registrations' });
@@ -139,6 +140,16 @@ Admin.hasMany(EliteSchedule, { foreignKey: 'createdById', as: 'createdSchedules'
 WorkingHoursOverride.belongsTo(Admin, { foreignKey: 'createdById', as: 'creator' });
 Admin.hasMany(WorkingHoursOverride, { foreignKey: 'createdById', as: 'createdOverrides' });
 
+// Borrowing relationships
+Borrowing.belongsTo(User, { foreignKey: 'userId', as: 'user' });
+User.hasMany(Borrowing, { foreignKey: 'userId', as: 'borrowings' });
+
+Borrowing.belongsTo(Admin, { foreignKey: 'approvedById', as: 'approvedBy' });
+Admin.hasMany(Borrowing, { foreignKey: 'approvedById', as: 'approvedBorrowings' });
+
+Borrowing.belongsTo(Admin, { foreignKey: 'returnedById', as: 'returnProcessor' });
+Admin.hasMany(Borrowing, { foreignKey: 'returnedById', as: 'processedReturns' });
+
 // Sync database
 const syncDatabase = async () => {
   try {
@@ -197,5 +208,6 @@ module.exports = {
   EliteSchedule,
   Settings,
   WorkingHoursOverride,
+  Borrowing,
   syncDatabase
 };

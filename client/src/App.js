@@ -12,6 +12,7 @@ import EliteLogin from './components/EliteRegistration/EliteLogin';
 import EliteUserAccount from './components/EliteRegistration/EliteUserAccount';
 import AdminLogin from './components/Admin/AdminLogin';
 import AdminDashboard from './components/Admin/AdminDashboard';
+import BorrowingForm from './components/BorrowingForm/BorrowingForm';
 import ManagerDashboard from './components/Manager/ManagerDashboard';
 import LanguageSelector from './components/LanguageSelector';
 
@@ -35,6 +36,7 @@ const AppContent = () => {
         <Route path="/elite-dashboard" element={<EliteDashboard />} />
         <Route path="/elite/login" element={<EliteLogin />} />
         <Route path="/elite/account" element={<EliteUserAccount />} />
+        <Route path="/borrow" element={<BorrowingForm />} />
         <Route path="/admin/login" element={<AdminLogin />} />
         <Route path="/admin/dashboard/*" element={<AdminDashboard />} />
         <Route path="/manager/dashboard/*" element={<ManagerDashboard />} />
