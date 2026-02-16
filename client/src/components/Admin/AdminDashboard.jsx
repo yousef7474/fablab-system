@@ -135,6 +135,10 @@ const AdminDashboard = () => {
   const [scheduleFilter, setScheduleFilter] = useState('all'); // 'all' or employee section
   const [theme, setTheme] = useState(() => localStorage.getItem('adminTheme') || 'light');
 
+  // Working hours settings
+  const [workingHours, setWorkingHours] = useState({ startTime: '11:00', endTime: '19:00', workingDays: [0, 1, 2, 3, 4] });
+  const [savingWorkingHours, setSavingWorkingHours] = useState(false);
+
   // Status modal states
   const [showStatusModal, setShowStatusModal] = useState(false);
   const [statusModalAction, setStatusModalAction] = useState(''); // 'approve' or 'reject'
@@ -228,6 +232,7 @@ const AdminDashboard = () => {
     setAdminData(JSON.parse(admin));
     fetchAnalytics();
     fetchRegistrations();
+    fetchWorkingHours();
   }, [navigate]);
 
   const fetchAnalytics = async () => {
@@ -252,6 +257,28 @@ const AdminDashboard = () => {
       setAnalyticsData(response.data);
     } catch (error) {
       console.error('Error fetching enhanced analytics:', error);
+    }
+  };
+
+  const fetchWorkingHours = async () => {
+    try {
+      const response = await api.get('/settings/working-hours');
+      setWorkingHours(response.data);
+    } catch (error) {
+      console.error('Error fetching working hours:', error);
+    }
+  };
+
+  const handleUpdateWorkingHours = async () => {
+    setSavingWorkingHours(true);
+    try {
+      await api.put('/settings/working-hours', workingHours);
+      toast.success(isRTL ? 'تم تحديث ساعات العمل بنجاح' : 'Working hours updated successfully');
+    } catch (error) {
+      console.error('Error updating working hours:', error);
+      toast.error(isRTL ? 'خطأ في تحديث ساعات العمل' : 'Error updating working hours');
+    } finally {
+      setSavingWorkingHours(false);
     }
   };
 
@@ -3917,6 +3944,69 @@ const AdminDashboard = () => {
                           <span>{isRTL ? 'داكن' : 'Dark'}</span>
                         </button>
                       </div>
+                    </div>
+                  </div>
+
+                  <div className="settings-card">
+                    <h3>{isRTL ? 'ساعات العمل' : 'Working Hours'}</h3>
+                    <div className="settings-form">
+                      <div className="form-group">
+                        <label>{isRTL ? 'وقت البداية' : 'Start Time'}</label>
+                        <input
+                          type="time"
+                          value={workingHours.startTime}
+                          onChange={(e) => setWorkingHours(prev => ({ ...prev, startTime: e.target.value }))}
+                        />
+                      </div>
+                      <div className="form-group">
+                        <label>{isRTL ? 'وقت النهاية' : 'End Time'}</label>
+                        <input
+                          type="time"
+                          value={workingHours.endTime}
+                          onChange={(e) => setWorkingHours(prev => ({ ...prev, endTime: e.target.value }))}
+                        />
+                      </div>
+                      <div className="form-group">
+                        <label>{isRTL ? 'أيام العمل' : 'Working Days'}</label>
+                        <div className="working-days-checkboxes" style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginTop: '8px' }}>
+                          {[
+                            { value: 0, en: 'Sun', ar: 'أحد' },
+                            { value: 1, en: 'Mon', ar: 'إثن' },
+                            { value: 2, en: 'Tue', ar: 'ثلا' },
+                            { value: 3, en: 'Wed', ar: 'أرب' },
+                            { value: 4, en: 'Thu', ar: 'خمي' },
+                            { value: 5, en: 'Fri', ar: 'جمع' },
+                            { value: 6, en: 'Sat', ar: 'سبت' }
+                          ].map(day => (
+                            <label key={day.value} style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer', padding: '4px 8px', borderRadius: '6px', background: workingHours.workingDays.includes(day.value) ? 'var(--primary-color, #6366f1)' : 'var(--bg-secondary, #f1f5f9)', color: workingHours.workingDays.includes(day.value) ? '#fff' : 'inherit', transition: 'all 0.2s' }}>
+                              <input
+                                type="checkbox"
+                                checked={workingHours.workingDays.includes(day.value)}
+                                onChange={(e) => {
+                                  setWorkingHours(prev => ({
+                                    ...prev,
+                                    workingDays: e.target.checked
+                                      ? [...prev.workingDays, day.value].sort()
+                                      : prev.workingDays.filter(d => d !== day.value)
+                                  }));
+                                }}
+                                style={{ display: 'none' }}
+                              />
+                              {isRTL ? day.ar : day.en}
+                            </label>
+                          ))}
+                        </div>
+                      </div>
+                      <button
+                        className="btn btn-primary"
+                        onClick={handleUpdateWorkingHours}
+                        disabled={savingWorkingHours}
+                        style={{ marginTop: '12px' }}
+                      >
+                        {savingWorkingHours
+                          ? (isRTL ? 'جاري الحفظ...' : 'Saving...')
+                          : (isRTL ? 'حفظ ساعات العمل' : 'Save Working Hours')}
+                      </button>
                     </div>
                   </div>
 

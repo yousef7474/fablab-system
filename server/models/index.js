@@ -21,6 +21,7 @@ const EliteCredit = require('./EliteCredit');
 const EliteTask = require('./EliteTask');
 const EliteWork = require('./EliteWork');
 const EliteSchedule = require('./EliteSchedule');
+const Settings = require('./Settings');
 
 // Define relationships
 User.hasMany(Registration, { foreignKey: 'userId', as: 'registrations' });
@@ -156,6 +157,9 @@ const syncDatabase = async () => {
 
     await sequelize.sync({ alter: true });
     console.log('✅ Database synchronized successfully.');
+
+    // Seed default settings
+    await Settings.seedDefaults();
   } catch (error) {
     console.error('❌ Error synchronizing database:', error);
   }
@@ -186,5 +190,6 @@ module.exports = {
   EliteTask,
   EliteWork,
   EliteSchedule,
+  Settings,
   syncDatabase
 };

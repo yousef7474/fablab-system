@@ -1,7 +1,25 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useTranslation } from 'react-i18next';
+import api from '../../config/api';
 import './FabyBot.css';
+
+// Helper function to format time as AM/PM
+const formatTimeAMPM = (time24) => {
+  if (!time24) return '';
+  const [hours, minutes] = time24.split(':').map(Number);
+  const period = hours >= 12 ? 'PM' : 'AM';
+  const hours12 = hours % 12 || 12;
+  return `${hours12}:${String(minutes).padStart(2, '0')} ${period}`;
+};
+
+const formatTimeAMPMAr = (time24) => {
+  if (!time24) return '';
+  const [hours, minutes] = time24.split(':').map(Number);
+  const period = hours >= 12 ? 'مساءً' : 'صباحاً';
+  const hours12 = hours % 12 || 12;
+  return `${hours12}:${String(minutes).padStart(2, '0')} ${period}`;
+};
 
 const WELCOME_SHOWN_KEY = 'faby_welcome_shown';
 
@@ -14,7 +32,35 @@ const FabyBot = ({ currentStep, formData }) => {
   const [isTyping, setIsTyping] = useState(false);
   const [showQuickActions, setShowQuickActions] = useState(true);
   const [showWelcome, setShowWelcome] = useState(false);
+  const [workingHoursData, setWorkingHoursData] = useState({ startTime: '11:00', endTime: '19:00', workingDays: [0, 1, 2, 3, 4] });
   const messagesEndRef = useRef(null);
+
+  // Fetch working hours
+  useEffect(() => {
+    const fetchWorkingHours = async () => {
+      try {
+        const response = await api.get('/settings/working-hours');
+        setWorkingHoursData(response.data);
+      } catch (error) {
+        console.error('Error fetching working hours:', error);
+      }
+    };
+    fetchWorkingHours();
+  }, []);
+
+  // Dynamic working hours display helpers
+  const dayNamesEn = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+  const dayNamesAr = ['الأحد','الإثنين','الثلاثاء','الأربعاء','الخميس','الجمعة','السبت'];
+  const sortedDays = [...workingHoursData.workingDays].sort();
+  const nonWorkingDays = [0,1,2,3,4,5,6].filter(d => !workingHoursData.workingDays.includes(d));
+  const workingDaysRangeEn = sortedDays.length > 0 ? `${dayNamesEn[sortedDays[0]]} - ${dayNamesEn[sortedDays[sortedDays.length-1]]}` : '';
+  const workingDaysRangeAr = sortedDays.length > 0 ? `${dayNamesAr[sortedDays[0]]} - ${dayNamesAr[sortedDays[sortedDays.length-1]]}` : '';
+  const closedDaysEn = nonWorkingDays.map(d => dayNamesEn[d]).join(' and ');
+  const closedDaysAr = nonWorkingDays.map(d => dayNamesAr[d]).join(' و');
+  const hoursEn = `${formatTimeAMPM(workingHoursData.startTime)} to ${formatTimeAMPM(workingHoursData.endTime)}`;
+  const hoursAr = `من ${formatTimeAMPMAr(workingHoursData.startTime)} حتى ${formatTimeAMPMAr(workingHoursData.endTime)}`;
+  const hoursRangeEn = `${formatTimeAMPM(workingHoursData.startTime)} - ${formatTimeAMPM(workingHoursData.endTime)}`;
+  const hoursRangeAr = `${formatTimeAMPMAr(workingHoursData.startTime)} - ${formatTimeAMPMAr(workingHoursData.endTime)}`;
 
   // FABY's personality and character
   const fabyCharacter = {
@@ -79,8 +125,8 @@ Abdulmonem Al-Rashed Humanitarian Foundation - Al-Ahsa
 0555022605
 
 ⏰ **أوقات التواصل:**
-الأحد - الخميس
-11:00 صباحاً - 7:00 مساءً
+${workingDaysRangeAr}
+${hoursRangeAr}
 
 💬 فريقنا جاهز للإجابة على جميع استفساراتكم ومساعدتكم في أي وقت خلال ساعات العمل.
 
@@ -93,8 +139,8 @@ To contact our customer service team directly:
 0555022605
 
 ⏰ **Contact Hours:**
-Sunday - Thursday
-11:00 AM - 7:00 PM
+${workingDaysRangeEn}
+${hoursRangeEn}
 
 💬 Our team is ready to answer all your inquiries and assist you during working hours.
 
@@ -133,18 +179,18 @@ Would you like to know more about a specific service?`
       response: {
         ar: `⏰ **أوقات العمل:**
 
-📅 الأحد - الخميس
-🕗 من 11:00 صباحاً حتى 7:00 مساءً
+📅 ${workingDaysRangeAr}
+🕗 ${hoursAr}
 
-❌ مغلق يومي الجمعة والسبت
+❌ مغلق يومي ${closedDaysAr}
 
 💡 نصيحة: احجز موعدك مسبقاً لضمان توفر الخدمة!`,
         en: `⏰ **Working Hours:**
 
-📅 Sunday - Thursday
-🕗 11:00 AM to 7:00 PM
+📅 ${workingDaysRangeEn}
+🕗 ${hoursEn}
 
-❌ Closed on Friday and Saturday
+❌ Closed on ${closedDaysEn}
 
 💡 Tip: Book your appointment in advance to ensure service availability!`
       }
@@ -184,8 +230,8 @@ Would you like to know more about a specific service?`
         ar: `📅 **حجز المواعيد:**
 
 🟢 الأيام الخضراء في التقويم متاحة للحجز
-🔴 أيام الجمعة والسبت غير متاحة
-⏰ المواعيد المتاحة من 11:00 ص - 7:00 م
+🔴 أيام ${closedDaysAr} غير متاحة
+⏰ المواعيد المتاحة ${hoursRangeAr}
 
 **المدد المتاحة:**
 • 30 دقيقة
@@ -196,8 +242,8 @@ Would you like to know more about a specific service?`
         en: `📅 **Booking Appointments:**
 
 🟢 Green days on the calendar are available
-🔴 Friday and Saturday are unavailable
-⏰ Available times: 11:00 AM - 7:00 PM
+🔴 ${closedDaysEn} are unavailable
+⏰ Available times: ${hoursRangeEn}
 
 **Available Durations:**
 • 30 minutes
@@ -298,7 +344,7 @@ Costs vary based on:
 📱 **خدمة العملاء (واتساب/اتصال):**
 0555022605
 
-⏰ أوقات التواصل: الأحد - الخميس، 11:00 ص - 7:00 م
+⏰ أوقات التواصل: ${workingDaysRangeAr}، ${hoursRangeAr}
 
 💡 يمكنك أيضاً إرسال استفساراتك من خلال نموذج التسجيل!`,
         en: `📞 **Contact Information:**
@@ -311,7 +357,7 @@ Costs vary based on:
 📱 **Customer Service (WhatsApp/Call):**
 0555022605
 
-⏰ Contact Hours: Sunday - Thursday, 11:00 AM - 7:00 PM
+⏰ Contact Hours: ${workingDaysRangeEn}, ${hoursRangeEn}
 
 💡 You can also send inquiries through the registration form!`
       }

@@ -1,6 +1,29 @@
-const { Registration, Task, User } = require('../models');
+const { Registration, Task, User, Settings } = require('../models');
 const { Op } = require('sequelize');
 const moment = require('moment');
+
+// Helper to fetch working hours from DB with fallback defaults
+const getWorkingHoursSettings = async () => {
+  try {
+    const startSetting = await Settings.findByPk('working_hours_start');
+    const endSetting = await Settings.findByPk('working_hours_end');
+    const daysSetting = await Settings.findByPk('working_days');
+
+    const startTime = startSetting ? startSetting.value : '11:00';
+    const endTime = endSetting ? endSetting.value : '19:00';
+    const workingDays = daysSetting ? daysSetting.value : [0, 1, 2, 3, 4];
+
+    const [startH, startM] = startTime.split(':').map(Number);
+    const [endH, endM] = endTime.split(':').map(Number);
+    const startMinutes = startH * 60 + (startM || 0);
+    const endMinutes = endH * 60 + (endM || 0);
+
+    return { startHour: startH, endHour: endH, startMinutes, endMinutes, startTime, endTime, workingDays };
+  } catch (error) {
+    console.error('Error fetching working hours settings, using defaults:', error);
+    return { startHour: 11, endHour: 19, startTime: '11:00', endTime: '19:00', workingDays: [0, 1, 2, 3, 4] };
+  }
+};
 
 // Helper to normalize time to HH:mm format
 const normalizeTime = (time) => {
@@ -142,28 +165,29 @@ const checkTimeSlotAvailability = async (section, date, startTime, endTime, excl
 // Get available time slots for a specific section and date
 const getAvailableTimeSlots = async (section, date) => {
   try {
-    // Working hours: Sunday to Thursday, 11 AM to 7 PM
+    // Fetch dynamic working hours from DB
+    const workingHoursSettings = await getWorkingHoursSettings();
     const dayOfWeek = moment(date).day();
 
-    // Check if it's a working day (Sunday=0, Thursday=4 in moment.js)
-    if (dayOfWeek === 5 || dayOfWeek === 6) {
-      return []; // Friday and Saturday are not working days
+    // Check if it's a working day
+    if (!workingHoursSettings.workingDays.includes(dayOfWeek)) {
+      return []; // Not a working day
     }
 
-    // Generate all possible 30-minute slots from 11 AM to 7 PM
+    // Generate all possible 30-minute slots based on configured hours
     const slots = [];
-    const startHour = 11;
-    const endHour = 19; // 7 PM
+    const startMin = workingHoursSettings.startMinutes;
+    const endMin = workingHoursSettings.endMinutes;
 
-    for (let hour = startHour; hour < endHour; hour++) {
-      for (let minute = 0; minute < 60; minute += 30) {
-        const timeStr = `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
-        slots.push({
-          time: timeStr,
-          timeInMinutes: hour * 60 + minute,
-          available: true
-        });
-      }
+    for (let m = startMin; m < endMin; m += 30) {
+      const hour = Math.floor(m / 60);
+      const minute = m % 60;
+      const timeStr = `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
+      slots.push({
+        time: timeStr,
+        timeInMinutes: m,
+        available: true
+      });
     }
 
     // Get all registrations for this section and date

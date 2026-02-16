@@ -14,6 +14,7 @@ const managerTodoRoutes = require('./routes/managerTodoRoutes');
 const workspaceRoutes = require('./routes/workspaceRoutes');
 const sectionAvailabilityRoutes = require('./routes/sectionAvailabilityRoutes');
 const eliteRoutes = require('./routes/eliteRoutes');
+const settingsRoutes = require('./routes/settingsRoutes');
 
 const app = express();
 
@@ -41,6 +42,7 @@ app.use('/api/manager-todos', managerTodoRoutes);
 app.use('/api/workspaces', workspaceRoutes);
 app.use('/api/sections', sectionAvailabilityRoutes);
 app.use('/api/elite', eliteRoutes);
+app.use('/api/settings', settingsRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {

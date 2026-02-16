@@ -21,6 +21,7 @@ const DateTimeSelection = ({ formData, onChange, onNext, onBack }) => {
   const [selectedMonth, setSelectedMonth] = useState(new Date());
   const [bookedDates, setBookedDates] = useState([]);
   const [sectionDeactivations, setSectionDeactivations] = useState([]);
+  const [workingHours, setWorkingHours] = useState({ startTime: '11:00', endTime: '19:00', workingDays: [0, 1, 2, 3, 4] });
 
   const handleChange = (field, value) => {
     onChange({ [field]: value });
@@ -50,6 +51,19 @@ const DateTimeSelection = ({ formData, onChange, onNext, onBack }) => {
       fetchAvailableSlots(date);
     }
   }, [formData.appointmentDate, formData.visitDate, fetchAvailableSlots]);
+
+  // Fetch working hours settings
+  useEffect(() => {
+    const fetchWorkingHours = async () => {
+      try {
+        const response = await api.get('/settings/working-hours');
+        setWorkingHours(response.data);
+      } catch (error) {
+        console.error('Error fetching working hours:', error);
+      }
+    };
+    fetchWorkingHours();
+  }, []);
 
   // Fetch section deactivation periods
   useEffect(() => {
@@ -118,10 +132,10 @@ const DateTimeSelection = ({ formData, onChange, onNext, onBack }) => {
     return today.toISOString().split('T')[0];
   };
 
-  // Check if a date is a working day (Sunday-Thursday)
+  // Check if a date is a working day (dynamic from settings)
   const isWorkingDay = (date) => {
     const day = date.getDay();
-    return day !== 5 && day !== 6; // Not Friday (5) or Saturday (6)
+    return workingHours.workingDays.includes(day);
   };
 
   // Generate calendar days
@@ -277,7 +291,9 @@ const DateTimeSelection = ({ formData, onChange, onNext, onBack }) => {
         {isRTL ? 'اختيار الموعد' : 'Schedule Appointment'}
       </h2>
       <p className="step-description">
-        {isRTL ? 'أوقات العمل: الأحد - الخميس، 11:00 صباحاً - 7:00 مساءً' : 'Working hours: Sunday - Thursday, 11:00 AM - 7:00 PM'}
+        {isRTL
+          ? `أوقات العمل: ${(() => { const dayNamesAr = ['أحد','إثنين','ثلاثاء','أربعاء','خميس','جمعة','سبت']; const sorted = [...workingHours.workingDays].sort(); return sorted.length > 0 ? `${dayNamesAr[sorted[0]]} - ${dayNamesAr[sorted[sorted.length-1]]}` : ''; })()}، ${formatTimeAMPM(workingHours.startTime)} - ${formatTimeAMPM(workingHours.endTime)}`
+          : `Working hours: ${(() => { const dayNamesEn = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday']; const sorted = [...workingHours.workingDays].sort(); return sorted.length > 0 ? `${dayNamesEn[sorted[0]]} - ${dayNamesEn[sorted[sorted.length-1]]}` : ''; })()}, ${formatTimeAMPM(workingHours.startTime)} - ${formatTimeAMPM(workingHours.endTime)}`}
       </p>
 
       <motion.div
@@ -332,7 +348,7 @@ const DateTimeSelection = ({ formData, onChange, onNext, onBack }) => {
 
             <div className="calendar-weekdays">
               {weekDays.map((day, i) => (
-                <div key={i} className={`weekday ${i === 5 || i === 6 ? 'weekend' : ''}`}>
+                <div key={i} className={`weekday ${!workingHours.workingDays.includes(i) ? 'weekend' : ''}`}>
                   {day}
                 </div>
               ))}
@@ -345,7 +361,7 @@ const DateTimeSelection = ({ formData, onChange, onNext, onBack }) => {
                 const isSelectable = isDateSelectable(date);
                 const isSelected = selectedDate === formatDateForInput(date);
                 const isToday = isSameDay(date, new Date());
-                const isWeekend = date.getDay() === 5 || date.getDay() === 6;
+                const isWeekend = !workingHours.workingDays.includes(date.getDay());
                 const isDeactivated = isDateInDeactivationPeriod(date);
                 const deactivationInfo = isDeactivated ? getDeactivationInfo(date) : null;
 
@@ -600,8 +616,8 @@ const DateTimeSelection = ({ formData, onChange, onNext, onBack }) => {
               className="form-input"
               value={formData.startTime || ''}
               onChange={(e) => handleChange('startTime', e.target.value)}
-              min="11:00"
-              max="19:00"
+              min={workingHours.startTime}
+              max={workingHours.endTime}
             />
           </motion.div>
 
@@ -619,8 +635,8 @@ const DateTimeSelection = ({ formData, onChange, onNext, onBack }) => {
               className="form-input"
               value={formData.endTime || ''}
               onChange={(e) => handleChange('endTime', e.target.value)}
-              min="11:00"
-              max="19:00"
+              min={workingHours.startTime}
+              max={workingHours.endTime}
             />
           </motion.div>
 
