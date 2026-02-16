@@ -15,8 +15,8 @@ const getWorkingHoursSettings = async (date) => {
         const [endH, endM] = override.endTime.split(':').map(Number);
         const startMinutes = startH * 60 + (startM || 0);
         let endMinutes = endH * 60 + (endM || 0);
-        // Treat 00:00 as midnight (end of day = 1440 minutes)
-        if (endMinutes === 0) endMinutes = 1440;
+        // Handle cross-midnight times (e.g. 21:00 to 00:30)
+        if (endMinutes <= startMinutes) endMinutes += 1440;
 
         return {
           startHour: startH, endHour: endH,
@@ -39,8 +39,8 @@ const getWorkingHoursSettings = async (date) => {
     const [endH, endM] = endTime.split(':').map(Number);
     const startMinutes = startH * 60 + (startM || 0);
     let endMinutes = endH * 60 + (endM || 0);
-    // Treat 00:00 as midnight (end of day = 1440 minutes)
-    if (endMinutes === 0) endMinutes = 1440;
+    // Handle cross-midnight times (e.g. 21:00 to 00:30)
+    if (endMinutes <= startMinutes) endMinutes += 1440;
 
     return { startHour: startH, endHour: endH, startMinutes, endMinutes, startTime, endTime, workingDays };
   } catch (error) {
@@ -204,8 +204,9 @@ const getAvailableTimeSlots = async (section, date) => {
     const endMin = workingHoursSettings.endMinutes;
 
     for (let m = startMin; m < endMin; m += 30) {
-      const hour = Math.floor(m / 60);
-      const minute = m % 60;
+      const actualM = m >= 1440 ? m - 1440 : m;
+      const hour = Math.floor(actualM / 60);
+      const minute = actualM % 60;
       const timeStr = `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
       slots.push({
         time: timeStr,
