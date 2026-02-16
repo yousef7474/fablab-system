@@ -35,7 +35,7 @@ const getAllOverrides = async (req, res) => {
       include: [{
         model: Admin,
         as: 'creator',
-        attributes: ['adminId', 'name', 'email']
+        attributes: ['adminId', 'fullName', 'email']
       }],
       order: [['createdAt', 'DESC']]
     });
