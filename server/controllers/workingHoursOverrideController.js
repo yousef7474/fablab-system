@@ -49,12 +49,20 @@ const getAllOverrides = async (req, res) => {
 // POST / — admin, create a new override
 const createOverride = async (req, res) => {
   try {
-    const { startDate, endDate, startTime, endTime, workingDays, labelEn, labelAr } = req.body;
+    let { startDate, endDate, startTime, endTime, workingDays, labelEn, labelAr } = req.body;
 
     // Validate required fields
     if (!startDate || !endDate || !startTime || !endTime || !workingDays || !labelEn) {
       return res.status(400).json({ message: 'Missing required fields: startDate, endDate, startTime, endTime, workingDays, labelEn' });
     }
+
+    // Normalize time to HH:mm (pad single-digit hours)
+    const normalizeTime = (t) => {
+      const parts = t.split(':');
+      return `${parts[0].padStart(2, '0')}:${parts[1].padStart(2, '0')}`;
+    };
+    startTime = normalizeTime(startTime);
+    endTime = normalizeTime(endTime);
 
     // Validate time format
     const timeRegex = /^([01]\d|2[0-3]):([0-5]\d)$/;
