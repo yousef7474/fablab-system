@@ -146,6 +146,11 @@ const AdminDashboard = () => {
   const [overrideForm, setOverrideForm] = useState({ labelEn: '', labelAr: '', startDate: '', endDate: '', startTime: '09:00', endTime: '15:00', workingDays: [0, 1, 2, 3, 4] });
   const [savingOverride, setSavingOverride] = useState(false);
 
+  // Registration pause
+  const [registrationPaused, setRegistrationPaused] = useState(false);
+  const [pauseReason, setPauseReason] = useState('');
+  const [savingPause, setSavingPause] = useState(false);
+
   // Borrowing states
   const [borrowings, setBorrowings] = useState([]);
   const [borrowingFilters, setBorrowingFilters] = useState({ status: '', section: '', search: '' });
@@ -476,6 +481,38 @@ const AdminDashboard = () => {
     }
   };
 
+  // Registration pause functions
+  const fetchRegistrationStatus = async () => {
+    try {
+      const response = await api.get('/settings/registration-status');
+      setRegistrationPaused(response.data.disabled || false);
+      setPauseReason(response.data.reason || '');
+    } catch (error) {
+      console.error('Error fetching registration status:', error);
+    }
+  };
+
+  const handleToggleRegistration = async () => {
+    setSavingPause(true);
+    try {
+      const newDisabled = !registrationPaused;
+      await api.put('/settings/registration-status', {
+        disabled: newDisabled,
+        reason: newDisabled ? pauseReason : ''
+      });
+      setRegistrationPaused(newDisabled);
+      if (!newDisabled) setPauseReason('');
+      toast.success(isRTL
+        ? (newDisabled ? 'تم إيقاف التسجيل مؤقتاً' : 'تم تفعيل التسجيل')
+        : (newDisabled ? 'Registration paused' : 'Registration enabled'));
+    } catch (error) {
+      console.error('Error updating registration status:', error);
+      toast.error(isRTL ? 'خطأ في تحديث حالة التسجيل' : 'Error updating registration status');
+    } finally {
+      setSavingPause(false);
+    }
+  };
+
   // Section Availability functions
   const fetchSectionAvailability = async () => {
     try {
@@ -559,6 +596,7 @@ const AdminDashboard = () => {
       fetchEmployees();
     } else if (activeTab === 'settings') {
       fetchSectionAvailability();
+      fetchRegistrationStatus();
     } else if (activeTab === 'borrowing') {
       fetchBorrowings();
     }
@@ -4573,6 +4611,81 @@ const AdminDashboard = () => {
                 className="settings-content"
               >
                 <div className="settings-grid">
+                  <div className="settings-card" style={{ gridColumn: '1 / -1', border: registrationPaused ? '2px solid #ef4444' : '2px solid #22c55e', background: registrationPaused ? 'rgba(239,68,68,0.03)' : 'rgba(34,197,94,0.03)' }}>
+                    <h3 style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={registrationPaused ? '#ef4444' : '#22c55e'} strokeWidth="2">
+                        {registrationPaused ? (
+                          <><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></>
+                        ) : (
+                          <><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></>
+                        )}
+                      </svg>
+                      {isRTL ? 'حالة التسجيل' : 'Registration Status'}
+                    </h3>
+                    <div className="settings-form">
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', background: registrationPaused ? '#fef2f2' : '#f0fdf4', borderRadius: '10px', marginBottom: '12px' }}>
+                        <div>
+                          <p style={{ margin: 0, fontWeight: '700', fontSize: '15px', color: registrationPaused ? '#dc2626' : '#16a34a' }}>
+                            {registrationPaused
+                              ? (isRTL ? 'التسجيل متوقف مؤقتاً' : 'Registration is PAUSED')
+                              : (isRTL ? 'التسجيل مفعّل' : 'Registration is ACTIVE')}
+                          </p>
+                          <p style={{ margin: '4px 0 0 0', fontSize: '13px', color: 'var(--text-secondary, #64748b)' }}>
+                            {isRTL ? 'تبديل هذا الخيار سيمنع المستخدمين من التسجيل' : 'Toggling this will prevent users from registering'}
+                          </p>
+                        </div>
+                        <button
+                          onClick={() => {
+                            if (registrationPaused) {
+                              handleToggleRegistration();
+                            } else if (!pauseReason.trim()) {
+                              toast.error(isRTL ? 'يرجى إدخال سبب إيقاف التسجيل أولاً' : 'Please enter a reason for pausing first');
+                            } else {
+                              handleToggleRegistration();
+                            }
+                          }}
+                          disabled={savingPause}
+                          style={{
+                            padding: '10px 24px',
+                            borderRadius: '10px',
+                            border: 'none',
+                            fontWeight: '700',
+                            fontSize: '14px',
+                            cursor: savingPause ? 'not-allowed' : 'pointer',
+                            background: registrationPaused ? '#22c55e' : '#ef4444',
+                            color: 'white',
+                            transition: 'all 0.2s',
+                            opacity: savingPause ? 0.7 : 1
+                          }}
+                        >
+                          {savingPause
+                            ? (isRTL ? 'جاري الحفظ...' : 'Saving...')
+                            : registrationPaused
+                              ? (isRTL ? 'تفعيل التسجيل' : 'Enable Registration')
+                              : (isRTL ? 'إيقاف التسجيل' : 'Pause Registration')}
+                        </button>
+                      </div>
+                      <div className="form-group">
+                        <label style={{ fontWeight: '600' }}>
+                          {isRTL ? 'سبب الإيقاف (سيظهر للمستخدمين)' : 'Pause Reason (shown to users)'}
+                        </label>
+                        <textarea
+                          value={pauseReason}
+                          onChange={(e) => setPauseReason(e.target.value)}
+                          placeholder={isRTL ? 'مثال: التسجيل متوقف مؤقتاً بسبب أعمال الصيانة...' : 'e.g., Registration is paused for maintenance...'}
+                          rows={3}
+                          style={{ width: '100%', padding: '10px 14px', borderRadius: '8px', border: '1px solid var(--border-color, #e2e8f0)', resize: 'vertical', fontSize: '14px', fontFamily: 'inherit' }}
+                          disabled={registrationPaused}
+                        />
+                        {registrationPaused && pauseReason && (
+                          <p style={{ margin: '6px 0 0', fontSize: '12px', color: '#dc2626' }}>
+                            {isRTL ? 'لتعديل السبب، قم بتفعيل التسجيل أولاً ثم أعد إيقافه بسبب جديد' : 'To change the reason, enable registration first then pause again with a new reason'}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
                   <div className="settings-card">
                     <h3>{isRTL ? 'معلومات الحساب' : 'Account Information'}</h3>
                     <div className="settings-form">

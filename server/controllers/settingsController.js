@@ -80,7 +80,44 @@ const updateWorkingHours = async (req, res) => {
   }
 };
 
+// GET /api/settings/registration-status (public)
+const getRegistrationStatus = async (req, res) => {
+  try {
+    const disabled = await Settings.findByPk('registration_disabled');
+    const reason = await Settings.findByPk('registration_disabled_reason');
+
+    res.json({
+      disabled: disabled ? disabled.value : false,
+      reason: reason ? reason.value : ''
+    });
+  } catch (error) {
+    console.error('Error fetching registration status:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+// PUT /api/settings/registration-status (admin-protected)
+const updateRegistrationStatus = async (req, res) => {
+  try {
+    const { disabled, reason } = req.body;
+
+    await Settings.upsert({ key: 'registration_disabled', value: !!disabled });
+    await Settings.upsert({ key: 'registration_disabled_reason', value: reason || '' });
+
+    res.json({
+      message: disabled ? 'Registration disabled' : 'Registration enabled',
+      disabled: !!disabled,
+      reason: reason || ''
+    });
+  } catch (error) {
+    console.error('Error updating registration status:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
 module.exports = {
   getWorkingHours,
-  updateWorkingHours
+  updateWorkingHours,
+  getRegistrationStatus,
+  updateRegistrationStatus
 };
