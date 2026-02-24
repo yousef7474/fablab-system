@@ -276,33 +276,38 @@ exports.updateRegistrationStatus = async (req, res) => {
 
     await registration.save();
 
-    // Send email to user
-    const userName = registration.user.firstName && registration.user.lastName
-      ? `${registration.user.firstName} ${registration.user.lastName}`
-      : registration.user.name;
+    // Send email to user (non-blocking, don't fail the request if email fails)
+    try {
+      if (registration.user && registration.user.email) {
+        const userName = registration.user.firstName && registration.user.lastName
+          ? `${registration.user.firstName} ${registration.user.lastName}`
+          : registration.user.name || 'User';
 
-    // Get appointment date/time from registration
-    const appointmentDate = registration.appointmentDate || registration.visitDate || registration.startDate;
-    const appointmentTime = registration.appointmentTime || registration.visitStartTime || registration.startTime;
+        const appointmentDate = registration.appointmentDate || registration.visitDate || registration.startDate;
+        const appointmentTime = registration.appointmentTime || registration.visitStartTime || registration.startTime;
 
-    await sendStatusUpdateEmail(
-      registration.user.email,
-      userName,
-      registration.registrationId,
-      status,
-      {
-        rejectionReason: rejectionReason || null,
-        adminMessage: adminMessage || null,
-        sendMessage: sendMessageInEmail || false,
-        appointmentDate: appointmentDate,
-        appointmentTime: appointmentTime,
-        appointmentDuration: registration.appointmentDuration,
-        fablabSection: registration.fablabSection,
-        statusChangeReason: statusChangeReason || null,
-        isStatusChange: isStatusChange || false,
-        previousStatus: previousStatus || oldStatus
+        await sendStatusUpdateEmail(
+          registration.user.email,
+          userName,
+          registration.registrationId,
+          status,
+          {
+            rejectionReason: rejectionReason || null,
+            adminMessage: adminMessage || null,
+            sendMessage: sendMessageInEmail || false,
+            appointmentDate: appointmentDate,
+            appointmentTime: appointmentTime,
+            appointmentDuration: registration.appointmentDuration,
+            fablabSection: registration.fablabSection,
+            statusChangeReason: statusChangeReason || null,
+            isStatusChange: isStatusChange || false,
+            previousStatus: previousStatus || oldStatus
+          }
+        );
       }
-    );
+    } catch (emailError) {
+      console.error('Failed to send status update email:', emailError);
+    }
 
     res.json({
       message: isStatusChange ? 'Registration status changed successfully' : 'Registration status updated successfully',
