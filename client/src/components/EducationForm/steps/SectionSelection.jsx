@@ -39,15 +39,15 @@ const SectionSelection = ({ formData, onChange, onNext, onBack }) => {
               transition={{ delay: index * 0.05 }}
               onClick={() => onChange({ section: section.value })}
               style={{
-                background: formData.section === section.value ? 'linear-gradient(135deg, #4f46e5, #6366f1)' : 'white',
+                background: formData.section === section.value ? 'linear-gradient(135deg, #2596be, #2ba8cc)' : 'white',
                 color: formData.section === section.value ? 'white' : '#334155',
-                border: `2px solid ${formData.section === section.value ? '#4f46e5' : '#e2e8f0'}`,
+                border: `2px solid ${formData.section === section.value ? '#2596be' : '#e2e8f0'}`,
                 borderRadius: '12px',
                 padding: '16px',
                 textAlign: 'center',
                 cursor: 'pointer',
                 transition: 'all 0.3s ease',
-                boxShadow: formData.section === section.value ? '0 4px 15px rgba(79, 70, 229, 0.3)' : 'none'
+                boxShadow: formData.section === section.value ? '0 4px 15px rgba(37, 150, 190, 0.3)' : 'none'
               }}
             >
               <div style={{ fontSize: '28px', marginBottom: '8px' }}>{section.icon}</div>
@@ -99,7 +99,7 @@ const SectionSelection = ({ formData, onChange, onNext, onBack }) => {
           className="btn btn-primary"
           onClick={onNext}
           disabled={!canProceed}
-          style={{ background: canProceed ? 'linear-gradient(135deg, #4f46e5, #6366f1)' : undefined }}
+          style={{ background: canProceed ? 'linear-gradient(135deg, #2596be, #2ba8cc)' : undefined }}
         >
           {isRTL ? 'التالي' : 'Next'}
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ transform: isRTL ? 'rotate(180deg)' : 'none' }}>

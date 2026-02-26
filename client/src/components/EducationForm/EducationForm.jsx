@@ -99,27 +99,27 @@ const EducationForm = () => {
                 animate={{ scale: 1 }}
                 transition={{ type: 'spring', delay: 0.2 }}
               >
-                <div style={{ width: '80px', height: '80px', background: '#ede9fe', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px' }}>
-                  <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#4f46e5" strokeWidth="2">
+                <div style={{ width: '80px', height: '80px', background: '#e0f2f9', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px' }}>
+                  <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#2596be" strokeWidth="2">
                     <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
                     <polyline points="22 4 12 14.01 9 11.01"/>
                   </svg>
                 </div>
               </motion.div>
-              <h2 style={{ color: '#312e81', marginBottom: '8px' }}>
+              <h2 style={{ color: '#1a6e8a', marginBottom: '8px' }}>
                 {isRTL ? 'تم إرسال طلب التعليم بنجاح!' : 'Education Request Submitted Successfully!'}
               </h2>
               <div style={{
-                background: '#f5f3ff',
+                background: '#e8f6fb',
                 padding: '20px',
                 borderRadius: '12px',
                 margin: '20px 0',
-                border: '1px solid #ddd6fe'
+                border: '1px solid #b3dff0'
               }}>
                 <p style={{ fontSize: '14px', color: '#64748b', margin: '0 0 8px' }}>
                   {isRTL ? 'رقم الطلب' : 'Education ID'}
                 </p>
-                <p style={{ fontSize: '28px', fontWeight: '700', color: '#4f46e5', margin: 0 }}>
+                <p style={{ fontSize: '28px', fontWeight: '700', color: '#2596be', margin: 0 }}>
                   {result.educationId}
                 </p>
               </div>
@@ -130,7 +130,7 @@ const EducationForm = () => {
                 <button
                   className="btn btn-primary"
                   onClick={() => { setResult(null); setFormData(defaultFormData); setActiveStep(0); }}
-                  style={{ background: 'linear-gradient(135deg, #4f46e5, #6366f1)' }}
+                  style={{ background: 'linear-gradient(135deg, #2596be, #2ba8cc)' }}
                 >
                   {isRTL ? 'طلب تعليم جديد' : 'New Education Request'}
                 </button>

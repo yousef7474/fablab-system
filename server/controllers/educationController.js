@@ -1,6 +1,7 @@
 const { User, Education, EducationRating, Admin } = require('../models');
 const { generateUserId, generateEducationId } = require('../utils/idGenerator');
 const { Op } = require('sequelize');
+const { sendEducationConfirmation, sendEducationStatusUpdate, sendEducationPeriodEnd, sendCustomEducationEmail } = require('../utils/educationEmailService');
 
 // Check if user exists (public)
 exports.checkUser = async (req, res) => {
@@ -125,6 +126,11 @@ exports.createEducation = async (req, res) => {
       termsAccepted,
       status: 'pending'
     });
+
+    // Send confirmation email
+    if (user.email) {
+      sendEducationConfirmation(education, user).catch(err => console.error('Email error:', err));
+    }
 
     res.status(201).json({
       message: 'Education request created successfully',
@@ -252,6 +258,15 @@ exports.updateEducationStatus = async (req, res) => {
 
     await education.update(updateData);
 
+    // Send email notification
+    if (education.user && education.user.email) {
+      if (status === 'approved' || status === 'rejected') {
+        sendEducationStatusUpdate(education, education.user, status).catch(err => console.error('Email error:', err));
+      } else if (status === 'completed') {
+        sendEducationPeriodEnd(education, education.user).catch(err => console.error('Email error:', err));
+      }
+    }
+
     res.json({ message: `Education ${status} successfully`, education });
   } catch (error) {
     console.error('Error updating education status:', error);
@@ -370,6 +385,35 @@ exports.deleteRating = async (req, res) => {
     res.json({ message: 'Rating deleted successfully', messageAr: 'تم حذف التقييم بنجاح' });
   } catch (error) {
     console.error('Error deleting rating:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+// Send custom email to teacher (auth)
+exports.sendCustomEmail = async (req, res) => {
+  try {
+    const { subject, message } = req.body;
+    const education = await Education.findByPk(req.params.id, {
+      include: [{ model: User, as: 'user' }]
+    });
+
+    if (!education) {
+      return res.status(404).json({ message: 'Education record not found' });
+    }
+
+    if (!education.user || !education.user.email) {
+      return res.status(400).json({ message: 'Teacher has no email address', messageAr: 'لا يوجد بريد إلكتروني للمعلم' });
+    }
+
+    if (!message) {
+      return res.status(400).json({ message: 'Message is required', messageAr: 'الرسالة مطلوبة' });
+    }
+
+    await sendCustomEducationEmail(education, education.user, subject, message);
+
+    res.json({ message: 'Email sent successfully', messageAr: 'تم إرسال البريد الإلكتروني بنجاح' });
+  } catch (error) {
+    console.error('Error sending custom email:', error);
     res.status(500).json({ message: 'Server error' });
   }
 };

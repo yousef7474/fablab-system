@@ -13,6 +13,9 @@ router.get('/', authMiddleware, educationController.getAllEducations);
 router.get('/:id', authMiddleware, educationController.getEducationById);
 router.put('/:id/status', authMiddleware, educationController.updateEducationStatus);
 
+// Custom email route (auth)
+router.post('/:id/send-email', authMiddleware, educationController.sendCustomEmail);
+
 // Rating routes (auth)
 router.post('/:id/ratings', authMiddleware, educationController.addRating);
 router.get('/:id/ratings', authMiddleware, educationController.getRatings);

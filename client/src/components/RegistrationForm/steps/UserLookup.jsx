@@ -185,7 +185,7 @@ const UserLookup = ({ onUserFound, onNewUser }) => {
         <button
           onClick={() => navigate('/educate')}
           style={{
-            background: 'linear-gradient(135deg, #4f46e5, #6366f1)',
+            background: 'linear-gradient(135deg, #2596be, #2ba8cc)',
             color: 'white',
             border: 'none',
             padding: '12px 32px',
@@ -196,7 +196,7 @@ const UserLookup = ({ onUserFound, onNewUser }) => {
             display: 'inline-flex',
             alignItems: 'center',
             gap: '10px',
-            boxShadow: '0 4px 15px rgba(79, 70, 229, 0.3)',
+            boxShadow: '0 4px 15px rgba(37, 150, 190, 0.3)',
             transition: 'all 0.3s ease'
           }}
         >

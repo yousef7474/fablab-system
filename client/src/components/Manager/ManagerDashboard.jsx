@@ -281,6 +281,9 @@ const ManagerDashboard = () => {
   const [educationRatings, setEducationRatings] = useState([]);
   const [showEducationRatingModal, setShowEducationRatingModal] = useState(false);
   const [educationRatingForm, setEducationRatingForm] = useState({ ratingDate: new Date().toISOString().split('T')[0], cleanlinessScore: 5, damageLevel: 'none', damageDescription: '', roomPhoto: '', comments: '' });
+  const [showEducationEmailModal, setShowEducationEmailModal] = useState(false);
+  const [educationEmailForm, setEducationEmailForm] = useState({ subject: '', message: '' });
+  const [sendingEducationEmail, setSendingEducationEmail] = useState(false);
 
   // Workspace rating criteria options
   const workspaceCriteriaOptions = [
@@ -3100,8 +3103,222 @@ const ManagerDashboard = () => {
     reader.readAsDataURL(file);
   };
 
+  const handlePrintEducationDocument = (education) => {
+    const printWindow = window.open('', '_blank');
+    const userName = education.user?.firstName && education.user?.lastName
+      ? `${education.user.firstName} ${education.user.lastName}`
+      : education.user?.name || 'N/A';
+    const formatDatePrint = (d) => d ? new Date(d).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }) : 'N/A';
+
+    const sectionLabelsEdu = {
+      'Electronics and Programming': 'الإلكترونيات والبرمجة',
+      'CNC Laser': 'القطع بالليزر',
+      'CNC Wood': 'القطع الخشبي',
+      '3D': 'الطباعة ثلاثية الأبعاد',
+      'Robotic and AI': 'الروبوتات والذكاء الاصطناعي',
+      "Kid's Club": 'نادي الأطفال',
+      'Vinyl Cutting': 'قص الفينيل',
+      'Other': 'أخرى'
+    };
+    const sectionLabel = sectionLabelsEdu[education.section] || education.section;
+
+    const termsContent = [
+      { en: 'Teacher is responsible for keeping the room clean during and after each session.', ar: 'المعلم مسؤول عن نظافة القاعة أثناء وبعد كل جلسة تعليمية.' },
+      { en: 'All devices and equipment must remain in their designated places after use.', ar: 'جميع الأجهزة والمعدات يجب أن تبقى في أماكنها المحددة بعد الاستخدام.' },
+      { en: 'Materials and tools must be used carefully per FABLAB guidelines.', ar: 'يجب استخدام المواد والأدوات بعناية وفقاً لإرشادات فاب لاب.' },
+      { en: 'Teacher is responsible for any damage or loss caused by students.', ar: 'المعلم مسؤول عن أي تلف أو فقدان يتسبب به الطلاب.' },
+      { en: 'The area must be fully organized before leaving and parts must remain in their places.', ar: 'يجب ترتيب المنطقة بالكامل قبل المغادرة والمحافظة على أماكن القطع.' },
+      { en: 'FABLAB will notify the responsible person in case of non-compliance and take official action if the issue recurs.', ar: 'سيقوم الفاب لاب بتنبيه المسؤول في حال عدم الالتزام وأخذ إجراء رسمي في حال تكرار المشكلة.' },
+      { en: 'Daily room ratings will be conducted; low ratings will be flagged periodically.', ar: 'سيتم إجراء تقييمات يومية لحالة القاعة، والتقييمات المنخفضة سيتم التنبيه عليها بشكل دوري.' },
+      { en: 'By signing below, the teacher acknowledges and agrees to all terms above.', ar: 'بالتوقيع أدناه، يقر المعلم بأنه قد قرأ وفهم جميع الشروط أعلاه ويوافق عليها.' }
+    ];
+
+    const statusLabelsMap = {
+      pending: { ar: 'قيد الانتظار', en: 'Pending' },
+      approved: { ar: 'مقبول', en: 'Approved' },
+      active: { ar: 'نشط', en: 'Active' },
+      completed: { ar: 'مكتمل', en: 'Completed' },
+      rejected: { ar: 'مرفوض', en: 'Rejected' }
+    };
+    const statusDisplay = statusLabelsMap[education.status] || { ar: education.status, en: education.status };
+
+    const printContent = `
+      <!DOCTYPE html>
+      <html dir="rtl" lang="ar">
+      <head>
+        <title>Education Agreement - ${education.educationId}</title>
+        <style>
+          @page { size: A4; margin: 15mm 12mm; }
+          * { margin: 0; padding: 0; box-sizing: border-box; }
+          body { font-family: 'Segoe UI', Tahoma, Arial, sans-serif; background: #fff; font-size: 12px; line-height: 1.6; color: #333; }
+          .page { width: 100%; min-height: 267mm; padding: 0 5px; position: relative; }
+          .page-break { page-break-before: always; }
+          .header { background: linear-gradient(135deg, #1e7a9a, #2596be); color: white; padding: 20px 25px; border-radius: 10px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+          .header-center { text-align: center; flex: 1; }
+          .header-center h1 { font-size: 22px; margin: 0; font-weight: 800; }
+          .header-center h2 { font-size: 14px; font-weight: 600; opacity: 0.9; margin: 6px 0 0 0; }
+          .header img { width: 65px; height: 65px; object-fit: contain; }
+          .id-bar { display: flex; justify-content: space-between; margin-bottom: 18px; font-size: 13px; }
+          .id-bar span { background: #e8f6fb; padding: 8px 16px; border-radius: 8px; color: #1e7a9a; font-weight: 700; border: 1px solid #b3dff0; }
+          .section-title { background: #1e7a9a; color: white; padding: 8px 18px; border-radius: 8px; font-size: 14px; font-weight: 700; margin: 18px 0 12px 0; }
+          .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 18px; }
+          .info-item { display: flex; justify-content: space-between; padding: 10px 14px; background: #f8fafc; border-radius: 8px; border: 1px solid #e2e8f0; }
+          .info-item .label { color: #64748b; font-weight: 600; font-size: 12px; }
+          .info-item .value { color: #1e293b; font-weight: 600; font-size: 13px; }
+          .photo-section { text-align: center; margin: 15px 0; }
+          .photo-section img { max-width: 320px; max-height: 220px; border-radius: 10px; border: 3px solid #e2e8f0; }
+          .period-summary { display: flex; justify-content: center; gap: 30px; margin: 15px 0; padding: 15px; background: #e8f6fb; border-radius: 10px; border: 1px solid #b3dff0; }
+          .period-item { text-align: center; }
+          .period-item .period-label { font-size: 11px; color: #64748b; font-weight: 600; }
+          .period-item .period-value { font-size: 16px; color: #1e7a9a; font-weight: 700; margin-top: 4px; }
+          .terms-list { margin: 12px 0; }
+          .term-item { display: flex; gap: 10px; margin-bottom: 10px; align-items: flex-start; }
+          .term-num { background: #1e7a9a; color: white; border-radius: 50%; min-width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; margin-top: 2px; }
+          .term-text { font-size: 12px; line-height: 1.6; }
+          .term-text .ar { color: #333; font-weight: 500; }
+          .term-text .en { color: #64748b; font-size: 11px; margin-top: 2px; }
+          .acknowledgment { background: #e8f6fb; border: 2px solid #1e7a9a; border-radius: 10px; padding: 18px; margin: 20px 0; text-align: center; }
+          .acknowledgment p { font-size: 13px; color: #1e7a9a; font-weight: 600; line-height: 1.8; }
+          .signatures { display: flex; justify-content: space-around; margin-top: 30px; padding-top: 20px; }
+          .sig-block { text-align: center; width: 42%; }
+          .sig-line { border-bottom: 2px solid #333; margin: 40px 0 8px 0; }
+          .sig-label { font-size: 13px; font-weight: 700; color: #333; margin-bottom: 5px; }
+          .sig-typed { font-style: italic; font-family: 'Brush Script MT', cursive, serif; font-size: 20px; color: #1e7a9a; margin-top: 8px; }
+          .sig-name { font-size: 11px; color: #666; margin-top: 4px; }
+          .sig-date { font-size: 10px; color: #999; margin-top: 2px; }
+          .footer { text-align: center; margin-top: 25px; padding-top: 15px; border-top: 2px solid #e2e8f0; color: #94a3b8; font-size: 10px; }
+          .footer p { margin: 2px 0; }
+          .stamp-area { display: flex; justify-content: center; margin: 15px 0; }
+          .stamp-box { width: 120px; height: 120px; border: 2px dashed #cbd5e1; border-radius: 10px; display: flex; align-items: center; justify-content: center; color: #94a3b8; font-size: 11px; font-weight: 600; }
+          @media print { body { padding: 0; } .page { min-height: auto; } }
+        </style>
+      </head>
+      <body>
+        <div class="page">
+          <div class="header">
+            <img src="/logo.png" alt="FABLAB" />
+            <div class="header-center">
+              <h1>فاب لاب الأحساء | FABLAB Al-Ahsa</h1>
+              <h2>اتفاقية التعليم | Education Agreement</h2>
+            </div>
+            <img src="/found.png" alt="Foundation" />
+          </div>
+          <div class="id-bar">
+            <span>رقم الطلب | Education ID: ${education.educationId}</span>
+            <span>الحالة | Status: ${statusDisplay.ar} | ${statusDisplay.en}</span>
+            <span>التاريخ | Date: ${formatDatePrint(education.createdAt)}</span>
+          </div>
+          <div class="section-title">معلومات المعلم | Teacher Information</div>
+          <div class="info-grid">
+            <div class="info-item"><span class="label">الاسم الكامل | Full Name</span><span class="value">${userName}</span></div>
+            <div class="info-item"><span class="label">رقم الهوية | National ID</span><span class="value">${education.user?.nationalId || 'N/A'}</span></div>
+            <div class="info-item"><span class="label">رقم الهاتف | Phone</span><span class="value">${education.user?.phoneNumber || 'N/A'}</span></div>
+            <div class="info-item"><span class="label">البريد الإلكتروني | Email</span><span class="value">${education.user?.email || 'N/A'}</span></div>
+            <div class="info-item"><span class="label">الجنسية | Nationality</span><span class="value">${education.user?.nationality || 'N/A'}</span></div>
+            <div class="info-item"><span class="label">الجنس | Gender</span><span class="value">${education.user?.sex || 'N/A'}</span></div>
+          </div>
+          <div class="section-title">تفاصيل التعليم | Education Details</div>
+          <div class="info-grid">
+            <div class="info-item"><span class="label">القسم | Section</span><span class="value">${sectionLabel}${education.otherSectionDescription ? ' - ' + education.otherSectionDescription : ''}</span></div>
+            <div class="info-item"><span class="label">عدد الطلاب | Students</span><span class="value">${education.numberOfStudents}</span></div>
+            <div class="info-item"><span class="label">تاريخ البدء | Start Date</span><span class="value">${formatDatePrint(education.periodStartDate)}</span></div>
+            <div class="info-item"><span class="label">تاريخ الانتهاء | End Date</span><span class="value">${formatDatePrint(education.periodEndDate)}</span></div>
+            <div class="info-item"><span class="label">وقت البدء | Start Time</span><span class="value">${education.periodStartTime}</span></div>
+            <div class="info-item"><span class="label">وقت الانتهاء | End Time</span><span class="value">${education.periodEndTime}</span></div>
+          </div>
+          ${education.roomPhotoBefore ? `
+            <div class="section-title">صورة القاعة (قبل) | Room Photo (Before)</div>
+            <div class="photo-section"><img src="${education.roomPhotoBefore}" alt="Room" /></div>
+          ` : ''}
+          <div class="period-summary">
+            <div class="period-item"><div class="period-label">تاريخ البدء | Start Date</div><div class="period-value">${formatDatePrint(education.periodStartDate)}</div></div>
+            <div class="period-item"><div class="period-label">عدد الطلاب | Students</div><div class="period-value">${education.numberOfStudents}</div></div>
+            <div class="period-item"><div class="period-label">تاريخ الانتهاء | End Date</div><div class="period-value">${formatDatePrint(education.periodEndDate)}</div></div>
+          </div>
+          <div class="footer"><p>فاب لاب الأحساء - مؤسسة الأحساء | FABLAB Al-Ahsa - Al-Ahsa Foundation</p><p>صفحة 1 من 2 | Page 1 of 2</p></div>
+        </div>
+        <div class="page page-break">
+          <div class="header">
+            <img src="/logo.png" alt="FABLAB" />
+            <div class="header-center">
+              <h1>فاب لاب الأحساء | FABLAB Al-Ahsa</h1>
+              <h2>الشروط والأحكام | Terms & Conditions</h2>
+            </div>
+            <img src="/found.png" alt="Foundation" />
+          </div>
+          <div class="id-bar">
+            <span>رقم الطلب | Education ID: ${education.educationId}</span>
+            <span>المعلم | Teacher: ${userName}</span>
+          </div>
+          <div class="section-title">الشروط والأحكام | Terms & Conditions</div>
+          <div class="terms-list">
+            ${termsContent.map((t, i) => `
+              <div class="term-item">
+                <span class="term-num">${i + 1}</span>
+                <div class="term-text"><div class="ar">${t.ar}</div><div class="en">${t.en}</div></div>
+              </div>
+            `).join('')}
+          </div>
+          <div class="acknowledgment">
+            <p>أقر أنا الموقع أدناه بأنني قد قرأت وفهمت جميع الشروط والأحكام المذكورة أعلاه وأوافق على الالتزام بها</p>
+            <p>I, the undersigned, acknowledge that I have read, understood, and agree to comply with all the above terms and conditions.</p>
+          </div>
+          <div class="signatures">
+            <div class="sig-block">
+              <div class="sig-label">توقيع المعلم | Teacher Signature</div>
+              <div class="sig-typed">${education.signature || ''}</div>
+              <div class="sig-line"></div>
+              <div class="sig-name">${userName}</div>
+              <div class="sig-date">${formatDatePrint(education.createdAt)}</div>
+            </div>
+            <div class="sig-block">
+              <div class="sig-label">توقيع المدير | Manager Signature</div>
+              <div class="sig-typed">أ. زكي اللويم</div>
+              <div class="sig-line"></div>
+              <div class="sig-name">أ. زكي اللويم</div>
+              <div class="sig-date">${formatDatePrint(new Date())}</div>
+            </div>
+          </div>
+          <div class="stamp-area"><div class="stamp-box">ختم فاب لاب<br/>FABLAB Stamp</div></div>
+          <div class="footer" style="margin-top: 40px;">
+            <p>هذه الوثيقة صادرة من نظام فاب لاب الأحساء لإدارة التعليم</p>
+            <p>This document is issued by the FABLAB Al-Ahsa Education Management System</p>
+            <p style="margin-top: 6px;">فاب لاب الأحساء - مؤسسة الأحساء | FABLAB Al-Ahsa - Al-Ahsa Foundation</p>
+            <p>صفحة 2 من 2 | Page 2 of 2</p>
+          </div>
+        </div>
+      </body>
+      </html>
+    `;
+    printWindow.document.write(printContent);
+    printWindow.document.close();
+    printWindow.onload = () => { printWindow.print(); };
+  };
+
+  const handleSendEducationEmail = async () => {
+    if (!educationEmailForm.message.trim()) {
+      toast.error(isRTL ? 'الرجاء إدخال الرسالة' : 'Please enter a message');
+      return;
+    }
+    setSendingEducationEmail(true);
+    try {
+      await api.post(`/education/${encodeURIComponent(selectedEducation.educationId)}/send-email`, {
+        subject: educationEmailForm.subject,
+        message: educationEmailForm.message
+      });
+      toast.success(isRTL ? 'تم إرسال البريد الإلكتروني بنجاح' : 'Email sent successfully');
+      setShowEducationEmailModal(false);
+      setEducationEmailForm({ subject: '', message: '' });
+    } catch (error) {
+      console.error('Error sending email:', error);
+      toast.error(isRTL ? 'خطأ في إرسال البريد الإلكتروني' : 'Error sending email');
+    } finally {
+      setSendingEducationEmail(false);
+    }
+  };
+
   const getEducationStatusColor = (status) => {
-    const colors = { pending: '#f59e0b', approved: '#22c55e', active: '#3b82f6', completed: '#6366f1', rejected: '#ef4444' };
+    const colors = { pending: '#f59e0b', approved: '#22c55e', active: '#3b82f6', completed: '#2596be', rejected: '#ef4444' };
     return colors[status] || '#94a3b8';
   };
 
@@ -7567,7 +7784,7 @@ const ManagerDashboard = () => {
                     ))}
                   </select>
                   <input className="filter-input" placeholder={isRTL ? 'بحث...' : 'Search...'} value={educationFilters.search} onChange={(e) => setEducationFilters({ ...educationFilters, search: e.target.value })} style={{ flex: 1, minWidth: '150px' }} />
-                  <button className="btn btn-primary" onClick={() => fetchEducations()} style={{ background: 'linear-gradient(135deg, #4f46e5, #6366f1)' }}>
+                  <button className="btn btn-primary" onClick={() => fetchEducations()} style={{ background: 'linear-gradient(135deg, #2596be, #2ba8cc)' }}>
                     {isRTL ? 'بحث' : 'Search'}
                   </button>
                 </div>
@@ -7605,9 +7822,19 @@ const ManagerDashboard = () => {
                           )}
                           {['approved', 'active'].includes(selectedEducation.status) && (
                             <>
-                              <button onClick={() => handleEducationStatusUpdate(selectedEducation.educationId, 'completed')} style={{ padding: '8px 16px', borderRadius: '8px', background: '#6366f1', color: 'white', border: 'none', cursor: 'pointer', fontWeight: '600', fontSize: '13px' }}>{isRTL ? 'إكمال' : 'Complete'}</button>
+                              <button onClick={() => handleEducationStatusUpdate(selectedEducation.educationId, 'completed')} style={{ padding: '8px 16px', borderRadius: '8px', background: '#2596be', color: 'white', border: 'none', cursor: 'pointer', fontWeight: '600', fontSize: '13px' }}>{isRTL ? 'إكمال' : 'Complete'}</button>
                               <button onClick={() => setShowEducationRatingModal(true)} style={{ padding: '8px 16px', borderRadius: '8px', background: '#f59e0b', color: 'white', border: 'none', cursor: 'pointer', fontWeight: '600', fontSize: '13px' }}>{isRTL ? 'إضافة تقييم' : 'Add Rating'}</button>
                             </>
+                          )}
+                          <button onClick={() => handlePrintEducationDocument(selectedEducation)} style={{ padding: '8px 16px', borderRadius: '8px', background: '#1e7a9a', color: 'white', border: 'none', cursor: 'pointer', fontWeight: '600', fontSize: '13px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+                            {isRTL ? 'طباعة' : 'Print'}
+                          </button>
+                          {selectedEducation.user?.email && (
+                            <button onClick={() => setShowEducationEmailModal(true)} style={{ padding: '8px 16px', borderRadius: '8px', background: '#0ea5e9', color: 'white', border: 'none', cursor: 'pointer', fontWeight: '600', fontSize: '13px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+                              {isRTL ? 'إرسال بريد' : 'Send Email'}
+                            </button>
                           )}
                         </div>
                       </div>
@@ -7626,13 +7853,13 @@ const ManagerDashboard = () => {
                           <div style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>{isRTL ? 'البريد' : 'Email'}</div>
                           <div style={{ fontWeight: '600', color: 'var(--text-primary)' }}>{selectedEducation.user?.email || 'N/A'}</div>
                         </div>
-                        <div style={{ padding: '12px', background: '#f5f3ff', borderRadius: '8px' }}>
+                        <div style={{ padding: '12px', background: '#e8f6fb', borderRadius: '8px' }}>
                           <div style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>{isRTL ? 'القسم' : 'Section'}</div>
-                          <div style={{ fontWeight: '600', color: '#4f46e5' }}>{sectionLabels[selectedEducation.section] || selectedEducation.section}{selectedEducation.otherSectionDescription ? ` - ${selectedEducation.otherSectionDescription}` : ''}</div>
+                          <div style={{ fontWeight: '600', color: '#2596be' }}>{sectionLabels[selectedEducation.section] || selectedEducation.section}{selectedEducation.otherSectionDescription ? ` - ${selectedEducation.otherSectionDescription}` : ''}</div>
                         </div>
-                        <div style={{ padding: '12px', background: '#f5f3ff', borderRadius: '8px' }}>
+                        <div style={{ padding: '12px', background: '#e8f6fb', borderRadius: '8px' }}>
                           <div style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>{isRTL ? 'عدد الطلاب' : 'Students'}</div>
-                          <div style={{ fontWeight: '600', color: '#4f46e5' }}>{selectedEducation.numberOfStudents}</div>
+                          <div style={{ fontWeight: '600', color: '#2596be' }}>{selectedEducation.numberOfStudents}</div>
                         </div>
                         <div style={{ padding: '12px', background: 'var(--hover-bg)', borderRadius: '8px' }}>
                           <div style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>{isRTL ? 'فترة التعليم' : 'Period'}</div>
@@ -7731,7 +7958,7 @@ const ManagerDashboard = () => {
                                 </span>
                               </td>
                               <td>
-                                <button onClick={() => fetchEducationDetail(edu.educationId)} style={{ padding: '6px 12px', borderRadius: '6px', background: '#4f46e5', color: 'white', border: 'none', cursor: 'pointer', fontSize: '12px', fontWeight: '600' }}>
+                                <button onClick={() => fetchEducationDetail(edu.educationId)} style={{ padding: '6px 12px', borderRadius: '6px', background: '#2596be', color: 'white', border: 'none', cursor: 'pointer', fontSize: '12px', fontWeight: '600' }}>
                                   {isRTL ? 'عرض' : 'View'}
                                 </button>
                               </td>
@@ -7743,7 +7970,7 @@ const ManagerDashboard = () => {
                     {educationPagination.pages > 1 && (
                       <div style={{ display: 'flex', justifyContent: 'center', gap: '4px', marginTop: '16px' }}>
                         {Array.from({ length: educationPagination.pages }, (_, i) => i + 1).map(pageNum => (
-                          <button key={pageNum} onClick={() => fetchEducations(pageNum)} style={{ padding: '6px 12px', borderRadius: '6px', border: '1px solid var(--border-color)', background: pageNum === educationPagination.page ? '#4f46e5' : 'var(--card-bg)', color: pageNum === educationPagination.page ? 'white' : 'var(--text-primary)', cursor: 'pointer', fontSize: '13px' }}>{pageNum}</button>
+                          <button key={pageNum} onClick={() => fetchEducations(pageNum)} style={{ padding: '6px 12px', borderRadius: '6px', border: '1px solid var(--border-color)', background: pageNum === educationPagination.page ? '#2596be' : 'var(--card-bg)', color: pageNum === educationPagination.page ? 'white' : 'var(--text-primary)', cursor: 'pointer', fontSize: '13px' }}>{pageNum}</button>
                         ))}
                       </div>
                     )}
@@ -7825,6 +8052,35 @@ const ManagerDashboard = () => {
                       <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
                         <button onClick={() => setShowEducationRatingModal(false)} style={{ padding: '8px 16px', borderRadius: '8px', border: '1px solid var(--border-color)', background: 'var(--card-bg)', cursor: 'pointer', color: 'var(--text-primary)' }}>{isRTL ? 'إلغاء' : 'Cancel'}</button>
                         <button onClick={handleAddEducationRating} style={{ padding: '8px 16px', borderRadius: '8px', background: '#f59e0b', color: 'white', border: 'none', cursor: 'pointer', fontWeight: '600' }}>{isRTL ? 'إضافة التقييم' : 'Add Rating'}</button>
+                      </div>
+                    </motion.div>
+                  </div>
+                )}
+
+                {/* Custom Email Modal */}
+                {showEducationEmailModal && selectedEducation && (
+                  <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
+                    <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} style={{ background: 'var(--card-bg)', borderRadius: '16px', padding: '24px', maxWidth: '500px', width: '90%' }}>
+                      <h3 style={{ margin: '0 0 16px', color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#2596be" strokeWidth="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+                        {isRTL ? 'إرسال بريد إلكتروني للمعلم' : 'Send Email to Teacher'}
+                      </h3>
+                      <p style={{ fontSize: '13px', color: '#64748b', marginBottom: '16px' }}>
+                        {isRTL ? `إلى: ${selectedEducation.user?.email}` : `To: ${selectedEducation.user?.email}`}
+                      </p>
+                      <div style={{ marginBottom: '12px' }}>
+                        <label style={{ display: 'block', marginBottom: '4px', fontWeight: '600', fontSize: '14px', color: 'var(--text-primary)' }}>{isRTL ? 'الموضوع (اختياري)' : 'Subject (optional)'}</label>
+                        <input type="text" value={educationEmailForm.subject} onChange={(e) => setEducationEmailForm({ ...educationEmailForm, subject: e.target.value })} placeholder={isRTL ? 'موضوع البريد' : 'Email subject'} style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid var(--border-color)', fontFamily: 'inherit', background: 'var(--card-bg)', color: 'var(--text-primary)' }} />
+                      </div>
+                      <div style={{ marginBottom: '16px' }}>
+                        <label style={{ display: 'block', marginBottom: '4px', fontWeight: '600', fontSize: '14px', color: 'var(--text-primary)' }}>{isRTL ? 'الرسالة *' : 'Message *'}</label>
+                        <textarea value={educationEmailForm.message} onChange={(e) => setEducationEmailForm({ ...educationEmailForm, message: e.target.value })} placeholder={isRTL ? 'اكتب رسالتك هنا...' : 'Write your message here...'} style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid var(--border-color)', minHeight: '120px', resize: 'vertical', fontFamily: 'inherit', background: 'var(--card-bg)', color: 'var(--text-primary)' }} />
+                      </div>
+                      <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
+                        <button onClick={() => { setShowEducationEmailModal(false); setEducationEmailForm({ subject: '', message: '' }); }} style={{ padding: '8px 16px', borderRadius: '8px', border: '1px solid var(--border-color)', background: 'var(--card-bg)', cursor: 'pointer', color: 'var(--text-primary)' }}>{isRTL ? 'إلغاء' : 'Cancel'}</button>
+                        <button onClick={handleSendEducationEmail} disabled={sendingEducationEmail} style={{ padding: '8px 16px', borderRadius: '8px', background: '#2596be', color: 'white', border: 'none', cursor: 'pointer', fontWeight: '600', opacity: sendingEducationEmail ? 0.7 : 1 }}>
+                          {sendingEducationEmail ? (isRTL ? 'جاري الإرسال...' : 'Sending...') : (isRTL ? 'إرسال' : 'Send')}
+                        </button>
                       </div>
                     </motion.div>
                   </div>

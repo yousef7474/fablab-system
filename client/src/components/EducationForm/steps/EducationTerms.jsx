@@ -20,16 +20,16 @@ const terms = [
     en: 'Teacher is responsible for any damage or loss caused by students.'
   },
   {
-    ar: 'يجب تنظيف وترتيب المنطقة بالكامل قبل المغادرة.',
-    en: 'The area must be fully cleaned and organized before leaving.'
+    ar: 'يجب ترتيب المنطقة بالكامل قبل المغادرة والمحافظة على أماكن القطع.',
+    en: 'The area must be fully organized before leaving and parts must remain in their places.'
   },
   {
-    ar: 'يحتفظ فاب لاب بالحق في إنهاء الفترة التعليمية في حال عدم الالتزام.',
-    en: 'FABLAB reserves the right to terminate the education period if terms are not followed.'
+    ar: 'سيقوم الفاب لاب بتنبيه المسؤول في حال عدم الالتزام وأخذ إجراء رسمي في حال تكرار المشكلة.',
+    en: 'FABLAB will notify the responsible person in case of non-compliance and take official action if the issue recurs.'
   },
   {
-    ar: 'سيتم إجراء تقييمات يومية لحالة القاعة، والتقييمات المنخفضة قد تؤدي لإنهاء الفترة.',
-    en: 'Daily room ratings will be conducted; low ratings may result in period termination.'
+    ar: 'سيتم إجراء تقييمات يومية لحالة القاعة، والتقييمات المنخفضة سيتم التنبيه عليها بشكل دوري.',
+    en: 'Daily room ratings will be conducted; low ratings will be flagged periodically.'
   },
   {
     ar: 'بالتوقيع أدناه، يقر المعلم بالموافقة على جميع الشروط المذكورة أعلاه.',
@@ -69,7 +69,7 @@ const EducationTerms = ({ formData, onChange, onBack, onSubmit, loading }) => {
           {terms.map((term, index) => (
             <div key={index} style={{ display: 'flex', gap: '12px', marginBottom: '12px', alignItems: 'flex-start' }}>
               <span style={{
-                background: '#4f46e5',
+                background: '#2596be',
                 color: 'white',
                 borderRadius: '50%',
                 minWidth: '24px',
@@ -149,7 +149,7 @@ const EducationTerms = ({ formData, onChange, onBack, onSubmit, loading }) => {
               fontStyle: 'italic',
               fontFamily: "'Brush Script MT', 'Segoe Script', cursive, serif",
               padding: '14px',
-              borderBottom: '2px solid #4f46e5'
+              borderBottom: '2px solid #2596be'
             }}
           />
         </div>
@@ -166,7 +166,7 @@ const EducationTerms = ({ formData, onChange, onBack, onSubmit, loading }) => {
           className="btn btn-primary"
           onClick={onSubmit}
           disabled={!canSubmit || loading}
-          style={{ background: canSubmit && !loading ? 'linear-gradient(135deg, #4f46e5, #6366f1)' : undefined, minWidth: '160px' }}
+          style={{ background: canSubmit && !loading ? 'linear-gradient(135deg, #2596be, #2ba8cc)' : undefined, minWidth: '160px' }}
         >
           {loading ? (
             <span className="loading-spinner" />

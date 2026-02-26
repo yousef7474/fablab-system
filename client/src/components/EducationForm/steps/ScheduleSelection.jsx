@@ -23,13 +23,13 @@ const ScheduleSelection = ({ formData, onChange, onNext, onBack }) => {
       <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
         {/* Date Range */}
         <div style={{
-          background: '#f5f3ff',
-          border: '1px solid #ddd6fe',
+          background: '#e8f6fb',
+          border: '1px solid #b3dff0',
           borderRadius: '12px',
           padding: '20px',
           marginBottom: '20px'
         }}>
-          <h3 style={{ margin: '0 0 16px', color: '#4f46e5', fontSize: '16px', fontWeight: '700' }}>
+          <h3 style={{ margin: '0 0 16px', color: '#2596be', fontSize: '16px', fontWeight: '700' }}>
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ verticalAlign: 'middle', marginLeft: isRTL ? '8px' : '0', marginRight: isRTL ? '0' : '8px' }}>
               <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
               <line x1="16" y1="2" x2="16" y2="6"/>
@@ -64,12 +64,12 @@ const ScheduleSelection = ({ formData, onChange, onNext, onBack }) => {
 
         {/* Time Range */}
         <div style={{
-          background: '#f5f3ff',
-          border: '1px solid #ddd6fe',
+          background: '#e8f6fb',
+          border: '1px solid #b3dff0',
           borderRadius: '12px',
           padding: '20px'
         }}>
-          <h3 style={{ margin: '0 0 16px', color: '#4f46e5', fontSize: '16px', fontWeight: '700' }}>
+          <h3 style={{ margin: '0 0 16px', color: '#2596be', fontSize: '16px', fontWeight: '700' }}>
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ verticalAlign: 'middle', marginLeft: isRTL ? '8px' : '0', marginRight: isRTL ? '0' : '8px' }}>
               <circle cx="12" cy="12" r="10"/>
               <polyline points="12 6 12 12 16 14"/>
@@ -132,7 +132,7 @@ const ScheduleSelection = ({ formData, onChange, onNext, onBack }) => {
           className="btn btn-primary"
           onClick={onNext}
           disabled={!canProceed}
-          style={{ background: canProceed ? 'linear-gradient(135deg, #4f46e5, #6366f1)' : undefined }}
+          style={{ background: canProceed ? 'linear-gradient(135deg, #2596be, #2ba8cc)' : undefined }}
         >
           {isRTL ? 'التالي' : 'Next'}
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ transform: isRTL ? 'rotate(180deg)' : 'none' }}>
