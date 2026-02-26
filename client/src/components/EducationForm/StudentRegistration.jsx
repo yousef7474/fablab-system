@@ -30,7 +30,7 @@ const StudentRegistration = () => {
     }
     setLoading(true);
     try {
-      const res = await api.get(`/education/verify/${educationId.trim()}`);
+      const res = await api.get(`/education/verify/${encodeURIComponent(educationId.trim())}`);
       setEducationInfo(res.data);
       setStep(2);
       toast.success('تم التحقق بنجاح');
@@ -78,7 +78,7 @@ const StudentRegistration = () => {
     setLoading(true);
     try {
       const payload = students.map(({ _tempId, ...rest }) => rest);
-      await api.post(`/education/${educationId}/students`, { students: payload });
+      await api.post(`/education/${encodeURIComponent(educationId)}/students`, { students: payload });
       setSubmitted(true);
       setStep(3);
       toast.success('تم تسجيل الطلاب بنجاح');
