@@ -24,6 +24,8 @@ const EliteSchedule = require('./EliteSchedule');
 const Settings = require('./Settings');
 const WorkingHoursOverride = require('./WorkingHoursOverride');
 const Borrowing = require('./Borrowing');
+const Education = require('./Education');
+const EducationRating = require('./EducationRating');
 
 // Define relationships
 User.hasMany(Registration, { foreignKey: 'userId', as: 'registrations' });
@@ -150,6 +152,20 @@ Admin.hasMany(Borrowing, { foreignKey: 'approvedById', as: 'approvedBorrowings' 
 Borrowing.belongsTo(Admin, { foreignKey: 'returnedById', as: 'returnProcessor' });
 Admin.hasMany(Borrowing, { foreignKey: 'returnedById', as: 'processedReturns' });
 
+// Education relationships
+Education.belongsTo(User, { foreignKey: 'userId', as: 'user' });
+User.hasMany(Education, { foreignKey: 'userId', as: 'educations' });
+
+Education.belongsTo(Admin, { foreignKey: 'approvedById', as: 'approvedBy' });
+Admin.hasMany(Education, { foreignKey: 'approvedById', as: 'approvedEducations' });
+
+// Education Rating relationships
+EducationRating.belongsTo(Education, { foreignKey: 'educationId', as: 'education' });
+Education.hasMany(EducationRating, { foreignKey: 'educationId', as: 'ratings' });
+
+EducationRating.belongsTo(Admin, { foreignKey: 'createdById', as: 'ratedBy' });
+Admin.hasMany(EducationRating, { foreignKey: 'createdById', as: 'givenEducationRatings' });
+
 // Sync database
 const syncDatabase = async () => {
   try {
@@ -209,5 +225,7 @@ module.exports = {
   Settings,
   WorkingHoursOverride,
   Borrowing,
+  Education,
+  EducationRating,
   syncDatabase
 };

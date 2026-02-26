@@ -1,4 +1,4 @@
-const { User, Registration, Borrowing } = require('../models');
+const { User, Registration, Borrowing, Education } = require('../models');
 
 // Generate unique User ID in format U#00001
 const generateUserId = async () => {
@@ -45,8 +45,24 @@ const generateBorrowingId = async () => {
   return `B#${String(newIdNumber).padStart(5, '0')}`;
 };
 
+// Generate unique Education ID in format E#00001
+const generateEducationId = async () => {
+  const lastEducation = await Education.findOne({
+    order: [['createdAt', 'DESC']]
+  });
+
+  let newIdNumber = 1;
+  if (lastEducation && lastEducation.educationId) {
+    const lastIdNumber = parseInt(lastEducation.educationId.replace('E#', ''));
+    newIdNumber = lastIdNumber + 1;
+  }
+
+  return `E#${String(newIdNumber).padStart(5, '0')}`;
+};
+
 module.exports = {
   generateUserId,
   generateRegistrationId,
-  generateBorrowingId
+  generateBorrowingId,
+  generateEducationId
 };

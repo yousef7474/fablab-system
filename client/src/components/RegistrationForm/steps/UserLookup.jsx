@@ -175,6 +175,39 @@ const UserLookup = ({ onUserFound, onNewUser }) => {
         </button>
       </motion.div>
 
+      {/* Education Button */}
+      <motion.div
+        initial={{ y: 20, opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        transition={{ delay: 0.65 }}
+        style={{ marginTop: '16px', textAlign: 'center' }}
+      >
+        <button
+          onClick={() => navigate('/educate')}
+          style={{
+            background: 'linear-gradient(135deg, #4f46e5, #6366f1)',
+            color: 'white',
+            border: 'none',
+            padding: '12px 32px',
+            borderRadius: '12px',
+            fontSize: '16px',
+            fontWeight: '700',
+            cursor: 'pointer',
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '10px',
+            boxShadow: '0 4px 15px rgba(79, 70, 229, 0.3)',
+            transition: 'all 0.3s ease'
+          }}
+        >
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/>
+            <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/>
+          </svg>
+          {isRTL ? 'التعليم' : 'Education'}
+        </button>
+      </motion.div>
+
       {/* Elite Button */}
       <motion.div
         className="elite-button-container"

@@ -17,6 +17,7 @@ const eliteRoutes = require('./routes/eliteRoutes');
 const settingsRoutes = require('./routes/settingsRoutes');
 const workingHoursOverrideRoutes = require('./routes/workingHoursOverrideRoutes');
 const borrowingRoutes = require('./routes/borrowingRoutes');
+const educationRoutes = require('./routes/educationRoutes');
 const { startBorrowingScheduler } = require('./utils/borrowingScheduler');
 
 const app = express();
@@ -48,6 +49,7 @@ app.use('/api/elite', eliteRoutes);
 app.use('/api/settings', settingsRoutes);
 app.use('/api/settings/working-hours-overrides', workingHoursOverrideRoutes);
 app.use('/api/borrowing', borrowingRoutes);
+app.use('/api/education', educationRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {

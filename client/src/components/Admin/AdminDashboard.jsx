@@ -60,7 +60,7 @@ const AdminDashboard = () => {
   const printRef = useRef();
 
   // Valid tabs for URL persistence
-  const validTabs = ['dashboard', 'registrations', 'users', 'employees', 'schedule', 'analytics', 'borrowing', 'settings'];
+  const validTabs = ['dashboard', 'registrations', 'users', 'employees', 'schedule', 'analytics', 'borrowing', 'education', 'settings'];
 
   // Get initial tab from URL, localStorage, or default to 'dashboard'
   const getInitialTab = () => {
@@ -161,6 +161,19 @@ const AdminDashboard = () => {
   const [borrowingModalAction, setBorrowingModalAction] = useState('');
   const [borrowingAdminNotes, setBorrowingAdminNotes] = useState('');
   const [returnPhotoData, setReturnPhotoData] = useState('');
+
+  // Education states
+  const [educations, setEducations] = useState([]);
+  const [educationFilters, setEducationFilters] = useState({ status: '', section: '', search: '' });
+  const [loadingEducations, setLoadingEducations] = useState(false);
+  const [selectedEducation, setSelectedEducation] = useState(null);
+  const [educationPagination, setEducationPagination] = useState({ page: 1, total: 0, pages: 0, limit: 50 });
+  const [showEducationModal, setShowEducationModal] = useState(false);
+  const [educationModalAction, setEducationModalAction] = useState('');
+  const [educationAdminNotes, setEducationAdminNotes] = useState('');
+  const [educationRatings, setEducationRatings] = useState([]);
+  const [showRatingModal, setShowRatingModal] = useState(false);
+  const [ratingForm, setRatingForm] = useState({ ratingDate: new Date().toISOString().split('T')[0], cleanlinessScore: 5, damageLevel: 'none', damageDescription: '', roomPhoto: '', comments: '' });
 
   // Status modal states
   const [showStatusModal, setShowStatusModal] = useState(false);
@@ -599,6 +612,8 @@ const AdminDashboard = () => {
       fetchRegistrationStatus();
     } else if (activeTab === 'borrowing') {
       fetchBorrowings();
+    } else if (activeTab === 'education') {
+      fetchEducations();
     }
   }, [activeTab, fetchRegistrations, analyticsPeriod, analyticsDateRange.startDate, analyticsDateRange.endDate]);
 
@@ -2476,6 +2491,120 @@ const AdminDashboard = () => {
     }
   };
 
+  // Education functions
+  const fetchEducations = async (page = 1) => {
+    setLoadingEducations(true);
+    try {
+      const params = new URLSearchParams();
+      Object.entries(educationFilters).forEach(([key, value]) => {
+        if (value) params.append(key, value);
+      });
+      params.append('page', page);
+      params.append('limit', educationPagination.limit);
+      const response = await api.get(`/education?${params.toString()}`);
+      setEducations(response.data.educations || []);
+      if (response.data.pagination) {
+        setEducationPagination(prev => ({ ...prev, ...response.data.pagination }));
+      }
+    } catch (error) {
+      console.error('Error fetching educations:', error);
+    } finally {
+      setLoadingEducations(false);
+    }
+  };
+
+  const fetchEducationDetail = async (id) => {
+    try {
+      const response = await api.get(`/education/${encodeURIComponent(id)}`);
+      setSelectedEducation(response.data);
+      setEducationRatings(response.data.ratings || []);
+    } catch (error) {
+      console.error('Error fetching education detail:', error);
+    }
+  };
+
+  const handleEducationStatusUpdate = async (educationId, status) => {
+    try {
+      await api.put(`/education/${encodeURIComponent(educationId)}/status`, { status, adminNotes: educationAdminNotes });
+      toast.success(isRTL ? `تم ${status === 'approved' ? 'قبول' : status === 'rejected' ? 'رفض' : 'تحديث'} الطلب` : `Education ${status} successfully`);
+      setShowEducationModal(false);
+      setEducationAdminNotes('');
+      fetchEducations();
+      if (selectedEducation) fetchEducationDetail(educationId);
+    } catch (error) {
+      toast.error(isRTL ? 'حدث خطأ' : 'Error updating status');
+    }
+  };
+
+  const handleAddEducationRating = async () => {
+    if (!selectedEducation) return;
+    try {
+      await api.post(`/education/${encodeURIComponent(selectedEducation.educationId)}/ratings`, ratingForm);
+      toast.success(isRTL ? 'تم إضافة التقييم بنجاح' : 'Rating added successfully');
+      setShowRatingModal(false);
+      setRatingForm({ ratingDate: new Date().toISOString().split('T')[0], cleanlinessScore: 5, damageLevel: 'none', damageDescription: '', roomPhoto: '', comments: '' });
+      fetchEducationDetail(selectedEducation.educationId);
+    } catch (error) {
+      const msg = error.response?.data?.message || 'Error adding rating';
+      const msgAr = error.response?.data?.messageAr || msg;
+      toast.error(isRTL ? msgAr : msg);
+    }
+  };
+
+  const handleDeleteEducationRating = async (educationId, ratingId) => {
+    if (!window.confirm(isRTL ? 'هل أنت متأكد من حذف هذا التقييم؟' : 'Are you sure you want to delete this rating?')) return;
+    try {
+      await api.delete(`/education/${encodeURIComponent(educationId)}/ratings/${encodeURIComponent(ratingId)}`);
+      toast.success(isRTL ? 'تم حذف التقييم' : 'Rating deleted');
+      fetchEducationDetail(educationId);
+    } catch (error) {
+      toast.error(isRTL ? 'خطأ في حذف التقييم' : 'Error deleting rating');
+    }
+  };
+
+  const handleRatingPhotoUpload = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error(isRTL ? 'حجم الصورة يجب أن يكون أقل من 5 ميجابايت' : 'Image must be less than 5MB');
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = (event) => setRatingForm(prev => ({ ...prev, roomPhoto: event.target.result }));
+    reader.readAsDataURL(file);
+  };
+
+  const getEducationStatusColor = (status) => {
+    const colors = { pending: '#f59e0b', approved: '#22c55e', active: '#3b82f6', completed: '#6366f1', rejected: '#ef4444' };
+    return colors[status] || '#94a3b8';
+  };
+
+  const getEducationStatusLabel = (status) => {
+    const labels = {
+      pending: isRTL ? 'قيد الانتظار' : 'Pending',
+      approved: isRTL ? 'مقبول' : 'Approved',
+      active: isRTL ? 'نشط' : 'Active',
+      completed: isRTL ? 'مكتمل' : 'Completed',
+      rejected: isRTL ? 'مرفوض' : 'Rejected'
+    };
+    return labels[status] || status;
+  };
+
+  const getDamageLevelColor = (level) => {
+    const colors = { none: '#22c55e', minor: '#f59e0b', moderate: '#f97316', severe: '#ef4444' };
+    return colors[level] || '#94a3b8';
+  };
+
+  const getDamageLevelLabel = (level) => {
+    const labels = {
+      none: isRTL ? 'بدون' : 'None',
+      minor: isRTL ? 'طفيف' : 'Minor',
+      moderate: isRTL ? 'متوسط' : 'Moderate',
+      severe: isRTL ? 'شديد' : 'Severe'
+    };
+    return labels[level] || level;
+  };
+
   const formatDate = (dateString) => {
     if (!dateString) return 'N/A';
     return new Date(dateString).toLocaleDateString(isRTL ? 'ar-SA' : 'en-US', {
@@ -2492,6 +2621,7 @@ const AdminDashboard = () => {
     { id: 'analytics', icon: 'analytics', labelEn: 'Analytics', labelAr: 'التحليلات' },
     { id: 'schedule', icon: 'schedule', labelEn: 'Schedule', labelAr: 'الجدول' },
     { id: 'borrowing', icon: 'borrowing', labelEn: 'Borrowing', labelAr: 'الاستعارة' },
+    { id: 'education', icon: 'education', labelEn: 'Education', labelAr: 'التعليم' },
     { id: 'settings', icon: 'settings', labelEn: 'Settings', labelAr: 'الإعدادات' }
   ];
 
@@ -2503,6 +2633,7 @@ const AdminDashboard = () => {
       analytics: <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>,
       schedule: <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>,
       borrowing: <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>,
+      education: <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>,
       settings: <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
     };
     return icons[iconName] || null;
@@ -4599,6 +4730,295 @@ const AdminDashboard = () => {
                   </div>
                 </motion.div>
               </div>
+            )}
+
+            {/* Education Tab */}
+            {activeTab === 'education' && (
+              <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }}>
+                <div className="content-header">
+                  <h2>{isRTL ? 'إدارة التعليم' : 'Education Management'}</h2>
+                </div>
+
+                {/* Education Filters */}
+                <div className="filters-bar" style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', marginBottom: '20px' }}>
+                  <select className="filter-select" value={educationFilters.status} onChange={(e) => setEducationFilters({ ...educationFilters, status: e.target.value })}>
+                    <option value="">{isRTL ? 'كل الحالات' : 'All Status'}</option>
+                    <option value="pending">{isRTL ? 'قيد الانتظار' : 'Pending'}</option>
+                    <option value="approved">{isRTL ? 'مقبول' : 'Approved'}</option>
+                    <option value="active">{isRTL ? 'نشط' : 'Active'}</option>
+                    <option value="completed">{isRTL ? 'مكتمل' : 'Completed'}</option>
+                    <option value="rejected">{isRTL ? 'مرفوض' : 'Rejected'}</option>
+                  </select>
+                  <select className="filter-select" value={educationFilters.section} onChange={(e) => setEducationFilters({ ...educationFilters, section: e.target.value })}>
+                    <option value="">{isRTL ? 'كل الأقسام' : 'All Sections'}</option>
+                    {['Electronics and Programming', 'CNC Laser', 'CNC Wood', '3D', 'Robotic and AI', "Kid's Club", 'Vinyl Cutting', 'Other'].map(s => (
+                      <option key={s} value={s}>{s}</option>
+                    ))}
+                  </select>
+                  <input className="filter-input" placeholder={isRTL ? 'بحث...' : 'Search...'} value={educationFilters.search} onChange={(e) => setEducationFilters({ ...educationFilters, search: e.target.value })} style={{ flex: 1, minWidth: '150px' }} />
+                  <button className="btn btn-primary" onClick={() => fetchEducations()} style={{ background: 'linear-gradient(135deg, #4f46e5, #6366f1)' }}>
+                    {isRTL ? 'بحث' : 'Search'}
+                  </button>
+                </div>
+
+                {loadingEducations ? (
+                  <div style={{ textAlign: 'center', padding: '40px' }}>
+                    <div className="loading-spinner" style={{ margin: '0 auto' }}></div>
+                  </div>
+                ) : selectedEducation ? (
+                  /* Education Detail View */
+                  <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+                    <button onClick={() => { setSelectedEducation(null); setEducationRatings([]); }} style={{ background: 'none', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '8px 16px', cursor: 'pointer', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--text-primary)' }}>
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="m15 18-6-6 6-6"/></svg>
+                      {isRTL ? 'العودة للقائمة' : 'Back to list'}
+                    </button>
+
+                    <div style={{ background: 'var(--card-bg)', borderRadius: '12px', padding: '24px', border: '1px solid var(--border-color)' }}>
+                      {/* Header */}
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '12px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                          <h3 style={{ margin: 0, color: 'var(--text-primary)' }}>{selectedEducation.educationId}</h3>
+                          <span style={{ padding: '4px 12px', borderRadius: '20px', fontSize: '12px', fontWeight: '600', background: `${getEducationStatusColor(selectedEducation.status)}22`, color: getEducationStatusColor(selectedEducation.status) }}>
+                            {getEducationStatusLabel(selectedEducation.status)}
+                          </span>
+                        </div>
+                        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                          {selectedEducation.status === 'pending' && (
+                            <>
+                              <button onClick={() => { setEducationModalAction('approve'); setShowEducationModal(true); }} style={{ padding: '8px 16px', borderRadius: '8px', background: '#22c55e', color: 'white', border: 'none', cursor: 'pointer', fontWeight: '600', fontSize: '13px' }}>{isRTL ? 'قبول' : 'Approve'}</button>
+                              <button onClick={() => { setEducationModalAction('reject'); setShowEducationModal(true); }} style={{ padding: '8px 16px', borderRadius: '8px', background: '#ef4444', color: 'white', border: 'none', cursor: 'pointer', fontWeight: '600', fontSize: '13px' }}>{isRTL ? 'رفض' : 'Reject'}</button>
+                            </>
+                          )}
+                          {selectedEducation.status === 'approved' && (
+                            <button onClick={() => handleEducationStatusUpdate(selectedEducation.educationId, 'active')} style={{ padding: '8px 16px', borderRadius: '8px', background: '#3b82f6', color: 'white', border: 'none', cursor: 'pointer', fontWeight: '600', fontSize: '13px' }}>{isRTL ? 'تنشيط' : 'Activate'}</button>
+                          )}
+                          {['approved', 'active'].includes(selectedEducation.status) && (
+                            <>
+                              <button onClick={() => handleEducationStatusUpdate(selectedEducation.educationId, 'completed')} style={{ padding: '8px 16px', borderRadius: '8px', background: '#6366f1', color: 'white', border: 'none', cursor: 'pointer', fontWeight: '600', fontSize: '13px' }}>{isRTL ? 'إكمال' : 'Complete'}</button>
+                              <button onClick={() => setShowRatingModal(true)} style={{ padding: '8px 16px', borderRadius: '8px', background: '#f59e0b', color: 'white', border: 'none', cursor: 'pointer', fontWeight: '600', fontSize: '13px' }}>{isRTL ? 'إضافة تقييم' : 'Add Rating'}</button>
+                            </>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Info Grid */}
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '12px', marginBottom: '20px' }}>
+                        <div style={{ padding: '12px', background: '#f8fafc', borderRadius: '8px' }}>
+                          <div style={{ fontSize: '12px', color: '#64748b' }}>{isRTL ? 'المعلم' : 'Teacher'}</div>
+                          <div style={{ fontWeight: '600', color: 'var(--text-primary)' }}>{selectedEducation.user?.firstName} {selectedEducation.user?.lastName}</div>
+                        </div>
+                        <div style={{ padding: '12px', background: '#f8fafc', borderRadius: '8px' }}>
+                          <div style={{ fontSize: '12px', color: '#64748b' }}>{isRTL ? 'الهاتف' : 'Phone'}</div>
+                          <div style={{ fontWeight: '600', color: 'var(--text-primary)' }}>{selectedEducation.user?.phoneNumber || 'N/A'}</div>
+                        </div>
+                        <div style={{ padding: '12px', background: '#f8fafc', borderRadius: '8px' }}>
+                          <div style={{ fontSize: '12px', color: '#64748b' }}>{isRTL ? 'البريد' : 'Email'}</div>
+                          <div style={{ fontWeight: '600', color: 'var(--text-primary)' }}>{selectedEducation.user?.email || 'N/A'}</div>
+                        </div>
+                        <div style={{ padding: '12px', background: '#f5f3ff', borderRadius: '8px' }}>
+                          <div style={{ fontSize: '12px', color: '#64748b' }}>{isRTL ? 'القسم' : 'Section'}</div>
+                          <div style={{ fontWeight: '600', color: '#4f46e5' }}>{selectedEducation.section}{selectedEducation.otherSectionDescription ? ` - ${selectedEducation.otherSectionDescription}` : ''}</div>
+                        </div>
+                        <div style={{ padding: '12px', background: '#f5f3ff', borderRadius: '8px' }}>
+                          <div style={{ fontSize: '12px', color: '#64748b' }}>{isRTL ? 'عدد الطلاب' : 'Students'}</div>
+                          <div style={{ fontWeight: '600', color: '#4f46e5' }}>{selectedEducation.numberOfStudents}</div>
+                        </div>
+                        <div style={{ padding: '12px', background: '#f8fafc', borderRadius: '8px' }}>
+                          <div style={{ fontSize: '12px', color: '#64748b' }}>{isRTL ? 'فترة التعليم' : 'Period'}</div>
+                          <div style={{ fontWeight: '600', color: 'var(--text-primary)' }}>{selectedEducation.periodStartDate} → {selectedEducation.periodEndDate}</div>
+                        </div>
+                        <div style={{ padding: '12px', background: '#f8fafc', borderRadius: '8px' }}>
+                          <div style={{ fontSize: '12px', color: '#64748b' }}>{isRTL ? 'الوقت اليومي' : 'Daily Time'}</div>
+                          <div style={{ fontWeight: '600', color: 'var(--text-primary)' }}>{formatTimeAMPM(selectedEducation.periodStartTime)} - {formatTimeAMPM(selectedEducation.periodEndTime)}</div>
+                        </div>
+                      </div>
+
+                      {/* Room Photo */}
+                      {selectedEducation.roomPhotoBefore && (
+                        <div style={{ marginBottom: '20px' }}>
+                          <h4 style={{ color: 'var(--text-primary)', marginBottom: '8px' }}>{isRTL ? 'صورة القاعة (قبل)' : 'Room Photo (Before)'}</h4>
+                          <img src={selectedEducation.roomPhotoBefore} alt="Room Before" style={{ maxWidth: '300px', maxHeight: '200px', borderRadius: '8px', border: '2px solid #e2e8f0', objectFit: 'cover' }} />
+                        </div>
+                      )}
+
+                      {/* Admin Notes */}
+                      {selectedEducation.adminNotes && (
+                        <div style={{ padding: '12px', background: '#fffbeb', borderRadius: '8px', marginBottom: '20px', border: '1px solid #fde68a' }}>
+                          <div style={{ fontSize: '12px', color: '#92400e', marginBottom: '4px' }}>{isRTL ? 'ملاحظات الإدارة' : 'Admin Notes'}</div>
+                          <div style={{ color: '#78350f' }}>{selectedEducation.adminNotes}</div>
+                        </div>
+                      )}
+
+                      {/* Ratings Timeline */}
+                      <div style={{ marginTop: '24px' }}>
+                        <h4 style={{ color: 'var(--text-primary)', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          {isRTL ? 'التقييمات اليومية' : 'Daily Ratings'}
+                          {educationRatings.length > 0 && (
+                            <span style={{ fontSize: '13px', color: '#64748b', fontWeight: '400' }}>
+                              ({isRTL ? 'المتوسط' : 'Average'}: {(educationRatings.reduce((sum, r) => sum + r.cleanlinessScore, 0) / educationRatings.length).toFixed(1)}/5)
+                            </span>
+                          )}
+                        </h4>
+                        {educationRatings.length === 0 ? (
+                          <p style={{ color: '#94a3b8', textAlign: 'center', padding: '20px' }}>{isRTL ? 'لا توجد تقييمات بعد' : 'No ratings yet'}</p>
+                        ) : (
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                            {educationRatings.map((rating) => (
+                              <div key={rating.ratingId} style={{ padding: '16px', background: '#f8fafc', borderRadius: '12px', border: '1px solid #e2e8f0', position: 'relative' }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                                    <span style={{ fontWeight: '700', color: '#334155' }}>{rating.ratingDate}</span>
+                                    <span style={{ color: '#f59e0b' }}>{'★'.repeat(rating.cleanlinessScore)}{'☆'.repeat(5 - rating.cleanlinessScore)}</span>
+                                    <span style={{ padding: '2px 8px', borderRadius: '12px', fontSize: '11px', fontWeight: '600', background: `${getDamageLevelColor(rating.damageLevel)}22`, color: getDamageLevelColor(rating.damageLevel) }}>
+                                      {getDamageLevelLabel(rating.damageLevel)}
+                                    </span>
+                                  </div>
+                                  <button onClick={() => handleDeleteEducationRating(selectedEducation.educationId, rating.ratingId)} style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', padding: '4px' }}>
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                                  </button>
+                                </div>
+                                {rating.damageDescription && <p style={{ margin: '4px 0', color: '#64748b', fontSize: '13px' }}>{rating.damageDescription}</p>}
+                                {rating.comments && <p style={{ margin: '4px 0', color: '#475569', fontSize: '13px' }}>{rating.comments}</p>}
+                                {rating.roomPhoto && <img src={rating.roomPhoto} alt="Rating" style={{ maxWidth: '150px', maxHeight: '100px', borderRadius: '6px', marginTop: '8px', objectFit: 'cover' }} />}
+                                <div style={{ fontSize: '11px', color: '#94a3b8', marginTop: '4px' }}>{isRTL ? 'بواسطة' : 'By'}: {rating.ratedBy?.fullName || 'N/A'}</div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </motion.div>
+                ) : (
+                  /* Education List */
+                  <div>
+                    <div className="table-container">
+                      <table className="data-table">
+                        <thead>
+                          <tr>
+                            <th>{isRTL ? 'الرقم' : 'ID'}</th>
+                            <th>{isRTL ? 'المعلم' : 'Teacher'}</th>
+                            <th>{isRTL ? 'القسم' : 'Section'}</th>
+                            <th>{isRTL ? 'الطلاب' : 'Students'}</th>
+                            <th>{isRTL ? 'الفترة' : 'Period'}</th>
+                            <th>{isRTL ? 'الحالة' : 'Status'}</th>
+                            <th>{isRTL ? 'الإجراء' : 'Action'}</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {educations.length === 0 ? (
+                            <tr><td colSpan="7" style={{ textAlign: 'center', padding: '40px', color: '#94a3b8' }}>{isRTL ? 'لا توجد طلبات تعليم' : 'No education requests'}</td></tr>
+                          ) : educations.map((edu) => (
+                            <tr key={edu.educationId}>
+                              <td style={{ fontWeight: '600' }}>{edu.educationId}</td>
+                              <td>{edu.user?.firstName} {edu.user?.lastName}</td>
+                              <td>{edu.section}</td>
+                              <td style={{ textAlign: 'center' }}>{edu.numberOfStudents}</td>
+                              <td style={{ fontSize: '12px' }}>{edu.periodStartDate}<br/>{edu.periodEndDate}</td>
+                              <td>
+                                <span style={{ padding: '4px 10px', borderRadius: '20px', fontSize: '11px', fontWeight: '600', background: `${getEducationStatusColor(edu.status)}22`, color: getEducationStatusColor(edu.status) }}>
+                                  {getEducationStatusLabel(edu.status)}
+                                </span>
+                              </td>
+                              <td>
+                                <button onClick={() => fetchEducationDetail(edu.educationId)} style={{ padding: '6px 12px', borderRadius: '6px', background: '#4f46e5', color: 'white', border: 'none', cursor: 'pointer', fontSize: '12px', fontWeight: '600' }}>
+                                  {isRTL ? 'عرض' : 'View'}
+                                </button>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                    {educationPagination.pages > 1 && (
+                      <div style={{ display: 'flex', justifyContent: 'center', gap: '4px', marginTop: '16px' }}>
+                        {Array.from({ length: educationPagination.pages }, (_, i) => i + 1).map(pageNum => (
+                          <button key={pageNum} onClick={() => fetchEducations(pageNum)} style={{ padding: '6px 12px', borderRadius: '6px', border: '1px solid #e2e8f0', background: pageNum === educationPagination.page ? '#4f46e5' : 'var(--card-bg)', color: pageNum === educationPagination.page ? 'white' : 'var(--text-primary)', cursor: 'pointer', fontSize: '13px' }}>{pageNum}</button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Education Status Modal */}
+                {showEducationModal && selectedEducation && (
+                  <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
+                    <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} style={{ background: 'var(--card-bg)', borderRadius: '16px', padding: '24px', maxWidth: '400px', width: '90%' }}>
+                      <h3 style={{ margin: '0 0 16px', color: 'var(--text-primary)' }}>
+                        {educationModalAction === 'approve' ? (isRTL ? 'قبول الطلب' : 'Approve Request') : (isRTL ? 'رفض الطلب' : 'Reject Request')}
+                      </h3>
+                      <textarea
+                        placeholder={isRTL ? 'ملاحظات (اختياري)' : 'Notes (optional)'}
+                        value={educationAdminNotes}
+                        onChange={(e) => setEducationAdminNotes(e.target.value)}
+                        style={{ width: '100%', padding: '12px', borderRadius: '8px', border: '1px solid #e2e8f0', minHeight: '80px', resize: 'vertical', marginBottom: '16px', fontFamily: 'inherit' }}
+                      />
+                      <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
+                        <button onClick={() => { setShowEducationModal(false); setEducationAdminNotes(''); }} style={{ padding: '8px 16px', borderRadius: '8px', border: '1px solid #e2e8f0', background: 'var(--card-bg)', cursor: 'pointer', color: 'var(--text-primary)' }}>{isRTL ? 'إلغاء' : 'Cancel'}</button>
+                        <button onClick={() => handleEducationStatusUpdate(selectedEducation.educationId, educationModalAction === 'approve' ? 'approved' : 'rejected')} style={{ padding: '8px 16px', borderRadius: '8px', background: educationModalAction === 'approve' ? '#22c55e' : '#ef4444', color: 'white', border: 'none', cursor: 'pointer', fontWeight: '600' }}>
+                          {educationModalAction === 'approve' ? (isRTL ? 'قبول' : 'Approve') : (isRTL ? 'رفض' : 'Reject')}
+                        </button>
+                      </div>
+                    </motion.div>
+                  </div>
+                )}
+
+                {/* Rating Modal */}
+                {showRatingModal && (
+                  <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
+                    <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} style={{ background: 'var(--card-bg)', borderRadius: '16px', padding: '24px', maxWidth: '500px', width: '90%', maxHeight: '80vh', overflowY: 'auto' }}>
+                      <h3 style={{ margin: '0 0 16px', color: 'var(--text-primary)' }}>{isRTL ? 'إضافة تقييم يومي' : 'Add Daily Rating'}</h3>
+
+                      <div style={{ marginBottom: '16px' }}>
+                        <label style={{ display: 'block', marginBottom: '4px', fontWeight: '600', fontSize: '14px', color: 'var(--text-primary)' }}>{isRTL ? 'التاريخ' : 'Date'}</label>
+                        <input type="date" value={ratingForm.ratingDate} onChange={(e) => setRatingForm({ ...ratingForm, ratingDate: e.target.value })} style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #e2e8f0' }} />
+                      </div>
+
+                      <div style={{ marginBottom: '16px' }}>
+                        <label style={{ display: 'block', marginBottom: '4px', fontWeight: '600', fontSize: '14px', color: 'var(--text-primary)' }}>{isRTL ? 'النظافة' : 'Cleanliness'} ({ratingForm.cleanlinessScore}/5)</label>
+                        <div style={{ display: 'flex', gap: '8px' }}>
+                          {[1, 2, 3, 4, 5].map(score => (
+                            <button key={score} onClick={() => setRatingForm({ ...ratingForm, cleanlinessScore: score })} style={{ fontSize: '28px', background: 'none', border: 'none', cursor: 'pointer', color: score <= ratingForm.cleanlinessScore ? '#f59e0b' : '#e2e8f0' }}>★</button>
+                          ))}
+                        </div>
+                      </div>
+
+                      <div style={{ marginBottom: '16px' }}>
+                        <label style={{ display: 'block', marginBottom: '4px', fontWeight: '600', fontSize: '14px', color: 'var(--text-primary)' }}>{isRTL ? 'مستوى الضرر' : 'Damage Level'}</label>
+                        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                          {['none', 'minor', 'moderate', 'severe'].map(level => (
+                            <button key={level} onClick={() => setRatingForm({ ...ratingForm, damageLevel: level })} style={{ padding: '8px 16px', borderRadius: '8px', border: `2px solid ${ratingForm.damageLevel === level ? getDamageLevelColor(level) : '#e2e8f0'}`, background: ratingForm.damageLevel === level ? `${getDamageLevelColor(level)}22` : 'white', color: getDamageLevelColor(level), cursor: 'pointer', fontWeight: '600', fontSize: '13px' }}>
+                              {getDamageLevelLabel(level)}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      {ratingForm.damageLevel !== 'none' && (
+                        <div style={{ marginBottom: '16px' }}>
+                          <label style={{ display: 'block', marginBottom: '4px', fontWeight: '600', fontSize: '14px', color: 'var(--text-primary)' }}>{isRTL ? 'وصف الضرر *' : 'Damage Description *'}</label>
+                          <textarea value={ratingForm.damageDescription} onChange={(e) => setRatingForm({ ...ratingForm, damageDescription: e.target.value })} placeholder={isRTL ? 'صف الضرر' : 'Describe the damage'} style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #e2e8f0', minHeight: '60px', resize: 'vertical', fontFamily: 'inherit' }} />
+                        </div>
+                      )}
+
+                      <div style={{ marginBottom: '16px' }}>
+                        <label style={{ display: 'block', marginBottom: '4px', fontWeight: '600', fontSize: '14px', color: 'var(--text-primary)' }}>{isRTL ? 'صورة (اختياري)' : 'Photo (optional)'}</label>
+                        <input type="file" accept="image/*" onChange={handleRatingPhotoUpload} style={{ fontSize: '13px' }} />
+                        {ratingForm.roomPhoto && <img src={ratingForm.roomPhoto} alt="Rating" style={{ maxWidth: '150px', maxHeight: '100px', borderRadius: '6px', marginTop: '8px', objectFit: 'cover' }} />}
+                      </div>
+
+                      <div style={{ marginBottom: '16px' }}>
+                        <label style={{ display: 'block', marginBottom: '4px', fontWeight: '600', fontSize: '14px', color: 'var(--text-primary)' }}>{isRTL ? 'تعليقات (اختياري)' : 'Comments (optional)'}</label>
+                        <textarea value={ratingForm.comments} onChange={(e) => setRatingForm({ ...ratingForm, comments: e.target.value })} placeholder={isRTL ? 'تعليقات إضافية' : 'Additional comments'} style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #e2e8f0', minHeight: '60px', resize: 'vertical', fontFamily: 'inherit' }} />
+                      </div>
+
+                      <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
+                        <button onClick={() => setShowRatingModal(false)} style={{ padding: '8px 16px', borderRadius: '8px', border: '1px solid #e2e8f0', background: 'var(--card-bg)', cursor: 'pointer', color: 'var(--text-primary)' }}>{isRTL ? 'إلغاء' : 'Cancel'}</button>
+                        <button onClick={handleAddEducationRating} style={{ padding: '8px 16px', borderRadius: '8px', background: '#f59e0b', color: 'white', border: 'none', cursor: 'pointer', fontWeight: '600' }}>{isRTL ? 'إضافة التقييم' : 'Add Rating'}</button>
+                      </div>
+                    </motion.div>
+                  </div>
+                )}
+              </motion.div>
             )}
 
             {/* Settings Tab */}
