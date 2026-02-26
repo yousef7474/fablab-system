@@ -46,7 +46,7 @@ const EducationRating = sequelize.define('EducationRating', {
     allowNull: true
   },
   createdById: {
-    type: DataTypes.STRING,
+    type: DataTypes.UUID,
     allowNull: false,
     references: {
       model: 'admins',

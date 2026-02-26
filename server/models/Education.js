@@ -65,7 +65,7 @@ const Education = sequelize.define('Education', {
     allowNull: true
   },
   approvedById: {
-    type: DataTypes.STRING,
+    type: DataTypes.UUID,
     allowNull: true,
     references: {
       model: 'admins',

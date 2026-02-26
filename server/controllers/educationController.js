@@ -294,7 +294,7 @@ exports.getMyEducations = async (req, res) => {
 // Add daily rating (auth)
 exports.addRating = async (req, res) => {
   try {
-    const { educationId } = req.params;
+    const educationId = req.params.id;
     const { ratingDate, cleanlinessScore, damageLevel, damageDescription, roomPhoto, comments } = req.body;
 
     const education = await Education.findByPk(educationId);
