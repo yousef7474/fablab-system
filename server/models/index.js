@@ -26,6 +26,7 @@ const WorkingHoursOverride = require('./WorkingHoursOverride');
 const Borrowing = require('./Borrowing');
 const Education = require('./Education');
 const EducationRating = require('./EducationRating');
+const EducationStudent = require('./EducationStudent');
 
 // Define relationships
 User.hasMany(Registration, { foreignKey: 'userId', as: 'registrations' });
@@ -166,6 +167,10 @@ Education.hasMany(EducationRating, { foreignKey: 'educationId', as: 'ratings' })
 EducationRating.belongsTo(Admin, { foreignKey: 'createdById', as: 'ratedBy' });
 Admin.hasMany(EducationRating, { foreignKey: 'createdById', as: 'givenEducationRatings' });
 
+// Education Student relationships
+EducationStudent.belongsTo(Education, { foreignKey: 'educationId', as: 'education' });
+Education.hasMany(EducationStudent, { foreignKey: 'educationId', as: 'students' });
+
 // Sync database
 const syncDatabase = async () => {
   try {
@@ -227,5 +232,6 @@ module.exports = {
   Borrowing,
   Education,
   EducationRating,
+  EducationStudent,
   syncDatabase
 };

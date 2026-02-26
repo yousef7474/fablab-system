@@ -283,6 +283,9 @@ const ManagerDashboard = () => {
   const [educationRatingForm, setEducationRatingForm] = useState({ ratingDate: new Date().toISOString().split('T')[0], cleanlinessScore: 5, damageLevel: 'none', damageDescription: '', roomPhoto: '', comments: '' });
   const [showEducationEmailModal, setShowEducationEmailModal] = useState(false);
   const [educationEmailForm, setEducationEmailForm] = useState({ subject: '', message: '' });
+  const [educationStudents, setEducationStudents] = useState([]);
+  const [showAddStudentModal, setShowAddStudentModal] = useState(false);
+  const [newStudentForm, setNewStudentForm] = useState({ fullName: '', nationalId: '', phoneNumber: '', schoolName: '', educationLevel: '', parentPhoneNumber: '', personalPhoto: '' });
   const [sendingEducationEmail, setSendingEducationEmail] = useState(false);
 
   // Workspace rating criteria options
@@ -3047,9 +3050,159 @@ const ManagerDashboard = () => {
       const response = await api.get(`/education/${encodeURIComponent(id)}`);
       setSelectedEducation(response.data);
       setEducationRatings(response.data.ratings || []);
+      fetchEducationStudents(id);
     } catch (error) {
       console.error('Error fetching education detail:', error);
     }
+  };
+
+  const fetchEducationStudents = async (educationId) => {
+    try {
+      const response = await api.get(`/education/${encodeURIComponent(educationId)}/students`);
+      setEducationStudents(response.data.students || []);
+    } catch (error) {
+      console.error('Error fetching students:', error);
+      setEducationStudents([]);
+    }
+  };
+
+  const handleAddStudent = async () => {
+    if (!selectedEducation) return;
+    const required = ['fullName', 'nationalId', 'phoneNumber', 'schoolName', 'educationLevel', 'parentPhoneNumber', 'personalPhoto'];
+    for (const field of required) {
+      if (!newStudentForm[field]) {
+        toast.error(isRTL ? 'جميع الحقول مطلوبة' : 'All fields are required');
+        return;
+      }
+    }
+    try {
+      await api.post(`/education/${encodeURIComponent(selectedEducation.educationId)}/students/add`, newStudentForm);
+      toast.success(isRTL ? 'تم إضافة الطالب بنجاح' : 'Student added successfully');
+      setShowAddStudentModal(false);
+      setNewStudentForm({ fullName: '', nationalId: '', phoneNumber: '', schoolName: '', educationLevel: '', parentPhoneNumber: '', personalPhoto: '' });
+      fetchEducationStudents(selectedEducation.educationId);
+    } catch (error) {
+      toast.error(isRTL ? 'خطأ في إضافة الطالب' : 'Error adding student');
+    }
+  };
+
+  const handleRemoveStudent = async (studentId) => {
+    if (!window.confirm(isRTL ? 'هل أنت متأكد من إزالة هذا الطالب؟' : 'Are you sure you want to remove this student?')) return;
+    try {
+      await api.delete(`/education/students/${encodeURIComponent(studentId)}`);
+      toast.success(isRTL ? 'تم إزالة الطالب' : 'Student removed');
+      fetchEducationStudents(selectedEducation.educationId);
+    } catch (error) {
+      toast.error(isRTL ? 'خطأ في إزالة الطالب' : 'Error removing student');
+    }
+  };
+
+  const handleStudentPhotoUpload = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    if (file.size > 5 * 1024 * 1024) { toast.error(isRTL ? 'الحجم الأقصى 5MB' : 'Max 5MB'); return; }
+    const reader = new FileReader();
+    reader.onload = (event) => setNewStudentForm(prev => ({ ...prev, personalPhoto: event.target.result }));
+    reader.readAsDataURL(file);
+  };
+
+  const handlePrintStudentProfile = (student, education) => {
+    const printWindow = window.open('', '_blank');
+    const teacherName = education.user?.firstName && education.user?.lastName ? `${education.user.firstName} ${education.user.lastName}` : education.user?.name || 'N/A';
+    printWindow.document.write(`<!DOCTYPE html><html dir="rtl"><head><meta charset="UTF-8"><title>Student Profile - ${student.fullName}</title><style>
+      @page { size: A4; margin: 15mm; }
+      * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', Tahoma, sans-serif; }
+      body { padding: 20px; direction: rtl; }
+      .header { background: linear-gradient(135deg, #1e7a9a, #2596be); color: white; padding: 24px; border-radius: 12px; text-align: center; margin-bottom: 24px; }
+      .header h1 { font-size: 22px; margin-bottom: 4px; }
+      .header p { opacity: 0.85; font-size: 13px; }
+      .photo-section { text-align: center; margin-bottom: 24px; }
+      .photo-section img { width: 150px; height: 150px; border-radius: 50%; object-fit: cover; border: 4px solid #2596be; }
+      .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 24px; }
+      .info-item { background: #f8fafc; padding: 14px; border-radius: 10px; border-right: 4px solid #2596be; }
+      .info-item label { display: block; font-size: 11px; color: #64748b; margin-bottom: 4px; }
+      .info-item span { font-size: 15px; font-weight: 700; color: #1e293b; }
+      .footer { text-align: center; margin-top: 24px; padding-top: 16px; border-top: 2px solid #e2e8f0; color: #64748b; font-size: 11px; }
+      @media print { body { padding: 0; -webkit-print-color-adjust: exact; print-color-adjust: exact; } }
+    </style></head><body>
+      <div class="header"><h1>بطاقة تعريف الطالب</h1><p>Student Profile Card</p></div>
+      <div class="photo-section"><img src="${student.personalPhoto}" alt="Photo" /></div>
+      <div class="info-grid">
+        <div class="info-item"><label>الاسم الكامل</label><span>${student.fullName}</span></div>
+        <div class="info-item"><label>رقم الهوية</label><span>${student.nationalId}</span></div>
+        <div class="info-item"><label>رقم الهاتف</label><span>${student.phoneNumber}</span></div>
+        <div class="info-item"><label>اسم المدرسة</label><span>${student.schoolName}</span></div>
+        <div class="info-item"><label>المرحلة التعليمية</label><span>${student.educationLevel}</span></div>
+        <div class="info-item"><label>رقم ولي الأمر</label><span>${student.parentPhoneNumber}</span></div>
+        <div class="info-item"><label>رقم التعليم</label><span>${education.educationId}</span></div>
+        <div class="info-item"><label>المعلم</label><span>${teacherName}</span></div>
+      </div>
+      <div class="footer"><p>FABLAB Al-Ahsa - فاب لاب الأحساء</p></div>
+    </body></html>`);
+    printWindow.document.close();
+    setTimeout(() => printWindow.print(), 500);
+  };
+
+  const handlePrintStudentIdCard = (student, education) => {
+    const printWindow = window.open('', '_blank');
+    printWindow.document.write(`<!DOCTYPE html><html dir="rtl"><head><meta charset="UTF-8"><title>ID Card - ${student.fullName}</title><style>
+      @page { size: 85mm 54mm; margin: 0; }
+      * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', Tahoma, sans-serif; }
+      body { display: flex; justify-content: center; align-items: center; min-height: 100vh; background: #f0f0f0; }
+      .card { width: 85mm; height: 54mm; background: white; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 10px rgba(0,0,0,0.1); position: relative; }
+      .card-header { background: linear-gradient(135deg, #1e7a9a, #2596be); color: white; padding: 6px 12px; text-align: center; font-size: 10px; font-weight: 700; }
+      .card-body { display: flex; padding: 8px 12px; gap: 10px; height: calc(100% - 28px); }
+      .card-photo { width: 55px; height: 55px; border-radius: 50%; object-fit: cover; border: 2px solid #2596be; flex-shrink: 0; }
+      .card-info { flex: 1; display: flex; flex-direction: column; justify-content: center; gap: 3px; }
+      .card-info .name { font-size: 12px; font-weight: 700; color: #1e293b; }
+      .card-info .detail { font-size: 9px; color: #475569; }
+      .card-info .detail b { color: #1e7a9a; }
+      .card-footer { position: absolute; bottom: 0; left: 0; right: 0; background: #f1f5f9; padding: 3px 12px; font-size: 7px; color: #64748b; text-align: center; }
+      @media print { body { min-height: auto; background: white; } .card { box-shadow: none; } -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    </style></head><body>
+      <div class="card">
+        <div class="card-header">فاب لاب الأحساء - FABLAB Al-Ahsa</div>
+        <div class="card-body">
+          <img class="card-photo" src="${student.personalPhoto}" alt="Photo" />
+          <div class="card-info">
+            <div class="name">${student.fullName}</div>
+            <div class="detail"><b>الهوية:</b> ${student.nationalId}</div>
+            <div class="detail"><b>المدرسة:</b> ${student.schoolName}</div>
+            <div class="detail"><b>رقم التعليم:</b> ${education.educationId}</div>
+          </div>
+        </div>
+        <div class="card-footer">Student ID Card - بطاقة هوية الطالب</div>
+      </div>
+    </body></html>`);
+    printWindow.document.close();
+    setTimeout(() => printWindow.print(), 500);
+  };
+
+  const handlePrintAllStudentsList = (students, education) => {
+    const printWindow = window.open('', '_blank');
+    const teacherName = education.user?.firstName && education.user?.lastName ? `${education.user.firstName} ${education.user.lastName}` : education.user?.name || 'N/A';
+    const rows = students.map((s, i) => `<tr><td>${i + 1}</td><td><img src="${s.personalPhoto}" style="width:30px;height:30px;border-radius:50%;object-fit:cover;" /></td><td>${s.fullName}</td><td>${s.nationalId}</td><td>${s.schoolName}</td><td>${s.educationLevel}</td><td>${s.phoneNumber}</td><td>${s.parentPhoneNumber}</td></tr>`).join('');
+    printWindow.document.write(`<!DOCTYPE html><html dir="rtl"><head><meta charset="UTF-8"><title>Students List</title><style>
+      @page { size: A4 landscape; margin: 10mm; }
+      * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', Tahoma, sans-serif; }
+      body { padding: 20px; direction: rtl; }
+      .header { background: linear-gradient(135deg, #1e7a9a, #2596be); color: white; padding: 16px 24px; border-radius: 10px; margin-bottom: 16px; display: flex; justify-content: space-between; align-items: center; }
+      .header h2 { font-size: 18px; }
+      .header .info { font-size: 12px; opacity: 0.85; }
+      table { width: 100%; border-collapse: collapse; font-size: 12px; }
+      th { background: #2596be; color: white; padding: 8px 10px; text-align: right; font-weight: 600; }
+      td { padding: 7px 10px; border-bottom: 1px solid #e2e8f0; }
+      tr:nth-child(even) { background: #f8fafc; }
+      @media print { body { padding: 0; -webkit-print-color-adjust: exact; print-color-adjust: exact; } }
+    </style></head><body>
+      <div class="header">
+        <div><h2>قائمة الطلاب</h2><div class="info">${teacherName} | ${education.section} | ${education.educationId}</div></div>
+        <div style="text-align:left"><div class="info">العدد: ${students.length}</div></div>
+      </div>
+      <table><thead><tr><th>#</th><th>الصورة</th><th>الاسم</th><th>الهوية</th><th>المدرسة</th><th>المرحلة</th><th>الهاتف</th><th>ولي الأمر</th></tr></thead><tbody>${rows}</tbody></table>
+    </body></html>`);
+    printWindow.document.close();
+    setTimeout(() => printWindow.print(), 500);
   };
 
   const handleEducationStatusUpdate = async (educationId, status) => {
@@ -3190,7 +3343,7 @@ const ManagerDashboard = () => {
           .footer p { margin: 2px 0; }
           .stamp-area { display: flex; justify-content: center; margin: 15px 0; }
           .stamp-box { width: 120px; height: 120px; border: 2px dashed #cbd5e1; border-radius: 10px; display: flex; align-items: center; justify-content: center; color: #94a3b8; font-size: 11px; font-weight: 600; }
-          @media print { body { padding: 0; } .page { min-height: auto; } }
+          @media print { body { padding: 0; -webkit-print-color-adjust: exact; print-color-adjust: exact; } .page { min-height: auto; } }
         </style>
       </head>
       <body>
@@ -7884,6 +8037,102 @@ const ManagerDashboard = () => {
                         <div style={{ padding: '12px', background: '#fffbeb', borderRadius: '8px', marginBottom: '20px', border: '1px solid #fde68a' }}>
                           <div style={{ fontSize: '12px', color: '#92400e', marginBottom: '4px' }}>{isRTL ? 'ملاحظات الإدارة' : 'Admin Notes'}</div>
                           <div style={{ color: '#78350f' }}>{selectedEducation.adminNotes}</div>
+                        </div>
+                      )}
+
+                      {/* Students Section */}
+                      <div style={{ marginTop: '24px' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap', gap: '8px' }}>
+                          <h4 style={{ color: 'var(--text-primary)', margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            {isRTL ? 'الطلاب' : 'Students'}
+                            <span style={{ background: '#2596be', color: 'white', borderRadius: '12px', padding: '2px 10px', fontSize: '12px', fontWeight: '700' }}>{educationStudents.length}</span>
+                          </h4>
+                          <div style={{ display: 'flex', gap: '8px' }}>
+                            {educationStudents.length > 0 && (
+                              <button onClick={() => handlePrintAllStudentsList(educationStudents, selectedEducation)} style={{ padding: '6px 14px', borderRadius: '8px', background: '#1e7a9a', color: 'white', border: 'none', cursor: 'pointer', fontSize: '12px', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+                                {isRTL ? 'طباعة الكل' : 'Print All'}
+                              </button>
+                            )}
+                            <button onClick={() => setShowAddStudentModal(true)} style={{ padding: '6px 14px', borderRadius: '8px', background: '#2596be', color: 'white', border: 'none', cursor: 'pointer', fontSize: '12px', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                              {isRTL ? 'إضافة طالب' : 'Add Student'}
+                            </button>
+                          </div>
+                        </div>
+                        {educationStudents.length === 0 ? (
+                          <div style={{ textAlign: 'center', padding: '24px', color: '#94a3b8', background: '#f8fafc', borderRadius: '10px' }}>{isRTL ? 'لا يوجد طلاب مسجلين' : 'No students registered'}</div>
+                        ) : (
+                          <div style={{ overflowX: 'auto', borderRadius: '10px', border: '1px solid #e2e8f0' }}>
+                            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px' }}>
+                              <thead>
+                                <tr style={{ background: '#f1f5f9' }}>
+                                  <th style={{ padding: '8px 10px', textAlign: isRTL ? 'right' : 'left', fontWeight: '600', color: '#475569' }}>{isRTL ? 'الصورة' : 'Photo'}</th>
+                                  <th style={{ padding: '8px 10px', textAlign: isRTL ? 'right' : 'left', fontWeight: '600', color: '#475569' }}>{isRTL ? 'الاسم' : 'Name'}</th>
+                                  <th style={{ padding: '8px 10px', textAlign: isRTL ? 'right' : 'left', fontWeight: '600', color: '#475569' }}>{isRTL ? 'الهوية' : 'National ID'}</th>
+                                  <th style={{ padding: '8px 10px', textAlign: isRTL ? 'right' : 'left', fontWeight: '600', color: '#475569' }}>{isRTL ? 'المدرسة' : 'School'}</th>
+                                  <th style={{ padding: '8px 10px', textAlign: isRTL ? 'right' : 'left', fontWeight: '600', color: '#475569' }}>{isRTL ? 'المرحلة' : 'Level'}</th>
+                                  <th style={{ padding: '8px 10px', textAlign: isRTL ? 'right' : 'left', fontWeight: '600', color: '#475569' }}>{isRTL ? 'الهاتف' : 'Phone'}</th>
+                                  <th style={{ padding: '8px 10px', textAlign: isRTL ? 'right' : 'left', fontWeight: '600', color: '#475569' }}>{isRTL ? 'ولي الأمر' : 'Parent'}</th>
+                                  <th style={{ padding: '8px 10px', textAlign: 'center', fontWeight: '600', color: '#475569' }}>{isRTL ? 'إجراءات' : 'Actions'}</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {educationStudents.map((student, idx) => (
+                                  <tr key={student.studentId} style={{ borderBottom: '1px solid #e2e8f0', background: idx % 2 === 0 ? 'white' : '#f8fafc' }}>
+                                    <td style={{ padding: '6px 10px' }}><img src={student.personalPhoto} alt="" style={{ width: '40px', height: '40px', borderRadius: '50%', objectFit: 'cover' }} /></td>
+                                    <td style={{ padding: '6px 10px', fontWeight: '600' }}>{student.fullName}</td>
+                                    <td style={{ padding: '6px 10px' }}>{student.nationalId}</td>
+                                    <td style={{ padding: '6px 10px' }}>{student.schoolName}</td>
+                                    <td style={{ padding: '6px 10px' }}>{student.educationLevel}</td>
+                                    <td style={{ padding: '6px 10px' }}>{student.phoneNumber}</td>
+                                    <td style={{ padding: '6px 10px' }}>{student.parentPhoneNumber}</td>
+                                    <td style={{ padding: '6px 10px', textAlign: 'center' }}>
+                                      <div style={{ display: 'flex', gap: '4px', justifyContent: 'center', flexWrap: 'wrap' }}>
+                                        <button onClick={() => handlePrintStudentProfile(student, selectedEducation)} title={isRTL ? 'طباعة ملف' : 'Print Profile'} style={{ padding: '4px 6px', borderRadius: '4px', background: '#e0f2fe', color: '#0369a1', border: 'none', cursor: 'pointer', fontSize: '11px' }}>
+                                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                                        </button>
+                                        <button onClick={() => handlePrintStudentIdCard(student, selectedEducation)} title={isRTL ? 'طباعة بطاقة' : 'Print ID Card'} style={{ padding: '4px 6px', borderRadius: '4px', background: '#d1fae5', color: '#047857', border: 'none', cursor: 'pointer', fontSize: '11px' }}>
+                                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>
+                                        </button>
+                                        <button onClick={() => handleRemoveStudent(student.studentId)} title={isRTL ? 'إزالة' : 'Remove'} style={{ padding: '4px 6px', borderRadius: '4px', background: '#fee2e2', color: '#dc2626', border: 'none', cursor: 'pointer', fontSize: '11px' }}>
+                                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                                        </button>
+                                      </div>
+                                    </td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Add Student Modal */}
+                      {showAddStudentModal && (
+                        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }} onClick={() => setShowAddStudentModal(false)}>
+                          <div style={{ background: 'white', borderRadius: '16px', padding: '24px', maxWidth: '500px', width: '90%', maxHeight: '85vh', overflowY: 'auto' }} onClick={e => e.stopPropagation()}>
+                            <h3 style={{ marginBottom: '16px', color: '#1e293b' }}>{isRTL ? 'إضافة طالب جديد' : 'Add New Student'}</h3>
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                              <div><label style={{ display: 'block', fontSize: '12px', color: '#475569', marginBottom: '4px', fontWeight: '600' }}>{isRTL ? 'الاسم الكامل' : 'Full Name'} *</label><input type="text" value={newStudentForm.fullName} onChange={e => setNewStudentForm(p => ({...p, fullName: e.target.value}))} style={{ width: '100%', padding: '8px 12px', borderRadius: '8px', border: '1px solid #d1d5db', fontSize: '13px', boxSizing: 'border-box' }} /></div>
+                              <div><label style={{ display: 'block', fontSize: '12px', color: '#475569', marginBottom: '4px', fontWeight: '600' }}>{isRTL ? 'رقم الهوية' : 'National ID'} *</label><input type="text" value={newStudentForm.nationalId} onChange={e => setNewStudentForm(p => ({...p, nationalId: e.target.value}))} style={{ width: '100%', padding: '8px 12px', borderRadius: '8px', border: '1px solid #d1d5db', fontSize: '13px', boxSizing: 'border-box' }} /></div>
+                              <div><label style={{ display: 'block', fontSize: '12px', color: '#475569', marginBottom: '4px', fontWeight: '600' }}>{isRTL ? 'رقم الهاتف' : 'Phone'} *</label><input type="text" value={newStudentForm.phoneNumber} onChange={e => setNewStudentForm(p => ({...p, phoneNumber: e.target.value}))} style={{ width: '100%', padding: '8px 12px', borderRadius: '8px', border: '1px solid #d1d5db', fontSize: '13px', boxSizing: 'border-box' }} /></div>
+                              <div><label style={{ display: 'block', fontSize: '12px', color: '#475569', marginBottom: '4px', fontWeight: '600' }}>{isRTL ? 'اسم المدرسة' : 'School Name'} *</label><input type="text" value={newStudentForm.schoolName} onChange={e => setNewStudentForm(p => ({...p, schoolName: e.target.value}))} style={{ width: '100%', padding: '8px 12px', borderRadius: '8px', border: '1px solid #d1d5db', fontSize: '13px', boxSizing: 'border-box' }} /></div>
+                              <div><label style={{ display: 'block', fontSize: '12px', color: '#475569', marginBottom: '4px', fontWeight: '600' }}>{isRTL ? 'المرحلة التعليمية' : 'Education Level'} *</label><select value={newStudentForm.educationLevel} onChange={e => setNewStudentForm(p => ({...p, educationLevel: e.target.value}))} style={{ width: '100%', padding: '8px 12px', borderRadius: '8px', border: '1px solid #d1d5db', fontSize: '13px', boxSizing: 'border-box' }}><option value="">--</option><option value="ابتدائي">ابتدائي</option><option value="متوسط">متوسط</option><option value="ثانوي">ثانوي</option><option value="جامعي">جامعي</option><option value="أخرى">أخرى</option></select></div>
+                              <div><label style={{ display: 'block', fontSize: '12px', color: '#475569', marginBottom: '4px', fontWeight: '600' }}>{isRTL ? 'رقم ولي الأمر' : 'Parent Phone'} *</label><input type="text" value={newStudentForm.parentPhoneNumber} onChange={e => setNewStudentForm(p => ({...p, parentPhoneNumber: e.target.value}))} style={{ width: '100%', padding: '8px 12px', borderRadius: '8px', border: '1px solid #d1d5db', fontSize: '13px', boxSizing: 'border-box' }} /></div>
+                            </div>
+                            <div style={{ marginTop: '12px' }}>
+                              <label style={{ display: 'block', fontSize: '12px', color: '#475569', marginBottom: '4px', fontWeight: '600' }}>{isRTL ? 'الصورة الشخصية' : 'Personal Photo'} *</label>
+                              <div style={{ border: '2px dashed #d1d5db', borderRadius: '8px', padding: '16px', textAlign: 'center', position: 'relative', cursor: 'pointer' }}>
+                                {newStudentForm.personalPhoto ? <img src={newStudentForm.personalPhoto} alt="Preview" style={{ width: '50px', height: '50px', borderRadius: '50%', objectFit: 'cover' }} /> : <span style={{ color: '#94a3b8', fontSize: '13px' }}>{isRTL ? 'اضغط لرفع الصورة' : 'Click to upload'}</span>}
+                                <input type="file" accept="image/*" onChange={handleStudentPhotoUpload} style={{ position: 'absolute', inset: 0, opacity: 0, cursor: 'pointer' }} />
+                              </div>
+                            </div>
+                            <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end', marginTop: '16px' }}>
+                              <button onClick={() => setShowAddStudentModal(false)} style={{ padding: '8px 20px', borderRadius: '8px', border: '1px solid #d1d5db', background: 'white', cursor: 'pointer', fontSize: '13px' }}>{isRTL ? 'إلغاء' : 'Cancel'}</button>
+                              <button onClick={handleAddStudent} style={{ padding: '8px 20px', borderRadius: '8px', background: '#2596be', color: 'white', border: 'none', cursor: 'pointer', fontSize: '13px', fontWeight: '600' }}>{isRTL ? 'إضافة' : 'Add'}</button>
+                            </div>
+                          </div>
                         </div>
                       )}
 

@@ -1,5 +1,5 @@
-const { User, Education, EducationRating, Admin } = require('../models');
-const { generateUserId, generateEducationId } = require('../utils/idGenerator');
+const { User, Education, EducationRating, EducationStudent, Admin } = require('../models');
+const { generateUserId, generateEducationId, generateStudentId } = require('../utils/idGenerator');
 const { Op } = require('sequelize');
 const { sendEducationConfirmation, sendEducationStatusUpdate, sendEducationPeriodEnd, sendCustomEducationEmail } = require('../utils/educationEmailService');
 
@@ -414,6 +414,176 @@ exports.sendCustomEmail = async (req, res) => {
     res.json({ message: 'Email sent successfully', messageAr: 'تم إرسال البريد الإلكتروني بنجاح' });
   } catch (error) {
     console.error('Error sending custom email:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+// Verify education ID (public)
+exports.verifyEducationId = async (req, res) => {
+  try {
+    const education = await Education.findByPk(req.params.id, {
+      include: [{ model: User, as: 'user', attributes: ['firstName', 'lastName', 'name'] }]
+    });
+
+    if (!education) {
+      return res.status(404).json({ message: 'Education record not found', messageAr: 'لم يتم العثور على سجل التعليم' });
+    }
+
+    res.json({
+      educationId: education.educationId,
+      section: education.section,
+      teacherName: education.user?.firstName && education.user?.lastName
+        ? `${education.user.firstName} ${education.user.lastName}`
+        : education.user?.name || 'N/A',
+      status: education.status,
+      periodStartDate: education.periodStartDate,
+      periodEndDate: education.periodEndDate,
+      periodStartTime: education.periodStartTime,
+      periodEndTime: education.periodEndTime
+    });
+  } catch (error) {
+    console.error('Error verifying education:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+// Bulk add students (public)
+exports.bulkAddStudents = async (req, res) => {
+  try {
+    const educationId = req.params.id;
+    const { students } = req.body;
+
+    if (!students || !Array.isArray(students) || students.length === 0) {
+      return res.status(400).json({ message: 'Students array is required', messageAr: 'قائمة الطلاب مطلوبة' });
+    }
+
+    const education = await Education.findByPk(educationId);
+    if (!education) {
+      return res.status(404).json({ message: 'Education record not found', messageAr: 'لم يتم العثور على سجل التعليم' });
+    }
+
+    // Generate IDs sequentially - find max once
+    const lastStudent = await EducationStudent.findOne({
+      order: [['createdAt', 'DESC']]
+    });
+    let nextIdNumber = 1;
+    if (lastStudent && lastStudent.studentId) {
+      nextIdNumber = parseInt(lastStudent.studentId.replace('S#', '')) + 1;
+    }
+
+    const studentRecords = students.map((student, index) => ({
+      studentId: `S#${String(nextIdNumber + index).padStart(5, '0')}`,
+      educationId,
+      fullName: student.fullName,
+      nationalId: student.nationalId,
+      phoneNumber: student.phoneNumber,
+      schoolName: student.schoolName,
+      educationLevel: student.educationLevel,
+      parentPhoneNumber: student.parentPhoneNumber,
+      personalPhoto: student.personalPhoto,
+      status: 'active'
+    }));
+
+    const created = await EducationStudent.bulkCreate(studentRecords);
+
+    res.status(201).json({
+      message: 'Students added successfully',
+      messageAr: 'تم إضافة الطلاب بنجاح',
+      count: created.length,
+      educationId
+    });
+  } catch (error) {
+    console.error('Error bulk adding students:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+};
+
+// Get students for an education (auth)
+exports.getStudentsForEducation = async (req, res) => {
+  try {
+    const students = await EducationStudent.findAll({
+      where: { educationId: req.params.id, status: 'active' },
+      order: [['createdAt', 'ASC']]
+    });
+
+    res.json({ students });
+  } catch (error) {
+    console.error('Error fetching students:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+// Add single student (auth)
+exports.addSingleStudent = async (req, res) => {
+  try {
+    const educationId = req.params.id;
+    const { fullName, nationalId, phoneNumber, schoolName, educationLevel, parentPhoneNumber, personalPhoto } = req.body;
+
+    if (!fullName || !nationalId || !phoneNumber || !schoolName || !educationLevel || !parentPhoneNumber || !personalPhoto) {
+      return res.status(400).json({ message: 'All fields are required', messageAr: 'جميع الحقول مطلوبة' });
+    }
+
+    const education = await Education.findByPk(educationId);
+    if (!education) {
+      return res.status(404).json({ message: 'Education record not found' });
+    }
+
+    const studentId = await generateStudentId();
+
+    const student = await EducationStudent.create({
+      studentId,
+      educationId,
+      fullName,
+      nationalId,
+      phoneNumber,
+      schoolName,
+      educationLevel,
+      parentPhoneNumber,
+      personalPhoto,
+      status: 'active'
+    });
+
+    res.status(201).json({ message: 'Student added successfully', messageAr: 'تم إضافة الطالب بنجاح', student });
+  } catch (error) {
+    console.error('Error adding student:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+};
+
+// Update student (auth)
+exports.updateStudent = async (req, res) => {
+  try {
+    const student = await EducationStudent.findByPk(req.params.studentId);
+    if (!student) {
+      return res.status(404).json({ message: 'Student not found' });
+    }
+
+    const allowedFields = ['fullName', 'nationalId', 'phoneNumber', 'schoolName', 'educationLevel', 'parentPhoneNumber', 'personalPhoto'];
+    const updates = {};
+    allowedFields.forEach(field => {
+      if (req.body[field] !== undefined) updates[field] = req.body[field];
+    });
+
+    await student.update(updates);
+    res.json({ message: 'Student updated successfully', messageAr: 'تم تحديث بيانات الطالب بنجاح', student });
+  } catch (error) {
+    console.error('Error updating student:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+// Remove student - soft delete (auth)
+exports.removeStudent = async (req, res) => {
+  try {
+    const student = await EducationStudent.findByPk(req.params.studentId);
+    if (!student) {
+      return res.status(404).json({ message: 'Student not found' });
+    }
+
+    await student.update({ status: 'removed' });
+    res.json({ message: 'Student removed successfully', messageAr: 'تم إزالة الطالب بنجاح' });
+  } catch (error) {
+    console.error('Error removing student:', error);
     res.status(500).json({ message: 'Server error' });
   }
 };
