@@ -3162,35 +3162,68 @@ const ManagerDashboard = () => {
       @page { size: 54mm 85mm; margin: 0; }
       * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', Tahoma, sans-serif; }
       body { display: flex; justify-content: center; align-items: center; min-height: 100vh; background: #f0f0f0; }
-      .card { width: 54mm; height: 85mm; background: white; overflow: hidden; display: flex; flex-direction: column; }
-      .card-header { background: linear-gradient(135deg, #5b21b6, #6d28d9); color: white; padding: 5px 4px; text-align: center; display: flex; align-items: center; justify-content: center; gap: 4px; flex-shrink: 0; }
-      .card-header img { width: 28px; height: 28px; object-fit: contain; }
-      .card-header span { font-size: 9px; font-weight: 700; letter-spacing: 0.5px; }
-      .card-photo-section { flex-shrink: 0; display: flex; justify-content: center; align-items: center; padding: 6px 0 4px 0; }
-      .card-photo { width: 90px; height: 90px; border-radius: 50%; object-fit: cover; border: 3px solid #6d28d9; box-shadow: 0 2px 8px rgba(109,40,217,0.25); }
-      .card-info { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; padding: 2px 6px; text-align: center; }
-      .card-info .name { font-size: 12px; font-weight: 800; color: #1e293b; margin-bottom: 2px; }
-      .card-info .detail { font-size: 9px; color: #334155; line-height: 1.3; }
-      .card-info .detail b { color: #5b21b6; }
-      .card-footer { background: linear-gradient(135deg, #5b21b6, #6d28d9); color: white; padding: 4px; text-align: center; font-size: 7px; font-weight: 600; flex-shrink: 0; }
-      @media print { body { min-height: auto; background: white; } -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; color-adjust: exact !important; }
+      .card { width: 54mm; height: 85mm; background: linear-gradient(170deg, #f8f6ff 0%, #ffffff 40%, #f3f0ff 100%); overflow: hidden; display: flex; flex-direction: column; position: relative; border: 1.5px solid #e9e2ff; }
+      .card::before { content: ''; position: absolute; top: 0; right: 0; width: 40px; height: 40px; background: radial-gradient(circle at top right, rgba(109,40,217,0.06) 0%, transparent 70%); }
+      .card::after { content: ''; position: absolute; bottom: 20px; left: 0; width: 30px; height: 30px; background: radial-gradient(circle at bottom left, rgba(124,58,237,0.05) 0%, transparent 70%); }
+      .card-header { background: linear-gradient(135deg, #5b21b6, #6d28d9, #7c3aed); color: white; padding: 6px 6px; display: flex; align-items: center; justify-content: space-between; flex-shrink: 0; }
+      .card-header img { width: 26px; height: 26px; object-fit: contain; }
+      .card-header .header-center { text-align: center; flex: 1; }
+      .card-header .header-center .title { font-size: 8px; font-weight: 800; letter-spacing: 1px; text-transform: uppercase; }
+      .card-header .header-center .subtitle { font-size: 5.5px; opacity: 0.85; margin-top: 1px; letter-spacing: 0.5px; }
+      .photo-area { flex-shrink: 0; display: flex; justify-content: center; padding: 8px 0 4px 0; position: relative; }
+      .photo-ring { width: 82px; height: 82px; border-radius: 50%; background: linear-gradient(135deg, #6d28d9, #8b5cf6, #6d28d9); padding: 2.5px; }
+      .photo-ring img { width: 100%; height: 100%; border-radius: 50%; object-fit: cover; border: 2px solid white; }
+      .name-bar { text-align: center; padding: 4px 6px 2px; flex-shrink: 0; }
+      .name-bar h2 { font-size: 11px; font-weight: 800; color: #1e1b4b; letter-spacing: 0.3px; margin-bottom: 1px; }
+      .name-bar .role { font-size: 6px; text-transform: uppercase; letter-spacing: 1.5px; color: #6d28d9; font-weight: 700; }
+      .info-widgets { flex: 1; display: flex; flex-direction: column; gap: 3px; padding: 4px 5px 3px; position: relative; z-index: 1; }
+      .widget { display: flex; align-items: center; gap: 5px; background: white; border: 1px solid #ede9fe; border-radius: 6px; padding: 3.5px 6px; }
+      .widget-icon { width: 16px; height: 16px; border-radius: 4px; background: linear-gradient(135deg, #ede9fe, #ddd6fe); display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+      .widget-icon svg { width: 9px; height: 9px; }
+      .widget-content { flex: 1; min-width: 0; }
+      .widget-label { font-size: 5.5px; color: #8b5cf6; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
+      .widget-value { font-size: 8px; font-weight: 700; color: #1e1b4b; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+      .card-footer { background: linear-gradient(135deg, #5b21b6, #6d28d9); color: white; padding: 4px; text-align: center; font-size: 6px; font-weight: 600; flex-shrink: 0; letter-spacing: 1px; text-transform: uppercase; display: flex; align-items: center; justify-content: center; gap: 6px; }
+      .footer-dot { width: 3px; height: 3px; border-radius: 50%; background: rgba(255,255,255,0.5); }
+      @media print { body { min-height: auto; background: white; } .card { border-color: #ddd6fe; } -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; color-adjust: exact !important; }
     </style></head><body>
       <div class="card">
         <div class="card-header">
           <img src="/fablab.png" alt="FABLAB" />
-          <span>FABLAB Al-Ahsa</span>
+          <div class="header-center">
+            <div class="title">FABLAB Al-Ahsa</div>
+            <div class="subtitle">فاب لاب الأحساء</div>
+          </div>
           <img src="/found.png" alt="Foundation" />
         </div>
-        <div class="card-photo-section">
-          <img class="card-photo" src="${student.personalPhoto}" alt="Photo" />
+        <div class="photo-area">
+          <div class="photo-ring"><img src="${student.personalPhoto}" alt="Photo" /></div>
         </div>
-        <div class="card-info">
-          <div class="name">${student.fullName}</div>
-          <div class="detail"><b>الهوية:</b> ${student.nationalId}</div>
-          <div class="detail"><b>المدرسة:</b> ${student.schoolName}</div>
-          <div class="detail"><b>ولي الأمر:</b> ${student.parentPhoneNumber}</div>
+        <div class="name-bar">
+          <h2>${student.fullName}</h2>
+          <div class="role">Student / طالب</div>
         </div>
-        <div class="card-footer">Student ID Card - بطاقة هوية الطالب</div>
+        <div class="info-widgets">
+          <div class="widget">
+            <div class="widget-icon"><svg viewBox="0 0 24 24" fill="none" stroke="#6d28d9" stroke-width="2.5"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M7 8h10M7 12h6"/></svg></div>
+            <div class="widget-content"><div class="widget-label">الهوية / ID</div><div class="widget-value">${student.nationalId}</div></div>
+          </div>
+          <div class="widget">
+            <div class="widget-icon"><svg viewBox="0 0 24 24" fill="none" stroke="#6d28d9" stroke-width="2.5"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg></div>
+            <div class="widget-content"><div class="widget-label">المدرسة / School</div><div class="widget-value">${student.schoolName}</div></div>
+          </div>
+          <div class="widget">
+            <div class="widget-icon"><svg viewBox="0 0 24 24" fill="none" stroke="#6d28d9" stroke-width="2.5"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6A19.79 19.79 0 0 1 2.12 4.18 2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.96.362 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91"/></svg></div>
+            <div class="widget-content"><div class="widget-label">ولي الأمر / Parent</div><div class="widget-value">${student.parentPhoneNumber}</div></div>
+          </div>
+        </div>
+        <div class="card-footer">
+          <span class="footer-dot"></span>
+          Student ID Card
+          <span class="footer-dot"></span>
+          بطاقة هوية الطالب
+          <span class="footer-dot"></span>
+        </div>
       </div>
     </body></html>`);
     printWindow.document.close();
