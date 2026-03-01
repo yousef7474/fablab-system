@@ -98,10 +98,10 @@ const StudentRegistration = () => {
   const labelStyle = { display: 'block', marginBottom: '6px', fontWeight: '600', color: '#334155', textAlign: 'right', fontSize: '14px' };
 
   const btnPrimary = {
-    background: 'linear-gradient(135deg, #2596be, #2ba8cc)', color: 'white', border: 'none',
+    background: 'linear-gradient(135deg, #6d28d9, #7c3aed)', color: 'white', border: 'none',
     padding: '14px 32px', borderRadius: '12px', fontSize: '16px', fontWeight: '700',
     cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '8px',
-    boxShadow: '0 4px 15px rgba(37, 150, 190, 0.3)'
+    boxShadow: '0 4px 15px rgba(109, 40, 217, 0.3)'
   };
 
   return (
@@ -152,7 +152,7 @@ const StudentRegistration = () => {
               onClick={() => navigate('/')}
               style={{
                 position: 'absolute', top: '16px', left: '16px', background: 'none', border: 'none',
-                cursor: 'pointer', color: '#2596be', padding: '8px'
+                cursor: 'pointer', color: '#6d28d9', padding: '8px'
               }}
             >
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -168,10 +168,10 @@ const StudentRegistration = () => {
                   <div style={{ textAlign: 'center', marginBottom: '24px' }}>
                     <div style={{
                       width: '70px', height: '70px', borderRadius: '50%',
-                      background: 'linear-gradient(135deg, #e8f6fb, #d0eef7)',
+                      background: 'linear-gradient(135deg, #f5f3ff, #ede9fe)',
                       display: 'inline-flex', alignItems: 'center', justifyContent: 'center', marginBottom: '12px'
                     }}>
-                      <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#2596be" strokeWidth="2">
+                      <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#6d28d9" strokeWidth="2">
                         <circle cx="11" cy="11" r="8" /><path d="m21 21-4.35-4.35" />
                       </svg>
                     </div>
@@ -203,14 +203,14 @@ const StudentRegistration = () => {
                   {/* Education Info Card */}
                   {educationInfo && (
                     <div style={{
-                      background: 'linear-gradient(135deg, #e8f6fb, #d0eef7)', borderRadius: '12px',
-                      padding: '16px', marginBottom: '24px', border: '1px solid #b3e0f0'
+                      background: 'linear-gradient(135deg, #f5f3ff, #ede9fe)', borderRadius: '12px',
+                      padding: '16px', marginBottom: '24px', border: '1px solid #ddd6fe'
                     }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px' }}>
-                        <div><span style={{ color: '#64748b', fontSize: '12px' }}>رقم التعليم</span><br /><strong style={{ color: '#1e7a9a' }}>{educationInfo.educationId}</strong></div>
-                        <div><span style={{ color: '#64748b', fontSize: '12px' }}>المعلم</span><br /><strong style={{ color: '#1e7a9a' }}>{educationInfo.teacherName}</strong></div>
-                        <div><span style={{ color: '#64748b', fontSize: '12px' }}>القسم</span><br /><strong style={{ color: '#1e7a9a' }}>{educationInfo.section}</strong></div>
-                        <div><span style={{ color: '#64748b', fontSize: '12px' }}>الجدول</span><br /><strong style={{ color: '#1e7a9a' }}>{educationInfo.periodStartTime} - {educationInfo.periodEndTime}</strong></div>
+                        <div><span style={{ color: '#64748b', fontSize: '12px' }}>رقم التعليم</span><br /><strong style={{ color: '#5b21b6' }}>{educationInfo.educationId}</strong></div>
+                        <div><span style={{ color: '#64748b', fontSize: '12px' }}>المعلم</span><br /><strong style={{ color: '#5b21b6' }}>{educationInfo.teacherName}</strong></div>
+                        <div><span style={{ color: '#64748b', fontSize: '12px' }}>القسم</span><br /><strong style={{ color: '#5b21b6' }}>{educationInfo.section}</strong></div>
+                        <div><span style={{ color: '#64748b', fontSize: '12px' }}>الجدول</span><br /><strong style={{ color: '#5b21b6' }}>{educationInfo.periodStartTime} - {educationInfo.periodEndTime}</strong></div>
                       </div>
                     </div>
                   )}
@@ -293,7 +293,7 @@ const StudentRegistration = () => {
                       <div style={{ overflowX: 'auto', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
                         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
                           <thead>
-                            <tr style={{ background: 'linear-gradient(135deg, #1e7a9a, #2596be)', color: 'white' }}>
+                            <tr style={{ background: 'linear-gradient(135deg, #5b21b6, #6d28d9)', color: 'white' }}>
                               <th style={{ padding: '10px 12px', textAlign: 'right' }}>الصورة</th>
                               <th style={{ padding: '10px 12px', textAlign: 'right' }}>الاسم</th>
                               <th style={{ padding: '10px 12px', textAlign: 'right' }}>الهوية</th>
@@ -355,7 +355,7 @@ const StudentRegistration = () => {
                   </div>
                   <h2 style={{ color: '#1e293b', marginBottom: '8px' }}>تم التسجيل بنجاح!</h2>
                   <p style={{ color: '#64748b', marginBottom: '4px' }}>تم تسجيل {students.length} طالب بنجاح</p>
-                  <p style={{ color: '#2596be', fontWeight: '700', fontSize: '18px', marginBottom: '24px' }}>رقم التعليم: {educationId}</p>
+                  <p style={{ color: '#6d28d9', fontWeight: '700', fontSize: '18px', marginBottom: '24px' }}>رقم التعليم: {educationId}</p>
                   <div style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
                     <button onClick={() => { setStep(1); setStudents([]); setEducationId(''); setEducationInfo(null); setSubmitted(false); }} style={btnPrimary}>
                       تسجيل مجموعة جديدة

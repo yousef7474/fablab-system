@@ -37,7 +37,7 @@ const formatDateAr = (dateStr) => {
 
 const emailWrapper = (content) => `
   <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-    <div style="background: linear-gradient(135deg, #1e7a9a, #2596be); padding: 20px; text-align: center; border-radius: 8px 8px 0 0;">
+    <div style="background: linear-gradient(135deg, #5b21b6, #6d28d9); padding: 20px; text-align: center; border-radius: 8px 8px 0 0;">
       <h1 style="color: white; margin: 0; font-size: 24px;">فاب لاب الأحساء</h1>
       <p style="color: rgba(255,255,255,0.9); margin: 5px 0 0 0;">FABLAB Al-Ahsa - Education System</p>
     </div>
@@ -62,7 +62,7 @@ const sendEducationConfirmation = async (education, user) => {
       <div dir="rtl" style="padding: 25px; background: #ffffff; border: 1px solid #e5e5e5;">
         <h2 style="color: #333; margin-top: 0;">مرحباً ${userName}</h2>
         <p>تم استلام طلب التعليم الخاص بك بنجاح.</p>
-        <div style="background: #e8f6fb; padding: 15px; border-radius: 8px; margin: 15px 0; border-right: 4px solid #2596be;">
+        <div style="background: #f5f3ff; padding: 15px; border-radius: 8px; margin: 15px 0; border-right: 4px solid #6d28d9;">
           <table style="width: 100%; border-collapse: collapse;">
             <tr><td style="padding: 5px 0;"><strong>رقم الطلب:</strong></td><td>${education.educationId}</td></tr>
             <tr><td style="padding: 5px 0;"><strong>القسم:</strong></td><td>${sectionAr}</td></tr>
@@ -74,11 +74,11 @@ const sendEducationConfirmation = async (education, user) => {
         </div>
         <p>سيتم مراجعة طلبك من قبل الإدارة وسيتم إرسال رسالة تأكيد إليك قريباً.</p>
       </div>
-      <div style="border-top: 2px solid #2596be; margin: 0;"></div>
+      <div style="border-top: 2px solid #6d28d9; margin: 0;"></div>
       <div dir="ltr" style="padding: 25px; background: #ffffff; border: 1px solid #e5e5e5;">
         <h2 style="color: #333; margin-top: 0;">Hello ${userName}</h2>
         <p>Your education request has been received successfully.</p>
-        <div style="background: #e8f6fb; padding: 15px; border-radius: 8px; margin: 15px 0; border-left: 4px solid #2596be;">
+        <div style="background: #f5f3ff; padding: 15px; border-radius: 8px; margin: 15px 0; border-left: 4px solid #6d28d9;">
           <table style="width: 100%; border-collapse: collapse;">
             <tr><td style="padding: 5px 0;"><strong>Education ID:</strong></td><td>${education.educationId}</td></tr>
             <tr><td style="padding: 5px 0;"><strong>Section:</strong></td><td>${education.section}</td></tr>
@@ -120,7 +120,7 @@ const sendEducationStatusUpdate = async (education, user, status) => {
           <div style="background: #d4edda; padding: 15px; border-radius: 8px; text-align: center;">
             <p style="color: #155724; font-size: 18px; margin: 0; font-weight: bold;">تمت الموافقة على طلب التعليم</p>
           </div>
-          <div style="background: #e8f6fb; padding: 15px; border-radius: 8px; margin: 15px 0; border-right: 4px solid #2596be;">
+          <div style="background: #f5f3ff; padding: 15px; border-radius: 8px; margin: 15px 0; border-right: 4px solid #6d28d9;">
             <table style="width: 100%; border-collapse: collapse;">
               <tr><td style="padding: 5px 0;"><strong>رقم الطلب:</strong></td><td>${education.educationId}</td></tr>
               <tr><td style="padding: 5px 0;"><strong>القسم:</strong></td><td>${sectionAr}</td></tr>
@@ -142,14 +142,14 @@ const sendEducationStatusUpdate = async (education, user, status) => {
           <p>يمكنك التقديم مرة أخرى أو التواصل معنا للمزيد من المعلومات.</p>
         `}
       </div>
-      <div style="border-top: 2px solid #2596be; margin: 0;"></div>
+      <div style="border-top: 2px solid #6d28d9; margin: 0;"></div>
       <div dir="ltr" style="padding: 25px; background: #ffffff; border: 1px solid #e5e5e5;">
         <h2 style="color: #333; margin-top: 0;">Hello ${userName}</h2>
         ${isApproved ? `
           <div style="background: #d4edda; padding: 15px; border-radius: 8px; text-align: center;">
             <p style="color: #155724; font-size: 18px; margin: 0; font-weight: bold;">Your Education Request Has Been Approved</p>
           </div>
-          <div style="background: #e8f6fb; padding: 15px; border-radius: 8px; margin: 15px 0; border-left: 4px solid #2596be;">
+          <div style="background: #f5f3ff; padding: 15px; border-radius: 8px; margin: 15px 0; border-left: 4px solid #6d28d9;">
             <table style="width: 100%; border-collapse: collapse;">
               <tr><td style="padding: 5px 0;"><strong>Education ID:</strong></td><td>${education.educationId}</td></tr>
               <tr><td style="padding: 5px 0;"><strong>Section:</strong></td><td>${education.section}</td></tr>
@@ -194,8 +194,8 @@ const sendEducationPeriodEnd = async (education, user) => {
     html: emailWrapper(`
       <div dir="rtl" style="padding: 25px; background: #ffffff; border: 1px solid #e5e5e5;">
         <h2 style="color: #333; margin-top: 0;">مرحباً ${userName}</h2>
-        <div style="background: #e8f6fb; padding: 15px; border-radius: 8px; text-align: center; border-right: 4px solid #2596be;">
-          <p style="color: #1e7a9a; font-size: 18px; margin: 0; font-weight: bold;">انتهت فترة التعليم الخاصة بك</p>
+        <div style="background: #f5f3ff; padding: 15px; border-radius: 8px; text-align: center; border-right: 4px solid #6d28d9;">
+          <p style="color: #5b21b6; font-size: 18px; margin: 0; font-weight: bold;">انتهت فترة التعليم الخاصة بك</p>
         </div>
         <div style="background: #f8fafc; padding: 15px; border-radius: 8px; margin: 15px 0;">
           <table style="width: 100%; border-collapse: collapse;">
@@ -207,11 +207,11 @@ const sendEducationPeriodEnd = async (education, user) => {
         <p>شكراً لاستخدامك مرافق فاب لاب الأحساء. نتمنى أن تكون التجربة مفيدة لك ولطلابك.</p>
         <p>يمكنك التقديم لفترة جديدة في أي وقت.</p>
       </div>
-      <div style="border-top: 2px solid #2596be; margin: 0;"></div>
+      <div style="border-top: 2px solid #6d28d9; margin: 0;"></div>
       <div dir="ltr" style="padding: 25px; background: #ffffff; border: 1px solid #e5e5e5;">
         <h2 style="color: #333; margin-top: 0;">Hello ${userName}</h2>
-        <div style="background: #e8f6fb; padding: 15px; border-radius: 8px; text-align: center; border-left: 4px solid #2596be;">
-          <p style="color: #1e7a9a; font-size: 18px; margin: 0; font-weight: bold;">Your Education Period Has Ended</p>
+        <div style="background: #f5f3ff; padding: 15px; border-radius: 8px; text-align: center; border-left: 4px solid #6d28d9;">
+          <p style="color: #5b21b6; font-size: 18px; margin: 0; font-weight: bold;">Your Education Period Has Ended</p>
         </div>
         <div style="background: #f8fafc; padding: 15px; border-radius: 8px; margin: 15px 0;">
           <table style="width: 100%; border-collapse: collapse;">
@@ -245,17 +245,17 @@ const sendCustomEducationEmail = async (education, user, subject, messageText) =
     html: emailWrapper(`
       <div dir="rtl" style="padding: 25px; background: #ffffff; border: 1px solid #e5e5e5;">
         <h2 style="color: #333; margin-top: 0;">مرحباً ${userName}</h2>
-        <div style="background: #e8f6fb; padding: 15px; border-radius: 8px; margin: 15px 0; border-right: 4px solid #2596be;">
+        <div style="background: #f5f3ff; padding: 15px; border-radius: 8px; margin: 15px 0; border-right: 4px solid #6d28d9;">
           <p style="padding: 5px 0;"><strong>رقم الطلب:</strong> ${education.educationId}</p>
         </div>
         <div style="background: #f8fafc; padding: 20px; border-radius: 8px; margin: 15px 0; white-space: pre-wrap; line-height: 1.8;">
           ${messageText}
         </div>
       </div>
-      <div style="border-top: 2px solid #2596be; margin: 0;"></div>
+      <div style="border-top: 2px solid #6d28d9; margin: 0;"></div>
       <div dir="ltr" style="padding: 25px; background: #ffffff; border: 1px solid #e5e5e5;">
         <h2 style="color: #333; margin-top: 0;">Hello ${userName}</h2>
-        <div style="background: #e8f6fb; padding: 15px; border-radius: 8px; margin: 15px 0; border-left: 4px solid #2596be;">
+        <div style="background: #f5f3ff; padding: 15px; border-radius: 8px; margin: 15px 0; border-left: 4px solid #6d28d9;">
           <p style="padding: 5px 0;"><strong>Education ID:</strong> ${education.educationId}</p>
         </div>
         <div style="background: #f8fafc; padding: 20px; border-radius: 8px; margin: 15px 0; white-space: pre-wrap; line-height: 1.8;">

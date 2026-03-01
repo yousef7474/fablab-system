@@ -1,9 +1,9 @@
-/* Education Form - Teal Theme Styling */
+/* Education Form - Purple Theme Styling */
 
 /* Main Container */
 .education-page {
   min-height: 100vh;
-  background: linear-gradient(135deg, #1e7a9a 0%, #2596be 50%, #3bb0d4 100%);
+  background: linear-gradient(135deg, #5b21b6 0%, #6d28d9 50%, #8b5cf6 100%);
   position: relative;
   overflow: hidden;
 }
@@ -111,22 +111,22 @@
   margin: 6px 0 0 0;
 }
 
-/* Teal step circle override */
+/* Purple step circle override */
 .education-page .step-item.active .step-circle,
 .education-page .step-item.completed .step-circle {
-  background: linear-gradient(135deg, #2596be, #2ba8cc) !important;
-  border-color: #2596be !important;
+  background: linear-gradient(135deg, #6d28d9, #7c3aed) !important;
+  border-color: #6d28d9 !important;
 }
 
 .education-page .step-item.active .step-connector::after,
 .education-page .step-item.completed .step-connector::after {
-  background: #2596be !important;
+  background: #6d28d9 !important;
 }
 
 .education-page .home-button {
-  color: #2596be;
+  color: #6d28d9;
 }
 
 .education-page .home-button:hover {
-  background: #e8f6fb;
+  background: #f5f3ff;
 }

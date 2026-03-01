@@ -2583,33 +2583,46 @@ const AdminDashboard = () => {
   const handlePrintStudentProfile = (student, education) => {
     const printWindow = window.open('', '_blank');
     const teacherName = education.user?.firstName && education.user?.lastName ? `${education.user.firstName} ${education.user.lastName}` : education.user?.name || 'N/A';
+    const sectionName = education.section || 'N/A';
     printWindow.document.write(`<!DOCTYPE html><html dir="rtl"><head><meta charset="UTF-8"><title>Student Profile - ${student.fullName}</title><style>
       @page { size: A4; margin: 15mm; }
       * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', Tahoma, sans-serif; }
       body { padding: 20px; direction: rtl; }
-      .header { background: linear-gradient(135deg, #1e7a9a, #2596be); color: white; padding: 24px; border-radius: 12px; text-align: center; margin-bottom: 24px; }
-      .header h1 { font-size: 22px; margin-bottom: 4px; }
-      .header p { opacity: 0.85; font-size: 13px; }
+      .logo-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
+      .logo-header img { width: 70px; height: 70px; object-fit: contain; }
+      .logo-header .title-center { text-align: center; flex: 1; }
+      .logo-header .title-center h2 { font-size: 20px; color: #5b21b6; margin-bottom: 2px; }
+      .logo-header .title-center p { font-size: 12px; color: #64748b; }
+      .header-bar { background: linear-gradient(135deg, #5b21b6, #6d28d9, #7c3aed); color: white; padding: 18px; border-radius: 12px; text-align: center; margin-bottom: 24px; }
+      .header-bar h1 { font-size: 22px; margin-bottom: 4px; }
+      .header-bar p { opacity: 0.85; font-size: 13px; }
       .photo-section { text-align: center; margin-bottom: 24px; }
-      .photo-section img { width: 150px; height: 150px; border-radius: 50%; object-fit: cover; border: 4px solid #2596be; }
+      .photo-section img { width: 150px; height: 150px; border-radius: 50%; object-fit: cover; border: 4px solid #6d28d9; box-shadow: 0 4px 15px rgba(109,40,217,0.2); }
       .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 24px; }
-      .info-item { background: #f8fafc; padding: 14px; border-radius: 10px; border-right: 4px solid #2596be; }
+      .info-item { background: #f5f3ff; padding: 14px; border-radius: 10px; border-right: 4px solid #6d28d9; }
       .info-item label { display: block; font-size: 11px; color: #64748b; margin-bottom: 4px; }
       .info-item span { font-size: 15px; font-weight: 700; color: #1e293b; }
-      .footer { text-align: center; margin-top: 24px; padding-top: 16px; border-top: 2px solid #e2e8f0; color: #64748b; font-size: 11px; }
-      @media print { body { padding: 0; -webkit-print-color-adjust: exact; print-color-adjust: exact; } }
+      .footer { text-align: center; margin-top: 24px; padding-top: 16px; border-top: 2px solid #ede9fe; color: #64748b; font-size: 11px; }
+      @media print { body { padding: 0; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; color-adjust: exact !important; } }
     </style></head><body>
-      <div class="header"><h1>بطاقة تعريف الطالب</h1><p>Student Profile Card</p></div>
+      <div class="logo-header">
+        <img src="/fablab.png" alt="FABLAB" />
+        <div class="title-center"><h2>فاب لاب الأحساء</h2><p>FABLAB Al-Ahsa - Education System</p></div>
+        <img src="/found.png" alt="Foundation" />
+      </div>
+      <div class="header-bar"><h1>بطاقة تعريف الطالب</h1><p>Student Profile Card</p></div>
       <div class="photo-section"><img src="${student.personalPhoto}" alt="Photo" /></div>
       <div class="info-grid">
         <div class="info-item"><label>الاسم الكامل</label><span>${student.fullName}</span></div>
         <div class="info-item"><label>رقم الهوية</label><span>${student.nationalId}</span></div>
         <div class="info-item"><label>رقم الهاتف</label><span>${student.phoneNumber}</span></div>
+        <div class="info-item"><label>رقم ولي الأمر</label><span>${student.parentPhoneNumber}</span></div>
         <div class="info-item"><label>اسم المدرسة</label><span>${student.schoolName}</span></div>
         <div class="info-item"><label>المرحلة التعليمية</label><span>${student.educationLevel}</span></div>
-        <div class="info-item"><label>رقم ولي الأمر</label><span>${student.parentPhoneNumber}</span></div>
+        <div class="info-item"><label>القسم</label><span>${sectionName}</span></div>
         <div class="info-item"><label>رقم التعليم</label><span>${education.educationId}</span></div>
         <div class="info-item"><label>المعلم</label><span>${teacherName}</span></div>
+        <div class="info-item"><label>الفترة</label><span>${education.periodStartTime || ''} - ${education.periodEndTime || ''}</span></div>
       </div>
       <div class="footer"><p>FABLAB Al-Ahsa - فاب لاب الأحساء</p></div>
     </body></html>`);
@@ -2620,30 +2633,36 @@ const AdminDashboard = () => {
   const handlePrintStudentIdCard = (student, education) => {
     const printWindow = window.open('', '_blank');
     printWindow.document.write(`<!DOCTYPE html><html dir="rtl"><head><meta charset="UTF-8"><title>ID Card - ${student.fullName}</title><style>
-      @page { size: 85mm 54mm; margin: 0; }
+      @page { size: 54mm 85mm; margin: 0; }
       * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', Tahoma, sans-serif; }
       body { display: flex; justify-content: center; align-items: center; min-height: 100vh; background: #f0f0f0; }
-      .card { width: 85mm; height: 54mm; background: white; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 10px rgba(0,0,0,0.1); position: relative; }
-      .card-header { background: linear-gradient(135deg, #1e7a9a, #2596be); color: white; padding: 6px 12px; text-align: center; font-size: 10px; font-weight: 700; }
-      .card-body { display: flex; padding: 8px 12px; gap: 10px; height: calc(100% - 28px); }
-      .card-photo { width: 55px; height: 55px; border-radius: 50%; object-fit: cover; border: 2px solid #2596be; flex-shrink: 0; }
-      .card-info { flex: 1; display: flex; flex-direction: column; justify-content: center; gap: 3px; }
-      .card-info .name { font-size: 12px; font-weight: 700; color: #1e293b; }
-      .card-info .detail { font-size: 9px; color: #475569; }
-      .card-info .detail b { color: #1e7a9a; }
-      .card-footer { position: absolute; bottom: 0; left: 0; right: 0; background: #f1f5f9; padding: 3px 12px; font-size: 7px; color: #64748b; text-align: center; }
-      @media print { body { min-height: auto; background: white; } .card { box-shadow: none; } -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+      .card { width: 54mm; height: 85mm; background: white; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 10px rgba(0,0,0,0.1); display: flex; flex-direction: column; }
+      .card-header { background: linear-gradient(135deg, #5b21b6, #6d28d9); color: white; padding: 8px 6px; text-align: center; display: flex; align-items: center; justify-content: center; gap: 6px; }
+      .card-header img { width: 20px; height: 20px; object-fit: contain; border-radius: 3px; }
+      .card-header span { font-size: 8px; font-weight: 700; }
+      .card-photo-section { flex: 0 0 auto; display: flex; justify-content: center; align-items: center; padding: 10px 0 6px 0; }
+      .card-photo { width: 65px; height: 65px; border-radius: 50%; object-fit: cover; border: 3px solid #6d28d9; box-shadow: 0 2px 8px rgba(109,40,217,0.2); }
+      .card-info { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; padding: 4px 8px; text-align: center; }
+      .card-info .name { font-size: 11px; font-weight: 700; color: #1e293b; }
+      .card-info .detail { font-size: 8px; color: #475569; }
+      .card-info .detail b { color: #5b21b6; }
+      .card-footer { background: linear-gradient(135deg, #5b21b6, #6d28d9); color: white; padding: 5px; text-align: center; font-size: 7px; font-weight: 600; }
+      @media print { body { min-height: auto; background: white; } .card { box-shadow: none; } -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; color-adjust: exact !important; }
     </style></head><body>
       <div class="card">
-        <div class="card-header">فاب لاب الأحساء - FABLAB Al-Ahsa</div>
-        <div class="card-body">
+        <div class="card-header">
+          <img src="/fablab.png" alt="FABLAB" />
+          <span>FABLAB Al-Ahsa</span>
+          <img src="/found.png" alt="Foundation" />
+        </div>
+        <div class="card-photo-section">
           <img class="card-photo" src="${student.personalPhoto}" alt="Photo" />
-          <div class="card-info">
-            <div class="name">${student.fullName}</div>
-            <div class="detail"><b>الهوية:</b> ${student.nationalId}</div>
-            <div class="detail"><b>المدرسة:</b> ${student.schoolName}</div>
-            <div class="detail"><b>رقم التعليم:</b> ${education.educationId}</div>
-          </div>
+        </div>
+        <div class="card-info">
+          <div class="name">${student.fullName}</div>
+          <div class="detail"><b>الهوية:</b> ${student.nationalId}</div>
+          <div class="detail"><b>المدرسة:</b> ${student.schoolName}</div>
+          <div class="detail"><b>ولي الأمر:</b> ${student.parentPhoneNumber}</div>
         </div>
         <div class="card-footer">Student ID Card - بطاقة هوية الطالب</div>
       </div>
@@ -2660,11 +2679,11 @@ const AdminDashboard = () => {
       @page { size: A4 landscape; margin: 10mm; }
       * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', Tahoma, sans-serif; }
       body { padding: 20px; direction: rtl; }
-      .header { background: linear-gradient(135deg, #1e7a9a, #2596be); color: white; padding: 16px 24px; border-radius: 10px; margin-bottom: 16px; display: flex; justify-content: space-between; align-items: center; }
+      .header { background: linear-gradient(135deg, #5b21b6, #6d28d9); color: white; padding: 16px 24px; border-radius: 10px; margin-bottom: 16px; display: flex; justify-content: space-between; align-items: center; }
       .header h2 { font-size: 18px; }
       .header .info { font-size: 12px; opacity: 0.85; }
       table { width: 100%; border-collapse: collapse; font-size: 12px; }
-      th { background: #2596be; color: white; padding: 8px 10px; text-align: right; font-weight: 600; }
+      th { background: #6d28d9; color: white; padding: 8px 10px; text-align: right; font-weight: 600; }
       td { padding: 7px 10px; border-bottom: 1px solid #e2e8f0; }
       tr:nth-child(even) { background: #f8fafc; }
       @media print { body { padding: 0; -webkit-print-color-adjust: exact; print-color-adjust: exact; } }
@@ -2780,37 +2799,37 @@ const AdminDashboard = () => {
           body { font-family: 'Segoe UI', Tahoma, Arial, sans-serif; background: #fff; font-size: 12px; line-height: 1.6; color: #333; }
           .page { width: 100%; min-height: 267mm; padding: 0 5px; position: relative; }
           .page-break { page-break-before: always; }
-          .header { background: linear-gradient(135deg, #1e7a9a, #2596be); color: white; padding: 20px 25px; border-radius: 10px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+          .header { background: linear-gradient(135deg, #5b21b6, #6d28d9); color: white; padding: 20px 25px; border-radius: 10px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
           .header-center { text-align: center; flex: 1; }
           .header-center h1 { font-size: 22px; margin: 0; font-weight: 800; }
           .header-center h2 { font-size: 14px; font-weight: 600; opacity: 0.9; margin: 6px 0 0 0; }
           .header img { width: 65px; height: 65px; object-fit: contain; }
           .id-bar { display: flex; justify-content: space-between; margin-bottom: 18px; font-size: 13px; }
-          .id-bar span { background: #e8f6fb; padding: 8px 16px; border-radius: 8px; color: #1e7a9a; font-weight: 700; border: 1px solid #b3dff0; }
-          .section-title { background: #1e7a9a; color: white; padding: 8px 18px; border-radius: 8px; font-size: 14px; font-weight: 700; margin: 18px 0 12px 0; }
+          .id-bar span { background: #f5f3ff; padding: 8px 16px; border-radius: 8px; color: #5b21b6; font-weight: 700; border: 1px solid #ddd6fe; }
+          .section-title { background: #5b21b6; color: white; padding: 8px 18px; border-radius: 8px; font-size: 14px; font-weight: 700; margin: 18px 0 12px 0; }
           .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 18px; }
           .info-item { display: flex; justify-content: space-between; padding: 10px 14px; background: #f8fafc; border-radius: 8px; border: 1px solid #e2e8f0; }
           .info-item .label { color: #64748b; font-weight: 600; font-size: 12px; }
           .info-item .value { color: #1e293b; font-weight: 600; font-size: 13px; }
           .photo-section { text-align: center; margin: 15px 0; }
           .photo-section img { max-width: 320px; max-height: 220px; border-radius: 10px; border: 3px solid #e2e8f0; }
-          .period-summary { display: flex; justify-content: center; gap: 30px; margin: 15px 0; padding: 15px; background: #e8f6fb; border-radius: 10px; border: 1px solid #b3dff0; }
+          .period-summary { display: flex; justify-content: center; gap: 30px; margin: 15px 0; padding: 15px; background: #f5f3ff; border-radius: 10px; border: 1px solid #ddd6fe; }
           .period-item { text-align: center; }
           .period-item .period-label { font-size: 11px; color: #64748b; font-weight: 600; }
-          .period-item .period-value { font-size: 16px; color: #1e7a9a; font-weight: 700; margin-top: 4px; }
+          .period-item .period-value { font-size: 16px; color: #5b21b6; font-weight: 700; margin-top: 4px; }
           .terms-list { margin: 12px 0; }
           .term-item { display: flex; gap: 10px; margin-bottom: 10px; align-items: flex-start; }
-          .term-num { background: #1e7a9a; color: white; border-radius: 50%; min-width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; margin-top: 2px; }
+          .term-num { background: #5b21b6; color: white; border-radius: 50%; min-width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; margin-top: 2px; }
           .term-text { font-size: 12px; line-height: 1.6; }
           .term-text .ar { color: #333; font-weight: 500; }
           .term-text .en { color: #64748b; font-size: 11px; margin-top: 2px; }
-          .acknowledgment { background: #e8f6fb; border: 2px solid #1e7a9a; border-radius: 10px; padding: 18px; margin: 20px 0; text-align: center; }
-          .acknowledgment p { font-size: 13px; color: #1e7a9a; font-weight: 600; line-height: 1.8; }
+          .acknowledgment { background: #f5f3ff; border: 2px solid #5b21b6; border-radius: 10px; padding: 18px; margin: 20px 0; text-align: center; }
+          .acknowledgment p { font-size: 13px; color: #5b21b6; font-weight: 600; line-height: 1.8; }
           .signatures { display: flex; justify-content: space-around; margin-top: 30px; padding-top: 20px; }
           .sig-block { text-align: center; width: 42%; }
           .sig-line { border-bottom: 2px solid #333; margin: 40px 0 8px 0; }
           .sig-label { font-size: 13px; font-weight: 700; color: #333; margin-bottom: 5px; }
-          .sig-typed { font-style: italic; font-family: 'Brush Script MT', cursive, serif; font-size: 20px; color: #1e7a9a; margin-top: 8px; }
+          .sig-typed { font-style: italic; font-family: 'Brush Script MT', cursive, serif; font-size: 20px; color: #5b21b6; margin-top: 8px; }
           .sig-name { font-size: 11px; color: #666; margin-top: 4px; }
           .sig-date { font-size: 10px; color: #999; margin-top: 2px; }
           .footer { text-align: center; margin-top: 25px; padding-top: 15px; border-top: 2px solid #e2e8f0; color: #94a3b8; font-size: 10px; }
@@ -2980,7 +2999,7 @@ const AdminDashboard = () => {
   };
 
   const getEducationStatusColor = (status) => {
-    const colors = { pending: '#f59e0b', approved: '#22c55e', active: '#3b82f6', completed: '#2596be', rejected: '#ef4444' };
+    const colors = { pending: '#f59e0b', approved: '#22c55e', active: '#3b82f6', completed: '#6d28d9', rejected: '#ef4444' };
     return colors[status] || '#94a3b8';
   };
 
@@ -5161,7 +5180,7 @@ const AdminDashboard = () => {
                     ))}
                   </select>
                   <input className="filter-input" placeholder={isRTL ? 'بحث...' : 'Search...'} value={educationFilters.search} onChange={(e) => setEducationFilters({ ...educationFilters, search: e.target.value })} style={{ flex: 1, minWidth: '150px' }} />
-                  <button className="btn btn-primary" onClick={() => fetchEducations()} style={{ background: 'linear-gradient(135deg, #2596be, #2ba8cc)' }}>
+                  <button className="btn btn-primary" onClick={() => fetchEducations()} style={{ background: 'linear-gradient(135deg, #6d28d9, #7c3aed)' }}>
                     {isRTL ? 'بحث' : 'Search'}
                   </button>
                 </div>
@@ -5199,11 +5218,11 @@ const AdminDashboard = () => {
                           )}
                           {['approved', 'active'].includes(selectedEducation.status) && (
                             <>
-                              <button onClick={() => handleEducationStatusUpdate(selectedEducation.educationId, 'completed')} style={{ padding: '8px 16px', borderRadius: '8px', background: '#2596be', color: 'white', border: 'none', cursor: 'pointer', fontWeight: '600', fontSize: '13px' }}>{isRTL ? 'إكمال' : 'Complete'}</button>
+                              <button onClick={() => handleEducationStatusUpdate(selectedEducation.educationId, 'completed')} style={{ padding: '8px 16px', borderRadius: '8px', background: '#6d28d9', color: 'white', border: 'none', cursor: 'pointer', fontWeight: '600', fontSize: '13px' }}>{isRTL ? 'إكمال' : 'Complete'}</button>
                               <button onClick={() => setShowRatingModal(true)} style={{ padding: '8px 16px', borderRadius: '8px', background: '#f59e0b', color: 'white', border: 'none', cursor: 'pointer', fontWeight: '600', fontSize: '13px' }}>{isRTL ? 'إضافة تقييم' : 'Add Rating'}</button>
                             </>
                           )}
-                          <button onClick={() => handlePrintEducationDocument(selectedEducation)} style={{ padding: '8px 16px', borderRadius: '8px', background: '#1e7a9a', color: 'white', border: 'none', cursor: 'pointer', fontWeight: '600', fontSize: '13px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                          <button onClick={() => handlePrintEducationDocument(selectedEducation)} style={{ padding: '8px 16px', borderRadius: '8px', background: '#5b21b6', color: 'white', border: 'none', cursor: 'pointer', fontWeight: '600', fontSize: '13px', display: 'flex', alignItems: 'center', gap: '4px' }}>
                             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
                             {isRTL ? 'طباعة' : 'Print'}
                           </button>
@@ -5230,13 +5249,13 @@ const AdminDashboard = () => {
                           <div style={{ fontSize: '12px', color: '#64748b' }}>{isRTL ? 'البريد' : 'Email'}</div>
                           <div style={{ fontWeight: '600', color: 'var(--text-primary)' }}>{selectedEducation.user?.email || 'N/A'}</div>
                         </div>
-                        <div style={{ padding: '12px', background: '#e8f6fb', borderRadius: '8px' }}>
+                        <div style={{ padding: '12px', background: '#f5f3ff', borderRadius: '8px' }}>
                           <div style={{ fontSize: '12px', color: '#64748b' }}>{isRTL ? 'القسم' : 'Section'}</div>
-                          <div style={{ fontWeight: '600', color: '#2596be' }}>{selectedEducation.section}{selectedEducation.otherSectionDescription ? ` - ${selectedEducation.otherSectionDescription}` : ''}</div>
+                          <div style={{ fontWeight: '600', color: '#6d28d9' }}>{selectedEducation.section}{selectedEducation.otherSectionDescription ? ` - ${selectedEducation.otherSectionDescription}` : ''}</div>
                         </div>
-                        <div style={{ padding: '12px', background: '#e8f6fb', borderRadius: '8px' }}>
+                        <div style={{ padding: '12px', background: '#f5f3ff', borderRadius: '8px' }}>
                           <div style={{ fontSize: '12px', color: '#64748b' }}>{isRTL ? 'عدد الطلاب' : 'Students'}</div>
-                          <div style={{ fontWeight: '600', color: '#2596be' }}>{selectedEducation.numberOfStudents}</div>
+                          <div style={{ fontWeight: '600', color: '#6d28d9' }}>{selectedEducation.numberOfStudents}</div>
                         </div>
                         <div style={{ padding: '12px', background: '#f8fafc', borderRadius: '8px' }}>
                           <div style={{ fontSize: '12px', color: '#64748b' }}>{isRTL ? 'فترة التعليم' : 'Period'}</div>
@@ -5269,16 +5288,16 @@ const AdminDashboard = () => {
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap', gap: '8px' }}>
                           <h4 style={{ color: 'var(--text-primary)', margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
                             {isRTL ? 'الطلاب' : 'Students'}
-                            <span style={{ background: '#2596be', color: 'white', borderRadius: '12px', padding: '2px 10px', fontSize: '12px', fontWeight: '700' }}>{educationStudents.length}</span>
+                            <span style={{ background: '#6d28d9', color: 'white', borderRadius: '12px', padding: '2px 10px', fontSize: '12px', fontWeight: '700' }}>{educationStudents.length}</span>
                           </h4>
                           <div style={{ display: 'flex', gap: '8px' }}>
                             {educationStudents.length > 0 && (
-                              <button onClick={() => handlePrintAllStudentsList(educationStudents, selectedEducation)} style={{ padding: '6px 14px', borderRadius: '8px', background: '#1e7a9a', color: 'white', border: 'none', cursor: 'pointer', fontSize: '12px', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                              <button onClick={() => handlePrintAllStudentsList(educationStudents, selectedEducation)} style={{ padding: '6px 14px', borderRadius: '8px', background: '#5b21b6', color: 'white', border: 'none', cursor: 'pointer', fontSize: '12px', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '4px' }}>
                                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
                                 {isRTL ? 'طباعة الكل' : 'Print All'}
                               </button>
                             )}
-                            <button onClick={() => setShowAddStudentModal(true)} style={{ padding: '6px 14px', borderRadius: '8px', background: '#2596be', color: 'white', border: 'none', cursor: 'pointer', fontSize: '12px', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                            <button onClick={() => setShowAddStudentModal(true)} style={{ padding: '6px 14px', borderRadius: '8px', background: '#6d28d9', color: 'white', border: 'none', cursor: 'pointer', fontSize: '12px', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '4px' }}>
                               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
                               {isRTL ? 'إضافة طالب' : 'Add Student'}
                             </button>
@@ -5354,7 +5373,7 @@ const AdminDashboard = () => {
                             </div>
                             <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end', marginTop: '16px' }}>
                               <button onClick={() => setShowAddStudentModal(false)} style={{ padding: '8px 20px', borderRadius: '8px', border: '1px solid #d1d5db', background: 'white', cursor: 'pointer', fontSize: '13px' }}>{isRTL ? 'إلغاء' : 'Cancel'}</button>
-                              <button onClick={handleAddStudent} style={{ padding: '8px 20px', borderRadius: '8px', background: '#2596be', color: 'white', border: 'none', cursor: 'pointer', fontSize: '13px', fontWeight: '600' }}>{isRTL ? 'إضافة' : 'Add'}</button>
+                              <button onClick={handleAddStudent} style={{ padding: '8px 20px', borderRadius: '8px', background: '#6d28d9', color: 'white', border: 'none', cursor: 'pointer', fontSize: '13px', fontWeight: '600' }}>{isRTL ? 'إضافة' : 'Add'}</button>
                             </div>
                           </div>
                         </div>
@@ -5431,7 +5450,7 @@ const AdminDashboard = () => {
                                 </span>
                               </td>
                               <td>
-                                <button onClick={() => fetchEducationDetail(edu.educationId)} style={{ padding: '6px 12px', borderRadius: '6px', background: '#2596be', color: 'white', border: 'none', cursor: 'pointer', fontSize: '12px', fontWeight: '600' }}>
+                                <button onClick={() => fetchEducationDetail(edu.educationId)} style={{ padding: '6px 12px', borderRadius: '6px', background: '#6d28d9', color: 'white', border: 'none', cursor: 'pointer', fontSize: '12px', fontWeight: '600' }}>
                                   {isRTL ? 'عرض' : 'View'}
                                 </button>
                               </td>
@@ -5443,7 +5462,7 @@ const AdminDashboard = () => {
                     {educationPagination.pages > 1 && (
                       <div style={{ display: 'flex', justifyContent: 'center', gap: '4px', marginTop: '16px' }}>
                         {Array.from({ length: educationPagination.pages }, (_, i) => i + 1).map(pageNum => (
-                          <button key={pageNum} onClick={() => fetchEducations(pageNum)} style={{ padding: '6px 12px', borderRadius: '6px', border: '1px solid #e2e8f0', background: pageNum === educationPagination.page ? '#2596be' : 'var(--card-bg)', color: pageNum === educationPagination.page ? 'white' : 'var(--text-primary)', cursor: 'pointer', fontSize: '13px' }}>{pageNum}</button>
+                          <button key={pageNum} onClick={() => fetchEducations(pageNum)} style={{ padding: '6px 12px', borderRadius: '6px', border: '1px solid #e2e8f0', background: pageNum === educationPagination.page ? '#6d28d9' : 'var(--card-bg)', color: pageNum === educationPagination.page ? 'white' : 'var(--text-primary)', cursor: 'pointer', fontSize: '13px' }}>{pageNum}</button>
                         ))}
                       </div>
                     )}
@@ -5535,7 +5554,7 @@ const AdminDashboard = () => {
                   <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
                     <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} style={{ background: 'var(--card-bg)', borderRadius: '16px', padding: '24px', maxWidth: '500px', width: '90%' }}>
                       <h3 style={{ margin: '0 0 16px', color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#2596be" strokeWidth="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#6d28d9" strokeWidth="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
                         {isRTL ? 'إرسال بريد إلكتروني للمعلم' : 'Send Email to Teacher'}
                       </h3>
                       <p style={{ fontSize: '13px', color: '#64748b', marginBottom: '16px' }}>
@@ -5551,7 +5570,7 @@ const AdminDashboard = () => {
                       </div>
                       <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
                         <button onClick={() => { setShowEducationEmailModal(false); setEducationEmailForm({ subject: '', message: '' }); }} style={{ padding: '8px 16px', borderRadius: '8px', border: '1px solid #e2e8f0', background: 'var(--card-bg)', cursor: 'pointer', color: 'var(--text-primary)' }}>{isRTL ? 'إلغاء' : 'Cancel'}</button>
-                        <button onClick={handleSendEducationEmail} disabled={sendingEducationEmail} style={{ padding: '8px 16px', borderRadius: '8px', background: '#2596be', color: 'white', border: 'none', cursor: 'pointer', fontWeight: '600', opacity: sendingEducationEmail ? 0.7 : 1 }}>
+                        <button onClick={handleSendEducationEmail} disabled={sendingEducationEmail} style={{ padding: '8px 16px', borderRadius: '8px', background: '#6d28d9', color: 'white', border: 'none', cursor: 'pointer', fontWeight: '600', opacity: sendingEducationEmail ? 0.7 : 1 }}>
                           {sendingEducationEmail ? (isRTL ? 'جاري الإرسال...' : 'Sending...') : (isRTL ? 'إرسال' : 'Send')}
                         </button>
                       </div>

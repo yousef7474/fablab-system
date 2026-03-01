@@ -15,6 +15,7 @@ import AdminDashboard from './components/Admin/AdminDashboard';
 import BorrowingForm from './components/BorrowingForm/BorrowingForm';
 import EducationForm from './components/EducationForm/EducationForm';
 import StudentRegistration from './components/EducationForm/StudentRegistration';
+import StudentAttendance from './components/EducationForm/StudentAttendance';
 import ManagerDashboard from './components/Manager/ManagerDashboard';
 import LanguageSelector from './components/LanguageSelector';
 
@@ -41,6 +42,7 @@ const AppContent = () => {
         <Route path="/borrow" element={<BorrowingForm />} />
         <Route path="/educate" element={<EducationForm />} />
         <Route path="/educate/students" element={<StudentRegistration />} />
+        <Route path="/educate/attendance" element={<StudentAttendance />} />
         <Route path="/admin/login" element={<AdminLogin />} />
         <Route path="/admin/dashboard/*" element={<AdminDashboard />} />
         <Route path="/manager/dashboard/*" element={<ManagerDashboard />} />

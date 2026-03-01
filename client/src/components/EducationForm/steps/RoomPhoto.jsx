@@ -44,12 +44,12 @@ const RoomPhoto = ({ formData, onChange, onNext, onBack }) => {
         <div
           onClick={() => fileInputRef.current?.click()}
           style={{
-            border: `3px dashed ${formData.roomPhotoBefore ? '#2596be' : '#cbd5e1'}`,
+            border: `3px dashed ${formData.roomPhotoBefore ? '#6d28d9' : '#cbd5e1'}`,
             borderRadius: '16px',
             padding: formData.roomPhotoBefore ? '12px' : '40px',
             textAlign: 'center',
             cursor: 'pointer',
-            background: formData.roomPhotoBefore ? '#e8f6fb' : '#fafafa',
+            background: formData.roomPhotoBefore ? '#f5f3ff' : '#fafafa',
             transition: 'all 0.3s ease',
             minHeight: '200px',
             display: 'flex',
@@ -103,7 +103,7 @@ const RoomPhoto = ({ formData, onChange, onNext, onBack }) => {
               >
                 ×
               </button>
-              <p style={{ marginTop: '8px', color: '#2596be', fontSize: '13px' }}>
+              <p style={{ marginTop: '8px', color: '#6d28d9', fontSize: '13px' }}>
                 {isRTL ? 'انقر لتغيير الصورة' : 'Click to change photo'}
               </p>
             </div>
@@ -136,7 +136,7 @@ const RoomPhoto = ({ formData, onChange, onNext, onBack }) => {
           className="btn btn-primary"
           onClick={onNext}
           disabled={!canProceed}
-          style={{ background: canProceed ? 'linear-gradient(135deg, #2596be, #2ba8cc)' : undefined }}
+          style={{ background: canProceed ? 'linear-gradient(135deg, #6d28d9, #7c3aed)' : undefined }}
         >
           {isRTL ? 'التالي' : 'Next'}
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ transform: isRTL ? 'rotate(180deg)' : 'none' }}>

@@ -69,7 +69,7 @@ const EducationTerms = ({ formData, onChange, onBack, onSubmit, loading }) => {
           {terms.map((term, index) => (
             <div key={index} style={{ display: 'flex', gap: '12px', marginBottom: '12px', alignItems: 'flex-start' }}>
               <span style={{
-                background: '#2596be',
+                background: '#6d28d9',
                 color: 'white',
                 borderRadius: '50%',
                 minWidth: '24px',
@@ -149,7 +149,7 @@ const EducationTerms = ({ formData, onChange, onBack, onSubmit, loading }) => {
               fontStyle: 'italic',
               fontFamily: "'Brush Script MT', 'Segoe Script', cursive, serif",
               padding: '14px',
-              borderBottom: '2px solid #2596be'
+              borderBottom: '2px solid #6d28d9'
             }}
           />
         </div>
@@ -166,7 +166,7 @@ const EducationTerms = ({ formData, onChange, onBack, onSubmit, loading }) => {
           className="btn btn-primary"
           onClick={onSubmit}
           disabled={!canSubmit || loading}
-          style={{ background: canSubmit && !loading ? 'linear-gradient(135deg, #2596be, #2ba8cc)' : undefined, minWidth: '160px' }}
+          style={{ background: canSubmit && !loading ? 'linear-gradient(135deg, #6d28d9, #7c3aed)' : undefined, minWidth: '160px' }}
         >
           {loading ? (
             <span className="loading-spinner" />

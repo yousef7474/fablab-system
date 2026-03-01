@@ -1,4 +1,4 @@
-const { User, Education, EducationRating, EducationStudent, Admin } = require('../models');
+const { User, Education, EducationRating, EducationStudent, EducationAttendance, Admin } = require('../models');
 const { generateUserId, generateEducationId, generateStudentId } = require('../utils/idGenerator');
 const { Op } = require('sequelize');
 const { sendEducationConfirmation, sendEducationStatusUpdate, sendEducationPeriodEnd, sendCustomEducationEmail } = require('../utils/educationEmailService');
@@ -584,6 +584,154 @@ exports.removeStudent = async (req, res) => {
     res.json({ message: 'Student removed successfully', messageAr: 'تم إزالة الطالب بنجاح' });
   } catch (error) {
     console.error('Error removing student:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+// Get students for education (public - for attendance page)
+exports.getStudentsForEducationPublic = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const education = await Education.findOne({ where: { educationId: id } });
+    if (!education) {
+      return res.status(404).json({ message: 'Education not found', messageAr: 'لم يتم العثور على التعليم' });
+    }
+
+    const students = await EducationStudent.findAll({
+      where: { educationId: id, status: 'active' },
+      order: [['fullName', 'ASC']]
+    });
+
+    res.json(students);
+  } catch (error) {
+    console.error('Error getting students for education (public):', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+// Submit attendance records (public)
+exports.submitAttendance = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { date, records } = req.body;
+
+    if (!date || !records || !Array.isArray(records)) {
+      return res.status(400).json({ message: 'Date and records are required', messageAr: 'التاريخ والسجلات مطلوبة' });
+    }
+
+    const education = await Education.findOne({ where: { educationId: id } });
+    if (!education) {
+      return res.status(404).json({ message: 'Education not found', messageAr: 'لم يتم العثور على التعليم' });
+    }
+
+    const results = [];
+    for (const record of records) {
+      const [attendance] = await EducationAttendance.upsert({
+        educationId: id,
+        studentId: record.studentId,
+        date: date,
+        status: record.status
+      });
+      results.push(attendance);
+    }
+
+    res.json({ message: 'Attendance submitted successfully', messageAr: 'تم تسجيل الحضور بنجاح', count: results.length });
+  } catch (error) {
+    console.error('Error submitting attendance:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+// Get attendance for a date or date range (public)
+exports.getAttendance = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { date, startDate, endDate } = req.query;
+
+    const whereClause = { educationId: id };
+
+    if (date) {
+      whereClause.date = date;
+    } else if (startDate && endDate) {
+      whereClause.date = { [Op.between]: [startDate, endDate] };
+    }
+
+    const attendance = await EducationAttendance.findAll({
+      where: whereClause,
+      include: [{ model: EducationStudent, as: 'student', attributes: ['studentId', 'fullName', 'nationalId', 'schoolName'] }],
+      order: [['date', 'ASC'], ['studentId', 'ASC']]
+    });
+
+    res.json(attendance);
+  } catch (error) {
+    console.error('Error getting attendance:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+// Export attendance data as structured JSON (public)
+exports.exportAttendance = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { startDate, endDate } = req.query;
+
+    if (!startDate || !endDate) {
+      return res.status(400).json({ message: 'Start date and end date are required', messageAr: 'تاريخ البداية والنهاية مطلوبان' });
+    }
+
+    const education = await Education.findOne({
+      where: { educationId: id },
+      include: [{ model: User, as: 'user', attributes: ['firstName', 'lastName'] }]
+    });
+
+    if (!education) {
+      return res.status(404).json({ message: 'Education not found', messageAr: 'لم يتم العثور على التعليم' });
+    }
+
+    const students = await EducationStudent.findAll({
+      where: { educationId: id, status: 'active' },
+      order: [['fullName', 'ASC']]
+    });
+
+    const attendance = await EducationAttendance.findAll({
+      where: {
+        educationId: id,
+        date: { [Op.between]: [startDate, endDate] }
+      },
+      order: [['date', 'ASC']]
+    });
+
+    // Build a lookup: studentId -> { date -> status }
+    const attendanceMap = {};
+    attendance.forEach(a => {
+      if (!attendanceMap[a.studentId]) attendanceMap[a.studentId] = {};
+      attendanceMap[a.studentId][a.date] = a.status;
+    });
+
+    // Get unique dates
+    const dates = [...new Set(attendance.map(a => a.date))].sort();
+
+    const teacherName = education.user ? `${education.user.firstName} ${education.user.lastName}` : 'N/A';
+
+    res.json({
+      education: {
+        educationId: education.educationId,
+        section: education.section,
+        teacherName,
+        periodStartDate: education.periodStartDate,
+        periodEndDate: education.periodEndDate
+      },
+      dates,
+      students: students.map(s => ({
+        studentId: s.studentId,
+        fullName: s.fullName,
+        nationalId: s.nationalId,
+        schoolName: s.schoolName,
+        attendance: dates.map(d => attendanceMap[s.studentId]?.[d] || '-')
+      }))
+    });
+  } catch (error) {
+    console.error('Error exporting attendance:', error);
     res.status(500).json({ message: 'Server error' });
   }
 };

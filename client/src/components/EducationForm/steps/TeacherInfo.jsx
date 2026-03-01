@@ -83,7 +83,7 @@ const TeacherInfo = ({ formData, onChange, onNext }) => {
               className="btn btn-primary"
               onClick={handleCheck}
               disabled={loading}
-              style={{ minWidth: '100px', background: 'linear-gradient(135deg, #2596be, #2ba8cc)' }}
+              style={{ minWidth: '100px', background: 'linear-gradient(135deg, #6d28d9, #7c3aed)' }}
             >
               {loading ? <span className="loading-spinner" /> : (isRTL ? 'تحقق' : 'Check')}
             </button>
@@ -171,7 +171,7 @@ const TeacherInfo = ({ formData, onChange, onNext }) => {
           className="btn btn-primary"
           onClick={onNext}
           disabled={!canProceed()}
-          style={{ background: canProceed() ? 'linear-gradient(135deg, #2596be, #2ba8cc)' : undefined }}
+          style={{ background: canProceed() ? 'linear-gradient(135deg, #6d28d9, #7c3aed)' : undefined }}
         >
           {isRTL ? 'التالي' : 'Next'}
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ transform: isRTL ? 'rotate(180deg)' : 'none' }}>

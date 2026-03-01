@@ -27,6 +27,7 @@ const Borrowing = require('./Borrowing');
 const Education = require('./Education');
 const EducationRating = require('./EducationRating');
 const EducationStudent = require('./EducationStudent');
+const EducationAttendance = require('./EducationAttendance');
 
 // Define relationships
 User.hasMany(Registration, { foreignKey: 'userId', as: 'registrations' });
@@ -171,6 +172,13 @@ Admin.hasMany(EducationRating, { foreignKey: 'createdById', as: 'givenEducationR
 EducationStudent.belongsTo(Education, { foreignKey: 'educationId', as: 'education' });
 Education.hasMany(EducationStudent, { foreignKey: 'educationId', as: 'students' });
 
+// Education Attendance relationships
+EducationAttendance.belongsTo(Education, { foreignKey: 'educationId', as: 'education' });
+Education.hasMany(EducationAttendance, { foreignKey: 'educationId', as: 'attendance' });
+
+EducationAttendance.belongsTo(EducationStudent, { foreignKey: 'studentId', as: 'student' });
+EducationStudent.hasMany(EducationAttendance, { foreignKey: 'studentId', as: 'attendance' });
+
 // Sync database
 const syncDatabase = async () => {
   try {
@@ -233,5 +241,6 @@ module.exports = {
   Education,
   EducationRating,
   EducationStudent,
+  EducationAttendance,
   syncDatabase
 };

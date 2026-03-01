@@ -9,6 +9,10 @@ router.post('/create', educationController.createEducation);
 router.get('/user/:identifier', educationController.getMyEducations);
 router.get('/verify/:id', educationController.verifyEducationId);
 router.post('/:id/students', educationController.bulkAddStudents);
+router.get('/:id/students/public', educationController.getStudentsForEducationPublic);
+router.post('/:id/attendance', educationController.submitAttendance);
+router.get('/:id/attendance', educationController.getAttendance);
+router.get('/:id/attendance/export', educationController.exportAttendance);
 
 // Student management routes (auth) - must be before /:id to prevent route conflicts
 router.put('/students/:studentId', authMiddleware, educationController.updateStudent);
