@@ -3162,18 +3162,18 @@ const ManagerDashboard = () => {
       @page { size: 54mm 85mm; margin: 0; }
       * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', Tahoma, sans-serif; }
       body { display: flex; justify-content: center; align-items: center; min-height: 100vh; background: #f0f0f0; }
-      .card { width: 54mm; height: 85mm; background: white; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 10px rgba(0,0,0,0.1); display: flex; flex-direction: column; }
-      .card-header { background: linear-gradient(135deg, #5b21b6, #6d28d9); color: white; padding: 8px 6px; text-align: center; display: flex; align-items: center; justify-content: center; gap: 6px; }
-      .card-header img { width: 20px; height: 20px; object-fit: contain; border-radius: 3px; }
-      .card-header span { font-size: 8px; font-weight: 700; }
-      .card-photo-section { flex: 0 0 auto; display: flex; justify-content: center; align-items: center; padding: 10px 0 6px 0; }
-      .card-photo { width: 65px; height: 65px; border-radius: 50%; object-fit: cover; border: 3px solid #6d28d9; box-shadow: 0 2px 8px rgba(109,40,217,0.2); }
-      .card-info { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; padding: 4px 8px; text-align: center; }
-      .card-info .name { font-size: 11px; font-weight: 700; color: #1e293b; }
-      .card-info .detail { font-size: 8px; color: #475569; }
+      .card { width: 54mm; height: 85mm; background: white; overflow: hidden; display: flex; flex-direction: column; }
+      .card-header { background: linear-gradient(135deg, #5b21b6, #6d28d9); color: white; padding: 5px 4px; text-align: center; display: flex; align-items: center; justify-content: center; gap: 4px; flex-shrink: 0; }
+      .card-header img { width: 28px; height: 28px; object-fit: contain; }
+      .card-header span { font-size: 9px; font-weight: 700; letter-spacing: 0.5px; }
+      .card-photo-section { flex-shrink: 0; display: flex; justify-content: center; align-items: center; padding: 6px 0 4px 0; }
+      .card-photo { width: 90px; height: 90px; border-radius: 50%; object-fit: cover; border: 3px solid #6d28d9; box-shadow: 0 2px 8px rgba(109,40,217,0.25); }
+      .card-info { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; padding: 2px 6px; text-align: center; }
+      .card-info .name { font-size: 12px; font-weight: 800; color: #1e293b; margin-bottom: 2px; }
+      .card-info .detail { font-size: 9px; color: #334155; line-height: 1.3; }
       .card-info .detail b { color: #5b21b6; }
-      .card-footer { background: linear-gradient(135deg, #5b21b6, #6d28d9); color: white; padding: 5px; text-align: center; font-size: 7px; font-weight: 600; }
-      @media print { body { min-height: auto; background: white; } .card { box-shadow: none; } -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; color-adjust: exact !important; }
+      .card-footer { background: linear-gradient(135deg, #5b21b6, #6d28d9); color: white; padding: 4px; text-align: center; font-size: 7px; font-weight: 600; flex-shrink: 0; }
+      @media print { body { min-height: auto; background: white; } -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; color-adjust: exact !important; }
     </style></head><body>
       <div class="card">
         <div class="card-header">
