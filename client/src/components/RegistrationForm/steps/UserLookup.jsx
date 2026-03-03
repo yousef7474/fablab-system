@@ -6,6 +6,7 @@ import { toast } from 'react-toastify';
 import api from '../../../config/api';
 
 const ELITE_PASSWORD = 'fabstar123';
+const EDUCATION_PASSWORD = 'education123';
 
 const UserLookup = ({ onUserFound, onNewUser }) => {
   const { t, i18n } = useTranslation();
@@ -16,6 +17,24 @@ const UserLookup = ({ onUserFound, onNewUser }) => {
   const [showEliteModal, setShowEliteModal] = useState(false);
   const [elitePassword, setElitePassword] = useState('');
   const [showEducationOptions, setShowEducationOptions] = useState(false);
+  const [showEducationModal, setShowEducationModal] = useState(false);
+  const [educationPassword, setEducationPassword] = useState('');
+  const [pendingEducationPath, setPendingEducationPath] = useState('');
+
+  const handleEducationAccess = () => {
+    if (educationPassword === EDUCATION_PASSWORD) {
+      setShowEducationModal(false);
+      setEducationPassword('');
+      navigate(pendingEducationPath);
+    } else {
+      toast.error(isRTL ? 'كلمة المرور غير صحيحة' : 'Incorrect password');
+    }
+  };
+
+  const openEducationModal = (path) => {
+    setPendingEducationPath(path);
+    setShowEducationModal(true);
+  };
 
   const handleEliteAccess = () => {
     if (elitePassword === ELITE_PASSWORD) {
@@ -224,7 +243,7 @@ const UserLookup = ({ onUserFound, onNewUser }) => {
                 initial={{ opacity: 0, y: -10 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.05 }}
-                onClick={() => navigate('/educate')}
+                onClick={() => openEducationModal('/educate')}
                 style={{
                   background: 'linear-gradient(135deg, #5b21b6, #6d28d9)',
                   color: 'white',
@@ -251,7 +270,7 @@ const UserLookup = ({ onUserFound, onNewUser }) => {
                 initial={{ opacity: 0, y: -10 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.1 }}
-                onClick={() => navigate('/educate/students')}
+                onClick={() => openEducationModal('/educate/students')}
                 style={{
                   background: 'linear-gradient(135deg, #6d28d9, #7c3aed)',
                   color: 'white',
@@ -280,7 +299,7 @@ const UserLookup = ({ onUserFound, onNewUser }) => {
                 initial={{ opacity: 0, y: -10 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.15 }}
-                onClick={() => navigate('/educate/attendance')}
+                onClick={() => openEducationModal('/educate/attendance')}
                 style={{
                   background: 'linear-gradient(135deg, #7c3aed, #8b5cf6)',
                   color: 'white',
@@ -341,6 +360,132 @@ const UserLookup = ({ onUserFound, onNewUser }) => {
           النخبة
         </button>
       </motion.div>
+
+      {/* Education Password Modal */}
+      <AnimatePresence>
+        {showEducationModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => setShowEducationModal(false)}
+            style={{
+              position: 'fixed',
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              background: 'rgba(0, 0, 0, 0.7)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              zIndex: 1000
+            }}
+          >
+            <motion.div
+              initial={{ scale: 0.8, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.8, opacity: 0 }}
+              onClick={(e) => e.stopPropagation()}
+              style={{
+                background: 'linear-gradient(135deg, #5b21b6, #7c3aed)',
+                borderRadius: '20px',
+                padding: '32px',
+                maxWidth: '400px',
+                width: '90%',
+                textAlign: 'center',
+                boxShadow: '0 20px 60px rgba(0, 0, 0, 0.4)'
+              }}
+            >
+              <div style={{ marginBottom: '20px' }}>
+                <svg width="60" height="60" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2">
+                  <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/>
+                  <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/>
+                </svg>
+              </div>
+              <h3 style={{ color: 'white', fontSize: '24px', marginBottom: '8px', fontWeight: '700' }}>
+                {isRTL ? 'التعليم' : 'Education'}
+              </h3>
+              <p style={{ color: 'rgba(255,255,255,0.9)', marginBottom: '16px', fontSize: '13px' }}>
+                {isRTL ? 'أدخل كلمة المرور للوصول' : 'Enter password to access'}
+              </p>
+              <div style={{ position: 'relative', marginBottom: '20px' }}>
+                <svg
+                  width="20"
+                  height="20"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="rgba(255,255,255,0.6)"
+                  strokeWidth="2"
+                  style={{
+                    position: 'absolute',
+                    left: '14px',
+                    top: '50%',
+                    transform: 'translateY(-50%)',
+                    pointerEvents: 'none'
+                  }}
+                >
+                  <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+                  <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+                </svg>
+                <input
+                  type="password"
+                  placeholder={isRTL ? '● ● ● ● ● ●' : '● ● ● ● ● ●'}
+                  value={educationPassword}
+                  onChange={(e) => setEducationPassword(e.target.value)}
+                  onKeyPress={(e) => e.key === 'Enter' && handleEducationAccess()}
+                  style={{
+                    width: '100%',
+                    padding: '14px 18px 14px 44px',
+                    borderRadius: '12px',
+                    border: '2px solid rgba(255,255,255,0.3)',
+                    background: 'rgba(255,255,255,0.15)',
+                    color: 'white',
+                    fontSize: '16px',
+                    textAlign: 'center',
+                    outline: 'none'
+                  }}
+                />
+              </div>
+              <div style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
+                <button
+                  onClick={handleEducationAccess}
+                  style={{
+                    background: 'rgba(255,255,255,0.2)',
+                    color: 'white',
+                    border: '2px solid rgba(255,255,255,0.5)',
+                    padding: '12px 32px',
+                    borderRadius: '10px',
+                    fontSize: '16px',
+                    fontWeight: '700',
+                    cursor: 'pointer'
+                  }}
+                >
+                  {isRTL ? 'دخول' : 'Enter'}
+                </button>
+                <button
+                  onClick={() => {
+                    setShowEducationModal(false);
+                    setEducationPassword('');
+                  }}
+                  style={{
+                    background: 'rgba(255,255,255,0.1)',
+                    color: 'white',
+                    border: '2px solid rgba(255,255,255,0.3)',
+                    padding: '12px 32px',
+                    borderRadius: '10px',
+                    fontSize: '16px',
+                    fontWeight: '600',
+                    cursor: 'pointer'
+                  }}
+                >
+                  {isRTL ? 'إلغاء' : 'Cancel'}
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Elite Password Modal */}
       <AnimatePresence>

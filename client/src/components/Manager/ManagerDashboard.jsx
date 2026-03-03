@@ -549,12 +549,30 @@ const ManagerDashboard = () => {
     }
   };
 
-  const handleToggleTodoStatus = async (todoId) => {
+  const handleUpdateTodoStatus = async (todoId, newStatus) => {
     try {
-      await api.patch(`/manager-todos/${todoId}/toggle`);
+      await api.patch(`/manager-todos/${todoId}/status`, { status: newStatus });
       fetchMyTodos();
+      toast.success(isRTL ? 'تم تحديث حالة المهمة' : 'Todo status updated');
     } catch (error) {
       toast.error(isRTL ? 'خطأ في تحديث حالة المهمة' : 'Error updating todo status');
+    }
+  };
+
+  const [todoHistoryMap, setTodoHistoryMap] = useState({});
+  const [showTodoHistory, setShowTodoHistory] = useState({});
+
+  const handleGetTodoHistory = async (todoId) => {
+    if (showTodoHistory[todoId]) {
+      setShowTodoHistory(prev => ({ ...prev, [todoId]: false }));
+      return;
+    }
+    try {
+      const response = await api.get(`/manager-todos/${todoId}/history`);
+      setTodoHistoryMap(prev => ({ ...prev, [todoId]: response.data }));
+      setShowTodoHistory(prev => ({ ...prev, [todoId]: true }));
+    } catch (error) {
+      toast.error(isRTL ? 'خطأ في جلب السجل' : 'Error fetching history');
     }
   };
 
@@ -1521,7 +1539,14 @@ const ManagerDashboard = () => {
             : `Task completed! 1 point awarded to employee (${response.data.task.title})`,
           { autoClose: 5000 }
         );
-        // Refresh employee data to show updated points
+        fetchEmployees();
+      } else if (response.data.deductedRating) {
+        toast.warn(
+          isRTL
+            ? `تم تحديد المهمة كغير مكتملة وخصم نقطة واحدة من الموظف (${response.data.task.title})`
+            : `Task uncompleted! 1 point deducted from employee (${response.data.task.title})`,
+          { autoClose: 5000 }
+        );
         fetchEmployees();
       } else {
         toast.success(isRTL ? 'تم تحديث حالة المهمة' : 'Task status updated');
@@ -4427,6 +4452,7 @@ const ManagerDashboard = () => {
                               <option value="in_progress">{isRTL ? 'قيد التنفيذ' : 'In Progress'}</option>
                               <option value="completed">{isRTL ? 'مكتمل' : 'Completed'}</option>
                               <option value="cancelled">{isRTL ? 'ملغى' : 'Cancelled'}</option>
+                              <option value="uncompleted">{isRTL ? 'غير مكتمل' : 'Uncompleted'}</option>
                             </select>
                             <button className="delete-assignment-btn" onClick={() => handleDeleteTaskAssignment(task.taskId)}>
                               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -4492,6 +4518,7 @@ const ManagerDashboard = () => {
                               <option value="in_progress">{isRTL ? 'قيد التنفيذ' : 'In Progress'}</option>
                               <option value="completed">{isRTL ? 'مكتمل' : 'Completed'}</option>
                               <option value="cancelled">{isRTL ? 'ملغى' : 'Cancelled'}</option>
+                              <option value="uncompleted">{isRTL ? 'غير مكتمل' : 'Uncompleted'}</option>
                             </select>
                             <button className="delete-assignment-btn" onClick={() => handleDeleteTaskAssignment(task.taskId)}>
                               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -4557,6 +4584,7 @@ const ManagerDashboard = () => {
                               <option value="in_progress">{isRTL ? 'قيد التنفيذ' : 'In Progress'}</option>
                               <option value="completed">{isRTL ? 'مكتمل' : 'Completed'}</option>
                               <option value="cancelled">{isRTL ? 'ملغى' : 'Cancelled'}</option>
+                              <option value="uncompleted">{isRTL ? 'غير مكتمل' : 'Uncompleted'}</option>
                             </select>
                             <button className="delete-assignment-btn" onClick={() => handleDeleteTaskAssignment(task.taskId)}>
                               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -4622,6 +4650,7 @@ const ManagerDashboard = () => {
                               <option value="in_progress">{isRTL ? 'قيد التنفيذ' : 'In Progress'}</option>
                               <option value="completed">{isRTL ? 'مكتمل' : 'Completed'}</option>
                               <option value="cancelled">{isRTL ? 'ملغى' : 'Cancelled'}</option>
+                              <option value="uncompleted">{isRTL ? 'غير مكتمل' : 'Uncompleted'}</option>
                             </select>
                             <button className="delete-assignment-btn" onClick={() => handleDeleteTaskAssignment(task.taskId)}>
                               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -6932,21 +6961,29 @@ const ManagerDashboard = () => {
                         <div
                           key={todo.todoId}
                           className={`event-item todo-event ${todo.status === 'completed' ? 'completed' : ''}`}
-                          style={{ borderLeftColor: todo.status === 'completed' ? '#22c55e' : PRIORITY_COLORS[todo.priority] }}
+                          style={{ borderLeftColor: todo.status === 'completed' ? '#22c55e' : todo.status === 'in_progress' ? '#3b82f6' : todo.status === 'cancelled' ? '#ef4444' : PRIORITY_COLORS[todo.priority] }}
                         >
                           <div className="event-item-header">
-                            <div className="todo-checkbox-small" onClick={() => handleToggleTodoStatus(todo.todoId)}>
-                              {todo.status === 'completed' ? (
-                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#22c55e" strokeWidth="2">
-                                  <path d="M9 11l3 3L22 4"/>
-                                  <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>
-                                </svg>
-                              ) : (
-                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                  <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
-                                </svg>
-                              )}
-                            </div>
+                            <select
+                              value={todo.status}
+                              onChange={(e) => handleUpdateTodoStatus(todo.todoId, e.target.value)}
+                              style={{
+                                padding: '3px 6px',
+                                borderRadius: '6px',
+                                fontSize: '11px',
+                                fontWeight: '600',
+                                border: 'none',
+                                cursor: 'pointer',
+                                color: 'white',
+                                background: todo.status === 'completed' ? '#22c55e' : todo.status === 'in_progress' ? '#3b82f6' : todo.status === 'cancelled' ? '#ef4444' : '#f59e0b',
+                                minWidth: '90px'
+                              }}
+                            >
+                              <option value="pending">{isRTL ? 'قيد الانتظار' : 'Pending'}</option>
+                              <option value="in_progress">{isRTL ? 'قيد التنفيذ' : 'In Progress'}</option>
+                              <option value="completed">{isRTL ? 'مكتمل' : 'Completed'}</option>
+                              <option value="cancelled">{isRTL ? 'ملغى' : 'Cancelled'}</option>
+                            </select>
                             <span className={`event-title ${todo.status === 'completed' ? 'completed' : ''}`}>{todo.title}</span>
                             <span className={`priority-badge ${todo.priority}`}>
                               {todo.priority === 'high' ? (isRTL ? 'عالي' : 'High') : todo.priority === 'medium' ? (isRTL ? 'متوسط' : 'Med') : (isRTL ? 'منخفض' : 'Low')}
@@ -6954,6 +6991,12 @@ const ManagerDashboard = () => {
                           </div>
                           {todo.description && <p className="event-description">{todo.description}</p>}
                           <div className="event-actions">
+                            <button onClick={() => handleGetTodoHistory(todo.todoId)} title={isRTL ? 'السجل' : 'History'}>
+                              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                <circle cx="12" cy="12" r="10"/>
+                                <polyline points="12 6 12 12 16 14"/>
+                              </svg>
+                            </button>
                             <button onClick={() => openTodoModal(todo)} title={isRTL ? 'تعديل' : 'Edit'}>
                               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                                 <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
@@ -6967,6 +7010,27 @@ const ManagerDashboard = () => {
                               </svg>
                             </button>
                           </div>
+                          {showTodoHistory[todo.todoId] && todoHistoryMap[todo.todoId] && (
+                            <div style={{ marginTop: '8px', padding: '8px', background: 'var(--bg-secondary, #f3f4f6)', borderRadius: '8px', fontSize: '12px' }}>
+                              <strong>{isRTL ? 'سجل التغييرات:' : 'Status History:'}</strong>
+                              {todoHistoryMap[todo.todoId].length === 0 ? (
+                                <p style={{ margin: '4px 0 0', color: 'var(--text-secondary)' }}>{isRTL ? 'لا يوجد سجل' : 'No history yet'}</p>
+                              ) : (
+                                <ul style={{ margin: '4px 0 0', paddingLeft: '16px', listStyle: 'disc' }}>
+                                  {todoHistoryMap[todo.todoId].map(h => (
+                                    <li key={h.historyId} style={{ marginBottom: '2px' }}>
+                                      <span style={{ color: '#ef4444' }}>{h.previousStatus}</span>
+                                      {' → '}
+                                      <span style={{ color: '#22c55e' }}>{h.newStatus}</span>
+                                      <span style={{ color: 'var(--text-secondary)', marginLeft: '8px' }}>
+                                        {new Date(h.changedAt).toLocaleString()}
+                                      </span>
+                                    </li>
+                                  ))}
+                                </ul>
+                              )}
+                            </div>
+                          )}
                         </div>
                       ))}
                     </div>
@@ -8748,6 +8812,7 @@ const ManagerDashboard = () => {
                       <option value="in_progress">{isRTL ? 'قيد التنفيذ' : 'In Progress'}</option>
                       <option value="completed">{isRTL ? 'مكتمل' : 'Completed'}</option>
                       <option value="cancelled">{isRTL ? 'ملغى' : 'Cancelled'}</option>
+                      <option value="uncompleted">{isRTL ? 'غير مكتمل' : 'Uncompleted'}</option>
                     </select>
                   </div>
                 )}

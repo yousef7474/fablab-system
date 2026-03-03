@@ -32,7 +32,7 @@ const ManagerTodo = sequelize.define('ManagerTodo', {
     defaultValue: 'medium'
   },
   status: {
-    type: DataTypes.ENUM('pending', 'completed'),
+    type: DataTypes.ENUM('pending', 'in_progress', 'completed', 'cancelled'),
     defaultValue: 'pending'
   }
 }, {

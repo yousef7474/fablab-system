@@ -330,7 +330,7 @@ exports.updateTaskStatus = async (req, res) => {
     const { id } = req.params;
     const { status } = req.body;
 
-    if (!['pending', 'in_progress', 'completed', 'cancelled'].includes(status)) {
+    if (!['pending', 'in_progress', 'completed', 'cancelled', 'uncompleted'].includes(status)) {
       return res.status(400).json({
         message: 'Invalid status',
         messageAr: 'حالة غير صالحة'
@@ -382,15 +382,42 @@ exports.updateTaskStatus = async (req, res) => {
       }
     }
 
+    // Auto-deduct 1 point from employee when task is marked as uncompleted
+    const isBeingUncompleted = status === 'uncompleted';
+    let deductedRating = null;
+    if (isBeingUncompleted && task.employeeId && req.admin) {
+      try {
+        deductedRating = await Rating.create({
+          employeeId: task.employeeId,
+          createdById: req.admin.adminId,
+          type: 'deduction',
+          points: 1,
+          criteria: 'Task Uncompleted',
+          notes: `Uncompleted task: "${task.title}"`,
+          ratingDate: new Date().toISOString().split('T')[0]
+        });
+        console.log(`Auto-deducted 1 point from employee ${task.employeeId} for uncompleted task: ${task.title}`);
+      } catch (ratingError) {
+        console.error('Error creating auto-deduction for uncompleted task:', ratingError);
+      }
+    }
+
+    let message = 'Task status updated';
+    let messageAr = 'تم تحديث حالة المهمة';
+    if (isBeingCompleted && awardedRating) {
+      message = 'Task completed and 1 point awarded to employee';
+      messageAr = 'تم إكمال المهمة ومنح نقطة واحدة للموظف';
+    } else if (isBeingUncompleted && deductedRating) {
+      message = 'Task marked uncompleted and 1 point deducted from employee';
+      messageAr = 'تم تحديد المهمة كغير مكتملة وخصم نقطة واحدة من الموظف';
+    }
+
     res.json({
-      message: isBeingCompleted && awardedRating
-        ? 'Task completed and 1 point awarded to employee'
-        : 'Task status updated',
-      messageAr: isBeingCompleted && awardedRating
-        ? 'تم إكمال المهمة ومنح نقطة واحدة للموظف'
-        : 'تم تحديث حالة المهمة',
+      message,
+      messageAr,
       task,
-      awardedRating
+      awardedRating,
+      deductedRating
     });
   } catch (error) {
     console.error('Error updating task status:', error);

@@ -1,4 +1,4 @@
-const { ManagerTodo, Admin } = require('../models');
+const { ManagerTodo, ManagerTodoHistory, Admin } = require('../models');
 
 /**
  * Get all todos for the logged-in manager
@@ -82,9 +82,57 @@ exports.updateTodo = async (req, res) => {
 };
 
 /**
- * Toggle todo status (pending <-> completed)
+ * Update todo status with history tracking
  */
-exports.toggleTodoStatus = async (req, res) => {
+exports.updateTodoStatus = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { status } = req.body;
+
+    const validStatuses = ['pending', 'in_progress', 'completed', 'cancelled'];
+    if (!validStatuses.includes(status)) {
+      return res.status(400).json({
+        message: 'Invalid status. Must be one of: ' + validStatuses.join(', '),
+        messageAr: 'حالة غير صالحة'
+      });
+    }
+
+    const todo = await ManagerTodo.findOne({
+      where: { todoId: id, managerId: req.admin.adminId }
+    });
+
+    if (!todo) {
+      return res.status(404).json({
+        message: 'Todo not found',
+        messageAr: 'المهمة غير موجودة'
+      });
+    }
+
+    const previousStatus = todo.status;
+    await todo.update({ status });
+
+    const historyEntry = await ManagerTodoHistory.create({
+      todoId: id,
+      previousStatus,
+      newStatus: status
+    });
+
+    res.json({
+      message: 'Todo status updated',
+      messageAr: 'تم تحديث حالة المهمة',
+      todo,
+      historyEntry
+    });
+  } catch (error) {
+    console.error('Error updating todo status:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+};
+
+/**
+ * Get status change history for a todo
+ */
+exports.getTodoHistory = async (req, res) => {
   try {
     const { id } = req.params;
 
@@ -99,16 +147,14 @@ exports.toggleTodoStatus = async (req, res) => {
       });
     }
 
-    const newStatus = todo.status === 'completed' ? 'pending' : 'completed';
-    await todo.update({ status: newStatus });
-
-    res.json({
-      message: 'Todo status updated',
-      messageAr: 'تم تحديث حالة المهمة',
-      todo
+    const history = await ManagerTodoHistory.findAll({
+      where: { todoId: id },
+      order: [['changedAt', 'DESC']]
     });
+
+    res.json(history);
   } catch (error) {
-    console.error('Error toggling todo status:', error);
+    console.error('Error fetching todo history:', error);
     res.status(500).json({ message: 'Server error', error: error.message });
   }
 };

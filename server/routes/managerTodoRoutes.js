@@ -17,8 +17,11 @@ router.post('/', managerTodoController.createTodo);
 // Update todo
 router.put('/:id', managerTodoController.updateTodo);
 
-// Toggle todo status (pending <-> completed)
-router.patch('/:id/toggle', managerTodoController.toggleTodoStatus);
+// Update todo status with history tracking
+router.patch('/:id/status', managerTodoController.updateTodoStatus);
+
+// Get todo status change history
+router.get('/:id/history', managerTodoController.getTodoHistory);
 
 // Delete todo
 router.delete('/:id', managerTodoController.deleteTodo);

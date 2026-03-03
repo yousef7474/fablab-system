@@ -51,7 +51,7 @@ const Task = sequelize.define('Task', {
     defaultValue: 'medium'
   },
   status: {
-    type: DataTypes.ENUM('pending', 'in_progress', 'completed', 'cancelled'),
+    type: DataTypes.ENUM('pending', 'in_progress', 'completed', 'cancelled', 'uncompleted'),
     defaultValue: 'pending'
   },
   section: {

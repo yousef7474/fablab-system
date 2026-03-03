@@ -12,6 +12,7 @@ const Intern = require('./Intern');
 const InternTraining = require('./InternTraining');
 const InternRating = require('./InternRating');
 const ManagerTodo = require('./ManagerTodo');
+const ManagerTodoHistory = require('./ManagerTodoHistory');
 const Workspace = require('./Workspace');
 const WorkspaceRating = require('./WorkspaceRating');
 const SectionAvailability = require('./SectionAvailability');
@@ -84,6 +85,10 @@ Admin.hasMany(InternRating, { foreignKey: 'createdById', as: 'givenInternRatings
 // Manager Todo relationships
 ManagerTodo.belongsTo(Admin, { foreignKey: 'managerId', as: 'manager' });
 Admin.hasMany(ManagerTodo, { foreignKey: 'managerId', as: 'todos' });
+
+// Manager Todo History relationships
+ManagerTodo.hasMany(ManagerTodoHistory, { foreignKey: 'todoId', as: 'history' });
+ManagerTodoHistory.belongsTo(ManagerTodo, { foreignKey: 'todoId', as: 'todo' });
 
 // Workspace relationships
 Workspace.belongsTo(Admin, { foreignKey: 'createdById', as: 'creator' });
@@ -200,6 +205,38 @@ const syncDatabase = async () => {
       }
     }
 
+    // Migrate tasks.status ENUM to include 'uncompleted'
+    try {
+      const [taskStatusCol] = await sequelize.query(
+        "SELECT COLUMN_TYPE FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'tasks' AND COLUMN_NAME = 'status'"
+      );
+      if (taskStatusCol.length > 0 && !taskStatusCol[0].COLUMN_TYPE.includes('uncompleted')) {
+        console.log('🔄 Migrating tasks.status ENUM to include uncompleted...');
+        await sequelize.query("ALTER TABLE tasks MODIFY COLUMN status ENUM('pending','in_progress','completed','cancelled','uncompleted') DEFAULT 'pending'");
+        console.log('✅ tasks.status ENUM updated successfully.');
+      }
+    } catch (migrationError) {
+      if (!migrationError.message.includes("doesn't exist")) {
+        console.log('Migration note:', migrationError.message);
+      }
+    }
+
+    // Migrate manager_todos.status ENUM to include 'in_progress' and 'cancelled'
+    try {
+      const [todoStatusCol] = await sequelize.query(
+        "SELECT COLUMN_TYPE FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'manager_todos' AND COLUMN_NAME = 'status'"
+      );
+      if (todoStatusCol.length > 0 && !todoStatusCol[0].COLUMN_TYPE.includes('in_progress')) {
+        console.log('🔄 Migrating manager_todos.status ENUM to include in_progress and cancelled...');
+        await sequelize.query("ALTER TABLE manager_todos MODIFY COLUMN status ENUM('pending','in_progress','completed','cancelled') DEFAULT 'pending'");
+        console.log('✅ manager_todos.status ENUM updated successfully.');
+      }
+    } catch (migrationError) {
+      if (!migrationError.message.includes("doesn't exist")) {
+        console.log('Migration note:', migrationError.message);
+      }
+    }
+
     await sequelize.sync({ alter: true });
     console.log('✅ Database synchronized successfully.');
 
@@ -226,6 +263,7 @@ module.exports = {
   InternTraining,
   InternRating,
   ManagerTodo,
+  ManagerTodoHistory,
   Workspace,
   WorkspaceRating,
   SectionAvailability,
