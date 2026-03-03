@@ -3035,7 +3035,7 @@ const ManagerDashboard = () => {
     return tasks
       .filter(task => {
         const dueDate = parseISO(task.date);
-        const isUpcoming = dueDate >= today && task.status !== 'completed' && task.status !== 'cancelled';
+        const isUpcoming = dueDate >= today && task.status !== 'completed' && task.status !== 'cancelled' && task.status !== 'uncompleted';
 
         // Apply employee filter if not 'all'
         if (scheduleFilter !== 'all' && isUpcoming) {
@@ -3932,6 +3932,7 @@ const ManagerDashboard = () => {
                               {event.status === 'pending' ? (isRTL ? 'قيد الانتظار' : 'Pending') :
                                event.status === 'in_progress' ? (isRTL ? 'قيد التنفيذ' : 'In Progress') :
                                event.status === 'completed' ? (isRTL ? 'مكتمل' : 'Completed') :
+                               event.status === 'uncompleted' ? (isRTL ? 'غير مكتمل' : 'Uncompleted') :
                                (isRTL ? 'ملغى' : 'Cancelled')}
                             </span>
                           )}
@@ -4613,6 +4614,71 @@ const ManagerDashboard = () => {
                             <h3 className="assignment-title">{task.title}</h3>
                             <span className={`task-status ${task.status}`}>
                               {isRTL ? 'ملغى' : 'Cancelled'}
+                            </span>
+                          </div>
+                          <div className="assignment-meta">
+                            <div className="assignment-meta-item">
+                              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+                                <circle cx="12" cy="7" r="4"/>
+                              </svg>
+                              <span>{task.assignee?.name || 'N/A'}</span>
+                            </div>
+                            {task.section && (
+                              <div className="assignment-meta-item">
+                                <span className="section-badge" style={{ backgroundColor: SECTION_COLORS[task.section] || '#666', padding: '2px 8px', borderRadius: '10px', color: 'white', fontSize: '12px' }}>
+                                  {sectionLabels[task.section] || task.section}
+                                </span>
+                              </div>
+                            )}
+                          </div>
+                          <div className="assignment-dates">
+                            <span>{task.startDate}</span>
+                            {task.startDate !== task.endDate && (
+                              <>
+                                <span className="date-range-arrow">→</span>
+                                <span>{task.endDate}</span>
+                                <span className="days-count">{task.dayCount} {isRTL ? 'أيام' : 'days'}</span>
+                              </>
+                            )}
+                          </div>
+                          {task.description && (
+                            <p style={{ margin: '12px 0 0', fontSize: '14px', color: 'var(--text-secondary)' }}>{task.description}</p>
+                          )}
+                          <div className="assignment-actions">
+                            <select className="status-select" value={task.status} onChange={(e) => handleUpdateTaskStatus(task.taskId, e.target.value)}>
+                              <option value="pending">{isRTL ? 'قيد الانتظار' : 'Pending'}</option>
+                              <option value="in_progress">{isRTL ? 'قيد التنفيذ' : 'In Progress'}</option>
+                              <option value="completed">{isRTL ? 'مكتمل' : 'Completed'}</option>
+                              <option value="cancelled">{isRTL ? 'ملغى' : 'Cancelled'}</option>
+                              <option value="uncompleted">{isRTL ? 'غير مكتمل' : 'Uncompleted'}</option>
+                            </select>
+                            <button className="delete-assignment-btn" onClick={() => handleDeleteTaskAssignment(task.taskId)}>
+                              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                <polyline points="3 6 5 6 21 6"/>
+                                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+                              </svg>
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {groupedTasks.filter(t => t.status === 'uncompleted').length > 0 && (
+                  <div className="task-status-group">
+                    <h3 className="status-group-title" style={{ color: '#dc2626' }}>
+                      <span className="status-dot" style={{ backgroundColor: '#dc2626' }}></span>
+                      {isRTL ? 'غير مكتمل' : 'Uncompleted'} ({groupedTasks.filter(t => t.status === 'uncompleted').length})
+                    </h3>
+                    <div className="assignments-list">
+                      {groupedTasks.filter(t => t.status === 'uncompleted').map(task => (
+                        <div key={task.groupId || task.taskId} className={`assignment-card priority-${task.priority}`} style={{ borderLeft: '4px solid #dc2626', opacity: 0.85 }}>
+                          <div className="assignment-header">
+                            <h3 className="assignment-title">{task.title}</h3>
+                            <span className="task-status" style={{ backgroundColor: '#dc2626', color: 'white' }}>
+                              {isRTL ? 'غير مكتمل' : 'Uncompleted'}
                             </span>
                           </div>
                           <div className="assignment-meta">
