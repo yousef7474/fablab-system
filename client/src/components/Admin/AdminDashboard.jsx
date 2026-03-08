@@ -1990,7 +1990,7 @@ const AdminDashboard = () => {
         <style>
           @page {
             size: A4;
-            margin: 12mm;
+            margin: 15mm 12mm;
           }
           * {
             margin: 0;
@@ -2001,7 +2001,7 @@ const AdminDashboard = () => {
             font-family: 'Segoe UI', Tahoma, Arial, sans-serif;
             background: white;
             color: #1a1a2e;
-            line-height: 1.5;
+            line-height: 1.4;
             padding: 0;
             font-size: 13px;
           }
@@ -2014,12 +2014,12 @@ const AdminDashboard = () => {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            padding-bottom: 12px;
+            padding-bottom: 10px;
             border-bottom: 3px solid #e02529;
-            margin-bottom: 16px;
+            margin-bottom: 14px;
           }
           .header .logo {
-            height: 55px;
+            height: 50px;
             width: auto;
           }
           .header-center {
@@ -2028,37 +2028,37 @@ const AdminDashboard = () => {
             padding: 0 15px;
           }
           .document-title {
-            font-size: 20px;
+            font-size: 18px;
             font-weight: 700;
             color: #e02529;
-            margin-bottom: 4px;
+            margin-bottom: 2px;
           }
           .document-subtitle {
-            font-size: 13px;
+            font-size: 12px;
             color: #666;
           }
           .user-info-section {
             background: #f8f9fa;
-            padding: 12px 16px;
+            padding: 10px 14px;
             border-radius: 6px;
-            margin-bottom: 16px;
+            margin-bottom: 14px;
             border-${isRTL ? 'right' : 'left'}: 4px solid #e02529;
           }
           .user-info-title {
-            font-size: 14px;
+            font-size: 13px;
             font-weight: 600;
             color: #e02529;
-            margin-bottom: 10px;
+            margin-bottom: 8px;
           }
           .user-info-grid {
             display: grid;
             grid-template-columns: repeat(2, 1fr);
-            gap: 8px 20px;
+            gap: 6px 20px;
           }
           .user-info-item {
             display: flex;
             gap: 8px;
-            font-size: 13px;
+            font-size: 12px;
           }
           .user-info-label {
             font-weight: 600;
@@ -2068,62 +2068,83 @@ const AdminDashboard = () => {
             color: #333;
           }
           .terms-section {
-            margin-bottom: 14px;
+            margin-bottom: 0;
           }
           .terms-title {
-            font-size: 16px;
+            font-size: 14px;
             font-weight: 700;
             color: #1a1a2e;
-            margin-bottom: 10px;
-            padding-bottom: 5px;
+            margin-bottom: 8px;
+            padding-bottom: 4px;
             border-bottom: 2px solid #e9ecef;
           }
           .terms-intro {
-            font-size: 13px;
+            font-size: 12px;
             color: #444;
-            margin-bottom: 12px;
-            line-height: 1.6;
+            margin-bottom: 10px;
+            line-height: 1.5;
           }
           .terms-list {
             list-style: none;
             counter-reset: terms-counter;
             display: grid;
-            gap: 8px;
+            gap: 6px;
           }
           .terms-list li {
             counter-increment: terms-counter;
-            padding: 10px 12px;
+            padding: 8px 10px;
             background: #fafafa;
             border-radius: 5px;
             border-${isRTL ? 'right' : 'left'}: 4px solid #e02529;
-            font-size: 13px;
-            line-height: 1.5;
+            font-size: 12px;
+            line-height: 1.4;
             position: relative;
-            padding-${isRTL ? 'right' : 'left'}: 36px;
+            padding-${isRTL ? 'right' : 'left'}: 32px;
           }
           .terms-list li::before {
             content: counter(terms-counter);
             position: absolute;
-            ${isRTL ? 'right' : 'left'}: 8px;
+            ${isRTL ? 'right' : 'left'}: 6px;
             top: 50%;
             transform: translateY(-50%);
-            width: 22px;
-            height: 22px;
+            width: 20px;
+            height: 20px;
             background: linear-gradient(135deg, #e02529, #c41e24);
             color: white;
             border-radius: 50%;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 11px;
+            font-size: 10px;
             font-weight: 600;
+          }
+          .page-break {
+            page-break-before: always;
+          }
+          .page2-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding-bottom: 8px;
+            border-bottom: 2px solid #e02529;
+            margin-bottom: 16px;
+          }
+          .page2-header .logo {
+            height: 35px;
+            width: auto;
+            opacity: 0.8;
+          }
+          .page2-header-title {
+            font-size: 14px;
+            font-weight: 600;
+            color: #e02529;
           }
           .agreement-section {
             background: #fff8f8;
             border: 2px solid #e02529;
             border-radius: 6px;
             padding: 14px 16px;
-            margin-bottom: 14px;
+            margin-bottom: 16px;
           }
           .agreement-text {
             font-size: 13px;
@@ -2147,13 +2168,46 @@ const AdminDashboard = () => {
             display: inline-block;
             flex-shrink: 0;
           }
+          .service-type-section {
+            margin-bottom: 20px;
+            padding: 14px 16px;
+            border: 2px solid #e9ecef;
+            border-radius: 8px;
+            background: #fafafa;
+          }
+          .service-type-title {
+            font-size: 13px;
+            font-weight: 700;
+            color: #e02529;
+            margin-bottom: 10px;
+            display: block;
+          }
+          .service-type-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px 24px;
+          }
+          .service-type-option {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 12px;
+            color: #333;
+          }
+          .service-type-checkbox {
+            width: 16px;
+            height: 16px;
+            border: 2px solid #e02529;
+            border-radius: 3px;
+            flex-shrink: 0;
+          }
           .signature-section {
-            padding-top: 14px;
+            padding-top: 16px;
             border-top: 2px dashed #ddd;
           }
           .signature-date {
             text-align: center;
-            margin-bottom: 14px;
+            margin-bottom: 16px;
             font-size: 13px;
             font-weight: 600;
             color: #333;
@@ -2171,7 +2225,7 @@ const AdminDashboard = () => {
           }
           .signature-box {
             text-align: center;
-            padding: 14px;
+            padding: 16px;
             border: 2px solid #e9ecef;
             border-radius: 8px;
             background: #fafafa;
@@ -2187,7 +2241,7 @@ const AdminDashboard = () => {
             font-size: 13px;
             font-weight: 700;
             color: #1a1a2e;
-            margin-bottom: 25px;
+            margin-bottom: 30px;
             display: block;
             min-height: 16px;
           }
@@ -2201,8 +2255,8 @@ const AdminDashboard = () => {
             color: #555;
           }
           .footer {
-            margin-top: 14px;
-            padding-top: 10px;
+            margin-top: 20px;
+            padding-top: 12px;
             border-top: 2px solid #e9ecef;
             text-align: center;
             color: #888;
@@ -2228,11 +2282,15 @@ const AdminDashboard = () => {
             .document {
               max-width: none;
             }
+            .page-break {
+              page-break-before: always;
+            }
           }
         </style>
       </head>
       <body>
         <div class="document">
+          <!-- PAGE 1: Header, User Info, Terms -->
           <div class="header">
             <img src="/fablab.png" alt="FABLAB" class="logo">
             <div class="header-center">
@@ -2281,6 +2339,15 @@ const AdminDashboard = () => {
             </ol>
           </div>
 
+          <!-- PAGE 2: Agreement, Service Type, Signatures -->
+          <div class="page-break"></div>
+
+          <div class="page2-header">
+            <img src="/fablab.png" alt="FABLAB" class="logo">
+            <span class="page2-header-title">${isRTL ? 'وثيقة الاستفادة من خدمات فاب لاب الأحساء - تابع' : 'FABLAB Service Agreement - Continued'}</span>
+            <img src="/found.png" alt="Foundation" class="logo">
+          </div>
+
           <div class="agreement-section">
             <div class="agreement-text">
               ${isRTL
@@ -2291,6 +2358,28 @@ const AdminDashboard = () => {
             <div class="checkbox-line">
               <span class="checkbox-box"></span>
               <span>${isRTL ? 'أوافق على جميع الشروط والأحكام' : 'I agree to all terms and conditions'}</span>
+            </div>
+          </div>
+
+          <div class="service-type-section">
+            <span class="service-type-title">${isRTL ? 'نوع الخدمة:' : 'Service Type:'}</span>
+            <div class="service-type-grid">
+              <div class="service-type-option" style="direction: ${isRTL ? 'rtl' : 'ltr'};">
+                <span class="service-type-checkbox"></span>
+                ${isRTL ? 'من الشركاء الرسميين' : 'From Official Partners'}
+              </div>
+              <div class="service-type-option" style="direction: ${isRTL ? 'rtl' : 'ltr'};">
+                <span class="service-type-checkbox"></span>
+                ${isRTL ? 'خدمة مجانية' : 'Free Service'}
+              </div>
+              <div class="service-type-option" style="direction: ${isRTL ? 'rtl' : 'ltr'};">
+                <span class="service-type-checkbox"></span>
+                ${isRTL ? 'تعويض مالي جزئي' : 'Partial Financial Compensation'}
+              </div>
+              <div class="service-type-option" style="direction: ${isRTL ? 'rtl' : 'ltr'};">
+                <span class="service-type-checkbox"></span>
+                ${isRTL ? 'تعويض مالي كامل' : 'Full Financial Compensation'}
+              </div>
             </div>
           </div>
 
@@ -2312,30 +2401,6 @@ const AdminDashboard = () => {
                 <span class="signature-name-value">أ. زكي اللويم</span>
                 <div class="signature-line"></div>
                 <span class="signature-field-name">${isRTL ? 'الاسم والتوقيع' : 'Name & Signature'}</span>
-                <!-- Service Type Choices -->
-                <div style="margin-top: 16px; padding-top: 12px; border-top: 1px solid #e2e8f0;">
-                  <span style="font-size: 11px; font-weight: 700; color: #334155; display: block; margin-bottom: 8px; text-align: ${isRTL ? 'right' : 'left'};">
-                    ${isRTL ? 'نوع الخدمة:' : 'Service Type:'}
-                  </span>
-                  <div style="display: flex; flex-direction: column; gap: 6px; font-size: 11px; color: #475569;">
-                    <label style="display: flex; align-items: center; gap: 6px; direction: ${isRTL ? 'rtl' : 'ltr'};">
-                      <span style="display: inline-block; width: 14px; height: 14px; border: 1.5px solid #94a3b8; border-radius: 3px; flex-shrink: 0;"></span>
-                      ${isRTL ? 'من الشركاء الرسميين' : 'From Official Partners'}
-                    </label>
-                    <label style="display: flex; align-items: center; gap: 6px; direction: ${isRTL ? 'rtl' : 'ltr'};">
-                      <span style="display: inline-block; width: 14px; height: 14px; border: 1.5px solid #94a3b8; border-radius: 3px; flex-shrink: 0;"></span>
-                      ${isRTL ? 'خدمة مجانية' : 'Free Service'}
-                    </label>
-                    <label style="display: flex; align-items: center; gap: 6px; direction: ${isRTL ? 'rtl' : 'ltr'};">
-                      <span style="display: inline-block; width: 14px; height: 14px; border: 1.5px solid #94a3b8; border-radius: 3px; flex-shrink: 0;"></span>
-                      ${isRTL ? 'تعويض مالي جزئي' : 'Partial Financial Compensation'}
-                    </label>
-                    <label style="display: flex; align-items: center; gap: 6px; direction: ${isRTL ? 'rtl' : 'ltr'};">
-                      <span style="display: inline-block; width: 14px; height: 14px; border: 1.5px solid #94a3b8; border-radius: 3px; flex-shrink: 0;"></span>
-                      ${isRTL ? 'تعويض مالي كامل' : 'Full Financial Compensation'}
-                    </label>
-                  </div>
-                </div>
               </div>
             </div>
           </div>
