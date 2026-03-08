@@ -2989,6 +2989,8 @@ const ManagerDashboard = () => {
       title: task.title,
       description: task.description || '',
       employeeId: task.employeeId || '',
+      employeeIds: task.employeeId ? [task.employeeId] : [],
+      selectAllEmployees: false,
       dueDate: task.date,
       dueTime: task.startTime || '',
       priority: task.priority || 'medium',
