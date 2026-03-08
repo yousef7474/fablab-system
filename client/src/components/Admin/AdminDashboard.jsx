@@ -2312,6 +2312,30 @@ const AdminDashboard = () => {
                 <span class="signature-name-value">أ. زكي اللويم</span>
                 <div class="signature-line"></div>
                 <span class="signature-field-name">${isRTL ? 'الاسم والتوقيع' : 'Name & Signature'}</span>
+                <!-- Service Type Choices -->
+                <div style="margin-top: 16px; padding-top: 12px; border-top: 1px solid #e2e8f0;">
+                  <span style="font-size: 11px; font-weight: 700; color: #334155; display: block; margin-bottom: 8px; text-align: ${isRTL ? 'right' : 'left'};">
+                    ${isRTL ? 'نوع الخدمة:' : 'Service Type:'}
+                  </span>
+                  <div style="display: flex; flex-direction: column; gap: 6px; font-size: 11px; color: #475569;">
+                    <label style="display: flex; align-items: center; gap: 6px; direction: ${isRTL ? 'rtl' : 'ltr'};">
+                      <span style="display: inline-block; width: 14px; height: 14px; border: 1.5px solid #94a3b8; border-radius: 3px; flex-shrink: 0;"></span>
+                      ${isRTL ? 'من الشركاء الرسميين' : 'From Official Partners'}
+                    </label>
+                    <label style="display: flex; align-items: center; gap: 6px; direction: ${isRTL ? 'rtl' : 'ltr'};">
+                      <span style="display: inline-block; width: 14px; height: 14px; border: 1.5px solid #94a3b8; border-radius: 3px; flex-shrink: 0;"></span>
+                      ${isRTL ? 'خدمة مجانية' : 'Free Service'}
+                    </label>
+                    <label style="display: flex; align-items: center; gap: 6px; direction: ${isRTL ? 'rtl' : 'ltr'};">
+                      <span style="display: inline-block; width: 14px; height: 14px; border: 1.5px solid #94a3b8; border-radius: 3px; flex-shrink: 0;"></span>
+                      ${isRTL ? 'تعويض مالي جزئي' : 'Partial Financial Compensation'}
+                    </label>
+                    <label style="display: flex; align-items: center; gap: 6px; direction: ${isRTL ? 'rtl' : 'ltr'};">
+                      <span style="display: inline-block; width: 14px; height: 14px; border: 1.5px solid #94a3b8; border-radius: 3px; flex-shrink: 0;"></span>
+                      ${isRTL ? 'تعويض مالي كامل' : 'Full Financial Compensation'}
+                    </label>
+                  </div>
+                </div>
               </div>
             </div>
           </div>

@@ -517,9 +517,96 @@ const sendCustomEmail = async (userEmail, userName, subject, messageBody) => {
   }
 };
 
+/**
+ * Send email notification to employee when they gain or lose a mark
+ * @param {string} employeeEmail - Employee email address
+ * @param {string} employeeName - Employee name
+ * @param {string} taskTitle - Title of the task
+ * @param {string} type - 'award' or 'deduction'
+ */
+const sendTaskRatingEmail = async (employeeEmail, employeeName, taskTitle, type) => {
+  const isAward = type === 'award';
+  const headerColor = isAward ? '#22c55e' : '#ef4444';
+  const headerGradient = isAward ? '#16a34a' : '#dc2626';
+  const icon = isAward ? '🎉' : '⚠️';
+  const subjectAr = isAward ? 'حصلت على نقطة جديدة' : 'تم خصم نقطة';
+  const subjectEn = isAward ? 'You earned a new point' : 'A point has been deducted';
+
+  const msg = {
+    to: employeeEmail,
+    from: {
+      email: process.env.SENDGRID_FROM_EMAIL,
+      name: process.env.SENDGRID_FROM_NAME
+    },
+    subject: `${subjectAr} - ${subjectEn}`,
+    html: `
+      <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 600px; margin: 0 auto; background: #f8fafc;">
+        <!-- Header -->
+        <div style="background: linear-gradient(135deg, ${headerColor}, ${headerGradient}); padding: 30px; text-align: center; border-radius: 8px 8px 0 0;">
+          <div style="font-size: 48px; margin-bottom: 10px;">${icon}</div>
+          <h1 style="color: white; margin: 0; font-size: 24px;">${subjectAr}</h1>
+          <p style="color: rgba(255,255,255,0.9); margin: 8px 0 0; font-size: 16px;">${subjectEn}</p>
+        </div>
+
+        <!-- Body -->
+        <div style="background: white; padding: 30px; border: 1px solid #e2e8f0;">
+          <p style="text-align: right; font-size: 16px; color: #334155; direction: rtl;">
+            مرحباً <strong>${employeeName}</strong>،
+          </p>
+          <p style="text-align: right; font-size: 15px; color: #475569; direction: rtl; line-height: 1.8;">
+            ${isAward
+              ? `نود إبلاغك بأنه تم <strong style="color: #22c55e;">منحك نقطة واحدة (+1)</strong> وذلك لإكمالك المهمة التالية:`
+              : `نود إبلاغك بأنه تم <strong style="color: #ef4444;">خصم نقطة واحدة (-1)</strong> منك وذلك لعدم إكمال المهمة التالية:`
+            }
+          </p>
+
+          <div style="background: #f1f5f9; border-radius: 8px; padding: 16px; margin: 16px 0; border-right: 4px solid ${headerColor};">
+            <p style="text-align: right; margin: 0; font-size: 15px; font-weight: 600; color: #1e293b; direction: rtl;">
+              📋 ${taskTitle}
+            </p>
+          </div>
+
+          <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 20px 0;">
+
+          <p style="text-align: left; font-size: 15px; color: #475569; line-height: 1.8;">
+            Hello <strong>${employeeName}</strong>,
+          </p>
+          <p style="text-align: left; font-size: 14px; color: #64748b; line-height: 1.8;">
+            ${isAward
+              ? `You have been <strong style="color: #22c55e;">awarded 1 point (+1)</strong> for completing the following task:`
+              : `<strong style="color: #ef4444;">1 point has been deducted (-1)</strong> from your score for not completing the following task:`
+            }
+          </p>
+
+          <div style="background: #f1f5f9; border-radius: 8px; padding: 16px; margin: 16px 0; border-left: 4px solid ${headerColor};">
+            <p style="margin: 0; font-size: 15px; font-weight: 600; color: #1e293b;">
+              📋 ${taskTitle}
+            </p>
+          </div>
+        </div>
+
+        <!-- Footer -->
+        <div style="background: #1a1a2e; padding: 20px; text-align: center; border-radius: 0 0 8px 8px;">
+          <p style="color: #fff; margin: 0;">فاب لاب الأحساء | FABLAB Al-Ahsa</p>
+          <p style="color: rgba(255,255,255,0.6); margin: 10px 0 0 0; font-size: 12px;">مختبر التصنيع الرقمي | Digital Fabrication Laboratory</p>
+        </div>
+      </div>
+    `
+  };
+
+  try {
+    await sgMail.send(msg);
+    console.log(`✅ Task rating email (${type}) sent to ${employeeEmail}`);
+  } catch (error) {
+    console.error(`❌ Error sending task rating email to ${employeeEmail}:`, error);
+    throw error;
+  }
+};
+
 module.exports = {
   sendRegistrationConfirmation,
   sendEngineerNotification,
   sendStatusUpdateEmail,
-  sendCustomEmail
+  sendCustomEmail,
+  sendTaskRatingEmail
 };

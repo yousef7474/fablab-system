@@ -466,9 +466,6 @@ Costs vary based on:
         ? 'أضف تفاصيل إضافية عن مشروعك أو احتياجاتك.'
         : "Add additional details about your project or needs.",
       '6': isRTL
-        ? 'اختر نوع الخدمة المناسب لطلبك.'
-        : "Select the service type appropriate for your request.",
-      '7': isRTL
         ? 'راجع بياناتك ووافق على الشروط لإتمام التسجيل.'
         : "Review your information and agree to terms to complete registration."
     };

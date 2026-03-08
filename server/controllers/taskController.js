@@ -1,5 +1,6 @@
 const { Task, Employee, Admin, Rating } = require('../models');
 const { Op } = require('sequelize');
+const { sendTaskRatingEmail } = require('../utils/emailService');
 
 /**
  * Get all tasks with optional filters
@@ -399,6 +400,19 @@ exports.updateTaskStatus = async (req, res) => {
         console.log(`Auto-deducted 1 point from employee ${task.employeeId} for uncompleted task: ${task.title}`);
       } catch (ratingError) {
         console.error('Error creating auto-deduction for uncompleted task:', ratingError);
+      }
+    }
+
+    // Send email notification to employee on award/deduction
+    if ((awardedRating || deductedRating) && task.employeeId) {
+      try {
+        const employee = await Employee.findByPk(task.employeeId);
+        if (employee && employee.email) {
+          const type = awardedRating ? 'award' : 'deduction';
+          await sendTaskRatingEmail(employee.email, employee.name, task.title, type);
+        }
+      } catch (emailError) {
+        console.error('Error sending task rating email:', emailError);
       }
     }
 
