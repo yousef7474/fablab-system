@@ -409,7 +409,7 @@ exports.updateTaskStatus = async (req, res) => {
         const employee = await Employee.findByPk(task.employeeId);
         if (employee && employee.email) {
           const type = awardedRating ? 'award' : 'deduction';
-          await sendTaskRatingEmail(employee.email, employee.name, task.title, type);
+          await sendTaskRatingEmail(employee.email, employee.name, task.title, type, task.description);
         }
       } catch (emailError) {
         console.error('Error sending task rating email:', emailError);

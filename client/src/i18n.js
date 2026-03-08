@@ -16,7 +16,7 @@ const resources = {
       "section4": "Required Service",
       "section5": "Select Date and Time",
       "section6": "Details of what is required",
-      "section7": "Type of Service",
+      "section7": "Commitment Agreement",
       "section8": "Beneficiary's Commitment",
 
       // Application Types
@@ -221,7 +221,7 @@ const resources = {
       "section4": "الخدمة المطلوبة",
       "section5": "اختيار التاريخ والوقت",
       "section6": "تفاصيل ما هو مطلوب",
-      "section7": "نوع الخدمة",
+      "section7": "اتفاقية الالتزام",
       "section8": "التزام المستفيد",
 
       // Application Types

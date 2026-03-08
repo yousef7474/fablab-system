@@ -524,7 +524,7 @@ const sendCustomEmail = async (userEmail, userName, subject, messageBody) => {
  * @param {string} taskTitle - Title of the task
  * @param {string} type - 'award' or 'deduction'
  */
-const sendTaskRatingEmail = async (employeeEmail, employeeName, taskTitle, type) => {
+const sendTaskRatingEmail = async (employeeEmail, employeeName, taskTitle, type, taskDescription) => {
   const isAward = type === 'award';
   const headerColor = isAward ? '#22c55e' : '#ef4444';
   const headerGradient = isAward ? '#16a34a' : '#dc2626';
@@ -564,6 +564,7 @@ const sendTaskRatingEmail = async (employeeEmail, employeeName, taskTitle, type)
             <p style="text-align: right; margin: 0; font-size: 15px; font-weight: 600; color: #1e293b; direction: rtl;">
               📋 ${taskTitle}
             </p>
+            ${taskDescription ? `<p style="text-align: right; margin: 8px 0 0; font-size: 13px; color: #64748b; direction: rtl; line-height: 1.6;">${taskDescription}</p>` : ''}
           </div>
 
           <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 20px 0;">
@@ -582,6 +583,7 @@ const sendTaskRatingEmail = async (employeeEmail, employeeName, taskTitle, type)
             <p style="margin: 0; font-size: 15px; font-weight: 600; color: #1e293b;">
               📋 ${taskTitle}
             </p>
+            ${taskDescription ? `<p style="margin: 8px 0 0; font-size: 13px; color: #64748b; line-height: 1.6;">${taskDescription}</p>` : ''}
           </div>
         </div>
 
