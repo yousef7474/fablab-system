@@ -3745,14 +3745,14 @@ const AdminDashboard = () => {
 
         {/* Content Area */}
         <div className="admin-content">
-          <AnimatePresence mode="wait">
+          <AnimatePresence>
             {/* Dashboard Tab */}
             {activeTab === 'dashboard' && (
               <motion.div
                 key="dashboard"
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -20 }}
+
                 className="dashboard-content"
               >
                 {/* Stats Cards */}
@@ -3890,7 +3890,7 @@ const AdminDashboard = () => {
                 key="registrations"
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -20 }}
+
                 className="registrations-content"
               >
                 {/* Filters */}
@@ -4271,7 +4271,7 @@ const AdminDashboard = () => {
                 key="users"
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -20 }}
+
                 className="users-content"
               >
                 <div className="filters-bar">
@@ -4544,7 +4544,7 @@ const AdminDashboard = () => {
                 key="analytics"
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -20 }}
+
                 className="analytics-content"
               >
                 <div className="analytics-header">
@@ -4735,7 +4735,7 @@ const AdminDashboard = () => {
                 key="schedule"
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -20 }}
+
                 className="schedule-content"
               >
                 <div className="schedule-layout-new">
@@ -6049,7 +6049,7 @@ const AdminDashboard = () => {
             {/* Workspaces Tab */}
             {activeTab === 'workspaces' && workspaceAuthenticated && (
             <div data-page="manager">
-              <motion.div key="workspaces" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }} className="workspaces-content">
+              <motion.div key="workspaces" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="workspaces-content">
                 {/* Stats Cards */}
                 <div className="stats-grid">
                   <div className="stat-card">
@@ -6486,7 +6486,7 @@ const AdminDashboard = () => {
                 key="settings"
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -20 }}
+
                 className="settings-content"
               >
                 <div className="settings-grid">
