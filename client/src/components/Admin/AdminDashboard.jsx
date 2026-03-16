@@ -12,6 +12,7 @@ import { ar, enUS } from 'date-fns/locale';
 import api from '../../config/api';
 import { openWhatsApp, getApprovalMessage, getRejectionMessage } from '../../utils/whatsappHelper';
 import './Admin.css';
+import '../Manager/Manager.css';
 
 const COLORS = ['#6366f1', '#22c55e', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4', '#ec4899'];
 
@@ -5938,6 +5939,7 @@ const AdminDashboard = () => {
 
             {/* Workspaces Tab */}
             {activeTab === 'workspaces' && workspaceAuthenticated && (
+            <div data-page="manager">
               <motion.div key="workspaces" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }} className="workspaces-content">
                 {/* Stats Cards */}
                 <div className="stats-grid">
@@ -6116,11 +6118,12 @@ const AdminDashboard = () => {
                   )}
                 </div>
               </motion.div>
+            </div>
             )}
 
             {/* Workspace Modal */}
             {showWorkspaceModal && (
-              <div className="modal-overlay" onClick={() => setShowWorkspaceModal(false)}>
+              <div className="modal-overlay" data-page="manager" onClick={() => setShowWorkspaceModal(false)}>
                 <motion.div
                   className="modal-content modern-modal workspace-modal"
                   initial={{ opacity: 0, scale: 0.9, y: 20 }}
@@ -6225,7 +6228,7 @@ const AdminDashboard = () => {
 
             {/* Workspace Rating Modal */}
             {showWorkspaceRatingModal && selectedWorkspace && (
-              <div className="modal-overlay" onClick={() => setShowWorkspaceRatingModal(false)}>
+              <div className="modal-overlay" data-page="manager" onClick={() => setShowWorkspaceRatingModal(false)}>
                 <motion.div
                   className="modal-content modern-modal rating-modal"
                   initial={{ opacity: 0, scale: 0.9, y: 20 }}
