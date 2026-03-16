@@ -175,13 +175,14 @@ exports.getAllRegistrations = async (req, res) => {
 
     // Search by name, ID, phone, etc.
     if (search) {
-      userWhereClause[Op.or] = [
-        { userId: { [Op.like]: `%${search}%` } },
-        { firstName: { [Op.like]: `%${search}%` } },
-        { lastName: { [Op.like]: `%${search}%` } },
-        { name: { [Op.like]: `%${search}%` } },
-        { nationalId: { [Op.like]: `%${search}%` } },
-        { phoneNumber: { [Op.like]: `%${search}%` } }
+      whereClause[Op.or] = [
+        { registrationId: { [Op.like]: `%${search}%` } },
+        { '$user.userId$': { [Op.like]: `%${search}%` } },
+        { '$user.firstName$': { [Op.like]: `%${search}%` } },
+        { '$user.lastName$': { [Op.like]: `%${search}%` } },
+        { '$user.name$': { [Op.like]: `%${search}%` } },
+        { '$user.nationalId$': { [Op.like]: `%${search}%` } },
+        { '$user.phoneNumber$': { [Op.like]: `%${search}%` } }
       ];
     }
 
@@ -197,7 +198,8 @@ exports.getAllRegistrations = async (req, res) => {
       }],
       order: [['createdAt', 'DESC']],
       limit: parseInt(limit),
-      offset: parseInt(offset)
+      offset: parseInt(offset),
+      subQuery: false
     });
 
     res.json({
