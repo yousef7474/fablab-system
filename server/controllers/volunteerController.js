@@ -17,10 +17,10 @@ exports.getAllVolunteers = async (req, res) => {
 
     if (search) {
       whereClause[Op.or] = [
-        { name: { [Op.iLike]: `%${search}%` } },
-        { nationalId: { [Op.iLike]: `%${search}%` } },
-        { phone: { [Op.iLike]: `%${search}%` } },
-        { email: { [Op.iLike]: `%${search}%` } }
+        { name: { [Op.like]: `%${search}%` } },
+        { nationalId: { [Op.like]: `%${search}%` } },
+        { phone: { [Op.like]: `%${search}%` } },
+        { email: { [Op.like]: `%${search}%` } }
       ];
     }
 

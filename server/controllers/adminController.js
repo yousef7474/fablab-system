@@ -176,11 +176,11 @@ exports.getAllRegistrations = async (req, res) => {
     // Search by name
     if (search) {
       userWhereClause[Op.or] = [
-        { firstName: { [Op.iLike]: `%${search}%` } },
-        { lastName: { [Op.iLike]: `%${search}%` } },
-        { name: { [Op.iLike]: `%${search}%` } },
-        { nationalId: { [Op.iLike]: `%${search}%` } },
-        { phoneNumber: { [Op.iLike]: `%${search}%` } }
+        { firstName: { [Op.like]: `%${search}%` } },
+        { lastName: { [Op.like]: `%${search}%` } },
+        { name: { [Op.like]: `%${search}%` } },
+        { nationalId: { [Op.like]: `%${search}%` } },
+        { phoneNumber: { [Op.like]: `%${search}%` } }
       ];
     }
 
@@ -725,11 +725,12 @@ exports.getAllUsers = async (req, res) => {
 
     if (search) {
       whereClause[Op.or] = [
-        { firstName: { [Op.iLike]: `%${search}%` } },
-        { lastName: { [Op.iLike]: `%${search}%` } },
-        { name: { [Op.iLike]: `%${search}%` } },
-        { email: { [Op.iLike]: `%${search}%` } },
-        { phoneNumber: { [Op.iLike]: `%${search}%` } }
+        { firstName: { [Op.like]: `%${search}%` } },
+        { lastName: { [Op.like]: `%${search}%` } },
+        { name: { [Op.like]: `%${search}%` } },
+        { email: { [Op.like]: `%${search}%` } },
+        { phoneNumber: { [Op.like]: `%${search}%` } },
+        { nationalId: { [Op.like]: `%${search}%` } }
       ];
     }
 
