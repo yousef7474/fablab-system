@@ -72,7 +72,7 @@ const AdminDashboard = () => {
   const printRef = useRef();
 
   // Valid tabs for URL persistence
-  const validTabs = ['dashboard', 'registrations', 'users', 'employees', 'schedule', 'analytics', 'borrowing', 'education', 'settings'];
+  const validTabs = ['dashboard', 'registrations', 'users', 'employees', 'schedule', 'analytics', 'borrowing', 'education', 'workspaces', 'settings'];
 
   // Get initial tab from URL, localStorage, or default to 'dashboard'
   const getInitialTab = () => {
@@ -192,6 +192,32 @@ const AdminDashboard = () => {
   const [showAddStudentModal, setShowAddStudentModal] = useState(false);
   const [newStudentForm, setNewStudentForm] = useState({ fullName: '', nationalId: '', phoneNumber: '', schoolName: '', educationLevel: '', parentPhoneNumber: '', personalPhoto: '' });
   const [sendingEducationEmail, setSendingEducationEmail] = useState(false);
+
+  // Workspace states
+  const WORKSPACE_PASSWORD = 'nouf123';
+  const [workspaceAuthenticated, setWorkspaceAuthenticated] = useState(false);
+  const [showWorkspacePasswordModal, setShowWorkspacePasswordModal] = useState(false);
+  const [workspacePasswordInput, setWorkspacePasswordInput] = useState('');
+  const [workspaces, setWorkspaces] = useState([]);
+  const [workspaceStats, setWorkspaceStats] = useState({ totalWorkspaces: 0, activeWorkspaces: 0, completedWorkspaces: 0, todayWorkspaces: 0 });
+  const [showWorkspaceModal, setShowWorkspaceModal] = useState(false);
+  const [showWorkspaceRatingModal, setShowWorkspaceRatingModal] = useState(false);
+  const [selectedWorkspace, setSelectedWorkspace] = useState(null);
+  const [workspaceLoading, setWorkspaceLoading] = useState(false);
+  const [workspaceForm, setWorkspaceForm] = useState({ tableNumber: '', numberOfUsers: 1, personName: '', personPhone: '', personEmail: '', startDate: '', startTime: '', endDate: '', endTime: '', photoBefore: '', notes: '' });
+  const [workspaceRatingForm, setWorkspaceRatingForm] = useState({ type: 'award', points: 1, criteria: '', notes: '', ratingDate: new Date().toISOString().split('T')[0], photoAfter: '' });
+
+  const workspaceCriteriaOptions = [
+    { value: 'cleanliness', label: isRTL ? 'النظافة' : 'Cleanliness' },
+    { value: 'equipment_care', label: isRTL ? 'العناية بالمعدات' : 'Equipment Care' },
+    { value: 'time_management', label: isRTL ? 'إدارة الوقت' : 'Time Management' },
+    { value: 'safety_compliance', label: isRTL ? 'الالتزام بالسلامة' : 'Safety Compliance' },
+    { value: 'workspace_organization', label: isRTL ? 'تنظيم مساحة العمل' : 'Workspace Organization' },
+    { value: 'resource_usage', label: isRTL ? 'استخدام الموارد' : 'Resource Usage' },
+    { value: 'cooperation', label: isRTL ? 'التعاون' : 'Cooperation' },
+    { value: 'rule_compliance', label: isRTL ? 'الالتزام بالقواعد' : 'Rule Compliance' },
+    { value: 'other', label: isRTL ? 'أخرى' : 'Other' }
+  ];
 
   // Status modal states
   const [showStatusModal, setShowStatusModal] = useState(false);
@@ -652,8 +678,164 @@ const AdminDashboard = () => {
       fetchBorrowings();
     } else if (activeTab === 'education') {
       fetchEducations();
+    } else if (activeTab === 'workspaces' && workspaceAuthenticated) {
+      fetchWorkspaces();
+      fetchWorkspaceStats();
     }
-  }, [activeTab, fetchRegistrations, analyticsPeriod, analyticsDateRange.startDate, analyticsDateRange.endDate]);
+  }, [activeTab, fetchRegistrations, analyticsPeriod, analyticsDateRange.startDate, analyticsDateRange.endDate, workspaceAuthenticated]);
+
+  // Workspace functions
+  const fetchWorkspaces = async () => {
+    try {
+      const response = await api.get('/workspaces');
+      setWorkspaces(response.data || []);
+    } catch (error) {
+      console.error('Error fetching workspaces:', error);
+    }
+  };
+
+  const fetchWorkspaceStats = async () => {
+    try {
+      const response = await api.get('/workspaces/statistics');
+      setWorkspaceStats(response.data);
+    } catch (error) {
+      console.error('Error fetching workspace stats:', error);
+    }
+  };
+
+  const handleCreateWorkspace = async () => {
+    if (!workspaceForm.tableNumber || !workspaceForm.personName || !workspaceForm.startDate || !workspaceForm.endDate) {
+      toast.error(isRTL ? 'رقم الطاولة والاسم والفترة مطلوبة' : 'Table number, name, and period are required');
+      return;
+    }
+    const activeWorkspaces = workspaces.filter(w => w.status === 'active').length;
+    if (activeWorkspaces >= 8) {
+      toast.error(isRTL ? 'تم الوصول للحد الأقصى من مساحات العمل (8)' : 'Maximum number of workspaces reached (8)');
+      return;
+    }
+    setWorkspaceLoading(true);
+    try {
+      await api.post('/workspaces', workspaceForm);
+      toast.success(isRTL ? 'تم إضافة مساحة العمل بنجاح' : 'Workspace added successfully');
+      fetchWorkspaces();
+      fetchWorkspaceStats();
+      setShowWorkspaceModal(false);
+      setWorkspaceForm({ tableNumber: '', numberOfUsers: 1, personName: '', personPhone: '', personEmail: '', startDate: '', startTime: '', endDate: '', endTime: '', photoBefore: '', notes: '' });
+    } catch (error) {
+      toast.error(isRTL ? 'خطأ في إضافة مساحة العمل' : 'Error adding workspace');
+    } finally {
+      setWorkspaceLoading(false);
+    }
+  };
+
+  const handleUpdateWorkspace = async () => {
+    if (!selectedWorkspace) return;
+    setWorkspaceLoading(true);
+    try {
+      await api.put(`/workspaces/${selectedWorkspace.workspaceId}`, workspaceForm);
+      toast.success(isRTL ? 'تم تحديث مساحة العمل بنجاح' : 'Workspace updated successfully');
+      fetchWorkspaces();
+      setShowWorkspaceModal(false);
+      setSelectedWorkspace(null);
+    } catch (error) {
+      toast.error(isRTL ? 'خطأ في تحديث مساحة العمل' : 'Error updating workspace');
+    } finally {
+      setWorkspaceLoading(false);
+    }
+  };
+
+  const handleDeleteWorkspace = async (workspaceId) => {
+    if (!window.confirm(isRTL ? 'هل أنت متأكد من حذف مساحة العمل هذه؟' : 'Are you sure you want to delete this workspace?')) return;
+    try {
+      await api.delete(`/workspaces/${workspaceId}`);
+      toast.success(isRTL ? 'تم حذف مساحة العمل بنجاح' : 'Workspace deleted successfully');
+      fetchWorkspaces();
+      fetchWorkspaceStats();
+    } catch (error) {
+      toast.error(isRTL ? 'خطأ في حذف مساحة العمل' : 'Error deleting workspace');
+    }
+  };
+
+  const handleCompleteWorkspace = async (workspaceId) => {
+    try {
+      await api.patch(`/workspaces/${workspaceId}/complete`);
+      toast.success(isRTL ? 'تم تحديد مساحة العمل كمكتملة' : 'Workspace marked as completed');
+      fetchWorkspaces();
+      fetchWorkspaceStats();
+    } catch (error) {
+      toast.error(isRTL ? 'خطأ في تحديث مساحة العمل' : 'Error updating workspace');
+    }
+  };
+
+  const openWorkspaceModal = (workspace = null) => {
+    if (workspace) {
+      setSelectedWorkspace(workspace);
+      setWorkspaceForm({
+        tableNumber: workspace.tableNumber || '', numberOfUsers: workspace.numberOfUsers || 1,
+        personName: workspace.personName || '', personPhone: workspace.personPhone || '', personEmail: workspace.personEmail || '',
+        startDate: workspace.startDate || '', startTime: workspace.startTime || '',
+        endDate: workspace.endDate || '', endTime: workspace.endTime || '',
+        photoBefore: workspace.photoBefore || '', notes: workspace.notes || ''
+      });
+    } else {
+      setSelectedWorkspace(null);
+      setWorkspaceForm({ tableNumber: '', numberOfUsers: 1, personName: '', personPhone: '', personEmail: '', startDate: '', startTime: '', endDate: '', endTime: '', photoBefore: '', notes: '' });
+    }
+    setShowWorkspaceModal(true);
+  };
+
+  const handleAddWorkspaceRating = async () => {
+    const criteria = workspaceRatingForm.criteria === 'other' ? workspaceRatingForm.customCriteria : workspaceRatingForm.criteria;
+    if (!selectedWorkspace || !criteria || !workspaceRatingForm.points) {
+      toast.error(isRTL ? 'المعيار والنقاط مطلوبة' : 'Criteria and points are required');
+      return;
+    }
+    setWorkspaceLoading(true);
+    try {
+      const ratingData = { ...workspaceRatingForm, criteria };
+      delete ratingData.customCriteria;
+      delete ratingData.photoAfter;
+      await api.post(`/workspaces/${selectedWorkspace.workspaceId}/ratings`, ratingData);
+      if (workspaceRatingForm.photoAfter) {
+        await api.put(`/workspaces/${selectedWorkspace.workspaceId}`, { photoAfter: workspaceRatingForm.photoAfter });
+      }
+      toast.success(isRTL ? 'تم إضافة التقييم بنجاح' : 'Rating added successfully');
+      fetchWorkspaces();
+      setShowWorkspaceRatingModal(false);
+      setWorkspaceRatingForm({ type: 'award', points: 1, criteria: '', notes: '', ratingDate: new Date().toISOString().split('T')[0], photoAfter: '' });
+    } catch (error) {
+      toast.error(isRTL ? 'خطأ في إضافة التقييم' : 'Error adding rating');
+    } finally {
+      setWorkspaceLoading(false);
+    }
+  };
+
+  const openWorkspaceRatingModal = (workspace) => {
+    setSelectedWorkspace(workspace);
+    setWorkspaceRatingForm({ type: 'award', points: 1, criteria: '', notes: '', ratingDate: new Date().toISOString().split('T')[0], photoAfter: '' });
+    setShowWorkspaceRatingModal(true);
+  };
+
+  const handleWorkspaceTabClick = () => {
+    if (workspaceAuthenticated) {
+      setActiveTab('workspaces');
+    } else {
+      setShowWorkspacePasswordModal(true);
+    }
+  };
+
+  const handleWorkspacePasswordSubmit = () => {
+    if (workspacePasswordInput === WORKSPACE_PASSWORD) {
+      setWorkspaceAuthenticated(true);
+      setShowWorkspacePasswordModal(false);
+      setWorkspacePasswordInput('');
+      setActiveTab('workspaces');
+      toast.success(isRTL ? 'تم الدخول بنجاح' : 'Access granted');
+    } else {
+      toast.error(isRTL ? 'كلمة المرور غير صحيحة' : 'Incorrect password');
+      setWorkspacePasswordInput('');
+    }
+  };
 
   const handleLogout = () => {
     localStorage.removeItem('adminToken');
@@ -1924,7 +2106,7 @@ const AdminDashboard = () => {
           </div>
           <div class="id-card">
             <div class="card-header">
-              <div class="card-title">${isRTL ? 'بطاقة عضوية فاب لاب الأحساء' : 'FABLAB Al-Ahsa Member Card'}</div>
+              <div class="card-title">${isRTL ? 'بطاقة مستفيد فاب لاب الأحساء' : 'FABLAB Al-Ahsa Beneficiary Card'}</div>
               <div class="card-subtitle">${isRTL ? 'مؤسسة عبدالمنعم الراشد الإنسانية' : 'Abdulmonem Al-Rashed Foundation'}</div>
             </div>
             <div class="card-body">
@@ -3200,6 +3382,7 @@ const AdminDashboard = () => {
     { id: 'schedule', icon: 'schedule', labelEn: 'Schedule', labelAr: 'الجدول' },
     { id: 'borrowing', icon: 'borrowing', labelEn: 'Borrowing', labelAr: 'الاستعارة' },
     { id: 'education', icon: 'education', labelEn: 'Education', labelAr: 'التعليم' },
+    { id: 'workspaces', icon: 'workspaces', labelEn: 'Workspaces', labelAr: 'مساحات العمل' },
     { id: 'settings', icon: 'settings', labelEn: 'Settings', labelAr: 'الإعدادات' }
   ];
 
@@ -3212,6 +3395,7 @@ const AdminDashboard = () => {
       schedule: <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>,
       borrowing: <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>,
       education: <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>,
+      workspaces: <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>,
       settings: <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
     };
     return icons[iconName] || null;
@@ -3374,7 +3558,11 @@ const AdminDashboard = () => {
               key={item.id}
               className={`nav-item ${activeTab === item.id ? 'active' : ''}`}
               onClick={() => {
-                setActiveTab(item.id);
+                if (item.id === 'workspaces') {
+                  handleWorkspaceTabClick();
+                } else {
+                  setActiveTab(item.id);
+                }
                 // Close sidebar on mobile when nav item is clicked
                 if (window.innerWidth <= 768) {
                   setSidebarOpen(false);
@@ -5747,6 +5935,312 @@ const AdminDashboard = () => {
                 )}
               </motion.div>
             )}
+
+            {/* Workspaces Tab */}
+            {activeTab === 'workspaces' && workspaceAuthenticated && (
+              <motion.div key="workspaces" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }} className="workspaces-content">
+                {/* Stats Cards */}
+                <div className="stats-grid">
+                  <div className="stat-card">
+                    <div className="stat-icon"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg></div>
+                    <div className="stat-info"><span className="stat-value">{workspaceStats.totalWorkspaces}</span><span className="stat-label">{isRTL ? 'إجمالي المساحات' : 'Total Workspaces'}</span></div>
+                  </div>
+                  <div className="stat-card">
+                    <div className="stat-icon active"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></div>
+                    <div className="stat-info"><span className="stat-value">{workspaceStats.activeWorkspaces}</span><span className="stat-label">{isRTL ? 'نشطة' : 'Active'}</span></div>
+                  </div>
+                  <div className="stat-card">
+                    <div className="stat-icon completed"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg></div>
+                    <div className="stat-info"><span className="stat-value">{workspaceStats.completedWorkspaces}</span><span className="stat-label">{isRTL ? 'مكتملة' : 'Completed'}</span></div>
+                  </div>
+                  <div className="stat-card">
+                    <div className="stat-icon today"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></div>
+                    <div className="stat-info"><span className="stat-value">{workspaceStats.todayWorkspaces}</span><span className="stat-label">{isRTL ? 'اليوم' : 'Today'}</span></div>
+                  </div>
+                </div>
+
+                {/* Actions Bar */}
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                    <h3 style={{ margin: 0 }}>{isRTL ? 'قائمة مساحات العمل' : 'Workspace List'}</h3>
+                    <span style={{ background: 'var(--bg-secondary)', padding: '4px 12px', borderRadius: '12px', fontSize: '13px' }}>{workspaces.length} {isRTL ? 'مساحة' : 'total'}</span>
+                  </div>
+                  <button className="add-workspace-btn" onClick={() => openWorkspaceModal()} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 20px', background: 'linear-gradient(135deg, #3b82f6, #2563eb)', color: 'white', border: 'none', borderRadius: '10px', cursor: 'pointer', fontWeight: '600', fontSize: '14px' }}>
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                    <span>{isRTL ? 'إضافة مساحة عمل جديدة' : 'Add New Workspace'}</span>
+                  </button>
+                </div>
+
+                {/* Workspaces Grid */}
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '16px' }}>
+                  {workspaces.length === 0 ? (
+                    <div className="empty-state" style={{ gridColumn: '1 / -1', textAlign: 'center', padding: '60px 20px' }}>
+                      <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>
+                      <h3>{isRTL ? 'لا توجد مساحات عمل' : 'No Workspaces'}</h3>
+                      <p>{isRTL ? 'أضف مساحة عمل جديدة للبدء' : 'Add a new workspace to get started'}</p>
+                    </div>
+                  ) : (
+                    workspaces.map(workspace => (
+                      <motion.div key={workspace.workspaceId} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
+                        style={{ background: 'var(--card-bg)', borderRadius: '12px', border: '1px solid var(--border-color)', overflow: 'hidden', boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px 16px 0' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>{isRTL ? 'طاولة' : 'Table'}</span>
+                            <span style={{ fontSize: '18px', fontWeight: '700' }}>{workspace.tableNumber}</span>
+                          </div>
+                          <span style={{ padding: '4px 12px', borderRadius: '12px', fontSize: '12px', fontWeight: '600',
+                            background: workspace.status === 'active' ? '#dcfce7' : workspace.status === 'completed' ? '#dbeafe' : '#fee2e2',
+                            color: workspace.status === 'active' ? '#16a34a' : workspace.status === 'completed' ? '#2563eb' : '#dc2626'
+                          }}>
+                            {workspace.status === 'active' ? (isRTL ? 'نشط' : 'Active') : workspace.status === 'completed' ? (isRTL ? 'مكتمل' : 'Completed') : (isRTL ? 'ملغي' : 'Cancelled')}
+                          </span>
+                        </div>
+                        <div style={{ padding: '12px 16px' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px', fontSize: '14px' }}>
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                            <span>{workspace.personName}</span>
+                          </div>
+                          {workspace.personPhone && (
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px', fontSize: '13px', color: 'var(--text-secondary)' }}>
+                              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+                              <span dir="ltr">{workspace.personPhone}</span>
+                            </div>
+                          )}
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '10px', fontSize: '13px', color: 'var(--text-secondary)' }}>
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                            <span>{workspace.numberOfUsers} {isRTL ? 'مستخدم' : 'user(s)'}</span>
+                          </div>
+                          <div style={{ display: 'flex', gap: '12px', marginBottom: '10px', fontSize: '12px' }}>
+                            <div><span style={{ color: 'var(--text-secondary)' }}>{isRTL ? 'من' : 'From'}: </span><strong>{workspace.startDate && format(parseISO(workspace.startDate), 'MMM d', { locale: isRTL ? ar : enUS })} {formatTimeAMPM(workspace.startTime)}</strong></div>
+                            <div><span style={{ color: 'var(--text-secondary)' }}>{isRTL ? 'إلى' : 'To'}: </span><strong>{workspace.endDate && format(parseISO(workspace.endDate), 'MMM d', { locale: isRTL ? ar : enUS })} {formatTimeAMPM(workspace.endTime)}</strong></div>
+                          </div>
+                          <div style={{ marginBottom: '8px' }}>
+                            <span style={{ padding: '4px 12px', borderRadius: '12px', fontSize: '13px', fontWeight: '600',
+                              background: workspace.totalPoints >= 0 ? '#dcfce7' : '#fee2e2',
+                              color: workspace.totalPoints >= 0 ? '#16a34a' : '#dc2626'
+                            }}>
+                              {workspace.totalPoints >= 0 ? '+' : ''}{workspace.totalPoints} {isRTL ? 'نقطة' : 'points'}
+                            </span>
+                          </div>
+                          {workspace.notes && <p style={{ fontSize: '12px', color: 'var(--text-secondary)', margin: '8px 0 0', padding: '8px', background: 'var(--bg-secondary)', borderRadius: '6px' }}>{workspace.notes}</p>}
+                        </div>
+                        <div style={{ display: 'flex', gap: '6px', padding: '12px 16px', borderTop: '1px solid var(--border-color)' }}>
+                          {workspace.status === 'active' && (
+                            <>
+                              <button onClick={() => handleCompleteWorkspace(workspace.workspaceId)} title={isRTL ? 'إكمال' : 'Complete'} style={{ padding: '6px 10px', borderRadius: '6px', border: 'none', background: '#dcfce7', color: '#16a34a', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px', fontSize: '12px' }}>
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="20 6 9 17 4 12"/></svg>
+                              </button>
+                              <button onClick={() => openWorkspaceRatingModal(workspace)} title={isRTL ? 'تقييم' : 'Rate'} style={{ padding: '6px 10px', borderRadius: '6px', border: 'none', background: '#fef3c7', color: '#d97706', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px', fontSize: '12px' }}>
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+                              </button>
+                            </>
+                          )}
+                          <button onClick={() => openWorkspaceModal(workspace)} title={isRTL ? 'تعديل' : 'Edit'} style={{ padding: '6px 10px', borderRadius: '6px', border: 'none', background: '#dbeafe', color: '#2563eb', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px', fontSize: '12px' }}>
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                          </button>
+                          <button onClick={() => handleDeleteWorkspace(workspace.workspaceId)} title={isRTL ? 'حذف' : 'Delete'} style={{ padding: '6px 10px', borderRadius: '6px', border: 'none', background: '#fee2e2', color: '#dc2626', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px', fontSize: '12px' }}>
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                          </button>
+                        </div>
+                        {workspace.ratings && workspace.ratings.length > 0 && (
+                          <div style={{ padding: '0 16px 12px', borderTop: '1px solid var(--border-color)' }}>
+                            <h4 style={{ fontSize: '13px', margin: '10px 0 6px' }}>{isRTL ? 'التقييمات' : 'Ratings'}</h4>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                              {workspace.ratings.map(rating => (
+                                <div key={rating.ratingId} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '4px 8px', borderRadius: '6px', fontSize: '12px', background: rating.type === 'deduct' ? '#fee2e2' : '#dcfce7' }}>
+                                  <span style={{ fontWeight: '600', color: rating.type === 'deduct' ? '#dc2626' : '#16a34a' }}>{rating.type === 'deduct' ? '-' : '+'}{rating.points}</span>
+                                  <span>{workspaceCriteriaOptions.find(c => c.value === rating.criteria)?.label || rating.criteria}</span>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </motion.div>
+                    ))
+                  )}
+                </div>
+              </motion.div>
+            )}
+
+            {/* Workspace Modal */}
+            {showWorkspaceModal && (
+              <div className="modal-overlay" onClick={() => setShowWorkspaceModal(false)}>
+                <motion.div className="modal-content modern-modal" initial={{ opacity: 0, scale: 0.9, y: 20 }} animate={{ opacity: 1, scale: 1, y: 0 }} transition={{ type: "spring", damping: 25, stiffness: 300 }} onClick={(e) => e.stopPropagation()} style={{ maxWidth: '600px' }}>
+                  <div className="modern-modal-header" style={{ background: 'linear-gradient(135deg, #3b82f6, #2563eb)' }}>
+                    <div className="modal-header-icon"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg></div>
+                    <div className="modal-header-text">
+                      <h2>{selectedWorkspace ? (isRTL ? 'تعديل مساحة العمل' : 'Edit Workspace') : (isRTL ? 'مساحة عمل جديدة' : 'New Workspace')}</h2>
+                      <p>{isRTL ? 'سجل بيانات مساحة العمل للعملاء' : 'Record workspace details for customers'}</p>
+                    </div>
+                    <button className="modal-close-modern" onClick={() => setShowWorkspaceModal(false)}><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+                  </div>
+                  <div className="modern-modal-body" style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                      <div className="form-group modern-input">
+                        <label>{isRTL ? 'رقم الطاولة' : 'Table Number'} <span style={{ color: 'red' }}>*</span></label>
+                        <input type="text" value={workspaceForm.tableNumber} onChange={(e) => setWorkspaceForm({ ...workspaceForm, tableNumber: e.target.value })} placeholder={isRTL ? 'مثال: A1, B2' : 'e.g., A1, B2'} className="modern-input-field" />
+                      </div>
+                      <div className="form-group modern-input">
+                        <label>{isRTL ? 'عدد المستخدمين' : 'Number of Users'}</label>
+                        <input type="number" min="1" value={workspaceForm.numberOfUsers} onChange={(e) => setWorkspaceForm({ ...workspaceForm, numberOfUsers: parseInt(e.target.value) || 1 })} className="modern-input-field" />
+                      </div>
+                    </div>
+                    <div className="form-group modern-input">
+                      <label>{isRTL ? 'الاسم' : 'Name'} <span style={{ color: 'red' }}>*</span></label>
+                      <input type="text" value={workspaceForm.personName} onChange={(e) => setWorkspaceForm({ ...workspaceForm, personName: e.target.value })} placeholder={isRTL ? 'اسم الشخص المسؤول' : 'Full name'} className="modern-input-field" />
+                    </div>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                      <div className="form-group modern-input">
+                        <label>{isRTL ? 'رقم الهاتف' : 'Phone Number'}</label>
+                        <input type="tel" value={workspaceForm.personPhone} onChange={(e) => setWorkspaceForm({ ...workspaceForm, personPhone: e.target.value })} placeholder={isRTL ? 'رقم الهاتف' : 'Phone number'} dir="ltr" className="modern-input-field" />
+                      </div>
+                      <div className="form-group modern-input">
+                        <label>{isRTL ? 'البريد الإلكتروني' : 'Email'}</label>
+                        <input type="email" value={workspaceForm.personEmail} onChange={(e) => setWorkspaceForm({ ...workspaceForm, personEmail: e.target.value })} placeholder={isRTL ? 'البريد الإلكتروني' : 'Email address'} dir="ltr" className="modern-input-field" />
+                      </div>
+                    </div>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                      <div className="form-group modern-input">
+                        <label>{isRTL ? 'تاريخ البداية' : 'Start Date'} <span style={{ color: 'red' }}>*</span></label>
+                        <input type="date" value={workspaceForm.startDate} onChange={(e) => setWorkspaceForm({ ...workspaceForm, startDate: e.target.value })} className="modern-input-field" />
+                      </div>
+                      <div className="form-group modern-input">
+                        <label>{isRTL ? 'وقت البداية' : 'Start Time'}</label>
+                        <input type="time" value={workspaceForm.startTime} onChange={(e) => setWorkspaceForm({ ...workspaceForm, startTime: e.target.value })} className="modern-input-field" />
+                      </div>
+                    </div>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                      <div className="form-group modern-input">
+                        <label>{isRTL ? 'تاريخ النهاية' : 'End Date'} <span style={{ color: 'red' }}>*</span></label>
+                        <input type="date" value={workspaceForm.endDate} onChange={(e) => setWorkspaceForm({ ...workspaceForm, endDate: e.target.value })} className="modern-input-field" />
+                      </div>
+                      <div className="form-group modern-input">
+                        <label>{isRTL ? 'وقت النهاية' : 'End Time'}</label>
+                        <input type="time" value={workspaceForm.endTime} onChange={(e) => setWorkspaceForm({ ...workspaceForm, endTime: e.target.value })} className="modern-input-field" />
+                      </div>
+                    </div>
+                    <div className="form-group modern-input">
+                      <label>{isRTL ? 'صورة مساحة العمل' : 'Workspace Photo'}</label>
+                      {workspaceForm.photoBefore ? (
+                        <div style={{ position: 'relative', display: 'inline-block' }}>
+                          <img src={workspaceForm.photoBefore} alt="Workspace" style={{ width: '120px', height: '90px', objectFit: 'cover', borderRadius: '8px', border: '2px solid var(--border-color)' }} />
+                          <button onClick={() => setWorkspaceForm({ ...workspaceForm, photoBefore: '' })} style={{ position: 'absolute', top: '-8px', right: '-8px', width: '24px', height: '24px', borderRadius: '50%', background: '#ef4444', color: 'white', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '14px' }}>x</button>
+                        </div>
+                      ) : (
+                        <label style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', width: '120px', height: '90px', border: '2px dashed var(--border-color)', borderRadius: '8px', cursor: 'pointer', background: 'var(--bg-secondary)' }}>
+                          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                          <span style={{ fontSize: '11px', marginTop: '4px', color: 'var(--text-secondary)' }}>{isRTL ? 'رفع صورة' : 'Upload'}</span>
+                          <input type="file" accept="image/*" style={{ display: 'none' }} onChange={(e) => { const file = e.target.files[0]; if (file) { const reader = new FileReader(); reader.onloadend = () => setWorkspaceForm({ ...workspaceForm, photoBefore: reader.result }); reader.readAsDataURL(file); } }} />
+                        </label>
+                      )}
+                    </div>
+                    <div className="form-group modern-input">
+                      <label>{isRTL ? 'ملاحظات' : 'Notes'}</label>
+                      <textarea value={workspaceForm.notes} onChange={(e) => setWorkspaceForm({ ...workspaceForm, notes: e.target.value })} placeholder={isRTL ? 'أضف أي ملاحظات إضافية...' : 'Add any additional notes...'} rows={3} className="modern-textarea" />
+                    </div>
+                  </div>
+                  <div className="modern-modal-footer">
+                    <button className="btn-cancel" onClick={() => setShowWorkspaceModal(false)}>{isRTL ? 'إلغاء' : 'Cancel'}</button>
+                    <button className="btn-submit" onClick={selectedWorkspace ? handleUpdateWorkspace : handleCreateWorkspace} disabled={workspaceLoading || !workspaceForm.tableNumber.trim() || !workspaceForm.personName.trim()} style={{ background: 'linear-gradient(135deg, #3b82f6, #2563eb)' }}>
+                      {workspaceLoading ? <><span className="spinner"></span>{isRTL ? 'جاري الحفظ...' : 'Saving...'}</> : <><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="20 6 9 17 4 12"/></svg>{selectedWorkspace ? (isRTL ? 'تحديث' : 'Update') : (isRTL ? 'إضافة مساحة العمل' : 'Add Workspace')}</>}
+                    </button>
+                  </div>
+                </motion.div>
+              </div>
+            )}
+
+            {/* Workspace Rating Modal */}
+            {showWorkspaceRatingModal && selectedWorkspace && (
+              <div className="modal-overlay" onClick={() => setShowWorkspaceRatingModal(false)}>
+                <motion.div className="modal-content modern-modal" initial={{ opacity: 0, scale: 0.9, y: 20 }} animate={{ opacity: 1, scale: 1, y: 0 }} transition={{ type: "spring", damping: 25, stiffness: 300 }} onClick={(e) => e.stopPropagation()} style={{ maxWidth: '500px' }}>
+                  <div className="modern-modal-header" style={{ background: 'linear-gradient(135deg, #f59e0b, #d97706)' }}>
+                    <div className="modal-header-icon"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg></div>
+                    <div className="modal-header-text">
+                      <h2>{isRTL ? 'تقييم مساحة العمل' : 'Rate Workspace'}</h2>
+                      <p>{isRTL ? 'طاولة' : 'Table'} {selectedWorkspace.tableNumber} - {selectedWorkspace.personName}</p>
+                    </div>
+                    <button className="modal-close-modern" onClick={() => setShowWorkspaceRatingModal(false)}><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+                  </div>
+                  <div className="modern-modal-body" style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                    <div className="form-group">
+                      <label>{isRTL ? 'نوع التقييم' : 'Rating Type'}</label>
+                      <div style={{ display: 'flex', gap: '8px' }}>
+                        <button type="button" onClick={() => setWorkspaceRatingForm({ ...workspaceRatingForm, type: 'award' })} style={{ flex: 1, padding: '10px', borderRadius: '8px', border: '2px solid', borderColor: workspaceRatingForm.type === 'award' ? '#16a34a' : 'var(--border-color)', background: workspaceRatingForm.type === 'award' ? '#dcfce7' : 'var(--bg-secondary)', color: workspaceRatingForm.type === 'award' ? '#16a34a' : 'var(--text-secondary)', cursor: 'pointer', fontWeight: '600' }}>{isRTL ? 'منح نقاط' : 'Award'}</button>
+                        <button type="button" onClick={() => setWorkspaceRatingForm({ ...workspaceRatingForm, type: 'deduct' })} style={{ flex: 1, padding: '10px', borderRadius: '8px', border: '2px solid', borderColor: workspaceRatingForm.type === 'deduct' ? '#dc2626' : 'var(--border-color)', background: workspaceRatingForm.type === 'deduct' ? '#fee2e2' : 'var(--bg-secondary)', color: workspaceRatingForm.type === 'deduct' ? '#dc2626' : 'var(--text-secondary)', cursor: 'pointer', fontWeight: '600' }}>{isRTL ? 'خصم نقاط' : 'Deduct'}</button>
+                      </div>
+                    </div>
+                    <div className="form-group">
+                      <label>{isRTL ? 'عدد النقاط' : 'Points'}</label>
+                      <div style={{ display: 'flex', gap: '8px' }}>
+                        {[1, 2, 3, 4, 5].map(num => (
+                          <button key={num} type="button" onClick={() => setWorkspaceRatingForm({ ...workspaceRatingForm, points: num })} style={{ width: '48px', height: '48px', borderRadius: '8px', border: '2px solid', borderColor: workspaceRatingForm.points === num ? (workspaceRatingForm.type === 'deduct' ? '#dc2626' : '#16a34a') : 'var(--border-color)', background: workspaceRatingForm.points === num ? (workspaceRatingForm.type === 'deduct' ? '#fee2e2' : '#dcfce7') : 'var(--bg-secondary)', color: workspaceRatingForm.points === num ? (workspaceRatingForm.type === 'deduct' ? '#dc2626' : '#16a34a') : 'var(--text-primary)', cursor: 'pointer', fontWeight: '700', fontSize: '16px' }}>
+                            {workspaceRatingForm.type === 'deduct' ? `-${num}` : `+${num}`}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                    <div className="form-group modern-input">
+                      <label>{isRTL ? 'المعيار' : 'Criteria'} <span style={{ color: 'red' }}>*</span></label>
+                      <select value={workspaceRatingForm.criteria} onChange={(e) => setWorkspaceRatingForm({ ...workspaceRatingForm, criteria: e.target.value })} className="modern-input-field">
+                        <option value="">{isRTL ? 'اختر المعيار' : 'Select criteria'}</option>
+                        {workspaceCriteriaOptions.map(opt => (<option key={opt.value} value={opt.value}>{opt.label}</option>))}
+                      </select>
+                    </div>
+                    {workspaceRatingForm.criteria === 'other' && (
+                      <div className="form-group modern-input">
+                        <label>{isRTL ? 'معيار مخصص' : 'Custom Criteria'}</label>
+                        <input type="text" value={workspaceRatingForm.customCriteria || ''} onChange={(e) => setWorkspaceRatingForm({ ...workspaceRatingForm, customCriteria: e.target.value })} placeholder={isRTL ? 'أدخل المعيار' : 'Enter criteria'} className="modern-input-field" />
+                      </div>
+                    )}
+                    <div className="form-group modern-input">
+                      <label>{isRTL ? 'تاريخ التقييم' : 'Rating Date'}</label>
+                      <input type="date" value={workspaceRatingForm.ratingDate} onChange={(e) => setWorkspaceRatingForm({ ...workspaceRatingForm, ratingDate: e.target.value })} className="modern-input-field" />
+                    </div>
+                    <div className="form-group modern-input">
+                      <label>{isRTL ? 'ملاحظات' : 'Notes'}</label>
+                      <textarea value={workspaceRatingForm.notes} onChange={(e) => setWorkspaceRatingForm({ ...workspaceRatingForm, notes: e.target.value })} placeholder={isRTL ? 'ملاحظات إضافية (اختياري)' : 'Additional notes (optional)'} rows={3} className="modern-textarea" />
+                    </div>
+                  </div>
+                  <div className="modern-modal-footer">
+                    <button className="btn-cancel" onClick={() => setShowWorkspaceRatingModal(false)}>{isRTL ? 'إلغاء' : 'Cancel'}</button>
+                    <button className="btn-submit" onClick={handleAddWorkspaceRating} disabled={workspaceLoading || !workspaceRatingForm.criteria} style={{ background: workspaceRatingForm.type === 'deduct' ? 'linear-gradient(135deg, #ef4444, #dc2626)' : 'linear-gradient(135deg, #22c55e, #16a34a)' }}>
+                      {workspaceLoading ? <><span className="spinner"></span>{isRTL ? 'جاري الحفظ...' : 'Saving...'}</> : <><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="20 6 9 17 4 12"/></svg>{isRTL ? 'إضافة التقييم' : 'Add Rating'}</>}
+                    </button>
+                  </div>
+                </motion.div>
+              </div>
+            )}
+
+            {/* Workspace Password Modal */}
+            <AnimatePresence>
+              {showWorkspacePasswordModal && (
+                <div className="modal-overlay" onClick={() => setShowWorkspacePasswordModal(false)}>
+                  <motion.div className="modal-content modern-modal" initial={{ opacity: 0, scale: 0.9, y: 20 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.9, y: 20 }} transition={{ type: "spring", damping: 25, stiffness: 300 }} onClick={(e) => e.stopPropagation()} style={{ maxWidth: '400px' }}>
+                    <div className="modern-modal-header" style={{ background: 'linear-gradient(135deg, #3b82f6, #2563eb)' }}>
+                      <div className="modal-header-icon"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></div>
+                      <div className="modal-header-text">
+                        <h2>{isRTL ? 'مساحات العمل' : 'Workspaces'}</h2>
+                        <p>{isRTL ? 'أدخل كلمة المرور للوصول' : 'Enter password to access'}</p>
+                      </div>
+                      <button className="modal-close-modern" onClick={() => setShowWorkspacePasswordModal(false)}><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+                    </div>
+                    <div className="modern-modal-body" style={{ padding: '24px' }}>
+                      <div className="form-group modern-input">
+                        <label>{isRTL ? 'كلمة المرور' : 'Password'}</label>
+                        <input type="password" value={workspacePasswordInput} onChange={(e) => setWorkspacePasswordInput(e.target.value)} onKeyPress={(e) => e.key === 'Enter' && handleWorkspacePasswordSubmit()} placeholder={isRTL ? 'أدخل كلمة المرور' : 'Enter password'} className="modern-input-field" autoFocus />
+                      </div>
+                    </div>
+                    <div className="modern-modal-footer">
+                      <button className="btn-cancel" onClick={() => setShowWorkspacePasswordModal(false)}>{isRTL ? 'إلغاء' : 'Cancel'}</button>
+                      <button className="btn-submit" onClick={handleWorkspacePasswordSubmit} style={{ background: 'linear-gradient(135deg, #3b82f6, #2563eb)' }}>
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                        {isRTL ? 'دخول' : 'Access'}
+                      </button>
+                    </div>
+                  </motion.div>
+                </div>
+              )}
+            </AnimatePresence>
 
             {/* Settings Tab */}
             {activeTab === 'settings' && (
