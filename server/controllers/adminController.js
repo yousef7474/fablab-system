@@ -123,7 +123,7 @@ exports.getAllRegistrations = async (req, res) => {
     if (status) whereClause.status = status;
     if (applicationType) userWhereClause.applicationType = applicationType;
     if (entity) userWhereClause.entityName = entity;
-    if (sex) userWhereClause.sex = sex;
+    if (sex) userWhereClause.sex = sex.charAt(0).toUpperCase() + sex.slice(1).toLowerCase();
 
     // Date range filter
     if (dateFrom || dateTo) {
@@ -173,9 +173,10 @@ exports.getAllRegistrations = async (req, res) => {
       }
     }
 
-    // Search by name
+    // Search by name, ID, phone, etc.
     if (search) {
       userWhereClause[Op.or] = [
+        { userId: { [Op.like]: `%${search}%` } },
         { firstName: { [Op.like]: `%${search}%` } },
         { lastName: { [Op.like]: `%${search}%` } },
         { name: { [Op.like]: `%${search}%` } },
@@ -725,6 +726,7 @@ exports.getAllUsers = async (req, res) => {
 
     if (search) {
       whereClause[Op.or] = [
+        { userId: { [Op.like]: `%${search}%` } },
         { firstName: { [Op.like]: `%${search}%` } },
         { lastName: { [Op.like]: `%${search}%` } },
         { name: { [Op.like]: `%${search}%` } },

@@ -409,6 +409,26 @@ const AdminDashboard = () => {
     setPagination(prev => ({ ...prev, page: 1 }));
   }, [filters]);
 
+  // Auto-search registrations with debounce when filters change
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (activeTab === 'registrations') {
+        fetchRegistrations(1);
+      }
+    }, 400);
+    return () => clearTimeout(timer);
+  }, [filters, activeTab, fetchRegistrations]);
+
+  // Auto-search users with debounce when userSearch changes
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (activeTab === 'users') {
+        fetchUsers(1);
+      }
+    }, 400);
+    return () => clearTimeout(timer);
+  }, [userSearch, activeTab]);
+
   const handlePageChange = (newPage) => {
     if (newPage >= 1 && newPage <= pagination.pages) {
       fetchRegistrations(newPage);
@@ -3636,8 +3656,8 @@ const AdminDashboard = () => {
                     className="filter-select"
                   >
                     <option value="">{isRTL ? 'كل الجنس' : 'All Genders'}</option>
-                    <option value="male">{isRTL ? 'ذكر' : 'Male'}</option>
-                    <option value="female">{isRTL ? 'أنثى' : 'Female'}</option>
+                    <option value="Male">{isRTL ? 'ذكر' : 'Male'}</option>
+                    <option value="Female">{isRTL ? 'أنثى' : 'Female'}</option>
                   </select>
 
                   <div className="date-range-filter">
