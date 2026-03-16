@@ -3051,6 +3051,115 @@ const ManagerDashboard = () => {
     setTimeout(() => { printWindow.print(); }, 250);
   };
 
+  const handlePrintWorkspaceIDCard = (workspace) => {
+    const printWindow = window.open('', '_blank');
+    const na = isRTL ? 'غير محدد' : 'N/A';
+    const startFormatted = workspace.startDate ? format(parseISO(workspace.startDate), 'MMM d, yyyy', { locale: isRTL ? ar : enUS }) : na;
+    const endFormatted = workspace.endDate ? format(parseISO(workspace.endDate), 'MMM d, yyyy', { locale: isRTL ? ar : enUS }) : na;
+
+    const idCardContent = `
+      <!DOCTYPE html>
+      <html dir="${isRTL ? 'rtl' : 'ltr'}" lang="${isRTL ? 'ar' : 'en'}">
+      <head>
+        <meta charset="UTF-8">
+        <title>${isRTL ? 'بطاقة مساحة عمل' : 'Workspace ID Card'}</title>
+        <style>
+          @page { size: 53.98mm 100mm; margin: 0; }
+          * { margin: 0; padding: 0; box-sizing: border-box; }
+          body { font-family: 'Segoe UI', Tahoma, Arial, sans-serif; background: #f0f0f0; display: flex; justify-content: center; align-items: center; min-height: 100vh; padding: 20px; }
+          .id-card-wrapper { display: flex; flex-direction: column; align-items: center; }
+          .card-holder-area { width: 53.98mm; height: 15mm; background: #f8f9fa; border: 2px dashed #ccc; border-bottom: none; border-radius: 10px 10px 0 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2mm; }
+          .punch-hole { width: 8mm; height: 8mm; border: 2px dashed #999; border-radius: 50%; background: white; }
+          .cut-line-text { font-size: 7px; color: #999; text-transform: uppercase; letter-spacing: 1px; }
+          .id-card { width: 53.98mm; height: 85.6mm; background: linear-gradient(180deg, #ffffff 0%, #eff6ff 100%); border-radius: 0 0 10px 10px; overflow: hidden; box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15); position: relative; display: flex; flex-direction: column; }
+          .card-header { background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%); padding: 10px 8px; text-align: center; }
+          .card-title { color: white; font-size: 11px; font-weight: 700; letter-spacing: 0.5px; }
+          .card-subtitle { color: rgba(255,255,255,0.85); font-size: 8px; margin-top: 2px; }
+          .card-body { flex: 1; padding: 10px; display: flex; flex-direction: column; align-items: center; gap: 8px; }
+          .user-photo { width: 70px; height: 85px; background: linear-gradient(135deg, #bfdbfe, #93c5fd); border-radius: 6px; display: flex; align-items: center; justify-content: center; color: #1d4ed8; font-size: 32px; font-weight: bold; border: 3px solid #3b82f6; box-shadow: 0 3px 10px rgba(0, 0, 0, 0.15); overflow: hidden; }
+          .user-photo img { width: 100%; height: 100%; object-fit: cover; }
+          .user-photo .initials { font-size: 32px; font-weight: bold; color: #1d4ed8; }
+          .user-name { font-size: 13px; font-weight: 700; color: #1a1a2e; text-align: center; line-height: 1.2; }
+          .user-type-badge { display: inline-block; background: linear-gradient(135deg, #3b82f6, #1d4ed8); color: white; font-size: 9px; padding: 3px 12px; border-radius: 12px; font-weight: 600; }
+          .table-badge { display: inline-block; background: linear-gradient(135deg, #60a5fa, #3b82f6); color: white; font-size: 9px; padding: 2px 10px; border-radius: 10px; font-weight: 600; margin-top: 2px; }
+          .info-section { width: 100%; display: flex; flex-direction: column; gap: 4px; margin-top: 6px; }
+          .info-row { display: flex; justify-content: space-between; font-size: 9px; padding: 3px 0; border-bottom: 1px dotted #ddd; }
+          .info-row:last-child { border-bottom: none; }
+          .info-label { font-weight: 600; color: #555; }
+          .info-value { color: #1a1a2e; font-weight: 500; text-align: ${isRTL ? 'left' : 'right'}; max-width: 55%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+          .card-footer { background: #ffffff; padding: 8px 6px; display: flex; flex-direction: row; align-items: center; justify-content: space-between; border-top: 1px solid #e0e0e0; }
+          .card-footer .logo { height: 24px; width: auto; flex-shrink: 0; }
+          .card-footer .logo-left { order: 1; }
+          .card-footer .logo-right { order: 3; }
+          .member-id-section { display: flex; flex-direction: column; align-items: center; gap: 1px; order: 2; flex: 1; text-align: center; }
+          .member-id-label { font-size: 6px; color: #666; text-transform: uppercase; letter-spacing: 0.5px; }
+          .member-id-value { font-size: 11px; font-weight: 700; color: #3b82f6; font-family: 'Consolas', 'Courier New', monospace; }
+          .decorative-stripe { position: absolute; top: 40%; ${isRTL ? 'right' : 'left'}: 0; width: 3px; height: 25%; background: linear-gradient(to bottom, transparent, #3b82f6, transparent); }
+          @media print { body { background: none; padding: 0; min-height: auto; } .id-card-wrapper { box-shadow: none; margin: 0; } .card-holder-area { border: 2px dashed #ccc; border-bottom: none; } .punch-hole { border: 2px dashed #999; } }
+        </style>
+      </head>
+      <body>
+        <div class="id-card-wrapper">
+          <div class="card-holder-area">
+            <div class="punch-hole"></div>
+            <span class="cut-line-text">${isRTL ? '✂ خط القطع' : '✂ CUT LINE'}</span>
+          </div>
+          <div class="id-card">
+            <div class="card-header">
+              <div class="card-title">${isRTL ? 'بطاقة مساحة عمل فاب لاب الأحساء' : 'FABLAB Al-Ahsa Workspace Card'}</div>
+              <div class="card-subtitle">${isRTL ? 'مؤسسة عبدالمنعم الراشد الإنسانية' : 'Abdulmonem Al-Rashed Foundation'}</div>
+            </div>
+            <div class="card-body">
+              <div class="user-photo">
+                ${workspace.photoBefore
+                  ? `<img src="${workspace.photoBefore}" alt="${workspace.personName}" />`
+                  : `<span class="initials">${workspace.personName.charAt(0).toUpperCase()}</span>`
+                }
+              </div>
+              <div class="user-name">${workspace.personName}</div>
+              <div class="user-type-badge">${isRTL ? 'مساحة عمل' : 'Workspace'}</div>
+              <div class="table-badge">${isRTL ? 'طاولة' : 'Table'} ${workspace.tableNumber}</div>
+
+              <div class="info-section">
+                ${workspace.personPhone ? `<div class="info-row">
+                  <span class="info-label">${isRTL ? 'الهاتف' : 'Phone'}</span>
+                  <span class="info-value" dir="ltr">${workspace.personPhone}</span>
+                </div>` : ''}
+                ${workspace.personEmail ? `<div class="info-row">
+                  <span class="info-label">${isRTL ? 'البريد' : 'Email'}</span>
+                  <span class="info-value">${workspace.personEmail}</span>
+                </div>` : ''}
+                <div class="info-row">
+                  <span class="info-label">${isRTL ? 'من' : 'From'}</span>
+                  <span class="info-value">${startFormatted}</span>
+                </div>
+                <div class="info-row">
+                  <span class="info-label">${isRTL ? 'إلى' : 'To'}</span>
+                  <span class="info-value">${endFormatted}</span>
+                </div>
+                <div class="info-row">
+                  <span class="info-label">${isRTL ? 'عدد المستخدمين' : 'Users'}</span>
+                  <span class="info-value">${workspace.numberOfUsers}</span>
+                </div>
+              </div>
+            </div>
+            <div class="decorative-stripe"></div>
+            <div class="card-footer">
+              <img src="/found.png" alt="Foundation" class="logo logo-left">
+              <img src="/fablab.png" alt="FABLAB" class="logo logo-right">
+            </div>
+          </div>
+        </div>
+      </body>
+      </html>
+    `;
+
+    printWindow.document.write(idCardContent);
+    printWindow.document.close();
+    printWindow.focus();
+    setTimeout(() => { printWindow.print(); }, 250);
+  };
+
   // Export all volunteers as CSV
   const handleExportAllVolunteers = () => {
     const headers = [
@@ -7689,6 +7798,13 @@ const ManagerDashboard = () => {
                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                           <polyline points="3 6 5 6 21 6"/>
                           <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+                        </svg>
+                      </button>
+                      <button className="action-btn complete" onClick={() => handlePrintWorkspaceIDCard(workspace)} title={isRTL ? 'طباعة البطاقة' : 'Print Card'} style={{ background: 'linear-gradient(135deg, #3b82f6, #1d4ed8)' }}>
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                          <polyline points="6 9 6 2 18 2 18 9"/>
+                          <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/>
+                          <rect x="6" y="14" width="12" height="8"/>
                         </svg>
                       </button>
                     </div>
