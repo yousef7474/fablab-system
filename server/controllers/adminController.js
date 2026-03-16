@@ -193,7 +193,7 @@ exports.getAllRegistrations = async (req, res) => {
       include: [{
         model: User,
         as: 'user',
-        where: Object.keys(userWhereClause).length > 0 ? userWhereClause : undefined
+        where: (Object.keys(userWhereClause).length > 0 || Object.getOwnPropertySymbols(userWhereClause).length > 0) ? userWhereClause : undefined
       }],
       order: [['createdAt', 'DESC']],
       limit: parseInt(limit),
@@ -1124,7 +1124,7 @@ exports.exportToCSV = async (req, res) => {
       include: [{
         model: User,
         as: 'user',
-        where: Object.keys(userWhereClause).length > 0 ? userWhereClause : undefined
+        where: (Object.keys(userWhereClause).length > 0 || Object.getOwnPropertySymbols(userWhereClause).length > 0) ? userWhereClause : undefined
       }],
       order: [['createdAt', 'DESC']]
     });
