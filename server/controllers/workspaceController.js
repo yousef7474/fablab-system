@@ -91,6 +91,15 @@ exports.createWorkspace = async (req, res) => {
       });
     }
 
+    const MAX_ACTIVE_WORKSPACES = 8;
+    const activeCount = await Workspace.count({ where: { status: 'active' } });
+    if (activeCount >= MAX_ACTIVE_WORKSPACES) {
+      return res.status(400).json({
+        message: `Maximum of ${MAX_ACTIVE_WORKSPACES} active workspaces reached. Please complete or cancel an existing workspace first.`,
+        messageAr: `تم الوصول للحد الأقصى ${MAX_ACTIVE_WORKSPACES} مساحات عمل نشطة. يرجى إكمال أو إلغاء مساحة عمل حالية أولاً.`
+      });
+    }
+
     const workspace = await Workspace.create({
       tableNumber,
       numberOfUsers: numberOfUsers || 1,
