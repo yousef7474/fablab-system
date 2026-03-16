@@ -5942,114 +5942,170 @@ const AdminDashboard = () => {
                 {/* Stats Cards */}
                 <div className="stats-grid">
                   <div className="stat-card">
-                    <div className="stat-icon"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg></div>
-                    <div className="stat-info"><span className="stat-value">{workspaceStats.totalWorkspaces}</span><span className="stat-label">{isRTL ? 'إجمالي المساحات' : 'Total Workspaces'}</span></div>
+                    <div className="stat-icon">
+                      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>
+                    </div>
+                    <div className="stat-info">
+                      <span className="stat-value">{workspaceStats.totalWorkspaces}</span>
+                      <span className="stat-label">{isRTL ? 'إجمالي المساحات' : 'Total Workspaces'}</span>
+                    </div>
                   </div>
                   <div className="stat-card">
-                    <div className="stat-icon active"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></div>
-                    <div className="stat-info"><span className="stat-value">{workspaceStats.activeWorkspaces}</span><span className="stat-label">{isRTL ? 'نشطة' : 'Active'}</span></div>
+                    <div className="stat-icon active">
+                      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                    </div>
+                    <div className="stat-info">
+                      <span className="stat-value">{workspaceStats.activeWorkspaces}</span>
+                      <span className="stat-label">{isRTL ? 'نشطة' : 'Active'}</span>
+                    </div>
                   </div>
                   <div className="stat-card">
-                    <div className="stat-icon completed"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg></div>
-                    <div className="stat-info"><span className="stat-value">{workspaceStats.completedWorkspaces}</span><span className="stat-label">{isRTL ? 'مكتملة' : 'Completed'}</span></div>
+                    <div className="stat-icon completed">
+                      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+                    </div>
+                    <div className="stat-info">
+                      <span className="stat-value">{workspaceStats.completedWorkspaces}</span>
+                      <span className="stat-label">{isRTL ? 'مكتملة' : 'Completed'}</span>
+                    </div>
                   </div>
                   <div className="stat-card">
-                    <div className="stat-icon today"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></div>
-                    <div className="stat-info"><span className="stat-value">{workspaceStats.todayWorkspaces}</span><span className="stat-label">{isRTL ? 'اليوم' : 'Today'}</span></div>
+                    <div className="stat-icon today">
+                      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                    </div>
+                    <div className="stat-info">
+                      <span className="stat-value">{workspaceStats.todayWorkspaces}</span>
+                      <span className="stat-label">{isRTL ? 'اليوم' : 'Today'}</span>
+                    </div>
                   </div>
                 </div>
 
                 {/* Actions Bar */}
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                    <h3 style={{ margin: 0 }}>{isRTL ? 'قائمة مساحات العمل' : 'Workspace List'}</h3>
-                    <span style={{ background: 'var(--bg-secondary)', padding: '4px 12px', borderRadius: '12px', fontSize: '13px' }}>{workspaces.length} {isRTL ? 'مساحة' : 'total'}</span>
+                <div className="workspace-actions-bar">
+                  <div className="actions-left">
+                    <h3>{isRTL ? 'قائمة مساحات العمل' : 'Workspace List'}</h3>
+                    <span className="workspace-count">{workspaces.length} {isRTL ? 'مساحة' : 'total'}</span>
                   </div>
-                  <button className="add-workspace-btn" onClick={() => openWorkspaceModal()} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 20px', background: 'linear-gradient(135deg, #3b82f6, #2563eb)', color: 'white', border: 'none', borderRadius: '10px', cursor: 'pointer', fontWeight: '600', fontSize: '14px' }}>
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                  <button className="add-workspace-btn" onClick={() => openWorkspaceModal()}>
+                    <div className="btn-icon">
+                      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                        <line x1="12" y1="5" x2="12" y2="19"/>
+                        <line x1="5" y1="12" x2="19" y2="12"/>
+                      </svg>
+                    </div>
                     <span>{isRTL ? 'إضافة مساحة عمل جديدة' : 'Add New Workspace'}</span>
                   </button>
                 </div>
 
                 {/* Workspaces Grid */}
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '16px' }}>
+                <div className="workspaces-grid">
                   {workspaces.length === 0 ? (
-                    <div className="empty-state" style={{ gridColumn: '1 / -1', textAlign: 'center', padding: '60px 20px' }}>
+                    <div className="empty-state">
                       <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>
                       <h3>{isRTL ? 'لا توجد مساحات عمل' : 'No Workspaces'}</h3>
                       <p>{isRTL ? 'أضف مساحة عمل جديدة للبدء' : 'Add a new workspace to get started'}</p>
                     </div>
                   ) : (
                     workspaces.map(workspace => (
-                      <motion.div key={workspace.workspaceId} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
-                        style={{ background: 'var(--card-bg)', borderRadius: '12px', border: '1px solid var(--border-color)', overflow: 'hidden', boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px 16px 0' }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                            <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>{isRTL ? 'طاولة' : 'Table'}</span>
-                            <span style={{ fontSize: '18px', fontWeight: '700' }}>{workspace.tableNumber}</span>
+                      <motion.div
+                        key={workspace.workspaceId}
+                        className={`workspace-card ${workspace.status}`}
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                      >
+                        <div className="workspace-header">
+                          <div className="workspace-table">
+                            <span className="table-label">{isRTL ? 'طاولة' : 'Table'}</span>
+                            <span className="table-number">{workspace.tableNumber}</span>
                           </div>
-                          <span style={{ padding: '4px 12px', borderRadius: '12px', fontSize: '12px', fontWeight: '600',
-                            background: workspace.status === 'active' ? '#dcfce7' : workspace.status === 'completed' ? '#dbeafe' : '#fee2e2',
-                            color: workspace.status === 'active' ? '#16a34a' : workspace.status === 'completed' ? '#2563eb' : '#dc2626'
-                          }}>
-                            {workspace.status === 'active' ? (isRTL ? 'نشط' : 'Active') : workspace.status === 'completed' ? (isRTL ? 'مكتمل' : 'Completed') : (isRTL ? 'ملغي' : 'Cancelled')}
-                          </span>
+                          <div className={`workspace-status ${workspace.status}`}>
+                            {workspace.status === 'active' ? (isRTL ? 'نشط' : 'Active') :
+                             workspace.status === 'completed' ? (isRTL ? 'مكتمل' : 'Completed') :
+                             (isRTL ? 'ملغي' : 'Cancelled')}
+                          </div>
                         </div>
-                        <div style={{ padding: '12px 16px' }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px', fontSize: '14px' }}>
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-                            <span>{workspace.personName}</span>
-                          </div>
-                          {workspace.personPhone && (
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px', fontSize: '13px', color: 'var(--text-secondary)' }}>
-                              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
-                              <span dir="ltr">{workspace.personPhone}</span>
+
+                        <div className="workspace-body">
+                          <div className="workspace-info">
+                            <div className="info-row">
+                              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+                                <circle cx="12" cy="7" r="4"/>
+                              </svg>
+                              <span>{workspace.personName}</span>
                             </div>
-                          )}
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '10px', fontSize: '13px', color: 'var(--text-secondary)' }}>
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
-                            <span>{workspace.numberOfUsers} {isRTL ? 'مستخدم' : 'user(s)'}</span>
+                            {workspace.personPhone && (
+                              <div className="info-row">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                  <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/>
+                                </svg>
+                                <span dir="ltr">{workspace.personPhone}</span>
+                              </div>
+                            )}
+                            <div className="info-row">
+                              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                                <circle cx="9" cy="7" r="4"/>
+                                <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+                                <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+                              </svg>
+                              <span>{workspace.numberOfUsers} {isRTL ? 'مستخدم' : 'user(s)'}</span>
+                            </div>
                           </div>
-                          <div style={{ display: 'flex', gap: '12px', marginBottom: '10px', fontSize: '12px' }}>
-                            <div><span style={{ color: 'var(--text-secondary)' }}>{isRTL ? 'من' : 'From'}: </span><strong>{workspace.startDate && format(parseISO(workspace.startDate), 'MMM d', { locale: isRTL ? ar : enUS })} {formatTimeAMPM(workspace.startTime)}</strong></div>
-                            <div><span style={{ color: 'var(--text-secondary)' }}>{isRTL ? 'إلى' : 'To'}: </span><strong>{workspace.endDate && format(parseISO(workspace.endDate), 'MMM d', { locale: isRTL ? ar : enUS })} {formatTimeAMPM(workspace.endTime)}</strong></div>
+
+                          <div className="workspace-period">
+                            <div className="period-item">
+                              <span className="period-label">{isRTL ? 'من' : 'From'}</span>
+                              <span className="period-value">{workspace.startDate && format(parseISO(workspace.startDate), 'MMM d', { locale: isRTL ? ar : enUS })} {formatTimeAMPM(workspace.startTime)}</span>
+                            </div>
+                            <div className="period-item">
+                              <span className="period-label">{isRTL ? 'إلى' : 'To'}</span>
+                              <span className="period-value">{workspace.endDate && format(parseISO(workspace.endDate), 'MMM d', { locale: isRTL ? ar : enUS })} {formatTimeAMPM(workspace.endTime)}</span>
+                            </div>
                           </div>
-                          <div style={{ marginBottom: '8px' }}>
-                            <span style={{ padding: '4px 12px', borderRadius: '12px', fontSize: '13px', fontWeight: '600',
-                              background: workspace.totalPoints >= 0 ? '#dcfce7' : '#fee2e2',
-                              color: workspace.totalPoints >= 0 ? '#16a34a' : '#dc2626'
-                            }}>
+
+                          <div className="workspace-points">
+                            <span className={`points-badge ${workspace.totalPoints >= 0 ? 'positive' : 'negative'}`}>
                               {workspace.totalPoints >= 0 ? '+' : ''}{workspace.totalPoints} {isRTL ? 'نقطة' : 'points'}
                             </span>
                           </div>
-                          {workspace.notes && <p style={{ fontSize: '12px', color: 'var(--text-secondary)', margin: '8px 0 0', padding: '8px', background: 'var(--bg-secondary)', borderRadius: '6px' }}>{workspace.notes}</p>}
+
+                          {workspace.notes && (
+                            <div className="workspace-notes">
+                              <p>{workspace.notes}</p>
+                            </div>
+                          )}
                         </div>
-                        <div style={{ display: 'flex', gap: '6px', padding: '12px 16px', borderTop: '1px solid var(--border-color)' }}>
+
+                        <div className="workspace-actions">
                           {workspace.status === 'active' && (
                             <>
-                              <button onClick={() => handleCompleteWorkspace(workspace.workspaceId)} title={isRTL ? 'إكمال' : 'Complete'} style={{ padding: '6px 10px', borderRadius: '6px', border: 'none', background: '#dcfce7', color: '#16a34a', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px', fontSize: '12px' }}>
-                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="20 6 9 17 4 12"/></svg>
+                              <button className="action-btn complete" onClick={() => handleCompleteWorkspace(workspace.workspaceId)} title={isRTL ? 'إكمال' : 'Complete'}>
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="20 6 9 17 4 12"/></svg>
                               </button>
-                              <button onClick={() => openWorkspaceRatingModal(workspace)} title={isRTL ? 'تقييم' : 'Rate'} style={{ padding: '6px 10px', borderRadius: '6px', border: 'none', background: '#fef3c7', color: '#d97706', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px', fontSize: '12px' }}>
-                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+                              <button className="action-btn rate" onClick={() => openWorkspaceRatingModal(workspace)} title={isRTL ? 'تقييم' : 'Rate'}>
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
                               </button>
                             </>
                           )}
-                          <button onClick={() => openWorkspaceModal(workspace)} title={isRTL ? 'تعديل' : 'Edit'} style={{ padding: '6px 10px', borderRadius: '6px', border: 'none', background: '#dbeafe', color: '#2563eb', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px', fontSize: '12px' }}>
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                          <button className="action-btn edit" onClick={() => openWorkspaceModal(workspace)} title={isRTL ? 'تعديل' : 'Edit'}>
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
                           </button>
-                          <button onClick={() => handleDeleteWorkspace(workspace.workspaceId)} title={isRTL ? 'حذف' : 'Delete'} style={{ padding: '6px 10px', borderRadius: '6px', border: 'none', background: '#fee2e2', color: '#dc2626', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px', fontSize: '12px' }}>
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                          <button className="action-btn delete" onClick={() => handleDeleteWorkspace(workspace.workspaceId)} title={isRTL ? 'حذف' : 'Delete'}>
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
                           </button>
                         </div>
+
+                        {/* Ratings List */}
                         {workspace.ratings && workspace.ratings.length > 0 && (
-                          <div style={{ padding: '0 16px 12px', borderTop: '1px solid var(--border-color)' }}>
-                            <h4 style={{ fontSize: '13px', margin: '10px 0 6px' }}>{isRTL ? 'التقييمات' : 'Ratings'}</h4>
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                          <div className="workspace-ratings">
+                            <h4>{isRTL ? 'التقييمات' : 'Ratings'}</h4>
+                            <div className="ratings-list">
                               {workspace.ratings.map(rating => (
-                                <div key={rating.ratingId} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '4px 8px', borderRadius: '6px', fontSize: '12px', background: rating.type === 'deduct' ? '#fee2e2' : '#dcfce7' }}>
-                                  <span style={{ fontWeight: '600', color: rating.type === 'deduct' ? '#dc2626' : '#16a34a' }}>{rating.type === 'deduct' ? '-' : '+'}{rating.points}</span>
-                                  <span>{workspaceCriteriaOptions.find(c => c.value === rating.criteria)?.label || rating.criteria}</span>
+                                <div key={rating.ratingId} className={`rating-item ${rating.type}`}>
+                                  <span className="rating-points">{rating.type === 'deduct' ? '-' : '+'}{rating.points}</span>
+                                  <span className="rating-criteria">
+                                    {workspaceCriteriaOptions.find(c => c.value === rating.criteria)?.label || rating.criteria}
+                                  </span>
                                 </div>
                               ))}
                             </div>
@@ -6065,83 +6121,101 @@ const AdminDashboard = () => {
             {/* Workspace Modal */}
             {showWorkspaceModal && (
               <div className="modal-overlay" onClick={() => setShowWorkspaceModal(false)}>
-                <motion.div className="modal-content modern-modal" initial={{ opacity: 0, scale: 0.9, y: 20 }} animate={{ opacity: 1, scale: 1, y: 0 }} transition={{ type: "spring", damping: 25, stiffness: 300 }} onClick={(e) => e.stopPropagation()} style={{ maxWidth: '600px' }}>
-                  <div className="modern-modal-header" style={{ background: 'linear-gradient(135deg, #3b82f6, #2563eb)' }}>
-                    <div className="modal-header-icon"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg></div>
+                <motion.div
+                  className="modal-content modern-modal workspace-modal"
+                  initial={{ opacity: 0, scale: 0.9, y: 20 }}
+                  animate={{ opacity: 1, scale: 1, y: 0 }}
+                  transition={{ type: "spring", damping: 25, stiffness: 300 }}
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <div className="modern-modal-header workspace-header-gradient">
+                    <div className="modal-header-icon">
+                      <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>
+                    </div>
                     <div className="modal-header-text">
                       <h2>{selectedWorkspace ? (isRTL ? 'تعديل مساحة العمل' : 'Edit Workspace') : (isRTL ? 'مساحة عمل جديدة' : 'New Workspace')}</h2>
                       <p>{isRTL ? 'سجل بيانات مساحة العمل للعملاء' : 'Record workspace details for customers'}</p>
                     </div>
-                    <button className="modal-close-modern" onClick={() => setShowWorkspaceModal(false)}><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+                    <button className="modal-close-modern" onClick={() => setShowWorkspaceModal(false)}>
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                    </button>
                   </div>
-                  <div className="modern-modal-body" style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-                      <div className="form-group modern-input">
-                        <label>{isRTL ? 'رقم الطاولة' : 'Table Number'} <span style={{ color: 'red' }}>*</span></label>
-                        <input type="text" value={workspaceForm.tableNumber} onChange={(e) => setWorkspaceForm({ ...workspaceForm, tableNumber: e.target.value })} placeholder={isRTL ? 'مثال: A1, B2' : 'e.g., A1, B2'} className="modern-input-field" />
+                  <div className="modern-modal-body workspace-form">
+                    <div className="form-section">
+                      <div className="section-header">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>
+                        <span>{isRTL ? 'تفاصيل مساحة العمل' : 'Workspace Details'}</span>
                       </div>
-                      <div className="form-group modern-input">
-                        <label>{isRTL ? 'عدد المستخدمين' : 'Number of Users'}</label>
-                        <input type="number" min="1" value={workspaceForm.numberOfUsers} onChange={(e) => setWorkspaceForm({ ...workspaceForm, numberOfUsers: parseInt(e.target.value) || 1 })} className="modern-input-field" />
-                      </div>
-                    </div>
-                    <div className="form-group modern-input">
-                      <label>{isRTL ? 'الاسم' : 'Name'} <span style={{ color: 'red' }}>*</span></label>
-                      <input type="text" value={workspaceForm.personName} onChange={(e) => setWorkspaceForm({ ...workspaceForm, personName: e.target.value })} placeholder={isRTL ? 'اسم الشخص المسؤول' : 'Full name'} className="modern-input-field" />
-                    </div>
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-                      <div className="form-group modern-input">
-                        <label>{isRTL ? 'رقم الهاتف' : 'Phone Number'}</label>
-                        <input type="tel" value={workspaceForm.personPhone} onChange={(e) => setWorkspaceForm({ ...workspaceForm, personPhone: e.target.value })} placeholder={isRTL ? 'رقم الهاتف' : 'Phone number'} dir="ltr" className="modern-input-field" />
-                      </div>
-                      <div className="form-group modern-input">
-                        <label>{isRTL ? 'البريد الإلكتروني' : 'Email'}</label>
-                        <input type="email" value={workspaceForm.personEmail} onChange={(e) => setWorkspaceForm({ ...workspaceForm, personEmail: e.target.value })} placeholder={isRTL ? 'البريد الإلكتروني' : 'Email address'} dir="ltr" className="modern-input-field" />
-                      </div>
-                    </div>
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-                      <div className="form-group modern-input">
-                        <label>{isRTL ? 'تاريخ البداية' : 'Start Date'} <span style={{ color: 'red' }}>*</span></label>
-                        <input type="date" value={workspaceForm.startDate} onChange={(e) => setWorkspaceForm({ ...workspaceForm, startDate: e.target.value })} className="modern-input-field" />
-                      </div>
-                      <div className="form-group modern-input">
-                        <label>{isRTL ? 'وقت البداية' : 'Start Time'}</label>
-                        <input type="time" value={workspaceForm.startTime} onChange={(e) => setWorkspaceForm({ ...workspaceForm, startTime: e.target.value })} className="modern-input-field" />
-                      </div>
-                    </div>
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-                      <div className="form-group modern-input">
-                        <label>{isRTL ? 'تاريخ النهاية' : 'End Date'} <span style={{ color: 'red' }}>*</span></label>
-                        <input type="date" value={workspaceForm.endDate} onChange={(e) => setWorkspaceForm({ ...workspaceForm, endDate: e.target.value })} className="modern-input-field" />
-                      </div>
-                      <div className="form-group modern-input">
-                        <label>{isRTL ? 'وقت النهاية' : 'End Time'}</label>
-                        <input type="time" value={workspaceForm.endTime} onChange={(e) => setWorkspaceForm({ ...workspaceForm, endTime: e.target.value })} className="modern-input-field" />
-                      </div>
-                    </div>
-                    <div className="form-group modern-input">
-                      <label>{isRTL ? 'صورة مساحة العمل' : 'Workspace Photo'}</label>
-                      {workspaceForm.photoBefore ? (
-                        <div style={{ position: 'relative', display: 'inline-block' }}>
-                          <img src={workspaceForm.photoBefore} alt="Workspace" style={{ width: '120px', height: '90px', objectFit: 'cover', borderRadius: '8px', border: '2px solid var(--border-color)' }} />
-                          <button onClick={() => setWorkspaceForm({ ...workspaceForm, photoBefore: '' })} style={{ position: 'absolute', top: '-8px', right: '-8px', width: '24px', height: '24px', borderRadius: '50%', background: '#ef4444', color: 'white', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '14px' }}>x</button>
+                      <div className="form-row">
+                        <div className="form-group modern-input">
+                          <label>{isRTL ? 'رقم الطاولة' : 'Table Number'} <span className="required">*</span></label>
+                          <input type="text" value={workspaceForm.tableNumber} onChange={(e) => setWorkspaceForm({ ...workspaceForm, tableNumber: e.target.value })} placeholder={isRTL ? 'مثال: A1, B2' : 'e.g., A1, B2'} className="modern-input-field" />
                         </div>
-                      ) : (
-                        <label style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', width: '120px', height: '90px', border: '2px dashed var(--border-color)', borderRadius: '8px', cursor: 'pointer', background: 'var(--bg-secondary)' }}>
-                          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-                          <span style={{ fontSize: '11px', marginTop: '4px', color: 'var(--text-secondary)' }}>{isRTL ? 'رفع صورة' : 'Upload'}</span>
-                          <input type="file" accept="image/*" style={{ display: 'none' }} onChange={(e) => { const file = e.target.files[0]; if (file) { const reader = new FileReader(); reader.onloadend = () => setWorkspaceForm({ ...workspaceForm, photoBefore: reader.result }); reader.readAsDataURL(file); } }} />
-                        </label>
-                      )}
+                        <div className="form-group modern-input">
+                          <label>{isRTL ? 'عدد المستخدمين' : 'Number of Users'}</label>
+                          <input type="number" min="1" value={workspaceForm.numberOfUsers} onChange={(e) => setWorkspaceForm({ ...workspaceForm, numberOfUsers: parseInt(e.target.value) || 1 })} className="modern-input-field" />
+                        </div>
+                      </div>
                     </div>
-                    <div className="form-group modern-input">
-                      <label>{isRTL ? 'ملاحظات' : 'Notes'}</label>
+                    <div className="form-section">
+                      <div className="section-header">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                        <span>{isRTL ? 'معلومات المسؤول' : 'Person in Charge'}</span>
+                      </div>
+                      <div className="form-group modern-input">
+                        <label>{isRTL ? 'الاسم' : 'Name'} <span className="required">*</span></label>
+                        <input type="text" value={workspaceForm.personName} onChange={(e) => setWorkspaceForm({ ...workspaceForm, personName: e.target.value })} placeholder={isRTL ? 'اسم الشخص المسؤول' : 'Full name'} className="modern-input-field" />
+                      </div>
+                      <div className="form-row">
+                        <div className="form-group modern-input">
+                          <label>{isRTL ? 'رقم الهاتف' : 'Phone Number'}</label>
+                          <input type="tel" value={workspaceForm.personPhone} onChange={(e) => setWorkspaceForm({ ...workspaceForm, personPhone: e.target.value })} placeholder={isRTL ? 'رقم الهاتف' : 'Phone number'} dir="ltr" className="modern-input-field" />
+                        </div>
+                        <div className="form-group modern-input">
+                          <label>{isRTL ? 'البريد الإلكتروني' : 'Email'}</label>
+                          <input type="email" value={workspaceForm.personEmail} onChange={(e) => setWorkspaceForm({ ...workspaceForm, personEmail: e.target.value })} placeholder={isRTL ? 'البريد الإلكتروني' : 'Email address'} dir="ltr" className="modern-input-field" />
+                        </div>
+                      </div>
+                    </div>
+                    <div className="form-section">
+                      <div className="section-header">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                        <span>{isRTL ? 'فترة الاستخدام' : 'Usage Period'}</span>
+                      </div>
+                      <div className="period-grid">
+                        <div className="period-box start">
+                          <span className="period-label">{isRTL ? 'البداية' : 'Start'}</span>
+                          <div className="period-inputs">
+                            <input type="date" value={workspaceForm.startDate} onChange={(e) => setWorkspaceForm({ ...workspaceForm, startDate: e.target.value })} className="modern-input-field" />
+                            <input type="time" value={workspaceForm.startTime} onChange={(e) => setWorkspaceForm({ ...workspaceForm, startTime: e.target.value })} className="modern-input-field" />
+                          </div>
+                        </div>
+                        <div className={`period-arrow ${isRTL ? 'rtl' : ''}`}>
+                          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                            <line x1="5" y1="12" x2="19" y2="12"/>
+                            <polyline points={isRTL ? "12 5 5 12 12 19" : "12 5 19 12 12 19"}/>
+                          </svg>
+                        </div>
+                        <div className="period-box end">
+                          <span className="period-label">{isRTL ? 'النهاية' : 'End'}</span>
+                          <div className="period-inputs">
+                            <input type="date" value={workspaceForm.endDate} onChange={(e) => setWorkspaceForm({ ...workspaceForm, endDate: e.target.value })} className="modern-input-field" />
+                            <input type="time" value={workspaceForm.endTime} onChange={(e) => setWorkspaceForm({ ...workspaceForm, endTime: e.target.value })} className="modern-input-field" />
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="form-section">
+                      <div className="section-header">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+                        <span>{isRTL ? 'ملاحظات' : 'Notes'}</span>
+                      </div>
                       <textarea value={workspaceForm.notes} onChange={(e) => setWorkspaceForm({ ...workspaceForm, notes: e.target.value })} placeholder={isRTL ? 'أضف أي ملاحظات إضافية...' : 'Add any additional notes...'} rows={3} className="modern-textarea" />
                     </div>
                   </div>
                   <div className="modern-modal-footer">
                     <button className="btn-cancel" onClick={() => setShowWorkspaceModal(false)}>{isRTL ? 'إلغاء' : 'Cancel'}</button>
-                    <button className="btn-submit" onClick={selectedWorkspace ? handleUpdateWorkspace : handleCreateWorkspace} disabled={workspaceLoading || !workspaceForm.tableNumber.trim() || !workspaceForm.personName.trim()} style={{ background: 'linear-gradient(135deg, #3b82f6, #2563eb)' }}>
+                    <button className="btn-submit workspace-submit" onClick={selectedWorkspace ? handleUpdateWorkspace : handleCreateWorkspace} disabled={workspaceLoading || !workspaceForm.tableNumber.trim() || !workspaceForm.personName.trim()}>
                       {workspaceLoading ? <><span className="spinner"></span>{isRTL ? 'جاري الحفظ...' : 'Saving...'}</> : <><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="20 6 9 17 4 12"/></svg>{selectedWorkspace ? (isRTL ? 'تحديث' : 'Update') : (isRTL ? 'إضافة مساحة العمل' : 'Add Workspace')}</>}
                     </button>
                   </div>
@@ -6152,35 +6226,63 @@ const AdminDashboard = () => {
             {/* Workspace Rating Modal */}
             {showWorkspaceRatingModal && selectedWorkspace && (
               <div className="modal-overlay" onClick={() => setShowWorkspaceRatingModal(false)}>
-                <motion.div className="modal-content modern-modal" initial={{ opacity: 0, scale: 0.9, y: 20 }} animate={{ opacity: 1, scale: 1, y: 0 }} transition={{ type: "spring", damping: 25, stiffness: 300 }} onClick={(e) => e.stopPropagation()} style={{ maxWidth: '500px' }}>
-                  <div className="modern-modal-header" style={{ background: 'linear-gradient(135deg, #f59e0b, #d97706)' }}>
-                    <div className="modal-header-icon"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg></div>
+                <motion.div
+                  className="modal-content modern-modal rating-modal"
+                  initial={{ opacity: 0, scale: 0.9, y: 20 }}
+                  animate={{ opacity: 1, scale: 1, y: 0 }}
+                  transition={{ type: "spring", damping: 25, stiffness: 300 }}
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <div className="modern-modal-header rating-header-gradient">
+                    <div className="modal-header-icon">
+                      <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+                    </div>
                     <div className="modal-header-text">
                       <h2>{isRTL ? 'تقييم مساحة العمل' : 'Rate Workspace'}</h2>
                       <p>{isRTL ? 'طاولة' : 'Table'} {selectedWorkspace.tableNumber} - {selectedWorkspace.personName}</p>
                     </div>
-                    <button className="modal-close-modern" onClick={() => setShowWorkspaceRatingModal(false)}><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+                    <button className="modal-close-modern" onClick={() => setShowWorkspaceRatingModal(false)}>
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                    </button>
                   </div>
-                  <div className="modern-modal-body" style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                  <div className="modern-modal-body">
+                    <div className="workspace-info-card">
+                      <div className="info-card-item">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+                        <span>{isRTL ? 'طاولة' : 'Table'}</span>
+                        <strong>{selectedWorkspace.tableNumber}</strong>
+                      </div>
+                      <div className="info-card-item">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                        <span>{isRTL ? 'المسؤول' : 'Person'}</span>
+                        <strong>{selectedWorkspace.personName}</strong>
+                      </div>
+                    </div>
                     <div className="form-group">
                       <label>{isRTL ? 'نوع التقييم' : 'Rating Type'}</label>
-                      <div style={{ display: 'flex', gap: '8px' }}>
-                        <button type="button" onClick={() => setWorkspaceRatingForm({ ...workspaceRatingForm, type: 'award' })} style={{ flex: 1, padding: '10px', borderRadius: '8px', border: '2px solid', borderColor: workspaceRatingForm.type === 'award' ? '#16a34a' : 'var(--border-color)', background: workspaceRatingForm.type === 'award' ? '#dcfce7' : 'var(--bg-secondary)', color: workspaceRatingForm.type === 'award' ? '#16a34a' : 'var(--text-secondary)', cursor: 'pointer', fontWeight: '600' }}>{isRTL ? 'منح نقاط' : 'Award'}</button>
-                        <button type="button" onClick={() => setWorkspaceRatingForm({ ...workspaceRatingForm, type: 'deduct' })} style={{ flex: 1, padding: '10px', borderRadius: '8px', border: '2px solid', borderColor: workspaceRatingForm.type === 'deduct' ? '#dc2626' : 'var(--border-color)', background: workspaceRatingForm.type === 'deduct' ? '#fee2e2' : 'var(--bg-secondary)', color: workspaceRatingForm.type === 'deduct' ? '#dc2626' : 'var(--text-secondary)', cursor: 'pointer', fontWeight: '600' }}>{isRTL ? 'خصم نقاط' : 'Deduct'}</button>
+                      <div className="rating-type-toggle">
+                        <button type="button" className={`rating-type-btn award ${workspaceRatingForm.type === 'award' ? 'active' : ''}`} onClick={() => setWorkspaceRatingForm({ ...workspaceRatingForm, type: 'award' })}>
+                          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 2L15 8L22 9L17 14L18 21L12 18L6 21L7 14L2 9L9 8L12 2Z"/></svg>
+                          <span>{isRTL ? 'منح نقاط' : 'Award'}</span>
+                        </button>
+                        <button type="button" className={`rating-type-btn deduction ${workspaceRatingForm.type === 'deduct' ? 'active' : ''}`} onClick={() => setWorkspaceRatingForm({ ...workspaceRatingForm, type: 'deduct' })}>
+                          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
+                          <span>{isRTL ? 'خصم نقاط' : 'Deduct'}</span>
+                        </button>
                       </div>
                     </div>
                     <div className="form-group">
                       <label>{isRTL ? 'عدد النقاط' : 'Points'}</label>
-                      <div style={{ display: 'flex', gap: '8px' }}>
+                      <div className="points-selector">
                         {[1, 2, 3, 4, 5].map(num => (
-                          <button key={num} type="button" onClick={() => setWorkspaceRatingForm({ ...workspaceRatingForm, points: num })} style={{ width: '48px', height: '48px', borderRadius: '8px', border: '2px solid', borderColor: workspaceRatingForm.points === num ? (workspaceRatingForm.type === 'deduct' ? '#dc2626' : '#16a34a') : 'var(--border-color)', background: workspaceRatingForm.points === num ? (workspaceRatingForm.type === 'deduct' ? '#fee2e2' : '#dcfce7') : 'var(--bg-secondary)', color: workspaceRatingForm.points === num ? (workspaceRatingForm.type === 'deduct' ? '#dc2626' : '#16a34a') : 'var(--text-primary)', cursor: 'pointer', fontWeight: '700', fontSize: '16px' }}>
+                          <button key={num} type="button" className={`point-btn ${workspaceRatingForm.points === num ? 'active' : ''} ${workspaceRatingForm.type === 'deduct' ? 'deduction' : 'award'}`} onClick={() => setWorkspaceRatingForm({ ...workspaceRatingForm, points: num })}>
                             {workspaceRatingForm.type === 'deduct' ? `-${num}` : `+${num}`}
                           </button>
                         ))}
                       </div>
                     </div>
                     <div className="form-group modern-input">
-                      <label>{isRTL ? 'المعيار' : 'Criteria'} <span style={{ color: 'red' }}>*</span></label>
+                      <label>{isRTL ? 'المعيار' : 'Criteria'} <span className="required">*</span></label>
                       <select value={workspaceRatingForm.criteria} onChange={(e) => setWorkspaceRatingForm({ ...workspaceRatingForm, criteria: e.target.value })} className="modern-input-field">
                         <option value="">{isRTL ? 'اختر المعيار' : 'Select criteria'}</option>
                         {workspaceCriteriaOptions.map(opt => (<option key={opt.value} value={opt.value}>{opt.label}</option>))}
@@ -6203,7 +6305,7 @@ const AdminDashboard = () => {
                   </div>
                   <div className="modern-modal-footer">
                     <button className="btn-cancel" onClick={() => setShowWorkspaceRatingModal(false)}>{isRTL ? 'إلغاء' : 'Cancel'}</button>
-                    <button className="btn-submit" onClick={handleAddWorkspaceRating} disabled={workspaceLoading || !workspaceRatingForm.criteria} style={{ background: workspaceRatingForm.type === 'deduct' ? 'linear-gradient(135deg, #ef4444, #dc2626)' : 'linear-gradient(135deg, #22c55e, #16a34a)' }}>
+                    <button className={`btn-submit ${workspaceRatingForm.type === 'deduct' ? 'deduct-submit' : 'award-submit'}`} onClick={handleAddWorkspaceRating} disabled={workspaceLoading || !workspaceRatingForm.criteria}>
                       {workspaceLoading ? <><span className="spinner"></span>{isRTL ? 'جاري الحفظ...' : 'Saving...'}</> : <><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="20 6 9 17 4 12"/></svg>{isRTL ? 'إضافة التقييم' : 'Add Rating'}</>}
                     </button>
                   </div>
@@ -6215,27 +6317,48 @@ const AdminDashboard = () => {
             <AnimatePresence>
               {showWorkspacePasswordModal && (
                 <div className="modal-overlay" onClick={() => setShowWorkspacePasswordModal(false)}>
-                  <motion.div className="modal-content modern-modal" initial={{ opacity: 0, scale: 0.9, y: 20 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.9, y: 20 }} transition={{ type: "spring", damping: 25, stiffness: 300 }} onClick={(e) => e.stopPropagation()} style={{ maxWidth: '400px' }}>
-                    <div className="modern-modal-header" style={{ background: 'linear-gradient(135deg, #3b82f6, #2563eb)' }}>
-                      <div className="modal-header-icon"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></div>
-                      <div className="modal-header-text">
-                        <h2>{isRTL ? 'مساحات العمل' : 'Workspaces'}</h2>
-                        <p>{isRTL ? 'أدخل كلمة المرور للوصول' : 'Enter password to access'}</p>
-                      </div>
-                      <button className="modal-close-modern" onClick={() => setShowWorkspacePasswordModal(false)}><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
-                    </div>
-                    <div className="modern-modal-body" style={{ padding: '24px' }}>
-                      <div className="form-group modern-input">
-                        <label>{isRTL ? 'كلمة المرور' : 'Password'}</label>
-                        <input type="password" value={workspacePasswordInput} onChange={(e) => setWorkspacePasswordInput(e.target.value)} onKeyPress={(e) => e.key === 'Enter' && handleWorkspacePasswordSubmit()} placeholder={isRTL ? 'أدخل كلمة المرور' : 'Enter password'} className="modern-input-field" autoFocus />
-                      </div>
-                    </div>
-                    <div className="modern-modal-footer">
-                      <button className="btn-cancel" onClick={() => setShowWorkspacePasswordModal(false)}>{isRTL ? 'إلغاء' : 'Cancel'}</button>
-                      <button className="btn-submit" onClick={handleWorkspacePasswordSubmit} style={{ background: 'linear-gradient(135deg, #3b82f6, #2563eb)' }}>
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
-                        {isRTL ? 'دخول' : 'Access'}
+                  <motion.div
+                    className="modal-content modern-modal"
+                    initial={{ opacity: 0, scale: 0.8, y: 30 }}
+                    animate={{ opacity: 1, scale: 1, y: 0 }}
+                    exit={{ opacity: 0, scale: 0.8, y: 30 }}
+                    transition={{ type: "spring", damping: 20, stiffness: 300 }}
+                    onClick={(e) => e.stopPropagation()}
+                    style={{ maxWidth: '420px', width: '90%', margin: 'auto', overflow: 'hidden' }}
+                  >
+                    <div style={{ background: 'linear-gradient(135deg, #3b82f6 0%, #6366f1 50%, #8b5cf6 100%)', padding: '40px 30px 30px', textAlign: 'center', position: 'relative' }}>
+                      <button className="modal-close-modern" onClick={() => setShowWorkspacePasswordModal(false)} style={{ position: 'absolute', top: '12px', right: '12px' }}>
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
                       </button>
+                      <div style={{ width: '70px', height: '70px', borderRadius: '50%', background: 'rgba(255,255,255,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px', backdropFilter: 'blur(10px)' }}>
+                        <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                      </div>
+                      <h2 style={{ color: 'white', fontSize: '22px', fontWeight: '700', margin: '0 0 6px' }}>{isRTL ? 'مساحات العمل' : 'Workspaces'}</h2>
+                      <p style={{ color: 'rgba(255,255,255,0.8)', fontSize: '14px', margin: 0 }}>{isRTL ? 'أدخل كلمة المرور للوصول إلى هذا القسم' : 'Enter password to access this section'}</p>
+                    </div>
+                    <div style={{ padding: '30px' }}>
+                      <div className="form-group modern-input" style={{ marginBottom: '20px' }}>
+                        <label style={{ fontWeight: '600', marginBottom: '8px', display: 'block', color: 'var(--text-primary)' }}>{isRTL ? 'كلمة المرور' : 'Password'}</label>
+                        <input
+                          type="password"
+                          value={workspacePasswordInput}
+                          onChange={(e) => setWorkspacePasswordInput(e.target.value)}
+                          onKeyPress={(e) => e.key === 'Enter' && handleWorkspacePasswordSubmit()}
+                          placeholder={isRTL ? 'أدخل كلمة المرور' : 'Enter password'}
+                          className="modern-input-field"
+                          autoFocus
+                          style={{ padding: '12px 16px', fontSize: '15px', borderRadius: '10px' }}
+                        />
+                      </div>
+                      <div style={{ display: 'flex', gap: '12px' }}>
+                        <button onClick={() => setShowWorkspacePasswordModal(false)} style={{ flex: 1, padding: '12px', borderRadius: '10px', border: '1px solid var(--border-color)', background: 'var(--bg-secondary)', color: 'var(--text-primary)', cursor: 'pointer', fontWeight: '600', fontSize: '14px' }}>
+                          {isRTL ? 'إلغاء' : 'Cancel'}
+                        </button>
+                        <button onClick={handleWorkspacePasswordSubmit} style={{ flex: 1, padding: '12px', borderRadius: '10px', border: 'none', background: 'linear-gradient(135deg, #3b82f6, #6366f1)', color: 'white', cursor: 'pointer', fontWeight: '600', fontSize: '14px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
+                          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                          {isRTL ? 'دخول' : 'Access'}
+                        </button>
+                      </div>
                     </div>
                   </motion.div>
                 </div>

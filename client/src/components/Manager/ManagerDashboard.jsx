@@ -3037,10 +3037,6 @@ const ManagerDashboard = () => {
             <div class="decorative-stripe"></div>
             <div class="card-footer">
               <img src="/found.png" alt="Foundation" class="logo logo-left">
-              <div class="member-id-section">
-                <span class="member-id-label">${isRTL ? 'رقم المتطوع' : 'Volunteer ID'}</span>
-                <span class="member-id-value">${volunteer.volunteerId || 'N/A'}</span>
-              </div>
               <img src="/fablab.png" alt="FABLAB" class="logo logo-right">
             </div>
           </div>
@@ -5029,10 +5025,9 @@ const ManagerDashboard = () => {
                         {isRTL ? 'عرض' : 'View'}
                       </button>
                       <button
-                        className="view-volunteer-btn"
+                        className="export-volunteer-btn"
                         onClick={() => handlePrintVolunteerIDCard(volunteer)}
                         title={isRTL ? 'طباعة البطاقة' : 'Print ID Card'}
-                        style={{ background: '#fff7ed', color: '#ea580c' }}
                       >
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                           <polyline points="6 9 6 2 18 2 18 9"/>
