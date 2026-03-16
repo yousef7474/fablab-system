@@ -62,6 +62,11 @@ const Task = sequelize.define('Task', {
   notes: {
     type: DataTypes.TEXT,
     allowNull: true
+  },
+  reminderSent: {
+    type: DataTypes.BOOLEAN,
+    defaultValue: false,
+    comment: 'Whether the deadline reminder email has been sent'
   }
 }, {
   tableName: 'tasks',

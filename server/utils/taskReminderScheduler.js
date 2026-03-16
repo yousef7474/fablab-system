@@ -14,11 +14,11 @@ const startTaskReminderScheduler = () => {
       const reminderTarget = new Date(now.getTime() + 20 * 60 * 60 * 1000);
       const targetDateStr = reminderTarget.toISOString().split('T')[0];
 
-      // Find active tasks where the end date (dueDateEnd or dueDate) is the target date
-      // This means the task ends tomorrow (roughly 20 hours from now when run at certain hours)
+      // Find active tasks where the end date matches and reminder not yet sent
       const tasks = await Task.findAll({
         where: {
           status: { [Op.in]: ['pending', 'in_progress'] },
+          reminderSent: false,
           [Op.or]: [
             // Tasks with an end date matching the target
             { dueDateEnd: targetDateStr },
@@ -58,6 +58,8 @@ const startTaskReminderScheduler = () => {
             endDate,
             task.creator?.fullName
           );
+          // Mark reminder as sent so it won't be sent again
+          await task.update({ reminderSent: true });
           console.log(`✅ Reminder sent to ${task.assignee.email} for task: ${task.title}`);
         } catch (err) {
           console.error(`❌ Failed to send reminder for task "${task.title}":`, err.message);
