@@ -896,7 +896,7 @@ exports.getSchedule = async (req, res) => {
 
     // Include tasks if requested
     if (includeTasks === 'true') {
-      const { Task, Employee } = require('../models');
+      const { Task, Employee, Admin: AdminModel } = require('../models');
 
       const taskWhereClause = {
         status: { [Op.ne]: 'cancelled' }
@@ -908,11 +908,10 @@ exports.getSchedule = async (req, res) => {
 
       const tasks = await Task.findAll({
         where: taskWhereClause,
-        include: [{
-          model: Employee,
-          as: 'assignee',
-          attributes: ['name', 'email', 'section']
-        }],
+        include: [
+          { model: Employee, as: 'assignee', attributes: ['name', 'email', 'section'] },
+          { model: AdminModel, as: 'creator', attributes: ['adminId', 'fullName', 'role'] }
+        ],
         order: [['dueDate', 'ASC'], ['dueTime', 'ASC']]
       });
 
@@ -928,8 +927,11 @@ exports.getSchedule = async (req, res) => {
         priority: task.priority,
         status: task.status,
         employeeId: task.employeeId,
+        createdById: task.createdById,
         assignee: task.assignee?.name,
         assigneeEmail: task.assignee?.email,
+        creatorName: task.creator?.fullName,
+        creatorRole: task.creator?.role,
         description: task.description,
         dueDateEnd: task.dueDateEnd
       }));
