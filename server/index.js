@@ -19,6 +19,7 @@ const workingHoursOverrideRoutes = require('./routes/workingHoursOverrideRoutes'
 const borrowingRoutes = require('./routes/borrowingRoutes');
 const educationRoutes = require('./routes/educationRoutes');
 const { startBorrowingScheduler } = require('./utils/borrowingScheduler');
+const { startTaskReminderScheduler } = require('./utils/taskReminderScheduler');
 
 const app = express();
 
@@ -105,8 +106,9 @@ const startServer = async () => {
     // Sync database
     await syncDatabase();
 
-    // Start borrowing scheduler
+    // Start schedulers
     startBorrowingScheduler();
+    startTaskReminderScheduler();
 
     // Start listening
     app.listen(PORT, () => {

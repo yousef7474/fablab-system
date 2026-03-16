@@ -4167,7 +4167,7 @@ const ManagerDashboard = () => {
                     <div key={empId} className="net-points-card">
                       <div
                         className="net-points-avatar"
-                        style={{ backgroundColor: SECTION_COLORS[employee?.section] || '#666' }}
+                        style={{ backgroundColor: employee ? getEmployeeColor(employees, employee.employeeId) : '#666' }}
                       >
                         {data.name?.charAt(0) || '?'}
                       </div>
@@ -4214,7 +4214,7 @@ const ManagerDashboard = () => {
                       <tr key={rating.ratingId}>
                         <td>{rating.employee?.name || 'N/A'}</td>
                         <td>
-                          <span className="section-badge" style={{ backgroundColor: SECTION_COLORS[rating.employee?.section] || '#666' }}>
+                          <span className="section-badge" style={{ backgroundColor: rating.employee ? getEmployeeColor(employees, rating.employee.employeeId || rating.employeeId) : '#666' }}>
                             {sectionLabels[rating.employee?.section] || rating.employee?.section || 'N/A'}
                           </span>
                         </td>
@@ -4458,6 +4458,17 @@ const ManagerDashboard = () => {
                               </svg>
                               <span>{task.assignee?.name || 'N/A'}</span>
                             </div>
+                            {task.creator && (
+                              <div className="assignment-meta-item">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                  <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                                  <circle cx="8.5" cy="7" r="4"/>
+                                  <path d="M20 8v6"/>
+                                  <path d="M23 11h-6"/>
+                                </svg>
+                                <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>{isRTL ? 'بواسطة:' : 'By:'} {task.creator.fullName}</span>
+                              </div>
+                            )}
                             {task.section && (
                               <div className="assignment-meta-item">
                                 <span className="section-badge" style={{ backgroundColor: SECTION_COLORS[task.section] || '#666', padding: '2px 8px', borderRadius: '10px', color: 'white', fontSize: '12px' }}>
@@ -4524,6 +4535,17 @@ const ManagerDashboard = () => {
                               </svg>
                               <span>{task.assignee?.name || 'N/A'}</span>
                             </div>
+                            {task.creator && (
+                              <div className="assignment-meta-item">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                  <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                                  <circle cx="8.5" cy="7" r="4"/>
+                                  <path d="M20 8v6"/>
+                                  <path d="M23 11h-6"/>
+                                </svg>
+                                <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>{isRTL ? 'بواسطة:' : 'By:'} {task.creator.fullName}</span>
+                              </div>
+                            )}
                             {task.section && (
                               <div className="assignment-meta-item">
                                 <span className="section-badge" style={{ backgroundColor: SECTION_COLORS[task.section] || '#666', padding: '2px 8px', borderRadius: '10px', color: 'white', fontSize: '12px' }}>
@@ -4590,6 +4612,17 @@ const ManagerDashboard = () => {
                               </svg>
                               <span>{task.assignee?.name || 'N/A'}</span>
                             </div>
+                            {task.creator && (
+                              <div className="assignment-meta-item">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                  <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                                  <circle cx="8.5" cy="7" r="4"/>
+                                  <path d="M20 8v6"/>
+                                  <path d="M23 11h-6"/>
+                                </svg>
+                                <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>{isRTL ? 'بواسطة:' : 'By:'} {task.creator.fullName}</span>
+                              </div>
+                            )}
                             {task.section && (
                               <div className="assignment-meta-item">
                                 <span className="section-badge" style={{ backgroundColor: SECTION_COLORS[task.section] || '#666', padding: '2px 8px', borderRadius: '10px', color: 'white', fontSize: '12px' }}>
@@ -4656,6 +4689,17 @@ const ManagerDashboard = () => {
                               </svg>
                               <span>{task.assignee?.name || 'N/A'}</span>
                             </div>
+                            {task.creator && (
+                              <div className="assignment-meta-item">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                  <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                                  <circle cx="8.5" cy="7" r="4"/>
+                                  <path d="M20 8v6"/>
+                                  <path d="M23 11h-6"/>
+                                </svg>
+                                <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>{isRTL ? 'بواسطة:' : 'By:'} {task.creator.fullName}</span>
+                              </div>
+                            )}
                             {task.section && (
                               <div className="assignment-meta-item">
                                 <span className="section-badge" style={{ backgroundColor: SECTION_COLORS[task.section] || '#666', padding: '2px 8px', borderRadius: '10px', color: 'white', fontSize: '12px' }}>
@@ -4721,6 +4765,17 @@ const ManagerDashboard = () => {
                               </svg>
                               <span>{task.assignee?.name || 'N/A'}</span>
                             </div>
+                            {task.creator && (
+                              <div className="assignment-meta-item">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                  <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                                  <circle cx="8.5" cy="7" r="4"/>
+                                  <path d="M20 8v6"/>
+                                  <path d="M23 11h-6"/>
+                                </svg>
+                                <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>{isRTL ? 'بواسطة:' : 'By:'} {task.creator.fullName}</span>
+                              </div>
+                            )}
                             {task.section && (
                               <div className="assignment-meta-item">
                                 <span className="section-badge" style={{ backgroundColor: SECTION_COLORS[task.section] || '#666', padding: '2px 8px', borderRadius: '10px', color: 'white', fontSize: '12px' }}>

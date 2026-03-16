@@ -605,10 +605,84 @@ const sendTaskRatingEmail = async (employeeEmail, employeeName, taskTitle, type,
   }
 };
 
+/**
+ * Send reminder email to employee before task deadline
+ */
+const sendTaskReminderEmail = async (employeeEmail, employeeName, taskTitle, taskDescription, endDate, assignedBy) => {
+  const msg = {
+    to: employeeEmail,
+    from: {
+      email: process.env.SENDGRID_FROM_EMAIL,
+      name: process.env.SENDGRID_FROM_NAME
+    },
+    subject: `تذكير: موعد تسليم المهمة غداً - Task Deadline Reminder`,
+    html: `
+      <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 600px; margin: 0 auto; background: #f8fafc;">
+        <!-- Header -->
+        <div style="background: linear-gradient(135deg, #f59e0b, #d97706); padding: 30px; text-align: center; border-radius: 8px 8px 0 0;">
+          <div style="font-size: 48px; margin-bottom: 10px;">⏰</div>
+          <h1 style="color: white; margin: 0; font-size: 24px;">تذكير بموعد التسليم</h1>
+          <p style="color: rgba(255,255,255,0.9); margin: 8px 0 0; font-size: 16px;">Task Deadline Reminder</p>
+        </div>
+
+        <!-- Body -->
+        <div style="background: white; padding: 30px; border: 1px solid #e2e8f0;">
+          <p style="text-align: right; font-size: 16px; color: #334155; direction: rtl;">
+            مرحباً <strong>${employeeName}</strong>،
+          </p>
+          <p style="text-align: right; font-size: 15px; color: #475569; direction: rtl; line-height: 1.8;">
+            نود تذكيرك بأن موعد تسليم المهمة التالية ينتهي <strong style="color: #d97706;">غداً (${endDate})</strong>:
+          </p>
+
+          <div style="background: #fffbeb; border-radius: 8px; padding: 16px; margin: 16px 0; border-right: 4px solid #f59e0b;">
+            <p style="text-align: right; margin: 0; font-size: 15px; font-weight: 600; color: #1e293b; direction: rtl;">
+              📋 ${taskTitle}
+            </p>
+            ${taskDescription ? `<p style="text-align: right; margin: 8px 0 0; font-size: 13px; color: #64748b; direction: rtl; line-height: 1.6;">${taskDescription}</p>` : ''}
+            ${assignedBy ? `<p style="text-align: right; margin: 8px 0 0; font-size: 12px; color: #94a3b8; direction: rtl;">تم التكليف بواسطة: ${assignedBy}</p>` : ''}
+          </div>
+
+          <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 20px 0;">
+
+          <p style="text-align: left; font-size: 15px; color: #475569; line-height: 1.8;">
+            Hello <strong>${employeeName}</strong>,
+          </p>
+          <p style="text-align: left; font-size: 14px; color: #64748b; line-height: 1.8;">
+            This is a reminder that the following task is due <strong style="color: #d97706;">tomorrow (${endDate})</strong>:
+          </p>
+
+          <div style="background: #fffbeb; border-radius: 8px; padding: 16px; margin: 16px 0; border-left: 4px solid #f59e0b;">
+            <p style="margin: 0; font-size: 15px; font-weight: 600; color: #1e293b;">
+              📋 ${taskTitle}
+            </p>
+            ${taskDescription ? `<p style="margin: 8px 0 0; font-size: 13px; color: #64748b; line-height: 1.6;">${taskDescription}</p>` : ''}
+            ${assignedBy ? `<p style="margin: 8px 0 0; font-size: 12px; color: #94a3b8;">Assigned by: ${assignedBy}</p>` : ''}
+          </div>
+        </div>
+
+        <!-- Footer -->
+        <div style="background: #1a1a2e; padding: 20px; text-align: center; border-radius: 0 0 8px 8px;">
+          <p style="color: #fff; margin: 0;">فاب لاب الأحساء | FABLAB Al-Ahsa</p>
+          <p style="color: rgba(255,255,255,0.6); margin: 10px 0 0 0; font-size: 12px;">مختبر التصنيع الرقمي | Digital Fabrication Laboratory</p>
+        </div>
+      </div>
+    `
+  };
+
+  try {
+    await sgMail.send(msg);
+    console.log(`✅ Task reminder email sent to ${employeeEmail}`);
+  } catch (error) {
+    console.error(`❌ Error sending task reminder email to ${employeeEmail}:`, error);
+    throw error;
+  }
+};
+
 module.exports = {
   sendRegistrationConfirmation,
   sendEngineerNotification,
   sendStatusUpdateEmail,
   sendCustomEmail,
-  sendTaskRatingEmail
+  sendTaskRatingEmail,
+  sendTaskReminderEmail
 };
