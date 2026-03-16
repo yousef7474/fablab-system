@@ -25,6 +25,18 @@ const SECTION_COLORS = {
   'Vinyl Cutting': '#ec4899'
 };
 
+const EMPLOYEE_COLORS = [
+  '#e02529', '#2563eb', '#16a34a', '#9333ea', '#ea580c',
+  '#0891b2', '#c026d3', '#ca8a04', '#0d9488', '#be123c',
+  '#4f46e5', '#15803d', '#a21caf', '#0369a1', '#b45309',
+  '#7c3aed', '#dc2626', '#059669', '#6d28d9', '#d97706',
+];
+
+const getEmployeeColor = (employees, employeeId) => {
+  const idx = employees.findIndex(e => e.employeeId === employeeId);
+  return EMPLOYEE_COLORS[idx >= 0 ? idx % EMPLOYEE_COLORS.length : 0];
+};
+
 const PRIORITY_COLORS = {
   low: '#22c55e',
   medium: '#f59e0b',
@@ -4483,7 +4495,7 @@ const AdminDashboard = () => {
                                       className={event.type === 'task' ? 'task-dot' : 'event-dot'}
                                       style={{
                                         backgroundColor: event.type === 'task'
-                                          ? PRIORITY_COLORS[event.priority] || '#f59e0b'
+                                          ? (event.employeeId ? getEmployeeColor(employees, event.employeeId) : PRIORITY_COLORS[event.priority] || '#f59e0b')
                                           : SECTION_COLORS[event.section] || '#6366f1',
                                         borderRadius: event.type === 'task' ? '2px' : '50%'
                                       }}
@@ -4541,7 +4553,7 @@ const AdminDashboard = () => {
                             className={`employee-card ${scheduleFilter === emp.section ? 'active' : ''}`}
                             onClick={() => setScheduleFilter(emp.section)}
                           >
-                            <div className="employee-card-avatar" style={{ backgroundColor: SECTION_COLORS[emp.section] || '#6366f1' }}>
+                            <div className="employee-card-avatar" style={{ backgroundColor: getEmployeeColor(employees, emp.employeeId) }}>
                               {emp.name?.charAt(0)?.toUpperCase()}
                             </div>
                             <span className="employee-card-name">{emp.name}</span>
@@ -4766,7 +4778,7 @@ const AdminDashboard = () => {
                                 className="detailed-appointment-header"
                                 style={{
                                   borderLeftColor: apt.type === 'task'
-                                    ? PRIORITY_COLORS[apt.priority] || '#f59e0b'
+                                    ? (apt.employeeId ? getEmployeeColor(employees, apt.employeeId) : PRIORITY_COLORS[apt.priority] || '#f59e0b')
                                     : SECTION_COLORS[apt.section] || '#6366f1'
                                 }}
                               >

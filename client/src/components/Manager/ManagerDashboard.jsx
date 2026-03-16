@@ -30,6 +30,36 @@ const SECTION_COLORS = {
   'Vinyl Cutting': '#ec4899'
 };
 
+// Distinct employee colors - maximally different hues for easy distinction
+const EMPLOYEE_COLORS = [
+  '#e02529', // red
+  '#2563eb', // blue
+  '#16a34a', // green
+  '#9333ea', // purple
+  '#ea580c', // orange
+  '#0891b2', // cyan
+  '#c026d3', // fuchsia
+  '#ca8a04', // yellow-dark
+  '#0d9488', // teal
+  '#be123c', // rose
+  '#4f46e5', // indigo
+  '#15803d', // emerald
+  '#a21caf', // magenta
+  '#0369a1', // sky-dark
+  '#b45309', // amber
+  '#7c3aed', // violet
+  '#dc2626', // red-alt
+  '#059669', // green-alt
+  '#6d28d9', // purple-alt
+  '#d97706', // orange-alt
+];
+
+// Get color for employee by index
+const getEmployeeColor = (employees, employeeId) => {
+  const idx = employees.findIndex(e => e.employeeId === employeeId);
+  return EMPLOYEE_COLORS[idx >= 0 ? idx % EMPLOYEE_COLORS.length : 0];
+};
+
 // Priority colors
 const PRIORITY_COLORS = {
   low: '#22c55e',
@@ -3887,12 +3917,12 @@ const ManagerDashboard = () => {
                             style={{ backgroundColor: SECTION_COLORS[event.section] || '#6366f1' }}
                           />
                         ))}
-                        {/* Task dots (squares) - colored by section like appointments */}
+                        {/* Task dots (squares) - colored by employee */}
                         {tasks.slice(0, 2).map((task, i) => (
                           <span
                             key={`task-${i}`}
                             className="task-dot"
-                            style={{ backgroundColor: SECTION_COLORS[task.section] || '#6366f1' }}
+                            style={{ backgroundColor: task.employeeId ? getEmployeeColor(employees, task.employeeId) : SECTION_COLORS[task.section] || '#6366f1' }}
                           />
                         ))}
                         {events.length > 4 && (
@@ -4009,7 +4039,7 @@ const ManagerDashboard = () => {
                   >
                     <div
                       className="employee-avatar"
-                      style={{ background: SECTION_COLORS[emp.section] || '#6366f1' }}
+                      style={{ background: getEmployeeColor(employees, emp.employeeId) }}
                     >
                       {emp.name.charAt(0)}
                     </div>
@@ -8763,7 +8793,7 @@ const ManagerDashboard = () => {
                               });
                             }}
                           />
-                          <div className="employee-checkbox-avatar" style={{ background: SECTION_COLORS[emp.section] || '#6366f1' }}>
+                          <div className="employee-checkbox-avatar" style={{ background: getEmployeeColor(employees, emp.employeeId) }}>
                             {emp.name?.charAt(0) || 'E'}
                           </div>
                           <div className="employee-checkbox-info">
