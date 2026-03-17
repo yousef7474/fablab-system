@@ -1889,10 +1889,9 @@ const EliteDashboard = () => {
                 </button>
               </div>
 
-              {/* Printable ID Card */}
+              {/* Printable ID Card - Portrait */}
               <div className="id-card-wrapper">
                 <div className="elite-id-card" id="elite-id-card">
-                  {/* Card Front */}
                   <div className="id-card-front">
                     {/* Green Header with Logos */}
                     <div className="id-card-header">
@@ -1904,47 +1903,44 @@ const EliteDashboard = () => {
                       <img src="/found.png" alt="Foundation" className="id-logo found-logo" />
                     </div>
 
-                    {/* Card Body - RTL Layout */}
-                    <div className="id-card-body" dir="rtl">
-                      {/* Profile Photo - Right Side */}
-                      <div className="id-photo-section">
-                        {showIdCard.profilePicture ? (
-                          <img src={showIdCard.profilePicture} alt="" className="id-photo" />
-                        ) : (
-                          <div className="id-photo-placeholder">
-                            <svg width="50" height="50" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-                              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
-                              <circle cx="12" cy="7" r="4"/>
-                            </svg>
-                          </div>
-                        )}
-                      </div>
+                    {/* Photo - Centered */}
+                    <div className="id-photo-section">
+                      {showIdCard.profilePicture ? (
+                        <img src={showIdCard.profilePicture} alt="" className="id-photo" />
+                      ) : (
+                        <div className="id-photo-placeholder">
+                          <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+                            <circle cx="12" cy="7" r="4"/>
+                          </svg>
+                        </div>
+                      )}
+                    </div>
 
-                      {/* Member Info - Left Side, Right Aligned */}
-                      <div className="id-info-section">
-                        <div className="id-name">{showIdCard.firstName} {showIdCard.lastName}</div>
-                        <div className="id-member-number">{showIdCard.uniqueId}</div>
-                        <div className="id-details">
-                          <div className="id-detail-row">
-                            <span className="id-label">الهوية:</span>
-                            <span className="id-value">{showIdCard.nationalId}</span>
-                          </div>
-                          <div className="id-detail-row">
-                            <span className="id-label">الهاتف:</span>
-                            <span className="id-value">{showIdCard.phoneNumber}</span>
-                          </div>
+                    {/* Member Info - Centered */}
+                    <div className="id-info-section" dir="rtl">
+                      <div className="id-name">{showIdCard.firstName} {showIdCard.lastName}</div>
+                      <div className="id-member-number">{showIdCard.uniqueId}</div>
+                      <div className="id-details">
+                        <div className="id-detail-row">
+                          <span className="id-label">الهوية:</span>
+                          <span className="id-value">{showIdCard.nationalId}</span>
+                        </div>
+                        <div className="id-detail-row">
+                          <span className="id-label">الهاتف:</span>
+                          <span className="id-value">{showIdCard.phoneNumber}</span>
                         </div>
                       </div>
                     </div>
 
-                    {/* Card Footer - RTL */}
+                    {/* Footer */}
                     <div className="id-card-footer" dir="rtl">
                       <div className="id-valid-date">
                         <span>:تاريخ الانضمام</span>
                         <span>{formatDate(showIdCard.createdAt)}</span>
                       </div>
                       <div className="id-star-badge">
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
                           <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
                         </svg>
                       </div>
@@ -1956,13 +1952,13 @@ const EliteDashboard = () => {
               <div className="modal-footer">
                 <button className="btn-print" onClick={() => {
                   const printContent = document.getElementById('elite-id-card');
-                  const printWindow = window.open('', '', 'width=600,height=400');
+                  const printWindow = window.open('', '', 'width=400,height=600');
                   printWindow.document.write(`
                     <html>
                       <head>
                         <title>Elite Member ID Card</title>
                         <style>
-                          @page { size: 85.6mm 53.98mm; margin: 0; }
+                          @page { size: 53.98mm 85.6mm; margin: 0; }
                           * { margin: 0; padding: 0; box-sizing: border-box; }
                           body {
                             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
@@ -1973,8 +1969,8 @@ const EliteDashboard = () => {
                             background: #f0f0f0;
                           }
                           .elite-id-card {
-                            width: 85.6mm;
-                            height: 53.98mm;
+                            width: 53.98mm;
+                            height: 85.6mm;
                             background: white;
                             border-radius: 10px;
                             overflow: hidden;
@@ -1987,19 +1983,19 @@ const EliteDashboard = () => {
                           }
                           .id-card-header {
                             background: linear-gradient(135deg, #006c35 0%, #00a651 100%);
-                            padding: 8px 12px;
+                            padding: 8px 10px;
                             display: flex;
                             align-items: center;
                             justify-content: space-between;
-                            gap: 8px;
+                            gap: 4px;
                           }
                           .id-logo {
-                            width: 35px;
-                            height: 35px;
+                            width: 28px;
+                            height: 28px;
                             object-fit: contain;
                             background: white;
-                            border-radius: 6px;
-                            padding: 3px;
+                            border-radius: 5px;
+                            padding: 2px;
                           }
                           .id-header-text {
                             flex: 1;
@@ -2008,37 +2004,32 @@ const EliteDashboard = () => {
                           }
                           .id-header-title {
                             display: block;
-                            font-size: 12px;
+                            font-size: 10px;
                             font-weight: 700;
-                            letter-spacing: 0.5px;
+                            letter-spacing: 0.3px;
                           }
                           .id-header-subtitle {
                             display: block;
-                            font-size: 9px;
+                            font-size: 8px;
                             opacity: 0.9;
-                            margin-top: 2px;
-                          }
-                          .id-card-body {
-                            flex: 1;
-                            display: flex;
-                            padding: 10px 12px;
-                            gap: 12px;
-                            background: linear-gradient(180deg, #f8fdf9 0%, #ffffff 100%);
-                            direction: rtl;
+                            margin-top: 1px;
                           }
                           .id-photo-section {
-                            flex-shrink: 0;
+                            display: flex;
+                            justify-content: center;
+                            padding: 10px 10px 6px;
+                            background: linear-gradient(180deg, #f8fdf9 0%, #ffffff 100%);
                           }
                           .id-photo {
-                            width: 80px;
-                            height: 95px;
+                            width: 70px;
+                            height: 85px;
                             object-fit: cover;
                             border-radius: 6px;
                             border: 2px solid #006c35;
                           }
                           .id-photo-placeholder {
-                            width: 80px;
-                            height: 95px;
+                            width: 70px;
+                            height: 85px;
                             background: #e8f5e9;
                             border: 2px solid #006c35;
                             border-radius: 6px;
@@ -2051,21 +2042,23 @@ const EliteDashboard = () => {
                             flex: 1;
                             display: flex;
                             flex-direction: column;
-                            min-width: 0;
-                            text-align: right;
+                            align-items: center;
+                            text-align: center;
+                            padding: 6px 10px;
                             direction: rtl;
                           }
                           .id-name {
-                            font-size: 13px;
+                            font-size: 12px;
                             font-weight: 700;
                             color: #1a1a1a;
                             margin-bottom: 2px;
                             white-space: nowrap;
                             overflow: hidden;
                             text-overflow: ellipsis;
+                            max-width: 100%;
                           }
                           .id-member-number {
-                            font-size: 11px;
+                            font-size: 10px;
                             font-weight: 600;
                             color: #006c35;
                             margin-bottom: 6px;
@@ -2074,12 +2067,13 @@ const EliteDashboard = () => {
                           .id-details {
                             font-size: 8px;
                             color: #444;
+                            width: 100%;
                           }
                           .id-detail-row {
                             display: flex;
                             gap: 4px;
                             margin-bottom: 2px;
-                            justify-content: flex-start;
+                            justify-content: center;
                             direction: rtl;
                           }
                           .id-label {
@@ -2092,7 +2086,7 @@ const EliteDashboard = () => {
                           }
                           .id-card-footer {
                             background: linear-gradient(135deg, #006c35 0%, #00a651 100%);
-                            padding: 5px 12px;
+                            padding: 6px 10px;
                             display: flex;
                             justify-content: space-between;
                             align-items: center;
