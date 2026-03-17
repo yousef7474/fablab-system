@@ -32,6 +32,17 @@ const EliteUserAccount = () => {
     thumbnail: ''
   });
 
+  const [myCourses, setMyCourses] = useState([]);
+  const [coursesLoading, setCoursesLoading] = useState(false);
+  const [selectedCourse, setSelectedCourse] = useState(null);
+  const [currentLesson, setCurrentLesson] = useState(null);
+  const [quizMode, setQuizMode] = useState(false);
+  const [quizQuestions, setQuizQuestions] = useState([]);
+  const [quizAnswers, setQuizAnswers] = useState({});
+  const [quizResult, setQuizResult] = useState(null);
+  const [quizAttemptId, setQuizAttemptId] = useState(null);
+  const [submittingQuiz, setSubmittingQuiz] = useState(false);
+
   const isRTL = language === 'ar';
 
   // Translations
@@ -142,7 +153,35 @@ const EliteUserAccount = () => {
       viewDetails: 'عرض التفاصيل',
       files: 'الملفات',
       submitWork: 'تقديم العمل',
-      saveAsDraft: 'حفظ كمسودة'
+      saveAsDraft: 'حفظ كمسودة',
+      coursesTab: 'الدورات',
+      myCourses: 'دوراتي',
+      courseProgress: 'تقدم الدورة',
+      startCourse: 'ابدأ الدورة',
+      continueCourse: 'استكمال الدورة',
+      courseCompleted: 'مكتملة',
+      lessons: 'الدروس',
+      lesson: 'الدرس',
+      markComplete: 'إكمال الدرس',
+      lessonCompleted: 'تم إكمال الدرس',
+      takeQuiz: 'بدء الاختبار',
+      submitQuiz: 'تسليم الاختبار',
+      quizResult: 'نتيجة الاختبار',
+      quizPassed: 'ناجح',
+      quizFailed: 'لم ينجح',
+      score: 'الدرجة',
+      backToCourses: 'العودة للدورات',
+      backToLessons: 'العودة للدروس',
+      noCourses: 'لا توجد دورات مسجلة',
+      completeLessonsFirst: 'أكمل جميع الدروس أولاً',
+      quizInProgress: 'الاختبار قيد التقديم',
+      pendingGrading: 'بانتظار التصحيح',
+      question: 'سؤال',
+      yourAnswer: 'إجابتك',
+      selectAnswer: 'اختر الإجابة',
+      writeAnswer: 'اكتب إجابتك',
+      courseEndDate: 'ينتهي في',
+      materials: 'المواد'
     },
     en: {
       elite: 'Elite',
@@ -250,7 +289,35 @@ const EliteUserAccount = () => {
       viewDetails: 'View Details',
       files: 'Files',
       submitWork: 'Submit Work',
-      saveAsDraft: 'Save as Draft'
+      saveAsDraft: 'Save as Draft',
+      coursesTab: 'Courses',
+      myCourses: 'My Courses',
+      courseProgress: 'Course Progress',
+      startCourse: 'Start Course',
+      continueCourse: 'Continue',
+      courseCompleted: 'Completed',
+      lessons: 'Lessons',
+      lesson: 'Lesson',
+      markComplete: 'Mark Complete',
+      lessonCompleted: 'Lesson Completed',
+      takeQuiz: 'Take Quiz',
+      submitQuiz: 'Submit Quiz',
+      quizResult: 'Quiz Result',
+      quizPassed: 'Passed',
+      quizFailed: 'Failed',
+      score: 'Score',
+      backToCourses: 'Back to Courses',
+      backToLessons: 'Back to Lessons',
+      noCourses: 'No courses enrolled',
+      completeLessonsFirst: 'Complete all lessons first',
+      quizInProgress: 'Quiz in progress',
+      pendingGrading: 'Pending grading',
+      question: 'Question',
+      yourAnswer: 'Your answer',
+      selectAnswer: 'Select answer',
+      writeAnswer: 'Write your answer',
+      courseEndDate: 'Ends',
+      materials: 'Materials'
     }
   };
 
@@ -340,11 +407,117 @@ const EliteUserAccount = () => {
     }
   };
 
+  const fetchMyCourses = async () => {
+    if (!user) return;
+    setCoursesLoading(true);
+    try {
+      const { data } = await api.get(`/elite/my-courses?eliteId=${user.eliteId}`);
+      setMyCourses(data);
+    } catch (error) {
+      console.error('Error fetching courses:', error);
+    } finally {
+      setCoursesLoading(false);
+    }
+  };
+
+  const openCourse = async (enrollment) => {
+    try {
+      const { data } = await api.get(`/elite/my-courses/${enrollment.courseId}?eliteId=${user.eliteId}`);
+      setSelectedCourse(data);
+      setCurrentLesson(null);
+      setQuizMode(false);
+      setQuizResult(null);
+    } catch (error) {
+      console.error('Error opening course:', error);
+    }
+  };
+
+  const handleAccessLesson = async (lesson) => {
+    setCurrentLesson(lesson);
+    try {
+      await api.post(`/elite/my-courses/${selectedCourse.courseId}/lessons/${lesson.lessonId}/access?eliteId=${user.eliteId}`);
+    } catch (error) {
+      console.error('Error recording access:', error);
+    }
+  };
+
+  const handleMarkLessonComplete = async (lessonId) => {
+    try {
+      const { data } = await api.patch(`/elite/my-courses/${selectedCourse.courseId}/lessons/${lessonId}/complete?eliteId=${user.eliteId}`);
+      toast.success(isRTL ? 'تم إكمال الدرس' : 'Lesson completed');
+      // Refresh course data
+      const courseData = await api.get(`/elite/my-courses/${selectedCourse.courseId}?eliteId=${user.eliteId}`);
+      setSelectedCourse(courseData.data);
+    } catch (error) {
+      console.error('Error completing lesson:', error);
+      toast.error(isRTL ? 'خطأ' : 'Error');
+    }
+  };
+
+  const handleStartQuiz = async () => {
+    try {
+      const { data } = await api.post(`/elite/my-courses/${selectedCourse.courseId}/quiz/start?eliteId=${user.eliteId}`);
+      setQuizQuestions(data.questions || []);
+      setQuizAttemptId(data.attemptId);
+      setQuizAnswers({});
+      setQuizMode(true);
+      setQuizResult(null);
+    } catch (error) {
+      console.error('Error starting quiz:', error);
+      toast.error(error.response?.data?.message || (isRTL ? 'خطأ في بدء الاختبار' : 'Error starting quiz'));
+    }
+  };
+
+  const handleSubmitQuiz = async () => {
+    setSubmittingQuiz(true);
+    try {
+      const answersArray = Object.entries(quizAnswers).map(([questionId, answer]) => ({
+        questionId,
+        answer: typeof answer === 'string' ? answer : '',
+        selectedOption: typeof answer === 'string' ? answer : answer
+      }));
+      const { data } = await api.post(`/elite/my-courses/${selectedCourse.courseId}/quiz/submit`, {
+        attemptId: quizAttemptId,
+        eliteId: user.eliteId,
+        answers: answersArray
+      });
+      setQuizResult(data);
+      setQuizMode(false);
+      toast.success(isRTL ? 'تم تسليم الاختبار' : 'Quiz submitted');
+      // Refresh course
+      const courseData = await api.get(`/elite/my-courses/${selectedCourse.courseId}?eliteId=${user.eliteId}`);
+      setSelectedCourse(courseData.data);
+      // Refresh my courses list
+      fetchMyCourses();
+    } catch (error) {
+      toast.error(isRTL ? 'خطأ في التسليم' : 'Error submitting');
+    } finally {
+      setSubmittingQuiz(false);
+    }
+  };
+
+  const handleGetQuizResult = async () => {
+    try {
+      const { data } = await api.get(`/elite/my-courses/${selectedCourse.courseId}/quiz/result?eliteId=${user.eliteId}`);
+      setQuizResult(data);
+    } catch (error) {
+      console.error('Error fetching result:', error);
+    }
+  };
+
+  const isLessonComplete = (lessonId) => {
+    return selectedCourse?.lessonProgress?.some(lp => lp.lessonId === lessonId && lp.completed);
+  };
+
+  const allLessonsComplete = selectedCourse?.course?.lessons?.length > 0 &&
+    selectedCourse?.course?.lessons?.every(l => isLessonComplete(l.lessonId));
+
   // Handle tab change
   const handleTabChange = (tab) => {
     setActiveTab(tab);
     if (user) {
       if (tab === 'tasks' && tasks.length === 0) fetchTasks(user.eliteId);
+      if (tab === 'courses' && myCourses.length === 0) fetchMyCourses();
       if (tab === 'works' && works.length === 0) fetchWorks(user.eliteId);
       if (tab === 'schedules' && schedules.length === 0) fetchSchedules(user.eliteId);
     }
@@ -583,6 +756,16 @@ const EliteUserAccount = () => {
                 <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>
               </svg>
               {text.myTasks}
+            </button>
+            <button
+              className={`elite-nav-item ${activeTab === 'courses' ? 'active' : ''}`}
+              onClick={() => handleTabChange('courses')}
+            >
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/>
+                <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/>
+              </svg>
+              {text.coursesTab}
             </button>
             <button
               className={`elite-nav-item ${activeTab === 'works' ? 'active' : ''}`}
@@ -996,6 +1179,265 @@ const EliteUserAccount = () => {
                     </div>
                   )}
                 </div>
+              </motion.div>
+            )}
+
+            {/* Courses Tab */}
+            {activeTab === 'courses' && (
+              <motion.div
+                key="courses"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="elite-tab-content"
+              >
+                {!selectedCourse ? (
+                  // COURSES LIST
+                  <div>
+                    <div className="elite-info-section">
+                      <h3>
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                          <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/>
+                          <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/>
+                        </svg>
+                        {text.myCourses}
+                      </h3>
+                    </div>
+                    {coursesLoading ? (
+                      <div className="elite-loading-small"><div className="loading-spinner"></div></div>
+                    ) : myCourses.length === 0 ? (
+                      <div className="elite-empty-state">
+                        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                          <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/>
+                          <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/>
+                        </svg>
+                        <p>{text.noCourses}</p>
+                      </div>
+                    ) : (
+                      <div className="elite-courses-grid">
+                        {myCourses.map(enrollment => (
+                          <div key={enrollment.enrollmentId} className="elite-course-card" onClick={() => openCourse(enrollment)}>
+                            {enrollment.course?.thumbnail ? (
+                              <div className="course-thumb">
+                                <img src={enrollment.course.thumbnail} alt="" />
+                              </div>
+                            ) : (
+                              <div className="course-thumb placeholder">
+                                <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                                  <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/>
+                                  <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/>
+                                </svg>
+                              </div>
+                            )}
+                            <div className="course-card-body">
+                              <h4>{enrollment.course?.title}</h4>
+                              <p>{enrollment.course?.description?.substring(0, 80)}{enrollment.course?.description?.length > 80 ? '...' : ''}</p>
+                              <div className="course-card-progress">
+                                <div className="progress-bar-track">
+                                  <div className="progress-bar-fill" style={{ width: `${enrollment.progressPercent}%` }}></div>
+                                </div>
+                                <span>{enrollment.progressPercent}%</span>
+                              </div>
+                              <div className="course-card-footer">
+                                <span className={`task-status-badge task-${enrollment.status === 'completed' ? 'completed' : enrollment.status === 'in_progress' ? 'progress' : 'pending'}`}>
+                                  {enrollment.status === 'completed' ? text.courseCompleted : enrollment.status === 'in_progress' ? text.continueCourse : text.startCourse}
+                                </span>
+                                {enrollment.course?.endDate && (
+                                  <span className="course-end-date">{text.courseEndDate}: {enrollment.course.endDate}</span>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                ) : quizMode ? (
+                  // QUIZ VIEW
+                  <div className="elite-quiz-view">
+                    <button className="back-link" onClick={() => setQuizMode(false)}>
+                      ← {text.backToLessons}
+                    </button>
+                    <h3>{isRTL ? 'الاختبار' : 'Quiz'}</h3>
+                    <div className="quiz-questions-list">
+                      {quizQuestions.map((q, qi) => (
+                        <div key={q.questionId} className="quiz-question-card">
+                          <div className="quiz-q-header">
+                            <span className="quiz-q-number">{text.question} {qi + 1}</span>
+                            <span className={`q-type-badge ${q.type}`}>{q.type === 'mcq' ? (isRTL ? 'اختياري' : 'MCQ') : (isRTL ? 'كتابي' : 'Written')}</span>
+                            <span className="quiz-q-points">{q.points} {isRTL ? 'نقطة' : 'pts'}</span>
+                          </div>
+                          <p className="quiz-q-text">{q.questionText}</p>
+                          {q.type === 'mcq' ? (
+                            <div className="quiz-mcq-options">
+                              {(q.options || []).map((opt, oi) => (
+                                <label key={oi} className={`quiz-mcq-option ${quizAnswers[q.questionId] === opt.label ? 'selected' : ''}`}>
+                                  <input
+                                    type="radio"
+                                    name={`quiz-q-${q.questionId}`}
+                                    checked={quizAnswers[q.questionId] === opt.label}
+                                    onChange={() => setQuizAnswers(prev => ({ ...prev, [q.questionId]: opt.label }))}
+                                  />
+                                  <span className="option-letter">{opt.label}</span>
+                                  <span>{opt.text}</span>
+                                </label>
+                              ))}
+                            </div>
+                          ) : (
+                            <textarea
+                              className="quiz-written-input"
+                              placeholder={text.writeAnswer}
+                              value={quizAnswers[q.questionId] || ''}
+                              onChange={e => setQuizAnswers(prev => ({ ...prev, [q.questionId]: e.target.value }))}
+                              rows={3}
+                            />
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                    <button
+                      className="elite-add-btn quiz-submit-btn"
+                      onClick={handleSubmitQuiz}
+                      disabled={submittingQuiz}
+                      style={{ marginTop: 20, width: '100%', justifyContent: 'center' }}
+                    >
+                      {submittingQuiz ? <div className="loading-spinner"></div> : text.submitQuiz}
+                    </button>
+                  </div>
+                ) : (
+                  // COURSE DETAIL VIEW
+                  <div className="elite-course-detail">
+                    <button className="back-link" onClick={() => { setSelectedCourse(null); setCurrentLesson(null); setQuizResult(null); }}>
+                      ← {text.backToCourses}
+                    </button>
+                    <div className="course-detail-top">
+                      <h3>{selectedCourse.course?.title}</h3>
+                      <p>{selectedCourse.course?.description}</p>
+                      <div className="course-detail-progress">
+                        <div className="progress-bar-track" style={{ height: 8 }}>
+                          <div className="progress-bar-fill" style={{ width: `${selectedCourse.progressPercent}%` }}></div>
+                        </div>
+                        <span>{selectedCourse.progressPercent}% {text.courseProgress}</span>
+                      </div>
+                    </div>
+
+                    <div className="course-viewer-layout">
+                      {/* Lesson Sidebar */}
+                      <div className="lesson-sidebar">
+                        <h4>{text.lessons}</h4>
+                        {(selectedCourse.course?.lessons || []).map((lesson, idx) => (
+                          <button
+                            key={lesson.lessonId}
+                            className={`lesson-nav-item ${currentLesson?.lessonId === lesson.lessonId ? 'active' : ''} ${isLessonComplete(lesson.lessonId) ? 'completed' : ''}`}
+                            onClick={() => handleAccessLesson(lesson)}
+                          >
+                            <span className="lesson-num">
+                              {isLessonComplete(lesson.lessonId) ? (
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+                              ) : idx + 1}
+                            </span>
+                            <span className="lesson-nav-title">{lesson.title}</span>
+                          </button>
+                        ))}
+
+                        {/* Quiz button */}
+                        {selectedCourse.course?.quiz && (
+                          <div className="quiz-nav-section">
+                            <hr />
+                            {allLessonsComplete ? (
+                              quizResult || selectedCourse.quizScore != null ? (
+                                <div className="quiz-result-badge">
+                                  <span>{text.quizResult}: {Math.round(selectedCourse.quizScore || quizResult?.score || 0)}%</span>
+                                  <span className={`quiz-pass-badge ${(selectedCourse.quizScore || quizResult?.score || 0) >= (selectedCourse.course?.passingScore || 60) ? 'passed' : 'failed'}`}>
+                                    {(selectedCourse.quizScore || quizResult?.score || 0) >= (selectedCourse.course?.passingScore || 60) ? text.quizPassed : text.quizFailed}
+                                  </span>
+                                </div>
+                              ) : (
+                                <button className="elite-add-btn take-quiz-btn" onClick={handleStartQuiz}>
+                                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                    <circle cx="12" cy="12" r="10"/>
+                                    <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/>
+                                    <line x1="12" y1="17" x2="12.01" y2="17"/>
+                                  </svg>
+                                  {text.takeQuiz}
+                                </button>
+                              )
+                            ) : (
+                              <p className="quiz-locked-msg">{text.completeLessonsFirst}</p>
+                            )}
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Lesson Content */}
+                      <div className="lesson-content-area">
+                        {currentLesson ? (
+                          <div className="lesson-viewer">
+                            <h4>{text.lesson} {(selectedCourse.course?.lessons || []).findIndex(l => l.lessonId === currentLesson.lessonId) + 1}: {currentLesson.title}</h4>
+                            {currentLesson.description && <p className="lesson-desc">{currentLesson.description}</p>}
+
+                            <div className="lesson-materials">
+                              {(currentLesson.materials || []).map((mat, mi) => (
+                                <div key={mi} className="material-card">
+                                  <div className="material-type-icon">
+                                    {mat.type === 'video' && <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polygon points="5 3 19 12 5 21 5 3"/></svg>}
+                                    {mat.type === 'image' && <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>}
+                                    {mat.type === 'file' && <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>}
+                                    {mat.type === 'url' && <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>}
+                                  </div>
+                                  <div className="material-info">
+                                    <span className="material-name">{mat.title || mat.type}</span>
+                                    {mat.type === 'video' && mat.url && (
+                                      <div className="video-embed">
+                                        {mat.url.includes('youtube') || mat.url.includes('youtu.be') ? (
+                                          <iframe
+                                            src={mat.url.replace('watch?v=', 'embed/').replace('youtu.be/', 'youtube.com/embed/')}
+                                            width="100%" height="315" frameBorder="0" allowFullScreen
+                                            title={mat.title}
+                                          ></iframe>
+                                        ) : (
+                                          <a href={mat.url} target="_blank" rel="noopener noreferrer" className="material-link">{mat.url}</a>
+                                        )}
+                                      </div>
+                                    )}
+                                    {mat.type === 'image' && mat.url && (
+                                      <img src={mat.url} alt={mat.title} className="material-image" />
+                                    )}
+                                    {(mat.type === 'file' || mat.type === 'url') && mat.url && (
+                                      <a href={mat.url} target="_blank" rel="noopener noreferrer" className="material-link">
+                                        {mat.url}
+                                      </a>
+                                    )}
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+
+                            {!isLessonComplete(currentLesson.lessonId) && (
+                              <button
+                                className="elite-add-btn mark-complete-btn"
+                                onClick={() => handleMarkLessonComplete(currentLesson.lessonId)}
+                                style={{ marginTop: 20 }}
+                              >
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                                  <polyline points="20 6 9 17 4 12"/>
+                                </svg>
+                                {text.markComplete}
+                              </button>
+                            )}
+                          </div>
+                        ) : (
+                          <div className="elite-empty-state" style={{ minHeight: 300 }}>
+                            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                              <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/>
+                              <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/>
+                            </svg>
+                            <p>{isRTL ? 'اختر درساً للبدء' : 'Select a lesson to start'}</p>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                )}
               </motion.div>
             )}
 

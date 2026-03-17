@@ -22,6 +22,13 @@ const EliteCredit = require('./EliteCredit');
 const EliteTask = require('./EliteTask');
 const EliteWork = require('./EliteWork');
 const EliteSchedule = require('./EliteSchedule');
+const EliteCourse = require('./EliteCourse');
+const EliteCourseLesson = require('./EliteCourseLesson');
+const EliteCourseEnrollment = require('./EliteCourseEnrollment');
+const EliteLessonProgress = require('./EliteLessonProgress');
+const EliteCourseQuiz = require('./EliteCourseQuiz');
+const EliteQuizQuestion = require('./EliteQuizQuestion');
+const EliteQuizAttempt = require('./EliteQuizAttempt');
 const Settings = require('./Settings');
 const WorkingHoursOverride = require('./WorkingHoursOverride');
 const Borrowing = require('./Borrowing');
@@ -144,6 +151,40 @@ EliteUser.hasMany(EliteSchedule, { foreignKey: 'eliteId', as: 'schedules' });
 
 EliteSchedule.belongsTo(Admin, { foreignKey: 'createdById', as: 'creator' });
 Admin.hasMany(EliteSchedule, { foreignKey: 'createdById', as: 'createdSchedules' });
+
+// Elite Course relationships
+EliteCourse.belongsTo(Admin, { foreignKey: 'createdById', as: 'courseCreator' });
+Admin.hasMany(EliteCourse, { foreignKey: 'createdById', as: 'createdCourses' });
+
+EliteCourse.hasMany(EliteCourseLesson, { foreignKey: 'courseId', as: 'lessons' });
+EliteCourseLesson.belongsTo(EliteCourse, { foreignKey: 'courseId', as: 'course' });
+
+EliteCourse.hasMany(EliteCourseEnrollment, { foreignKey: 'courseId', as: 'enrollments' });
+EliteCourseEnrollment.belongsTo(EliteCourse, { foreignKey: 'courseId', as: 'course' });
+
+EliteCourseEnrollment.belongsTo(EliteUser, { foreignKey: 'eliteId', as: 'eliteUser' });
+EliteUser.hasMany(EliteCourseEnrollment, { foreignKey: 'eliteId', as: 'courseEnrollments' });
+
+EliteCourseEnrollment.hasMany(EliteLessonProgress, { foreignKey: 'enrollmentId', as: 'lessonProgress' });
+EliteLessonProgress.belongsTo(EliteCourseEnrollment, { foreignKey: 'enrollmentId', as: 'enrollment' });
+
+EliteLessonProgress.belongsTo(EliteCourseLesson, { foreignKey: 'lessonId', as: 'lesson' });
+EliteCourseLesson.hasMany(EliteLessonProgress, { foreignKey: 'lessonId', as: 'progress' });
+
+EliteCourse.hasOne(EliteCourseQuiz, { foreignKey: 'courseId', as: 'quiz' });
+EliteCourseQuiz.belongsTo(EliteCourse, { foreignKey: 'courseId', as: 'course' });
+
+EliteCourseQuiz.hasMany(EliteQuizQuestion, { foreignKey: 'quizId', as: 'questions' });
+EliteQuizQuestion.belongsTo(EliteCourseQuiz, { foreignKey: 'quizId', as: 'quiz' });
+
+EliteCourseQuiz.hasMany(EliteQuizAttempt, { foreignKey: 'quizId', as: 'attempts' });
+EliteQuizAttempt.belongsTo(EliteCourseQuiz, { foreignKey: 'quizId', as: 'quiz' });
+
+EliteQuizAttempt.belongsTo(EliteUser, { foreignKey: 'eliteId', as: 'eliteUser' });
+EliteUser.hasMany(EliteQuizAttempt, { foreignKey: 'eliteId', as: 'quizAttempts' });
+
+EliteQuizAttempt.belongsTo(EliteCourseEnrollment, { foreignKey: 'enrollmentId', as: 'enrollment' });
+EliteCourseEnrollment.hasMany(EliteQuizAttempt, { foreignKey: 'enrollmentId', as: 'quizAttempts' });
 
 // Working Hours Override relationships
 WorkingHoursOverride.belongsTo(Admin, { foreignKey: 'createdById', as: 'creator' });
@@ -273,6 +314,13 @@ module.exports = {
   EliteTask,
   EliteWork,
   EliteSchedule,
+  EliteCourse,
+  EliteCourseLesson,
+  EliteCourseEnrollment,
+  EliteLessonProgress,
+  EliteCourseQuiz,
+  EliteQuizQuestion,
+  EliteQuizAttempt,
   Settings,
   WorkingHoursOverride,
   Borrowing,

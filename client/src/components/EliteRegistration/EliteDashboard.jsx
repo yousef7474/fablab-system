@@ -88,6 +88,26 @@ const EliteDashboard = () => {
     color: '#006c35'
   });
 
+  // Courses state
+  const [courses, setCourses] = useState([]);
+  const [coursesLoading, setCoursesLoading] = useState(false);
+  const [selectedCourse, setSelectedCourse] = useState(null);
+  const [courseDetailView, setCourseDetailView] = useState('info');
+  const [showCourseModal, setShowCourseModal] = useState(null);
+  const [courseForm, setCourseForm] = useState({
+    title: '', description: '', thumbnail: '', startDate: '', endDate: '',
+    inactivityDays: 7, passingScore: 60
+  });
+  const [lessonForm, setLessonForm] = useState({ title: '', description: '', order: 0, materials: [] });
+  const [showLessonModal, setShowLessonModal] = useState(null);
+  const [quizForm, setQuizForm] = useState({
+    title: '', description: '', timeLimit: '', maxAttempts: 1, questions: []
+  });
+  const [showQuizModal, setShowQuizModal] = useState(false);
+  const [showEnrollModal, setShowEnrollModal] = useState(false);
+  const [enrollSelectedUsers, setEnrollSelectedUsers] = useState([]);
+  const [courseProgress, setCourseProgress] = useState([]);
+
   const isRTL = language === 'ar';
 
   // Translations
@@ -179,6 +199,64 @@ const EliteDashboard = () => {
       tasksTab: 'المهام والدورات',
       worksTab: 'أعمال الأعضاء',
       schedulesTab: 'الجداول',
+      coursesTab: 'الدورات',
+      createCourse: 'إنشاء دورة',
+      courseTitle: 'عنوان الدورة',
+      courseDescription: 'وصف الدورة',
+      courseThumbnail: 'صورة الدورة',
+      courseStartDate: 'تاريخ البدء',
+      courseEndDate: 'تاريخ الانتهاء',
+      inactivityDays: 'أيام عدم النشاط للتنبيه',
+      passingScore: 'نسبة النجاح (%)',
+      lessons: 'الدروس',
+      enrollments: 'المسجلين',
+      quiz: 'الاختبار',
+      addLesson: 'إضافة درس',
+      lessonTitle: 'عنوان الدرس',
+      lessonDescription: 'وصف الدرس',
+      materials: 'المواد التعليمية',
+      addMaterial: 'إضافة مادة',
+      materialType: 'نوع المادة',
+      materialUrl: 'الرابط',
+      materialTitle: 'عنوان المادة',
+      video: 'فيديو',
+      image: 'صورة',
+      file: 'ملف',
+      url: 'رابط',
+      enrollUsers: 'تسجيل أعضاء',
+      selectMembers: 'اختر الأعضاء',
+      progress: 'التقدم',
+      lastAccess: 'آخر دخول',
+      warnings: 'التنبيهات',
+      quizScore: 'درجة الاختبار',
+      createQuiz: 'إنشاء اختبار',
+      quizTitle: 'عنوان الاختبار',
+      timeLimit: 'المدة (دقائق)',
+      maxAttempts: 'عدد المحاولات',
+      addQuestion: 'إضافة سؤال',
+      questionText: 'نص السؤال',
+      questionType: 'نوع السؤال',
+      mcq: 'اختيار من متعدد',
+      written: 'إجابة كتابية',
+      options: 'الخيارات',
+      correctAnswer: 'الإجابة الصحيحة',
+      points: 'النقاط',
+      noCourses: 'لا توجد دورات',
+      courseLessons: 'الدروس',
+      courseEnrollments: 'المسجلين',
+      courseQuiz: 'الاختبار',
+      courseInfo: 'معلومات الدورة',
+      backToCourses: 'العودة للدورات',
+      enrolled: 'مسجل',
+      inProgressStatus: 'قيد التنفيذ',
+      completedStatus: 'مكتمل',
+      dropped: 'منسحب',
+      gradeQuiz: 'تصحيح الاختبار',
+      viewAttempts: 'عرض المحاولات',
+      noQuiz: 'لم يتم إنشاء اختبار',
+      saveQuiz: 'حفظ الاختبار',
+      noLessons: 'لا توجد دروس',
+      noEnrollments: 'لا يوجد مسجلين',
       // Tasks
       createTask: 'إنشاء مهمة',
       editTask: 'تعديل المهمة',
@@ -311,6 +389,64 @@ const EliteDashboard = () => {
       tasksTab: 'Tasks & Courses',
       worksTab: 'Member Works',
       schedulesTab: 'Schedules',
+      coursesTab: 'Courses',
+      createCourse: 'Create Course',
+      courseTitle: 'Course Title',
+      courseDescription: 'Description',
+      courseThumbnail: 'Thumbnail',
+      courseStartDate: 'Start Date',
+      courseEndDate: 'End Date',
+      inactivityDays: 'Inactivity Alert Days',
+      passingScore: 'Passing Score (%)',
+      lessons: 'Lessons',
+      enrollments: 'Enrollments',
+      quiz: 'Quiz',
+      addLesson: 'Add Lesson',
+      lessonTitle: 'Lesson Title',
+      lessonDescription: 'Description',
+      materials: 'Materials',
+      addMaterial: 'Add Material',
+      materialType: 'Type',
+      materialUrl: 'URL',
+      materialTitle: 'Material Title',
+      video: 'Video',
+      image: 'Image',
+      file: 'File',
+      url: 'URL',
+      enrollUsers: 'Enroll Members',
+      selectMembers: 'Select Members',
+      progress: 'Progress',
+      lastAccess: 'Last Access',
+      warnings: 'Warnings',
+      quizScore: 'Quiz Score',
+      createQuiz: 'Create Quiz',
+      quizTitle: 'Quiz Title',
+      timeLimit: 'Time Limit (min)',
+      maxAttempts: 'Max Attempts',
+      addQuestion: 'Add Question',
+      questionText: 'Question Text',
+      questionType: 'Question Type',
+      mcq: 'Multiple Choice',
+      written: 'Written Answer',
+      options: 'Options',
+      correctAnswer: 'Correct Answer',
+      points: 'Points',
+      noCourses: 'No courses yet',
+      courseLessons: 'Lessons',
+      courseEnrollments: 'Enrollments',
+      courseQuiz: 'Quiz',
+      courseInfo: 'Course Info',
+      backToCourses: 'Back to Courses',
+      enrolled: 'Enrolled',
+      inProgressStatus: 'In Progress',
+      completedStatus: 'Completed',
+      dropped: 'Dropped',
+      gradeQuiz: 'Grade Quiz',
+      viewAttempts: 'View Attempts',
+      noQuiz: 'No quiz created',
+      saveQuiz: 'Save Quiz',
+      noLessons: 'No lessons yet',
+      noEnrollments: 'No enrollments yet',
       // Tasks
       createTask: 'Create Task',
       editTask: 'Edit Task',
@@ -425,6 +561,226 @@ const EliteDashboard = () => {
     if (tab === 'tasks' && tasks.length === 0) fetchTasks();
     if (tab === 'works' && works.length === 0) fetchWorks();
     if (tab === 'schedules' && schedules.length === 0) fetchSchedules();
+    if (tab === 'courses' && courses.length === 0) fetchCourses();
+  };
+
+  // Fetch courses
+  const fetchCourses = async () => {
+    setCoursesLoading(true);
+    try {
+      const { data } = await api.get('/elite/courses');
+      setCourses(data);
+    } catch (error) {
+      console.error('Error fetching courses:', error);
+      toast.error(isRTL ? 'خطأ في تحميل الدورات' : 'Error loading courses');
+    } finally {
+      setCoursesLoading(false);
+    }
+  };
+
+  const fetchCourseDetail = async (courseId) => {
+    try {
+      const { data } = await api.get(`/elite/courses/${courseId}`);
+      setSelectedCourse(data);
+    } catch (error) {
+      console.error('Error fetching course detail:', error);
+    }
+  };
+
+  const fetchCourseProgress = async (courseId) => {
+    try {
+      const { data } = await api.get(`/elite/courses/${courseId}/progress`);
+      setCourseProgress(data);
+    } catch (error) {
+      console.error('Error fetching course progress:', error);
+    }
+  };
+
+  const handleCreateCourse = async () => {
+    try {
+      if (!courseForm.title || !courseForm.startDate || !courseForm.endDate) {
+        toast.error(isRTL ? 'أدخل العنوان والتواريخ' : 'Enter title and dates');
+        return;
+      }
+      const adminData = JSON.parse(localStorage.getItem('adminData'));
+      await api.post('/elite/courses', { ...courseForm, createdById: adminData?.adminId });
+      toast.success(isRTL ? 'تم إنشاء الدورة بنجاح' : 'Course created successfully');
+      setShowCourseModal(null);
+      setCourseForm({ title: '', description: '', thumbnail: '', startDate: '', endDate: '', inactivityDays: 7, passingScore: 60 });
+      fetchCourses();
+    } catch (error) {
+      console.error('Error creating course:', error);
+      toast.error(isRTL ? 'خطأ في إنشاء الدورة' : 'Error creating course');
+    }
+  };
+
+  const handleUpdateCourse = async () => {
+    try {
+      await api.put(`/elite/courses/${selectedCourse.courseId}`, courseForm);
+      toast.success(isRTL ? 'تم تحديث الدورة' : 'Course updated');
+      setShowCourseModal(null);
+      fetchCourseDetail(selectedCourse.courseId);
+      fetchCourses();
+    } catch (error) {
+      toast.error(isRTL ? 'خطأ في التحديث' : 'Error updating');
+    }
+  };
+
+  const handleDeleteCourse = async (courseId) => {
+    try {
+      await api.delete(`/elite/courses/${courseId}`);
+      toast.success(isRTL ? 'تم حذف الدورة' : 'Course deleted');
+      setSelectedCourse(null);
+      fetchCourses();
+    } catch (error) {
+      toast.error(isRTL ? 'خطأ في الحذف' : 'Error deleting');
+    }
+  };
+
+  const handleAddLesson = async () => {
+    try {
+      if (!lessonForm.title) {
+        toast.error(isRTL ? 'أدخل عنوان الدرس' : 'Enter lesson title');
+        return;
+      }
+      await api.post(`/elite/courses/${selectedCourse.courseId}/lessons`, lessonForm);
+      toast.success(isRTL ? 'تم إضافة الدرس' : 'Lesson added');
+      setShowLessonModal(null);
+      setLessonForm({ title: '', description: '', order: 0, materials: [] });
+      fetchCourseDetail(selectedCourse.courseId);
+    } catch (error) {
+      toast.error(isRTL ? 'خطأ في إضافة الدرس' : 'Error adding lesson');
+    }
+  };
+
+  const handleUpdateLesson = async (lessonId) => {
+    try {
+      await api.put(`/elite/courses/${selectedCourse.courseId}/lessons/${lessonId}`, lessonForm);
+      toast.success(isRTL ? 'تم تحديث الدرس' : 'Lesson updated');
+      setShowLessonModal(null);
+      fetchCourseDetail(selectedCourse.courseId);
+    } catch (error) {
+      toast.error(isRTL ? 'خطأ في التحديث' : 'Error updating');
+    }
+  };
+
+  const handleDeleteLesson = async (lessonId) => {
+    try {
+      await api.delete(`/elite/courses/${selectedCourse.courseId}/lessons/${lessonId}`);
+      toast.success(isRTL ? 'تم حذف الدرس' : 'Lesson deleted');
+      fetchCourseDetail(selectedCourse.courseId);
+    } catch (error) {
+      toast.error(isRTL ? 'خطأ في الحذف' : 'Error deleting');
+    }
+  };
+
+  const handleEnrollUsers = async () => {
+    try {
+      if (enrollSelectedUsers.length === 0) {
+        toast.error(isRTL ? 'اختر الأعضاء' : 'Select members');
+        return;
+      }
+      await api.post(`/elite/courses/${selectedCourse.courseId}/enroll`, { eliteIds: enrollSelectedUsers });
+      toast.success(isRTL ? 'تم تسجيل الأعضاء' : 'Members enrolled');
+      setShowEnrollModal(false);
+      setEnrollSelectedUsers([]);
+      fetchCourseDetail(selectedCourse.courseId);
+      fetchCourseProgress(selectedCourse.courseId);
+    } catch (error) {
+      toast.error(isRTL ? 'خطأ في التسجيل' : 'Error enrolling');
+    }
+  };
+
+  const handleRemoveEnrollment = async (enrollmentId) => {
+    try {
+      await api.delete(`/elite/courses/${selectedCourse.courseId}/enrollments/${enrollmentId}`);
+      toast.success(isRTL ? 'تم إزالة التسجيل' : 'Enrollment removed');
+      fetchCourseDetail(selectedCourse.courseId);
+      fetchCourseProgress(selectedCourse.courseId);
+    } catch (error) {
+      toast.error(isRTL ? 'خطأ في الإزالة' : 'Error removing');
+    }
+  };
+
+  const handleSaveQuiz = async () => {
+    try {
+      if (!quizForm.title || quizForm.questions.length === 0) {
+        toast.error(isRTL ? 'أدخل العنوان وأضف سؤال واحد على الأقل' : 'Enter title and add at least one question');
+        return;
+      }
+      await api.put(`/elite/courses/${selectedCourse.courseId}/quiz`, quizForm);
+      toast.success(isRTL ? 'تم حفظ الاختبار' : 'Quiz saved');
+      setShowQuizModal(false);
+      fetchCourseDetail(selectedCourse.courseId);
+    } catch (error) {
+      toast.error(isRTL ? 'خطأ في حفظ الاختبار' : 'Error saving quiz');
+    }
+  };
+
+  const handleGradeAttempt = async (attemptId, grades) => {
+    try {
+      await api.patch(`/elite/courses/${selectedCourse.courseId}/quiz/attempts/${attemptId}/grade`, { grades });
+      toast.success(isRTL ? 'تم التصحيح' : 'Graded successfully');
+      fetchCourseDetail(selectedCourse.courseId);
+    } catch (error) {
+      toast.error(isRTL ? 'خطأ في التصحيح' : 'Error grading');
+    }
+  };
+
+  const addQuizQuestion = () => {
+    setQuizForm(prev => ({
+      ...prev,
+      questions: [...prev.questions, {
+        order: prev.questions.length,
+        type: 'mcq',
+        questionText: '',
+        options: [
+          { label: 'A', text: '', isCorrect: true },
+          { label: 'B', text: '', isCorrect: false },
+          { label: 'C', text: '', isCorrect: false },
+          { label: 'D', text: '', isCorrect: false }
+        ],
+        correctAnswer: '',
+        points: 1
+      }]
+    }));
+  };
+
+  const updateQuizQuestion = (index, field, value) => {
+    setQuizForm(prev => {
+      const questions = [...prev.questions];
+      questions[index] = { ...questions[index], [field]: value };
+      return { ...prev, questions };
+    });
+  };
+
+  const removeQuizQuestion = (index) => {
+    setQuizForm(prev => ({
+      ...prev,
+      questions: prev.questions.filter((_, i) => i !== index).map((q, i) => ({ ...q, order: i }))
+    }));
+  };
+
+  const addMaterialToLesson = () => {
+    setLessonForm(prev => ({
+      ...prev,
+      materials: [...prev.materials, { type: 'url', title: '', url: '' }]
+    }));
+  };
+
+  const updateMaterial = (index, field, value) => {
+    setLessonForm(prev => {
+      const materials = [...prev.materials];
+      materials[index] = { ...materials[index], [field]: value };
+      return { ...prev, materials };
+    });
+  };
+
+  const removeMaterial = (index) => {
+    setLessonForm(prev => ({
+      ...prev,
+      materials: prev.materials.filter((_, i) => i !== index)
+    }));
   };
 
   // Create task
@@ -1011,6 +1367,16 @@ const EliteDashboard = () => {
             </svg>
             {text.schedulesTab}
           </button>
+          <button
+            className={`main-tab ${mainTab === 'courses' ? 'active' : ''}`}
+            onClick={() => handleMainTabChange('courses')}
+          >
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/>
+              <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/>
+            </svg>
+            {text.coursesTab}
+          </button>
         </motion.div>
 
         {/* Filters - Only show for members tab */}
@@ -1525,6 +1891,406 @@ const EliteDashboard = () => {
                   ))}
                 </tbody>
               </table>
+            )}
+          </motion.div>
+        )}
+
+        {mainTab === 'courses' && (
+          <motion.div
+            className="courses-tab-content"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+          >
+            {!selectedCourse ? (
+              <>
+                <div className="tab-header">
+                  <h3>{text.coursesTab}</h3>
+                  <button className="create-btn" onClick={() => {
+                    setCourseForm({ title: '', description: '', thumbnail: '', startDate: '', endDate: '', inactivityDays: 7, passingScore: 60 });
+                    setShowCourseModal('create');
+                  }}>
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <line x1="12" y1="5" x2="12" y2="19"/>
+                      <line x1="5" y1="12" x2="19" y2="12"/>
+                    </svg>
+                    {text.createCourse}
+                  </button>
+                </div>
+
+                {coursesLoading ? (
+                  <div className="loading-state"><div className="spinner"></div></div>
+                ) : courses.length === 0 ? (
+                  <div className="empty-state">
+                    <svg width="60" height="60" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                      <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/>
+                      <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/>
+                    </svg>
+                    <p>{text.noCourses}</p>
+                  </div>
+                ) : (
+                  <table className="data-table courses-table">
+                    <thead>
+                      <tr>
+                        <th>{text.courseTitle}</th>
+                        <th>{text.courseStartDate}</th>
+                        <th>{text.courseEndDate}</th>
+                        <th>{text.lessons}</th>
+                        <th>{text.enrollments}</th>
+                        <th>{text.status}</th>
+                        <th>{text.actions}</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {courses.map(course => (
+                        <tr key={course.courseId}>
+                          <td>
+                            <div className="name-cell">
+                              <span>{course.title}</span>
+                              <small>{course.description?.substring(0, 50)}{course.description?.length > 50 ? '...' : ''}</small>
+                            </div>
+                          </td>
+                          <td>{formatDate(course.startDate)}</td>
+                          <td>{formatDate(course.endDate)}</td>
+                          <td>{course.lessons?.length || 0}</td>
+                          <td>{course.enrollments?.length || 0}</td>
+                          <td>
+                            <span className={`status-badge status-${course.status}`}>
+                              {text[course.status] || course.status}
+                            </span>
+                          </td>
+                          <td>
+                            <div className="action-buttons">
+                              <button className="action-btn view" title={text.courseInfo} onClick={() => {
+                                fetchCourseDetail(course.courseId);
+                                fetchCourseProgress(course.courseId);
+                                setCourseDetailView('info');
+                              }}>
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                  <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                                  <circle cx="12" cy="12" r="3"/>
+                                </svg>
+                              </button>
+                              <button className="action-btn delete" title={isRTL ? 'حذف' : 'Delete'} onClick={() => {
+                                if (window.confirm(isRTL ? 'هل أنت متأكد من حذف الدورة؟' : 'Are you sure you want to delete this course?')) {
+                                  handleDeleteCourse(course.courseId);
+                                }
+                              }}>
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                  <polyline points="3 6 5 6 21 6"/>
+                                  <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+                                </svg>
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                )}
+              </>
+            ) : (
+              <div className="course-detail-view">
+                <button className="back-btn" onClick={() => { setSelectedCourse(null); fetchCourses(); }}>
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <polyline points="15 18 9 12 15 6"/>
+                  </svg>
+                  {text.backToCourses}
+                </button>
+
+                <div className="course-detail-header">
+                  <div>
+                    <h2>{selectedCourse.title}</h2>
+                    <p>{selectedCourse.description}</p>
+                    <div className="course-meta">
+                      <span>{formatDate(selectedCourse.startDate)} - {formatDate(selectedCourse.endDate)}</span>
+                      <span className={`status-badge status-${selectedCourse.status}`}>{text[selectedCourse.status] || selectedCourse.status}</span>
+                    </div>
+                  </div>
+                  <button className="action-btn edit" onClick={() => {
+                    setCourseForm({
+                      title: selectedCourse.title,
+                      description: selectedCourse.description || '',
+                      thumbnail: selectedCourse.thumbnail || '',
+                      startDate: selectedCourse.startDate,
+                      endDate: selectedCourse.endDate,
+                      inactivityDays: selectedCourse.inactivityDays || 7,
+                      passingScore: selectedCourse.passingScore || 60
+                    });
+                    setShowCourseModal('edit');
+                  }}>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                      <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                    </svg>
+                  </button>
+                </div>
+
+                <div className="course-detail-tabs">
+                  {['info', 'lessons', 'enrollments', 'quiz'].map(tab => (
+                    <button
+                      key={tab}
+                      className={`detail-tab ${courseDetailView === tab ? 'active' : ''}`}
+                      onClick={() => {
+                        setCourseDetailView(tab);
+                        if (tab === 'enrollments') fetchCourseProgress(selectedCourse.courseId);
+                      }}
+                    >
+                      {text[tab === 'info' ? 'courseInfo' : tab === 'lessons' ? 'courseLessons' : tab === 'enrollments' ? 'courseEnrollments' : 'courseQuiz']}
+                    </button>
+                  ))}
+                </div>
+
+                {/* Info Sub-tab */}
+                {courseDetailView === 'info' && (
+                  <div className="course-info-panel">
+                    <div className="info-grid">
+                      <div className="info-card">
+                        <span className="info-label">{text.courseStartDate}</span>
+                        <span className="info-value">{formatDate(selectedCourse.startDate)}</span>
+                      </div>
+                      <div className="info-card">
+                        <span className="info-label">{text.courseEndDate}</span>
+                        <span className="info-value">{formatDate(selectedCourse.endDate)}</span>
+                      </div>
+                      <div className="info-card">
+                        <span className="info-label">{text.inactivityDays}</span>
+                        <span className="info-value">{selectedCourse.inactivityDays} {isRTL ? 'يوم' : 'days'}</span>
+                      </div>
+                      <div className="info-card">
+                        <span className="info-label">{text.passingScore}</span>
+                        <span className="info-value">{selectedCourse.passingScore}%</span>
+                      </div>
+                      <div className="info-card">
+                        <span className="info-label">{text.lessons}</span>
+                        <span className="info-value">{selectedCourse.lessons?.length || 0}</span>
+                      </div>
+                      <div className="info-card">
+                        <span className="info-label">{text.enrollments}</span>
+                        <span className="info-value">{selectedCourse.enrollments?.length || 0}</span>
+                      </div>
+                    </div>
+                    {selectedCourse.thumbnail && (
+                      <div className="course-thumbnail-preview">
+                        <img src={selectedCourse.thumbnail} alt="" />
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Lessons Sub-tab */}
+                {courseDetailView === 'lessons' && (
+                  <div className="lessons-panel">
+                    <div className="panel-header">
+                      <h4>{text.courseLessons} ({selectedCourse.lessons?.length || 0})</h4>
+                      <button className="create-btn small" onClick={() => {
+                        setLessonForm({ title: '', description: '', order: (selectedCourse.lessons?.length || 0), materials: [] });
+                        setShowLessonModal('create');
+                      }}>
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                          <line x1="12" y1="5" x2="12" y2="19"/>
+                          <line x1="5" y1="12" x2="19" y2="12"/>
+                        </svg>
+                        {text.addLesson}
+                      </button>
+                    </div>
+                    {(!selectedCourse.lessons || selectedCourse.lessons.length === 0) ? (
+                      <div className="empty-state small">
+                        <p>{text.noLessons}</p>
+                      </div>
+                    ) : (
+                      <div className="lessons-list">
+                        {selectedCourse.lessons.map((lesson, idx) => (
+                          <div key={lesson.lessonId} className="lesson-card">
+                            <div className="lesson-order">{idx + 1}</div>
+                            <div className="lesson-info">
+                              <h5>{lesson.title}</h5>
+                              {lesson.description && <p>{lesson.description}</p>}
+                              <div className="lesson-materials-count">
+                                {lesson.materials?.length || 0} {text.materials}
+                              </div>
+                            </div>
+                            <div className="lesson-actions">
+                              <button className="action-btn edit" onClick={() => {
+                                setLessonForm({
+                                  title: lesson.title,
+                                  description: lesson.description || '',
+                                  order: lesson.order,
+                                  materials: lesson.materials || []
+                                });
+                                setShowLessonModal(lesson.lessonId);
+                              }}>
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                  <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                                  <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                                </svg>
+                              </button>
+                              <button className="action-btn delete" onClick={() => {
+                                if (window.confirm(isRTL ? 'حذف الدرس؟' : 'Delete lesson?')) handleDeleteLesson(lesson.lessonId);
+                              }}>
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                  <polyline points="3 6 5 6 21 6"/>
+                                  <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+                                </svg>
+                              </button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Enrollments Sub-tab */}
+                {courseDetailView === 'enrollments' && (
+                  <div className="enrollments-panel">
+                    <div className="panel-header">
+                      <h4>{text.courseEnrollments} ({selectedCourse.enrollments?.length || 0})</h4>
+                      <button className="create-btn small" onClick={() => {
+                        setEnrollSelectedUsers([]);
+                        setShowEnrollModal(true);
+                      }}>
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                          <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                          <circle cx="8.5" cy="7" r="4"/>
+                          <line x1="20" y1="8" x2="20" y2="14"/>
+                          <line x1="23" y1="11" x2="17" y2="11"/>
+                        </svg>
+                        {text.enrollUsers}
+                      </button>
+                    </div>
+                    {(!courseProgress || courseProgress.length === 0) ? (
+                      <div className="empty-state small">
+                        <p>{text.noEnrollments}</p>
+                      </div>
+                    ) : (
+                      <table className="data-table enrollments-table">
+                        <thead>
+                          <tr>
+                            <th>{text.name}</th>
+                            <th>{text.progress}</th>
+                            <th>{text.status}</th>
+                            <th>{text.lastAccess}</th>
+                            <th>{text.quizScore}</th>
+                            <th>{text.warnings}</th>
+                            <th>{text.actions}</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {courseProgress.map(enrollment => (
+                            <tr key={enrollment.enrollmentId} className={enrollment.warningsSent > 0 ? 'warning-row' : ''}>
+                              <td>
+                                <div className="name-cell">
+                                  <span>{enrollment.eliteUser?.firstName} {enrollment.eliteUser?.lastName}</span>
+                                  <small>{enrollment.eliteUser?.uniqueId}</small>
+                                </div>
+                              </td>
+                              <td>
+                                <div className="progress-cell">
+                                  <div className="mini-progress-bar">
+                                    <div className="mini-progress-fill" style={{ width: `${enrollment.progressPercent}%` }}></div>
+                                  </div>
+                                  <span>{enrollment.progressPercent}%</span>
+                                </div>
+                              </td>
+                              <td>
+                                <span className={`status-badge status-${enrollment.status}`}>
+                                  {text[enrollment.status === 'in_progress' ? 'inProgressStatus' : enrollment.status === 'completed' ? 'completedStatus' : enrollment.status] || enrollment.status}
+                                </span>
+                              </td>
+                              <td>{enrollment.lastAccessedAt ? formatDate(enrollment.lastAccessedAt) : '-'}</td>
+                              <td>{enrollment.quizScore != null ? `${Math.round(enrollment.quizScore)}%` : '-'}</td>
+                              <td>
+                                {enrollment.warningsSent > 0 && (
+                                  <span className="warning-count">{enrollment.warningsSent}</span>
+                                )}
+                              </td>
+                              <td>
+                                <button className="action-btn delete" onClick={() => {
+                                  if (window.confirm(isRTL ? 'إزالة التسجيل؟' : 'Remove enrollment?')) handleRemoveEnrollment(enrollment.enrollmentId);
+                                }}>
+                                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                    <polyline points="3 6 5 6 21 6"/>
+                                    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+                                  </svg>
+                                </button>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    )}
+                  </div>
+                )}
+
+                {/* Quiz Sub-tab */}
+                {courseDetailView === 'quiz' && (
+                  <div className="quiz-panel">
+                    <div className="panel-header">
+                      <h4>{text.courseQuiz}</h4>
+                      <button className="create-btn small" onClick={() => {
+                        const existingQuiz = selectedCourse.quiz;
+                        if (existingQuiz) {
+                          setQuizForm({
+                            title: existingQuiz.title,
+                            description: existingQuiz.description || '',
+                            timeLimit: existingQuiz.timeLimit || '',
+                            maxAttempts: existingQuiz.maxAttempts || 1,
+                            questions: existingQuiz.questions || []
+                          });
+                        } else {
+                          setQuizForm({ title: '', description: '', timeLimit: '', maxAttempts: 1, questions: [] });
+                        }
+                        setShowQuizModal(true);
+                      }}>
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                          <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                          <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                        </svg>
+                        {selectedCourse.quiz ? (isRTL ? 'تعديل الاختبار' : 'Edit Quiz') : text.createQuiz}
+                      </button>
+                    </div>
+                    {!selectedCourse.quiz ? (
+                      <div className="empty-state small">
+                        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                          <circle cx="12" cy="12" r="10"/>
+                          <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/>
+                          <line x1="12" y1="17" x2="12.01" y2="17"/>
+                        </svg>
+                        <p>{text.noQuiz}</p>
+                      </div>
+                    ) : (
+                      <div className="quiz-info">
+                        <h5>{selectedCourse.quiz.title}</h5>
+                        <p>{selectedCourse.quiz.description}</p>
+                        <div className="quiz-stats">
+                          <span>{selectedCourse.quiz.questions?.length || 0} {isRTL ? 'سؤال' : 'questions'}</span>
+                          {selectedCourse.quiz.timeLimit && <span>{selectedCourse.quiz.timeLimit} {isRTL ? 'دقيقة' : 'min'}</span>}
+                          <span>{text.maxAttempts}: {selectedCourse.quiz.maxAttempts}</span>
+                        </div>
+                        {selectedCourse.quiz.questions?.map((q, i) => (
+                          <div key={q.questionId || i} className="quiz-question-preview">
+                            <span className="q-number">{i + 1}</span>
+                            <div className="q-content">
+                              <span className={`q-type-badge ${q.type}`}>{text[q.type]}</span>
+                              <p>{q.questionText}</p>
+                              {q.type === 'mcq' && q.options && (
+                                <div className="q-options">
+                                  {q.options.map((opt, oi) => (
+                                    <span key={oi} className={`q-option ${opt.isCorrect ? 'correct' : ''}`}>
+                                      {opt.label}. {opt.text}
+                                    </span>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                            <span className="q-points">{q.points} {text.points}</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
             )}
           </motion.div>
         )}
@@ -2818,6 +3584,253 @@ const EliteDashboard = () => {
                 <button className="btn-close" onClick={() => setShowScheduleModal(null)}>
                   {text.cancel}
                 </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Course Modal */}
+      <AnimatePresence>
+        {showCourseModal && (
+          <motion.div className="modal-overlay" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setShowCourseModal(null)}>
+            <motion.div className="modal-content" initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }} onClick={e => e.stopPropagation()}>
+              <div className="modal-header">
+                <h2>{showCourseModal === 'create' ? text.createCourse : (isRTL ? 'تعديل الدورة' : 'Edit Course')}</h2>
+                <button className="close-btn" onClick={() => setShowCourseModal(null)}>
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                </button>
+              </div>
+              <div className="modal-body">
+                <div className="form-group">
+                  <label>{text.courseTitle} *</label>
+                  <input value={courseForm.title} onChange={e => setCourseForm(p => ({ ...p, title: e.target.value }))} />
+                </div>
+                <div className="form-group">
+                  <label>{text.courseDescription}</label>
+                  <textarea value={courseForm.description} onChange={e => setCourseForm(p => ({ ...p, description: e.target.value }))} rows={3} />
+                </div>
+                <div className="form-row">
+                  <div className="form-group">
+                    <label>{text.courseStartDate} *</label>
+                    <input type="date" value={courseForm.startDate} onChange={e => setCourseForm(p => ({ ...p, startDate: e.target.value }))} />
+                  </div>
+                  <div className="form-group">
+                    <label>{text.courseEndDate} *</label>
+                    <input type="date" value={courseForm.endDate} onChange={e => setCourseForm(p => ({ ...p, endDate: e.target.value }))} />
+                  </div>
+                </div>
+                <div className="form-row">
+                  <div className="form-group">
+                    <label>{text.inactivityDays}</label>
+                    <input type="number" min="1" value={courseForm.inactivityDays} onChange={e => setCourseForm(p => ({ ...p, inactivityDays: parseInt(e.target.value) || 7 }))} />
+                  </div>
+                  <div className="form-group">
+                    <label>{text.passingScore}</label>
+                    <input type="number" min="0" max="100" value={courseForm.passingScore} onChange={e => setCourseForm(p => ({ ...p, passingScore: parseInt(e.target.value) || 60 }))} />
+                  </div>
+                </div>
+              </div>
+              <div className="modal-footer">
+                <button className="btn-save" onClick={showCourseModal === 'create' ? handleCreateCourse : handleUpdateCourse}>
+                  {showCourseModal === 'create' ? text.createCourse : (isRTL ? 'حفظ التغييرات' : 'Save Changes')}
+                </button>
+                <button className="btn-close" onClick={() => setShowCourseModal(null)}>{text.close}</button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Lesson Modal */}
+      <AnimatePresence>
+        {showLessonModal && (
+          <motion.div className="modal-overlay" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setShowLessonModal(null)}>
+            <motion.div className="modal-content lesson-modal" initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }} onClick={e => e.stopPropagation()}>
+              <div className="modal-header">
+                <h2>{showLessonModal === 'create' ? text.addLesson : (isRTL ? 'تعديل الدرس' : 'Edit Lesson')}</h2>
+                <button className="close-btn" onClick={() => setShowLessonModal(null)}>
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                </button>
+              </div>
+              <div className="modal-body">
+                <div className="form-group">
+                  <label>{text.lessonTitle} *</label>
+                  <input value={lessonForm.title} onChange={e => setLessonForm(p => ({ ...p, title: e.target.value }))} />
+                </div>
+                <div className="form-group">
+                  <label>{text.lessonDescription}</label>
+                  <textarea value={lessonForm.description} onChange={e => setLessonForm(p => ({ ...p, description: e.target.value }))} rows={2} />
+                </div>
+                <div className="materials-section">
+                  <div className="materials-header">
+                    <label>{text.materials}</label>
+                    <button className="add-material-btn" onClick={addMaterialToLesson}>+ {text.addMaterial}</button>
+                  </div>
+                  {lessonForm.materials.map((mat, i) => (
+                    <div key={i} className="material-item">
+                      <select value={mat.type} onChange={e => updateMaterial(i, 'type', e.target.value)}>
+                        <option value="video">{text.video}</option>
+                        <option value="image">{text.image}</option>
+                        <option value="file">{text.file}</option>
+                        <option value="url">{text.url}</option>
+                      </select>
+                      <input placeholder={text.materialTitle} value={mat.title} onChange={e => updateMaterial(i, 'title', e.target.value)} />
+                      <input placeholder={text.materialUrl} value={mat.url} onChange={e => updateMaterial(i, 'url', e.target.value)} />
+                      <button className="remove-material-btn" onClick={() => removeMaterial(i)}>×</button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+              <div className="modal-footer">
+                <button className="btn-save" onClick={showLessonModal === 'create' ? handleAddLesson : () => handleUpdateLesson(showLessonModal)}>
+                  {showLessonModal === 'create' ? text.addLesson : (isRTL ? 'حفظ' : 'Save')}
+                </button>
+                <button className="btn-close" onClick={() => setShowLessonModal(null)}>{text.close}</button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Enroll Users Modal */}
+      <AnimatePresence>
+        {showEnrollModal && (
+          <motion.div className="modal-overlay" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setShowEnrollModal(false)}>
+            <motion.div className="modal-content" initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }} onClick={e => e.stopPropagation()}>
+              <div className="modal-header">
+                <h2>{text.enrollUsers}</h2>
+                <button className="close-btn" onClick={() => setShowEnrollModal(false)}>
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                </button>
+              </div>
+              <div className="modal-body">
+                <p style={{ marginBottom: 12, color: '#666', fontSize: 14 }}>{text.selectMembers}</p>
+                <div className="enroll-user-list">
+                  {users.filter(u => u.status === 'active' && !selectedCourse?.enrollments?.find(e => e.eliteId === u.eliteId)).map(user => (
+                    <label key={user.eliteId} className={`enroll-user-item ${enrollSelectedUsers.includes(user.eliteId) ? 'selected' : ''}`}>
+                      <input
+                        type="checkbox"
+                        checked={enrollSelectedUsers.includes(user.eliteId)}
+                        onChange={e => {
+                          if (e.target.checked) setEnrollSelectedUsers(p => [...p, user.eliteId]);
+                          else setEnrollSelectedUsers(p => p.filter(id => id !== user.eliteId));
+                        }}
+                      />
+                      <span>{user.firstName} {user.lastName}</span>
+                      <small>{user.uniqueId}</small>
+                    </label>
+                  ))}
+                </div>
+              </div>
+              <div className="modal-footer">
+                <button className="btn-save" onClick={handleEnrollUsers}>
+                  {text.enrollUsers} ({enrollSelectedUsers.length})
+                </button>
+                <button className="btn-close" onClick={() => setShowEnrollModal(false)}>{text.close}</button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Quiz Builder Modal */}
+      <AnimatePresence>
+        {showQuizModal && (
+          <motion.div className="modal-overlay" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setShowQuizModal(false)}>
+            <motion.div className="modal-content quiz-modal" initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }} onClick={e => e.stopPropagation()}>
+              <div className="modal-header">
+                <h2>{text.createQuiz}</h2>
+                <button className="close-btn" onClick={() => setShowQuizModal(false)}>
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                </button>
+              </div>
+              <div className="modal-body quiz-builder">
+                <div className="form-group">
+                  <label>{text.quizTitle} *</label>
+                  <input value={quizForm.title} onChange={e => setQuizForm(p => ({ ...p, title: e.target.value }))} />
+                </div>
+                <div className="form-row">
+                  <div className="form-group">
+                    <label>{text.timeLimit}</label>
+                    <input type="number" min="0" value={quizForm.timeLimit} onChange={e => setQuizForm(p => ({ ...p, timeLimit: e.target.value ? parseInt(e.target.value) : '' }))} />
+                  </div>
+                  <div className="form-group">
+                    <label>{text.maxAttempts}</label>
+                    <input type="number" min="1" value={quizForm.maxAttempts} onChange={e => setQuizForm(p => ({ ...p, maxAttempts: parseInt(e.target.value) || 1 }))} />
+                  </div>
+                </div>
+
+                <div className="questions-section">
+                  <div className="questions-header">
+                    <h4>{isRTL ? 'الأسئلة' : 'Questions'} ({quizForm.questions.length})</h4>
+                    <button className="add-material-btn" onClick={addQuizQuestion}>+ {text.addQuestion}</button>
+                  </div>
+
+                  {quizForm.questions.map((q, qi) => (
+                    <div key={qi} className="question-builder">
+                      <div className="question-builder-header">
+                        <span>{isRTL ? 'سؤال' : 'Q'} {qi + 1}</span>
+                        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                          <select value={q.type} onChange={e => updateQuizQuestion(qi, 'type', e.target.value)}>
+                            <option value="mcq">{text.mcq}</option>
+                            <option value="written">{text.written}</option>
+                          </select>
+                          <input type="number" min="1" value={q.points} onChange={e => updateQuizQuestion(qi, 'points', parseInt(e.target.value) || 1)} style={{ width: 60 }} placeholder={text.points} />
+                          <button className="remove-material-btn" onClick={() => removeQuizQuestion(qi)}>×</button>
+                        </div>
+                      </div>
+                      <textarea
+                        placeholder={text.questionText}
+                        value={q.questionText}
+                        onChange={e => updateQuizQuestion(qi, 'questionText', e.target.value)}
+                        rows={2}
+                      />
+                      {q.type === 'mcq' && (
+                        <div className="mcq-options">
+                          {(q.options || []).map((opt, oi) => (
+                            <div key={oi} className="mcq-option">
+                              <input
+                                type="radio"
+                                name={`correct-${qi}`}
+                                checked={opt.isCorrect}
+                                onChange={() => {
+                                  const newOptions = q.options.map((o, i) => ({ ...o, isCorrect: i === oi }));
+                                  updateQuizQuestion(qi, 'options', newOptions);
+                                }}
+                              />
+                              <span className="option-label">{opt.label}</span>
+                              <input
+                                placeholder={`${isRTL ? 'الخيار' : 'Option'} ${opt.label}`}
+                                value={opt.text}
+                                onChange={e => {
+                                  const newOptions = [...q.options];
+                                  newOptions[oi] = { ...newOptions[oi], text: e.target.value };
+                                  updateQuizQuestion(qi, 'options', newOptions);
+                                }}
+                              />
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                      {q.type === 'written' && (
+                        <div className="form-group" style={{ marginTop: 8 }}>
+                          <label>{text.correctAnswer} ({isRTL ? 'نموذجي' : 'sample'})</label>
+                          <textarea
+                            value={q.correctAnswer || ''}
+                            onChange={e => updateQuizQuestion(qi, 'correctAnswer', e.target.value)}
+                            rows={2}
+                            placeholder={isRTL ? 'الإجابة النموذجية للمراجعة' : 'Sample answer for review'}
+                          />
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+              <div className="modal-footer">
+                <button className="btn-save" onClick={handleSaveQuiz}>{text.saveQuiz}</button>
+                <button className="btn-close" onClick={() => setShowQuizModal(false)}>{text.close}</button>
               </div>
             </motion.div>
           </motion.div>

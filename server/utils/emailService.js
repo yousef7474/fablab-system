@@ -678,11 +678,53 @@ const sendTaskReminderEmail = async (employeeEmail, employeeName, taskTitle, tas
   }
 };
 
+const sendCourseInactivityWarning = async (userEmail, userName, courseTitle, inactivityDays, progressPercent) => {
+  const msg = {
+    to: userEmail,
+    from: {
+      email: process.env.SENDGRID_FROM_EMAIL || 'noreply@fablab.com',
+      name: 'FABLAB Al-Ahsa'
+    },
+    subject: `تنبيه: لم يتم الدخول للدورة - ${courseTitle}`,
+    html: `
+      <div dir="rtl" style="font-family: 'Segoe UI', Tahoma, sans-serif; max-width: 600px; margin: 0 auto; background: #fff; border-radius: 12px; overflow: hidden; border: 1px solid #e5e7eb;">
+        <div style="background: linear-gradient(135deg, #064e3b, #059669); padding: 24px; text-align: center;">
+          <h1 style="color: white; margin: 0; font-size: 22px;">FABLAB Al-Ahsa</h1>
+          <p style="color: rgba(255,255,255,0.85); margin: 6px 0 0; font-size: 14px;">تنبيه عدم نشاط في الدورة</p>
+        </div>
+        <div style="padding: 28px;">
+          <p style="font-size: 16px; color: #111;">مرحباً ${userName}،</p>
+          <p style="font-size: 14px; color: #444; line-height: 1.7;">
+            نلاحظ أنك لم تدخل إلى الدورة <strong style="color: #059669;">"${courseTitle}"</strong> منذ أكثر من <strong>${inactivityDays} أيام</strong>.
+          </p>
+          <div style="background: #fef3c7; border: 1px solid #fbbf24; border-radius: 8px; padding: 14px; margin: 16px 0;">
+            <p style="margin: 0; font-size: 13px; color: #92400e;">
+              ⚠️ تقدمك الحالي: <strong>${progressPercent}%</strong> — يرجى متابعة الدورة لإكمالها في الوقت المحدد.
+            </p>
+          </div>
+          <p style="font-size: 14px; color: #444;">نتمنى لك التوفيق في استكمال الدورة.</p>
+          <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 20px 0;">
+          <p style="font-size: 12px; color: #9ca3af; text-align: center;">FABLAB Al-Ahsa — برنامج النخبة</p>
+        </div>
+      </div>
+    `
+  };
+
+  try {
+    await sgMail.send(msg);
+    console.log(`✅ Course inactivity warning sent to ${userEmail}`);
+  } catch (error) {
+    console.error(`❌ Error sending course warning to ${userEmail}:`, error);
+    throw error;
+  }
+};
+
 module.exports = {
   sendRegistrationConfirmation,
   sendEngineerNotification,
   sendStatusUpdateEmail,
   sendCustomEmail,
   sendTaskRatingEmail,
-  sendTaskReminderEmail
+  sendTaskReminderEmail,
+  sendCourseInactivityWarning
 };

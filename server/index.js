@@ -20,6 +20,7 @@ const borrowingRoutes = require('./routes/borrowingRoutes');
 const educationRoutes = require('./routes/educationRoutes');
 const { startBorrowingScheduler } = require('./utils/borrowingScheduler');
 const { startTaskReminderScheduler } = require('./utils/taskReminderScheduler');
+const { startEliteCourseScheduler } = require('./utils/eliteCourseScheduler');
 
 const app = express();
 
@@ -109,6 +110,7 @@ const startServer = async () => {
     // Start schedulers
     startBorrowingScheduler();
     startTaskReminderScheduler();
+    startEliteCourseScheduler();
 
     // Start listening
     app.listen(PORT, () => {

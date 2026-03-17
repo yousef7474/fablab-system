@@ -5,6 +5,7 @@ const eliteRatingController = require('../controllers/eliteRatingController');
 const eliteTaskController = require('../controllers/eliteTaskController');
 const eliteWorkController = require('../controllers/eliteWorkController');
 const eliteScheduleController = require('../controllers/eliteScheduleController');
+const eliteCourseController = require('../controllers/eliteCourseController');
 
 // Public routes
 router.post('/register', eliteController.register);
@@ -60,5 +61,38 @@ router.post('/schedules', eliteScheduleController.createSchedule);
 router.put('/schedules/:scheduleId', eliteScheduleController.updateSchedule);
 router.patch('/schedules/:scheduleId/status', eliteScheduleController.updateScheduleStatus);
 router.delete('/schedules/:scheduleId', eliteScheduleController.deleteSchedule);
+
+// Course routes (Admin)
+router.get('/courses', eliteCourseController.getAllCourses);
+router.get('/courses/:courseId', eliteCourseController.getCourseById);
+router.post('/courses', eliteCourseController.createCourse);
+router.put('/courses/:courseId', eliteCourseController.updateCourse);
+router.patch('/courses/:courseId/status', eliteCourseController.updateCourseStatus);
+router.delete('/courses/:courseId', eliteCourseController.deleteCourse);
+
+// Lesson routes
+router.post('/courses/:courseId/lessons', eliteCourseController.addLesson);
+router.put('/courses/:courseId/lessons/:lessonId', eliteCourseController.updateLesson);
+router.delete('/courses/:courseId/lessons/:lessonId', eliteCourseController.deleteLesson);
+router.patch('/courses/:courseId/lessons/reorder', eliteCourseController.reorderLessons);
+
+// Enrollment routes
+router.post('/courses/:courseId/enroll', eliteCourseController.enrollUsers);
+router.delete('/courses/:courseId/enrollments/:enrollmentId', eliteCourseController.removeEnrollment);
+router.get('/courses/:courseId/progress', eliteCourseController.getCourseProgress);
+
+// Quiz routes (Admin)
+router.put('/courses/:courseId/quiz', eliteCourseController.createOrUpdateQuiz);
+router.get('/courses/:courseId/quiz', eliteCourseController.getQuizDetails);
+router.patch('/courses/:courseId/quiz/attempts/:attemptId/grade', eliteCourseController.gradeWrittenAnswers);
+
+// User-facing course routes
+router.get('/my-courses', eliteCourseController.getMyCourses);
+router.get('/my-courses/:courseId', eliteCourseController.getCourseDetail);
+router.post('/my-courses/:courseId/lessons/:lessonId/access', eliteCourseController.accessLesson);
+router.patch('/my-courses/:courseId/lessons/:lessonId/complete', eliteCourseController.markLessonComplete);
+router.post('/my-courses/:courseId/quiz/start', eliteCourseController.startQuiz);
+router.post('/my-courses/:courseId/quiz/submit', eliteCourseController.submitQuiz);
+router.get('/my-courses/:courseId/quiz/result', eliteCourseController.getQuizResult);
 
 module.exports = router;
