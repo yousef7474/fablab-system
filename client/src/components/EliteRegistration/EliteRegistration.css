@@ -1327,6 +1327,25 @@
   display: none;
 }
 
+.elite-account-page .elite-language-switch {
+  background: rgba(0, 0, 0, 0.06);
+  border-color: rgba(0, 0, 0, 0.1);
+}
+
+.elite-account-page .elite-language-switch .lang-btn {
+  color: var(--elite-text-secondary);
+}
+
+.elite-account-page .elite-language-switch .lang-btn:hover {
+  background: rgba(0, 0, 0, 0.06);
+  color: var(--elite-text);
+}
+
+.elite-account-page .elite-language-switch .lang-btn.active {
+  background: var(--elite-emerald);
+  color: white;
+}
+
 .elite-account-container {
   display: flex;
   gap: 24px;
