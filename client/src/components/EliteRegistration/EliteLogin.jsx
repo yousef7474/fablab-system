@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { toast } from 'react-toastify';
 import api from '../../config/api';
@@ -219,12 +219,6 @@ const EliteLogin = () => {
             </div>
           </form>
 
-          <div className="elite-login-links">
-            <p>{text.noAccount}</p>
-            <Link to="/elite-registration" className="elite-link">
-              {text.createAccount}
-            </Link>
-          </div>
         </motion.div>
 
         {/* Back to Home */}
