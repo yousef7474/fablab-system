@@ -1018,7 +1018,7 @@ const AdminDashboard = () => {
             z-index: 1;
           }
           .banner-logos img {
-            height: 50px;
+            height: 70px;
             filter: brightness(0) invert(1);
           }
           .logo-divider {
@@ -1192,6 +1192,7 @@ const AdminDashboard = () => {
           }
           .duration-arrow svg {
             color: #3b82f6;
+            ${isRTL ? 'transform: scaleX(-1);' : ''}
           }
           .banner-footer {
             position: absolute;
@@ -4182,7 +4183,6 @@ const AdminDashboard = () => {
 
         {/* Content Area */}
         <div className="admin-content">
-          <AnimatePresence>
             {/* Dashboard Tab */}
             {activeTab === 'dashboard' && (
               <motion.div
@@ -7421,7 +7421,6 @@ const AdminDashboard = () => {
                 </div>
               </motion.div>
             )}
-          </AnimatePresence>
         </div>
       </main>
 

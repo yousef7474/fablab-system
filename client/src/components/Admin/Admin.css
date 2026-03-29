@@ -1223,6 +1223,7 @@
 .admin-content {
   padding: 1.5rem;
   min-height: calc(100vh - 72px);
+  overflow: hidden;
 }
 
 /* ========== Dashboard ========== */
