@@ -3200,7 +3200,7 @@ const ManagerDashboard = () => {
 
           /* Top decorative header */
           .banner-top {
-            height: 85mm;
+            height: 65mm;
             background: linear-gradient(135deg, #1a56db 0%, #1e40af 40%, #3b82f6 100%);
             position: relative;
             display: flex;
@@ -3208,6 +3208,7 @@ const ManagerDashboard = () => {
             align-items: center;
             justify-content: center;
             overflow: hidden;
+            padding-bottom: 10mm;
           }
           .banner-top::before {
             content: '';
@@ -3269,7 +3270,7 @@ const ManagerDashboard = () => {
           .table-hero {
             position: relative;
             z-index: 2;
-            margin-top: -28mm;
+            margin-top: -26mm;
             display: flex;
             flex-direction: column;
             align-items: center;
@@ -3449,9 +3450,9 @@ const ManagerDashboard = () => {
           /* Decorative side stripes */
           .side-stripe {
             position: absolute;
-            top: 85mm;
+            top: 65mm;
             width: 4px;
-            height: calc(100% - 85mm - 18mm);
+            height: calc(100% - 65mm - 18mm);
             z-index: 1;
           }
           .side-stripe.left { left: 6mm; }

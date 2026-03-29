@@ -205,7 +205,7 @@ const AdminDashboard = () => {
   const [showWorkspaceRatingModal, setShowWorkspaceRatingModal] = useState(false);
   const [selectedWorkspace, setSelectedWorkspace] = useState(null);
   const [workspaceLoading, setWorkspaceLoading] = useState(false);
-  const [workspaceForm, setWorkspaceForm] = useState({ tableNumber: '', numberOfUsers: 1, personName: '', personPhone: '', personEmail: '', startDate: '', startTime: '', endDate: '', endTime: '', photoBefore: '', notes: '' });
+  const [workspaceForm, setWorkspaceForm] = useState({ tableNumber: '', projectName: '', numberOfUsers: 1, personName: '', personPhone: '', personEmail: '', startDate: '', startTime: '', endDate: '', endTime: '', photoBefore: '', notes: '' });
   const [workspaceRatingForm, setWorkspaceRatingForm] = useState({ type: 'award', points: 1, criteria: '', notes: '', ratingDate: new Date().toISOString().split('T')[0], photoAfter: '' });
 
   const workspaceCriteriaOptions = [
@@ -721,7 +721,7 @@ const AdminDashboard = () => {
       fetchWorkspaces();
       fetchWorkspaceStats();
       setShowWorkspaceModal(false);
-      setWorkspaceForm({ tableNumber: '', numberOfUsers: 1, personName: '', personPhone: '', personEmail: '', startDate: '', startTime: '', endDate: '', endTime: '', photoBefore: '', notes: '' });
+      setWorkspaceForm({ tableNumber: '', projectName: '', numberOfUsers: 1, personName: '', personPhone: '', personEmail: '', startDate: '', startTime: '', endDate: '', endTime: '', photoBefore: '', notes: '' });
     } catch (error) {
       toast.error(isRTL ? 'خطأ في إضافة مساحة العمل' : 'Error adding workspace');
     } finally {
@@ -772,7 +772,7 @@ const AdminDashboard = () => {
     if (workspace) {
       setSelectedWorkspace(workspace);
       setWorkspaceForm({
-        tableNumber: workspace.tableNumber || '', numberOfUsers: workspace.numberOfUsers || 1,
+        tableNumber: workspace.tableNumber || '', projectName: workspace.projectName || '', numberOfUsers: workspace.numberOfUsers || 1,
         personName: workspace.personName || '', personPhone: workspace.personPhone || '', personEmail: workspace.personEmail || '',
         startDate: workspace.startDate || '', startTime: workspace.startTime || '',
         endDate: workspace.endDate || '', endTime: workspace.endTime || '',
@@ -780,7 +780,7 @@ const AdminDashboard = () => {
       });
     } else {
       setSelectedWorkspace(null);
-      setWorkspaceForm({ tableNumber: '', numberOfUsers: 1, personName: '', personPhone: '', personEmail: '', startDate: '', startTime: '', endDate: '', endTime: '', photoBefore: '', notes: '' });
+      setWorkspaceForm({ tableNumber: '', projectName: '', numberOfUsers: 1, personName: '', personPhone: '', personEmail: '', startDate: '', startTime: '', endDate: '', endTime: '', photoBefore: '', notes: '' });
     }
     setShowWorkspaceModal(true);
   };
@@ -945,6 +945,443 @@ const AdminDashboard = () => {
     printWindow.document.close();
     printWindow.focus();
     setTimeout(() => { printWindow.print(); }, 250);
+  };
+
+  const handlePrintWorkspaceBanner = (workspace) => {
+    const printWindow = window.open('', '_blank');
+    const na = isRTL ? 'غير محدد' : 'N/A';
+    const startDateF = workspace.startDate ? format(parseISO(workspace.startDate), 'dd/MM/yyyy', { locale: isRTL ? ar : enUS }) : na;
+    const endDateF = workspace.endDate ? format(parseISO(workspace.endDate), 'dd/MM/yyyy', { locale: isRTL ? ar : enUS }) : na;
+    const startTimeF = workspace.startTime ? formatTimeAMPM(workspace.startTime) : '';
+    const endTimeF = workspace.endTime ? formatTimeAMPM(workspace.endTime) : '';
+
+    const bannerContent = `
+      <!DOCTYPE html>
+      <html dir="${isRTL ? 'rtl' : 'ltr'}" lang="${isRTL ? 'ar' : 'en'}">
+      <head>
+        <meta charset="UTF-8">
+        <title>${isRTL ? 'لافتة مساحة العمل' : 'Workspace Banner'}</title>
+        <style>
+          @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@300;400;500;600;700&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600;9..40,700&display=swap');
+          @page { size: A4; margin: 0; }
+          * { margin: 0; padding: 0; box-sizing: border-box; }
+          body {
+            font-family: 'DM Sans', 'IBM Plex Sans Arabic', 'Segoe UI', sans-serif;
+            background: #e8edf2;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 20px;
+          }
+          .banner-wrapper {
+            width: 210mm;
+            height: 297mm;
+            background: #ffffff;
+            position: relative;
+            overflow: hidden;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.15);
+          }
+          .banner-top {
+            height: 65mm;
+            background: linear-gradient(135deg, #1a56db 0%, #1e40af 40%, #3b82f6 100%);
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            padding-bottom: 10mm;
+          }
+          .banner-top::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: url("data:image/svg+xml,%3Csvg width='80' height='80' viewBox='0 0 80 80' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.05'%3E%3Cpath d='M50 50c0-5.523 4.477-10 10-10s10 4.477 10 10-4.477 10-10 10c0 5.523-4.477 10-10 10s-10-4.477-10-10 4.477-10 10-10zM10 10c0-5.523 4.477-10 10-10s10 4.477 10 10-4.477 10-10 10c0 5.523-4.477 10-10 10S0 25.523 0 20s4.477-10 10-10z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+          }
+          .banner-top::after {
+            content: '';
+            position: absolute;
+            bottom: -30px;
+            left: 0;
+            right: 0;
+            height: 60px;
+            background: white;
+            border-radius: 50% 50% 0 0;
+          }
+          .banner-logos {
+            display: flex;
+            align-items: center;
+            gap: 24px;
+            margin-bottom: 12px;
+            position: relative;
+            z-index: 1;
+          }
+          .banner-logos img {
+            height: 50px;
+            filter: brightness(0) invert(1);
+          }
+          .logo-divider {
+            width: 2px;
+            height: 40px;
+            background: rgba(255,255,255,0.3);
+            border-radius: 1px;
+          }
+          .banner-org-name {
+            color: white;
+            font-size: 14px;
+            font-weight: 400;
+            letter-spacing: 1px;
+            opacity: 0.85;
+            position: relative;
+            z-index: 1;
+            margin-bottom: 6px;
+          }
+          .banner-title {
+            color: white;
+            font-size: 32px;
+            font-weight: 700;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            position: relative;
+            z-index: 1;
+          }
+          .table-hero {
+            position: relative;
+            z-index: 2;
+            margin-top: -26mm;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+          }
+          .table-number-circle {
+            width: 44mm;
+            height: 44mm;
+            border-radius: 50%;
+            background: linear-gradient(145deg, #1a56db, #2563eb);
+            box-shadow: 0 8px 32px rgba(26,86,219,0.35), 0 0 0 6px white, 0 0 0 8px rgba(26,86,219,0.15);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            color: white;
+          }
+          .table-label {
+            font-size: 11px;
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            opacity: 0.8;
+          }
+          .table-value {
+            font-size: 48px;
+            font-weight: 800;
+            line-height: 1;
+            margin-top: 2px;
+          }
+          .project-section {
+            text-align: center;
+            margin-top: 8mm;
+            padding: 0 20mm;
+          }
+          .project-label {
+            font-size: 11px;
+            color: #6b7280;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            font-weight: 600;
+            margin-bottom: 4px;
+          }
+          .project-name {
+            font-size: 24px;
+            font-weight: 700;
+            color: #111827;
+            line-height: 1.3;
+          }
+          .info-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 5mm;
+            padding: 10mm 15mm 0;
+          }
+          .info-card {
+            background: #f8fafc;
+            border: 1.5px solid #e2e8f0;
+            border-radius: 12px;
+            padding: 14px 16px;
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+          }
+          .info-card.full-width {
+            grid-column: 1 / -1;
+          }
+          .info-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 10px;
+            background: linear-gradient(135deg, #dbeafe, #bfdbfe);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            color: #1a56db;
+          }
+          .info-details {
+            flex: 1;
+            min-width: 0;
+          }
+          .info-card-label {
+            font-size: 10px;
+            color: #6b7280;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            font-weight: 600;
+            margin-bottom: 3px;
+          }
+          .info-card-value {
+            font-size: 16px;
+            font-weight: 600;
+            color: #111827;
+            word-break: break-word;
+          }
+          .duration-section {
+            margin: 8mm 15mm 0;
+            background: linear-gradient(135deg, #eff6ff, #dbeafe);
+            border: 1.5px solid #bfdbfe;
+            border-radius: 14px;
+            padding: 16px 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 20px;
+          }
+          .duration-block {
+            text-align: center;
+            flex: 1;
+          }
+          .duration-label {
+            font-size: 10px;
+            color: #3b82f6;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            font-weight: 700;
+            margin-bottom: 4px;
+          }
+          .duration-date {
+            font-size: 17px;
+            font-weight: 700;
+            color: #1e40af;
+          }
+          .duration-time {
+            font-size: 13px;
+            color: #3b82f6;
+            font-weight: 500;
+            margin-top: 2px;
+          }
+          .duration-arrow {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+            flex-shrink: 0;
+          }
+          .duration-arrow svg {
+            color: #3b82f6;
+          }
+          .banner-footer {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 18mm;
+            background: linear-gradient(135deg, #1a56db 0%, #1e40af 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+          }
+          .footer-dot {
+            width: 5px;
+            height: 5px;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.4);
+          }
+          .footer-text {
+            color: rgba(255,255,255,0.75);
+            font-size: 11px;
+            font-weight: 500;
+            letter-spacing: 1px;
+          }
+          .side-stripe {
+            position: absolute;
+            top: 65mm;
+            width: 4px;
+            height: calc(100% - 65mm - 18mm);
+            z-index: 1;
+          }
+          .side-stripe.left { left: 6mm; }
+          .side-stripe.right { right: 6mm; }
+          .side-stripe::before {
+            content: '';
+            position: absolute;
+            top: 10%;
+            width: 100%;
+            height: 80%;
+            background: linear-gradient(to bottom, transparent, #3b82f6 30%, #3b82f6 70%, transparent);
+            border-radius: 2px;
+            opacity: 0.12;
+          }
+          .print-btn {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            background: linear-gradient(135deg, #1a56db, #1e40af);
+            color: white;
+            border: none;
+            padding: 14px 32px;
+            border-radius: 12px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            box-shadow: 0 4px 16px rgba(26,86,219,0.35);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            z-index: 999;
+            font-family: 'DM Sans', 'IBM Plex Sans Arabic', sans-serif;
+          }
+          .print-btn:hover { transform: translateY(-2px); box-shadow: 0 6px 24px rgba(26,86,219,0.45); }
+          @media print {
+            body { background: none; padding: 0; min-height: auto; }
+            .banner-wrapper { box-shadow: none; margin: 0; }
+            .print-btn { display: none; }
+          }
+        </style>
+      </head>
+      <body>
+        <div class="banner-wrapper">
+          <div class="banner-top">
+            <div class="banner-logos">
+              <img src="/fablab.png" alt="FABLAB" />
+              <div class="logo-divider"></div>
+              <img src="/found.png" alt="Foundation" />
+            </div>
+            <div class="banner-org-name">${isRTL ? 'مؤسسة عبدالمنعم الراشد الإنسانية' : 'Abdulmonem Al-Rashed Humanitarian Foundation'}</div>
+            <div class="banner-title">${isRTL ? 'فاب لاب الأحساء' : 'FABLAB AL-AHSA'}</div>
+          </div>
+          <div class="side-stripe left"></div>
+          <div class="side-stripe right"></div>
+          <div class="table-hero">
+            <div class="table-number-circle">
+              <span class="table-label">${isRTL ? 'طاولة' : 'TABLE'}</span>
+              <span class="table-value">${workspace.tableNumber}</span>
+            </div>
+          </div>
+          ${workspace.projectName ? `
+          <div class="project-section">
+            <div class="project-label">${isRTL ? 'المشروع' : 'PROJECT'}</div>
+            <div class="project-name">${workspace.projectName}</div>
+          </div>
+          ` : ''}
+          <div class="info-grid">
+            <div class="info-card">
+              <div class="info-icon">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+                  <circle cx="12" cy="7" r="4"/>
+                </svg>
+              </div>
+              <div class="info-details">
+                <div class="info-card-label">${isRTL ? 'المسؤول / قائد المجموعة' : 'GROUP LEADER'}</div>
+                <div class="info-card-value">${workspace.personName}</div>
+              </div>
+            </div>
+            <div class="info-card">
+              <div class="info-icon">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                  <circle cx="9" cy="7" r="4"/>
+                  <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+                  <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+                </svg>
+              </div>
+              <div class="info-details">
+                <div class="info-card-label">${isRTL ? 'عدد الأفراد' : 'NUMBER OF PEOPLE'}</div>
+                <div class="info-card-value">${workspace.numberOfUsers} ${isRTL ? 'شخص' : 'Person(s)'}</div>
+              </div>
+            </div>
+            ${workspace.personPhone ? `
+            <div class="info-card">
+              <div class="info-icon">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/>
+                </svg>
+              </div>
+              <div class="info-details">
+                <div class="info-card-label">${isRTL ? 'رقم الهاتف' : 'PHONE NUMBER'}</div>
+                <div class="info-card-value" dir="ltr">${workspace.personPhone}</div>
+              </div>
+            </div>
+            ` : ''}
+            ${workspace.personEmail ? `
+            <div class="info-card">
+              <div class="info-icon">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
+                  <polyline points="22,6 12,13 2,6"/>
+                </svg>
+              </div>
+              <div class="info-details">
+                <div class="info-card-label">${isRTL ? 'البريد الإلكتروني' : 'EMAIL'}</div>
+                <div class="info-card-value">${workspace.personEmail}</div>
+              </div>
+            </div>
+            ` : ''}
+          </div>
+          <div class="duration-section">
+            <div class="duration-block">
+              <div class="duration-label">${isRTL ? 'من' : 'FROM'}</div>
+              <div class="duration-date">${startDateF}</div>
+              <div class="duration-time">${startTimeF}</div>
+            </div>
+            <div class="duration-arrow">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                <line x1="5" y1="12" x2="19" y2="12"/>
+                <polyline points="12 5 19 12 12 19"/>
+              </svg>
+            </div>
+            <div class="duration-block">
+              <div class="duration-label">${isRTL ? 'إلى' : 'TO'}</div>
+              <div class="duration-date">${endDateF}</div>
+              <div class="duration-time">${endTimeF}</div>
+            </div>
+          </div>
+          <div class="banner-footer">
+            <div class="footer-dot"></div>
+            <span class="footer-text">${isRTL ? 'يرجى الحفاظ على نظافة وترتيب مساحة العمل' : 'Please keep the workspace clean and organized'}</span>
+            <div class="footer-dot"></div>
+          </div>
+        </div>
+        <button class="print-btn" onclick="window.print()">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="6 9 6 2 18 2 18 9"/>
+            <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/>
+            <rect x="6" y="14" width="12" height="8"/>
+          </svg>
+          ${isRTL ? 'طباعة اللافتة' : 'Print Banner'}
+        </button>
+      </body>
+      </html>
+    `;
+
+    printWindow.document.write(bannerContent);
+    printWindow.document.close();
+    printWindow.focus();
   };
 
   const handleLogout = () => {
@@ -6136,6 +6573,15 @@ const AdminDashboard = () => {
                         </div>
 
                         <div className="workspace-body">
+                          {workspace.projectName && (
+                            <div className="workspace-project-name">
+                              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/>
+                                <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/>
+                              </svg>
+                              <span>{workspace.projectName}</span>
+                            </div>
+                          )}
                           <div className="workspace-info">
                             <div className="info-row">
                               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -6207,6 +6653,9 @@ const AdminDashboard = () => {
                           <button className="action-btn complete" onClick={() => handlePrintWorkspaceIDCard(workspace)} title={isRTL ? 'طباعة البطاقة' : 'Print Card'} style={{ background: 'linear-gradient(135deg, #3b82f6, #1d4ed8)' }}>
                             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
                           </button>
+                          <button className="action-btn complete" onClick={() => handlePrintWorkspaceBanner(workspace)} title={isRTL ? 'طباعة اللافتة' : 'Print Banner'} style={{ background: 'linear-gradient(135deg, #8b5cf6, #6d28d9)' }}>
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+                          </button>
                         </div>
 
                         {/* Ratings List */}
@@ -6270,6 +6719,10 @@ const AdminDashboard = () => {
                           <label>{isRTL ? 'عدد المستخدمين' : 'Number of Users'}</label>
                           <input type="number" min="1" value={workspaceForm.numberOfUsers} onChange={(e) => setWorkspaceForm({ ...workspaceForm, numberOfUsers: parseInt(e.target.value) || 1 })} className="modern-input-field" />
                         </div>
+                      </div>
+                      <div className="form-group modern-input">
+                        <label>{isRTL ? 'اسم المشروع' : 'Project Name'}</label>
+                        <input type="text" value={workspaceForm.projectName} onChange={(e) => setWorkspaceForm({ ...workspaceForm, projectName: e.target.value })} placeholder={isRTL ? 'اسم المشروع أو الغرض' : 'Project name or purpose'} className="modern-input-field" />
                       </div>
                     </div>
                     <div className="form-section">
