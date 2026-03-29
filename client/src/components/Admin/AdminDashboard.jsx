@@ -983,15 +983,14 @@ const AdminDashboard = () => {
             box-shadow: 0 20px 60px rgba(0,0,0,0.15);
           }
           .banner-top {
-            height: 65mm;
+            height: 70mm;
             background: linear-gradient(135deg, #1a56db 0%, #1e40af 40%, #3b82f6 100%);
             position: relative;
             display: flex;
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            overflow: hidden;
-            padding-bottom: 10mm;
+            overflow: visible;
           }
           .banner-top::before {
             content: '';
@@ -999,33 +998,22 @@ const AdminDashboard = () => {
             inset: 0;
             background: url("data:image/svg+xml,%3Csvg width='80' height='80' viewBox='0 0 80 80' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.05'%3E%3Cpath d='M50 50c0-5.523 4.477-10 10-10s10 4.477 10 10-4.477 10-10 10c0 5.523-4.477 10-10 10s-10-4.477-10-10 4.477-10 10-10zM10 10c0-5.523 4.477-10 10-10s10 4.477 10 10-4.477 10-10 10c0 5.523-4.477 10-10 10S0 25.523 0 20s4.477-10 10-10z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
           }
-          .banner-top::after {
-            content: '';
+          .banner-logo-left {
             position: absolute;
-            bottom: -30px;
-            left: 0;
-            right: 0;
-            height: 60px;
-            background: white;
-            border-radius: 50% 50% 0 0;
-          }
-          .banner-logos {
-            display: flex;
-            align-items: center;
-            gap: 24px;
-            margin-bottom: 12px;
-            position: relative;
+            top: 12px;
+            left: 16px;
             z-index: 1;
           }
-          .banner-logos img {
+          .banner-logo-right {
+            position: absolute;
+            top: 12px;
+            right: 16px;
+            z-index: 1;
+          }
+          .banner-logo-left img,
+          .banner-logo-right img {
             height: 70px;
             filter: brightness(0) invert(1);
-          }
-          .logo-divider {
-            width: 2px;
-            height: 40px;
-            background: rgba(255,255,255,0.3);
-            border-radius: 1px;
           }
           .banner-org-name {
             color: white;
@@ -1036,6 +1024,7 @@ const AdminDashboard = () => {
             position: relative;
             z-index: 1;
             margin-bottom: 6px;
+            margin-top: 20px;
           }
           .banner-title {
             color: white;
@@ -1049,7 +1038,7 @@ const AdminDashboard = () => {
           .table-hero {
             position: relative;
             z-index: 2;
-            margin-top: -26mm;
+            margin-top: 8mm;
             display: flex;
             flex-direction: column;
             align-items: center;
@@ -1220,9 +1209,9 @@ const AdminDashboard = () => {
           }
           .side-stripe {
             position: absolute;
-            top: 65mm;
+            top: 70mm;
             width: 4px;
-            height: calc(100% - 65mm - 18mm);
+            height: calc(100% - 70mm - 18mm);
             z-index: 1;
           }
           .side-stripe.left { left: 6mm; }
@@ -1267,9 +1256,10 @@ const AdminDashboard = () => {
       <body>
         <div class="banner-wrapper">
           <div class="banner-top">
-            <div class="banner-logos">
+            <div class="banner-logo-left">
               <img src="/fablab.png" alt="FABLAB" />
-              <div class="logo-divider"></div>
+            </div>
+            <div class="banner-logo-right">
               <img src="/found.png" alt="Foundation" />
             </div>
             <div class="banner-org-name">${isRTL ? 'مؤسسة عبدالمنعم الراشد الإنسانية' : 'Abdulmonem Al-Rashed Humanitarian Foundation'}</div>
