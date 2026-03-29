@@ -4588,6 +4588,28 @@
   color: #991b1b;
 }
 
+[data-page="manager"] .workspace-project-name {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  background: linear-gradient(135deg, #eff6ff, #dbeafe);
+  border-radius: 8px;
+  border-left: 3px solid #3b82f6;
+  margin-bottom: 8px;
+}
+
+[data-page="manager"] .workspace-project-name svg {
+  color: #3b82f6;
+  flex-shrink: 0;
+}
+
+[data-page="manager"] .workspace-project-name span {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #1e40af;
+}
+
 [data-page="manager"] .workspace-notes {
   padding: 0.75rem;
   background: #fffbeb;

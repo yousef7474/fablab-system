@@ -11,6 +11,10 @@ const Workspace = sequelize.define('Workspace', {
     type: DataTypes.STRING,
     allowNull: false
   },
+  projectName: {
+    type: DataTypes.STRING,
+    allowNull: true
+  },
   numberOfUsers: {
     type: DataTypes.INTEGER,
     allowNull: false,
