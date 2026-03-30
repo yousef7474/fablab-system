@@ -156,6 +156,7 @@ const ManagerDashboard = () => {
   // Volunteer state
   const [volunteers, setVolunteers] = useState([]);
   const [groupedTasks, setGroupedTasks] = useState([]);
+  const [taskStatusFilter, setTaskStatusFilter] = useState('all');
   const [showVolunteerModal, setShowVolunteerModal] = useState(false);
   const [showOpportunityModal, setShowOpportunityModal] = useState(false);
   const [showVolunteerDetailModal, setShowVolunteerDetailModal] = useState(false);
@@ -940,18 +941,55 @@ const ManagerDashboard = () => {
   };
 
   const handleUpdateTask = async () => {
-    if (!taskForm.title || !taskForm.employeeId || !taskForm.dueDate) {
+    const hasValidEmployee = taskForm.selectAllEmployees || taskForm.employeeIds?.length > 0 || taskForm.employeeId;
+    if (!taskForm.title || !hasValidEmployee || !taskForm.dueDate) {
       toast.error(isRTL ? 'العنوان والموظف والتاريخ مطلوبة' : 'Title, employee, and date are required');
       return;
     }
 
     setTaskLoading(true);
     try {
-      await api.put(`/tasks/${selectedTask.id}`, taskForm);
-      toast.success(isRTL ? 'تم تحديث المهمة بنجاح' : 'Task updated successfully');
+      if (taskForm.selectAllEmployees || (taskForm.employeeIds && taskForm.employeeIds.length > 1)) {
+        // Reassigning to multiple employees: delete old task, create new ones
+        const employeeIds = taskForm.selectAllEmployees
+          ? employees.map(emp => emp.employeeId)
+          : taskForm.employeeIds;
+
+        await api.delete(`/tasks/${selectedTask.id}`);
+
+        const promises = employeeIds.map(empId => {
+          const employee = employees.find(e => e.employeeId === empId);
+          return api.post('/tasks', {
+            title: taskForm.title,
+            description: taskForm.description,
+            employeeId: empId,
+            dueDate: taskForm.dueDate,
+            dueDateEnd: taskForm.dueDateEnd || null,
+            dueTime: taskForm.dueTime,
+            dueTimeEnd: taskForm.dueTimeEnd || null,
+            blocksCalendar: taskForm.blocksCalendar,
+            priority: taskForm.priority,
+            section: employee?.section || taskForm.section,
+            notes: taskForm.notes
+          });
+        });
+        await Promise.all(promises);
+        toast.success(isRTL
+          ? `تم تحديث وتعيين المهمة لـ ${employeeIds.length} موظف`
+          : `Task updated and assigned to ${employeeIds.length} employee(s)`);
+      } else {
+        // Single employee update
+        const updateData = { ...taskForm };
+        delete updateData.selectAllEmployees;
+        delete updateData.employeeIds;
+        if (updateData.employeeId === 'all') delete updateData.employeeId;
+        await api.put(`/tasks/${selectedTask.id}`, updateData);
+        toast.success(isRTL ? 'تم تحديث المهمة بنجاح' : 'Task updated successfully');
+      }
       setShowTaskModal(false);
       resetTaskForm();
       fetchSchedule();
+      fetchGroupedTasks();
     } catch (error) {
       console.error('Error updating task:', error);
       toast.error(isRTL ? 'خطأ في تحديث المهمة' : 'Error updating task');
@@ -5083,11 +5121,11 @@ const ManagerDashboard = () => {
           </div>
         )}
 
-        {/* Tasks Content (Grouped by Status) */}
+        {/* Tasks Content with Filter Tabs */}
         {activeTab === 'tasks' && (
           <div className="tasks-content">
             <div className="volunteers-header">
-              <h2>{isRTL ? 'المهام المجموعة' : 'Grouped Assignments'}</h2>
+              <h2>{isRTL ? 'المهام' : 'Tasks'}</h2>
               <button className="add-task-btn" onClick={() => openCreateTaskModal()}>
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                   <line x1="12" y1="5" x2="12" y2="19"/>
@@ -5097,401 +5135,112 @@ const ManagerDashboard = () => {
               </button>
             </div>
 
-            {groupedTasks.length === 0 ? (
-              <div className="empty-state">
-                <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-                  <path d="M9 11l3 3L22 4"/>
-                  <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>
-                </svg>
-                <p>{isRTL ? 'لا توجد مهام' : 'No tasks found'}</p>
-              </div>
-            ) : (
-              <div className="tasks-grouped-container">
-                {/* In Progress Tasks */}
-                {groupedTasks.filter(t => t.status === 'in_progress').length > 0 && (
-                  <div className="task-status-group">
-                    <h3 className="status-group-title in_progress">
-                      <span className="status-dot"></span>
-                      {isRTL ? 'قيد التنفيذ' : 'In Progress'} ({groupedTasks.filter(t => t.status === 'in_progress').length})
-                    </h3>
-                    <div className="assignments-list">
-                      {groupedTasks.filter(t => t.status === 'in_progress').map(task => (
-                        <div key={task.groupId || task.taskId} className={`assignment-card priority-${task.priority}`}>
-                          <div className="assignment-header">
-                            <h3 className="assignment-title">{task.title}</h3>
-                            <span className={`task-status ${task.status}`}>
-                              {isRTL ? 'قيد التنفيذ' : 'In Progress'}
-                            </span>
-                          </div>
-                          <div className="assignment-meta">
-                            <div className="assignment-meta-item">
-                              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
-                                <circle cx="12" cy="7" r="4"/>
-                              </svg>
-                              <span>{task.assignee?.name || 'N/A'}</span>
-                            </div>
-                            {task.creator && (
-                              <div className="assignment-meta-item">
-                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                  <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
-                                  <circle cx="8.5" cy="7" r="4"/>
-                                  <path d="M20 8v6"/>
-                                  <path d="M23 11h-6"/>
-                                </svg>
-                                <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>{isRTL ? 'بواسطة:' : 'By:'} {task.creator.fullName}</span>
-                              </div>
-                            )}
-                            {task.section && (
-                              <div className="assignment-meta-item">
-                                <span className="section-badge" style={{ backgroundColor: SECTION_COLORS[task.section] || '#666', padding: '2px 8px', borderRadius: '10px', color: 'white', fontSize: '12px' }}>
-                                  {sectionLabels[task.section] || task.section}
-                                </span>
-                              </div>
-                            )}
-                          </div>
-                          <div className="assignment-dates">
-                            <span>{task.startDate}</span>
-                            {task.startDate !== task.endDate && (
-                              <>
-                                <span className="date-range-arrow">→</span>
-                                <span>{task.endDate}</span>
-                                <span className="days-count">{task.dayCount} {isRTL ? 'أيام' : 'days'}</span>
-                              </>
-                            )}
-                          </div>
-                          {task.description && (
-                            <p style={{ margin: '12px 0 0', fontSize: '14px', color: 'var(--text-secondary)' }}>{task.description}</p>
-                          )}
-                          <div className="assignment-actions">
-                            <select className="status-select" value={task.status} onChange={(e) => handleUpdateTaskStatus(task.taskId, e.target.value)}>
-                              <option value="pending">{isRTL ? 'قيد الانتظار' : 'Pending'}</option>
-                              <option value="in_progress">{isRTL ? 'قيد التنفيذ' : 'In Progress'}</option>
-                              <option value="completed">{isRTL ? 'مكتمل' : 'Completed'}</option>
-                              <option value="cancelled">{isRTL ? 'ملغى' : 'Cancelled'}</option>
-                              <option value="uncompleted">{isRTL ? 'غير مكتمل' : 'Uncompleted'}</option>
-                            </select>
-                            <button className="delete-assignment-btn" onClick={() => handleDeleteTaskAssignment(task.taskId)}>
-                              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                <polyline points="3 6 5 6 21 6"/>
-                                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
-                              </svg>
-                            </button>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
+            {/* Status Filter Tabs */}
+            <div className="task-filter-tabs">
+              {[
+                { key: 'all', label: isRTL ? 'الكل' : 'All', count: groupedTasks.length, color: '#6b7280' },
+                { key: 'in_progress', label: isRTL ? 'قيد التنفيذ' : 'In Progress', count: groupedTasks.filter(t => t.status === 'in_progress').length, color: '#3b82f6' },
+                { key: 'pending', label: isRTL ? 'قيد الانتظار' : 'Pending', count: groupedTasks.filter(t => t.status === 'pending').length, color: '#f59e0b' },
+                { key: 'completed', label: isRTL ? 'مكتمل' : 'Completed', count: groupedTasks.filter(t => t.status === 'completed').length, color: '#22c55e' },
+                { key: 'uncompleted', label: isRTL ? 'غير مكتمل' : 'Uncompleted', count: groupedTasks.filter(t => t.status === 'uncompleted').length, color: '#dc2626' },
+                { key: 'cancelled', label: isRTL ? 'ملغى' : 'Cancelled', count: groupedTasks.filter(t => t.status === 'cancelled').length, color: '#9ca3af' },
+              ].map(tab => (
+                <button
+                  key={tab.key}
+                  className={`task-filter-tab ${taskStatusFilter === tab.key ? 'active' : ''}`}
+                  onClick={() => setTaskStatusFilter(tab.key)}
+                  style={{ '--tab-color': tab.color }}
+                >
+                  <span className="tab-dot" style={{ background: tab.color }}></span>
+                  {tab.label}
+                  <span className="tab-count">{tab.count}</span>
+                </button>
+              ))}
+            </div>
 
-                {/* Pending Tasks */}
-                {groupedTasks.filter(t => t.status === 'pending').length > 0 && (
-                  <div className="task-status-group">
-                    <h3 className="status-group-title pending">
-                      <span className="status-dot"></span>
-                      {isRTL ? 'قيد الانتظار' : 'Pending'} ({groupedTasks.filter(t => t.status === 'pending').length})
-                    </h3>
-                    <div className="assignments-list">
-                      {groupedTasks.filter(t => t.status === 'pending').map(task => (
-                        <div key={task.groupId || task.taskId} className={`assignment-card priority-${task.priority}`}>
-                          <div className="assignment-header">
-                            <h3 className="assignment-title">{task.title}</h3>
-                            <span className={`task-status ${task.status}`}>
-                              {isRTL ? 'قيد الانتظار' : 'Pending'}
+            {/* Filtered Task List */}
+            {(() => {
+              const filtered = taskStatusFilter === 'all' ? groupedTasks : groupedTasks.filter(t => t.status === taskStatusFilter);
+              const statusLabels = { pending: isRTL ? 'قيد الانتظار' : 'Pending', in_progress: isRTL ? 'قيد التنفيذ' : 'In Progress', completed: isRTL ? 'مكتمل' : 'Completed', cancelled: isRTL ? 'ملغى' : 'Cancelled', uncompleted: isRTL ? 'غير مكتمل' : 'Uncompleted' };
+              return filtered.length === 0 ? (
+                <div className="empty-state">
+                  <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                    <path d="M9 11l3 3L22 4"/>
+                    <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>
+                  </svg>
+                  <p>{isRTL ? 'لا توجد مهام' : 'No tasks found'}</p>
+                </div>
+              ) : (
+                <div className="assignments-list" style={{ marginTop: '16px' }}>
+                  {filtered.map(task => (
+                    <div key={task.taskId} className={`assignment-card priority-${task.priority} ${task.status === 'completed' ? 'completed-task' : ''} ${task.status === 'cancelled' ? 'cancelled-task' : ''}`}
+                      style={task.status === 'uncompleted' ? { borderLeft: '4px solid #dc2626', opacity: 0.85 } : {}}>
+                      <div className="assignment-header">
+                        <h3 className="assignment-title">{task.title}</h3>
+                        <span className={`task-status ${task.status}`}
+                          style={task.status === 'uncompleted' ? { backgroundColor: '#dc2626', color: 'white' } : {}}>
+                          {statusLabels[task.status] || task.status}
+                        </span>
+                      </div>
+                      <div className="assignment-meta">
+                        <div className="assignment-meta-item">
+                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+                            <circle cx="12" cy="7" r="4"/>
+                          </svg>
+                          <span>{task.assignee?.name || 'N/A'}</span>
+                        </div>
+                        {task.creator && (
+                          <div className="assignment-meta-item">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                              <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                              <circle cx="8.5" cy="7" r="4"/>
+                              <path d="M20 8v6"/><path d="M23 11h-6"/>
+                            </svg>
+                            <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>{isRTL ? 'بواسطة:' : 'By:'} {task.creator.fullName}</span>
+                          </div>
+                        )}
+                        {task.section && (
+                          <div className="assignment-meta-item">
+                            <span className="section-badge" style={{ backgroundColor: SECTION_COLORS[task.section] || '#666', padding: '2px 8px', borderRadius: '10px', color: 'white', fontSize: '12px' }}>
+                              {sectionLabels[task.section] || task.section}
                             </span>
                           </div>
-                          <div className="assignment-meta">
-                            <div className="assignment-meta-item">
-                              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
-                                <circle cx="12" cy="7" r="4"/>
-                              </svg>
-                              <span>{task.assignee?.name || 'N/A'}</span>
-                            </div>
-                            {task.creator && (
-                              <div className="assignment-meta-item">
-                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                  <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
-                                  <circle cx="8.5" cy="7" r="4"/>
-                                  <path d="M20 8v6"/>
-                                  <path d="M23 11h-6"/>
-                                </svg>
-                                <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>{isRTL ? 'بواسطة:' : 'By:'} {task.creator.fullName}</span>
-                              </div>
-                            )}
-                            {task.section && (
-                              <div className="assignment-meta-item">
-                                <span className="section-badge" style={{ backgroundColor: SECTION_COLORS[task.section] || '#666', padding: '2px 8px', borderRadius: '10px', color: 'white', fontSize: '12px' }}>
-                                  {sectionLabels[task.section] || task.section}
-                                </span>
-                              </div>
-                            )}
-                          </div>
-                          <div className="assignment-dates">
-                            <span>{task.startDate}</span>
-                            {task.startDate !== task.endDate && (
-                              <>
-                                <span className="date-range-arrow">→</span>
-                                <span>{task.endDate}</span>
-                                <span className="days-count">{task.dayCount} {isRTL ? 'أيام' : 'days'}</span>
-                              </>
-                            )}
-                          </div>
-                          {task.description && (
-                            <p style={{ margin: '12px 0 0', fontSize: '14px', color: 'var(--text-secondary)' }}>{task.description}</p>
-                          )}
-                          <div className="assignment-actions">
-                            <select className="status-select" value={task.status} onChange={(e) => handleUpdateTaskStatus(task.taskId, e.target.value)}>
-                              <option value="pending">{isRTL ? 'قيد الانتظار' : 'Pending'}</option>
-                              <option value="in_progress">{isRTL ? 'قيد التنفيذ' : 'In Progress'}</option>
-                              <option value="completed">{isRTL ? 'مكتمل' : 'Completed'}</option>
-                              <option value="cancelled">{isRTL ? 'ملغى' : 'Cancelled'}</option>
-                              <option value="uncompleted">{isRTL ? 'غير مكتمل' : 'Uncompleted'}</option>
-                            </select>
-                            <button className="delete-assignment-btn" onClick={() => handleDeleteTaskAssignment(task.taskId)}>
-                              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                <polyline points="3 6 5 6 21 6"/>
-                                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
-                              </svg>
-                            </button>
-                          </div>
-                        </div>
-                      ))}
+                        )}
+                      </div>
+                      <div className="assignment-dates">
+                        <span>{task.startDate}</span>
+                        {task.startDate !== task.endDate && (
+                          <>
+                            <span className="date-range-arrow">→</span>
+                            <span>{task.endDate}</span>
+                            <span className="days-count">{task.dayCount} {isRTL ? 'أيام' : 'days'}</span>
+                          </>
+                        )}
+                      </div>
+                      {task.description && (
+                        <p style={{ margin: '12px 0 0', fontSize: '14px', color: 'var(--text-secondary)' }}>{task.description}</p>
+                      )}
+                      <div className="assignment-actions">
+                        <select className="status-select" value={task.status} onChange={(e) => handleUpdateTaskStatus(task.taskId, e.target.value)}>
+                          <option value="pending">{isRTL ? 'قيد الانتظار' : 'Pending'}</option>
+                          <option value="in_progress">{isRTL ? 'قيد التنفيذ' : 'In Progress'}</option>
+                          <option value="completed">{isRTL ? 'مكتمل' : 'Completed'}</option>
+                          <option value="cancelled">{isRTL ? 'ملغى' : 'Cancelled'}</option>
+                          <option value="uncompleted">{isRTL ? 'غير مكتمل' : 'Uncompleted'}</option>
+                        </select>
+                        <button className="delete-assignment-btn" onClick={() => handleDeleteTaskAssignment(task.taskId)}>
+                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                            <polyline points="3 6 5 6 21 6"/>
+                            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+                          </svg>
+                        </button>
+                      </div>
                     </div>
-                  </div>
-                )}
-
-                {/* Completed Tasks */}
-                {groupedTasks.filter(t => t.status === 'completed').length > 0 && (
-                  <div className="task-status-group">
-                    <h3 className="status-group-title completed">
-                      <span className="status-dot"></span>
-                      {isRTL ? 'مكتمل' : 'Completed'} ({groupedTasks.filter(t => t.status === 'completed').length})
-                    </h3>
-                    <div className="assignments-list">
-                      {groupedTasks.filter(t => t.status === 'completed').map(task => (
-                        <div key={task.groupId || task.taskId} className={`assignment-card priority-${task.priority} completed-task`}>
-                          <div className="assignment-header">
-                            <h3 className="assignment-title">{task.title}</h3>
-                            <span className={`task-status ${task.status}`}>
-                              {isRTL ? 'مكتمل' : 'Completed'}
-                            </span>
-                          </div>
-                          <div className="assignment-meta">
-                            <div className="assignment-meta-item">
-                              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
-                                <circle cx="12" cy="7" r="4"/>
-                              </svg>
-                              <span>{task.assignee?.name || 'N/A'}</span>
-                            </div>
-                            {task.creator && (
-                              <div className="assignment-meta-item">
-                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                  <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
-                                  <circle cx="8.5" cy="7" r="4"/>
-                                  <path d="M20 8v6"/>
-                                  <path d="M23 11h-6"/>
-                                </svg>
-                                <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>{isRTL ? 'بواسطة:' : 'By:'} {task.creator.fullName}</span>
-                              </div>
-                            )}
-                            {task.section && (
-                              <div className="assignment-meta-item">
-                                <span className="section-badge" style={{ backgroundColor: SECTION_COLORS[task.section] || '#666', padding: '2px 8px', borderRadius: '10px', color: 'white', fontSize: '12px' }}>
-                                  {sectionLabels[task.section] || task.section}
-                                </span>
-                              </div>
-                            )}
-                          </div>
-                          <div className="assignment-dates">
-                            <span>{task.startDate}</span>
-                            {task.startDate !== task.endDate && (
-                              <>
-                                <span className="date-range-arrow">→</span>
-                                <span>{task.endDate}</span>
-                                <span className="days-count">{task.dayCount} {isRTL ? 'أيام' : 'days'}</span>
-                              </>
-                            )}
-                          </div>
-                          {task.description && (
-                            <p style={{ margin: '12px 0 0', fontSize: '14px', color: 'var(--text-secondary)' }}>{task.description}</p>
-                          )}
-                          <div className="assignment-actions">
-                            <select className="status-select" value={task.status} onChange={(e) => handleUpdateTaskStatus(task.taskId, e.target.value)}>
-                              <option value="pending">{isRTL ? 'قيد الانتظار' : 'Pending'}</option>
-                              <option value="in_progress">{isRTL ? 'قيد التنفيذ' : 'In Progress'}</option>
-                              <option value="completed">{isRTL ? 'مكتمل' : 'Completed'}</option>
-                              <option value="cancelled">{isRTL ? 'ملغى' : 'Cancelled'}</option>
-                              <option value="uncompleted">{isRTL ? 'غير مكتمل' : 'Uncompleted'}</option>
-                            </select>
-                            <button className="delete-assignment-btn" onClick={() => handleDeleteTaskAssignment(task.taskId)}>
-                              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                <polyline points="3 6 5 6 21 6"/>
-                                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
-                              </svg>
-                            </button>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {/* Cancelled Tasks */}
-                {groupedTasks.filter(t => t.status === 'cancelled').length > 0 && (
-                  <div className="task-status-group">
-                    <h3 className="status-group-title cancelled">
-                      <span className="status-dot"></span>
-                      {isRTL ? 'ملغى' : 'Cancelled'} ({groupedTasks.filter(t => t.status === 'cancelled').length})
-                    </h3>
-                    <div className="assignments-list">
-                      {groupedTasks.filter(t => t.status === 'cancelled').map(task => (
-                        <div key={task.groupId || task.taskId} className={`assignment-card priority-${task.priority} cancelled-task`}>
-                          <div className="assignment-header">
-                            <h3 className="assignment-title">{task.title}</h3>
-                            <span className={`task-status ${task.status}`}>
-                              {isRTL ? 'ملغى' : 'Cancelled'}
-                            </span>
-                          </div>
-                          <div className="assignment-meta">
-                            <div className="assignment-meta-item">
-                              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
-                                <circle cx="12" cy="7" r="4"/>
-                              </svg>
-                              <span>{task.assignee?.name || 'N/A'}</span>
-                            </div>
-                            {task.creator && (
-                              <div className="assignment-meta-item">
-                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                  <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
-                                  <circle cx="8.5" cy="7" r="4"/>
-                                  <path d="M20 8v6"/>
-                                  <path d="M23 11h-6"/>
-                                </svg>
-                                <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>{isRTL ? 'بواسطة:' : 'By:'} {task.creator.fullName}</span>
-                              </div>
-                            )}
-                            {task.section && (
-                              <div className="assignment-meta-item">
-                                <span className="section-badge" style={{ backgroundColor: SECTION_COLORS[task.section] || '#666', padding: '2px 8px', borderRadius: '10px', color: 'white', fontSize: '12px' }}>
-                                  {sectionLabels[task.section] || task.section}
-                                </span>
-                              </div>
-                            )}
-                          </div>
-                          <div className="assignment-dates">
-                            <span>{task.startDate}</span>
-                            {task.startDate !== task.endDate && (
-                              <>
-                                <span className="date-range-arrow">→</span>
-                                <span>{task.endDate}</span>
-                                <span className="days-count">{task.dayCount} {isRTL ? 'أيام' : 'days'}</span>
-                              </>
-                            )}
-                          </div>
-                          {task.description && (
-                            <p style={{ margin: '12px 0 0', fontSize: '14px', color: 'var(--text-secondary)' }}>{task.description}</p>
-                          )}
-                          <div className="assignment-actions">
-                            <select className="status-select" value={task.status} onChange={(e) => handleUpdateTaskStatus(task.taskId, e.target.value)}>
-                              <option value="pending">{isRTL ? 'قيد الانتظار' : 'Pending'}</option>
-                              <option value="in_progress">{isRTL ? 'قيد التنفيذ' : 'In Progress'}</option>
-                              <option value="completed">{isRTL ? 'مكتمل' : 'Completed'}</option>
-                              <option value="cancelled">{isRTL ? 'ملغى' : 'Cancelled'}</option>
-                              <option value="uncompleted">{isRTL ? 'غير مكتمل' : 'Uncompleted'}</option>
-                            </select>
-                            <button className="delete-assignment-btn" onClick={() => handleDeleteTaskAssignment(task.taskId)}>
-                              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                <polyline points="3 6 5 6 21 6"/>
-                                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
-                              </svg>
-                            </button>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {groupedTasks.filter(t => t.status === 'uncompleted').length > 0 && (
-                  <div className="task-status-group">
-                    <h3 className="status-group-title" style={{ color: '#dc2626' }}>
-                      <span className="status-dot" style={{ backgroundColor: '#dc2626' }}></span>
-                      {isRTL ? 'غير مكتمل' : 'Uncompleted'} ({groupedTasks.filter(t => t.status === 'uncompleted').length})
-                    </h3>
-                    <div className="assignments-list">
-                      {groupedTasks.filter(t => t.status === 'uncompleted').map(task => (
-                        <div key={task.groupId || task.taskId} className={`assignment-card priority-${task.priority}`} style={{ borderLeft: '4px solid #dc2626', opacity: 0.85 }}>
-                          <div className="assignment-header">
-                            <h3 className="assignment-title">{task.title}</h3>
-                            <span className="task-status" style={{ backgroundColor: '#dc2626', color: 'white' }}>
-                              {isRTL ? 'غير مكتمل' : 'Uncompleted'}
-                            </span>
-                          </div>
-                          <div className="assignment-meta">
-                            <div className="assignment-meta-item">
-                              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
-                                <circle cx="12" cy="7" r="4"/>
-                              </svg>
-                              <span>{task.assignee?.name || 'N/A'}</span>
-                            </div>
-                            {task.creator && (
-                              <div className="assignment-meta-item">
-                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                  <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
-                                  <circle cx="8.5" cy="7" r="4"/>
-                                  <path d="M20 8v6"/>
-                                  <path d="M23 11h-6"/>
-                                </svg>
-                                <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>{isRTL ? 'بواسطة:' : 'By:'} {task.creator.fullName}</span>
-                              </div>
-                            )}
-                            {task.section && (
-                              <div className="assignment-meta-item">
-                                <span className="section-badge" style={{ backgroundColor: SECTION_COLORS[task.section] || '#666', padding: '2px 8px', borderRadius: '10px', color: 'white', fontSize: '12px' }}>
-                                  {sectionLabels[task.section] || task.section}
-                                </span>
-                              </div>
-                            )}
-                          </div>
-                          <div className="assignment-dates">
-                            <span>{task.startDate}</span>
-                            {task.startDate !== task.endDate && (
-                              <>
-                                <span className="date-range-arrow">→</span>
-                                <span>{task.endDate}</span>
-                                <span className="days-count">{task.dayCount} {isRTL ? 'أيام' : 'days'}</span>
-                              </>
-                            )}
-                          </div>
-                          {task.description && (
-                            <p style={{ margin: '12px 0 0', fontSize: '14px', color: 'var(--text-secondary)' }}>{task.description}</p>
-                          )}
-                          <div className="assignment-actions">
-                            <select className="status-select" value={task.status} onChange={(e) => handleUpdateTaskStatus(task.taskId, e.target.value)}>
-                              <option value="pending">{isRTL ? 'قيد الانتظار' : 'Pending'}</option>
-                              <option value="in_progress">{isRTL ? 'قيد التنفيذ' : 'In Progress'}</option>
-                              <option value="completed">{isRTL ? 'مكتمل' : 'Completed'}</option>
-                              <option value="cancelled">{isRTL ? 'ملغى' : 'Cancelled'}</option>
-                              <option value="uncompleted">{isRTL ? 'غير مكتمل' : 'Uncompleted'}</option>
-                            </select>
-                            <button className="delete-assignment-btn" onClick={() => handleDeleteTaskAssignment(task.taskId)}>
-                              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                <polyline points="3 6 5 6 21 6"/>
-                                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
-                              </svg>
-                            </button>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
+                  ))}
+                </div>
+              );
+            })()}
           </div>
         )}
 

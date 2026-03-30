@@ -5850,3 +5850,79 @@
     gap: 0.5rem;
   }
 }
+
+/* ========================================
+   Task Filter Tabs
+   ======================================== */
+[data-page="manager"] .task-filter-tabs {
+  display: flex;
+  gap: 0.5rem;
+  padding: 0.5rem;
+  background: rgba(255, 255, 255, 0.7);
+  border-radius: 12px;
+  margin-bottom: 1.5rem;
+  flex-wrap: wrap;
+  border: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+[data-page="manager"] .task-filter-tab {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.6rem 1rem;
+  border-radius: 8px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: #64748b;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+[data-page="manager"] .task-filter-tab:hover {
+  background: rgba(0, 0, 0, 0.04);
+  color: #334155;
+}
+
+[data-page="manager"] .task-filter-tab.active {
+  background: white;
+  color: #1e293b;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  font-weight: 600;
+}
+
+[data-page="manager"] .task-filter-tab .filter-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+[data-page="manager"] .task-filter-tab .filter-count {
+  background: rgba(0, 0, 0, 0.08);
+  padding: 0.1rem 0.45rem;
+  border-radius: 10px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  min-width: 20px;
+  text-align: center;
+}
+
+[data-page="manager"] .task-filter-tab.active .filter-count {
+  background: rgba(224, 37, 41, 0.1);
+  color: #e02529;
+}
+
+@media (max-width: 768px) {
+  [data-page="manager"] .task-filter-tabs {
+    gap: 0.3rem;
+    padding: 0.4rem;
+  }
+
+  [data-page="manager"] .task-filter-tab {
+    padding: 0.5rem 0.7rem;
+    font-size: 0.78rem;
+  }
+}
