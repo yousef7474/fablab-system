@@ -5928,6 +5928,65 @@
 }
 
 /* ========================================
+   Task Extra Filters (Section & Employee)
+   ======================================== */
+[data-page="manager"] .task-extra-filters {
+  display: flex;
+  gap: 1rem;
+  margin-bottom: 1rem;
+  flex-wrap: wrap;
+}
+
+[data-page="manager"] .task-extra-filter {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+[data-page="manager"] .task-extra-filter label {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #475569;
+  white-space: nowrap;
+}
+
+[data-page="manager"] .task-extra-filter select {
+  padding: 0.5rem 0.75rem;
+  border-radius: 8px;
+  border: 1.5px solid #e2e8f0;
+  background: white;
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: #334155;
+  cursor: pointer;
+  outline: none;
+  transition: all 0.2s ease;
+  font-family: inherit;
+  min-width: 160px;
+}
+
+[data-page="manager"] .task-extra-filter select:hover {
+  border-color: #94a3b8;
+}
+
+[data-page="manager"] .task-extra-filter select:focus {
+  border-color: #e02529;
+  box-shadow: 0 0 0 2px rgba(224, 37, 41, 0.1);
+}
+
+@media (max-width: 768px) {
+  [data-page="manager"] .task-extra-filters {
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  [data-page="manager"] .task-extra-filter select {
+    min-width: 0;
+    flex: 1;
+  }
+}
+
+/* ========================================
    Schedule Tab - Task Status Dropdown
    ======================================== */
 [data-page="manager"] .schedule-status-select {

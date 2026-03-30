@@ -157,6 +157,8 @@ const ManagerDashboard = () => {
   const [volunteers, setVolunteers] = useState([]);
   const [groupedTasks, setGroupedTasks] = useState([]);
   const [taskStatusFilter, setTaskStatusFilter] = useState('all');
+  const [taskSectionFilter, setTaskSectionFilter] = useState('all');
+  const [taskEmployeeFilter, setTaskEmployeeFilter] = useState('all');
   const [showVolunteerModal, setShowVolunteerModal] = useState(false);
   const [showOpportunityModal, setShowOpportunityModal] = useState(false);
   const [showVolunteerDetailModal, setShowVolunteerDetailModal] = useState(false);
@@ -5243,6 +5245,28 @@ const ManagerDashboard = () => {
               </button>
             </div>
 
+            {/* Filter Bar: Section + Employee dropdowns */}
+            <div className="task-extra-filters">
+              <div className="task-extra-filter">
+                <label>{isRTL ? 'القسم:' : 'Section:'}</label>
+                <select value={taskSectionFilter} onChange={(e) => setTaskSectionFilter(e.target.value)}>
+                  <option value="all">{isRTL ? 'جميع الأقسام' : 'All Sections'}</option>
+                  {Object.keys(SECTION_COLORS).map(sec => (
+                    <option key={sec} value={sec}>{sectionLabels[sec] || sec}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="task-extra-filter">
+                <label>{isRTL ? 'الموظف:' : 'Employee:'}</label>
+                <select value={taskEmployeeFilter} onChange={(e) => setTaskEmployeeFilter(e.target.value)}>
+                  <option value="all">{isRTL ? 'جميع الموظفين' : 'All Employees'}</option>
+                  {employees.map(emp => (
+                    <option key={emp.employeeId} value={emp.employeeId}>{emp.name}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
             {/* Status Filter Tabs */}
             <div className="task-filter-tabs">
               {[
@@ -5268,7 +5292,10 @@ const ManagerDashboard = () => {
 
             {/* Filtered Task List */}
             {(() => {
-              const filtered = taskStatusFilter === 'all' ? groupedTasks : groupedTasks.filter(t => t.status === taskStatusFilter);
+              let filtered = groupedTasks;
+              if (taskStatusFilter !== 'all') filtered = filtered.filter(t => t.status === taskStatusFilter);
+              if (taskSectionFilter !== 'all') filtered = filtered.filter(t => t.section === taskSectionFilter);
+              if (taskEmployeeFilter !== 'all') filtered = filtered.filter(t => t.employeeId === taskEmployeeFilter || t.assignee?.employeeId === taskEmployeeFilter);
               const statusLabels = { pending: isRTL ? 'قيد الانتظار' : 'Pending', in_progress: isRTL ? 'قيد التنفيذ' : 'In Progress', completed: isRTL ? 'مكتمل' : 'Completed', cancelled: isRTL ? 'ملغى' : 'Cancelled', uncompleted: isRTL ? 'غير مكتمل' : 'Uncompleted' };
               return filtered.length === 0 ? (
                 <div className="empty-state">
