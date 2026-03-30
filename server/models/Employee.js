@@ -1,5 +1,6 @@
 const { DataTypes } = require('sequelize');
 const { sequelize } = require('../config/database');
+const bcrypt = require('bcryptjs');
 
 const Employee = sequelize.define('Employee', {
   employeeId: {
@@ -19,6 +20,14 @@ const Employee = sequelize.define('Employee', {
       isEmail: true
     }
   },
+  password: {
+    type: DataTypes.STRING,
+    allowNull: true
+  },
+  mustChangePassword: {
+    type: DataTypes.BOOLEAN,
+    defaultValue: true
+  },
   section: {
     type: DataTypes.STRING,
     allowNull: false,
@@ -35,7 +44,25 @@ const Employee = sequelize.define('Employee', {
   }
 }, {
   tableName: 'employees',
-  timestamps: true
+  timestamps: true,
+  hooks: {
+    beforeCreate: async (employee) => {
+      if (employee.password) {
+        const salt = await bcrypt.genSalt(10);
+        employee.password = await bcrypt.hash(employee.password, salt);
+      }
+    },
+    beforeUpdate: async (employee) => {
+      if (employee.changed('password') && employee.password) {
+        const salt = await bcrypt.genSalt(10);
+        employee.password = await bcrypt.hash(employee.password, salt);
+      }
+    }
+  }
 });
+
+Employee.prototype.comparePassword = async function(candidatePassword) {
+  return await bcrypt.compare(candidatePassword, this.password);
+};
 
 module.exports = Employee;

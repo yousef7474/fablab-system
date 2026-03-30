@@ -18,6 +18,7 @@ const settingsRoutes = require('./routes/settingsRoutes');
 const workingHoursOverrideRoutes = require('./routes/workingHoursOverrideRoutes');
 const borrowingRoutes = require('./routes/borrowingRoutes');
 const educationRoutes = require('./routes/educationRoutes');
+const employeeRoutes = require('./routes/employeeRoutes');
 const { startBorrowingScheduler } = require('./utils/borrowingScheduler');
 const { startTaskReminderScheduler } = require('./utils/taskReminderScheduler');
 const { startEliteCourseScheduler } = require('./utils/eliteCourseScheduler');
@@ -52,6 +53,7 @@ app.use('/api/settings', settingsRoutes);
 app.use('/api/settings/working-hours-overrides', workingHoursOverrideRoutes);
 app.use('/api/borrowing', borrowingRoutes);
 app.use('/api/education', educationRoutes);
+app.use('/api/employee', employeeRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {

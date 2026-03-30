@@ -17,13 +17,15 @@ import EducationForm from './components/EducationForm/EducationForm';
 import StudentRegistration from './components/EducationForm/StudentRegistration';
 import StudentAttendance from './components/EducationForm/StudentAttendance';
 import ManagerDashboard from './components/Manager/ManagerDashboard';
+import EmployeeLogin from './components/Employee/EmployeeLogin';
+import EmployeeDashboard from './components/Employee/EmployeeDashboard';
 import LanguageSelector from './components/LanguageSelector';
 
 // Wrapper to conditionally show LanguageSelector (hide on admin/manager/elite pages)
 const ConditionalLanguageSelector = () => {
   const location = useLocation();
   // Hide on admin login page, manager dashboard, and elite registration (they have their own language toggle or are Arabic only)
-  if (location.pathname === '/admin/login' || location.pathname.startsWith('/manager') || location.pathname.startsWith('/elite')) return null;
+  if (location.pathname === '/admin/login' || location.pathname.startsWith('/manager') || location.pathname.startsWith('/elite') || location.pathname.startsWith('/employee')) return null;
   return <LanguageSelector />;
 };
 
@@ -46,6 +48,8 @@ const AppContent = () => {
         <Route path="/admin/login" element={<AdminLogin />} />
         <Route path="/admin/dashboard/*" element={<AdminDashboard />} />
         <Route path="/manager/dashboard/*" element={<ManagerDashboard />} />
+        <Route path="/employee/login" element={<EmployeeLogin />} />
+        <Route path="/employee/dashboard" element={<EmployeeDashboard />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </>

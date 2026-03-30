@@ -510,6 +510,24 @@ const ManagerDashboard = () => {
     }
   };
 
+  const handleGenerateCredentials = async (employeeId) => {
+    try {
+      const response = await api.post(`/employee/${employeeId}/generate-credentials`);
+      const { credentials } = response.data;
+      toast.success(
+        <div style={{ direction: isRTL ? 'rtl' : 'ltr' }}>
+          <strong>{isRTL ? 'تم إنشاء بيانات الدخول:' : 'Credentials generated:'}</strong><br/>
+          <span>{isRTL ? 'البريد:' : 'Email:'} {credentials.email}</span><br/>
+          <span>{isRTL ? 'كلمة المرور:' : 'Password:'} <strong>{credentials.password}</strong></span><br/>
+          <small>{isRTL ? '(يجب تغييرها عند أول تسجيل دخول)' : '(Must change on first login)'}</small>
+        </div>,
+        { autoClose: 15000 }
+      );
+    } catch (error) {
+      toast.error(isRTL ? 'خطأ في إنشاء بيانات الدخول' : 'Error generating credentials');
+    }
+  };
+
   const handleDeleteEmployee = async (employeeId) => {
     if (!window.confirm(isRTL ? 'هل أنت متأكد من حذف هذا الموظف؟' : 'Are you sure you want to delete this employee?')) {
       return;
@@ -7442,6 +7460,17 @@ const ManagerDashboard = () => {
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                           <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
                           <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                        </svg>
+                      </button>
+                      <button
+                        className="card-action-btn"
+                        style={{ background: 'linear-gradient(135deg, #3b82f6, #1d4ed8)', color: 'white' }}
+                        onClick={() => handleGenerateCredentials(employee.employeeId)}
+                        title={isRTL ? 'إنشاء بيانات الدخول' : 'Generate Login'}
+                      >
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                          <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+                          <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
                         </svg>
                       </button>
                       <button
