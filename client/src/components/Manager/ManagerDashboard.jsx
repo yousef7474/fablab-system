@@ -3268,7 +3268,7 @@ const ManagerDashboard = () => {
           }
           .banner-logo-left img,
           .banner-logo-right img {
-            height: 70px;
+            height: 100px;
             filter: brightness(0) invert(1);
           }
 
@@ -3303,8 +3303,8 @@ const ManagerDashboard = () => {
             align-items: center;
           }
           .table-number-circle {
-            width: 44mm;
-            height: 44mm;
+            width: 52mm;
+            height: 52mm;
             border-radius: 50%;
             background: linear-gradient(145deg, #1a56db, #2563eb);
             box-shadow: 0 8px 32px rgba(26,86,219,0.35), 0 0 0 6px white, 0 0 0 8px rgba(26,86,219,0.15);
@@ -3315,14 +3315,14 @@ const ManagerDashboard = () => {
             color: white;
           }
           .table-label {
-            font-size: 11px;
+            font-size: 13px;
             font-weight: 500;
             text-transform: uppercase;
             letter-spacing: 2px;
             opacity: 0.8;
           }
           .table-value {
-            font-size: 48px;
+            font-size: 64px;
             font-weight: 800;
             line-height: 1;
             margin-top: 2px;
@@ -3449,13 +3449,68 @@ const ManagerDashboard = () => {
             ${isRTL ? 'transform: scaleX(-1);' : ''}
           }
 
+          /* Rules section */
+          .rules-section {
+            margin: 6mm 15mm 0;
+            padding: 0;
+          }
+          .rules-title {
+            font-size: 13px;
+            font-weight: 700;
+            color: #1e40af;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            margin-bottom: 5mm;
+            text-align: center;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+          }
+          .rules-title::before,
+          .rules-title::after {
+            content: '';
+            flex: 1;
+            height: 1.5px;
+            background: linear-gradient(to right, transparent, #bfdbfe, transparent);
+          }
+          .rules-list {
+            list-style: none;
+            padding: 0;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 3mm 5mm;
+          }
+          .rule-item {
+            display: flex;
+            align-items: flex-start;
+            gap: 6px;
+            font-size: 10.5px;
+            color: #374151;
+            line-height: 1.4;
+          }
+          .rule-number {
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #dbeafe, #bfdbfe);
+            color: #1a56db;
+            font-size: 9px;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            margin-top: 1px;
+          }
+
           /* Footer */
           .banner-footer {
             position: absolute;
             bottom: 0;
             left: 0;
             right: 0;
-            height: 18mm;
+            height: 14mm;
             background: linear-gradient(135deg, #1a56db 0%, #1e40af 100%);
             display: flex;
             align-items: center;
@@ -3638,10 +3693,51 @@ const ManagerDashboard = () => {
             </div>
           </div>
 
+          <!-- Rules & Terms -->
+          <div class="rules-section">
+            <div class="rules-title">
+              ${isRTL ? 'شروط وأحكام استخدام مساحة العمل' : 'Workspace Terms & Conditions'}
+            </div>
+            <ul class="rules-list">
+              <li class="rule-item">
+                <span class="rule-number">1</span>
+                <span>${isRTL ? 'يجب الحفاظ على نظافة وترتيب مساحة العمل في جميع الأوقات' : 'Keep the workspace clean and organized at all times'}</span>
+              </li>
+              <li class="rule-item">
+                <span class="rule-number">2</span>
+                <span>${isRTL ? 'يجب وضع كيس بلاستيكي على الطاولة قبل البدء بالعمل' : 'Place a plastic cover on the table before starting work'}</span>
+              </li>
+              <li class="rule-item">
+                <span class="rule-number">3</span>
+                <span>${isRTL ? 'يمنع إتلاف أو إلحاق الضرر بالأدوات والمعدات' : 'Do not damage or misuse tools and equipment'}</span>
+              </li>
+              <li class="rule-item">
+                <span class="rule-number">4</span>
+                <span>${isRTL ? 'يجب إعادة جميع الأدوات إلى أماكنها بعد الاستخدام وعدم فقدانها' : 'Return all tools to their places after use — do not lose them'}</span>
+              </li>
+              <li class="rule-item">
+                <span class="rule-number">5</span>
+                <span>${isRTL ? 'الالتزام بالفترة الزمنية المحددة للحجز فقط' : 'You may only use the workspace during your reserved period'}</span>
+              </li>
+              <li class="rule-item">
+                <span class="rule-number">6</span>
+                <span>${isRTL ? 'في حال الحاجة لوقت إضافي، يجب عمل حجز جديد' : 'If you need more time, you must make a new reservation'}</span>
+              </li>
+              <li class="rule-item">
+                <span class="rule-number">7</span>
+                <span>${isRTL ? 'يجب ارتداء معدات السلامة عند استخدام الآلات' : 'Wear safety gear when operating machinery'}</span>
+              </li>
+              <li class="rule-item">
+                <span class="rule-number">8</span>
+                <span>${isRTL ? 'يمنع إدخال الطعام والمشروبات إلى منطقة العمل' : 'No food or drinks allowed in the work area'}</span>
+              </li>
+            </ul>
+          </div>
+
           <!-- Footer -->
           <div class="banner-footer">
             <div class="footer-dot"></div>
-            <span class="footer-text">${isRTL ? 'يرجى الحفاظ على نظافة وترتيب مساحة العمل' : 'Please keep the workspace clean and organized'}</span>
+            <span class="footer-text">${isRTL ? 'فاب لاب الأحساء — نصنع المستقبل' : 'FABLAB Al-Ahsa — We Build The Future'}</span>
             <div class="footer-dot"></div>
           </div>
         </div>
@@ -4689,6 +4785,18 @@ const ManagerDashboard = () => {
                         </div>
                         {event.type === 'task' && (
                           <div className="task-actions">
+                            <select
+                              className="schedule-status-select"
+                              value={event.status}
+                              onChange={(e) => handleUpdateTaskStatus(event.id, e.target.value)}
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              <option value="pending">{isRTL ? 'قيد الانتظار' : 'Pending'}</option>
+                              <option value="in_progress">{isRTL ? 'قيد التنفيذ' : 'In Progress'}</option>
+                              <option value="completed">{isRTL ? 'مكتمل' : 'Completed'}</option>
+                              <option value="uncompleted">{isRTL ? 'غير مكتمل' : 'Uncompleted'}</option>
+                              <option value="cancelled">{isRTL ? 'ملغى' : 'Cancelled'}</option>
+                            </select>
                             <button
                               className="task-action-btn edit"
                               onClick={() => openEditTaskModal(event)}
