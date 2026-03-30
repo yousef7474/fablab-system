@@ -5269,14 +5269,19 @@ const ManagerDashboard = () => {
 
             {/* Status Filter Tabs */}
             <div className="task-filter-tabs">
-              {[
-                { key: 'all', label: isRTL ? 'الكل' : 'All', count: groupedTasks.length, color: '#6b7280' },
-                { key: 'in_progress', label: isRTL ? 'قيد التنفيذ' : 'In Progress', count: groupedTasks.filter(t => t.status === 'in_progress').length, color: '#3b82f6' },
-                { key: 'pending', label: isRTL ? 'قيد الانتظار' : 'Pending', count: groupedTasks.filter(t => t.status === 'pending').length, color: '#f59e0b' },
-                { key: 'completed', label: isRTL ? 'مكتمل' : 'Completed', count: groupedTasks.filter(t => t.status === 'completed').length, color: '#22c55e' },
-                { key: 'uncompleted', label: isRTL ? 'غير مكتمل' : 'Uncompleted', count: groupedTasks.filter(t => t.status === 'uncompleted').length, color: '#dc2626' },
-                { key: 'cancelled', label: isRTL ? 'ملغى' : 'Cancelled', count: groupedTasks.filter(t => t.status === 'cancelled').length, color: '#9ca3af' },
-              ].map(tab => (
+              {(() => {
+                let base = groupedTasks;
+                if (taskSectionFilter !== 'all') base = base.filter(t => t.section === taskSectionFilter);
+                if (taskEmployeeFilter !== 'all') base = base.filter(t => t.employeeId === taskEmployeeFilter);
+                return [
+                  { key: 'all', label: isRTL ? 'الكل' : 'All', count: base.length, color: '#6b7280' },
+                  { key: 'in_progress', label: isRTL ? 'قيد التنفيذ' : 'In Progress', count: base.filter(t => t.status === 'in_progress').length, color: '#3b82f6' },
+                  { key: 'pending', label: isRTL ? 'قيد الانتظار' : 'Pending', count: base.filter(t => t.status === 'pending').length, color: '#f59e0b' },
+                  { key: 'completed', label: isRTL ? 'مكتمل' : 'Completed', count: base.filter(t => t.status === 'completed').length, color: '#22c55e' },
+                  { key: 'uncompleted', label: isRTL ? 'غير مكتمل' : 'Uncompleted', count: base.filter(t => t.status === 'uncompleted').length, color: '#dc2626' },
+                  { key: 'cancelled', label: isRTL ? 'ملغى' : 'Cancelled', count: base.filter(t => t.status === 'cancelled').length, color: '#9ca3af' },
+                ];
+              })().map(tab => (
                 <button
                   key={tab.key}
                   className={`task-filter-tab ${taskStatusFilter === tab.key ? 'active' : ''}`}
