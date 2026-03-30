@@ -143,18 +143,20 @@
   color: #3b82f6;
 }
 
-/* Shared password input wrapper from Admin.css */
+/* Password input wrapper */
 .employee-login-card .password-input-wrapper {
   position: relative;
+  display: block;
 }
 
 .employee-login-card .password-input-wrapper input {
-  padding-right: 44px;
+  width: 100%;
+  padding-inline-end: 44px;
 }
 
 .employee-login-card .password-toggle {
   position: absolute;
-  right: 8px;
+  inset-inline-end: 8px;
   top: 50%;
   transform: translateY(-50%);
   background: none;
@@ -162,6 +164,10 @@
   cursor: pointer;
   color: #94a3b8;
   padding: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2;
 }
 
 /* ========================================
