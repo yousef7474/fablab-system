@@ -837,6 +837,7 @@
 .emp-event-card.priority-high { border-left-color: #ef4444; }
 .emp-event-card.priority-medium { border-left-color: #f59e0b; }
 .emp-event-card.priority-low { border-left-color: #22c55e; }
+.emp-event-card.appointment { border-left-color: #22c55e; background: #f0fdf4; }
 
 .emp-event-header {
   display: flex;

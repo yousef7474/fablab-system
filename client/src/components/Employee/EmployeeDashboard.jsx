@@ -36,6 +36,11 @@ const EmployeeDashboard = () => {
   const [calendarDate, setCalendarDate] = useState(new Date());
   const [selectedDay, setSelectedDay] = useState(null);
 
+  // Create task modal
+  const [showCreateTaskModal, setShowCreateTaskModal] = useState(false);
+  const [taskForm, setTaskForm] = useState({ title: '', description: '', dueDate: '', dueDateEnd: '', dueTime: '', priority: 'medium', notes: '' });
+  const [taskFormLoading, setTaskFormLoading] = useState(false);
+
   // Change password modal
   const [showPasswordModal, setShowPasswordModal] = useState(false);
   const [passwordForm, setPasswordForm] = useState({ currentPassword: '', newPassword: '', confirmPassword: '' });
@@ -135,6 +140,28 @@ const EmployeeDashboard = () => {
       fetchSchedule();
     } catch (error) {
       toast.error(isRTL ? 'خطأ في تحديث الحالة' : 'Error updating status');
+    }
+  };
+
+  const handleCreateTask = async (e) => {
+    e.preventDefault();
+    if (!taskForm.title || !taskForm.dueDate) {
+      toast.error(isRTL ? 'العنوان وتاريخ الاستحقاق مطلوبان' : 'Title and due date are required');
+      return;
+    }
+    setTaskFormLoading(true);
+    try {
+      await employeeApi.post('/employee/my-tasks', taskForm);
+      toast.success(isRTL ? 'تم إنشاء المهمة بنجاح' : 'Task created successfully');
+      setShowCreateTaskModal(false);
+      setTaskForm({ title: '', description: '', dueDate: '', dueDateEnd: '', dueTime: '', priority: 'medium', notes: '' });
+      fetchTasks();
+      fetchSchedule();
+      fetchProfile();
+    } catch (error) {
+      toast.error(isRTL ? 'خطأ في إنشاء المهمة' : 'Error creating task');
+    } finally {
+      setTaskFormLoading(false);
     }
   };
 
@@ -345,6 +372,12 @@ const EmployeeDashboard = () => {
         {/* Tasks Tab */}
         {activeTab === 'tasks' && (
           <div className="emp-tasks-tab">
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+              <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 700, color: '#1e293b' }}>{isRTL ? 'المهام' : 'Tasks'}</h3>
+              <button className="emp-btn-primary" style={{ padding: '0.5rem 1rem', borderRadius: '10px', fontSize: '0.85rem' }} onClick={() => setShowCreateTaskModal(true)}>
+                + {isRTL ? 'إضافة مهمة' : 'Add Task'}
+              </button>
+            </div>
             {/* Filter Tabs */}
             <div className="emp-filter-tabs">
               {[
@@ -378,19 +411,26 @@ const EmployeeDashboard = () => {
                   <div className="emp-task-card-header">
                     <div>
                       <h4>{task.title}</h4>
-                      {task.creator && <span className="emp-assigned-by">{isRTL ? 'بواسطة:' : 'By:'} {task.creator.fullName}</span>}
+                      {task.selfCreated
+                        ? <span className="emp-assigned-by" style={{ color: '#3b82f6' }}>{isRTL ? 'مهمة ذاتية' : 'Self-created'}</span>
+                        : task.creator && <span className="emp-assigned-by">{isRTL ? 'من المدير:' : 'Assigned by:'} {task.creator.fullName}</span>
+                      }
                     </div>
-                    <select
-                      className="emp-status-select"
-                      value={task.status}
-                      onChange={(e) => handleUpdateTaskStatus(task.taskId, e.target.value)}
-                    >
-                      <option value="pending">{isRTL ? 'قيد الانتظار' : 'Pending'}</option>
-                      <option value="in_progress">{isRTL ? 'قيد التنفيذ' : 'In Progress'}</option>
-                      <option value="completed">{isRTL ? 'مكتمل' : 'Completed'}</option>
-                      <option value="uncompleted">{isRTL ? 'غير مكتمل' : 'Uncompleted'}</option>
-                      <option value="cancelled">{isRTL ? 'ملغى' : 'Cancelled'}</option>
-                    </select>
+                    {task.selfCreated ? (
+                      <select
+                        className="emp-status-select"
+                        value={task.status}
+                        onChange={(e) => handleUpdateTaskStatus(task.taskId, e.target.value)}
+                      >
+                        <option value="pending">{isRTL ? 'قيد الانتظار' : 'Pending'}</option>
+                        <option value="in_progress">{isRTL ? 'قيد التنفيذ' : 'In Progress'}</option>
+                        <option value="completed">{isRTL ? 'مكتمل' : 'Completed'}</option>
+                        <option value="uncompleted">{isRTL ? 'غير مكتمل' : 'Uncompleted'}</option>
+                        <option value="cancelled">{isRTL ? 'ملغى' : 'Cancelled'}</option>
+                      </select>
+                    ) : (
+                      <span className={`emp-status-badge ${task.status}`}>{statusLabels[task.status]}</span>
+                    )}
                   </div>
                   {task.description && <p className="emp-task-desc">{task.description}</p>}
                   <div className="emp-task-card-footer">
@@ -446,27 +486,37 @@ const EmployeeDashboard = () => {
               <motion.div className="emp-day-events" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
                 <h4>{format(selectedDay, 'EEEE, d MMMM', { locale: isRTL ? ar : enUS })}</h4>
                 {getEventsForDay(selectedDay).length === 0 ? (
-                  <p className="emp-empty">{isRTL ? 'لا توجد مهام لهذا اليوم' : 'No tasks for this day'}</p>
+                  <p className="emp-empty">{isRTL ? 'لا توجد أحداث لهذا اليوم' : 'No events for this day'}</p>
                 ) : getEventsForDay(selectedDay).map(event => (
-                  <div key={event.id} className={`emp-event-card priority-${event.priority}`}>
+                  <div key={event.id} className={`emp-event-card ${event.type === 'task' ? `priority-${event.priority}` : 'appointment'}`}>
                     <div className="emp-event-header">
-                      <span className="emp-event-title">{event.title}</span>
-                      <select
-                        className="emp-status-select small"
-                        value={event.status}
-                        onChange={(e) => handleUpdateTaskStatus(event.id, e.target.value)}
-                      >
-                        <option value="pending">{isRTL ? 'قيد الانتظار' : 'Pending'}</option>
-                        <option value="in_progress">{isRTL ? 'قيد التنفيذ' : 'In Progress'}</option>
-                        <option value="completed">{isRTL ? 'مكتمل' : 'Completed'}</option>
-                        <option value="uncompleted">{isRTL ? 'غير مكتمل' : 'Uncompleted'}</option>
-                        <option value="cancelled">{isRTL ? 'ملغى' : 'Cancelled'}</option>
-                      </select>
+                      <span className="emp-event-title">
+                        {event.type === 'appointment' && <span style={{ color: '#22c55e', marginRight: 6, marginLeft: 6 }}>●</span>}
+                        {event.title}
+                      </span>
+                      {event.type === 'task' && event.selfCreated ? (
+                        <select
+                          className="emp-status-select small"
+                          value={event.status}
+                          onChange={(e) => handleUpdateTaskStatus(event.id, e.target.value)}
+                        >
+                          <option value="pending">{isRTL ? 'قيد الانتظار' : 'Pending'}</option>
+                          <option value="in_progress">{isRTL ? 'قيد التنفيذ' : 'In Progress'}</option>
+                          <option value="completed">{isRTL ? 'مكتمل' : 'Completed'}</option>
+                          <option value="uncompleted">{isRTL ? 'غير مكتمل' : 'Uncompleted'}</option>
+                          <option value="cancelled">{isRTL ? 'ملغى' : 'Cancelled'}</option>
+                        </select>
+                      ) : event.type === 'task' ? (
+                        <span className={`emp-status-badge ${event.status}`}>{statusLabels[event.status]}</span>
+                      ) : (
+                        <span className="emp-status-badge" style={{ background: '#dcfce7', color: '#166534' }}>{isRTL ? 'موعد' : 'Appointment'}</span>
+                      )}
                     </div>
                     <div className="emp-event-meta">
-                      {event.startTime && <span>{formatTimeAMPM(event.startTime)}</span>}
+                      {event.startTime && <span>{formatTimeAMPM(event.startTime)}{event.endTime ? ` - ${formatTimeAMPM(event.endTime)}` : ''}</span>}
+                      {event.duration && <span>({event.duration} {isRTL ? 'د' : 'min'})</span>}
                       {event.section && <span className="emp-section-tag" style={{ backgroundColor: SECTION_COLORS[event.section] || '#666' }}>{sectionLabels[event.section] || event.section}</span>}
-                      <span className={`emp-status-badge ${event.status}`}>{statusLabels[event.status]}</span>
+                      {event.type === 'appointment' && event.phone && <span>📞 {event.phone}</span>}
                     </div>
                     {event.description && <p className="emp-event-desc">{event.description}</p>}
                   </div>
@@ -566,6 +616,65 @@ const EmployeeDashboard = () => {
           </div>
         )}
       </div>
+
+      {/* Create Task Modal */}
+      <AnimatePresence>
+        {showCreateTaskModal && (
+          <motion.div className="emp-modal-overlay" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            onClick={() => setShowCreateTaskModal(false)}>
+            <motion.div className="emp-modal" style={{ maxWidth: 500 }} initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }}
+              onClick={(e) => e.stopPropagation()}>
+              <h3>{isRTL ? 'إنشاء مهمة جديدة' : 'Create New Task'}</h3>
+              <form onSubmit={handleCreateTask}>
+                <div className="emp-form-group">
+                  <label>{isRTL ? 'عنوان المهمة' : 'Task Title'} *</label>
+                  <input type="text" value={taskForm.title} onChange={(e) => setTaskForm({ ...taskForm, title: e.target.value })} required />
+                </div>
+                <div className="emp-form-group">
+                  <label>{isRTL ? 'الوصف' : 'Description'}</label>
+                  <textarea style={{ width: '100%', padding: '0.65rem 0.75rem', border: '1.5px solid #e2e8f0', borderRadius: 8, fontFamily: 'inherit', fontSize: '0.9rem', minHeight: 70, resize: 'vertical' }}
+                    value={taskForm.description} onChange={(e) => setTaskForm({ ...taskForm, description: e.target.value })} />
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+                  <div className="emp-form-group">
+                    <label>{isRTL ? 'تاريخ البداية' : 'Start Date'} *</label>
+                    <input type="date" value={taskForm.dueDate} onChange={(e) => setTaskForm({ ...taskForm, dueDate: e.target.value })} required />
+                  </div>
+                  <div className="emp-form-group">
+                    <label>{isRTL ? 'تاريخ الانتهاء' : 'End Date'}</label>
+                    <input type="date" value={taskForm.dueDateEnd} onChange={(e) => setTaskForm({ ...taskForm, dueDateEnd: e.target.value })} />
+                  </div>
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+                  <div className="emp-form-group">
+                    <label>{isRTL ? 'الوقت' : 'Time'}</label>
+                    <input type="time" value={taskForm.dueTime} onChange={(e) => setTaskForm({ ...taskForm, dueTime: e.target.value })} />
+                  </div>
+                  <div className="emp-form-group">
+                    <label>{isRTL ? 'الأولوية' : 'Priority'}</label>
+                    <select style={{ width: '100%', padding: '0.65rem 0.75rem', border: '1.5px solid #e2e8f0', borderRadius: 8, fontFamily: 'inherit' }}
+                      value={taskForm.priority} onChange={(e) => setTaskForm({ ...taskForm, priority: e.target.value })}>
+                      <option value="low">{isRTL ? 'منخفضة' : 'Low'}</option>
+                      <option value="medium">{isRTL ? 'متوسطة' : 'Medium'}</option>
+                      <option value="high">{isRTL ? 'عالية' : 'High'}</option>
+                    </select>
+                  </div>
+                </div>
+                <div className="emp-form-group">
+                  <label>{isRTL ? 'ملاحظات' : 'Notes'}</label>
+                  <input type="text" value={taskForm.notes} onChange={(e) => setTaskForm({ ...taskForm, notes: e.target.value })} />
+                </div>
+                <div className="emp-modal-actions">
+                  <button type="button" className="emp-btn-cancel" onClick={() => setShowCreateTaskModal(false)}>{isRTL ? 'إلغاء' : 'Cancel'}</button>
+                  <button type="submit" className="emp-btn-primary" disabled={taskFormLoading}>
+                    {taskFormLoading ? (isRTL ? 'جاري الإنشاء...' : 'Creating...') : (isRTL ? 'إنشاء المهمة' : 'Create Task')}
+                  </button>
+                </div>
+              </form>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Change Password Modal */}
       <AnimatePresence>

@@ -48,6 +48,9 @@ Employee.hasMany(Task, { foreignKey: 'employeeId', as: 'tasks' });
 Task.belongsTo(Admin, { foreignKey: 'createdById', as: 'creator' });
 Admin.hasMany(Task, { foreignKey: 'createdById', as: 'createdTasks' });
 
+Task.belongsTo(Employee, { foreignKey: 'createdByEmployeeId', as: 'employeeCreator' });
+Employee.hasMany(Task, { foreignKey: 'createdByEmployeeId', as: 'selfCreatedTasks' });
+
 // Rating relationships
 Rating.belongsTo(Employee, { foreignKey: 'employeeId', as: 'employee' });
 Employee.hasMany(Rating, { foreignKey: 'employeeId', as: 'ratings' });

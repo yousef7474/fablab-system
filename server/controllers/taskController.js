@@ -56,17 +56,23 @@ exports.getGroupedTasks = async (req, res) => {
     if (employeeId) whereClause.employeeId = employeeId;
     if (section) whereClause.section = section;
 
-    // If user is a manager and not requesting all tasks, only show tasks they created
+    // If user is a manager and not requesting all tasks, show tasks they created
+    // OR tasks created by employees themselves (createdByEmployeeId is set)
     // Admins can see all tasks
     if (req.admin && req.admin.role === 'manager' && showAll !== 'true') {
-      whereClause.createdById = req.admin.adminId;
+      const { Op } = require('sequelize');
+      whereClause[Op.or] = [
+        { createdById: req.admin.adminId },
+        { createdByEmployeeId: { [Op.not]: null } }
+      ];
     }
 
     const tasks = await Task.findAll({
       where: whereClause,
       include: [
         { model: Employee, as: 'assignee', attributes: ['employeeId', 'name', 'email', 'section'] },
-        { model: Admin, as: 'creator', attributes: ['adminId', 'fullName', 'role'] }
+        { model: Admin, as: 'creator', attributes: ['adminId', 'fullName', 'role'] },
+        { model: Employee, as: 'employeeCreator', attributes: ['employeeId', 'name', 'email'] }
       ],
       order: [['dueDate', 'DESC'], ['createdAt', 'DESC']]
     });
@@ -91,8 +97,10 @@ exports.getGroupedTasks = async (req, res) => {
         notes: task.notes,
         assignee: task.assignee,
         creator: task.creator,
+        employeeCreator: task.employeeCreator,
         employeeId: task.employeeId,
         createdById: task.createdById,
+        createdByEmployeeId: task.createdByEmployeeId,
         startDate,
         endDate,
         dueTime: task.dueTime,

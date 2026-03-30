@@ -11,6 +11,7 @@ router.post('/login', employeeController.login);
 router.get('/profile', employeeAuth, employeeController.getProfile);
 router.post('/change-password', employeeAuth, employeeController.changePassword);
 router.get('/my-tasks', employeeAuth, employeeController.getMyTasks);
+router.post('/my-tasks', employeeAuth, employeeController.createMyTask);
 router.patch('/my-tasks/:id/status', employeeAuth, employeeController.updateMyTaskStatus);
 router.get('/my-ratings', employeeAuth, employeeController.getMyRatings);
 router.get('/my-schedule', employeeAuth, employeeController.getMySchedule);

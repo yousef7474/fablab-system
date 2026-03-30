@@ -21,7 +21,12 @@ const Task = sequelize.define('Task', {
   },
   createdById: {
     type: DataTypes.UUID,
-    allowNull: false
+    allowNull: true
+  },
+  createdByEmployeeId: {
+    type: DataTypes.UUID,
+    allowNull: true,
+    comment: 'Set when employee creates task for themselves'
   },
   dueDate: {
     type: DataTypes.DATEONLY,

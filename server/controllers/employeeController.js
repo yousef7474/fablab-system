@@ -1,6 +1,6 @@
 const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
-const { Employee, Task, Rating, Admin, Registration } = require('../models');
+const { Employee, Task, Rating, Admin, Registration, User } = require('../models');
 const { Op } = require('sequelize');
 
 // Generate a random password (8 chars, letters + digits)
@@ -157,7 +157,8 @@ exports.getMyTasks = async (req, res) => {
     const tasks = await Task.findAll({
       where: whereClause,
       include: [
-        { model: Admin, as: 'creator', attributes: ['fullName', 'role'] }
+        { model: Admin, as: 'creator', attributes: ['fullName', 'role'] },
+        { model: Employee, as: 'employeeCreator', attributes: ['name', 'email'] }
       ],
       order: [['dueDate', 'DESC'], ['createdAt', 'DESC']]
     });
@@ -178,6 +179,10 @@ exports.getMyTasks = async (req, res) => {
         section: task.section,
         notes: task.notes,
         creator: task.creator,
+        employeeCreator: task.employeeCreator,
+        createdById: task.createdById,
+        createdByEmployeeId: task.createdByEmployeeId,
+        selfCreated: task.createdByEmployeeId === req.employee.employeeId,
         startDate,
         endDate,
         dueTime: task.dueTime,
@@ -210,6 +215,11 @@ exports.updateMyTaskStatus = async (req, res) => {
 
     if (!task) {
       return res.status(404).json({ message: 'Task not found or not assigned to you' });
+    }
+
+    // Only allow status change on self-created tasks
+    if (task.createdByEmployeeId !== employee.employeeId) {
+      return res.status(403).json({ message: 'You can only change the status of tasks you created yourself' });
     }
 
     const previousStatus = task.status;
@@ -265,6 +275,37 @@ exports.updateMyTaskStatus = async (req, res) => {
   }
 };
 
+// Create task for self
+exports.createMyTask = async (req, res) => {
+  try {
+    const employee = req.employee;
+    const { title, description, dueDate, dueDateEnd, dueTime, priority, section, notes } = req.body;
+
+    if (!title || !dueDate) {
+      return res.status(400).json({ message: 'Title and due date are required' });
+    }
+
+    const task = await Task.create({
+      title,
+      description: description || null,
+      employeeId: employee.employeeId,
+      createdByEmployeeId: employee.employeeId,
+      dueDate,
+      dueDateEnd: dueDateEnd || null,
+      dueTime: dueTime || null,
+      priority: priority || 'medium',
+      section: section || employee.section,
+      notes: notes || null,
+      status: 'pending'
+    });
+
+    res.status(201).json(task);
+  } catch (error) {
+    console.error('Create my task error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
 // Get own ratings history
 exports.getMyRatings = async (req, res) => {
   try {
@@ -289,19 +330,22 @@ exports.getMyRatings = async (req, res) => {
   }
 };
 
-// Get own schedule (tasks displayed on calendar)
+// Get own schedule (tasks + section appointments)
 exports.getMySchedule = async (req, res) => {
   try {
+    const employee = req.employee;
+
+    // 1. Get employee's tasks
     const tasks = await Task.findAll({
       where: {
-        employeeId: req.employee.employeeId,
+        employeeId: employee.employeeId,
         status: { [Op.notIn]: ['cancelled'] }
       },
       include: [{ model: Admin, as: 'creator', attributes: ['fullName'] }],
       order: [['dueDate', 'ASC']]
     });
 
-    const events = tasks.map(task => ({
+    const taskEvents = tasks.map(task => ({
       id: task.taskId,
       title: task.title,
       date: task.dueDate,
@@ -313,10 +357,66 @@ exports.getMySchedule = async (req, res) => {
       status: task.status,
       section: task.section,
       description: task.description,
-      creatorName: task.creator?.fullName
+      creatorName: task.creator?.fullName,
+      createdById: task.createdById,
+      createdByEmployeeId: task.createdByEmployeeId,
+      selfCreated: task.createdByEmployeeId === employee.employeeId
     }));
 
-    res.json(events);
+    // 2. Get approved appointments for employee's section
+    const registrations = await Registration.findAll({
+      where: {
+        status: 'approved',
+        fablabSection: employee.section,
+        [Op.or]: [
+          { appointmentDate: { [Op.not]: null } },
+          { visitDate: { [Op.not]: null } },
+          { startDate: { [Op.not]: null } }
+        ]
+      },
+      include: [{
+        model: User,
+        as: 'user',
+        attributes: ['firstName', 'lastName', 'name', 'phoneNumber', 'email', 'applicationType']
+      }],
+      order: [['appointmentDate', 'ASC'], ['appointmentTime', 'ASC']]
+    });
+
+    const appointmentEvents = registrations.map(reg => {
+      const date = reg.appointmentDate || reg.visitDate || reg.startDate;
+      const time = reg.appointmentTime || reg.visitStartTime || reg.startTime;
+      const endTime = reg.visitEndTime || reg.endTime;
+      const userName = reg.user.firstName && reg.user.lastName
+        ? `${reg.user.firstName} ${reg.user.lastName}`
+        : reg.user.name;
+
+      // Calculate duration
+      let duration = reg.appointmentDuration;
+      if (!duration && time && endTime) {
+        const [sH, sM] = time.split(':').map(Number);
+        const [eH, eM] = endTime.split(':').map(Number);
+        const d = (eH * 60 + eM) - (sH * 60 + sM);
+        if (d > 0) duration = d;
+      }
+
+      return {
+        id: reg.registrationId,
+        title: userName,
+        date,
+        endDate: date,
+        startTime: time,
+        endTime,
+        duration,
+        section: reg.fablabSection,
+        services: reg.requiredServices,
+        applicationType: reg.user.applicationType,
+        phone: reg.user.phoneNumber,
+        email: reg.user.email,
+        type: 'appointment'
+      };
+    });
+
+    res.json([...taskEvents, ...appointmentEvents]);
   } catch (error) {
     console.error('Get my schedule error:', error);
     res.status(500).json({ message: 'Server error' });
