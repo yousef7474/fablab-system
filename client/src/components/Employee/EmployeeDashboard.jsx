@@ -225,10 +225,11 @@ const EmployeeDashboard = () => {
   const startDayOfWeek = getDay(monthStart);
 
   const getEventsForDay = (day) => {
+    const dayStr = format(day, 'yyyy-MM-dd');
     return schedule.filter(event => {
-      const eventStart = parseISO(event.date);
-      const eventEnd = event.endDate ? parseISO(event.endDate) : eventStart;
-      return day >= eventStart && day <= eventEnd;
+      const startStr = typeof event.date === 'string' ? event.date.substring(0, 10) : '';
+      const endStr = event.endDate ? (typeof event.endDate === 'string' ? event.endDate.substring(0, 10) : '') : startStr;
+      return dayStr >= startStr && dayStr <= endStr;
     });
   };
 
