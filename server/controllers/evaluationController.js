@@ -1,16 +1,16 @@
 const { EmployeeEvaluation, Employee, Admin } = require('../models');
 
-// The evaluation structure with max points per criterion
-// Categories 1-7 have scored criteria (total = 100)
-// Categories 8-9 are qualitative (checkbox, no points)
+// All 9 categories are scored, total = 100
 const EVALUATION_STRUCTURE = {
-  cat1: { maxTotal: 15, criteria: { c1: 4, c2: 3, c3: 5, c4: 3 } },
-  cat2: { maxTotal: 23, criteria: { c1: 8, c2: 5, c3: 5, c4: 5 } },
-  cat3: { maxTotal: 14, criteria: { c1: 5, c2: 3, c3: 3, c4: 3 } },
-  cat4: { maxTotal: 16, criteria: { c1: 8, c2: 8 } },
+  cat1: { maxTotal: 12, criteria: { c1: 3, c2: 3, c3: 3, c4: 3 } },
+  cat2: { maxTotal: 18, criteria: { c1: 5, c2: 5, c3: 4, c4: 4 } },
+  cat3: { maxTotal: 10, criteria: { c1: 3, c2: 3, c3: 2, c4: 2 } },
+  cat4: { maxTotal: 12, criteria: { c1: 6, c2: 6 } },
   cat5: { maxTotal: 4, criteria: { c1: 4 } },
-  cat6: { maxTotal: 16, criteria: { c1: 4, c2: 4, c3: 4, c4: 4 } },
-  cat7: { maxTotal: 12, criteria: { c1: 3, c2: 3, c3: 3, c4: 3 } },
+  cat6: { maxTotal: 12, criteria: { c1: 3, c2: 3, c3: 3, c4: 3 } },
+  cat7: { maxTotal: 8, criteria: { c1: 2, c2: 2, c3: 2, c4: 2 } },
+  cat8: { maxTotal: 12, criteria: { c1: 3, c2: 3, c3: 3, c4: 3 } },
+  cat9: { maxTotal: 12, criteria: { c1: 3, c2: 3, c3: 3, c4: 3 } },
 };
 
 const TOTAL_MAX = 100;
