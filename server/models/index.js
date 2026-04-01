@@ -46,7 +46,7 @@ Registration.belongsTo(User, { foreignKey: 'userId', as: 'user' });
 Task.belongsTo(Employee, { foreignKey: 'employeeId', as: 'assignee' });
 Employee.hasMany(Task, { foreignKey: 'employeeId', as: 'tasks' });
 
-Task.belongsTo(Admin, { foreignKey: 'createdById', as: 'creator' });
+Task.belongsTo(Admin, { foreignKey: { name: 'createdById', allowNull: true }, as: 'creator', constraints: false });
 Admin.hasMany(Task, { foreignKey: 'createdById', as: 'createdTasks' });
 
 Task.belongsTo(Employee, { foreignKey: 'createdByEmployeeId', as: 'employeeCreator' });
