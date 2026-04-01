@@ -289,6 +289,7 @@ exports.createMyTask = async (req, res) => {
       title,
       description: description || null,
       employeeId: employee.employeeId,
+      createdById: null,
       createdByEmployeeId: employee.employeeId,
       dueDate,
       dueDateEnd: dueDateEnd || null,
@@ -302,7 +303,7 @@ exports.createMyTask = async (req, res) => {
     res.status(201).json(task);
   } catch (error) {
     console.error('Create my task error:', error);
-    res.status(500).json({ message: 'Server error' });
+    res.status(500).json({ message: 'Server error', error: error.message });
   }
 };
 
@@ -397,11 +398,10 @@ exports.getMySchedule = async (req, res) => {
       selfCreated: task.createdByEmployeeId === employee.employeeId
     }));
 
-    // 2. Get approved appointments for employee's section
+    // 2. Get all approved appointments (same schedule as admin/manager)
     const registrations = await Registration.findAll({
       where: {
         status: 'approved',
-        fablabSection: employee.section,
         [Op.or]: [
           { appointmentDate: { [Op.not]: null } },
           { visitDate: { [Op.not]: null } },
