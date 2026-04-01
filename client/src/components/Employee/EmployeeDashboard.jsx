@@ -6,6 +6,7 @@ import { toast } from 'react-toastify';
 import { format, parseISO, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isToday, isSameDay, addMonths, subMonths, getDay } from 'date-fns';
 import { ar, enUS } from 'date-fns/locale';
 import employeeApi from '../../config/employeeApi';
+import { EVALUATION_CATEGORIES, TOTAL_MAX } from '../../config/evaluationStructure';
 import './Employee.css';
 
 const SECTION_COLORS = {
@@ -29,6 +30,7 @@ const EmployeeDashboard = () => {
   const [tasks, setTasks] = useState([]);
   const [ratings, setRatings] = useState(null);
   const [schedule, setSchedule] = useState([]);
+  const [myEvaluations, setMyEvaluations] = useState(null);
   const [loading, setLoading] = useState(true);
   const [taskStatusFilter, setTaskStatusFilter] = useState('all');
 
@@ -115,12 +117,21 @@ const EmployeeDashboard = () => {
     }
   }, []);
 
+  const fetchEvaluations = useCallback(async () => {
+    try {
+      const response = await employeeApi.get('/employee/my-evaluations');
+      setMyEvaluations(response.data);
+    } catch (error) {
+      console.error('Error fetching evaluations:', error);
+    }
+  }, []);
+
   useEffect(() => {
     if (employeeData) {
-      Promise.all([fetchProfile(), fetchTasks(), fetchRatings(), fetchSchedule()])
+      Promise.all([fetchProfile(), fetchTasks(), fetchRatings(), fetchSchedule(), fetchEvaluations()])
         .finally(() => setLoading(false));
     }
-  }, [employeeData, fetchProfile, fetchTasks, fetchRatings, fetchSchedule]);
+  }, [employeeData, fetchProfile, fetchTasks, fetchRatings, fetchSchedule, fetchEvaluations]);
 
   const handleUpdateTaskStatus = async (taskId, newStatus) => {
     try {
@@ -567,6 +578,60 @@ const EmployeeDashboard = () => {
                 {ratings.ratings.length === 0 && <p className="emp-empty">{isRTL ? 'لا توجد تقييمات' : 'No ratings yet'}</p>}
               </div>
             </div>
+
+            {/* Performance Evaluations */}
+            {myEvaluations && myEvaluations.evaluations.length > 0 && (
+              <div className="emp-section-card">
+                <h3>{isRTL ? 'التقييم الوظيفي' : 'Performance Evaluations'}</h3>
+                {myEvaluations.summary && (
+                  <div style={{ display: 'flex', gap: '1rem', marginBottom: '1rem', flexWrap: 'wrap' }}>
+                    <div style={{ background: '#eff6ff', padding: '0.75rem 1.25rem', borderRadius: 10, textAlign: 'center', flex: 1, minWidth: 100 }}>
+                      <div style={{ fontSize: '1.3rem', fontWeight: 800, color: '#3b82f6' }}>{myEvaluations.summary.avgScore}%</div>
+                      <div style={{ fontSize: '0.72rem', color: '#64748b' }}>{isRTL ? 'متوسط النسبة' : 'Avg Score'}</div>
+                    </div>
+                    <div style={{ background: '#fefce8', padding: '0.75rem 1.25rem', borderRadius: 10, textAlign: 'center', flex: 1, minWidth: 100 }}>
+                      <div style={{ fontSize: '1.3rem', fontWeight: 800, color: '#f59e0b' }}>{myEvaluations.summary.avgGrade}/5</div>
+                      <div style={{ fontSize: '0.72rem', color: '#64748b' }}>{isRTL ? 'متوسط التقدير' : 'Avg Grade'}</div>
+                    </div>
+                    {myEvaluations.summary.totalBonus > 0 && (
+                      <div style={{ background: '#f5f3ff', padding: '0.75rem 1.25rem', borderRadius: 10, textAlign: 'center', flex: 1, minWidth: 100 }}>
+                        <div style={{ fontSize: '1.3rem', fontWeight: 800, color: '#8b5cf6' }}>+{myEvaluations.summary.totalBonus}</div>
+                        <div style={{ fontSize: '0.72rem', color: '#64748b' }}>{isRTL ? 'نقاط إضافية' : 'Bonus'}</div>
+                      </div>
+                    )}
+                  </div>
+                )}
+                {myEvaluations.evaluations.map(ev => (
+                  <div key={ev.evaluationId} style={{ padding: '0.75rem', background: '#f8fafc', borderRadius: 10, marginBottom: '0.5rem', border: '1px solid #f1f5f9' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+                      <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+                        <span style={{ fontSize: '1.2rem', fontWeight: 800, color: '#3b82f6' }}>{Math.min(ev.totalScore, 100).toFixed(0)}%</span>
+                        <span style={{ fontSize: '0.9rem', fontWeight: 700, color: '#f59e0b' }}>{ev.grade}/5</span>
+                        {ev.bonusPoints > 0 && <span style={{ fontSize: '0.85rem', fontWeight: 700, color: '#8b5cf6' }}>+{ev.bonusPoints} {isRTL ? 'إضافي' : 'bonus'}</span>}
+                      </div>
+                      {ev.period && <span style={{ background: '#eff6ff', color: '#1d4ed8', padding: '2px 8px', borderRadius: 6, fontSize: '0.75rem', fontWeight: 600 }}>{ev.period}</span>}
+                    </div>
+                    <div style={{ fontSize: '0.78rem', color: '#94a3b8' }}>
+                      {ev.evaluationDate} • {isRTL ? 'بواسطة:' : 'By:'} {ev.evaluator?.fullName}
+                      {ev.notes && <span> • {ev.notes}</span>}
+                    </div>
+                    {/* Category breakdown */}
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: '0.4rem', marginTop: '0.5rem' }}>
+                      {EVALUATION_CATEGORIES.filter(c => c.scored).map(cat => {
+                        const catScore = cat.criteria.reduce((s, cr) => s + (parseFloat(ev.scores?.[`${cat.key}_${cr.key}`]) || 0), 0);
+                        const catMax = cat.criteria.reduce((s, cr) => s + cr.max, 0);
+                        return (
+                          <div key={cat.key} style={{ fontSize: '0.72rem', display: 'flex', justifyContent: 'space-between', padding: '0.2rem 0.4rem', background: 'white', borderRadius: 6 }}>
+                            <span style={{ color: '#475569' }}>{isRTL ? cat.nameAr : cat.nameEn}</span>
+                            <span style={{ fontWeight: 700, color: catScore >= catMax ? '#22c55e' : '#334155' }}>{catScore}/{catMax}</span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         )}
 

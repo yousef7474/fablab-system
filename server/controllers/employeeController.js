@@ -306,6 +306,40 @@ exports.createMyTask = async (req, res) => {
   }
 };
 
+// Get own evaluations
+exports.getMyEvaluations = async (req, res) => {
+  try {
+    const { EmployeeEvaluation } = require('../models');
+    const evaluations = await EmployeeEvaluation.findAll({
+      where: { employeeId: req.employee.employeeId },
+      include: [
+        { model: Admin, as: 'evaluator', attributes: ['fullName', 'role'] }
+      ],
+      order: [['evaluationDate', 'DESC']]
+    });
+
+    let avgGrade = 0, avgScore = 0, totalBonus = 0;
+    if (evaluations.length > 0) {
+      avgScore = evaluations.reduce((s, e) => s + Math.min(e.totalScore, 100), 0) / evaluations.length;
+      avgGrade = evaluations.reduce((s, e) => s + e.grade, 0) / evaluations.length;
+      totalBonus = evaluations.reduce((s, e) => s + e.bonusPoints, 0);
+    }
+
+    res.json({
+      evaluations,
+      summary: {
+        count: evaluations.length,
+        avgScore: parseFloat(avgScore.toFixed(2)),
+        avgGrade: parseFloat(avgGrade.toFixed(2)),
+        totalBonus: parseFloat(totalBonus.toFixed(2))
+      }
+    });
+  } catch (error) {
+    console.error('Get my evaluations error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
 // Get own ratings history
 exports.getMyRatings = async (req, res) => {
   try {

@@ -36,6 +36,7 @@ const Education = require('./Education');
 const EducationRating = require('./EducationRating');
 const EducationStudent = require('./EducationStudent');
 const EducationAttendance = require('./EducationAttendance');
+const EmployeeEvaluation = require('./EmployeeEvaluation');
 
 // Define relationships
 User.hasMany(Registration, { foreignKey: 'userId', as: 'registrations' });
@@ -228,6 +229,13 @@ Education.hasMany(EducationAttendance, { foreignKey: 'educationId', as: 'attenda
 EducationAttendance.belongsTo(EducationStudent, { foreignKey: 'studentId', as: 'student' });
 EducationStudent.hasMany(EducationAttendance, { foreignKey: 'studentId', as: 'attendance' });
 
+// Employee Evaluation relationships
+EmployeeEvaluation.belongsTo(Employee, { foreignKey: 'employeeId', as: 'employee' });
+Employee.hasMany(EmployeeEvaluation, { foreignKey: 'employeeId', as: 'evaluations' });
+
+EmployeeEvaluation.belongsTo(Admin, { foreignKey: 'createdById', as: 'evaluator' });
+Admin.hasMany(EmployeeEvaluation, { foreignKey: 'createdById', as: 'createdEvaluations' });
+
 // Sync database
 const syncDatabase = async () => {
   try {
@@ -331,5 +339,6 @@ module.exports = {
   EducationRating,
   EducationStudent,
   EducationAttendance,
+  EmployeeEvaluation,
   syncDatabase
 };

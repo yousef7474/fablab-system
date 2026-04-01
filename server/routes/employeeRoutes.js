@@ -14,6 +14,7 @@ router.get('/my-tasks', employeeAuth, employeeController.getMyTasks);
 router.post('/my-tasks', employeeAuth, employeeController.createMyTask);
 router.patch('/my-tasks/:id/status', employeeAuth, employeeController.updateMyTaskStatus);
 router.get('/my-ratings', employeeAuth, employeeController.getMyRatings);
+router.get('/my-evaluations', employeeAuth, employeeController.getMyEvaluations);
 router.get('/my-schedule', employeeAuth, employeeController.getMySchedule);
 
 // Admin/Manager generates credentials for an employee
