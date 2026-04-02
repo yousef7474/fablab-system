@@ -4039,11 +4039,13 @@ const AdminDashboard = () => {
   };
 
   const getEventsForDay = (day) => {
+    const dayStr = format(day, 'yyyy-MM-dd');
     return schedule.filter(event => {
       if (!event.date) return false;
-      const sameDay = isSameDay(parseISO(event.date), day);
-      if (!sameDay) return false;
-      // Filter by section if a specific employee is selected
+      const startStr = String(event.date).substring(0, 10);
+      const endStr = (event.dueDateEnd || event.date) ? String(event.dueDateEnd || event.date).substring(0, 10) : startStr;
+      const isOnDay = dayStr >= startStr && dayStr <= endStr;
+      if (!isOnDay) return false;
       if (scheduleFilter !== 'all') {
         return event.section === scheduleFilter;
       }

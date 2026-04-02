@@ -866,22 +866,22 @@ const ManagerDashboard = () => {
   };
 
   const getEventsForDay = (day) => {
+    const dayStr = format(day, 'yyyy-MM-dd');
     return schedule.filter(event => {
       if (!event.date) return false;
       try {
-        const eventDate = typeof event.date === 'string' ? parseISO(event.date) : event.date;
-        const isOnDay = isSameDay(eventDate, day);
+        const startStr = String(event.date).substring(0, 10);
+        const endStr = (event.dueDateEnd || event.date) ? String(event.dueDateEnd || event.date).substring(0, 10) : startStr;
+        const isOnDay = dayStr >= startStr && dayStr <= endStr;
 
         // Apply employee filter if not 'all'
         if (scheduleFilter !== 'all' && isOnDay) {
           const selectedEmployee = employees.find(e => e.employeeId === scheduleFilter);
           if (!selectedEmployee) return isOnDay;
 
-          // For tasks, filter by employeeId
           if (event.type === 'task') {
             return event.employeeId === scheduleFilter || event.assigneeId === scheduleFilter;
           }
-          // For appointments, filter by section
           return event.section === selectedEmployee.section;
         }
 
