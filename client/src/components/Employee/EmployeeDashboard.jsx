@@ -227,8 +227,10 @@ const EmployeeDashboard = () => {
   const getEventsForDay = (day) => {
     const dayStr = format(day, 'yyyy-MM-dd');
     return schedule.filter(event => {
-      const startStr = typeof event.date === 'string' ? event.date.substring(0, 10) : '';
-      const endStr = event.endDate ? (typeof event.endDate === 'string' ? event.endDate.substring(0, 10) : '') : startStr;
+      if (!event.date) return false;
+      const startStr = event.date instanceof Date ? format(event.date, 'yyyy-MM-dd') : String(event.date).substring(0, 10);
+      const endDate = event.endDate || event.date;
+      const endStr = endDate instanceof Date ? format(endDate, 'yyyy-MM-dd') : String(endDate).substring(0, 10);
       return dayStr >= startStr && dayStr <= endStr;
     });
   };
