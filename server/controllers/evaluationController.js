@@ -3,13 +3,13 @@ const { EmployeeEvaluation, Employee, Admin } = require('../models');
 // Weights per criterion (total weights = 100)
 // Manager gives 0-100 per criterion, weighted score = (input/100) * weight
 const EVALUATION_STRUCTURE = {
-  cat1: { criteria: { c1: 3, c2: 3, c3: 3, c4: 3 } },   // 12
-  cat2: { criteria: { c1: 5, c2: 5, c3: 4, c4: 4 } },   // 18
-  cat3: { criteria: { c1: 3, c2: 3, c3: 2, c4: 2 } },   // 10
+  cat1: { criteria: { c1: 2, c2: 2, c3: 2, c4: 2 } },   // 8
+  cat2: { criteria: { c1: 4, c2: 4, c3: 4, c4: 4 } },   // 16
+  cat3: { criteria: { c1: 2, c2: 2, c3: 2, c4: 2 } },   // 8
   cat4: { criteria: { c1: 6, c2: 6 } },                   // 12
   cat5: { criteria: { c1: 4 } },                           // 4
   cat6: { criteria: { c1: 3, c2: 3, c3: 3, c4: 3 } },   // 12
-  cat7: { criteria: { c1: 2, c2: 2, c3: 2, c4: 2 } },   // 8
+  cat7: { criteria: { c1: 4, c2: 4, c3: 4, c4: 4 } },   // 16
   cat8: { criteria: { c1: 3, c2: 3, c3: 3, c4: 3 } },   // 12
   cat9: { criteria: { c1: 3, c2: 3, c3: 3, c4: 3 } },   // 12
 };

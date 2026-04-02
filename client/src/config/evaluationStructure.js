@@ -9,10 +9,10 @@ export const EVALUATION_CATEGORIES = [
     nameAr: 'الكفاءة المهنية',
     nameEn: 'Professional Competency',
     criteria: [
-      { key: 'c1', nameAr: 'القدرة على تطوير أساليب العمل', nameEn: 'Ability to develop work methods', weight: 3 },
-      { key: 'c2', nameAr: 'المعرفة بالأسس والمفاهيم الفنية المتعلقة بمهمته', nameEn: 'Knowledge of technical foundations related to duties', weight: 3 },
-      { key: 'c3', nameAr: 'التطوير المهني المستمر من خلال المتابعة للمستجدات في مجال العمل', nameEn: 'Continuous professional development', weight: 3 },
-      { key: 'c4', nameAr: 'المعرفة بنظم العمل وإجراءاته وآلياته في المؤسسة', nameEn: 'Knowledge of work systems and procedures', weight: 3 },
+      { key: 'c1', nameAr: 'القدرة على تطوير أساليب العمل', nameEn: 'Ability to develop work methods', weight: 2 },
+      { key: 'c2', nameAr: 'المعرفة بالأسس والمفاهيم الفنية المتعلقة بمهمته', nameEn: 'Knowledge of technical foundations related to duties', weight: 2 },
+      { key: 'c3', nameAr: 'التطوير المهني المستمر من خلال المتابعة للمستجدات في مجال العمل', nameEn: 'Continuous professional development', weight: 2 },
+      { key: 'c4', nameAr: 'المعرفة بنظم العمل وإجراءاته وآلياته في المؤسسة', nameEn: 'Knowledge of work systems and procedures', weight: 2 },
     ]
   },
   {
@@ -20,8 +20,8 @@ export const EVALUATION_CATEGORIES = [
     nameAr: 'الإنتاجية وجودة العمل',
     nameEn: 'Productivity & Work Quality',
     criteria: [
-      { key: 'c1', nameAr: 'القدرة على إنجاز الأعمال بكفاءة عالية', nameEn: 'Ability to accomplish tasks with high efficiency', weight: 5 },
-      { key: 'c2', nameAr: 'القدرة على تحديد خطوات العمل والبرنامج الزمني', nameEn: 'Ability to define work steps and timeline', weight: 5 },
+      { key: 'c1', nameAr: 'القدرة على إنجاز الأعمال بكفاءة عالية', nameEn: 'Ability to accomplish tasks with high efficiency', weight: 4 },
+      { key: 'c2', nameAr: 'القدرة على تحديد خطوات العمل والبرنامج الزمني', nameEn: 'Ability to define work steps and timeline', weight: 4 },
       { key: 'c3', nameAr: 'المهارة في التنفيذ', nameEn: 'Skill in execution', weight: 4 },
       { key: 'c4', nameAr: 'إنجاز العمل في الوقت المحدد', nameEn: 'Completing work on time', weight: 4 },
     ]
@@ -31,8 +31,8 @@ export const EVALUATION_CATEGORIES = [
     nameAr: 'العمل الجماعي والمشاركة',
     nameEn: 'Teamwork & Participation',
     criteria: [
-      { key: 'c1', nameAr: 'المرونة والاستجابة السريعة لمتطلبات العمل', nameEn: 'Flexibility and quick response to work requirements', weight: 3 },
-      { key: 'c2', nameAr: 'المشاركة الفاعلة في الاجتماعات', nameEn: 'Active participation in meetings', weight: 3 },
+      { key: 'c1', nameAr: 'المرونة والاستجابة السريعة لمتطلبات العمل', nameEn: 'Flexibility and quick response to work requirements', weight: 2 },
+      { key: 'c2', nameAr: 'المشاركة الفاعلة في الاجتماعات', nameEn: 'Active participation in meetings', weight: 2 },
       { key: 'c3', nameAr: 'التعامل بروح الفريق والعمل بما يخدم الصالح العام للمؤسسة', nameEn: 'Team spirit and serving organization interests', weight: 2 },
       { key: 'c4', nameAr: 'المشاركة الإيجابية في المبادرات والأنشطة التي تدعم أهداف المؤسسة', nameEn: 'Positive participation in initiatives', weight: 2 },
     ]
@@ -70,10 +70,10 @@ export const EVALUATION_CATEGORIES = [
     nameAr: 'العلاقات',
     nameEn: 'Relationships',
     criteria: [
-      { key: 'c1', nameAr: 'العلاقة مع الرؤساء', nameEn: 'Relationship with superiors', weight: 2 },
-      { key: 'c2', nameAr: 'العلاقة مع الزملاء', nameEn: 'Relationship with colleagues', weight: 2 },
-      { key: 'c3', nameAr: 'العلاقة مع المرؤوسين', nameEn: 'Relationship with subordinates', weight: 2 },
-      { key: 'c4', nameAr: 'العلاقة مع المستفيدين', nameEn: 'Relationship with beneficiaries', weight: 2 },
+      { key: 'c1', nameAr: 'العلاقة مع الرؤساء', nameEn: 'Relationship with superiors', weight: 4 },
+      { key: 'c2', nameAr: 'العلاقة مع الزملاء', nameEn: 'Relationship with colleagues', weight: 4 },
+      { key: 'c3', nameAr: 'العلاقة مع المرؤوسين', nameEn: 'Relationship with subordinates', weight: 4 },
+      { key: 'c4', nameAr: 'العلاقة مع المستفيدين', nameEn: 'Relationship with beneficiaries', weight: 4 },
     ]
   },
   {
@@ -100,6 +100,7 @@ export const EVALUATION_CATEGORIES = [
   },
 ];
 
+// 8+16+8+12+4+12+16+12+12 = 100
 export const TOTAL_WEIGHT = 100;
 
 // Helper: calculate weighted total from raw scores object

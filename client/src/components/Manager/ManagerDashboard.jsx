@@ -5193,10 +5193,10 @@ const ManagerDashboard = () => {
                           </div>
                         </div>
 
-                        {/* Grade */}
-                        <div style={{ textAlign: 'center', minWidth: 50 }}>
-                          <div style={{ fontSize: '1.1rem', fontWeight: 800, color: '#3b82f6' }}>{grade.toFixed(1)}</div>
-                          <div style={{ fontSize: '0.65rem', color: '#94a3b8' }}>/5</div>
+                        {/* Total */}
+                        <div style={{ textAlign: 'center', minWidth: 60 }}>
+                          <div style={{ fontSize: '1.1rem', fontWeight: 800, color: '#3b82f6' }}>{total.toFixed(1)}</div>
+                          <div style={{ fontSize: '0.65rem', color: '#94a3b8' }}>/100</div>
                         </div>
 
                         {/* Actions */}
