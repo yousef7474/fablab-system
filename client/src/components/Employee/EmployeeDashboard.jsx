@@ -488,7 +488,7 @@ const EmployeeDashboard = () => {
                       onClick={() => setSelectedDay(isSameDay(day, selectedDay) ? null : day)}
                     >
                       <span className="emp-day-number">{format(day, 'd')}</span>
-                      {hasEvents && <span className="emp-event-dot" />}
+                      {hasEvents && <span className="emp-event-count">{events.length}</span>}
                     </div>
                   );
                 })}
