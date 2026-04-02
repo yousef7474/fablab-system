@@ -31,6 +31,7 @@ const EmployeeDashboard = () => {
   const [ratings, setRatings] = useState(null);
   const [schedule, setSchedule] = useState([]);
   const [myEvaluations, setMyEvaluations] = useState(null);
+  const [activityStats, setActivityStats] = useState(null);
   const [loading, setLoading] = useState(true);
   const [taskStatusFilter, setTaskStatusFilter] = useState('all');
 
@@ -126,15 +127,35 @@ const EmployeeDashboard = () => {
     }
   }, []);
 
+  const fetchActivityStats = useCallback(async () => {
+    try {
+      const response = await employeeApi.get('/employee/activity/my-weekly');
+      setActivityStats(response.data);
+    } catch (error) {
+      console.error('Error fetching activity:', error);
+    }
+  }, []);
+
   useEffect(() => {
     if (employeeData) {
-      Promise.all([fetchProfile(), fetchTasks(), fetchRatings(), fetchSchedule(), fetchEvaluations()])
+      // Record login
+      employeeApi.post('/employee/activity/login').catch(() => {});
+
+      Promise.all([fetchProfile(), fetchTasks(), fetchRatings(), fetchSchedule(), fetchEvaluations(), fetchActivityStats()])
         .finally(() => setLoading(false));
+
+      // Heartbeat every 5 minutes
+      const heartbeatInterval = setInterval(() => {
+        employeeApi.post('/employee/activity/heartbeat').catch(() => {});
+      }, 5 * 60 * 1000);
+
+      return () => clearInterval(heartbeatInterval);
     }
-  }, [employeeData, fetchProfile, fetchTasks, fetchRatings, fetchSchedule, fetchEvaluations]);
+  }, [employeeData, fetchProfile, fetchTasks, fetchRatings, fetchSchedule, fetchEvaluations, fetchActivityStats]);
 
   const handleUpdateTaskStatus = async (taskId, newStatus) => {
     try {
+      employeeApi.post('/employee/activity/interaction').catch(() => {});
       const response = await employeeApi.patch(`/employee/my-tasks/${taskId}/status`, { status: newStatus });
       if (response.data.awardedRating) {
         toast.success(isRTL ? 'تم إكمال المهمة! تم منحك نقطة واحدة' : 'Task completed! 1 point awarded');
@@ -340,6 +361,31 @@ const EmployeeDashboard = () => {
                 </div>
               </div>
             </div>
+
+            {/* Weekly Activity */}
+            {activityStats && (
+              <div className="emp-section-card">
+                <h3>{isRTL ? 'نشاط الأسبوع' : 'Weekly Activity'}</h3>
+                <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', marginBottom: '0.75rem' }}>
+                  <div style={{ flex: 1, minWidth: 80, textAlign: 'center', padding: '0.5rem', background: activityStats.passed ? '#dcfce7' : '#fef3c7', borderRadius: 8 }}>
+                    <div style={{ fontSize: '1.2rem', fontWeight: 800, color: activityStats.passed ? '#166534' : '#92400e' }}>{activityStats.totalHours}h</div>
+                    <div style={{ fontSize: '0.7rem', color: '#64748b' }}>{isRTL ? `من ${activityStats.targetHours}h` : `of ${activityStats.targetHours}h`}</div>
+                  </div>
+                  <div style={{ flex: 1, minWidth: 80, textAlign: 'center', padding: '0.5rem', background: '#eff6ff', borderRadius: 8 }}>
+                    <div style={{ fontSize: '1.2rem', fontWeight: 800, color: '#1d4ed8' }}>{activityStats.percentage}%</div>
+                    <div style={{ fontSize: '0.7rem', color: '#64748b' }}>{isRTL ? 'النسبة' : 'Progress'}</div>
+                  </div>
+                  <div style={{ flex: 1, minWidth: 80, textAlign: 'center', padding: '0.5rem', background: '#f8fafc', borderRadius: 8 }}>
+                    <div style={{ fontSize: '1.2rem', fontWeight: 800, color: '#334155' }}>{activityStats.daysActive}/7</div>
+                    <div style={{ fontSize: '0.7rem', color: '#64748b' }}>{isRTL ? 'أيام نشطة' : 'Active Days'}</div>
+                  </div>
+                </div>
+                <div style={{ height: 6, background: '#f1f5f9', borderRadius: 3, overflow: 'hidden' }}>
+                  <div style={{ height: '100%', width: `${Math.min(activityStats.percentage, 100)}%`, background: activityStats.passed ? '#22c55e' : '#f59e0b', borderRadius: 3 }} />
+                </div>
+                {activityStats.passed && <div style={{ fontSize: '0.75rem', color: '#22c55e', fontWeight: 600, marginTop: 6 }}>{isRTL ? '✓ تم تحقيق الهدف الأسبوعي - نقطة واحدة مكتسبة' : '✓ Weekly target reached - 1 credit point earned'}</div>}
+              </div>
+            )}
 
             {/* Recent Tasks */}
             <div className="emp-section-card">

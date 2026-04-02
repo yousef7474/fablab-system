@@ -23,6 +23,7 @@ const evaluationRoutes = require('./routes/evaluationRoutes');
 const { startBorrowingScheduler } = require('./utils/borrowingScheduler');
 const { startTaskReminderScheduler } = require('./utils/taskReminderScheduler');
 const { startEliteCourseScheduler } = require('./utils/eliteCourseScheduler');
+const { processWeeklyCredits } = require('./controllers/activityController');
 
 const app = express();
 
@@ -115,6 +116,22 @@ const startServer = async () => {
     startBorrowingScheduler();
     startTaskReminderScheduler();
     startEliteCourseScheduler();
+
+    // Weekly activity credit scheduler - runs every Sunday at 23:00
+    const scheduleWeeklyCredits = () => {
+      const now = new Date();
+      const nextSunday = new Date(now);
+      nextSunday.setDate(now.getDate() + (7 - now.getDay()));
+      nextSunday.setHours(23, 0, 0, 0);
+      if (nextSunday <= now) nextSunday.setDate(nextSunday.getDate() + 7);
+      const delay = nextSunday - now;
+      setTimeout(() => {
+        processWeeklyCredits();
+        setInterval(processWeeklyCredits, 7 * 24 * 60 * 60 * 1000);
+      }, delay);
+      console.log(`📊 Weekly activity credit scheduler set for Sunday 23:00`);
+    };
+    scheduleWeeklyCredits();
 
     // Start listening
     app.listen(PORT, () => {

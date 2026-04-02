@@ -146,6 +146,7 @@ const ManagerDashboard = () => {
   const [evalLoading, setEvalLoading] = useState(false);
   const [evaluations, setEvaluations] = useState([]);
   const [ratingSubTab, setRatingSubTab] = useState('ratings');
+  const [employeeActivityData, setEmployeeActivityData] = useState(null);
   const [ratingLoading, setRatingLoading] = useState(false);
   const [ratingForm, setRatingForm] = useState({
     employeeId: '',
@@ -1129,6 +1130,15 @@ const ManagerDashboard = () => {
       fetchEvaluations();
     } catch (error) {
       toast.error(isRTL ? 'خطأ في حذف التقييم' : 'Error deleting evaluation');
+    }
+  };
+
+  const fetchEmployeeActivity = async () => {
+    try {
+      const response = await api.get('/employee/activity/all');
+      setEmployeeActivityData(response.data);
+    } catch (error) {
+      console.error('Error fetching activity:', error);
     }
   };
 
@@ -5012,6 +5022,10 @@ const ManagerDashboard = () => {
                 <span className="tab-dot" style={{ background: '#3b82f6' }}></span>
                 {isRTL ? 'التقييم الوظيفي' : 'Performance Evaluation'}
               </button>
+              <button className={`task-filter-tab ${ratingSubTab === 'activity' ? 'active' : ''}`} onClick={() => { setRatingSubTab('activity'); fetchEmployeeActivity(); }}>
+                <span className="tab-dot" style={{ background: '#22c55e' }}></span>
+                {isRTL ? 'نشاط الموظفين' : 'Employee Activity'}
+              </button>
             </div>
 
             {ratingSubTab === 'ratings' && (<>
@@ -5222,6 +5236,62 @@ const ManagerDashboard = () => {
                       </div>
                     );
                   })}
+                </div>
+              </div>
+            )}
+
+            {/* Activity Sub-Tab */}
+            {ratingSubTab === 'activity' && employeeActivityData && (
+              <div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+                  <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 700 }}>
+                    {isRTL ? 'نشاط الموظفين' : 'Employee Activity'}
+                    <span style={{ fontSize: '0.78rem', color: '#94a3b8', fontWeight: 400, marginInlineStart: 8 }}>
+                      {employeeActivityData.weekStart} → {employeeActivityData.weekEnd}
+                    </span>
+                  </h3>
+                </div>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
+                  {employeeActivityData.employees.map(emp => (
+                    <div key={emp.employeeId} style={{ background: 'white', borderRadius: 12, padding: '1rem 1.25rem', border: '1px solid #f1f5f9', boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
+                        <div style={{ flex: '1 1 150px', minWidth: 0 }}>
+                          <div style={{ fontWeight: 700, fontSize: '0.95rem', color: '#1e293b' }}>{emp.name}</div>
+                          <div style={{ fontSize: '0.75rem', color: '#64748b' }}>{sectionLabels[emp.section] || emp.section}</div>
+                        </div>
+
+                        <div style={{ flex: '1 1 180px', minWidth: 100 }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 3 }}>
+                            <span style={{ fontSize: '0.72rem', color: '#64748b' }}>{emp.totalHours}h / {employeeActivityData.targetHours}h</span>
+                            <span style={{ fontSize: '0.78rem', fontWeight: 700, color: emp.passed ? '#22c55e' : emp.percentage > 0 ? '#f59e0b' : '#ef4444' }}>{emp.percentage}%</span>
+                          </div>
+                          <div style={{ height: 6, background: '#f1f5f9', borderRadius: 3, overflow: 'hidden' }}>
+                            <div style={{ height: '100%', width: `${Math.min(emp.percentage, 100)}%`, background: emp.passed ? '#22c55e' : emp.percentage > 0 ? '#f59e0b' : '#ef4444', borderRadius: 3 }} />
+                          </div>
+                        </div>
+
+                        <div style={{ display: 'flex', gap: '0.75rem', fontSize: '0.78rem' }}>
+                          <div style={{ textAlign: 'center' }}>
+                            <div style={{ fontWeight: 700, color: '#334155' }}>{emp.totalLogins}</div>
+                            <div style={{ color: '#94a3b8', fontSize: '0.65rem' }}>{isRTL ? 'دخول' : 'Logins'}</div>
+                          </div>
+                          <div style={{ textAlign: 'center' }}>
+                            <div style={{ fontWeight: 700, color: '#334155' }}>{emp.daysActive}/7</div>
+                            <div style={{ color: '#94a3b8', fontSize: '0.65rem' }}>{isRTL ? 'أيام' : 'Days'}</div>
+                          </div>
+                          <div style={{ textAlign: 'center' }}>
+                            <div style={{ fontWeight: 700, color: emp.daysInteracted > 0 ? '#22c55e' : '#94a3b8' }}>{emp.daysInteracted}</div>
+                            <div style={{ color: '#94a3b8', fontSize: '0.65rem' }}>{isRTL ? 'تفاعل' : 'Actions'}</div>
+                          </div>
+                        </div>
+
+                        <span style={{ padding: '0.2rem 0.6rem', borderRadius: 6, fontSize: '0.72rem', fontWeight: 700, background: emp.passed ? '#dcfce7' : emp.percentage > 0 ? '#fef3c7' : '#f1f5f9', color: emp.passed ? '#166534' : emp.percentage > 0 ? '#92400e' : '#94a3b8' }}>
+                          {emp.passed ? (isRTL ? '✓ مجتاز' : '✓ Passed') : emp.percentage > 0 ? (isRTL ? 'جاري' : 'In Progress') : (isRTL ? 'لا نشاط' : 'No Activity')}
+                        </span>
+                      </div>
+                    </div>
+                  ))}
                 </div>
               </div>
             )}
