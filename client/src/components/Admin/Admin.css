@@ -2299,6 +2299,7 @@
   cursor: pointer;
   transition: all 0.2s;
   background: var(--gray-50);
+  position: relative;
 }
 
 .calendar-day:hover {
@@ -2422,6 +2423,32 @@
 .more-events {
   font-size: 0.6rem;
   color: var(--gray-500);
+}
+
+.calendar-event-count {
+  position: absolute;
+  bottom: 2px;
+  background: var(--primary, #3b82f6);
+  color: white;
+  font-size: 0.6rem;
+  font-weight: 700;
+  min-width: 16px;
+  height: 16px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 3px;
+}
+
+.calendar-day.today .calendar-event-count {
+  background: white;
+  color: var(--primary, #3b82f6);
+}
+
+.calendar-day.selected .calendar-event-count {
+  background: white;
+  color: var(--primary, #3b82f6);
 }
 
 /* Schedule Sidebar */

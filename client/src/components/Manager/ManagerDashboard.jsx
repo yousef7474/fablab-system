@@ -4797,27 +4797,7 @@ const ManagerDashboard = () => {
                   >
                     <span className="day-number">{format(day, 'd')}</span>
                     {hasEvents && (
-                      <div className="event-dots">
-                        {/* Appointment dots (circles) */}
-                        {appointments.slice(0, 2).map((event, i) => (
-                          <span
-                            key={`apt-${i}`}
-                            className="event-dot"
-                            style={{ backgroundColor: SECTION_COLORS[event.section] || '#6366f1' }}
-                          />
-                        ))}
-                        {/* Task dots (squares) - colored by employee */}
-                        {tasks.slice(0, 2).map((task, i) => (
-                          <span
-                            key={`task-${i}`}
-                            className="task-dot"
-                            style={{ backgroundColor: task.employeeId ? getEmployeeColor(employees, task.employeeId) : SECTION_COLORS[task.section] || '#6366f1' }}
-                          />
-                        ))}
-                        {events.length > 4 && (
-                          <span className="more-events">+{events.length - 4}</span>
-                        )}
-                      </div>
+                      <span className="calendar-event-count">{events.length}</span>
                     )}
                   </motion.div>
                 );

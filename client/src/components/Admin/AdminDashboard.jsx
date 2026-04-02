@@ -5325,21 +5325,7 @@ const AdminDashboard = () => {
                             >
                               <span className="day-number">{format(day, 'd')}</span>
                               {events.length > 0 && (
-                                <div className="event-dots">
-                                  {events.slice(0, 3).map((event, i) => (
-                                    <span
-                                      key={i}
-                                      className={event.type === 'task' ? 'task-dot' : 'event-dot'}
-                                      style={{
-                                        backgroundColor: event.type === 'task'
-                                          ? (event.employeeId ? getEmployeeColor(employees, event.employeeId) : PRIORITY_COLORS[event.priority] || '#f59e0b')
-                                          : SECTION_COLORS[event.section] || '#6366f1',
-                                        borderRadius: event.type === 'task' ? '2px' : '50%'
-                                      }}
-                                    />
-                                  ))}
-                                  {events.length > 3 && <span className="more-events">+{events.length - 3}</span>}
-                                </div>
+                                <span className="calendar-event-count">{events.length}</span>
                               )}
                             </div>
                           );
