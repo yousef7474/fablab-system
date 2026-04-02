@@ -915,7 +915,8 @@ exports.getSchedule = async (req, res) => {
         where: taskWhereClause,
         include: [
           { model: Employee, as: 'assignee', attributes: ['name', 'email', 'section'] },
-          { model: AdminModel, as: 'creator', attributes: ['adminId', 'fullName', 'role'] }
+          { model: AdminModel, as: 'creator', attributes: ['adminId', 'fullName', 'role'], required: false },
+          { model: Employee, as: 'employeeCreator', attributes: ['name', 'email'], required: false }
         ],
         order: [['dueDate', 'ASC'], ['dueTime', 'ASC']]
       });
@@ -933,10 +934,11 @@ exports.getSchedule = async (req, res) => {
         status: task.status,
         employeeId: task.employeeId,
         createdById: task.createdById,
+        createdByEmployeeId: task.createdByEmployeeId,
         assignee: task.assignee?.name,
         assigneeEmail: task.assignee?.email,
-        creatorName: task.creator?.fullName,
-        creatorRole: task.creator?.role,
+        creatorName: task.creator?.fullName || task.employeeCreator?.name,
+        creatorRole: task.creator?.role || (task.createdByEmployeeId ? 'employee' : null),
         description: task.description,
         dueDateEnd: task.dueDateEnd
       }));
