@@ -1142,9 +1142,19 @@ const ManagerDashboard = () => {
     }
   };
 
-  const handleExportEvaluations = (employeeId) => {
-    const url = employeeId ? `/evaluations/export?employeeId=${employeeId}` : '/evaluations/export';
-    window.open(`${api.defaults.baseURL}${url}`, '_blank');
+  const handleExportEvaluations = async (employeeId) => {
+    try {
+      const url = employeeId ? `/evaluations/export?employeeId=${employeeId}` : '/evaluations/export';
+      const response = await api.get(url, { responseType: 'blob' });
+      const blob = new Blob([response.data], { type: 'text/csv;charset=utf-8' });
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.download = employeeId ? `evaluation_${employeeId}.csv` : 'all_evaluations.csv';
+      link.click();
+      URL.revokeObjectURL(link.href);
+    } catch (error) {
+      toast.error(isRTL ? 'خطأ في تصدير التقييم' : 'Error exporting evaluation');
+    }
   };
 
   // Live calculation for eval modal
@@ -5333,8 +5343,8 @@ const ManagerDashboard = () => {
                   <div style={{ fontSize: '0.72rem', color: '#64748b' }}>{isRTL ? 'الدرجة' : 'Score'}</div>
                 </div>
                 <div style={{ flex: 1, textAlign: 'center' }}>
-                  <div style={{ fontSize: '1.3rem', fontWeight: 800, color: '#f59e0b' }}>{evalGrade}<span style={{ fontSize: '0.75rem', color: '#94a3b8' }}>/5</span></div>
-                  <div style={{ fontSize: '0.72rem', color: '#64748b' }}>{isRTL ? 'التقدير' : 'Grade'}</div>
+                  <div style={{ fontSize: '1.3rem', fontWeight: 800, color: '#f59e0b' }}>{evalTotal.toFixed(1)}<span style={{ fontSize: '0.75rem', color: '#94a3b8' }}>/100</span></div>
+                  <div style={{ fontSize: '0.72rem', color: '#64748b' }}>{isRTL ? 'الدرجة' : 'Score'}</div>
                 </div>
                 <div style={{ flex: 1, textAlign: 'center' }}>
                   <div style={{ fontSize: '1.3rem', fontWeight: 800, color: '#22c55e' }}>{evalTotal.toFixed(1)}%</div>
