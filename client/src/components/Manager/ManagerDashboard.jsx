@@ -16,7 +16,7 @@ import {
 } from 'date-fns';
 import { ar, enUS } from 'date-fns/locale';
 import api from '../../config/api';
-import { EVALUATION_CATEGORIES, TOTAL_MAX } from '../../config/evaluationStructure';
+import { EVALUATION_CATEGORIES, TOTAL_WEIGHT, calculateWeightedTotal } from '../../config/evaluationStructure';
 import '../Admin/Admin.css';
 import './Manager.css';
 
@@ -140,11 +140,12 @@ const ManagerDashboard = () => {
   const [showRatingModal, setShowRatingModal] = useState(false);
   const [showEvalModal, setShowEvalModal] = useState(false);
   const [evalScores, setEvalScores] = useState({});
-  const [evalQualitative, setEvalQualitative] = useState({});
-  const [evalForm, setEvalForm] = useState({ employeeId: '', period: '', notes: '', evaluationDate: new Date().toISOString().split('T')[0] });
+  const [evalEmployeeId, setEvalEmployeeId] = useState(null);
+  const [evalPeriod, setEvalPeriod] = useState('');
+  const [evalNotes, setEvalNotes] = useState('');
   const [evalLoading, setEvalLoading] = useState(false);
   const [evaluations, setEvaluations] = useState([]);
-  const [ratingSubTab, setRatingSubTab] = useState('ratings'); // 'ratings' or 'evaluations'
+  const [ratingSubTab, setRatingSubTab] = useState('ratings');
   const [ratingLoading, setRatingLoading] = useState(false);
   const [ratingForm, setRatingForm] = useState({
     employeeId: '',
@@ -1091,26 +1092,27 @@ const ManagerDashboard = () => {
     }
   }, []);
 
-  const handleSubmitEvaluation = async () => {
-    if (!evalForm.employeeId) {
-      toast.error(isRTL ? 'يرجى اختيار الموظف' : 'Please select an employee');
-      return;
-    }
+  const openEvalForEmployee = (emp) => {
+    const existing = evaluations.find(e => e.employeeId === emp.employeeId);
+    setEvalEmployeeId(emp.employeeId);
+    setEvalScores(existing?.scores || {});
+    setEvalPeriod(existing?.period || '');
+    setEvalNotes(existing?.notes || '');
+    setShowEvalModal(true);
+  };
+
+  const handleSaveEvaluation = async () => {
+    if (!evalEmployeeId) return;
     setEvalLoading(true);
     try {
       await api.post('/evaluations', {
-        employeeId: evalForm.employeeId,
+        employeeId: evalEmployeeId,
         scores: evalScores,
-        qualitative: evalQualitative,
-        period: evalForm.period,
-        notes: evalForm.notes,
-        evaluationDate: evalForm.evaluationDate
+        period: evalPeriod,
+        notes: evalNotes
       });
-      toast.success(isRTL ? 'تم حفظ التقييم بنجاح' : 'Evaluation saved successfully');
+      toast.success(isRTL ? 'تم حفظ التقييم بنجاح' : 'Evaluation saved');
       setShowEvalModal(false);
-      setEvalScores({});
-      setEvalQualitative({});
-      setEvalForm({ employeeId: '', period: '', notes: '', evaluationDate: new Date().toISOString().split('T')[0] });
       fetchEvaluations();
     } catch (error) {
       toast.error(isRTL ? 'خطأ في حفظ التقييم' : 'Error saving evaluation');
@@ -1130,10 +1132,14 @@ const ManagerDashboard = () => {
     }
   };
 
-  // Calculate running total for eval modal
-  const evalTotal = Object.entries(evalScores).reduce((sum, [, v]) => sum + (parseFloat(v) || 0), 0);
-  const evalGrade = ((Math.min(evalTotal, TOTAL_MAX) / TOTAL_MAX) * 5).toFixed(2);
-  const evalBonus = evalTotal > TOTAL_MAX ? ((evalTotal - TOTAL_MAX) / TOTAL_MAX).toFixed(2) : 0;
+  const handleExportEvaluations = (employeeId) => {
+    const url = employeeId ? `/evaluations/export?employeeId=${employeeId}` : '/evaluations/export';
+    window.open(`${api.defaults.baseURL}${url}`, '_blank');
+  };
+
+  // Live calculation for eval modal
+  const evalTotal = calculateWeightedTotal(evalScores);
+  const evalGrade = ((evalTotal / TOTAL_WEIGHT) * 5).toFixed(2);
 
   useEffect(() => {
     if (activeTab === 'ratings' && managerData) {
@@ -5150,62 +5156,73 @@ const ManagerDashboard = () => {
             {/* Evaluations Sub-Tab */}
             {ratingSubTab === 'evaluations' && (
               <div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', flexWrap: 'wrap', gap: '0.5rem' }}>
                   <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 700 }}>{isRTL ? 'التقييم الوظيفي' : 'Performance Evaluations'}</h3>
-                  <button className="add-task-btn" onClick={() => setShowEvalModal(true)}>
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                      <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+                  <button className="add-task-btn" onClick={() => handleExportEvaluations()} style={{ background: 'linear-gradient(135deg, #22c55e, #16a34a)' }}>
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
                     </svg>
-                    {isRTL ? 'تقييم جديد' : 'New Evaluation'}
+                    {isRTL ? 'تصدير الكل CSV' : 'Export All CSV'}
                   </button>
                 </div>
 
-                {evaluations.length === 0 ? (
-                  <div className="empty-state" style={{ padding: '3rem', textAlign: 'center', color: '#94a3b8' }}>
-                    <p>{isRTL ? 'لا توجد تقييمات بعد' : 'No evaluations yet'}</p>
-                  </div>
-                ) : (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                    {evaluations.map(ev => (
-                      <div key={ev.evaluationId} style={{ background: 'white', borderRadius: 14, padding: '1.25rem', border: '1px solid #f1f5f9', boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.75rem' }}>
-                          <div>
-                            <strong style={{ fontSize: '1rem' }}>{ev.employee?.name}</strong>
-                            <span style={{ marginInlineStart: 8, fontSize: '0.78rem', color: '#64748b' }}>{ev.employee?.section}</span>
-                            {ev.period && <span style={{ marginInlineStart: 8, background: '#eff6ff', color: '#1d4ed8', padding: '2px 8px', borderRadius: 6, fontSize: '0.75rem', fontWeight: 600 }}>{ev.period}</span>}
-                          </div>
-                          <button onClick={() => handleDeleteEvaluation(ev.evaluationId)} style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', padding: 4 }}>
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
-                          </button>
+                {/* Employee Cards */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                  {employees.map(emp => {
+                    const ev = evaluations.find(e => e.employeeId === emp.employeeId);
+                    const total = ev ? ev.totalScore : 0;
+                    const grade = ev ? ev.grade : 0;
+                    const pct = total.toFixed(1);
+                    return (
+                      <div key={emp.employeeId} style={{ background: 'white', borderRadius: 12, padding: '1rem 1.25rem', border: '1px solid #f1f5f9', boxShadow: '0 1px 3px rgba(0,0,0,0.04)', display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
+                        {/* Employee Info */}
+                        <div style={{ flex: '1 1 180px', minWidth: 0 }}>
+                          <div style={{ fontWeight: 700, fontSize: '0.95rem', color: '#1e293b' }}>{emp.name}</div>
+                          <div style={{ fontSize: '0.78rem', color: '#64748b' }}>{sectionLabels[emp.section] || emp.section}</div>
+                          {ev?.period && <span style={{ background: '#eff6ff', color: '#1d4ed8', padding: '1px 6px', borderRadius: 5, fontSize: '0.7rem', fontWeight: 600 }}>{ev.period}</span>}
                         </div>
-                        <div style={{ display: 'flex', gap: '1.5rem', flexWrap: 'wrap', marginBottom: '0.5rem' }}>
-                          <div style={{ textAlign: 'center' }}>
-                            <div style={{ fontSize: '1.5rem', fontWeight: 800, color: '#3b82f6' }}>{Math.min(ev.totalScore, 100)}<span style={{ fontSize: '0.8rem', color: '#94a3b8' }}>/100</span></div>
-                            <div style={{ fontSize: '0.75rem', color: '#64748b' }}>{isRTL ? 'الدرجة' : 'Score'}</div>
+
+                        {/* Score Bar */}
+                        <div style={{ flex: '1 1 200px', minWidth: 120 }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 3 }}>
+                            <span style={{ fontSize: '0.72rem', color: '#64748b' }}>{isRTL ? 'الدرجة' : 'Score'}</span>
+                            <span style={{ fontSize: '0.78rem', fontWeight: 700, color: total >= 80 ? '#22c55e' : total >= 50 ? '#f59e0b' : '#ef4444' }}>{pct}%</span>
                           </div>
-                          <div style={{ textAlign: 'center' }}>
-                            <div style={{ fontSize: '1.5rem', fontWeight: 800, color: '#f59e0b' }}>{ev.grade}<span style={{ fontSize: '0.8rem', color: '#94a3b8' }}>/5</span></div>
-                            <div style={{ fontSize: '0.75rem', color: '#64748b' }}>{isRTL ? 'التقدير' : 'Grade'}</div>
+                          <div style={{ height: 6, background: '#f1f5f9', borderRadius: 3, overflow: 'hidden' }}>
+                            <div style={{ height: '100%', width: `${Math.min(total, 100)}%`, background: total >= 80 ? '#22c55e' : total >= 50 ? '#f59e0b' : '#ef4444', borderRadius: 3, transition: 'width 0.3s' }} />
                           </div>
-                          <div style={{ textAlign: 'center' }}>
-                            <div style={{ fontSize: '1.5rem', fontWeight: 800, color: '#22c55e' }}>{(Math.min(ev.totalScore, 100)).toFixed(0)}%</div>
-                            <div style={{ fontSize: '0.75rem', color: '#64748b' }}>{isRTL ? 'النسبة' : 'Percentage'}</div>
-                          </div>
-                          {ev.bonusPoints > 0 && (
-                            <div style={{ textAlign: 'center' }}>
-                              <div style={{ fontSize: '1.5rem', fontWeight: 800, color: '#8b5cf6' }}>+{ev.bonusPoints}</div>
-                              <div style={{ fontSize: '0.75rem', color: '#64748b' }}>{isRTL ? 'نقاط إضافية' : 'Bonus'}</div>
-                            </div>
+                        </div>
+
+                        {/* Grade */}
+                        <div style={{ textAlign: 'center', minWidth: 50 }}>
+                          <div style={{ fontSize: '1.1rem', fontWeight: 800, color: '#3b82f6' }}>{grade.toFixed(1)}</div>
+                          <div style={{ fontSize: '0.65rem', color: '#94a3b8' }}>/5</div>
+                        </div>
+
+                        {/* Actions */}
+                        <div style={{ display: 'flex', gap: '0.4rem' }}>
+                          <button onClick={() => openEvalForEmployee(emp)}
+                            style={{ padding: '0.4rem 0.8rem', borderRadius: 8, border: 'none', background: 'linear-gradient(135deg, #3b82f6, #1d4ed8)', color: 'white', cursor: 'pointer', fontWeight: 600, fontSize: '0.78rem', fontFamily: 'inherit' }}>
+                            {ev ? (isRTL ? 'تعديل' : 'Edit') : (isRTL ? 'تقييم' : 'Rate')}
+                          </button>
+                          {ev && (
+                            <>
+                              <button onClick={() => handleExportEvaluations(emp.employeeId)}
+                                style={{ padding: '0.4rem 0.6rem', borderRadius: 8, border: '1px solid #e2e8f0', background: 'white', cursor: 'pointer', color: '#22c55e', fontSize: '0.78rem' }}
+                                title="CSV">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                              </button>
+                              <button onClick={() => handleDeleteEvaluation(ev.evaluationId)}
+                                style={{ padding: '0.4rem 0.6rem', borderRadius: 8, border: '1px solid #e2e8f0', background: 'white', cursor: 'pointer', color: '#ef4444', fontSize: '0.78rem' }}>
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                              </button>
+                            </>
                           )}
                         </div>
-                        <div style={{ fontSize: '0.78rem', color: '#94a3b8' }}>
-                          {ev.evaluationDate} • {isRTL ? 'بواسطة:' : 'By:'} {ev.evaluator?.fullName}
-                          {ev.notes && <span> • {ev.notes}</span>}
-                        </div>
                       </div>
-                    ))}
-                  </div>
-                )}
+                    );
+                  })}
+                </div>
               </div>
             )}
           </div>
@@ -5221,34 +5238,28 @@ const ManagerDashboard = () => {
               animate={{ opacity: 1, scale: 1 }}
               style={{ maxWidth: 700, maxHeight: '90vh', overflow: 'auto', padding: '2rem' }}
             >
-              <h3 style={{ marginBottom: '1rem', fontSize: '1.2rem', fontWeight: 700 }}>{isRTL ? 'تقييم موظف جديد' : 'New Employee Evaluation'}</h3>
+              <h3 style={{ marginBottom: '1rem', fontSize: '1.2rem', fontWeight: 700 }}>
+                {isRTL ? 'تقييم:' : 'Evaluate:'} {employees.find(e => e.employeeId === evalEmployeeId)?.name}
+              </h3>
 
-              {/* Employee + Period */}
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '0.75rem', marginBottom: '1.25rem' }}>
-                <div>
-                  <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 600, marginBottom: 4 }}>{isRTL ? 'الموظف' : 'Employee'} *</label>
-                  <select style={{ width: '100%', padding: '0.5rem', borderRadius: 8, border: '1.5px solid #e2e8f0', fontFamily: 'inherit' }}
-                    value={evalForm.employeeId} onChange={(e) => setEvalForm({ ...evalForm, employeeId: e.target.value })}>
-                    <option value="">{isRTL ? 'اختر' : 'Select'}</option>
-                    {employees.map(emp => <option key={emp.employeeId} value={emp.employeeId}>{emp.name}</option>)}
-                  </select>
-                </div>
+              {/* Period + Notes */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', marginBottom: '1.25rem' }}>
                 <div>
                   <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 600, marginBottom: 4 }}>{isRTL ? 'الفترة' : 'Period'}</label>
                   <input style={{ width: '100%', padding: '0.5rem', borderRadius: 8, border: '1.5px solid #e2e8f0', fontFamily: 'inherit' }}
-                    value={evalForm.period} onChange={(e) => setEvalForm({ ...evalForm, period: e.target.value })} placeholder={isRTL ? 'مثال: Q1 2026' : 'e.g. Q1 2026'} />
+                    value={evalPeriod} onChange={(e) => setEvalPeriod(e.target.value)} placeholder={isRTL ? 'مثال: Q1 2026' : 'e.g. Q1 2026'} />
                 </div>
                 <div>
-                  <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 600, marginBottom: 4 }}>{isRTL ? 'التاريخ' : 'Date'}</label>
-                  <input type="date" style={{ width: '100%', padding: '0.5rem', borderRadius: 8, border: '1.5px solid #e2e8f0', fontFamily: 'inherit' }}
-                    value={evalForm.evaluationDate} onChange={(e) => setEvalForm({ ...evalForm, evaluationDate: e.target.value })} />
+                  <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 600, marginBottom: 4 }}>{isRTL ? 'ملاحظات' : 'Notes'}</label>
+                  <input style={{ width: '100%', padding: '0.5rem', borderRadius: 8, border: '1.5px solid #e2e8f0', fontFamily: 'inherit' }}
+                    value={evalNotes} onChange={(e) => setEvalNotes(e.target.value)} />
                 </div>
               </div>
 
               {/* Live Score Summary */}
-              <div style={{ display: 'flex', gap: '1rem', padding: '0.75rem 1rem', background: '#f8fafc', borderRadius: 10, marginBottom: '1.25rem', border: '1px solid #e2e8f0' }}>
+              <div style={{ display: 'flex', gap: '1rem', padding: '0.75rem 1rem', background: '#f8fafc', borderRadius: 10, marginBottom: '1.25rem', border: '1px solid #e2e8f0', position: 'sticky', top: 0, zIndex: 2 }}>
                 <div style={{ flex: 1, textAlign: 'center' }}>
-                  <div style={{ fontSize: '1.3rem', fontWeight: 800, color: '#3b82f6' }}>{Math.min(evalTotal, TOTAL_MAX).toFixed(1)}<span style={{ fontSize: '0.75rem', color: '#94a3b8' }}>/{TOTAL_MAX}</span></div>
+                  <div style={{ fontSize: '1.3rem', fontWeight: 800, color: '#3b82f6' }}>{evalTotal.toFixed(1)}<span style={{ fontSize: '0.75rem', color: '#94a3b8' }}>/{TOTAL_WEIGHT}</span></div>
                   <div style={{ fontSize: '0.72rem', color: '#64748b' }}>{isRTL ? 'الدرجة' : 'Score'}</div>
                 </div>
                 <div style={{ flex: 1, textAlign: 'center' }}>
@@ -5256,68 +5267,53 @@ const ManagerDashboard = () => {
                   <div style={{ fontSize: '0.72rem', color: '#64748b' }}>{isRTL ? 'التقدير' : 'Grade'}</div>
                 </div>
                 <div style={{ flex: 1, textAlign: 'center' }}>
-                  <div style={{ fontSize: '1.3rem', fontWeight: 800, color: '#22c55e' }}>{Math.min(evalTotal, TOTAL_MAX).toFixed(0)}%</div>
+                  <div style={{ fontSize: '1.3rem', fontWeight: 800, color: '#22c55e' }}>{evalTotal.toFixed(1)}%</div>
                   <div style={{ fontSize: '0.72rem', color: '#64748b' }}>{isRTL ? 'النسبة' : 'Percent'}</div>
                 </div>
-                {evalBonus > 0 && (
-                  <div style={{ flex: 1, textAlign: 'center' }}>
-                    <div style={{ fontSize: '1.3rem', fontWeight: 800, color: '#8b5cf6' }}>+{evalBonus}</div>
-                    <div style={{ fontSize: '0.72rem', color: '#64748b' }}>{isRTL ? 'إضافي' : 'Bonus'}</div>
-                  </div>
-                )}
               </div>
 
-              {/* Categories */}
+              {/* Categories — each criterion scored 0-100, weighted */}
               {EVALUATION_CATEGORIES.map(cat => {
-                const catTotal = cat.scored ? cat.criteria.reduce((s, cr) => s + (parseFloat(evalScores[`${cat.key}_${cr.key}`]) || 0), 0) : 0;
-                const catMax = cat.scored ? cat.criteria.reduce((s, cr) => s + cr.max, 0) : 0;
-                const catGrade = catMax > 0 ? ((Math.min(catTotal, catMax) / catMax) * 5).toFixed(1) : '-';
+                const catWeightedTotal = cat.criteria.reduce((s, cr) => {
+                  const raw = Math.min(parseFloat(evalScores[`${cat.key}_${cr.key}`]) || 0, 100);
+                  return s + (raw / 100) * cr.weight;
+                }, 0);
+                const catMaxWeight = cat.criteria.reduce((s, cr) => s + cr.weight, 0);
                 return (
                   <div key={cat.key} style={{ marginBottom: '1rem', border: '1px solid #e2e8f0', borderRadius: 12, overflow: 'hidden' }}>
                     <div style={{ padding: '0.6rem 1rem', background: 'linear-gradient(135deg, #1a56db, #3b82f6)', color: 'white', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                       <span style={{ fontWeight: 700, fontSize: '0.88rem' }}>{isRTL ? cat.nameAr : cat.nameEn}</span>
-                      {cat.scored && <span style={{ fontSize: '0.78rem', opacity: 0.9 }}>{catTotal}/{catMax} ({catGrade}/5)</span>}
+                      <span style={{ fontSize: '0.78rem', opacity: 0.9 }}>{catWeightedTotal.toFixed(1)}/{catMaxWeight} ({isRTL ? 'الوزن' : 'weight'})</span>
                     </div>
                     <div style={{ padding: '0.5rem 0.75rem' }}>
-                      {cat.criteria.map((cr, idx) => (
-                        <div key={cr.key} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.4rem 0', borderBottom: idx < cat.criteria.length - 1 ? '1px solid #f1f5f9' : 'none' }}>
-                          <span style={{ flex: 1, fontSize: '0.82rem', color: '#334155' }}>{isRTL ? cr.nameAr : cr.nameEn}</span>
-                          {cat.scored ? (
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                              <input type="number" min="0" max={cr.max * 3} step="0.5"
-                                style={{ width: 60, padding: '0.3rem 0.4rem', borderRadius: 6, border: '1.5px solid #e2e8f0', textAlign: 'center', fontSize: '0.85rem', fontWeight: 600, fontFamily: 'inherit' }}
+                      {cat.criteria.map((cr, idx) => {
+                        const raw = parseFloat(evalScores[`${cat.key}_${cr.key}`]) || 0;
+                        const weighted = ((Math.min(raw, 100) / 100) * cr.weight).toFixed(2);
+                        return (
+                          <div key={cr.key} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.4rem 0', borderBottom: idx < cat.criteria.length - 1 ? '1px solid #f1f5f9' : 'none' }}>
+                            <span style={{ flex: 1, fontSize: '0.82rem', color: '#334155' }}>{isRTL ? cr.nameAr : cr.nameEn}</span>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                              <input type="number" min="0" max="100" step="1"
+                                style={{ width: 55, padding: '0.3rem 0.4rem', borderRadius: 6, border: '1.5px solid #e2e8f0', textAlign: 'center', fontSize: '0.85rem', fontWeight: 600, fontFamily: 'inherit' }}
                                 value={evalScores[`${cat.key}_${cr.key}`] || ''}
                                 onChange={(e) => setEvalScores(prev => ({ ...prev, [`${cat.key}_${cr.key}`]: e.target.value }))} />
-                              <span style={{ fontSize: '0.75rem', color: '#94a3b8' }}>/{cr.max}</span>
+                              <span style={{ fontSize: '0.72rem', color: '#94a3b8', minWidth: 35 }}>/100</span>
+                              <span style={{ fontSize: '0.78rem', fontWeight: 700, color: '#3b82f6', minWidth: 45, textAlign: 'end' }}>{weighted}/{cr.weight}</span>
                             </div>
-                          ) : (
-                            <label style={{ display: 'flex', alignItems: 'center', gap: 4, cursor: 'pointer' }}>
-                              <input type="checkbox"
-                                checked={!!evalQualitative[`${cat.key}_${cr.key}`]}
-                                onChange={(e) => setEvalQualitative(prev => ({ ...prev, [`${cat.key}_${cr.key}`]: e.target.checked }))} />
-                              <span style={{ fontSize: '0.75rem', color: '#64748b' }}>{isRTL ? 'متحقق' : 'Achieved'}</span>
-                            </label>
-                          )}
-                        </div>
-                      ))}
+                          </div>
+                        );
+                      })}
                     </div>
                   </div>
                 );
               })}
 
-              {/* Notes */}
-              <div style={{ marginBottom: '1rem' }}>
-                <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 600, marginBottom: 4 }}>{isRTL ? 'ملاحظات' : 'Notes'}</label>
-                <textarea style={{ width: '100%', padding: '0.5rem 0.75rem', borderRadius: 8, border: '1.5px solid #e2e8f0', fontFamily: 'inherit', minHeight: 60, resize: 'vertical' }}
-                  value={evalForm.notes} onChange={(e) => setEvalForm({ ...evalForm, notes: e.target.value })} />
-              </div>
-
               {/* Actions */}
-              <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end' }}>
+              <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end', position: 'sticky', bottom: 0, background: 'white', padding: '1rem 0 0', borderTop: '1px solid #f1f5f9' }}>
                 <button onClick={() => setShowEvalModal(false)} style={{ padding: '0.6rem 1.5rem', borderRadius: 8, border: 'none', background: '#f1f5f9', cursor: 'pointer', fontWeight: 600, fontFamily: 'inherit' }}>
                   {isRTL ? 'إلغاء' : 'Cancel'}
                 </button>
-                <button onClick={handleSubmitEvaluation} disabled={evalLoading}
+                <button onClick={handleSaveEvaluation} disabled={evalLoading}
                   style={{ padding: '0.6rem 1.5rem', borderRadius: 8, border: 'none', background: 'linear-gradient(135deg, #3b82f6, #1d4ed8)', color: 'white', cursor: 'pointer', fontWeight: 600, fontFamily: 'inherit', opacity: evalLoading ? 0.7 : 1 }}>
                   {evalLoading ? (isRTL ? 'جاري الحفظ...' : 'Saving...') : (isRTL ? 'حفظ التقييم' : 'Save Evaluation')}
                 </button>

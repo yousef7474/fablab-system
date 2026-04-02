@@ -6,8 +6,9 @@ const { requireManager } = require('../middleware/roleMiddleware');
 
 router.get('/structure', authMiddleware, evaluationController.getStructure);
 router.get('/', authMiddleware, evaluationController.getAllEvaluations);
-router.get('/employee/:employeeId', authMiddleware, evaluationController.getEmployeeEvaluations);
-router.post('/', authMiddleware, requireManager, evaluationController.createEvaluation);
+router.get('/export', authMiddleware, evaluationController.exportCSV);
+router.get('/employee/:employeeId', authMiddleware, evaluationController.getEmployeeEvaluation);
+router.post('/', authMiddleware, requireManager, evaluationController.upsertEvaluation);
 router.delete('/:id', authMiddleware, requireManager, evaluationController.deleteEvaluation);
 
 module.exports = router;

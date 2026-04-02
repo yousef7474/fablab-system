@@ -6,7 +6,7 @@ import { toast } from 'react-toastify';
 import { format, parseISO, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isToday, isSameDay, addMonths, subMonths, getDay } from 'date-fns';
 import { ar, enUS } from 'date-fns/locale';
 import employeeApi from '../../config/employeeApi';
-import { EVALUATION_CATEGORIES, TOTAL_MAX } from '../../config/evaluationStructure';
+import { EVALUATION_CATEGORIES } from '../../config/evaluationStructure';
 import './Employee.css';
 
 const SECTION_COLORS = {
@@ -619,14 +619,17 @@ const EmployeeDashboard = () => {
                       {ev.notes && <span> • {ev.notes}</span>}
                     </div>
                     {/* Category breakdown */}
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: '0.4rem', marginTop: '0.5rem' }}>
-                      {EVALUATION_CATEGORIES.filter(c => c.scored).map(cat => {
-                        const catScore = cat.criteria.reduce((s, cr) => s + (parseFloat(ev.scores?.[`${cat.key}_${cr.key}`]) || 0), 0);
-                        const catMax = cat.criteria.reduce((s, cr) => s + cr.max, 0);
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: '0.4rem', marginTop: '0.5rem' }}>
+                      {EVALUATION_CATEGORIES.map(cat => {
+                        const catWeighted = cat.criteria.reduce((s, cr) => {
+                          const raw = Math.min(parseFloat(ev.scores?.[`${cat.key}_${cr.key}`]) || 0, 100);
+                          return s + (raw / 100) * cr.weight;
+                        }, 0);
+                        const catMaxWeight = cat.criteria.reduce((s, cr) => s + cr.weight, 0);
                         return (
                           <div key={cat.key} style={{ fontSize: '0.72rem', display: 'flex', justifyContent: 'space-between', padding: '0.2rem 0.4rem', background: 'white', borderRadius: 6 }}>
                             <span style={{ color: '#475569' }}>{isRTL ? cat.nameAr : cat.nameEn}</span>
-                            <span style={{ fontWeight: 700, color: catScore >= catMax ? '#22c55e' : '#334155' }}>{catScore}/{catMax}</span>
+                            <span style={{ fontWeight: 700, color: catWeighted >= catMaxWeight * 0.8 ? '#22c55e' : '#334155' }}>{catWeighted.toFixed(1)}/{catMaxWeight}</span>
                           </div>
                         );
                       })}
