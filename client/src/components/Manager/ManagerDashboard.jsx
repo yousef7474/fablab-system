@@ -4996,287 +4996,6 @@ const ManagerDashboard = () => {
         </div>
         )}
 
-        {/* Ratings/Evaluations/Activity Content */}
-        {activeTab === 'employees' && employeeSubTab !== 'list' && (
-          <div className="ratings-content">
-            {employeeSubTab === 'ratings' && (<>
-            {/* Filters Section */}
-            <div className="ratings-filters">
-              <div className="filter-group">
-                <label>{isRTL ? 'الموظف' : 'Employee'}</label>
-                <select
-                  value={ratingFilters.employeeId}
-                  onChange={(e) => setRatingFilters(prev => ({ ...prev, employeeId: e.target.value }))}
-                >
-                  <option value="all">{isRTL ? 'جميع الموظفين' : 'All Employees'}</option>
-                  {employees.map(emp => (
-                    <option key={emp.employeeId} value={emp.employeeId}>{emp.name}</option>
-                  ))}
-                </select>
-              </div>
-              <div className="filter-group">
-                <label>{isRTL ? 'من تاريخ' : 'From Date'}</label>
-                <input
-                  type="date"
-                  value={ratingFilters.startDate}
-                  onChange={(e) => setRatingFilters(prev => ({ ...prev, startDate: e.target.value }))}
-                />
-              </div>
-              <div className="filter-group">
-                <label>{isRTL ? 'إلى تاريخ' : 'To Date'}</label>
-                <input
-                  type="date"
-                  value={ratingFilters.endDate}
-                  onChange={(e) => setRatingFilters(prev => ({ ...prev, endDate: e.target.value }))}
-                />
-              </div>
-              <button className="export-btn" onClick={handleExportRatings}>
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-                  <polyline points="7 10 12 15 17 10"/>
-                  <line x1="12" y1="15" x2="12" y2="3"/>
-                </svg>
-                {isRTL ? 'تصدير CSV' : 'Export CSV'}
-              </button>
-            </div>
-
-            {/* Net Points Summary */}
-            {Object.keys(employeeNetPoints).length > 0 && (
-              <div className="net-points-summary">
-                <h3 style={{ width: '100%', marginBottom: '12px', fontSize: '16px', color: 'var(--text-primary)' }}>
-                  {isRTL ? 'ملخص صافي النقاط' : 'Net Points Summary'}
-                </h3>
-                {Object.entries(employeeNetPoints).map(([empId, data]) => {
-                  const employee = employees.find(e => e.employeeId === empId);
-                  return (
-                    <div key={empId} className="net-points-card">
-                      <div
-                        className="net-points-avatar"
-                        style={{ backgroundColor: employee ? getEmployeeColor(employees, employee.employeeId) : '#666' }}
-                      >
-                        {data.name?.charAt(0) || '?'}
-                      </div>
-                      <div className="net-points-info">
-                        <div className="net-points-name">{data.name || 'Unknown'}</div>
-                        <div className="net-points-stats">
-                          <span style={{ color: '#22c55e' }}>+{data.awards}</span>
-                          <span style={{ color: '#ef4444' }}>-{data.deductions}</span>
-                        </div>
-                      </div>
-                      <div className={`net-points-value ${data.net > 0 ? 'positive' : data.net < 0 ? 'negative' : 'neutral'}`}>
-                        {data.net > 0 ? '+' : ''}{data.net}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-
-            {/* Ratings Table */}
-            <div className="ratings-table-container">
-              <table className="ratings-table">
-                <thead>
-                  <tr>
-                    <th>{isRTL ? 'الموظف' : 'Employee'}</th>
-                    <th>{isRTL ? 'القسم' : 'Section'}</th>
-                    <th>{isRTL ? 'النوع' : 'Type'}</th>
-                    <th>{isRTL ? 'النقاط' : 'Points'}</th>
-                    <th>{isRTL ? 'المعيار' : 'Criteria'}</th>
-                    <th>{isRTL ? 'التاريخ' : 'Date'}</th>
-                    <th>{isRTL ? 'ملاحظات' : 'Notes'}</th>
-                    <th>{isRTL ? 'الإجراءات' : 'Actions'}</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {ratings.length === 0 ? (
-                    <tr>
-                      <td colSpan="8" className="empty-message">
-                        {isRTL ? 'لا توجد تقييمات' : 'No ratings found'}
-                      </td>
-                    </tr>
-                  ) : (
-                    ratings.map(rating => (
-                      <tr key={rating.ratingId}>
-                        <td>{rating.employee?.name || 'N/A'}</td>
-                        <td>
-                          <span className="section-badge" style={{ backgroundColor: rating.employee ? getEmployeeColor(employees, rating.employee.employeeId || rating.employeeId) : '#666' }}>
-                            {sectionLabels[rating.employee?.section] || rating.employee?.section || 'N/A'}
-                          </span>
-                        </td>
-                        <td>
-                          <span className={`rating-type-badge ${rating.type || 'award'}`}>
-                            {rating.type === 'deduction'
-                              ? (isRTL ? 'خصم' : 'Deduction')
-                              : (isRTL ? 'منحة' : 'Award')}
-                          </span>
-                        </td>
-                        <td>
-                          <span className={`points-badge-simple ${rating.type === 'deduction' ? 'negative' : 'positive'}`}>
-                            {rating.type === 'deduction' ? '-1' : '+1'}
-                          </span>
-                        </td>
-                        <td>{rating.criteria || '-'}</td>
-                        <td>{rating.ratingDate}</td>
-                        <td className="notes-cell">{rating.notes || '-'}</td>
-                        <td>
-                          <button
-                            className="delete-btn-small"
-                            onClick={() => handleDeleteRating(rating.ratingId)}
-                            title={isRTL ? 'حذف' : 'Delete'}
-                          >
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                              <polyline points="3 6 5 6 21 6"/>
-                              <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
-                            </svg>
-                          </button>
-                        </td>
-                      </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
-            </div>
-            </>)}
-
-            {/* Evaluations Sub-Tab */}
-            {employeeSubTab === 'evaluations' && (
-              <div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', flexWrap: 'wrap', gap: '0.5rem' }}>
-                  <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 700 }}>{isRTL ? 'التقييم الوظيفي' : 'Performance Evaluations'}</h3>
-                  <button className="add-task-btn" onClick={() => handleExportEvaluations()} style={{ background: 'linear-gradient(135deg, #22c55e, #16a34a)' }}>
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
-                    </svg>
-                    {isRTL ? 'تصدير الكل CSV' : 'Export All CSV'}
-                  </button>
-                </div>
-
-                {/* Employee Cards */}
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                  {employees.map(emp => {
-                    const ev = evaluations.find(e => e.employeeId === emp.employeeId);
-                    const total = ev ? ev.totalScore : 0;
-                    const grade = ev ? ev.grade : 0;
-                    const pct = total.toFixed(1);
-                    return (
-                      <div key={emp.employeeId} style={{ background: 'white', borderRadius: 12, padding: '1rem 1.25rem', border: '1px solid #f1f5f9', boxShadow: '0 1px 3px rgba(0,0,0,0.04)', display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
-                        {/* Employee Info */}
-                        <div style={{ flex: '1 1 180px', minWidth: 0 }}>
-                          <div style={{ fontWeight: 700, fontSize: '0.95rem', color: '#1e293b' }}>{emp.name}</div>
-                          <div style={{ fontSize: '0.78rem', color: '#64748b' }}>{sectionLabels[emp.section] || emp.section}</div>
-                          {ev?.period && <span style={{ background: '#eff6ff', color: '#1d4ed8', padding: '1px 6px', borderRadius: 5, fontSize: '0.7rem', fontWeight: 600 }}>{ev.period}</span>}
-                        </div>
-
-                        {/* Score Bar */}
-                        <div style={{ flex: '1 1 200px', minWidth: 120 }}>
-                          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 3 }}>
-                            <span style={{ fontSize: '0.72rem', color: '#64748b' }}>{isRTL ? 'الدرجة' : 'Score'}</span>
-                            <span style={{ fontSize: '0.78rem', fontWeight: 700, color: total >= 80 ? '#22c55e' : total >= 50 ? '#f59e0b' : '#ef4444' }}>{pct}%</span>
-                          </div>
-                          <div style={{ height: 6, background: '#f1f5f9', borderRadius: 3, overflow: 'hidden' }}>
-                            <div style={{ height: '100%', width: `${Math.min(total, 100)}%`, background: total >= 80 ? '#22c55e' : total >= 50 ? '#f59e0b' : '#ef4444', borderRadius: 3, transition: 'width 0.3s' }} />
-                          </div>
-                        </div>
-
-                        {/* Total */}
-                        <div style={{ textAlign: 'center', minWidth: 60 }}>
-                          <div style={{ fontSize: '1.1rem', fontWeight: 800, color: '#3b82f6' }}>{total.toFixed(1)}</div>
-                          <div style={{ fontSize: '0.65rem', color: '#94a3b8' }}>/100</div>
-                        </div>
-
-                        {/* Bonus */}
-                        {ev?.bonusPoints > 0 && (
-                          <div style={{ textAlign: 'center', minWidth: 45 }}>
-                            <div style={{ fontSize: '1rem', fontWeight: 800, color: '#8b5cf6' }}>+{ev.bonusPoints}</div>
-                            <div style={{ fontSize: '0.6rem', color: '#94a3b8' }}>{isRTL ? 'إضافي' : 'Bonus'}</div>
-                          </div>
-                        )}
-
-                        {/* Actions */}
-                        <div style={{ display: 'flex', gap: '0.4rem' }}>
-                          <button onClick={() => openEvalForEmployee(emp)}
-                            style={{ padding: '0.4rem 0.8rem', borderRadius: 8, border: 'none', background: 'linear-gradient(135deg, #3b82f6, #1d4ed8)', color: 'white', cursor: 'pointer', fontWeight: 600, fontSize: '0.78rem', fontFamily: 'inherit' }}>
-                            {ev ? (isRTL ? 'تعديل' : 'Edit') : (isRTL ? 'تقييم' : 'Rate')}
-                          </button>
-                          {ev && (
-                            <>
-                              <button onClick={() => handleExportEvaluations(emp.employeeId)}
-                                style={{ padding: '0.4rem 0.6rem', borderRadius: 8, border: '1px solid #e2e8f0', background: 'white', cursor: 'pointer', color: '#22c55e', fontSize: '0.78rem' }}
-                                title="CSV">
-                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-                              </button>
-                              <button onClick={() => handleDeleteEvaluation(ev.evaluationId)}
-                                style={{ padding: '0.4rem 0.6rem', borderRadius: 8, border: '1px solid #e2e8f0', background: 'white', cursor: 'pointer', color: '#ef4444', fontSize: '0.78rem' }}>
-                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
-                              </button>
-                            </>
-                          )}
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
-
-            {/* Activity Sub-Tab */}
-            {employeeSubTab === 'activity' && employeeActivityData && (
-              <div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-                  <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 700 }}>
-                    {isRTL ? 'نشاط الموظفين' : 'Employee Activity'}
-                    <span style={{ fontSize: '0.78rem', color: '#94a3b8', fontWeight: 400, marginInlineStart: 8 }}>
-                      {employeeActivityData.weekStart} → {employeeActivityData.weekEnd}
-                    </span>
-                  </h3>
-                </div>
-
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
-                  {employeeActivityData.employees.map(emp => (
-                    <div key={emp.employeeId} style={{ background: 'white', borderRadius: 12, padding: '1rem 1.25rem', border: '1px solid #f1f5f9', boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
-                        <div style={{ flex: '1 1 150px', minWidth: 0 }}>
-                          <div style={{ fontWeight: 700, fontSize: '0.95rem', color: '#1e293b' }}>{emp.name}</div>
-                          <div style={{ fontSize: '0.75rem', color: '#64748b' }}>{sectionLabels[emp.section] || emp.section}</div>
-                        </div>
-
-                        <div style={{ flex: '1 1 180px', minWidth: 100 }}>
-                          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 3 }}>
-                            <span style={{ fontSize: '0.72rem', color: '#64748b' }}>{emp.totalHours}h / {employeeActivityData.targetHours}h</span>
-                            <span style={{ fontSize: '0.78rem', fontWeight: 700, color: emp.passed ? '#22c55e' : emp.percentage > 0 ? '#f59e0b' : '#ef4444' }}>{emp.percentage}%</span>
-                          </div>
-                          <div style={{ height: 6, background: '#f1f5f9', borderRadius: 3, overflow: 'hidden' }}>
-                            <div style={{ height: '100%', width: `${Math.min(emp.percentage, 100)}%`, background: emp.passed ? '#22c55e' : emp.percentage > 0 ? '#f59e0b' : '#ef4444', borderRadius: 3 }} />
-                          </div>
-                        </div>
-
-                        <div style={{ display: 'flex', gap: '0.75rem', fontSize: '0.78rem' }}>
-                          <div style={{ textAlign: 'center' }}>
-                            <div style={{ fontWeight: 700, color: '#334155' }}>{emp.totalLogins}</div>
-                            <div style={{ color: '#94a3b8', fontSize: '0.65rem' }}>{isRTL ? 'دخول' : 'Logins'}</div>
-                          </div>
-                          <div style={{ textAlign: 'center' }}>
-                            <div style={{ fontWeight: 700, color: '#334155' }}>{emp.daysActive}/7</div>
-                            <div style={{ color: '#94a3b8', fontSize: '0.65rem' }}>{isRTL ? 'أيام' : 'Days'}</div>
-                          </div>
-                          <div style={{ textAlign: 'center' }}>
-                            <div style={{ fontWeight: 700, color: emp.daysInteracted > 0 ? '#22c55e' : '#94a3b8' }}>{emp.daysInteracted}</div>
-                            <div style={{ color: '#94a3b8', fontSize: '0.65rem' }}>{isRTL ? 'تفاعل' : 'Actions'}</div>
-                          </div>
-                        </div>
-
-                        <span style={{ padding: '0.2rem 0.6rem', borderRadius: 6, fontSize: '0.72rem', fontWeight: 700, background: emp.passed ? '#dcfce7' : emp.percentage > 0 ? '#fef3c7' : '#f1f5f9', color: emp.passed ? '#166534' : emp.percentage > 0 ? '#92400e' : '#94a3b8' }}>
-                          {emp.passed ? (isRTL ? '✓ مجتاز' : '✓ Passed') : emp.percentage > 0 ? (isRTL ? 'جاري' : 'In Progress') : (isRTL ? 'لا نشاط' : 'No Activity')}
-                        </span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
-        )}
-
         {/* Evaluation Modal */}
         {showEvalModal && (
           <div className="modal-overlay" onClick={() => setShowEvalModal(false)}>
@@ -7796,6 +7515,287 @@ const ManagerDashboard = () => {
               )}
             </div>
             </>)}
+
+            {/* Ratings/Evaluations/Activity Content */}
+            {employeeSubTab !== 'list' && (
+              <div className="ratings-content">
+                {employeeSubTab === 'ratings' && (<>
+                {/* Filters Section */}
+                <div className="ratings-filters">
+                  <div className="filter-group">
+                    <label>{isRTL ? 'الموظف' : 'Employee'}</label>
+                    <select
+                      value={ratingFilters.employeeId}
+                      onChange={(e) => setRatingFilters(prev => ({ ...prev, employeeId: e.target.value }))}
+                    >
+                      <option value="all">{isRTL ? 'جميع الموظفين' : 'All Employees'}</option>
+                      {employees.map(emp => (
+                        <option key={emp.employeeId} value={emp.employeeId}>{emp.name}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="filter-group">
+                    <label>{isRTL ? 'من تاريخ' : 'From Date'}</label>
+                    <input
+                      type="date"
+                      value={ratingFilters.startDate}
+                      onChange={(e) => setRatingFilters(prev => ({ ...prev, startDate: e.target.value }))}
+                    />
+                  </div>
+                  <div className="filter-group">
+                    <label>{isRTL ? 'إلى تاريخ' : 'To Date'}</label>
+                    <input
+                      type="date"
+                      value={ratingFilters.endDate}
+                      onChange={(e) => setRatingFilters(prev => ({ ...prev, endDate: e.target.value }))}
+                    />
+                  </div>
+                  <button className="export-btn" onClick={handleExportRatings}>
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                      <polyline points="7 10 12 15 17 10"/>
+                      <line x1="12" y1="15" x2="12" y2="3"/>
+                    </svg>
+                    {isRTL ? 'تصدير CSV' : 'Export CSV'}
+                  </button>
+                </div>
+
+                {/* Net Points Summary */}
+                {Object.keys(employeeNetPoints).length > 0 && (
+                  <div className="net-points-summary">
+                    <h3 style={{ width: '100%', marginBottom: '12px', fontSize: '16px', color: 'var(--text-primary)' }}>
+                      {isRTL ? 'ملخص صافي النقاط' : 'Net Points Summary'}
+                    </h3>
+                    {Object.entries(employeeNetPoints).map(([empId, data]) => {
+                      const employee = employees.find(e => e.employeeId === empId);
+                      return (
+                        <div key={empId} className="net-points-card">
+                          <div
+                            className="net-points-avatar"
+                            style={{ backgroundColor: employee ? getEmployeeColor(employees, employee.employeeId) : '#666' }}
+                          >
+                            {data.name?.charAt(0) || '?'}
+                          </div>
+                          <div className="net-points-info">
+                            <div className="net-points-name">{data.name || 'Unknown'}</div>
+                            <div className="net-points-stats">
+                              <span style={{ color: '#22c55e' }}>+{data.awards}</span>
+                              <span style={{ color: '#ef4444' }}>-{data.deductions}</span>
+                            </div>
+                          </div>
+                          <div className={`net-points-value ${data.net > 0 ? 'positive' : data.net < 0 ? 'negative' : 'neutral'}`}>
+                            {data.net > 0 ? '+' : ''}{data.net}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+
+                {/* Ratings Table */}
+                <div className="ratings-table-container">
+                  <table className="ratings-table">
+                    <thead>
+                      <tr>
+                        <th>{isRTL ? 'الموظف' : 'Employee'}</th>
+                        <th>{isRTL ? 'القسم' : 'Section'}</th>
+                        <th>{isRTL ? 'النوع' : 'Type'}</th>
+                        <th>{isRTL ? 'النقاط' : 'Points'}</th>
+                        <th>{isRTL ? 'المعيار' : 'Criteria'}</th>
+                        <th>{isRTL ? 'التاريخ' : 'Date'}</th>
+                        <th>{isRTL ? 'ملاحظات' : 'Notes'}</th>
+                        <th>{isRTL ? 'الإجراءات' : 'Actions'}</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {ratings.length === 0 ? (
+                        <tr>
+                          <td colSpan="8" className="empty-message">
+                            {isRTL ? 'لا توجد تقييمات' : 'No ratings found'}
+                          </td>
+                        </tr>
+                      ) : (
+                        ratings.map(rating => (
+                          <tr key={rating.ratingId}>
+                            <td>{rating.employee?.name || 'N/A'}</td>
+                            <td>
+                              <span className="section-badge" style={{ backgroundColor: rating.employee ? getEmployeeColor(employees, rating.employee.employeeId || rating.employeeId) : '#666' }}>
+                                {sectionLabels[rating.employee?.section] || rating.employee?.section || 'N/A'}
+                              </span>
+                            </td>
+                            <td>
+                              <span className={`rating-type-badge ${rating.type || 'award'}`}>
+                                {rating.type === 'deduction'
+                                  ? (isRTL ? 'خصم' : 'Deduction')
+                                  : (isRTL ? 'منحة' : 'Award')}
+                              </span>
+                            </td>
+                            <td>
+                              <span className={`points-badge-simple ${rating.type === 'deduction' ? 'negative' : 'positive'}`}>
+                                {rating.type === 'deduction' ? '-1' : '+1'}
+                              </span>
+                            </td>
+                            <td>{rating.criteria || '-'}</td>
+                            <td>{rating.ratingDate}</td>
+                            <td className="notes-cell">{rating.notes || '-'}</td>
+                            <td>
+                              <button
+                                className="delete-btn-small"
+                                onClick={() => handleDeleteRating(rating.ratingId)}
+                                title={isRTL ? 'حذف' : 'Delete'}
+                              >
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                  <polyline points="3 6 5 6 21 6"/>
+                                  <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+                                </svg>
+                              </button>
+                            </td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+                </>)}
+
+                {/* Evaluations Sub-Tab */}
+                {employeeSubTab === 'evaluations' && (
+                  <div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', flexWrap: 'wrap', gap: '0.5rem' }}>
+                      <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 700 }}>{isRTL ? 'التقييم الوظيفي' : 'Performance Evaluations'}</h3>
+                      <button className="add-task-btn" onClick={() => handleExportEvaluations()} style={{ background: 'linear-gradient(135deg, #22c55e, #16a34a)' }}>
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
+                        </svg>
+                        {isRTL ? 'تصدير الكل CSV' : 'Export All CSV'}
+                      </button>
+                    </div>
+
+                    {/* Employee Cards */}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                      {employees.map(emp => {
+                        const ev = evaluations.find(e => e.employeeId === emp.employeeId);
+                        const total = ev ? ev.totalScore : 0;
+                        const grade = ev ? ev.grade : 0;
+                        const pct = total.toFixed(1);
+                        return (
+                          <div key={emp.employeeId} style={{ background: 'white', borderRadius: 12, padding: '1rem 1.25rem', border: '1px solid #f1f5f9', boxShadow: '0 1px 3px rgba(0,0,0,0.04)', display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
+                            {/* Employee Info */}
+                            <div style={{ flex: '1 1 180px', minWidth: 0 }}>
+                              <div style={{ fontWeight: 700, fontSize: '0.95rem', color: '#1e293b' }}>{emp.name}</div>
+                              <div style={{ fontSize: '0.78rem', color: '#64748b' }}>{sectionLabels[emp.section] || emp.section}</div>
+                              {ev?.period && <span style={{ background: '#eff6ff', color: '#1d4ed8', padding: '1px 6px', borderRadius: 5, fontSize: '0.7rem', fontWeight: 600 }}>{ev.period}</span>}
+                            </div>
+
+                            {/* Score Bar */}
+                            <div style={{ flex: '1 1 200px', minWidth: 120 }}>
+                              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 3 }}>
+                                <span style={{ fontSize: '0.72rem', color: '#64748b' }}>{isRTL ? 'الدرجة' : 'Score'}</span>
+                                <span style={{ fontSize: '0.78rem', fontWeight: 700, color: total >= 80 ? '#22c55e' : total >= 50 ? '#f59e0b' : '#ef4444' }}>{pct}%</span>
+                              </div>
+                              <div style={{ height: 6, background: '#f1f5f9', borderRadius: 3, overflow: 'hidden' }}>
+                                <div style={{ height: '100%', width: `${Math.min(total, 100)}%`, background: total >= 80 ? '#22c55e' : total >= 50 ? '#f59e0b' : '#ef4444', borderRadius: 3, transition: 'width 0.3s' }} />
+                              </div>
+                            </div>
+
+                            {/* Total */}
+                            <div style={{ textAlign: 'center', minWidth: 60 }}>
+                              <div style={{ fontSize: '1.1rem', fontWeight: 800, color: '#3b82f6' }}>{total.toFixed(1)}</div>
+                              <div style={{ fontSize: '0.65rem', color: '#94a3b8' }}>/100</div>
+                            </div>
+
+                            {/* Bonus */}
+                            {ev?.bonusPoints > 0 && (
+                              <div style={{ textAlign: 'center', minWidth: 45 }}>
+                                <div style={{ fontSize: '1rem', fontWeight: 800, color: '#8b5cf6' }}>+{ev.bonusPoints}</div>
+                                <div style={{ fontSize: '0.6rem', color: '#94a3b8' }}>{isRTL ? 'إضافي' : 'Bonus'}</div>
+                              </div>
+                            )}
+
+                            {/* Actions */}
+                            <div style={{ display: 'flex', gap: '0.4rem' }}>
+                              <button onClick={() => openEvalForEmployee(emp)}
+                                style={{ padding: '0.4rem 0.8rem', borderRadius: 8, border: 'none', background: 'linear-gradient(135deg, #3b82f6, #1d4ed8)', color: 'white', cursor: 'pointer', fontWeight: 600, fontSize: '0.78rem', fontFamily: 'inherit' }}>
+                                {ev ? (isRTL ? 'تعديل' : 'Edit') : (isRTL ? 'تقييم' : 'Rate')}
+                              </button>
+                              {ev && (
+                                <>
+                                  <button onClick={() => handleExportEvaluations(emp.employeeId)}
+                                    style={{ padding: '0.4rem 0.6rem', borderRadius: 8, border: '1px solid #e2e8f0', background: 'white', cursor: 'pointer', color: '#22c55e', fontSize: '0.78rem' }}
+                                    title="CSV">
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                                  </button>
+                                  <button onClick={() => handleDeleteEvaluation(ev.evaluationId)}
+                                    style={{ padding: '0.4rem 0.6rem', borderRadius: 8, border: '1px solid #e2e8f0', background: 'white', cursor: 'pointer', color: '#ef4444', fontSize: '0.78rem' }}>
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                                  </button>
+                                </>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
+                {/* Activity Sub-Tab */}
+                {employeeSubTab === 'activity' && employeeActivityData && (
+                  <div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+                      <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 700 }}>
+                        {isRTL ? 'نشاط الموظفين' : 'Employee Activity'}
+                        <span style={{ fontSize: '0.78rem', color: '#94a3b8', fontWeight: 400, marginInlineStart: 8 }}>
+                          {employeeActivityData.weekStart} → {employeeActivityData.weekEnd}
+                        </span>
+                      </h3>
+                    </div>
+
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
+                      {employeeActivityData.employees.map(emp => (
+                        <div key={emp.employeeId} style={{ background: 'white', borderRadius: 12, padding: '1rem 1.25rem', border: '1px solid #f1f5f9', boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
+                            <div style={{ flex: '1 1 150px', minWidth: 0 }}>
+                              <div style={{ fontWeight: 700, fontSize: '0.95rem', color: '#1e293b' }}>{emp.name}</div>
+                              <div style={{ fontSize: '0.75rem', color: '#64748b' }}>{sectionLabels[emp.section] || emp.section}</div>
+                            </div>
+
+                            <div style={{ flex: '1 1 180px', minWidth: 100 }}>
+                              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 3 }}>
+                                <span style={{ fontSize: '0.72rem', color: '#64748b' }}>{emp.totalHours}h / {employeeActivityData.targetHours}h</span>
+                                <span style={{ fontSize: '0.78rem', fontWeight: 700, color: emp.passed ? '#22c55e' : emp.percentage > 0 ? '#f59e0b' : '#ef4444' }}>{emp.percentage}%</span>
+                              </div>
+                              <div style={{ height: 6, background: '#f1f5f9', borderRadius: 3, overflow: 'hidden' }}>
+                                <div style={{ height: '100%', width: `${Math.min(emp.percentage, 100)}%`, background: emp.passed ? '#22c55e' : emp.percentage > 0 ? '#f59e0b' : '#ef4444', borderRadius: 3 }} />
+                              </div>
+                            </div>
+
+                            <div style={{ display: 'flex', gap: '0.75rem', fontSize: '0.78rem' }}>
+                              <div style={{ textAlign: 'center' }}>
+                                <div style={{ fontWeight: 700, color: '#334155' }}>{emp.totalLogins}</div>
+                                <div style={{ color: '#94a3b8', fontSize: '0.65rem' }}>{isRTL ? 'دخول' : 'Logins'}</div>
+                              </div>
+                              <div style={{ textAlign: 'center' }}>
+                                <div style={{ fontWeight: 700, color: '#334155' }}>{emp.daysActive}/7</div>
+                                <div style={{ color: '#94a3b8', fontSize: '0.65rem' }}>{isRTL ? 'أيام' : 'Days'}</div>
+                              </div>
+                              <div style={{ textAlign: 'center' }}>
+                                <div style={{ fontWeight: 700, color: emp.daysInteracted > 0 ? '#22c55e' : '#94a3b8' }}>{emp.daysInteracted}</div>
+                                <div style={{ color: '#94a3b8', fontSize: '0.65rem' }}>{isRTL ? 'تفاعل' : 'Actions'}</div>
+                              </div>
+                            </div>
+
+                            <span style={{ padding: '0.2rem 0.6rem', borderRadius: 6, fontSize: '0.72rem', fontWeight: 700, background: emp.passed ? '#dcfce7' : emp.percentage > 0 ? '#fef3c7' : '#f1f5f9', color: emp.passed ? '#166534' : emp.percentage > 0 ? '#92400e' : '#94a3b8' }}>
+                              {emp.passed ? (isRTL ? '✓ مجتاز' : '✓ Passed') : emp.percentage > 0 ? (isRTL ? 'جاري' : 'In Progress') : (isRTL ? 'لا نشاط' : 'No Activity')}
+                            </span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         )}
 
