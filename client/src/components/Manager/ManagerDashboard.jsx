@@ -4996,7 +4996,7 @@ const ManagerDashboard = () => {
         </div>
         )}
 
-        {/* Ratings Content (inside employees tab) */}
+        {/* Ratings/Evaluations/Activity Content */}
         {activeTab === 'employees' && employeeSubTab !== 'list' && (
           <div className="ratings-content">
             {employeeSubTab === 'ratings' && (<>
