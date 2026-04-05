@@ -85,7 +85,7 @@ const ManagerDashboard = () => {
   const isRTL = i18n.language === 'ar';
 
   // Valid tabs for URL persistence
-  const validTabs = ['schedule', 'tasks', 'employees', 'todos', 'workspaces', 'ratings', 'volunteers', 'interns', 'education', 'settings'];
+  const validTabs = ['schedule', 'tasks', 'employees', 'todos', 'workspaces', 'volunteers', 'interns', 'education', 'settings'];
 
   // Get initial tab from URL, localStorage, or default to 'schedule'
   const getInitialTab = () => {
@@ -145,8 +145,8 @@ const ManagerDashboard = () => {
   const [evalNotes, setEvalNotes] = useState('');
   const [evalLoading, setEvalLoading] = useState(false);
   const [evaluations, setEvaluations] = useState([]);
-  const [ratingSubTab, setRatingSubTab] = useState('ratings');
   const [employeeActivityData, setEmployeeActivityData] = useState(null);
+  const [employeeSubTab, setEmployeeSubTab] = useState('list'); // 'list', 'points', 'evaluations', 'activity'
   const [ratingLoading, setRatingLoading] = useState(false);
   const [ratingForm, setRatingForm] = useState({
     employeeId: '',
@@ -1162,7 +1162,7 @@ const ManagerDashboard = () => {
   const evalBonus = calculateBonus(evalScores);
 
   useEffect(() => {
-    if (activeTab === 'ratings' && managerData) {
+    if (activeTab === 'employees' && managerData) {
       fetchRatings();
       fetchEvaluations();
     }
@@ -4616,15 +4616,6 @@ const ManagerDashboard = () => {
             {sidebarOpen && <span>{isRTL ? 'مساحات العمل' : 'Workspaces'}</span>}
           </button>
           <button
-            className={`nav-item ${activeTab === 'ratings' ? 'active' : ''}`}
-            onClick={() => { setActiveTab('ratings'); if (window.innerWidth <= 768) setSidebarOpen(false); }}
-          >
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
-            </svg>
-            {sidebarOpen && <span>{isRTL ? 'تقييم الموظفين' : 'Ratings'}</span>}
-          </button>
-          <button
             className={`nav-item ${activeTab === 'volunteers' ? 'active' : ''}`}
             onClick={() => { setActiveTab('volunteers'); if (window.innerWidth <= 768) setSidebarOpen(false); }}
           >
@@ -4719,8 +4710,6 @@ const ManagerDashboard = () => {
               ? (isRTL ? 'مهامي' : 'My Tasks')
               : activeTab === 'workspaces'
               ? (isRTL ? 'مساحات العمل' : 'Workspaces')
-              : activeTab === 'ratings'
-              ? (isRTL ? 'تقييم الموظفين' : 'Employee Ratings')
               : activeTab === 'volunteers'
               ? (isRTL ? 'المتطوعين' : 'Volunteers')
               : activeTab === 'interns'
@@ -4732,13 +4721,11 @@ const ManagerDashboard = () => {
               : activeTab === 'tasks'
               ? (isRTL ? 'إدارة وتعيين المهام للموظفين' : 'Manage and assign tasks to employees')
               : activeTab === 'employees'
-              ? (isRTL ? 'إدارة الموظفين وبياناتهم' : 'Manage employees and their data')
+              ? (isRTL ? 'إدارة الموظفين وتقييمهم' : 'Manage employees and ratings')
               : activeTab === 'todos'
               ? (isRTL ? 'قائمة مهامي الشخصية' : 'My personal task list')
               : activeTab === 'workspaces'
               ? (isRTL ? 'إدارة مساحات العمل للعملاء' : 'Manage customer workspaces')
-              : activeTab === 'ratings'
-              ? (isRTL ? 'إعطاء نقاط للموظفين وتصدير التقارير' : 'Give points to employees and export reports')
               : activeTab === 'volunteers'
               ? (isRTL ? 'إدارة المتطوعين وفرص التطوع' : 'Manage volunteers and opportunities')
               : activeTab === 'interns'
@@ -4755,16 +4742,6 @@ const ManagerDashboard = () => {
                   <line x1="5" y1="12" x2="19" y2="12"/>
                 </svg>
                 {isRTL ? 'مهمة جديدة' : 'New Task'}
-              </button>
-            </div>
-          )}
-          {activeTab === 'ratings' && (
-            <div className="header-actions">
-              <button className="add-task-btn" onClick={() => setShowRatingModal(true)}>
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
-                </svg>
-                {isRTL ? 'إضافة تقييم' : 'Add Rating'}
               </button>
             </div>
           )}
@@ -5019,26 +4996,10 @@ const ManagerDashboard = () => {
         </div>
         )}
 
-        {/* Ratings Content */}
-        {activeTab === 'ratings' && (
+        {/* Ratings Content (inside employees tab) */}
+        {activeTab === 'employees' && employeeSubTab !== 'list' && (
           <div className="ratings-content">
-            {/* Sub-tabs: Ratings / Evaluations */}
-            <div className="task-filter-tabs" style={{ marginBottom: '1.5rem' }}>
-              <button className={`task-filter-tab ${ratingSubTab === 'ratings' ? 'active' : ''}`} onClick={() => setRatingSubTab('ratings')}>
-                <span className="tab-dot" style={{ background: '#f59e0b' }}></span>
-                {isRTL ? 'النقاط' : 'Points'}
-              </button>
-              <button className={`task-filter-tab ${ratingSubTab === 'evaluations' ? 'active' : ''}`} onClick={() => setRatingSubTab('evaluations')}>
-                <span className="tab-dot" style={{ background: '#3b82f6' }}></span>
-                {isRTL ? 'التقييم الوظيفي' : 'Performance Evaluation'}
-              </button>
-              <button className={`task-filter-tab ${ratingSubTab === 'activity' ? 'active' : ''}`} onClick={() => { setRatingSubTab('activity'); fetchEmployeeActivity(); }}>
-                <span className="tab-dot" style={{ background: '#22c55e' }}></span>
-                {isRTL ? 'نشاط الموظفين' : 'Employee Activity'}
-              </button>
-            </div>
-
-            {ratingSubTab === 'ratings' && (<>
+            {employeeSubTab === 'ratings' && (<>
             {/* Filters Section */}
             <div className="ratings-filters">
               <div className="filter-group">
@@ -5178,7 +5139,7 @@ const ManagerDashboard = () => {
             </>)}
 
             {/* Evaluations Sub-Tab */}
-            {ratingSubTab === 'evaluations' && (
+            {employeeSubTab === 'evaluations' && (
               <div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', flexWrap: 'wrap', gap: '0.5rem' }}>
                   <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 700 }}>{isRTL ? 'التقييم الوظيفي' : 'Performance Evaluations'}</h3>
@@ -5259,7 +5220,7 @@ const ManagerDashboard = () => {
             )}
 
             {/* Activity Sub-Tab */}
-            {ratingSubTab === 'activity' && employeeActivityData && (
+            {employeeSubTab === 'activity' && employeeActivityData && (
               <div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
                   <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 700 }}>
@@ -7714,6 +7675,27 @@ const ManagerDashboard = () => {
         {/* Employees Content */}
         {activeTab === 'employees' && (
           <div className="volunteers-section">
+            {/* Employees Sub-Tabs */}
+            <div className="task-filter-tabs" style={{ marginBottom: '1.25rem' }}>
+              <button className={`task-filter-tab ${employeeSubTab === 'list' ? 'active' : ''}`} onClick={() => setEmployeeSubTab('list')}>
+                <span className="tab-dot" style={{ background: '#6366f1' }}></span>
+                {isRTL ? 'قائمة الموظفين' : 'Employee List'}
+              </button>
+              <button className={`task-filter-tab ${employeeSubTab === 'ratings' ? 'active' : ''}`} onClick={() => setEmployeeSubTab('ratings')}>
+                <span className="tab-dot" style={{ background: '#f59e0b' }}></span>
+                {isRTL ? 'النقاط' : 'Points'}
+              </button>
+              <button className={`task-filter-tab ${employeeSubTab === 'evaluations' ? 'active' : ''}`} onClick={() => setEmployeeSubTab('evaluations')}>
+                <span className="tab-dot" style={{ background: '#3b82f6' }}></span>
+                {isRTL ? 'التقييم الوظيفي' : 'Evaluation'}
+              </button>
+              <button className={`task-filter-tab ${employeeSubTab === 'activity' ? 'active' : ''}`} onClick={() => { setEmployeeSubTab('activity'); fetchEmployeeActivity(); }}>
+                <span className="tab-dot" style={{ background: '#22c55e' }}></span>
+                {isRTL ? 'نشاط الموظفين' : 'Activity'}
+              </button>
+            </div>
+
+            {employeeSubTab === 'list' && (<>
             <div className="volunteers-header">
               <div className="volunteers-actions">
                 <button className="add-volunteer-btn" onClick={() => openEmployeeModal()}>
@@ -7813,6 +7795,7 @@ const ManagerDashboard = () => {
                 ))
               )}
             </div>
+            </>)}
           </div>
         )}
 
