@@ -16,7 +16,7 @@ import {
 } from 'date-fns';
 import { ar, enUS } from 'date-fns/locale';
 import api from '../../config/api';
-import { EVALUATION_CATEGORIES, TOTAL_WEIGHT, calculateWeightedTotal } from '../../config/evaluationStructure';
+import { EVALUATION_CATEGORIES, TOTAL_WEIGHT, MAX_PER_CRITERION, calculateWeightedTotal, calculateBonus } from '../../config/evaluationStructure';
 import '../Admin/Admin.css';
 import './Manager.css';
 
@@ -1159,7 +1159,7 @@ const ManagerDashboard = () => {
 
   // Live calculation for eval modal
   const evalTotal = calculateWeightedTotal(evalScores);
-  const evalGrade = ((evalTotal / TOTAL_WEIGHT) * 5).toFixed(2);
+  const evalBonus = calculateBonus(evalScores);
 
   useEffect(() => {
     if (activeTab === 'ratings' && managerData) {
@@ -5223,6 +5223,14 @@ const ManagerDashboard = () => {
                           <div style={{ fontSize: '0.65rem', color: '#94a3b8' }}>/100</div>
                         </div>
 
+                        {/* Bonus */}
+                        {ev?.bonusPoints > 0 && (
+                          <div style={{ textAlign: 'center', minWidth: 45 }}>
+                            <div style={{ fontSize: '1rem', fontWeight: 800, color: '#8b5cf6' }}>+{ev.bonusPoints}</div>
+                            <div style={{ fontSize: '0.6rem', color: '#94a3b8' }}>{isRTL ? 'إضافي' : 'Bonus'}</div>
+                          </div>
+                        )}
+
                         {/* Actions */}
                         <div style={{ display: 'flex', gap: '0.4rem' }}>
                           <button onClick={() => openEvalForEmployee(emp)}
@@ -5339,24 +5347,26 @@ const ManagerDashboard = () => {
               {/* Live Score Summary */}
               <div style={{ display: 'flex', gap: '1rem', padding: '0.75rem 1rem', background: '#f8fafc', borderRadius: 10, marginBottom: '1.25rem', border: '1px solid #e2e8f0', position: 'sticky', top: 0, zIndex: 2 }}>
                 <div style={{ flex: 1, textAlign: 'center' }}>
-                  <div style={{ fontSize: '1.3rem', fontWeight: 800, color: '#3b82f6' }}>{evalTotal.toFixed(1)}<span style={{ fontSize: '0.75rem', color: '#94a3b8' }}>/{TOTAL_WEIGHT}</span></div>
-                  <div style={{ fontSize: '0.72rem', color: '#64748b' }}>{isRTL ? 'الدرجة' : 'Score'}</div>
-                </div>
-                <div style={{ flex: 1, textAlign: 'center' }}>
-                  <div style={{ fontSize: '1.3rem', fontWeight: 800, color: '#f59e0b' }}>{evalTotal.toFixed(1)}<span style={{ fontSize: '0.75rem', color: '#94a3b8' }}>/100</span></div>
+                  <div style={{ fontSize: '1.3rem', fontWeight: 800, color: '#3b82f6' }}>{evalTotal.toFixed(1)}<span style={{ fontSize: '0.75rem', color: '#94a3b8' }}>/100</span></div>
                   <div style={{ fontSize: '0.72rem', color: '#64748b' }}>{isRTL ? 'الدرجة' : 'Score'}</div>
                 </div>
                 <div style={{ flex: 1, textAlign: 'center' }}>
                   <div style={{ fontSize: '1.3rem', fontWeight: 800, color: '#22c55e' }}>{evalTotal.toFixed(1)}%</div>
                   <div style={{ fontSize: '0.72rem', color: '#64748b' }}>{isRTL ? 'النسبة' : 'Percent'}</div>
                 </div>
+                {evalBonus > 0 && (
+                  <div style={{ flex: 1, textAlign: 'center' }}>
+                    <div style={{ fontSize: '1.3rem', fontWeight: 800, color: '#8b5cf6' }}>+{evalBonus}</div>
+                    <div style={{ fontSize: '0.72rem', color: '#64748b' }}>{isRTL ? 'نقاط إضافية' : 'Bonus'}</div>
+                  </div>
+                )}
               </div>
 
-              {/* Categories — each criterion scored 0-100, weighted */}
+              {/* Categories — each criterion scored 0-50, weighted */}
               {EVALUATION_CATEGORIES.map(cat => {
                 const catWeightedTotal = cat.criteria.reduce((s, cr) => {
-                  const raw = Math.min(parseFloat(evalScores[`${cat.key}_${cr.key}`]) || 0, 100);
-                  return s + (raw / 100) * cr.weight;
+                  const raw = Math.min(parseFloat(evalScores[`${cat.key}_${cr.key}`]) || 0, MAX_PER_CRITERION);
+                  return s + (raw / MAX_PER_CRITERION) * cr.weight;
                 }, 0);
                 const catMaxWeight = cat.criteria.reduce((s, cr) => s + cr.weight, 0);
                 return (
@@ -5368,17 +5378,19 @@ const ManagerDashboard = () => {
                     <div style={{ padding: '0.5rem 0.75rem' }}>
                       {cat.criteria.map((cr, idx) => {
                         const raw = parseFloat(evalScores[`${cat.key}_${cr.key}`]) || 0;
-                        const weighted = ((Math.min(raw, 100) / 100) * cr.weight).toFixed(2);
+                        const weighted = ((Math.min(raw, MAX_PER_CRITERION) / MAX_PER_CRITERION) * cr.weight).toFixed(2);
+                        const hasBonus = raw > MAX_PER_CRITERION;
                         return (
                           <div key={cr.key} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.4rem 0', borderBottom: idx < cat.criteria.length - 1 ? '1px solid #f1f5f9' : 'none' }}>
                             <span style={{ flex: 1, fontSize: '0.82rem', color: '#334155' }}>{isRTL ? cr.nameAr : cr.nameEn}</span>
                             <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                              <input type="number" min="0" max="100" step="1"
-                                style={{ width: 55, padding: '0.3rem 0.4rem', borderRadius: 6, border: '1.5px solid #e2e8f0', textAlign: 'center', fontSize: '0.85rem', fontWeight: 600, fontFamily: 'inherit' }}
+                              <input type="number" min="0" step="1"
+                                style={{ width: 55, padding: '0.3rem 0.4rem', borderRadius: 6, border: `1.5px solid ${hasBonus ? '#8b5cf6' : '#e2e8f0'}`, textAlign: 'center', fontSize: '0.85rem', fontWeight: 600, fontFamily: 'inherit', background: hasBonus ? '#f5f3ff' : 'white' }}
                                 value={evalScores[`${cat.key}_${cr.key}`] || ''}
                                 onChange={(e) => setEvalScores(prev => ({ ...prev, [`${cat.key}_${cr.key}`]: e.target.value }))} />
-                              <span style={{ fontSize: '0.72rem', color: '#94a3b8', minWidth: 35 }}>/100</span>
+                              <span style={{ fontSize: '0.72rem', color: '#94a3b8', minWidth: 25 }}>/50</span>
                               <span style={{ fontSize: '0.78rem', fontWeight: 700, color: '#3b82f6', minWidth: 45, textAlign: 'end' }}>{weighted}/{cr.weight}</span>
+                              {hasBonus && <span style={{ fontSize: '0.7rem', fontWeight: 700, color: '#8b5cf6' }}>+{(raw - MAX_PER_CRITERION).toFixed(0)}</span>}
                             </div>
                           </div>
                         );

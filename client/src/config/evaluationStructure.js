@@ -1,7 +1,8 @@
 // Evaluation categories and criteria
-// Each criterion has a WEIGHT. Manager gives 0-100 per criterion.
-// Weighted score = (input/100) * weight
+// Each criterion has a WEIGHT. Manager gives 0-50 per criterion.
+// Weighted score = (input/50) * weight
 // Total = sum of all weighted scores (max = 100)
+// Bonus = sum of max(0, input - 50) across all criteria
 
 export const EVALUATION_CATEGORIES = [
   {
@@ -103,14 +104,30 @@ export const EVALUATION_CATEGORIES = [
 // 8+16+8+12+4+12+16+12+12 = 100
 export const TOTAL_WEIGHT = 100;
 
+export const MAX_PER_CRITERION = 50;
+
 // Helper: calculate weighted total from raw scores object
 export function calculateWeightedTotal(scores) {
   let total = 0;
   for (const cat of EVALUATION_CATEGORIES) {
     for (const cr of cat.criteria) {
-      const raw = Math.min(Math.max(parseFloat(scores[`${cat.key}_${cr.key}`]) || 0, 0), 100);
-      total += (raw / 100) * cr.weight;
+      const raw = Math.min(Math.max(parseFloat(scores[`${cat.key}_${cr.key}`]) || 0, 0), MAX_PER_CRITERION);
+      total += (raw / MAX_PER_CRITERION) * cr.weight;
     }
   }
   return parseFloat(total.toFixed(2));
+}
+
+// Helper: calculate bonus points (sum of excess over 50 across all criteria)
+export function calculateBonus(scores) {
+  let bonus = 0;
+  for (const cat of EVALUATION_CATEGORIES) {
+    for (const cr of cat.criteria) {
+      const raw = parseFloat(scores[`${cat.key}_${cr.key}`]) || 0;
+      if (raw > MAX_PER_CRITERION) {
+        bonus += raw - MAX_PER_CRITERION;
+      }
+    }
+  }
+  return parseFloat(bonus.toFixed(2));
 }

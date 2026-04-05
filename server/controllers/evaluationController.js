@@ -15,18 +15,34 @@ const EVALUATION_STRUCTURE = {
 };
 
 const TOTAL_WEIGHT = 100;
+const MAX_PER_CRITERION = 50;
 
-// Calculate weighted total from raw scores (0-100 per criterion)
+// Calculate weighted total from raw scores (0-50 per criterion)
 function calculateTotal(scores) {
   let weightedTotal = 0;
   for (const [catKey, catDef] of Object.entries(EVALUATION_STRUCTURE)) {
     for (const [critKey, weight] of Object.entries(catDef.criteria)) {
       const key = `${catKey}_${critKey}`;
-      const raw = Math.min(Math.max(parseFloat(scores[key]) || 0, 0), 100);
-      weightedTotal += (raw / 100) * weight;
+      const raw = Math.min(Math.max(parseFloat(scores[key]) || 0, 0), MAX_PER_CRITERION);
+      weightedTotal += (raw / MAX_PER_CRITERION) * weight;
     }
   }
   return parseFloat(weightedTotal.toFixed(2));
+}
+
+// Calculate bonus points (sum of excess over 50)
+function calculateBonus(scores) {
+  let bonus = 0;
+  for (const [catKey, catDef] of Object.entries(EVALUATION_STRUCTURE)) {
+    for (const [critKey] of Object.entries(catDef.criteria)) {
+      const key = `${catKey}_${critKey}`;
+      const raw = parseFloat(scores[key]) || 0;
+      if (raw > MAX_PER_CRITERION) {
+        bonus += raw - MAX_PER_CRITERION;
+      }
+    }
+  }
+  return parseFloat(bonus.toFixed(2));
 }
 
 // Upsert: create or update evaluation for an employee
@@ -45,6 +61,7 @@ exports.upsertEvaluation = async (req, res) => {
 
     const totalScore = calculateTotal(scores);
     const grade = parseFloat(((totalScore / TOTAL_WEIGHT) * 5).toFixed(2));
+    const bonusPoints = calculateBonus(scores);
 
     // Find existing evaluation for this employee (one per employee)
     let evaluation = await EmployeeEvaluation.findOne({ where: { employeeId } });
@@ -53,7 +70,7 @@ exports.upsertEvaluation = async (req, res) => {
       evaluation.scores = scores;
       evaluation.totalScore = totalScore;
       evaluation.grade = grade;
-      evaluation.bonusPoints = 0;
+      evaluation.bonusPoints = bonusPoints;
       evaluation.period = period || evaluation.period;
       evaluation.notes = notes !== undefined ? notes : evaluation.notes;
       evaluation.createdById = req.admin.adminId;
@@ -67,7 +84,7 @@ exports.upsertEvaluation = async (req, res) => {
         qualitative: {},
         totalScore,
         grade,
-        bonusPoints: 0,
+        bonusPoints,
         period: period || null,
         notes: notes || null,
         evaluationDate: new Date()

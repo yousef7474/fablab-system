@@ -668,8 +668,8 @@ const EmployeeDashboard = () => {
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: '0.4rem', marginTop: '0.5rem' }}>
                       {EVALUATION_CATEGORIES.map(cat => {
                         const catWeighted = cat.criteria.reduce((s, cr) => {
-                          const raw = Math.min(parseFloat(ev.scores?.[`${cat.key}_${cr.key}`]) || 0, 100);
-                          return s + (raw / 100) * cr.weight;
+                          const raw = Math.min(parseFloat(ev.scores?.[`${cat.key}_${cr.key}`]) || 0, 50);
+                          return s + (raw / 50) * cr.weight;
                         }, 0);
                         const catMaxWeight = cat.criteria.reduce((s, cr) => s + cr.weight, 0);
                         return (
