@@ -147,6 +147,7 @@ const ManagerDashboard = () => {
   const [evaluations, setEvaluations] = useState([]);
   const [employeeActivityData, setEmployeeActivityData] = useState(null);
   const [employeeSubTab, setEmployeeSubTab] = useState('list'); // 'list', 'points', 'evaluations', 'activity'
+  const [todoView, setTodoView] = useState('today'); // 'today', 'important', 'planned', 'all', 'completed'
   const [ratingLoading, setRatingLoading] = useState(false);
   const [ratingForm, setRatingForm] = useState({
     employeeId: '',
@@ -618,6 +619,16 @@ const ManagerDashboard = () => {
       toast.success(isRTL ? 'تم تحديث حالة المهمة' : 'Todo status updated');
     } catch (error) {
       toast.error(isRTL ? 'خطأ في تحديث حالة المهمة' : 'Error updating todo status');
+    }
+  };
+
+  const handleQuickToggleImportant = async (todo) => {
+    try {
+      const newPriority = todo.priority === 'high' ? 'medium' : 'high';
+      await api.put(`/manager-todos/${todo.todoId}`, { ...todo, priority: newPriority });
+      fetchMyTodos();
+    } catch (error) {
+      toast.error(isRTL ? 'خطأ في التحديث' : 'Error updating');
     }
   };
 
@@ -7940,6 +7951,167 @@ const ManagerDashboard = () => {
 
         {/* My Tasks (Todos) Content - Calendar View */}
         {activeTab === 'todos' && (
+          <div className="todo-app">
+            {/* Sidebar */}
+            <aside className="todo-sidebar">
+              <div className="todo-add-section">
+                <button className="todo-add-btn-main" onClick={() => openTodoModal()}>
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                    <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+                  </svg>
+                  {isRTL ? 'مهمة جديدة' : 'New Task'}
+                </button>
+              </div>
+
+              <nav className="todo-views">
+                {[
+                  { key: 'today', icon: '☀', labelAr: 'يومي', labelEn: 'My Day', color: '#0078d4' },
+                  { key: 'important', icon: '★', labelAr: 'مهم', labelEn: 'Important', color: '#a4262c' },
+                  { key: 'planned', icon: '📅', labelAr: 'مخطط', labelEn: 'Planned', color: '#107c41' },
+                  { key: 'all', icon: '☰', labelAr: 'جميع المهام', labelEn: 'All Tasks', color: '#605e5c' },
+                  { key: 'completed', icon: '✓', labelAr: 'المكتمل', labelEn: 'Completed', color: '#107c41' },
+                ].map(view => {
+                  const count = view.key === 'today'
+                    ? myTodos.filter(t => t.status !== 'completed' && t.status !== 'cancelled' && t.dueDate && new Date(t.dueDate).toDateString() === new Date().toDateString()).length
+                    : view.key === 'important'
+                    ? myTodos.filter(t => t.status !== 'completed' && t.status !== 'cancelled' && t.priority === 'high').length
+                    : view.key === 'planned'
+                    ? myTodos.filter(t => t.status !== 'completed' && t.status !== 'cancelled' && t.dueDate).length
+                    : view.key === 'all'
+                    ? myTodos.filter(t => t.status !== 'completed' && t.status !== 'cancelled').length
+                    : myTodos.filter(t => t.status === 'completed').length;
+                  return (
+                    <button
+                      key={view.key}
+                      className={`todo-view-btn ${todoView === view.key ? 'active' : ''}`}
+                      onClick={() => setTodoView(view.key)}
+                    >
+                      <span className="todo-view-icon" style={{ color: view.color }}>{view.icon}</span>
+                      <span className="todo-view-label">{isRTL ? view.labelAr : view.labelEn}</span>
+                      {count > 0 && <span className="todo-view-count">{count}</span>}
+                    </button>
+                  );
+                })}
+              </nav>
+            </aside>
+
+            {/* Main Content */}
+            <main className="todo-main">
+              <div className="todo-main-header">
+                <h2>
+                  {todoView === 'today' && (isRTL ? '☀ يومي' : '☀ My Day')}
+                  {todoView === 'important' && (isRTL ? '★ مهم' : '★ Important')}
+                  {todoView === 'planned' && (isRTL ? '📅 مخطط' : '📅 Planned')}
+                  {todoView === 'all' && (isRTL ? '☰ جميع المهام' : '☰ All Tasks')}
+                  {todoView === 'completed' && (isRTL ? '✓ المكتمل' : '✓ Completed')}
+                </h2>
+                <p className="todo-date-subtitle">{format(new Date(), 'EEEE, d MMMM yyyy', { locale: isRTL ? ar : enUS })}</p>
+              </div>
+
+              {/* Quick Add */}
+              <div className="todo-quick-add">
+                <button className="todo-quick-add-icon" onClick={() => openTodoModal()}>
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                    <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+                  </svg>
+                </button>
+                <input
+                  type="text"
+                  placeholder={isRTL ? 'إضافة مهمة' : 'Add a task'}
+                  className="todo-quick-add-input"
+                  onClick={() => openTodoModal()}
+                  readOnly
+                />
+              </div>
+
+              {/* Task List */}
+              <div className="todo-list">
+                {(() => {
+                  let filtered = [];
+                  const todayStr = new Date().toDateString();
+                  if (todoView === 'today') {
+                    filtered = myTodos.filter(t => t.status !== 'completed' && t.status !== 'cancelled' && t.dueDate && new Date(t.dueDate).toDateString() === todayStr);
+                  } else if (todoView === 'important') {
+                    filtered = myTodos.filter(t => t.status !== 'completed' && t.status !== 'cancelled' && t.priority === 'high');
+                  } else if (todoView === 'planned') {
+                    filtered = myTodos.filter(t => t.status !== 'completed' && t.status !== 'cancelled' && t.dueDate)
+                      .sort((a, b) => new Date(a.dueDate) - new Date(b.dueDate));
+                  } else if (todoView === 'all') {
+                    filtered = myTodos.filter(t => t.status !== 'completed' && t.status !== 'cancelled');
+                  } else {
+                    filtered = myTodos.filter(t => t.status === 'completed');
+                  }
+
+                  if (filtered.length === 0) {
+                    return (
+                      <div className="todo-empty">
+                        <div className="todo-empty-icon">
+                          {todoView === 'today' ? '☀' : todoView === 'important' ? '★' : todoView === 'planned' ? '📅' : todoView === 'completed' ? '✓' : '✓'}
+                        </div>
+                        <p>{isRTL ? 'لا توجد مهام هنا' : 'Nothing to see here'}</p>
+                        <span>{isRTL ? 'استمتع بيومك' : 'Enjoy your day'}</span>
+                      </div>
+                    );
+                  }
+
+                  return filtered.map(todo => (
+                    <div key={todo.todoId} className={`todo-item ${todo.status === 'completed' ? 'completed' : ''} ${todo.priority === 'high' ? 'important' : ''}`}>
+                      <button
+                        className="todo-checkbox"
+                        onClick={() => handleUpdateTodoStatus(todo.todoId, todo.status === 'completed' ? 'pending' : 'completed')}
+                        title={todo.status === 'completed' ? (isRTL ? 'إعادة فتح' : 'Reopen') : (isRTL ? 'إكمال' : 'Complete')}
+                      >
+                        {todo.status === 'completed' && (
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3">
+                            <polyline points="20 6 9 17 4 12"/>
+                          </svg>
+                        )}
+                      </button>
+                      <div className="todo-item-body" onClick={() => openTodoModal(todo)}>
+                        <div className="todo-item-title">{todo.title}</div>
+                        <div className="todo-item-meta">
+                          {todo.dueDate && (
+                            <span className={`todo-meta-chip ${new Date(todo.dueDate) < new Date(new Date().toDateString()) && todo.status !== 'completed' ? 'overdue' : ''}`}>
+                              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                <rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
+                              </svg>
+                              {format(parseISO(todo.dueDate), 'MMM d', { locale: isRTL ? ar : enUS })}
+                            </span>
+                          )}
+                          {todo.description && (
+                            <span className="todo-meta-chip">
+                              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                <line x1="17" y1="10" x2="3" y2="10"/><line x1="21" y1="6" x2="3" y2="6"/><line x1="21" y1="14" x2="3" y2="14"/>
+                              </svg>
+                              {isRTL ? 'ملاحظة' : 'Note'}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                      <button
+                        className={`todo-star ${todo.priority === 'high' ? 'starred' : ''}`}
+                        onClick={() => handleQuickToggleImportant(todo)}
+                        title={isRTL ? 'مهم' : 'Important'}
+                      >
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill={todo.priority === 'high' ? '#a4262c' : 'none'} stroke="currentColor" strokeWidth="2">
+                          <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+                        </svg>
+                      </button>
+                      <button className="todo-delete" onClick={() => handleDeleteTodo(todo.todoId)} title={isRTL ? 'حذف' : 'Delete'}>
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                          <polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+                        </svg>
+                      </button>
+                    </div>
+                  ));
+                })()}
+              </div>
+            </main>
+          </div>
+        )}
+
+        {/* Old Todos Calendar (hidden) */}
+        {false && (
           <div className="schedule-layout">
             {/* Todo Calendar Section */}
             <div className="calendar-section">

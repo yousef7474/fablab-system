@@ -639,8 +639,8 @@ const EmployeeDashboard = () => {
                       <div style={{ fontSize: '0.72rem', color: '#64748b' }}>{isRTL ? 'متوسط النسبة' : 'Avg Score'}</div>
                     </div>
                     <div style={{ background: '#fefce8', padding: '0.75rem 1.25rem', borderRadius: 10, textAlign: 'center', flex: 1, minWidth: 100 }}>
-                      <div style={{ fontSize: '1.3rem', fontWeight: 800, color: '#f59e0b' }}>{myEvaluations.summary.avgGrade}/5</div>
-                      <div style={{ fontSize: '0.72rem', color: '#64748b' }}>{isRTL ? 'متوسط التقدير' : 'Avg Grade'}</div>
+                      <div style={{ fontSize: '1.3rem', fontWeight: 800, color: '#f59e0b' }}>{myEvaluations.summary.avgScore}<span style={{ fontSize: '0.78rem', color: '#94a3b8' }}>/100</span></div>
+                      <div style={{ fontSize: '0.72rem', color: '#64748b' }}>{isRTL ? 'متوسط الدرجة' : 'Avg Score'}</div>
                     </div>
                     {myEvaluations.summary.totalBonus > 0 && (
                       <div style={{ background: '#f5f3ff', padding: '0.75rem 1.25rem', borderRadius: 10, textAlign: 'center', flex: 1, minWidth: 100 }}>
@@ -654,8 +654,8 @@ const EmployeeDashboard = () => {
                   <div key={ev.evaluationId} style={{ padding: '0.75rem', background: '#f8fafc', borderRadius: 10, marginBottom: '0.5rem', border: '1px solid #f1f5f9' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
                       <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
-                        <span style={{ fontSize: '1.2rem', fontWeight: 800, color: '#3b82f6' }}>{Math.min(ev.totalScore, 100).toFixed(0)}%</span>
-                        <span style={{ fontSize: '0.9rem', fontWeight: 700, color: '#f59e0b' }}>{ev.grade}/5</span>
+                        <span style={{ fontSize: '1.2rem', fontWeight: 800, color: '#3b82f6' }}>{ev.totalScore.toFixed(1)}<span style={{ fontSize: '0.78rem', color: '#94a3b8' }}>/100</span></span>
+                        <span style={{ fontSize: '0.9rem', fontWeight: 700, color: '#22c55e' }}>{ev.totalScore.toFixed(0)}%</span>
                         {ev.bonusPoints > 0 && <span style={{ fontSize: '0.85rem', fontWeight: 700, color: '#8b5cf6' }}>+{ev.bonusPoints} {isRTL ? 'إضافي' : 'bonus'}</span>}
                       </div>
                       {ev.period && <span style={{ background: '#eff6ff', color: '#1d4ed8', padding: '2px 8px', borderRadius: 6, fontSize: '0.75rem', fontWeight: 600 }}>{ev.period}</span>}

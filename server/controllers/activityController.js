@@ -100,6 +100,39 @@ exports.getMyWeeklyStats = async (req, res) => {
     const percentage = Math.min(((totalMinutes / WEEKLY_TARGET_MINUTES) * 100), 100).toFixed(1);
     const daysActive = activities.filter(a => a.totalMinutes > 0).length;
     const daysInteracted = activities.filter(a => a.interacted).length;
+    const passed = totalMinutes >= WEEKLY_TARGET_MINUTES;
+
+    // Auto-credit immediately if threshold reached and not already credited this week
+    let creditedNow = false;
+    if (passed) {
+      const weekStart = weekAgo.toISOString().split('T')[0];
+      const weekEnd = today.toISOString().split('T')[0];
+      const existingCredit = await Rating.findOne({
+        where: {
+          employeeId: employee.employeeId,
+          criteria: 'Weekly Dashboard Activity',
+          ratingDate: { [Op.between]: [weekStart, weekEnd] }
+        }
+      });
+
+      if (!existingCredit) {
+        try {
+          await Rating.create({
+            employeeId: employee.employeeId,
+            createdById: null,
+            type: 'award',
+            points: 1,
+            criteria: 'Weekly Dashboard Activity',
+            notes: `Auto-awarded: ${totalHours} hours on dashboard (target: ${WEEKLY_TARGET_HOURS}h)`,
+            ratingDate: today
+          });
+          creditedNow = true;
+          console.log(`Auto-credited 1 point to ${employee.name} for weekly dashboard activity (${totalHours}h)`);
+        } catch (e) {
+          console.error('Auto-credit error:', e);
+        }
+      }
+    }
 
     res.json({
       totalMinutes,
@@ -108,7 +141,8 @@ exports.getMyWeeklyStats = async (req, res) => {
       targetHours: WEEKLY_TARGET_HOURS,
       daysActive,
       daysInteracted,
-      passed: totalMinutes >= WEEKLY_TARGET_MINUTES,
+      passed,
+      creditedNow,
       dailyBreakdown: activities.map(a => ({
         date: a.date,
         minutes: a.totalMinutes,
