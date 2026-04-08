@@ -1,5 +1,62 @@
-const { EmployeeActivity, Employee, Rating } = require('../models');
+const { EmployeeActivity, Employee, Rating, EmployeeEvaluation } = require('../models');
 const { Op } = require('sequelize');
+
+// Auto-update the "متابعة المنصة والجدول اليومي" criterion (cat9_c1) in evaluation
+// Scale: 14h+ = 50/50 (full), proportional below
+async function syncEvaluationCriterion(employeeId, totalMinutes) {
+  try {
+    const score = Math.min(50, Math.round((totalMinutes / WEEKLY_TARGET_MINUTES) * 50));
+
+    let evaluation = await EmployeeEvaluation.findOne({ where: { employeeId } });
+
+    if (evaluation) {
+      const scores = { ...(evaluation.scores || {}) };
+      scores.cat9_c1 = score;
+      evaluation.scores = scores;
+      // Recalculate total
+      const WEIGHTS = {
+        cat1: { c1: 2, c2: 2, c3: 2, c4: 2 },
+        cat2: { c1: 4, c2: 4, c3: 4, c4: 4 },
+        cat3: { c1: 2, c2: 2, c3: 2, c4: 2 },
+        cat4: { c1: 6, c2: 6 },
+        cat5: { c1: 4 },
+        cat6: { c1: 3, c2: 3, c3: 3, c4: 3 },
+        cat7: { c1: 4, c2: 4, c3: 4, c4: 4 },
+        cat8: { c1: 3, c2: 3, c3: 3, c4: 3 },
+        cat9: { c1: 3, c2: 3, c3: 3, c4: 3 },
+      };
+      let total = 0, bonus = 0;
+      for (const [catKey, criteria] of Object.entries(WEIGHTS)) {
+        for (const [critKey, weight] of Object.entries(criteria)) {
+          const raw = parseFloat(scores[`${catKey}_${critKey}`]) || 0;
+          total += (Math.min(raw, 50) / 50) * weight;
+          if (raw > 50) bonus += raw - 50;
+        }
+      }
+      evaluation.totalScore = parseFloat(total.toFixed(2));
+      evaluation.grade = parseFloat(((total / 100) * 5).toFixed(2));
+      evaluation.bonusPoints = parseFloat(bonus.toFixed(2));
+      await evaluation.save();
+    } else {
+      // Create a new evaluation with just this criterion
+      const total = (Math.min(score, 50) / 50) * 3; // weight=3
+      await EmployeeEvaluation.create({
+        employeeId,
+        createdById: null,
+        scores: { cat9_c1: score },
+        qualitative: {},
+        totalScore: parseFloat(total.toFixed(2)),
+        grade: parseFloat(((total / 100) * 5).toFixed(2)),
+        bonusPoints: 0,
+        period: null,
+        notes: 'Auto-generated from dashboard activity',
+        evaluationDate: new Date()
+      });
+    }
+  } catch (e) {
+    console.error('Sync evaluation criterion error:', e);
+  }
+}
 
 const HEARTBEAT_INTERVAL_MINUTES = 5;
 const WEEKLY_TARGET_HOURS = 14; // 2 hours/day × 7 days
@@ -101,6 +158,9 @@ exports.getMyWeeklyStats = async (req, res) => {
     const daysActive = activities.filter(a => a.totalMinutes > 0).length;
     const daysInteracted = activities.filter(a => a.interacted).length;
     const passed = totalMinutes >= WEEKLY_TARGET_MINUTES;
+
+    // Auto-sync the evaluation criterion (cat9_c1) based on activity
+    await syncEvaluationCriterion(employee.employeeId, totalMinutes);
 
     // Auto-credit immediately if threshold reached and not already credited this week
     let creditedNow = false;
