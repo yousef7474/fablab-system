@@ -13,7 +13,7 @@ const Rating = sequelize.define('Rating', {
   },
   createdById: {
     type: DataTypes.UUID,
-    allowNull: false
+    allowNull: true
   },
   type: {
     type: DataTypes.STRING(20),
