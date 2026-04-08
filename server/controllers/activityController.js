@@ -2,10 +2,18 @@ const { EmployeeActivity, Employee, Rating, EmployeeEvaluation } = require('../m
 const { Op } = require('sequelize');
 
 // Auto-update the "متابعة المنصة والجدول اليومي" criterion (cat9_c1) in evaluation
-// Scale: 14h+ = 50/50 (full), proportional below
-async function syncEvaluationCriterion(employeeId, totalMinutes) {
+// Score = number of weeks the employee passed 14h target (capped at 50)
+async function syncEvaluationCriterion(employeeId) {
   try {
-    const score = Math.min(50, Math.round((totalMinutes / WEEKLY_TARGET_MINUTES) * 50));
+    // Count how many Weekly Dashboard Activity awards this employee has
+    const weeklyAwards = await Rating.count({
+      where: {
+        employeeId,
+        criteria: 'Weekly Dashboard Activity',
+        type: 'award'
+      }
+    });
+    const score = Math.min(50, weeklyAwards);
 
     let evaluation = await EmployeeEvaluation.findOne({ where: { employeeId } });
 
@@ -159,9 +167,6 @@ exports.getMyWeeklyStats = async (req, res) => {
     const daysInteracted = activities.filter(a => a.interacted).length;
     const passed = totalMinutes >= WEEKLY_TARGET_MINUTES;
 
-    // Auto-sync the evaluation criterion (cat9_c1) based on activity
-    await syncEvaluationCriterion(employee.employeeId, totalMinutes);
-
     // Auto-credit immediately if threshold reached and not already credited this week
     let creditedNow = false;
     if (passed) {
@@ -193,6 +198,9 @@ exports.getMyWeeklyStats = async (req, res) => {
         }
       }
     }
+
+    // Sync the evaluation criterion based on total weekly awards
+    await syncEvaluationCriterion(employee.employeeId);
 
     res.json({
       totalMinutes,
