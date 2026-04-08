@@ -7756,9 +7756,6 @@ const ManagerDashboard = () => {
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
                       <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 700 }}>
                         {isRTL ? 'نشاط الموظفين' : 'Employee Activity'}
-                        <span style={{ fontSize: '0.78rem', color: '#94a3b8', fontWeight: 400, marginInlineStart: 8 }}>
-                          {employeeActivityData.weekStart} → {employeeActivityData.weekEnd}
-                        </span>
                       </h3>
                     </div>
 
@@ -7766,28 +7763,36 @@ const ManagerDashboard = () => {
                       {employeeActivityData.employees.map(emp => (
                         <div key={emp.employeeId} style={{ background: 'white', borderRadius: 12, padding: '1rem 1.25rem', border: '1px solid #f1f5f9', boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
-                            <div style={{ flex: '1 1 150px', minWidth: 0 }}>
+                            <div style={{ flex: '1 1 160px', minWidth: 0 }}>
                               <div style={{ fontWeight: 700, fontSize: '0.95rem', color: '#1e293b' }}>{emp.name}</div>
                               <div style={{ fontSize: '0.75rem', color: '#64748b' }}>{sectionLabels[emp.section] || emp.section}</div>
+                              <div style={{ fontSize: '0.7rem', color: '#94a3b8', marginTop: 2 }}>
+                                {isRTL ? 'الدورة:' : 'Cycle:'} {emp.cycleStart} → {emp.cycleEnd}
+                                {emp.daysRemaining > 0 && <span> • {emp.daysRemaining}{isRTL ? 'ي متبقي' : 'd left'}</span>}
+                              </div>
                             </div>
 
-                            <div style={{ flex: '1 1 180px', minWidth: 100 }}>
+                            <div style={{ flex: '1 1 200px', minWidth: 120 }}>
                               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 3 }}>
                                 <span style={{ fontSize: '0.72rem', color: '#64748b' }}>{emp.totalHours}h / {employeeActivityData.targetHours}h</span>
                                 <span style={{ fontSize: '0.78rem', fontWeight: 700, color: emp.passed ? '#22c55e' : emp.percentage > 0 ? '#f59e0b' : '#ef4444' }}>{emp.percentage}%</span>
                               </div>
                               <div style={{ height: 6, background: '#f1f5f9', borderRadius: 3, overflow: 'hidden' }}>
-                                <div style={{ height: '100%', width: `${Math.min(emp.percentage, 100)}%`, background: emp.passed ? '#22c55e' : emp.percentage > 0 ? '#f59e0b' : '#ef4444', borderRadius: 3 }} />
+                                <div style={{ height: '100%', width: `${Math.min(emp.percentage, 100)}%`, background: emp.passed ? '#22c55e' : emp.percentage > 0 ? '#f59e0b' : '#ef4444', borderRadius: 3, transition: 'width 0.3s' }} />
                               </div>
                             </div>
 
                             <div style={{ display: 'flex', gap: '0.75rem', fontSize: '0.78rem' }}>
                               <div style={{ textAlign: 'center' }}>
+                                <div style={{ fontWeight: 700, color: '#8b5cf6', fontSize: '1rem' }}>{emp.successfulWeeks || 0}</div>
+                                <div style={{ color: '#94a3b8', fontSize: '0.65rem' }}>{isRTL ? 'أسابيع' : 'Weeks'}</div>
+                              </div>
+                              <div style={{ textAlign: 'center' }}>
                                 <div style={{ fontWeight: 700, color: '#334155' }}>{emp.totalLogins}</div>
                                 <div style={{ color: '#94a3b8', fontSize: '0.65rem' }}>{isRTL ? 'دخول' : 'Logins'}</div>
                               </div>
                               <div style={{ textAlign: 'center' }}>
-                                <div style={{ fontWeight: 700, color: '#334155' }}>{emp.daysActive}/7</div>
+                                <div style={{ fontWeight: 700, color: '#334155' }}>{emp.daysActive}</div>
                                 <div style={{ color: '#94a3b8', fontSize: '0.65rem' }}>{isRTL ? 'أيام' : 'Days'}</div>
                               </div>
                               <div style={{ textAlign: 'center' }}>
@@ -7796,9 +7801,16 @@ const ManagerDashboard = () => {
                               </div>
                             </div>
 
-                            <span style={{ padding: '0.2rem 0.6rem', borderRadius: 6, fontSize: '0.72rem', fontWeight: 700, background: emp.passed ? '#dcfce7' : emp.percentage > 0 ? '#fef3c7' : '#f1f5f9', color: emp.passed ? '#166534' : emp.percentage > 0 ? '#92400e' : '#94a3b8' }}>
-                              {emp.passed ? (isRTL ? '✓ مجتاز' : '✓ Passed') : emp.percentage > 0 ? (isRTL ? 'جاري' : 'In Progress') : (isRTL ? 'لا نشاط' : 'No Activity')}
-                            </span>
+                            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4 }}>
+                              <span style={{ padding: '0.2rem 0.6rem', borderRadius: 6, fontSize: '0.72rem', fontWeight: 700, background: emp.passed ? '#dcfce7' : emp.percentage > 0 ? '#fef3c7' : '#f1f5f9', color: emp.passed ? '#166534' : emp.percentage > 0 ? '#92400e' : '#94a3b8' }}>
+                                {emp.passed ? (isRTL ? '✓ مجتاز' : '✓ Passed') : emp.percentage > 0 ? (isRTL ? 'جاري' : 'In Progress') : (isRTL ? 'لا نشاط' : 'No Activity')}
+                              </span>
+                              {emp.lastCreditDate && (
+                                <span style={{ fontSize: '0.65rem', color: '#94a3b8' }}>
+                                  {isRTL ? 'آخر نقطة:' : 'Last credit:'} {emp.lastCreditDate}
+                                </span>
+                              )}
+                            </div>
                           </div>
                         </div>
                       ))}

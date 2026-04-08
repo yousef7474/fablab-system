@@ -365,7 +365,14 @@ const EmployeeDashboard = () => {
             {/* Weekly Activity */}
             {activityStats && (
               <div className="emp-section-card">
-                <h3>{isRTL ? 'نشاط الأسبوع' : 'Weekly Activity'}</h3>
+                <h3>
+                  {isRTL ? 'نشاط الأسبوع الحالي' : 'Current Week Activity'}
+                  {activityStats.successfulWeeks > 0 && (
+                    <span style={{ marginInlineStart: 10, fontSize: '0.78rem', fontWeight: 600, color: '#8b5cf6', background: '#f5f3ff', padding: '2px 8px', borderRadius: 6 }}>
+                      {activityStats.successfulWeeks} {isRTL ? 'أسابيع ناجحة' : 'successful weeks'}
+                    </span>
+                  )}
+                </h3>
                 <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', marginBottom: '0.75rem' }}>
                   <div style={{ flex: 1, minWidth: 80, textAlign: 'center', padding: '0.5rem', background: activityStats.passed ? '#dcfce7' : '#fef3c7', borderRadius: 8 }}>
                     <div style={{ fontSize: '1.2rem', fontWeight: 800, color: activityStats.passed ? '#166534' : '#92400e' }}>{activityStats.totalHours}h</div>
@@ -376,14 +383,24 @@ const EmployeeDashboard = () => {
                     <div style={{ fontSize: '0.7rem', color: '#64748b' }}>{isRTL ? 'النسبة' : 'Progress'}</div>
                   </div>
                   <div style={{ flex: 1, minWidth: 80, textAlign: 'center', padding: '0.5rem', background: '#f8fafc', borderRadius: 8 }}>
-                    <div style={{ fontSize: '1.2rem', fontWeight: 800, color: '#334155' }}>{activityStats.daysActive}/7</div>
+                    <div style={{ fontSize: '1.2rem', fontWeight: 800, color: '#334155' }}>{activityStats.daysActive}</div>
                     <div style={{ fontSize: '0.7rem', color: '#64748b' }}>{isRTL ? 'أيام نشطة' : 'Active Days'}</div>
                   </div>
+                  {activityStats.daysRemaining > 0 && (
+                    <div style={{ flex: 1, minWidth: 80, textAlign: 'center', padding: '0.5rem', background: '#fef3c7', borderRadius: 8 }}>
+                      <div style={{ fontSize: '1.2rem', fontWeight: 800, color: '#92400e' }}>{activityStats.daysRemaining}</div>
+                      <div style={{ fontSize: '0.7rem', color: '#64748b' }}>{isRTL ? 'أيام متبقية' : 'Days Left'}</div>
+                    </div>
+                  )}
                 </div>
                 <div style={{ height: 6, background: '#f1f5f9', borderRadius: 3, overflow: 'hidden' }}>
-                  <div style={{ height: '100%', width: `${Math.min(activityStats.percentage, 100)}%`, background: activityStats.passed ? '#22c55e' : '#f59e0b', borderRadius: 3 }} />
+                  <div style={{ height: '100%', width: `${Math.min(activityStats.percentage, 100)}%`, background: activityStats.passed ? '#22c55e' : '#f59e0b', borderRadius: 3, transition: 'width 0.4s' }} />
                 </div>
-                {activityStats.passed && <div style={{ fontSize: '0.75rem', color: '#22c55e', fontWeight: 600, marginTop: 6 }}>{isRTL ? '✓ تم تحقيق الهدف الأسبوعي - نقطة واحدة مكتسبة' : '✓ Weekly target reached - 1 credit point earned'}</div>}
+                <div style={{ fontSize: '0.7rem', color: '#94a3b8', marginTop: 6 }}>
+                  {isRTL ? 'الدورة:' : 'Cycle:'} {activityStats.cycleStart} → {activityStats.cycleEnd}
+                  {activityStats.lastCreditDate && <span> • {isRTL ? 'آخر نقطة:' : 'Last credit:'} {activityStats.lastCreditDate}</span>}
+                </div>
+                {activityStats.passed && <div style={{ fontSize: '0.75rem', color: '#22c55e', fontWeight: 600, marginTop: 6 }}>{isRTL ? '✓ تم تحقيق الهدف - نقطة واحدة مكتسبة - دورة جديدة تبدأ غداً' : '✓ Target reached! +1 credit. New cycle starts tomorrow'}</div>}
               </div>
             )}
 
