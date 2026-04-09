@@ -2,24 +2,16 @@ const { EmployeeActivity, Employee, Rating, EmployeeEvaluation } = require('../m
 const { Op } = require('sequelize');
 
 // Auto-update the "متابعة المنصة والجدول اليومي" criterion (cat9_c1) in evaluation
-// Score = number of weeks the employee passed 14h target (capped at 50)
+// Increments by 1 (preserves manual edits if higher)
 async function syncEvaluationCriterion(employeeId) {
   try {
-    // Count how many Weekly Dashboard Activity awards this employee has
-    const weeklyAwards = await Rating.count({
-      where: {
-        employeeId,
-        criteria: 'Weekly Dashboard Activity',
-        type: 'award'
-      }
-    });
-    const score = Math.min(50, weeklyAwards);
-
     let evaluation = await EmployeeEvaluation.findOne({ where: { employeeId } });
 
     if (evaluation) {
       const scores = { ...(evaluation.scores || {}) };
-      scores.cat9_c1 = score;
+      const currentScore = parseFloat(scores.cat9_c1) || 0;
+      // Increment by 1, capped at 50 (preserves higher manual values)
+      scores.cat9_c1 = Math.min(50, currentScore + 1);
       evaluation.scores = scores;
       // Recalculate total
       const WEIGHTS = {
@@ -46,12 +38,12 @@ async function syncEvaluationCriterion(employeeId) {
       evaluation.bonusPoints = parseFloat(bonus.toFixed(2));
       await evaluation.save();
     } else {
-      // Create a new evaluation with just this criterion
-      const total = (Math.min(score, 50) / 50) * 3; // weight=3
+      // Create a new evaluation with just this criterion = 1 (first credit)
+      const total = (1 / 50) * 3; // weight=3, score=1
       await EmployeeEvaluation.create({
         employeeId,
         createdById: null,
-        scores: { cat9_c1: score },
+        scores: { cat9_c1: 1 },
         qualitative: {},
         totalScore: parseFloat(total.toFixed(2)),
         grade: parseFloat(((total / 100) * 5).toFixed(2)),
@@ -213,8 +205,11 @@ exports.getMyWeeklyStats = async (req, res) => {
       }
     }
 
-    // Sync the evaluation criterion based on total weekly awards
-    await syncEvaluationCriterion(employee.employeeId);
+    // Only sync the evaluation criterion when a new credit was just awarded
+    // (preserves any manual edits by the manager)
+    if (creditedNow) {
+      await syncEvaluationCriterion(employee.employeeId);
+    }
 
     res.json({
       totalMinutes,
