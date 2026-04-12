@@ -142,6 +142,77 @@ exports.getTaskById = async (req, res) => {
 };
 
 /**
+ * Check for task conflicts for given employees and date/time
+ */
+exports.checkConflicts = async (req, res) => {
+  try {
+    const { employeeIds, dueDate, dueDateEnd, dueTime, dueTimeEnd } = req.body;
+    if (!employeeIds || !dueDate) return res.json({ conflicts: [] });
+
+    const { Op } = require('sequelize');
+    const conflicts = [];
+
+    for (const empId of employeeIds) {
+      const employee = await Employee.findByPk(empId, { attributes: ['employeeId', 'name'] });
+      if (!employee) continue;
+
+      // Find overlapping tasks by date range
+      const dateEnd = dueDateEnd || dueDate;
+      const whereClause = {
+        employeeId: empId,
+        status: { [Op.notIn]: ['cancelled'] },
+        [Op.or]: [
+          // Task starts within new range
+          { dueDate: { [Op.between]: [dueDate, dateEnd] } },
+          // Task ends within new range (dueDateEnd)
+          { dueDateEnd: { [Op.between]: [dueDate, dateEnd] } },
+          // Task spans the entire new range
+          { [Op.and]: [{ dueDate: { [Op.lte]: dueDate } }, { dueDateEnd: { [Op.gte]: dateEnd } }] },
+          // Single-day task on any day in range (dueDateEnd is null)
+          { [Op.and]: [{ dueDateEnd: null }, { dueDate: { [Op.between]: [dueDate, dateEnd] } }] }
+        ]
+      };
+
+      const overlapping = await Task.findAll({
+        where: whereClause,
+        attributes: ['taskId', 'title', 'dueDate', 'dueDateEnd', 'dueTime', 'dueTimeEnd', 'status', 'priority'],
+        order: [['dueDate', 'ASC']]
+      });
+
+      // If time is specified, further filter by time overlap
+      let conflictingTasks = overlapping;
+      if (dueTime && dueTimeEnd) {
+        conflictingTasks = overlapping.filter(t => {
+          if (!t.dueTime || !t.dueTimeEnd) return true; // no time = all day = always conflicts
+          return t.dueTime < dueTimeEnd && t.dueTimeEnd > dueTime;
+        });
+      }
+
+      if (conflictingTasks.length > 0) {
+        conflicts.push({
+          employeeId: empId,
+          employeeName: employee.name,
+          tasks: conflictingTasks.map(t => ({
+            taskId: t.taskId,
+            title: t.title,
+            dueDate: t.dueDate,
+            dueDateEnd: t.dueDateEnd,
+            dueTime: t.dueTime,
+            dueTimeEnd: t.dueTimeEnd,
+            status: t.status
+          }))
+        });
+      }
+    }
+
+    res.json({ conflicts });
+  } catch (error) {
+    console.error('Check conflicts error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+/**
  * Create a new task (single entry, can span multiple days)
  */
 exports.createTask = async (req, res) => {

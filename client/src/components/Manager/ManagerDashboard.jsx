@@ -932,6 +932,34 @@ const ManagerDashboard = () => {
   const handleTodoNextMonth = () => setTodoCalendarDate(addMonths(todoCalendarDate, 1));
 
   // Task CRUD operations
+  const createTasksForEmployees = async (employeeIds) => {
+    const promises = [];
+    for (const employeeId of employeeIds) {
+      const employee = employees.find(e => e.employeeId === employeeId);
+      promises.push(api.post('/tasks', {
+        title: taskForm.title,
+        description: taskForm.description,
+        employeeId,
+        dueDate: taskForm.dueDate,
+        dueDateEnd: taskForm.dueDateEnd || null,
+        dueTime: taskForm.dueTime,
+        dueTimeEnd: taskForm.dueTimeEnd || null,
+        blocksCalendar: taskForm.blocksCalendar,
+        priority: taskForm.priority,
+        section: employee?.section || taskForm.section,
+        notes: taskForm.notes
+      }));
+    }
+    await Promise.all(promises);
+    toast.success(isRTL
+      ? `تم إنشاء ${employeeIds.length} مهمة بنجاح`
+      : `${employeeIds.length} task(s) created successfully`);
+    setShowTaskModal(false);
+    resetTaskForm();
+    fetchSchedule();
+    fetchGroupedTasks();
+  };
+
   const handleCreateTask = async () => {
     const hasValidEmployee = taskForm.selectAllEmployees || taskForm.employeeIds.length > 0;
     if (!taskForm.title || !hasValidEmployee || !taskForm.dueDate) {
@@ -939,40 +967,42 @@ const ManagerDashboard = () => {
       return;
     }
 
+    const employeeIds = taskForm.selectAllEmployees
+      ? employees.map(emp => emp.employeeId)
+      : taskForm.employeeIds;
+
     setTaskLoading(true);
     try {
-      // Get list of employees to assign
-      const employeeIds = taskForm.selectAllEmployees
-        ? employees.map(emp => emp.employeeId)
-        : taskForm.employeeIds;
+      // Check for conflicts first
+      const conflictRes = await api.post('/tasks/check-conflicts', {
+        employeeIds,
+        dueDate: taskForm.dueDate,
+        dueDateEnd: taskForm.dueDateEnd || null,
+        dueTime: taskForm.dueTime || null,
+        dueTimeEnd: taskForm.dueTimeEnd || null
+      });
 
-      // Create ONE task per employee (with date range if multi-day)
-      const promises = [];
-      for (const employeeId of employeeIds) {
-        const employee = employees.find(e => e.employeeId === employeeId);
-        promises.push(api.post('/tasks', {
-          title: taskForm.title,
-          description: taskForm.description,
-          employeeId,
-          dueDate: taskForm.dueDate,
-          dueDateEnd: taskForm.dueDateEnd || null,
-          dueTime: taskForm.dueTime,
-          dueTimeEnd: taskForm.dueTimeEnd || null,
-          blocksCalendar: taskForm.blocksCalendar,
-          priority: taskForm.priority,
-          section: employee?.section || taskForm.section,
-          notes: taskForm.notes
-        }));
+      const { conflicts } = conflictRes.data;
+
+      if (conflicts.length > 0) {
+        // Build conflict message
+        let msg = isRTL ? 'يوجد تعارض في المهام:\n\n' : 'Task conflicts found:\n\n';
+        for (const c of conflicts) {
+          msg += `${c.employeeName}:\n`;
+          for (const t of c.tasks) {
+            msg += `  • "${t.title}" (${t.dueDate}${t.dueDateEnd ? ' → ' + t.dueDateEnd : ''}${t.dueTime ? ' ' + t.dueTime : ''}${t.dueTimeEnd ? '-' + t.dueTimeEnd : ''})\n`;
+          }
+          msg += '\n';
+        }
+        msg += isRTL ? 'هل تريد المتابعة وإنشاء المهمة على أي حال؟' : 'Do you want to proceed and create the task anyway?';
+
+        if (!window.confirm(msg)) {
+          setTaskLoading(false);
+          return;
+        }
       }
 
-      await Promise.all(promises);
-      toast.success(isRTL
-        ? `تم إنشاء ${employeeIds.length} مهمة بنجاح`
-        : `${employeeIds.length} task(s) created successfully`);
-      setShowTaskModal(false);
-      resetTaskForm();
-      fetchSchedule();
-      fetchGroupedTasks();
+      await createTasksForEmployees(employeeIds);
     } catch (error) {
       console.error('Error creating task:', error);
       toast.error(isRTL ? 'خطأ في إنشاء المهمة' : 'Error creating task');
@@ -10121,7 +10151,7 @@ const ManagerDashboard = () => {
                 <button
                   className="btn-submit"
                   onClick={selectedTask ? handleUpdateTask : handleCreateTask}
-                  disabled={taskLoading || !taskForm.title || !taskForm.employeeId || !taskForm.dueDate}
+                  disabled={taskLoading || !taskForm.title || !(taskForm.employeeId || taskForm.employeeIds?.length > 0 || taskForm.selectAllEmployees) || !taskForm.dueDate}
                 >
                   {taskLoading ? (
                     <span className="loading-spinner"></span>

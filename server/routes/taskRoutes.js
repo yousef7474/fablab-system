@@ -19,6 +19,9 @@ router.get('/calendar', taskController.getTasksForCalendar);
 // Get single task by ID
 router.get('/:id', taskController.getTaskById);
 
+// Check for task conflicts
+router.post('/check-conflicts', requireManager, taskController.checkConflicts);
+
 // Create new task (manager or admin only)
 router.post('/', requireManager, taskController.createTask);
 
