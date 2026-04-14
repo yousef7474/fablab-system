@@ -692,13 +692,11 @@ const AdminDashboard = () => {
       fetchBorrowings();
     } else if (activeTab === 'education') {
       fetchEducations();
-    } else if (activeTab === 'workshops') {
-      fetchWorkshops();
     } else if (activeTab === 'workspaces' && workspaceAuthenticated) {
       fetchWorkspaces();
       fetchWorkspaceStats();
     }
-  }, [activeTab, fetchRegistrations, fetchWorkshops, analyticsPeriod, analyticsDateRange.startDate, analyticsDateRange.endDate, workspaceAuthenticated]);
+  }, [activeTab, fetchRegistrations, analyticsPeriod, analyticsDateRange.startDate, analyticsDateRange.endDate, workspaceAuthenticated]);
 
   // Workshop functions
   const fetchWorkshops = useCallback(async () => {
@@ -709,6 +707,10 @@ const AdminDashboard = () => {
       console.error('Error fetching workshops:', error);
     }
   }, []);
+
+  useEffect(() => {
+    if (activeTab === 'workshops') fetchWorkshops();
+  }, [activeTab, fetchWorkshops]);
 
   const handleCreateWorkshop = async () => {
     if (!workshopForm.title || !workshopForm.startDate) {
