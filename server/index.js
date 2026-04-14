@@ -20,6 +20,7 @@ const borrowingRoutes = require('./routes/borrowingRoutes');
 const educationRoutes = require('./routes/educationRoutes');
 const employeeRoutes = require('./routes/employeeRoutes');
 const evaluationRoutes = require('./routes/evaluationRoutes');
+const workshopMgmtRoutes = require('./routes/workshopMgmtRoutes');
 const { startBorrowingScheduler } = require('./utils/borrowingScheduler');
 const { startTaskReminderScheduler } = require('./utils/taskReminderScheduler');
 const { startEliteCourseScheduler } = require('./utils/eliteCourseScheduler');
@@ -57,6 +58,7 @@ app.use('/api/borrowing', borrowingRoutes);
 app.use('/api/education', educationRoutes);
 app.use('/api/employee', employeeRoutes);
 app.use('/api/evaluations', evaluationRoutes);
+app.use('/api/workshops', workshopMgmtRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {

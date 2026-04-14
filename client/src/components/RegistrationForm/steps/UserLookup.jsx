@@ -195,6 +195,39 @@ const UserLookup = ({ onUserFound, onNewUser }) => {
         </button>
       </motion.div>
 
+      {/* Workshop Button */}
+      <motion.div
+        initial={{ y: 20, opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        transition={{ delay: 0.625 }}
+        style={{ marginTop: '16px', textAlign: 'center' }}
+      >
+        <button
+          onClick={() => navigate('/workshop')}
+          style={{
+            background: 'linear-gradient(135deg, #dc2626, #ef4444)',
+            color: 'white',
+            border: 'none',
+            padding: '12px 32px',
+            borderRadius: '12px',
+            fontSize: '16px',
+            fontWeight: '700',
+            cursor: 'pointer',
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '10px',
+            boxShadow: '0 4px 15px rgba(220, 38, 38, 0.3)',
+            transition: 'all 0.3s ease'
+          }}
+        >
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <path d="M22 10v6M2 10l10-5 10 5-10 5z"/>
+            <path d="M6 12v5c3 3 9 3 12 0v-5"/>
+          </svg>
+          {isRTL ? 'الورش التدريبية' : 'Training Workshops'}
+        </button>
+      </motion.div>
+
       {/* Education Button with Expandable Options */}
       <motion.div
         initial={{ y: 20, opacity: 0 }}
