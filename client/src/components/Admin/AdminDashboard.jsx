@@ -73,7 +73,7 @@ const AdminDashboard = () => {
   const printRef = useRef();
 
   // Valid tabs for URL persistence
-  const validTabs = ['dashboard', 'registrations', 'users', 'employees', 'schedule', 'analytics', 'borrowing', 'education', 'workspaces', 'settings'];
+  const validTabs = ['dashboard', 'registrations', 'users', 'employees', 'schedule', 'analytics', 'borrowing', 'education', 'workshops', 'workspaces', 'settings'];
 
   // Get initial tab from URL, localStorage, or default to 'dashboard'
   const getInitialTab = () => {
@@ -193,6 +193,19 @@ const AdminDashboard = () => {
   const [showAddStudentModal, setShowAddStudentModal] = useState(false);
   const [newStudentForm, setNewStudentForm] = useState({ fullName: '', nationalId: '', phoneNumber: '', schoolName: '', educationLevel: '', parentPhoneNumber: '', personalPhoto: '' });
   const [sendingEducationEmail, setSendingEducationEmail] = useState(false);
+
+  // Workshop states
+  const [workshopsList, setWorkshopsList] = useState([]);
+  const [showWorkshopModal, setShowWorkshopModal] = useState(false);
+  const [selectedWorkshop, setSelectedWorkshop] = useState(null);
+  const [workshopForm, setWorkshopForm] = useState({
+    title: '', description: '', presenter: '', assignedEmployeeId: '',
+    startDate: '', endDate: '', startTime: '', endTime: '',
+    totalHours: '', content: '', objectives: '', photo: '',
+    maxParticipants: '', price: '', notes: ''
+  });
+  const [workshopLoading, setWorkshopLoading] = useState(false);
+  const [viewingWorkshopStudents, setViewingWorkshopStudents] = useState(null);
 
   // Workspace states
   const WORKSPACE_PASSWORD = 'nouf123';
@@ -679,11 +692,88 @@ const AdminDashboard = () => {
       fetchBorrowings();
     } else if (activeTab === 'education') {
       fetchEducations();
+    } else if (activeTab === 'workshops') {
+      fetchWorkshops();
     } else if (activeTab === 'workspaces' && workspaceAuthenticated) {
       fetchWorkspaces();
       fetchWorkspaceStats();
     }
-  }, [activeTab, fetchRegistrations, analyticsPeriod, analyticsDateRange.startDate, analyticsDateRange.endDate, workspaceAuthenticated]);
+  }, [activeTab, fetchRegistrations, fetchWorkshops, analyticsPeriod, analyticsDateRange.startDate, analyticsDateRange.endDate, workspaceAuthenticated]);
+
+  // Workshop functions
+  const fetchWorkshops = useCallback(async () => {
+    try {
+      const response = await api.get('/workshops');
+      setWorkshopsList(response.data || []);
+    } catch (error) {
+      console.error('Error fetching workshops:', error);
+    }
+  }, []);
+
+  const handleCreateWorkshop = async () => {
+    if (!workshopForm.title || !workshopForm.startDate) {
+      toast.error(isRTL ? 'العنوان والتاريخ مطلوبان' : 'Title and date are required');
+      return;
+    }
+    setWorkshopLoading(true);
+    try {
+      if (selectedWorkshop) {
+        await api.put(`/workshops/${selectedWorkshop.workshopId}`, workshopForm);
+        toast.success(isRTL ? 'تم تحديث الورشة' : 'Workshop updated');
+      } else {
+        await api.post('/workshops', workshopForm);
+        toast.success(isRTL ? 'تم إنشاء الورشة' : 'Workshop created');
+      }
+      setShowWorkshopModal(false);
+      setSelectedWorkshop(null);
+      setWorkshopForm({ title: '', description: '', presenter: '', assignedEmployeeId: '', startDate: '', endDate: '', startTime: '', endTime: '', totalHours: '', content: '', objectives: '', photo: '', maxParticipants: '', price: '', notes: '' });
+      fetchWorkshops();
+    } catch (error) {
+      toast.error(isRTL ? 'خطأ' : 'Error');
+    } finally {
+      setWorkshopLoading(false);
+    }
+  };
+
+  const handleDeleteWorkshop = async (id) => {
+    if (!window.confirm(isRTL ? 'هل أنت متأكد؟' : 'Are you sure?')) return;
+    try {
+      await api.delete(`/workshops/${id}`);
+      toast.success(isRTL ? 'تم حذف الورشة' : 'Workshop deleted');
+      fetchWorkshops();
+      if (viewingWorkshopStudents?.workshopId === id) setViewingWorkshopStudents(null);
+    } catch (error) {
+      toast.error(isRTL ? 'خطأ' : 'Error');
+    }
+  };
+
+  const handleVerifyPayment = async (studentId, status) => {
+    try {
+      await api.patch(`/workshops/students/${studentId}/verify`, { paymentStatus: status });
+      toast.success(isRTL ? 'تم التحديث' : 'Updated');
+      if (viewingWorkshopStudents) {
+        const res = await api.get(`/workshops/${viewingWorkshopStudents.workshopId}`);
+        setViewingWorkshopStudents(res.data);
+      }
+    } catch (error) {
+      toast.error(isRTL ? 'خطأ' : 'Error');
+    }
+  };
+
+  const openWorkshopEditModal = (workshop) => {
+    setSelectedWorkshop(workshop);
+    setWorkshopForm({
+      title: workshop.title || '', description: workshop.description || '',
+      presenter: workshop.presenter || '', assignedEmployeeId: workshop.assignedEmployeeId || '',
+      startDate: workshop.startDate || '', endDate: workshop.endDate || '',
+      startTime: workshop.startTime || '', endTime: workshop.endTime || '',
+      totalHours: workshop.totalHours || '', content: workshop.content || '',
+      objectives: workshop.objectives || '', photo: workshop.photo || '',
+      maxParticipants: workshop.maxParticipants || '', price: workshop.price || '',
+      notes: workshop.notes || ''
+    });
+    setShowWorkshopModal(true);
+  };
 
   // Workspace functions
   const fetchWorkspaces = async () => {
@@ -4012,6 +4102,7 @@ const AdminDashboard = () => {
     { id: 'schedule', icon: 'schedule', labelEn: 'Schedule', labelAr: 'الجدول' },
     { id: 'borrowing', icon: 'borrowing', labelEn: 'Borrowing', labelAr: 'الاستعارة' },
     { id: 'education', icon: 'education', labelEn: 'Education', labelAr: 'التعليم' },
+    { id: 'workshops', icon: 'workshops', labelEn: 'Workshops', labelAr: 'الورش التدريبية' },
     { id: 'workspaces', icon: 'workspaces', labelEn: 'Workspaces', labelAr: 'مساحات العمل' },
     { id: 'settings', icon: 'settings', labelEn: 'Settings', labelAr: 'الإعدادات' }
   ];
@@ -4025,6 +4116,7 @@ const AdminDashboard = () => {
       schedule: <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>,
       borrowing: <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>,
       education: <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>,
+      workshops: <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/></svg>,
       workspaces: <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>,
       settings: <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
     };
@@ -7002,6 +7094,131 @@ const AdminDashboard = () => {
                 </div>
               )}
             </AnimatePresence>
+
+            {/* Workshops Tab */}
+            {activeTab === 'workshops' && (
+              <div className="volunteers-section">
+                {/* Workshop List or Student View */}
+                {!viewingWorkshopStudents ? (
+                  <div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+                      <h3 style={{ margin: 0 }}>{isRTL ? 'الورش التدريبية' : 'Workshops'} ({workshopsList.length})</h3>
+                      <button className="add-task-btn" onClick={() => { setSelectedWorkshop(null); setWorkshopForm({ title: '', description: '', presenter: '', assignedEmployeeId: '', startDate: '', endDate: '', startTime: '', endTime: '', totalHours: '', content: '', objectives: '', photo: '', maxParticipants: '', price: '', notes: '' }); setShowWorkshopModal(true); }}>
+                        + {isRTL ? 'ورشة جديدة' : 'New Workshop'}
+                      </button>
+                    </div>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '1rem' }}>
+                      {workshopsList.map(w => (
+                        <div key={w.workshopId} style={{ background: 'white', borderRadius: 14, overflow: 'hidden', border: '1px solid #f1f5f9', boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}>
+                          {w.photo && <div style={{ height: 150, backgroundImage: `url(${w.photo})`, backgroundSize: 'cover', backgroundPosition: 'center' }} />}
+                          <div style={{ padding: '1rem' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.5rem' }}>
+                              <h4 style={{ margin: 0, fontSize: '1rem', fontWeight: 700 }}>{w.title}</h4>
+                              <span style={{ padding: '2px 8px', borderRadius: 6, fontSize: '0.7rem', fontWeight: 600, background: w.status === 'upcoming' ? '#dbeafe' : w.status === 'in_progress' ? '#fef3c7' : w.status === 'completed' ? '#dcfce7' : '#fee2e2', color: w.status === 'upcoming' ? '#1d4ed8' : w.status === 'in_progress' ? '#92400e' : w.status === 'completed' ? '#166534' : '#991b1b' }}>
+                                {w.status === 'upcoming' ? (isRTL ? 'قادمة' : 'Upcoming') : w.status === 'in_progress' ? (isRTL ? 'جارية' : 'In Progress') : w.status === 'completed' ? (isRTL ? 'مكتملة' : 'Completed') : (isRTL ? 'ملغاة' : 'Cancelled')}
+                              </span>
+                            </div>
+                            {w.presenter && <div style={{ fontSize: '0.82rem', color: '#3b82f6', fontWeight: 600, marginBottom: '0.4rem' }}>{w.presenter}</div>}
+                            {w.assignedEmployee && <div style={{ fontSize: '0.75rem', color: '#64748b', marginBottom: '0.4rem' }}>{isRTL ? 'المسؤول:' : 'Assigned:'} {w.assignedEmployee.name}</div>}
+                            <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', fontSize: '0.78rem', color: '#64748b', marginBottom: '0.5rem' }}>
+                              {w.startDate && <span>{'\uD83D\uDCC5'} {w.startDate}{w.endDate ? ` \u2192 ${w.endDate}` : ''}</span>}
+                              {w.totalHours && <span>{'\u23F1'} {w.totalHours}h</span>}
+                              {w.price ? <span style={{ color: '#1a56db', fontWeight: 700 }}>{w.price} SAR</span> : <span style={{ color: '#22c55e', fontWeight: 700 }}>{isRTL ? 'مجاني' : 'Free'}</span>}
+                            </div>
+                            <div style={{ fontSize: '0.78rem', color: '#64748b', marginBottom: '0.75rem' }}>
+                              {isRTL ? 'الطلاب:' : 'Students:'} <strong>{w.studentCount || 0}</strong>{w.maxParticipants ? ` / ${w.maxParticipants}` : ''}
+                            </div>
+                            <div style={{ display: 'flex', gap: '0.4rem' }}>
+                              <button onClick={() => setViewingWorkshopStudents(w)} style={{ flex: 1, padding: '0.5rem', borderRadius: 8, border: 'none', background: '#3b82f6', color: 'white', cursor: 'pointer', fontWeight: 600, fontSize: '0.78rem', fontFamily: 'inherit' }}>
+                                {isRTL ? 'عرض الطلاب' : 'View Students'}
+                              </button>
+                              <button onClick={() => openWorkshopEditModal(w)} style={{ padding: '0.5rem 0.75rem', borderRadius: 8, border: '1px solid #e2e8f0', background: 'white', cursor: 'pointer', fontFamily: 'inherit' }}>
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#334155" strokeWidth="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                              </button>
+                              <button onClick={() => handleDeleteWorkshop(w.workshopId)} style={{ padding: '0.5rem 0.75rem', borderRadius: 8, border: '1px solid #e2e8f0', background: 'white', cursor: 'pointer', fontFamily: 'inherit' }}>
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#ef4444" strokeWidth="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                      {workshopsList.length === 0 && <div style={{ gridColumn: '1/-1', textAlign: 'center', padding: '3rem', color: '#94a3b8' }}>{isRTL ? 'لا توجد ورش تدريبية' : 'No workshops yet'}</div>}
+                    </div>
+                  </div>
+                ) : (
+                  <div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1.5rem' }}>
+                      <button onClick={() => setViewingWorkshopStudents(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4 }}>
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#334155" strokeWidth="2"><path d="m15 18-6-6 6-6"/></svg>
+                      </button>
+                      <div>
+                        <h3 style={{ margin: 0 }}>{viewingWorkshopStudents.title}</h3>
+                        <span style={{ fontSize: '0.82rem', color: '#64748b' }}>{viewingWorkshopStudents.students?.length || 0} {isRTL ? 'طالب' : 'students'}</span>
+                      </div>
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                      {(viewingWorkshopStudents.students || []).map(s => (
+                        <div key={s.studentId} style={{ background: 'white', borderRadius: 10, padding: '0.85rem 1rem', border: '1px solid #f1f5f9', display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
+                          <div style={{ flex: '1 1 180px' }}>
+                            <div style={{ fontWeight: 700, fontSize: '0.9rem' }}>{s.firstName} {s.lastName}</div>
+                            <div style={{ fontSize: '0.75rem', color: '#64748b' }}>{s.phone} {s.email && `\u2022 ${s.email}`}</div>
+                          </div>
+                          <div style={{ fontSize: '0.78rem' }}>
+                            <span style={{ fontWeight: 600 }}>{isRTL ? 'فاتورة:' : 'Invoice:'}</span> {s.invoiceNumber}
+                          </div>
+                          <select value={s.paymentStatus} onChange={e => handleVerifyPayment(s.studentId, e.target.value)}
+                            style={{ padding: '0.3rem 0.5rem', borderRadius: 6, border: '1.5px solid #e2e8f0', fontSize: '0.78rem', fontWeight: 600, fontFamily: 'inherit',
+                              background: s.paymentStatus === 'verified' ? '#dcfce7' : s.paymentStatus === 'rejected' ? '#fee2e2' : '#fef3c7',
+                              color: s.paymentStatus === 'verified' ? '#166534' : s.paymentStatus === 'rejected' ? '#991b1b' : '#92400e' }}>
+                            <option value="pending">{isRTL ? 'قيد المراجعة' : 'Pending'}</option>
+                            <option value="verified">{isRTL ? 'تم التحقق' : 'Verified'}</option>
+                            <option value="rejected">{isRTL ? 'مرفوض' : 'Rejected'}</option>
+                          </select>
+                          <span style={{ padding: '2px 8px', borderRadius: 6, fontSize: '0.72rem', fontWeight: 600, background: s.attended ? '#dcfce7' : '#f1f5f9', color: s.attended ? '#166534' : '#94a3b8' }}>
+                            {s.attended ? (isRTL ? '\u2713 حاضر' : '\u2713 Attended') : (isRTL ? 'لم يحضر' : 'Not attended')}
+                          </span>
+                        </div>
+                      ))}
+                      {(!viewingWorkshopStudents.students || viewingWorkshopStudents.students.length === 0) && (
+                        <div style={{ textAlign: 'center', padding: '2rem', color: '#94a3b8' }}>{isRTL ? 'لا يوجد طلاب مسجلين' : 'No students registered'}</div>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Workshop Create/Edit Modal */}
+            {showWorkshopModal && (
+              <div className="modal-overlay" onClick={() => setShowWorkshopModal(false)}>
+                <motion.div className="modal-content" onClick={e => e.stopPropagation()} initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }}
+                  style={{ maxWidth: 650, maxHeight: '90vh', overflow: 'auto', padding: '2rem' }}>
+                  <h3 style={{ marginBottom: '1rem' }}>{selectedWorkshop ? (isRTL ? 'تعديل الورشة' : 'Edit Workshop') : (isRTL ? 'ورشة جديدة' : 'New Workshop')}</h3>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+                    <div style={{ gridColumn: '1/-1' }}><label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 600, marginBottom: 4 }}>{isRTL ? 'عنوان الورشة' : 'Workshop Title'} *</label><input style={{ width: '100%', padding: '0.5rem', borderRadius: 8, border: '1.5px solid #e2e8f0', fontFamily: 'inherit' }} value={workshopForm.title} onChange={e => setWorkshopForm({...workshopForm, title: e.target.value})} /></div>
+                    <div><label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 600, marginBottom: 4 }}>{isRTL ? 'المقدم / المهندس' : 'Presenter'} *</label><input style={{ width: '100%', padding: '0.5rem', borderRadius: 8, border: '1.5px solid #e2e8f0', fontFamily: 'inherit' }} value={workshopForm.presenter} onChange={e => setWorkshopForm({...workshopForm, presenter: e.target.value})} /></div>
+                    <div><label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 600, marginBottom: 4 }}>{isRTL ? 'الموظف المسؤول' : 'Assigned Employee'}</label><select style={{ width: '100%', padding: '0.5rem', borderRadius: 8, border: '1.5px solid #e2e8f0', fontFamily: 'inherit' }} value={workshopForm.assignedEmployeeId} onChange={e => setWorkshopForm({...workshopForm, assignedEmployeeId: e.target.value})}><option value="">{isRTL ? 'اختر' : 'Select'}</option>{(employees || []).map(emp => <option key={emp.employeeId} value={emp.employeeId}>{emp.name}</option>)}</select></div>
+                    <div><label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 600, marginBottom: 4 }}>{isRTL ? 'من تاريخ' : 'Start Date'} *</label><input type="date" style={{ width: '100%', padding: '0.5rem', borderRadius: 8, border: '1.5px solid #e2e8f0', fontFamily: 'inherit' }} value={workshopForm.startDate} onChange={e => setWorkshopForm({...workshopForm, startDate: e.target.value})} /></div>
+                    <div><label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 600, marginBottom: 4 }}>{isRTL ? 'إلى تاريخ' : 'End Date'}</label><input type="date" style={{ width: '100%', padding: '0.5rem', borderRadius: 8, border: '1.5px solid #e2e8f0', fontFamily: 'inherit' }} value={workshopForm.endDate} onChange={e => setWorkshopForm({...workshopForm, endDate: e.target.value})} /></div>
+                    <div><label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 600, marginBottom: 4 }}>{isRTL ? 'وقت البداية' : 'Start Time'}</label><input type="time" style={{ width: '100%', padding: '0.5rem', borderRadius: 8, border: '1.5px solid #e2e8f0', fontFamily: 'inherit' }} value={workshopForm.startTime} onChange={e => setWorkshopForm({...workshopForm, startTime: e.target.value})} /></div>
+                    <div><label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 600, marginBottom: 4 }}>{isRTL ? 'وقت النهاية' : 'End Time'}</label><input type="time" style={{ width: '100%', padding: '0.5rem', borderRadius: 8, border: '1.5px solid #e2e8f0', fontFamily: 'inherit' }} value={workshopForm.endTime} onChange={e => setWorkshopForm({...workshopForm, endTime: e.target.value})} /></div>
+                    <div><label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 600, marginBottom: 4 }}>{isRTL ? 'إجمالي الساعات' : 'Total Hours'}</label><input type="number" style={{ width: '100%', padding: '0.5rem', borderRadius: 8, border: '1.5px solid #e2e8f0', fontFamily: 'inherit' }} value={workshopForm.totalHours} onChange={e => setWorkshopForm({...workshopForm, totalHours: e.target.value})} /></div>
+                    <div><label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 600, marginBottom: 4 }}>{isRTL ? 'الحد الأقصى للمشاركين' : 'Max Participants'}</label><input type="number" style={{ width: '100%', padding: '0.5rem', borderRadius: 8, border: '1.5px solid #e2e8f0', fontFamily: 'inherit' }} value={workshopForm.maxParticipants} onChange={e => setWorkshopForm({...workshopForm, maxParticipants: e.target.value})} /></div>
+                    <div><label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 600, marginBottom: 4 }}>{isRTL ? 'السعر' : 'Price (SAR)'}</label><input type="number" step="0.01" style={{ width: '100%', padding: '0.5rem', borderRadius: 8, border: '1.5px solid #e2e8f0', fontFamily: 'inherit' }} value={workshopForm.price} onChange={e => setWorkshopForm({...workshopForm, price: e.target.value})} /></div>
+                    <div style={{ gridColumn: '1/-1' }}><label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 600, marginBottom: 4 }}>{isRTL ? 'المحتوى' : 'Content'}</label><textarea style={{ width: '100%', padding: '0.5rem', borderRadius: 8, border: '1.5px solid #e2e8f0', fontFamily: 'inherit', minHeight: 60 }} value={workshopForm.content} onChange={e => setWorkshopForm({...workshopForm, content: e.target.value})} /></div>
+                    <div style={{ gridColumn: '1/-1' }}><label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 600, marginBottom: 4 }}>{isRTL ? 'الأهداف / المخرجات' : 'Objectives / Outcomes'}</label><textarea style={{ width: '100%', padding: '0.5rem', borderRadius: 8, border: '1.5px solid #e2e8f0', fontFamily: 'inherit', minHeight: 60 }} value={workshopForm.objectives} onChange={e => setWorkshopForm({...workshopForm, objectives: e.target.value})} /></div>
+                    <div style={{ gridColumn: '1/-1' }}><label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 600, marginBottom: 4 }}>{isRTL ? 'رابط الصورة أو Base64' : 'Photo URL or Base64'}</label><input style={{ width: '100%', padding: '0.5rem', borderRadius: 8, border: '1.5px solid #e2e8f0', fontFamily: 'inherit' }} value={workshopForm.photo} onChange={e => setWorkshopForm({...workshopForm, photo: e.target.value})} /></div>
+                    <div style={{ gridColumn: '1/-1' }}><label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 600, marginBottom: 4 }}>{isRTL ? 'ملاحظات' : 'Notes'}</label><input style={{ width: '100%', padding: '0.5rem', borderRadius: 8, border: '1.5px solid #e2e8f0', fontFamily: 'inherit' }} value={workshopForm.notes} onChange={e => setWorkshopForm({...workshopForm, notes: e.target.value})} /></div>
+                  </div>
+                  <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end', marginTop: '1.5rem' }}>
+                    <button onClick={() => setShowWorkshopModal(false)} style={{ padding: '0.6rem 1.5rem', borderRadius: 8, border: 'none', background: '#f1f5f9', cursor: 'pointer', fontWeight: 600, fontFamily: 'inherit' }}>{isRTL ? 'إلغاء' : 'Cancel'}</button>
+                    <button onClick={handleCreateWorkshop} disabled={workshopLoading} style={{ padding: '0.6rem 1.5rem', borderRadius: 8, border: 'none', background: 'linear-gradient(135deg, #3b82f6, #1d4ed8)', color: 'white', cursor: 'pointer', fontWeight: 600, fontFamily: 'inherit', opacity: workshopLoading ? 0.7 : 1 }}>
+                      {workshopLoading ? '...' : selectedWorkshop ? (isRTL ? 'تحديث' : 'Update') : (isRTL ? 'إنشاء' : 'Create')}
+                    </button>
+                  </div>
+                </motion.div>
+              </div>
+            )}
 
             {/* Settings Tab */}
             {activeTab === 'settings' && (

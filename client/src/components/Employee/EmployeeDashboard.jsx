@@ -31,6 +31,7 @@ const EmployeeDashboard = () => {
   const [ratings, setRatings] = useState(null);
   const [schedule, setSchedule] = useState([]);
   const [myEvaluations, setMyEvaluations] = useState(null);
+  const [myWorkshops, setMyWorkshops] = useState([]);
   const [activityStats, setActivityStats] = useState(null);
   const [loading, setLoading] = useState(true);
   const [taskStatusFilter, setTaskStatusFilter] = useState('all');
@@ -127,6 +128,15 @@ const EmployeeDashboard = () => {
     }
   }, []);
 
+  const fetchMyWorkshops = useCallback(async () => {
+    try {
+      const response = await employeeApi.get('/workshops/employee/my-workshops');
+      setMyWorkshops(response.data || []);
+    } catch (error) {
+      console.error('Error fetching workshops:', error);
+    }
+  }, []);
+
   const fetchActivityStats = useCallback(async () => {
     try {
       const response = await employeeApi.get('/employee/activity/my-weekly');
@@ -141,7 +151,7 @@ const EmployeeDashboard = () => {
       // Record login
       employeeApi.post('/employee/activity/login').catch(() => {});
 
-      Promise.all([fetchProfile(), fetchTasks(), fetchRatings(), fetchSchedule(), fetchEvaluations(), fetchActivityStats()])
+      Promise.all([fetchProfile(), fetchTasks(), fetchRatings(), fetchSchedule(), fetchEvaluations(), fetchActivityStats(), fetchMyWorkshops()])
         .finally(() => setLoading(false));
 
       // Heartbeat every 5 minutes
@@ -151,7 +161,7 @@ const EmployeeDashboard = () => {
 
       return () => clearInterval(heartbeatInterval);
     }
-  }, [employeeData, fetchProfile, fetchTasks, fetchRatings, fetchSchedule, fetchEvaluations, fetchActivityStats]);
+  }, [employeeData, fetchProfile, fetchTasks, fetchRatings, fetchSchedule, fetchEvaluations, fetchActivityStats, fetchMyWorkshops]);
 
   const handleUpdateTaskStatus = async (taskId, newStatus) => {
     try {
@@ -281,6 +291,7 @@ const EmployeeDashboard = () => {
     { key: 'tasks', label: isRTL ? 'المهام' : 'Tasks', icon: '📋' },
     { key: 'schedule', label: isRTL ? 'الجدول' : 'Schedule', icon: '📅' },
     { key: 'ratings', label: isRTL ? 'التقييمات' : 'Ratings', icon: '⭐' },
+    { key: 'workshops', label: isRTL ? 'الورش' : 'Workshops', icon: '🎓' },
     { key: 'profile', label: isRTL ? 'الملف الشخصي' : 'Profile', icon: '👤' },
   ];
 
@@ -701,6 +712,86 @@ const EmployeeDashboard = () => {
                 ))}
               </div>
             )}
+          </div>
+        )}
+
+        {/* Workshops Tab */}
+        {activeTab === 'workshops' && (
+          <div className="emp-workshops-tab">
+            {myWorkshops.length === 0 ? (
+              <div className="emp-empty-state"><p>{isRTL ? 'لا توجد ورش مسندة إليك' : 'No workshops assigned to you'}</p></div>
+            ) : myWorkshops.map(workshop => (
+              <div key={workshop.workshopId} className="emp-section-card" style={{ marginBottom: '1.5rem' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem' }}>
+                  <div>
+                    <h3 style={{ margin: '0 0 0.25rem', borderBottom: 'none', paddingBottom: 0 }}>{workshop.title}</h3>
+                    <div style={{ fontSize: '0.82rem', color: '#64748b' }}>
+                      {workshop.startDate}{workshop.endDate ? ` → ${workshop.endDate}` : ''} {workshop.totalHours ? `• ${workshop.totalHours}h` : ''}
+                    </div>
+                  </div>
+                  <span style={{ padding: '2px 8px', borderRadius: 6, fontSize: '0.72rem', fontWeight: 600, background: workshop.status === 'upcoming' ? '#dbeafe' : workshop.status === 'in_progress' ? '#fef3c7' : '#dcfce7', color: workshop.status === 'upcoming' ? '#1d4ed8' : workshop.status === 'in_progress' ? '#92400e' : '#166534' }}>
+                    {workshop.status === 'upcoming' ? (isRTL ? 'قادمة' : 'Upcoming') : workshop.status === 'in_progress' ? (isRTL ? 'جارية' : 'In Progress') : (isRTL ? 'مكتملة' : 'Completed')}
+                  </span>
+                </div>
+
+                <div style={{ fontSize: '0.85rem', fontWeight: 600, color: '#334155', marginBottom: '0.75rem' }}>
+                  {isRTL ? 'الطلاب المسجلين:' : 'Registered Students:'} {workshop.students?.length || 0}
+                </div>
+
+                {(workshop.students || []).length === 0 ? (
+                  <p className="emp-empty" style={{ padding: '1rem' }}>{isRTL ? 'لا يوجد طلاب' : 'No students'}</p>
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                    {workshop.students.map(s => (
+                      <div key={s.studentId} style={{ background: '#f8fafc', borderRadius: 10, padding: '0.75rem 1rem', border: '1px solid #f1f5f9', display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
+                        <div style={{ flex: '1 1 150px', minWidth: 0 }}>
+                          <div style={{ fontWeight: 600, fontSize: '0.88rem', color: '#1e293b' }}>{s.firstName} {s.lastName}</div>
+                          <div style={{ fontSize: '0.72rem', color: '#64748b' }}>{s.phone} {s.email ? `• ${s.email}` : ''}</div>
+                        </div>
+
+                        {/* Attendance toggle */}
+                        <button
+                          onClick={async () => {
+                            try {
+                              await employeeApi.patch(`/workshops/employee/students/${s.studentId}/attendance`, { attended: !s.attended });
+                              toast.success(isRTL ? 'تم تحديث الحضور' : 'Attendance updated');
+                              fetchMyWorkshops();
+                            } catch (err) { toast.error(isRTL ? 'خطأ' : 'Error'); }
+                          }}
+                          style={{ padding: '0.3rem 0.7rem', borderRadius: 6, border: 'none', cursor: 'pointer', fontWeight: 600, fontSize: '0.75rem', fontFamily: 'inherit', background: s.attended ? '#dcfce7' : '#fee2e2', color: s.attended ? '#166534' : '#991b1b' }}
+                        >
+                          {s.attended ? (isRTL ? '✓ حاضر' : '✓ Present') : (isRTL ? '✗ غائب' : '✗ Absent')}
+                        </button>
+
+                        {/* Performance rating */}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
+                          {[1, 2, 3, 4, 5].map(star => (
+                            <button
+                              key={star}
+                              onClick={async () => {
+                                try {
+                                  await employeeApi.patch(`/workshops/employee/students/${s.studentId}/rate`, { performanceRating: star });
+                                  toast.success(isRTL ? 'تم التقييم' : 'Rated');
+                                  fetchMyWorkshops();
+                                } catch (err) { toast.error(isRTL ? 'خطأ' : 'Error'); }
+                              }}
+                              style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '1rem', padding: 0, color: star <= (s.performanceRating || 0) ? '#f59e0b' : '#d1d5db' }}
+                            >
+                              ★
+                            </button>
+                          ))}
+                        </div>
+
+                        {/* Payment status badge */}
+                        <span style={{ padding: '2px 6px', borderRadius: 5, fontSize: '0.68rem', fontWeight: 600, background: s.paymentStatus === 'verified' ? '#dcfce7' : s.paymentStatus === 'rejected' ? '#fee2e2' : '#fef3c7', color: s.paymentStatus === 'verified' ? '#166534' : s.paymentStatus === 'rejected' ? '#991b1b' : '#92400e' }}>
+                          {s.paymentStatus === 'verified' ? (isRTL ? 'مدفوع' : 'Paid') : s.paymentStatus === 'rejected' ? (isRTL ? 'مرفوض' : 'Rejected') : (isRTL ? 'قيد المراجعة' : 'Pending')}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            ))}
           </div>
         )}
 
