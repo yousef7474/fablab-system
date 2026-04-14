@@ -110,7 +110,7 @@ const Registration = sequelize.define('Registration', {
       'Partial Financial compensation',
       'Full Financial compensation'
     ),
-    allowNull: false
+    allowNull: true
   },
   // Section 8: Commitment
   commitmentName: {

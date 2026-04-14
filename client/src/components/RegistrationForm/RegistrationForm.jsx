@@ -11,7 +11,6 @@ import FablabSection from './steps/FablabSection';
 import RequiredService from './steps/RequiredService';
 import DateTimeSelection from './steps/DateTimeSelection';
 import ServiceDetails from './steps/ServiceDetails';
-import ServiceType from './steps/ServiceType';
 import Commitment from './steps/Commitment';
 import SuccessPage from './SuccessPage';
 import FabyBot from './FabyBot';
@@ -186,8 +185,7 @@ const RegistrationForm = () => {
     { key: 'section4', label: t('section4') },
     { key: 'section5', label: t('section5') },
     { key: 'section6', label: t('section6') },
-    { key: 'section7', label: t('section7') },
-    { key: 'section8', label: t('section8') }
+    { key: 'section7', label: t('section7') }
   ];
 
   const handleNext = () => {
@@ -277,8 +275,6 @@ const RegistrationForm = () => {
       case 5:
         return <ServiceDetails {...stepProps} />;
       case 6:
-        return <ServiceType {...stepProps} />;
-      case 7:
         return <Commitment {...stepProps} onSubmit={handleSubmit} loading={loading} />;
       default:
         return null;
