@@ -59,6 +59,11 @@ const WorkshopStudent = sequelize.define('WorkshopStudent', {
     type: DataTypes.BOOLEAN,
     defaultValue: false
   },
+  attendanceDates: {
+    type: DataTypes.JSON,
+    defaultValue: [],
+    comment: 'Array of date strings the student attended, e.g. ["2026-04-14","2026-04-15"]'
+  },
   performanceRating: {
     type: DataTypes.INTEGER,
     allowNull: true,

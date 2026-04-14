@@ -749,19 +749,33 @@ const EmployeeDashboard = () => {
                           <div style={{ fontSize: '0.72rem', color: '#64748b' }}>{s.phone} {s.email ? `• ${s.email}` : ''}</div>
                         </div>
 
-                        {/* Attendance toggle */}
-                        <button
-                          onClick={async () => {
-                            try {
-                              await employeeApi.patch(`/workshops/employee/students/${s.studentId}/attendance`, { attended: !s.attended });
-                              toast.success(isRTL ? 'تم تحديث الحضور' : 'Attendance updated');
-                              fetchMyWorkshops();
-                            } catch (err) { toast.error(isRTL ? 'خطأ' : 'Error'); }
-                          }}
-                          style={{ padding: '0.3rem 0.7rem', borderRadius: 6, border: 'none', cursor: 'pointer', fontWeight: 600, fontSize: '0.75rem', fontFamily: 'inherit', background: s.attended ? '#dcfce7' : '#fee2e2', color: s.attended ? '#166534' : '#991b1b' }}
-                        >
-                          {s.attended ? (isRTL ? '✓ حاضر' : '✓ Present') : (isRTL ? '✗ غائب' : '✗ Absent')}
-                        </button>
+                        {/* Per-day Attendance */}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
+                          {(() => {
+                            const todayStr = new Date().toISOString().split('T')[0];
+                            const dates = Array.isArray(s.attendanceDates) ? s.attendanceDates : [];
+                            const isPresentToday = dates.includes(todayStr);
+                            return (
+                              <>
+                                <button
+                                  onClick={async () => {
+                                    try {
+                                      await employeeApi.patch(`/workshops/employee/students/${s.studentId}/attendance`, { date: todayStr, present: !isPresentToday });
+                                      toast.success(isRTL ? 'تم تحديث الحضور' : 'Attendance updated');
+                                      fetchMyWorkshops();
+                                    } catch (err) { toast.error(isRTL ? 'خطأ' : 'Error'); }
+                                  }}
+                                  style={{ padding: '0.3rem 0.7rem', borderRadius: 6, border: 'none', cursor: 'pointer', fontWeight: 600, fontSize: '0.75rem', fontFamily: 'inherit', background: isPresentToday ? '#dcfce7' : '#fee2e2', color: isPresentToday ? '#166534' : '#991b1b' }}
+                                >
+                                  {isPresentToday ? (isRTL ? '✓ حاضر اليوم' : '✓ Present Today') : (isRTL ? '✗ غائب اليوم' : '✗ Absent Today')}
+                                </button>
+                                <span style={{ fontSize: '0.68rem', color: '#64748b', fontWeight: 600 }}>
+                                  ({dates.length} {isRTL ? 'يوم' : 'days'})
+                                </span>
+                              </>
+                            );
+                          })()}
+                        </div>
 
                         {/* Performance rating */}
                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.3rem' }}>

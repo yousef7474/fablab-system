@@ -7131,7 +7131,7 @@ const AdminDashboard = () => {
                               {isRTL ? 'الطلاب:' : 'Students:'} <strong>{w.studentCount || 0}</strong>{w.maxParticipants ? ` / ${w.maxParticipants}` : ''}
                             </div>
                             <div style={{ display: 'flex', gap: '0.4rem' }}>
-                              <button onClick={() => setViewingWorkshopStudents(w)} style={{ flex: 1, padding: '0.5rem', borderRadius: 8, border: 'none', background: '#3b82f6', color: 'white', cursor: 'pointer', fontWeight: 600, fontSize: '0.78rem', fontFamily: 'inherit' }}>
+                              <button onClick={async () => { try { const res = await api.get(`/workshops/${w.workshopId}`); setViewingWorkshopStudents(res.data); } catch(e) { toast.error('Error'); } }} style={{ flex: 1, padding: '0.5rem', borderRadius: 8, border: 'none', background: '#3b82f6', color: 'white', cursor: 'pointer', fontWeight: 600, fontSize: '0.78rem', fontFamily: 'inherit' }}>
                                 {isRTL ? 'عرض الطلاب' : 'View Students'}
                               </button>
                               <button onClick={() => openWorkshopEditModal(w)} style={{ padding: '0.5rem 0.75rem', borderRadius: 8, border: '1px solid #e2e8f0', background: 'white', cursor: 'pointer', fontFamily: 'inherit' }}>

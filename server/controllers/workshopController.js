@@ -376,18 +376,22 @@ exports.deleteStudent = async (req, res) => {
 exports.markAttendance = async (req, res) => {
   try {
     const { id } = req.params;
-    const { attended } = req.body;
+    const { date, present } = req.body;
+    const today = date || new Date().toISOString().split('T')[0];
 
     const student = await WorkshopStudent.findByPk(id);
     if (!student) {
-      return res.status(404).json({
-        message: 'Student not found',
-        messageAr: 'الطالب غير موجود'
-      });
+      return res.status(404).json({ message: 'Student not found', messageAr: 'الطالب غير موجود' });
     }
 
-    await student.update({ attended: attended !== undefined ? attended : !student.attended });
+    let dates = Array.isArray(student.attendanceDates) ? [...student.attendanceDates] : [];
+    if (present) {
+      if (!dates.includes(today)) dates.push(today);
+    } else {
+      dates = dates.filter(d => d !== today);
+    }
 
+    await student.update({ attendanceDates: dates, attended: dates.length > 0 });
     res.json(student);
   } catch (error) {
     console.error('Error marking attendance:', error);
@@ -510,7 +514,15 @@ exports.markAttendanceEmployee = async (req, res) => {
       });
     }
 
-    await student.update({ attended: attended !== undefined ? attended : !student.attended });
+    const { date, present } = req.body;
+    const today = date || new Date().toISOString().split('T')[0];
+    let dates = Array.isArray(student.attendanceDates) ? [...student.attendanceDates] : [];
+    if (present) {
+      if (!dates.includes(today)) dates.push(today);
+    } else {
+      dates = dates.filter(d => d !== today);
+    }
+    await student.update({ attendanceDates: dates, attended: dates.length > 0 });
 
     res.json(student);
   } catch (error) {
