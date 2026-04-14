@@ -7209,7 +7209,18 @@ const AdminDashboard = () => {
                     <div><label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 600, marginBottom: 4 }}>{isRTL ? 'السعر' : 'Price (SAR)'}</label><input type="number" step="0.01" style={{ width: '100%', padding: '0.5rem', borderRadius: 8, border: '1.5px solid #e2e8f0', fontFamily: 'inherit' }} value={workshopForm.price} onChange={e => setWorkshopForm({...workshopForm, price: e.target.value})} /></div>
                     <div style={{ gridColumn: '1/-1' }}><label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 600, marginBottom: 4 }}>{isRTL ? 'المحتوى' : 'Content'}</label><textarea style={{ width: '100%', padding: '0.5rem', borderRadius: 8, border: '1.5px solid #e2e8f0', fontFamily: 'inherit', minHeight: 60 }} value={workshopForm.content} onChange={e => setWorkshopForm({...workshopForm, content: e.target.value})} /></div>
                     <div style={{ gridColumn: '1/-1' }}><label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 600, marginBottom: 4 }}>{isRTL ? 'الأهداف / المخرجات' : 'Objectives / Outcomes'}</label><textarea style={{ width: '100%', padding: '0.5rem', borderRadius: 8, border: '1.5px solid #e2e8f0', fontFamily: 'inherit', minHeight: 60 }} value={workshopForm.objectives} onChange={e => setWorkshopForm({...workshopForm, objectives: e.target.value})} /></div>
-                    <div style={{ gridColumn: '1/-1' }}><label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 600, marginBottom: 4 }}>{isRTL ? 'رابط الصورة أو Base64' : 'Photo URL or Base64'}</label><input style={{ width: '100%', padding: '0.5rem', borderRadius: 8, border: '1.5px solid #e2e8f0', fontFamily: 'inherit' }} value={workshopForm.photo} onChange={e => setWorkshopForm({...workshopForm, photo: e.target.value})} /></div>
+                    <div style={{ gridColumn: '1/-1' }}>
+                      <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 600, marginBottom: 4 }}>{isRTL ? 'صورة الورشة' : 'Workshop Photo'}</label>
+                      <input type="file" accept="image/*" onChange={e => {
+                        const file = e.target.files[0];
+                        if (!file) return;
+                        if (file.size > 5 * 1024 * 1024) { toast.error(isRTL ? 'الحد الأقصى 5 ميجابايت' : 'Max 5MB'); return; }
+                        const reader = new FileReader();
+                        reader.onload = (ev) => setWorkshopForm({...workshopForm, photo: ev.target.result});
+                        reader.readAsDataURL(file);
+                      }} style={{ width: '100%', padding: '0.5rem', borderRadius: 8, border: '1.5px solid #e2e8f0', fontFamily: 'inherit' }} />
+                      {workshopForm.photo && <img src={workshopForm.photo} alt="preview" style={{ marginTop: 8, maxHeight: 120, borderRadius: 8, objectFit: 'cover' }} />}
+                    </div>
                     <div style={{ gridColumn: '1/-1' }}><label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 600, marginBottom: 4 }}>{isRTL ? 'ملاحظات' : 'Notes'}</label><input style={{ width: '100%', padding: '0.5rem', borderRadius: 8, border: '1.5px solid #e2e8f0', fontFamily: 'inherit' }} value={workshopForm.notes} onChange={e => setWorkshopForm({...workshopForm, notes: e.target.value})} /></div>
                   </div>
                   <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end', marginTop: '1.5rem' }}>
