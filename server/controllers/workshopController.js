@@ -49,7 +49,7 @@ exports.getAllWorkshops = async (req, res) => {
         {
           model: Admin,
           as: 'creator',
-          attributes: ['adminId', 'username', 'name']
+          attributes: ['adminId', 'username', 'fullName']
         },
         {
           model: WorkshopStudent,
@@ -89,7 +89,7 @@ exports.getWorkshopById = async (req, res) => {
         {
           model: Admin,
           as: 'creator',
-          attributes: ['adminId', 'username', 'name']
+          attributes: ['adminId', 'username', 'fullName']
         },
         {
           model: WorkshopStudent,
@@ -163,7 +163,7 @@ exports.updateWorkshop = async (req, res) => {
         {
           model: Admin,
           as: 'creator',
-          attributes: ['adminId', 'username', 'name']
+          attributes: ['adminId', 'username', 'fullName']
         }
       ]
     });
