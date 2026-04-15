@@ -742,40 +742,30 @@ const EmployeeDashboard = () => {
                   <p className="emp-empty" style={{ padding: '1rem' }}>{isRTL ? 'لا يوجد طلاب' : 'No students'}</p>
                 ) : (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                    {workshop.students.map(s => (
-                      <div key={s.studentId} style={{ background: '#f8fafc', borderRadius: 10, padding: '0.75rem 1rem', border: '1px solid #f1f5f9', display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
+                    {workshop.students.map(s => {
+                      // Build workshop days array from startDate to endDate (or startDate if no endDate)
+                      const workshopDays = [];
+                      if (workshop.startDate) {
+                        const start = new Date(workshop.startDate);
+                        const end = workshop.endDate ? new Date(workshop.endDate) : new Date(workshop.startDate);
+                        const cursor = new Date(start);
+                        while (cursor <= end) {
+                          workshopDays.push(cursor.toISOString().split('T')[0]);
+                          cursor.setDate(cursor.getDate() + 1);
+                        }
+                      }
+                      const attendedDates = Array.isArray(s.attendanceDates) ? s.attendanceDates : [];
+                      return (
+                      <div key={s.studentId} style={{ background: '#f8fafc', borderRadius: 10, padding: '0.85rem 1rem', border: '1px solid #f1f5f9', display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
+                        {/* Top row: name, rating, payment */}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
                         <div style={{ flex: '1 1 150px', minWidth: 0 }}>
                           <div style={{ fontWeight: 600, fontSize: '0.88rem', color: '#1e293b' }}>{s.firstName} {s.lastName}</div>
                           <div style={{ fontSize: '0.72rem', color: '#64748b' }}>{s.phone} {s.email ? `• ${s.email}` : ''}</div>
                         </div>
-
-                        {/* Per-day Attendance */}
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
-                          {(() => {
-                            const todayStr = new Date().toISOString().split('T')[0];
-                            const dates = Array.isArray(s.attendanceDates) ? s.attendanceDates : [];
-                            const isPresentToday = dates.includes(todayStr);
-                            return (
-                              <>
-                                <button
-                                  onClick={async () => {
-                                    try {
-                                      await employeeApi.patch(`/workshops/employee/students/${s.studentId}/attendance`, { date: todayStr, present: !isPresentToday });
-                                      toast.success(isRTL ? 'تم تحديث الحضور' : 'Attendance updated');
-                                      fetchMyWorkshops();
-                                    } catch (err) { toast.error(isRTL ? 'خطأ' : 'Error'); }
-                                  }}
-                                  style={{ padding: '0.3rem 0.7rem', borderRadius: 6, border: 'none', cursor: 'pointer', fontWeight: 600, fontSize: '0.75rem', fontFamily: 'inherit', background: isPresentToday ? '#dcfce7' : '#fee2e2', color: isPresentToday ? '#166534' : '#991b1b' }}
-                                >
-                                  {isPresentToday ? (isRTL ? '✓ حاضر اليوم' : '✓ Present Today') : (isRTL ? '✗ غائب اليوم' : '✗ Absent Today')}
-                                </button>
-                                <span style={{ fontSize: '0.68rem', color: '#64748b', fontWeight: 600 }}>
-                                  ({dates.length} {isRTL ? 'يوم' : 'days'})
-                                </span>
-                              </>
-                            );
-                          })()}
-                        </div>
+                        <span style={{ fontSize: '0.72rem', color: '#64748b', fontWeight: 600, background: '#eff6ff', padding: '2px 8px', borderRadius: 5 }}>
+                          {attendedDates.length} / {workshopDays.length || '?'} {isRTL ? 'يوم' : 'days'}
+                        </span>
 
                         {/* Performance rating */}
                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
@@ -800,8 +790,39 @@ const EmployeeDashboard = () => {
                         <span style={{ padding: '2px 6px', borderRadius: 5, fontSize: '0.68rem', fontWeight: 600, background: s.paymentStatus === 'verified' ? '#dcfce7' : s.paymentStatus === 'rejected' ? '#fee2e2' : '#fef3c7', color: s.paymentStatus === 'verified' ? '#166534' : s.paymentStatus === 'rejected' ? '#991b1b' : '#92400e' }}>
                           {s.paymentStatus === 'verified' ? (isRTL ? 'مدفوع' : 'Paid') : s.paymentStatus === 'rejected' ? (isRTL ? 'مرفوض' : 'Rejected') : (isRTL ? 'قيد المراجعة' : 'Pending')}
                         </span>
+                        </div>
+
+                        {/* Per-day attendance row */}
+                        {workshopDays.length > 0 && (
+                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.35rem', paddingTop: '0.5rem', borderTop: '1px dashed #e2e8f0' }}>
+                            <span style={{ fontSize: '0.7rem', color: '#64748b', fontWeight: 600, alignSelf: 'center', marginInlineEnd: '0.3rem' }}>
+                              {isRTL ? 'الحضور اليومي:' : 'Daily attendance:'}
+                            </span>
+                            {workshopDays.map(day => {
+                              const isPresent = attendedDates.includes(day);
+                              const d = new Date(day);
+                              const label = `${d.getDate()}/${d.getMonth() + 1}`;
+                              return (
+                                <button
+                                  key={day}
+                                  onClick={async () => {
+                                    try {
+                                      await employeeApi.patch(`/workshops/employee/students/${s.studentId}/attendance`, { date: day, present: !isPresent });
+                                      fetchMyWorkshops();
+                                    } catch (err) { toast.error(isRTL ? 'خطأ' : 'Error'); }
+                                  }}
+                                  title={day}
+                                  style={{ padding: '0.25rem 0.55rem', borderRadius: 6, border: `1.5px solid ${isPresent ? '#22c55e' : '#e2e8f0'}`, cursor: 'pointer', fontWeight: 700, fontSize: '0.72rem', fontFamily: 'inherit', background: isPresent ? '#dcfce7' : 'white', color: isPresent ? '#166534' : '#94a3b8', minWidth: 44 }}
+                                >
+                                  {isPresent ? '✓ ' : ''}{label}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        )}
                       </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 )}
               </div>
