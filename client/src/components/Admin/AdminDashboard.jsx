@@ -709,7 +709,10 @@ const AdminDashboard = () => {
   }, []);
 
   useEffect(() => {
-    if (activeTab === 'workshops') fetchWorkshops();
+    if (activeTab === 'workshops') {
+      fetchWorkshops();
+      fetchEmployees();
+    }
   }, [activeTab, fetchWorkshops]);
 
   const handleCreateWorkshop = async () => {
