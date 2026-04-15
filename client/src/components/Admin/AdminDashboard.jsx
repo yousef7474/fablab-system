@@ -753,161 +753,249 @@ const AdminDashboard = () => {
   };
 
   // Print student ID card
-  const handlePrintStudentID = (student, workshop) => {
+  // Print student ID card - matches volunteer/workspace ID card style
+  const handlePrintStudentIDCard = (student, workshop) => {
     const printWindow = window.open('', '_blank');
-    const fullName = `${student.firstName || ''} ${student.lastName || ''}`.trim();
-    const studentCode = 'STU-' + (student.studentId?.substring(0, 8).toUpperCase() || Date.now());
-    const html = `
-    <!DOCTYPE html><html dir="rtl" lang="ar"><head><meta charset="UTF-8"><title>بطاقة طالب - ${fullName}</title>
-    <style>
-      @page { size: A7; margin: 0; }
-      * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', Tahoma, sans-serif; }
-      body { display: flex; align-items: center; justify-content: center; min-height: 100vh; background: #e5e7eb; padding: 20px; }
-      .id-card { width: 85mm; height: 135mm; background: white; border-radius: 14px; overflow: hidden; box-shadow: 0 20px 60px rgba(0,0,0,0.25); position: relative; }
-      .id-header { background: linear-gradient(135deg, #1a56db, #3b82f6); color: white; padding: 16px 12px; text-align: center; position: relative; }
-      .id-header::before { content: ''; position: absolute; inset: 0; background: radial-gradient(circle at 20% 80%, rgba(255,255,255,0.15), transparent); }
-      .id-logos { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; position: relative; }
-      .id-logos img { height: 28px; filter: brightness(0) invert(1); }
-      .id-org { font-size: 9px; opacity: 0.9; letter-spacing: 0.5px; position: relative; }
-      .id-title { font-size: 14px; font-weight: 700; margin-top: 2px; position: relative; }
-      .id-body { padding: 14px 14px 10px; text-align: center; }
-      .id-badge { background: linear-gradient(135deg, #f59e0b, #d97706); color: white; display: inline-block; padding: 4px 14px; border-radius: 20px; font-size: 10px; font-weight: 700; margin-bottom: 12px; }
-      .id-name { font-size: 16px; font-weight: 700; color: #1e293b; margin-bottom: 4px; line-height: 1.2; }
-      .id-role { font-size: 11px; color: #64748b; margin-bottom: 14px; }
-      .id-workshop { background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 10px; padding: 10px; margin-bottom: 12px; }
-      .id-workshop-label { font-size: 8px; color: #1d4ed8; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 3px; }
-      .id-workshop-title { font-size: 12px; font-weight: 700; color: #1e293b; line-height: 1.3; }
-      .id-info { display: grid; grid-template-columns: 1fr; gap: 6px; text-align: start; font-size: 10px; }
-      .id-info-row { display: flex; justify-content: space-between; padding: 4px 8px; background: #f8fafc; border-radius: 6px; }
-      .id-info-label { color: #64748b; font-weight: 600; }
-      .id-info-value { color: #1e293b; font-weight: 700; }
-      .id-footer { position: absolute; bottom: 0; left: 0; right: 0; background: #1e293b; color: white; padding: 6px; text-align: center; font-size: 8px; letter-spacing: 1px; }
-      .id-code { font-family: monospace; direction: ltr; }
-      .print-btn { position: fixed; bottom: 30px; right: 30px; background: #1a56db; color: white; border: none; padding: 14px 32px; border-radius: 12px; font-size: 14px; font-weight: 700; cursor: pointer; box-shadow: 0 4px 16px rgba(26,86,219,0.4); font-family: inherit; }
-      @media print { body { background: none; padding: 0; } .id-card { box-shadow: none; } .print-btn { display: none; } }
-    </style></head><body>
-      <div class="id-card">
-        <div class="id-header">
-          <div class="id-logos"><img src="/fablab.png"/><img src="/found.png"/></div>
-          <div class="id-org">مؤسسة عبدالمنعم الراشد الإنسانية</div>
-          <div class="id-title">فاب لاب الأحساء</div>
-        </div>
-        <div class="id-body">
-          <div class="id-badge">بطاقة متدرب / STUDENT</div>
-          <div class="id-name">${fullName}</div>
-          <div class="id-role">متدرب ورشة تدريبية</div>
-          <div class="id-workshop">
-            <div class="id-workshop-label">الورشة التدريبية</div>
-            <div class="id-workshop-title">${workshop.title || ''}</div>
+    const na = isRTL ? 'غير محدد' : 'N/A';
+    const studentName = `${student.firstName || ''} ${student.lastName || ''}`.trim() || na;
+    const studentCode = 'WS-' + (student.studentId?.substring(0, 8).toUpperCase() || Date.now());
+
+    const idCardContent = `
+      <!DOCTYPE html>
+      <html dir="${isRTL ? 'rtl' : 'ltr'}" lang="${isRTL ? 'ar' : 'en'}">
+      <head>
+        <meta charset="UTF-8">
+        <title>${isRTL ? 'بطاقة متدرب' : 'Student ID Card'}</title>
+        <style>
+          @page { size: 53.98mm 100mm; margin: 0; }
+          * { margin: 0; padding: 0; box-sizing: border-box; }
+          body { font-family: 'Segoe UI', Tahoma, Arial, sans-serif; background: #f0f0f0; display: flex; justify-content: center; align-items: center; min-height: 100vh; padding: 20px; }
+          .id-card-wrapper { display: flex; flex-direction: column; align-items: center; }
+          .card-holder-area { width: 53.98mm; height: 15mm; background: #f8f9fa; border: 2px dashed #ccc; border-bottom: none; border-radius: 10px 10px 0 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2mm; }
+          .punch-hole { width: 8mm; height: 8mm; border: 2px dashed #999; border-radius: 50%; background: white; }
+          .cut-line-text { font-size: 7px; color: #999; text-transform: uppercase; letter-spacing: 1px; }
+          .id-card { width: 53.98mm; height: 85.6mm; background: linear-gradient(180deg, #ffffff 0%, #f0f9ff 100%); border-radius: 0 0 10px 10px; overflow: hidden; box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15); position: relative; display: flex; flex-direction: column; }
+          .card-header { background: linear-gradient(135deg, #0ea5e9 0%, #0369a1 100%); padding: 10px 8px; text-align: center; }
+          .card-title { color: white; font-size: 11px; font-weight: 700; letter-spacing: 0.5px; }
+          .card-subtitle { color: rgba(255,255,255,0.85); font-size: 8px; margin-top: 2px; }
+          .card-body { flex: 1; padding: 10px; display: flex; flex-direction: column; align-items: center; gap: 6px; }
+          .user-photo { width: 70px; height: 85px; background: linear-gradient(135deg, #bae6fd, #7dd3fc); border-radius: 6px; display: flex; align-items: center; justify-content: center; color: #0369a1; font-size: 32px; font-weight: bold; border: 3px solid #0ea5e9; box-shadow: 0 3px 10px rgba(0, 0, 0, 0.15); overflow: hidden; }
+          .user-photo .initials { font-size: 32px; font-weight: bold; color: #0369a1; }
+          .user-name { font-size: 13px; font-weight: 700; color: #1a1a2e; text-align: center; line-height: 1.2; }
+          .user-type-badge { display: inline-block; background: linear-gradient(135deg, #0ea5e9, #0369a1); color: white; font-size: 9px; padding: 3px 12px; border-radius: 12px; font-weight: 600; }
+          .workshop-badge { display: inline-block; background: linear-gradient(135deg, #38bdf8, #0ea5e9); color: white; font-size: 8px; padding: 2px 10px; border-radius: 10px; font-weight: 600; margin-top: 2px; text-align: center; line-height: 1.2; max-width: 95%; }
+          .info-section { width: 100%; display: flex; flex-direction: column; gap: 4px; margin-top: 6px; }
+          .info-row { display: flex; justify-content: space-between; font-size: 9px; padding: 3px 0; border-bottom: 1px dotted #ddd; }
+          .info-row:last-child { border-bottom: none; }
+          .info-label { font-weight: 600; color: #555; }
+          .info-value { color: #1a1a2e; font-weight: 500; text-align: ${isRTL ? 'left' : 'right'}; max-width: 55%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+          .card-footer { background: #ffffff; padding: 8px 6px; display: flex; flex-direction: row; align-items: center; justify-content: space-between; border-top: 1px solid #e0e0e0; }
+          .card-footer .logo { height: 24px; width: auto; flex-shrink: 0; }
+          .card-footer .logo-left { order: 1; }
+          .card-footer .logo-right { order: 3; }
+          .member-id-section { display: flex; flex-direction: column; align-items: center; gap: 1px; order: 2; flex: 1; text-align: center; }
+          .member-id-label { font-size: 6px; color: #666; text-transform: uppercase; letter-spacing: 0.5px; }
+          .member-id-value { font-size: 10px; font-weight: 700; color: #0ea5e9; font-family: 'Consolas', 'Courier New', monospace; }
+          .decorative-stripe { position: absolute; top: 40%; ${isRTL ? 'right' : 'left'}: 0; width: 3px; height: 25%; background: linear-gradient(to bottom, transparent, #0ea5e9, transparent); }
+          @media print { body { background: none; padding: 0; min-height: auto; } .id-card-wrapper { box-shadow: none; margin: 0; } .card-holder-area { border: 2px dashed #ccc; border-bottom: none; } .punch-hole { border: 2px dashed #999; } }
+        </style>
+      </head>
+      <body>
+        <div class="id-card-wrapper">
+          <div class="card-holder-area">
+            <div class="punch-hole"></div>
+            <span class="cut-line-text">${isRTL ? '✂ خط القطع' : '✂ CUT LINE'}</span>
           </div>
-          <div class="id-info">
-            ${student.phone ? `<div class="id-info-row"><span class="id-info-label">الهاتف</span><span class="id-info-value id-code">${student.phone}</span></div>` : ''}
-            ${workshop.startDate ? `<div class="id-info-row"><span class="id-info-label">التاريخ</span><span class="id-info-value id-code">${workshop.startDate}${workshop.endDate ? ' → ' + workshop.endDate : ''}</span></div>` : ''}
-            ${workshop.totalHours ? `<div class="id-info-row"><span class="id-info-label">المدة</span><span class="id-info-value">${workshop.totalHours} ساعة</span></div>` : ''}
+          <div class="id-card">
+            <div class="card-header">
+              <div class="card-title">${isRTL ? 'بطاقة متدرب فاب لاب الأحساء' : 'FABLAB Al-Ahsa Student Card'}</div>
+              <div class="card-subtitle">${isRTL ? 'مؤسسة عبدالمنعم الراشد الإنسانية' : 'Abdulmonem Al-Rashed Foundation'}</div>
+            </div>
+            <div class="card-body">
+              <div class="user-photo">
+                <span class="initials">${studentName.charAt(0).toUpperCase()}</span>
+              </div>
+              <div class="user-name">${studentName}</div>
+              <div class="user-type-badge">${isRTL ? 'متدرب ورشة' : 'Workshop Student'}</div>
+              <div class="workshop-badge">${workshop.title || ''}</div>
+
+              <div class="info-section">
+                ${student.phone ? `<div class="info-row">
+                  <span class="info-label">${isRTL ? 'الهاتف' : 'Phone'}</span>
+                  <span class="info-value" dir="ltr">${student.phone}</span>
+                </div>` : ''}
+                ${student.email ? `<div class="info-row">
+                  <span class="info-label">${isRTL ? 'البريد' : 'Email'}</span>
+                  <span class="info-value">${student.email}</span>
+                </div>` : ''}
+                ${workshop.startDate ? `<div class="info-row">
+                  <span class="info-label">${isRTL ? 'من' : 'From'}</span>
+                  <span class="info-value">${workshop.startDate}</span>
+                </div>` : ''}
+                ${workshop.endDate ? `<div class="info-row">
+                  <span class="info-label">${isRTL ? 'إلى' : 'To'}</span>
+                  <span class="info-value">${workshop.endDate}</span>
+                </div>` : ''}
+                ${workshop.totalHours ? `<div class="info-row">
+                  <span class="info-label">${isRTL ? 'المدة' : 'Hours'}</span>
+                  <span class="info-value">${workshop.totalHours} ${isRTL ? 'ساعة' : 'hrs'}</span>
+                </div>` : ''}
+              </div>
+            </div>
+            <div class="decorative-stripe"></div>
+            <div class="card-footer">
+              <img src="/found.png" alt="Foundation" class="logo logo-left">
+              <div class="member-id-section">
+                <div class="member-id-label">${isRTL ? 'رقم البطاقة' : 'Card ID'}</div>
+                <div class="member-id-value">${studentCode}</div>
+              </div>
+              <img src="/fablab.png" alt="FABLAB" class="logo logo-right">
+            </div>
           </div>
         </div>
-        <div class="id-footer id-code">${studentCode}</div>
-      </div>
-      <button class="print-btn" onclick="window.print()">🖨 طباعة</button>
-    </body></html>`;
-    printWindow.document.write(html);
+      </body>
+      </html>
+    `;
+
+    printWindow.document.write(idCardContent);
     printWindow.document.close();
+    printWindow.focus();
+    setTimeout(() => { printWindow.print(); }, 250);
   };
 
-  // Print workshop certificate
+  // Alias for JSX compatibility
+  const handlePrintStudentID = (student, workshop) => handlePrintStudentIDCard(student, workshop);
+
+  // Print workshop certificate - matches volunteer certificate theme
   const handlePrintWorkshopCertificate = (student, workshop) => {
     const printWindow = window.open('', '_blank');
-    const fullName = `${student.firstName || ''} ${student.lastName || ''}`.trim();
+    const studentName = `${student.firstName || ''} ${student.lastName || ''}`.trim();
     const certId = 'WS-' + (student.studentId?.substring(0, 8).toUpperCase() || Date.now());
     const attendedDays = Array.isArray(student.attendanceDates) ? student.attendanceDates.length : 0;
-    const html = `
-    <!DOCTYPE html><html dir="rtl" lang="ar"><head><meta charset="UTF-8"><title>شهادة ورشة - ${fullName}</title>
-    <style>
-      @page { size: A4 landscape; margin: 0; }
-      * { margin: 0; padding: 0; box-sizing: border-box; }
-      html, body { width: 297mm; height: 210mm; overflow: hidden; }
-      body { font-family: 'Segoe UI', Tahoma, Arial, sans-serif; background: linear-gradient(135deg, #1a56db 0%, #3b82f6 50%, #60a5fa 100%); padding: 15mm; }
-      .certificate { width: 267mm; height: 180mm; background: white; border-radius: 20px; position: relative; overflow: hidden; box-shadow: 0 25px 80px rgba(0,0,0,0.3); }
-      .certificate::before { content: ''; position: absolute; inset: 8mm; border: 3px solid transparent; border-radius: 14px; background: linear-gradient(135deg, #1a56db, #f59e0b, #22c55e) border-box; -webkit-mask: linear-gradient(#fff 0 0) padding-box, linear-gradient(#fff 0 0); -webkit-mask-composite: xor; mask-composite: exclude; }
-      .decor-circle { position: absolute; border-radius: 50%; opacity: 0.08; }
-      .c1 { width: 300px; height: 300px; background: #1a56db; top: -150px; right: -150px; }
-      .c2 { width: 250px; height: 250px; background: #f59e0b; bottom: -125px; left: -125px; }
-      .c3 { width: 180px; height: 180px; background: #22c55e; top: 40%; left: -90px; }
-      .ribbon { position: absolute; top: 20px; left: 50%; transform: translateX(-50%); background: linear-gradient(135deg, #f59e0b, #d97706); color: white; padding: 8px 40px; font-weight: 700; font-size: 13px; letter-spacing: 2px; clip-path: polygon(10% 0, 90% 0, 100% 50%, 90% 100%, 10% 100%, 0 50%); box-shadow: 0 4px 12px rgba(0,0,0,0.15); z-index: 10; }
-      .certificate-inner { position: relative; z-index: 2; padding: 25mm 20mm 15mm; display: flex; flex-direction: column; height: 100%; }
-      .header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8mm; }
-      .logo-container img { height: 65px; }
-      .header-center { text-align: center; flex: 1; }
-      .org-name { font-size: 14px; color: #64748b; font-weight: 600; margin-bottom: 6px; }
-      .cert-title { font-size: 32px; font-weight: 800; color: #1a56db; letter-spacing: 2px; }
-      .cert-subtitle { font-size: 12px; color: #94a3b8; letter-spacing: 6px; margin-top: 4px; }
-      .divider { height: 2px; background: linear-gradient(90deg, transparent, #1a56db, #f59e0b, #1a56db, transparent); margin: 6mm 0; }
-      .main-content { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; }
-      .presents-text { font-size: 16px; color: #475569; margin-bottom: 12px; }
-      .student-name { font-size: 44px; font-weight: 800; color: #1e293b; margin-bottom: 10px; font-family: 'Segoe UI', serif; background: linear-gradient(135deg, #1a56db, #3b82f6); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; padding: 6px 0; }
-      .appreciation-text { font-size: 15px; color: #475569; max-width: 180mm; line-height: 1.8; margin-bottom: 10mm; }
-      .highlight { font-weight: 800; color: #1a56db; font-size: 17px; }
-      .stats-container { display: flex; gap: 20px; justify-content: center; margin-top: 5mm; }
-      .stat-card { background: linear-gradient(135deg, #1a56db, #3b82f6); color: white; padding: 12px 24px; border-radius: 12px; min-width: 110px; box-shadow: 0 4px 12px rgba(26,86,219,0.3); }
-      .stat-card.alt { background: linear-gradient(135deg, #f59e0b, #d97706); box-shadow: 0 4px 12px rgba(245,158,11,0.3); }
-      .stat-card.gold { background: linear-gradient(135deg, #22c55e, #16a34a); box-shadow: 0 4px 12px rgba(34,197,94,0.3); }
-      .stat-value { font-size: 22px; font-weight: 800; }
-      .stat-label { font-size: 10px; opacity: 0.9; margin-top: 2px; }
-      .footer-section { display: flex; justify-content: space-between; align-items: flex-end; margin-top: auto; padding-top: 6mm; border-top: 1px dashed #cbd5e1; }
-      .cert-info { font-size: 11px; color: #64748b; }
-      .cert-id { font-family: monospace; font-weight: 700; color: #1a56db; font-size: 13px; }
-      .cert-date { margin-top: 3px; }
-      .org-footer { text-align: end; font-size: 10px; color: #64748b; line-height: 1.5; }
-      .print-btn { position: fixed; bottom: 30px; right: 30px; background: #1a56db; color: white; border: none; padding: 14px 34px; border-radius: 12px; font-size: 15px; font-weight: 700; cursor: pointer; box-shadow: 0 4px 16px rgba(26,86,219,0.45); z-index: 100; font-family: inherit; }
-      @media print { body { padding: 0; background: white; } .certificate { box-shadow: none; margin: 0; border-radius: 0; } .print-btn { display: none; } }
-    </style></head><body>
-      <div class="certificate">
-        <div class="decor-circle c1"></div><div class="decor-circle c2"></div><div class="decor-circle c3"></div>
-        <div class="ribbon">متدرب متميز</div>
-        <div class="certificate-inner">
-          <div class="header">
-            <div class="logo-container"><img src="/found.png"/></div>
-            <div class="header-center">
-              <div class="org-name">مؤسسة عبدالمنعم الراشد الإنسانية</div>
-              <div class="cert-title">شهادة إتمام ورشة تدريبية</div>
-              <div class="cert-subtitle">WORKSHOP COMPLETION CERTIFICATE</div>
+    const startDateF = workshop.startDate ? workshop.startDate.split('-').reverse().join('/') : '';
+
+    const printContent = `
+      <!DOCTYPE html>
+      <html dir="rtl" lang="ar">
+      <head>
+        <meta charset="UTF-8">
+        <title>شهادة ورشة تدريبية - ${studentName}</title>
+        <style>
+          @page { size: A4 landscape; margin: 0; }
+          * { margin: 0; padding: 0; box-sizing: border-box; }
+          html, body { width: 297mm; height: 210mm; overflow: hidden; }
+          body { font-family: 'Segoe UI', Tahoma, Arial, sans-serif; background: linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%); display: flex; align-items: center; justify-content: center; padding: 10mm; }
+          .certificate { width: 277mm; height: 190mm; background: linear-gradient(145deg, #ffffff 0%, #f8fafc 100%); border-radius: 16px; position: relative; overflow: hidden; box-shadow: 0 30px 60px rgba(0,0,0,0.3); }
+          .certificate::before { content: ''; position: absolute; top: 0; left: 0; right: 0; bottom: 0; border: 6px solid transparent; border-image: linear-gradient(135deg, #e02529, #ff6b6b, #feca57, #48dbfb, #e02529) 1; border-radius: 16px; pointer-events: none; }
+          .decor-circle { position: absolute; border-radius: 50%; opacity: 0.1; }
+          .decor-circle.c1 { width: 200px; height: 200px; background: linear-gradient(135deg, #e02529, #ff6b6b); top: -50px; right: -50px; }
+          .decor-circle.c2 { width: 150px; height: 150px; background: linear-gradient(135deg, #667eea, #764ba2); bottom: -30px; left: -30px; }
+          .decor-circle.c3 { width: 100px; height: 100px; background: linear-gradient(135deg, #feca57, #ff9f43); top: 50%; left: 20px; transform: translateY(-50%); }
+          .decor-circle.c4 { width: 80px; height: 80px; background: linear-gradient(135deg, #48dbfb, #0abde3); bottom: 60px; right: 40px; }
+          .certificate-inner { padding: 20mm 25mm; height: 100%; display: flex; flex-direction: column; position: relative; z-index: 1; }
+          .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12mm; }
+          .logo-container { display: flex; align-items: center; gap: 15px; }
+          .logo { height: 85px; filter: drop-shadow(0 4px 8px rgba(0,0,0,0.15)); }
+          .header-center { text-align: center; flex: 1; padding: 0 20px; }
+          .org-name { font-size: 11px; color: #64748b; letter-spacing: 2px; text-transform: uppercase; margin-bottom: 5px; }
+          .cert-title { font-size: 44px; font-weight: 800; background: linear-gradient(135deg, #e02529, #ff6b6b); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; margin-bottom: 4px; }
+          .cert-subtitle { font-size: 16px; color: #475569; font-weight: 500; letter-spacing: 3px; }
+          .divider { height: 4px; background: linear-gradient(90deg, #e02529, #ff6b6b, #feca57, #48dbfb, #667eea, #764ba2); border-radius: 2px; margin-bottom: 10mm; }
+          .main-content { text-align: center; flex: 1; display: flex; flex-direction: column; justify-content: center; }
+          .presents-text { font-size: 14px; color: #64748b; margin-bottom: 8px; }
+          .volunteer-name { font-size: 42px; font-weight: 700; color: #1e293b; margin-bottom: 8px; position: relative; display: inline-block; }
+          .volunteer-name::after { content: ''; position: absolute; bottom: -4px; left: 50%; transform: translateX(-50%); width: 80%; height: 4px; background: linear-gradient(90deg, #e02529, #ff6b6b, #feca57); border-radius: 2px; }
+          .appreciation-text { font-size: 15px; line-height: 1.8; color: #475569; max-width: 600px; margin: 15px auto; }
+          .highlight { color: #e02529; font-weight: 700; font-size: 17px; }
+          .stats-container { display: flex; justify-content: center; gap: 30px; margin: 12px 0; }
+          .stat-card { background: linear-gradient(135deg, #e02529, #ff6b6b); color: white; padding: 12px 30px; border-radius: 12px; text-align: center; box-shadow: 0 8px 20px rgba(224, 37, 41, 0.3); min-width: 140px; }
+          .stat-card.alt { background: linear-gradient(135deg, #667eea, #764ba2); box-shadow: 0 8px 20px rgba(102, 126, 234, 0.3); }
+          .stat-card.gold { background: linear-gradient(135deg, #f59e0b, #fbbf24); box-shadow: 0 8px 20px rgba(245, 158, 11, 0.3); }
+          .stat-value { font-size: 22px; font-weight: 700; }
+          .stat-label { font-size: 10px; opacity: 0.9; margin-top: 2px; }
+          .thank-you { font-size: 13px; color: #64748b; margin-top: 10px; font-style: italic; }
+          .hadith { color: #e02529; font-weight: 600; }
+          .footer-section { display: flex; justify-content: space-between; align-items: flex-end; margin-top: auto; padding-top: 10mm; }
+          .cert-info { text-align: left; }
+          .cert-id { font-family: 'Courier New', monospace; font-size: 10px; color: #94a3b8; background: linear-gradient(135deg, #f1f5f9, #e2e8f0); padding: 6px 14px; border-radius: 20px; display: inline-block; }
+          .cert-date { font-size: 10px; color: #94a3b8; margin-top: 5px; }
+          .org-footer { text-align: center; flex: 1; }
+          .org-footer-text { font-size: 10px; color: #94a3b8; }
+          .ribbon { position: absolute; top: 25px; left: -35px; width: 150px; height: 30px; background: linear-gradient(135deg, #e02529, #c41e24); transform: rotate(-45deg); display: flex; align-items: center; justify-content: center; color: white; font-size: 10px; font-weight: 600; box-shadow: 0 4px 10px rgba(0,0,0,0.2); }
+          @media print {
+            html, body { width: 297mm; height: 210mm; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; color-adjust: exact !important; }
+            body { padding: 0; background: linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%) !important; }
+            .certificate { box-shadow: none; margin: auto; }
+            .cert-title { -webkit-text-fill-color: #e02529; color: #e02529; }
+          }
+        </style>
+      </head>
+      <body>
+        <div class="certificate">
+          <div class="decor-circle c1"></div>
+          <div class="decor-circle c2"></div>
+          <div class="decor-circle c3"></div>
+          <div class="decor-circle c4"></div>
+          <div class="ribbon">متدرب متميز</div>
+          <div class="certificate-inner">
+            <div class="header">
+              <div class="logo-container">
+                <img src="/found.png" alt="Foundation" class="logo" />
+              </div>
+              <div class="header-center">
+                <div class="org-name">مؤسسة عبدالمنعم الراشد الإنسانية</div>
+                <div class="cert-title">شهادة إتمام ورشة</div>
+                <div class="cert-subtitle">WORKSHOP CERTIFICATE</div>
+              </div>
+              <div class="logo-container">
+                <img src="/fablab.png" alt="FABLAB" class="logo" />
+              </div>
             </div>
-            <div class="logo-container"><img src="/fablab.png"/></div>
-          </div>
-          <div class="divider"></div>
-          <div class="main-content">
-            <div class="presents-text">تشهد إدارة فاب لاب الأحساء بأن</div>
-            <div class="student-name">${fullName}</div>
-            <div class="appreciation-text">
-              قد أتم بنجاح الورشة التدريبية
-              <br/>
-              <span class="highlight">"${workshop.title}"</span>
-              ${workshop.presenter ? `<br/>التي قدمها <strong>${workshop.presenter}</strong>` : ''}
-              <br/>
-              ${workshop.objectives ? workshop.objectives : 'واكتسب المعارف والمهارات المطلوبة، ونثمّن التزامه وحضوره المتميز'}
+            <div class="divider"></div>
+            <div class="main-content">
+              <div class="presents-text">تشهد إدارة فاب لاب الأحساء بأن</div>
+              <div class="volunteer-name">${studentName}</div>
+              <div class="appreciation-text">
+                قد أتم بنجاح الورشة التدريبية
+                <span class="highlight">"${workshop.title || ''}"</span>
+                ${workshop.presenter ? `<br/>التي قدمها <strong>${workshop.presenter}</strong>` : ''}
+                <br/>
+                ${workshop.objectives ? workshop.objectives : 'واكتسب المعارف والمهارات المطلوبة، ونثمّن التزامه وحضوره المتميز'}
+              </div>
+              <div class="stats-container">
+                ${workshop.totalHours ? `<div class="stat-card"><div class="stat-value">${workshop.totalHours}</div><div class="stat-label">ساعة تدريبية</div></div>` : ''}
+                ${attendedDays > 0 ? `<div class="stat-card alt"><div class="stat-value">${attendedDays}</div><div class="stat-label">يوم حضور</div></div>` : ''}
+                ${startDateF ? `<div class="stat-card gold"><div class="stat-value">${startDateF}</div><div class="stat-label">تاريخ البداية</div></div>` : ''}
+              </div>
+              <div class="thank-you">
+                <span class="hadith">"ومن سلك طريقاً يلتمس فيه علماً سهّل الله له به طريقاً إلى الجنة"</span>
+                <br/>
+                شكراً لحضورك وتفاعلك في هذه الورشة التدريبية
+              </div>
             </div>
-            <div class="stats-container">
-              ${workshop.totalHours ? `<div class="stat-card"><div class="stat-value">${workshop.totalHours}</div><div class="stat-label">ساعة تدريبية</div></div>` : ''}
-              ${attendedDays > 0 ? `<div class="stat-card alt"><div class="stat-value">${attendedDays}</div><div class="stat-label">يوم حضور</div></div>` : ''}
-              ${workshop.startDate ? `<div class="stat-card gold"><div class="stat-value">${workshop.startDate.split('-').reverse().join('/')}</div><div class="stat-label">تاريخ البداية</div></div>` : ''}
-            </div>
-          </div>
-          <div class="footer-section">
-            <div class="cert-info">
-              <div class="cert-id">${certId}</div>
-              <div class="cert-date">${new Date().toLocaleDateString('ar-SA')}</div>
-            </div>
-            <div class="org-footer">
-              فاب لاب الأحساء - مختبر التصنيع الرقمي<br/>
-              FABLAB Al-Ahsa - Digital Fabrication Laboratory
+            <div class="footer-section">
+              <div class="cert-info">
+                <div class="cert-id">${certId}</div>
+                <div class="cert-date">${new Date().toLocaleDateString('ar-SA')}</div>
+              </div>
+              <div class="org-footer">
+                <div class="org-footer-text">
+                  فاب لاب الأحساء - مختبر التصنيع الرقمي
+                  <br/>
+                  FABLAB Al-Ahsa - Digital Fabrication Laboratory
+                </div>
+              </div>
+              <div style="width: 140px;"></div>
             </div>
           </div>
         </div>
-      </div>
-      <button class="print-btn" onclick="window.print()">🖨 طباعة الشهادة</button>
-    </body></html>`;
-    printWindow.document.write(html);
+      </body>
+      </html>
+    `;
+
+    printWindow.document.write(printContent);
     printWindow.document.close();
+    printWindow.focus();
   };
 
   const handleVerifyPayment = async (studentId, status) => {
