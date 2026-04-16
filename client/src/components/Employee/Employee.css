@@ -452,6 +452,7 @@
 .emp-status-badge.completed { background: #dcfce7; color: #166534; }
 .emp-status-badge.uncompleted { background: #fee2e2; color: #991b1b; }
 .emp-status-badge.cancelled { background: #f1f5f9; color: #64748b; }
+.emp-status-badge.pending_review { background: #fef3c7; color: #92400e; }
 
 .emp-task-meta {
   display: flex;

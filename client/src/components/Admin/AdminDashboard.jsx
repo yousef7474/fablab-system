@@ -206,6 +206,7 @@ const AdminDashboard = () => {
   });
   const [workshopLoading, setWorkshopLoading] = useState(false);
   const [viewingWorkshopStudents, setViewingWorkshopStudents] = useState(null);
+  const [workshopFilter, setWorkshopFilter] = useState('active');
 
   // Workspace states
   const WORKSPACE_PASSWORD = 'nouf123';
@@ -7352,14 +7353,25 @@ const AdminDashboard = () => {
                 {/* Workshop List or Student View */}
                 {!viewingWorkshopStudents ? (
                   <div>
+                    <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem' }}>
+                      <button onClick={() => setWorkshopFilter('active')} style={{ padding: '0.4rem 1rem', borderRadius: 8, border: 'none', cursor: 'pointer', fontWeight: 600, fontSize: '0.82rem', fontFamily: 'inherit', background: workshopFilter === 'active' ? '#3b82f6' : '#f1f5f9', color: workshopFilter === 'active' ? 'white' : '#64748b' }}>
+                        {isRTL ? 'النشطة' : 'Active'} ({workshopsList.filter(w => w.isActive && w.status !== 'cancelled' && w.status !== 'completed').length})
+                      </button>
+                      <button onClick={() => setWorkshopFilter('completed')} style={{ padding: '0.4rem 1rem', borderRadius: 8, border: 'none', cursor: 'pointer', fontWeight: 600, fontSize: '0.82rem', fontFamily: 'inherit', background: workshopFilter === 'completed' ? '#22c55e' : '#f1f5f9', color: workshopFilter === 'completed' ? 'white' : '#64748b' }}>
+                        {isRTL ? 'المكتملة' : 'Completed'} ({workshopsList.filter(w => w.status === 'completed').length})
+                      </button>
+                      <button onClick={() => setWorkshopFilter('all')} style={{ padding: '0.4rem 1rem', borderRadius: 8, border: 'none', cursor: 'pointer', fontWeight: 600, fontSize: '0.82rem', fontFamily: 'inherit', background: workshopFilter === 'all' ? '#334155' : '#f1f5f9', color: workshopFilter === 'all' ? 'white' : '#64748b' }}>
+                        {isRTL ? 'الكل' : 'All'} ({workshopsList.length})
+                      </button>
+                    </div>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-                      <h3 style={{ margin: 0 }}>{isRTL ? 'الورش التدريبية' : 'Workshops'} ({workshopsList.length})</h3>
+                      <h3 style={{ margin: 0 }}>{isRTL ? 'الورش التدريبية' : 'Workshops'}</h3>
                       <button className="add-task-btn" onClick={() => { setSelectedWorkshop(null); setWorkshopForm({ title: '', description: '', presenter: '', assignedEmployeeId: '', startDate: '', endDate: '', startTime: '', endTime: '', totalHours: '', content: '', objectives: '', photo: '', maxParticipants: '', price: '', notes: '' }); setShowWorkshopModal(true); }}>
                         + {isRTL ? 'ورشة جديدة' : 'New Workshop'}
                       </button>
                     </div>
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '1rem' }}>
-                      {workshopsList.map(w => (
+                      {workshopsList.filter(w => workshopFilter === 'all' ? true : workshopFilter === 'active' ? (w.isActive && w.status !== 'cancelled' && w.status !== 'completed') : w.status === 'completed').map(w => (
                         <div key={w.workshopId} style={{ background: 'white', borderRadius: 14, overflow: 'hidden', border: '1px solid #f1f5f9', boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}>
                           {w.photo && <div style={{ height: 150, backgroundImage: `url(${w.photo})`, backgroundSize: 'cover', backgroundPosition: 'center' }} />}
                           <div style={{ padding: '1rem' }}>

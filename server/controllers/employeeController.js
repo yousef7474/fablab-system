@@ -205,7 +205,7 @@ exports.updateMyTaskStatus = async (req, res) => {
     const { status } = req.body;
     const employee = req.employee;
 
-    if (!['pending', 'in_progress', 'completed', 'cancelled', 'uncompleted'].includes(status)) {
+    if (!['pending', 'in_progress', 'completed', 'cancelled', 'uncompleted', 'pending_review'].includes(status)) {
       return res.status(400).json({ message: 'Invalid status' });
     }
 

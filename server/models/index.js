@@ -287,6 +287,16 @@ const syncDatabase = async () => {
       }
     }
 
+    // Migrate tasks.status ENUM to include 'pending_review'
+    try {
+      await sequelize.query("ALTER TYPE \"enum_tasks_status\" ADD VALUE IF NOT EXISTS 'pending_review'");
+      console.log('✅ tasks.status ENUM includes pending_review.');
+    } catch (migrationError) {
+      if (!migrationError.message.includes("doesn't exist") && !migrationError.message.includes('already exists')) {
+        console.log('Migration note:', migrationError.message);
+      }
+    }
+
     // Migrate manager_todos.status ENUM to include 'in_progress' and 'cancelled'
     try {
       const [todoStatusCol] = await sequelize.query(

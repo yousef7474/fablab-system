@@ -5339,6 +5339,7 @@ const ManagerDashboard = () => {
                   { key: 'pending', label: isRTL ? 'قيد الانتظار' : 'Pending', count: base.filter(t => t.status === 'pending').length, color: '#f59e0b' },
                   { key: 'completed', label: isRTL ? 'مكتمل' : 'Completed', count: base.filter(t => t.status === 'completed').length, color: '#22c55e' },
                   { key: 'uncompleted', label: isRTL ? 'غير مكتمل' : 'Uncompleted', count: base.filter(t => t.status === 'uncompleted').length, color: '#dc2626' },
+                  { key: 'pending_review', label: isRTL ? 'بانتظار المراجعة' : 'Pending Review', count: base.filter(t => t.status === 'pending_review').length, color: '#f59e0b' },
                   { key: 'cancelled', label: isRTL ? 'ملغى' : 'Cancelled', count: base.filter(t => t.status === 'cancelled').length, color: '#9ca3af' },
                 ];
               })().map(tab => (
@@ -5374,13 +5375,23 @@ const ManagerDashboard = () => {
                 <div className="assignments-list" style={{ marginTop: '16px' }}>
                   {filtered.map(task => (
                     <div key={task.taskId} className={`assignment-card priority-${task.priority} ${task.status === 'completed' ? 'completed-task' : ''} ${task.status === 'cancelled' ? 'cancelled-task' : ''}`}
-                      style={task.status === 'uncompleted' ? { borderLeft: '4px solid #dc2626', opacity: 0.85 } : {}}>
+                      style={task.status === 'uncompleted' ? { borderLeft: '4px solid #dc2626', opacity: 0.85 } : task.status === 'pending_review' ? { borderLeft: '4px solid #f59e0b', background: '#fffbeb' } : {}}>
                       <div className="assignment-header">
                         <h3 className="assignment-title">{task.title}</h3>
-                        <span className={`task-status ${task.status}`}
-                          style={task.status === 'uncompleted' ? { backgroundColor: '#dc2626', color: 'white' } : {}}>
-                          {statusLabels[task.status] || task.status}
-                        </span>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                          <span className={`task-status ${task.status}`}
+                            style={task.status === 'uncompleted' ? { backgroundColor: '#dc2626', color: 'white' } : task.status === 'pending_review' ? { backgroundColor: '#f59e0b', color: 'white' } : {}}>
+                            {task.status === 'pending_review' ? (isRTL ? '📤 بانتظار المراجعة' : '📤 Pending Review') : (statusLabels[task.status] || task.status)}
+                          </span>
+                          {task.status === 'pending_review' && (
+                            <button
+                              onClick={() => { handleUpdateTaskStatus(task.taskId, 'completed'); }}
+                              style={{ padding: '0.25rem 0.6rem', borderRadius: 6, border: 'none', background: 'linear-gradient(135deg, #22c55e, #16a34a)', color: 'white', cursor: 'pointer', fontWeight: 700, fontSize: '0.72rem', fontFamily: 'inherit', whiteSpace: 'nowrap' }}
+                            >
+                              {isRTL ? '✓ اعتماد ومنح نقطة' : '✓ Approve & Award Point'}
+                            </button>
+                          )}
+                        </div>
                       </div>
                       <div className="assignment-meta">
                         <div className="assignment-meta-item">
@@ -7561,6 +7572,14 @@ const ManagerDashboard = () => {
             {employeeSubTab !== 'list' && (
               <div className="ratings-content">
                 {employeeSubTab === 'ratings' && (<>
+                <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '1rem' }}>
+                  <button className="add-task-btn" onClick={() => setShowRatingModal(true)}>
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+                    </svg>
+                    {isRTL ? 'إضافة تقييم' : 'Add Rating'}
+                  </button>
+                </div>
                 {/* Filters Section */}
                 <div className="ratings-filters">
                   <div className="filter-group">

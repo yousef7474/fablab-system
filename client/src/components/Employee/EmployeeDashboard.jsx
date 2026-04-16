@@ -25,7 +25,14 @@ const EmployeeDashboard = () => {
   const isRTL = i18n.language === 'ar';
 
   const [employeeData, setEmployeeData] = useState(null);
-  const [activeTab, setActiveTab] = useState('overview');
+  const [activeTab, setActiveTab] = useState(() => {
+    const saved = localStorage.getItem('employeeActiveTab');
+    return saved || 'overview';
+  });
+
+  useEffect(() => {
+    localStorage.setItem('employeeActiveTab', activeTab);
+  }, [activeTab]);
   const [profile, setProfile] = useState(null);
   const [tasks, setTasks] = useState([]);
   const [ratings, setRatings] = useState(null);
@@ -65,7 +72,8 @@ const EmployeeDashboard = () => {
     in_progress: isRTL ? 'قيد التنفيذ' : 'In Progress',
     completed: isRTL ? 'مكتمل' : 'Completed',
     cancelled: isRTL ? 'ملغى' : 'Cancelled',
-    uncompleted: isRTL ? 'غير مكتمل' : 'Uncompleted'
+    uncompleted: isRTL ? 'غير مكتمل' : 'Uncompleted',
+    pending_review: isRTL ? 'بانتظار مراجعة المدير' : 'Pending Manager Review'
   };
 
   useEffect(() => {
@@ -505,17 +513,31 @@ const EmployeeDashboard = () => {
                       }
                     </div>
                     {task.selfCreated ? (
-                      <select
-                        className="emp-status-select"
-                        value={task.status}
-                        onChange={(e) => handleUpdateTaskStatus(task.taskId, e.target.value)}
-                      >
-                        <option value="pending">{isRTL ? 'قيد الانتظار' : 'Pending'}</option>
-                        <option value="in_progress">{isRTL ? 'قيد التنفيذ' : 'In Progress'}</option>
-                        <option value="completed">{isRTL ? 'مكتمل' : 'Completed'}</option>
-                        <option value="uncompleted">{isRTL ? 'غير مكتمل' : 'Uncompleted'}</option>
-                        <option value="cancelled">{isRTL ? 'ملغى' : 'Cancelled'}</option>
-                      </select>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                        <select
+                          className="emp-status-select"
+                          value={task.status}
+                          onChange={(e) => handleUpdateTaskStatus(task.taskId, e.target.value)}
+                        >
+                          <option value="pending">{isRTL ? 'قيد الانتظار' : 'Pending'}</option>
+                          <option value="in_progress">{isRTL ? 'قيد التنفيذ' : 'In Progress'}</option>
+                          <option value="completed">{isRTL ? 'مكتمل' : 'Completed'}</option>
+                          <option value="uncompleted">{isRTL ? 'غير مكتمل' : 'Uncompleted'}</option>
+                          <option value="cancelled">{isRTL ? 'ملغى' : 'Cancelled'}</option>
+                        </select>
+                        {task.status !== 'pending_review' ? (
+                          <button
+                            onClick={() => handleUpdateTaskStatus(task.taskId, 'pending_review')}
+                            style={{ padding: '0.3rem 0.6rem', borderRadius: 6, border: 'none', background: 'linear-gradient(135deg, #f59e0b, #d97706)', color: 'white', cursor: 'pointer', fontWeight: 600, fontSize: '0.7rem', fontFamily: 'inherit', whiteSpace: 'nowrap' }}
+                          >
+                            {isRTL ? '📤 إرسال للمراجعة' : '📤 Submit for Review'}
+                          </button>
+                        ) : (
+                          <span style={{ padding: '0.3rem 0.6rem', borderRadius: 6, background: '#fef3c7', color: '#92400e', fontWeight: 600, fontSize: '0.7rem', whiteSpace: 'nowrap' }}>
+                            {isRTL ? '⏳ بانتظار المراجعة' : '⏳ Under Review'}
+                          </span>
+                        )}
+                      </div>
                     ) : (
                       <span className={`emp-status-badge ${task.status}`}>{statusLabels[task.status]}</span>
                     )}
