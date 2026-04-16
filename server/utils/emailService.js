@@ -719,6 +719,112 @@ const sendCourseInactivityWarning = async (userEmail, userName, courseTitle, ina
   }
 };
 
+// Send workshop registration confirmation
+const sendWorkshopRegistrationEmail = async (studentEmail, studentName, workshop, invoiceNumber) => {
+  if (!studentEmail) return;
+
+  const formatTime = (t) => {
+    if (!t) return '';
+    const [h, m] = t.split(':').map(Number);
+    const ampm = h >= 12 ? 'م' : 'ص';
+    return `${h % 12 || 12}:${String(m).padStart(2, '0')} ${ampm}`;
+  };
+
+  const startDate = workshop.startDate || '';
+  const endDate = workshop.endDate && workshop.endDate !== workshop.startDate ? ` → ${workshop.endDate}` : '';
+  const timeRange = workshop.startTime ? `${formatTime(workshop.startTime)}${workshop.endTime ? ' - ' + formatTime(workshop.endTime) : ''}` : '';
+
+  const msg = {
+    to: studentEmail,
+    from: {
+      email: process.env.SENDGRID_FROM_EMAIL,
+      name: process.env.SENDGRID_FROM_NAME || 'FABLAB Al-Ahsa'
+    },
+    subject: `تأكيد التسجيل في الورشة التدريبية: ${workshop.title}`,
+    html: `
+      <div dir="rtl" style="font-family: 'Segoe UI', Tahoma, Arial, sans-serif; max-width: 600px; margin: 0 auto; background: #ffffff;">
+        <!-- Header -->
+        <div style="background: linear-gradient(135deg, #1a56db, #3b82f6); padding: 30px; text-align: center; border-radius: 12px 12px 0 0;">
+          <h1 style="color: white; margin: 0 0 5px; font-size: 22px;">فاب لاب الأحساء</h1>
+          <p style="color: rgba(255,255,255,0.85); margin: 0; font-size: 13px;">FABLAB Al-Ahsa</p>
+        </div>
+
+        <div style="padding: 30px;">
+          <!-- Greeting -->
+          <h2 style="color: #1e293b; margin: 0 0 8px;">مرحباً ${studentName}</h2>
+          <p style="color: #475569; font-size: 15px; line-height: 1.7; margin: 0 0 24px;">
+            تم تسجيلك بنجاح في الورشة التدريبية التالية. سيتم مراجعة الفاتورة والتواصل معك للتأكيد.
+          </p>
+
+          <!-- Workshop Card -->
+          <div style="background: #f8fafc; border: 2px solid #e2e8f0; border-radius: 12px; padding: 24px; margin-bottom: 24px;">
+            ${workshop.photo ? `<img src="${workshop.photo}" alt="${workshop.title}" style="width: 100%; max-height: 200px; object-fit: cover; border-radius: 8px; margin-bottom: 16px;" />` : ''}
+            <h3 style="color: #1a56db; margin: 0 0 12px; font-size: 20px;">${workshop.title}</h3>
+            ${workshop.presenter ? `<p style="color: #3b82f6; font-weight: 600; margin: 0 0 12px; font-size: 14px;">المقدم: ${workshop.presenter}</p>` : ''}
+
+            <table style="width: 100%; border-collapse: collapse;">
+              ${startDate ? `<tr><td style="padding: 8px 0; color: #64748b; font-size: 14px; border-bottom: 1px solid #e2e8f0; width: 120px;">📅 التاريخ</td><td style="padding: 8px 0; color: #1e293b; font-weight: 600; font-size: 14px; border-bottom: 1px solid #e2e8f0;">${startDate}${endDate}</td></tr>` : ''}
+              ${timeRange ? `<tr><td style="padding: 8px 0; color: #64748b; font-size: 14px; border-bottom: 1px solid #e2e8f0;">🕐 الوقت</td><td style="padding: 8px 0; color: #1e293b; font-weight: 600; font-size: 14px; border-bottom: 1px solid #e2e8f0;">${timeRange}</td></tr>` : ''}
+              ${workshop.totalHours ? `<tr><td style="padding: 8px 0; color: #64748b; font-size: 14px; border-bottom: 1px solid #e2e8f0;">⏱ المدة</td><td style="padding: 8px 0; color: #1e293b; font-weight: 600; font-size: 14px; border-bottom: 1px solid #e2e8f0;">${workshop.totalHours} ساعة تدريبية</td></tr>` : ''}
+              ${workshop.price ? `<tr><td style="padding: 8px 0; color: #64748b; font-size: 14px; border-bottom: 1px solid #e2e8f0;">💰 السعر</td><td style="padding: 8px 0; color: #1a56db; font-weight: 700; font-size: 14px; border-bottom: 1px solid #e2e8f0;">${workshop.price} ر.س</td></tr>` : ''}
+              <tr><td style="padding: 8px 0; color: #64748b; font-size: 14px;">🧾 رقم الفاتورة</td><td style="padding: 8px 0; color: #1e293b; font-weight: 600; font-size: 14px; font-family: monospace;">${invoiceNumber}</td></tr>
+            </table>
+
+            ${workshop.objectives ? `<div style="margin-top: 16px; padding: 12px; background: #eff6ff; border-radius: 8px; border: 1px solid #bfdbfe;">
+              <p style="margin: 0 0 4px; font-weight: 700; color: #1d4ed8; font-size: 13px;">الأهداف والمخرجات:</p>
+              <p style="margin: 0; color: #1e40af; font-size: 13px; line-height: 1.6;">${workshop.objectives}</p>
+            </div>` : ''}
+
+            ${workshop.content ? `<div style="margin-top: 12px; padding: 12px; background: #f0fdf4; border-radius: 8px; border: 1px solid #bbf7d0;">
+              <p style="margin: 0 0 4px; font-weight: 700; color: #166534; font-size: 13px;">المحتوى:</p>
+              <p style="margin: 0; color: #15803d; font-size: 13px; line-height: 1.6;">${workshop.content}</p>
+            </div>` : ''}
+          </div>
+
+          <!-- Status Notice -->
+          <div style="background: #fffbeb; border: 2px solid #f59e0b; border-radius: 10px; padding: 16px; margin-bottom: 24px; text-align: center;">
+            <p style="margin: 0; color: #92400e; font-weight: 700; font-size: 15px;">
+              ⏳ حالة التسجيل: قيد مراجعة الفاتورة
+            </p>
+            <p style="margin: 8px 0 0; color: #78350f; font-size: 13px;">
+              سيتم التحقق من رقم الفاتورة والتواصل معك للتأكيد
+            </p>
+          </div>
+
+          <!-- English Version -->
+          <div dir="ltr" style="border-top: 2px solid #e2e8f0; padding-top: 24px; margin-top: 8px;">
+            <h2 style="color: #1e293b; margin: 0 0 8px;">Hello ${studentName}</h2>
+            <p style="color: #475569; font-size: 14px; line-height: 1.7; margin: 0 0 16px;">
+              You have been successfully registered for the workshop <strong>"${workshop.title}"</strong>.
+              Your invoice is being reviewed and you will be contacted for confirmation.
+            </p>
+            <table style="width: 100%; border-collapse: collapse; font-size: 13px;">
+              ${startDate ? `<tr><td style="padding: 6px 0; color: #64748b;">Date</td><td style="padding: 6px 0; color: #1e293b; font-weight: 600;">${startDate}${endDate}</td></tr>` : ''}
+              ${workshop.totalHours ? `<tr><td style="padding: 6px 0; color: #64748b;">Duration</td><td style="padding: 6px 0; color: #1e293b; font-weight: 600;">${workshop.totalHours} hours</td></tr>` : ''}
+              <tr><td style="padding: 6px 0; color: #64748b;">Invoice</td><td style="padding: 6px 0; color: #1e293b; font-weight: 600; font-family: monospace;">${invoiceNumber}</td></tr>
+              <tr><td style="padding: 6px 0; color: #64748b;">Status</td><td style="padding: 6px 0; color: #92400e; font-weight: 700;">⏳ Under Review</td></tr>
+            </table>
+          </div>
+        </div>
+
+        <!-- Footer -->
+        <div style="background: #1e293b; padding: 20px; text-align: center; border-radius: 0 0 12px 12px;">
+          <p style="color: rgba(255,255,255,0.7); margin: 0; font-size: 12px;">
+            فاب لاب الأحساء — مختبر التصنيع الرقمي | FABLAB Al-Ahsa
+          </p>
+        </div>
+      </div>
+    `
+  };
+
+  try {
+    await sgMail.send(msg);
+    console.log(`✅ Workshop registration email sent to ${studentEmail}`);
+  } catch (error) {
+    console.error('❌ Error sending workshop registration email:', error);
+  }
+};
+
 module.exports = {
   sendRegistrationConfirmation,
   sendEngineerNotification,
@@ -726,5 +832,6 @@ module.exports = {
   sendCustomEmail,
   sendTaskRatingEmail,
   sendTaskReminderEmail,
-  sendCourseInactivityWarning
+  sendCourseInactivityWarning,
+  sendWorkshopRegistrationEmail
 };

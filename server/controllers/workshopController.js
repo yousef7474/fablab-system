@@ -1,6 +1,7 @@
 const { Workshop, WorkshopStudent, Employee, Admin } = require('../models');
 const { Op } = require('sequelize');
 const { sequelize } = require('../config/database');
+const { sendWorkshopRegistrationEmail } = require('../utils/emailService');
 
 // Create a new workshop (admin)
 exports.createWorkshop = async (req, res) => {
@@ -333,10 +334,19 @@ exports.registerStudent = async (req, res) => {
       nationalId, gender, age, city, invoiceNumber, notes
     });
 
+    // Send confirmation email with workshop details
+    if (email) {
+      const fullName = `${firstName || ''} ${lastName || ''}`.trim();
+      sendWorkshopRegistrationEmail(email, fullName, workshop, invoiceNumber).catch(err => {
+        console.error('Workshop email error (non-blocking):', err.message);
+      });
+    }
+
     res.status(201).json({
       message: 'Registration successful',
       messageAr: 'تم التسجيل بنجاح',
-      student
+      student,
+      workshop: { title: workshop.title, startDate: workshop.startDate, endDate: workshop.endDate }
     });
   } catch (error) {
     console.error('Error registering student:', error);
