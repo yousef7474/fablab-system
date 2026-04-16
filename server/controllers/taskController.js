@@ -427,22 +427,21 @@ exports.updateTaskStatus = async (req, res) => {
     }
 
     // Check if task is being marked as completed (and wasn't already completed)
-    const wasCompleted = task.status === 'completed';
+    const previousStatus = task.status;
+    const wasCompleted = previousStatus === 'completed';
     const isBeingCompleted = status === 'completed';
+    const wasPendingReview = previousStatus === 'pending_review';
 
     await task.update({ status });
 
     // Auto-award 1 point to employee when task is completed
-    // Points are ONLY awarded when:
-    // - The person marking the task complete is a MANAGER (role === 'manager')
-    // - AND the manager is the one who originally assigned the task (createdById matches)
-    // Tasks created and completed by admins/employees from the admin panel do NOT earn points
     let awardedRating = null;
     if (isBeingCompleted && !wasCompleted && task.employeeId && req.admin) {
       const isManager = req.admin.role === 'manager';
       const isTaskCreator = req.admin.adminId === task.createdById;
 
-      if (isManager && isTaskCreator) {
+      // Award if: manager created the task, OR manager approves a pending_review task
+      if (isManager && (isTaskCreator || wasPendingReview)) {
         try {
           awardedRating = await Rating.create({
             employeeId: task.employeeId,
