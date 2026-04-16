@@ -318,6 +318,19 @@ exports.registerStudent = async (req, res) => {
       });
     }
 
+    // Check duplicate registration (same workshop + same phone or email)
+    const duplicateWhere = { workshopId, [Op.or]: [{ phone }] };
+    if (email) duplicateWhere[Op.or].push({ email });
+    if (nationalId) duplicateWhere[Op.or].push({ nationalId });
+
+    const existing = await WorkshopStudent.findOne({ where: duplicateWhere });
+    if (existing) {
+      return res.status(400).json({
+        message: 'You are already registered for this workshop',
+        messageAr: 'أنت مسجل بالفعل في هذه الورشة'
+      });
+    }
+
     // Check capacity
     if (workshop.maxParticipants) {
       const currentCount = workshop.students ? workshop.students.length : 0;
