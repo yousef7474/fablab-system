@@ -5,6 +5,7 @@ import { motion } from 'framer-motion';
 const Commitment = ({ formData, onChange, onBack, onSubmit, loading }) => {
   const { t, i18n } = useTranslation();
   const isRTL = i18n.language === 'ar';
+  const [acknowledged, setAcknowledged] = React.useState(false);
 
   const commitmentTextEn = `I, the undersigned, confirm that all information provided is accurate and complete. I agree to:
 
@@ -95,6 +96,42 @@ I understand that failure to comply may result in suspension of privileges.`;
         </span>
       </motion.div>
 
+      {/* Acknowledgment: request is under review */}
+      <motion.div
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.4 }}
+        style={{ marginTop: '1.5rem', padding: '1.25rem', background: '#fffbeb', border: '2px solid #f59e0b', borderRadius: 12 }}
+      >
+        <div style={{ display: 'flex', gap: '0.75rem', marginBottom: '0.75rem', alignItems: 'center' }}>
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" strokeWidth="2.5" style={{ flexShrink: 0 }}>
+            <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+            <line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
+          </svg>
+          <span style={{ fontWeight: 700, color: '#92400e', fontSize: '1rem' }}>
+            {isRTL ? 'تنبيه مهم' : 'Important Notice'}
+          </span>
+        </div>
+        <p style={{ fontSize: '0.9rem', color: '#78350f', lineHeight: 1.7, margin: '0 0 1rem', fontWeight: 500 }}>
+          {isRTL
+            ? 'طلبك سيكون قيد المراجعة من قبل المهندس المسؤول. لا تحضر إلى فاب لاب حتى تستلم رسالة تأكيد عبر البريد الإلكتروني. في حال عدم استلام رد خلال 48 ساعة، يرجى التواصل معنا.'
+            : 'Your request will be under review by the responsible engineer. Do NOT come to FabLab until you receive a confirmation email. If you don\'t hear back within 48 hours, please contact us.'}
+        </p>
+        <label style={{ display: 'flex', alignItems: 'flex-start', gap: '0.6rem', cursor: 'pointer', padding: '0.75rem', background: 'white', borderRadius: 8, border: `2px solid ${acknowledged ? '#22c55e' : '#e2e8f0'}`, transition: 'border-color 0.2s' }}>
+          <input
+            type="checkbox"
+            checked={acknowledged}
+            onChange={e => setAcknowledged(e.target.checked)}
+            style={{ width: 20, height: 20, marginTop: 2, accentColor: '#22c55e', flexShrink: 0 }}
+          />
+          <span style={{ fontSize: '0.88rem', fontWeight: 600, color: '#1e293b', lineHeight: 1.5 }}>
+            {isRTL
+              ? 'أقر بأنني أعلم أن هذا الطلب يحتاج لمراجعة المهندس المسؤول ولن أحضر إلى فاب لاب حتى أستلم رسالة تأكيد عبر البريد الإلكتروني'
+              : 'I acknowledge that this request requires engineer review and I will NOT come to FabLab until I receive a confirmation email'}
+          </span>
+        </label>
+      </motion.div>
+
       <div className="form-navigation">
         <button className="btn btn-secondary" onClick={onBack} disabled={loading}>
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ transform: isRTL ? 'rotate(180deg)' : 'none' }}>
@@ -105,7 +142,7 @@ I understand that failure to comply may result in suspension of privileges.`;
         <button
           className="btn btn-primary btn-submit"
           onClick={onSubmit}
-          disabled={!canProceed || loading}
+          disabled={!canProceed || !acknowledged || loading}
         >
           {loading ? (
             <>
