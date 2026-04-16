@@ -7385,7 +7385,14 @@ const AdminDashboard = () => {
                             {w.assignedEmployee && <div style={{ fontSize: '0.75rem', color: '#64748b', marginBottom: '0.4rem' }}>{isRTL ? 'المسؤول:' : 'Assigned:'} {w.assignedEmployee.name}</div>}
                             <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', fontSize: '0.78rem', color: '#64748b', marginBottom: '0.5rem' }}>
                               {w.startDate && <span>{'\uD83D\uDCC5'} {w.startDate}{w.endDate ? ` \u2192 ${w.endDate}` : ''}</span>}
-                              {w.totalHours && <span>{'\u23F1'} {w.totalHours}h</span>}
+                              {w.totalHours && (() => {
+                                let days = 1;
+                                if (w.startDate && w.endDate && w.endDate !== w.startDate) {
+                                  days = Math.max(1, Math.ceil((new Date(w.endDate) - new Date(w.startDate)) / (1000*60*60*24)) + 1);
+                                }
+                                const perDay = days > 1 ? (w.totalHours / days).toFixed(1) : null;
+                                return <span>{'\u23F1'} {w.totalHours}h {perDay ? `(${perDay}h/day × ${days}d)` : ''}</span>;
+                              })()}
                               {w.price ? <span style={{ color: '#1a56db', fontWeight: 700 }}>{w.price} SAR</span> : <span style={{ color: '#22c55e', fontWeight: 700 }}>{isRTL ? 'مجاني' : 'Free'}</span>}
                             </div>
                             <div style={{ fontSize: '0.78rem', color: '#64748b', marginBottom: '0.75rem' }}>

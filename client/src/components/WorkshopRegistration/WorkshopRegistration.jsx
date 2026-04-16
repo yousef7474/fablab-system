@@ -204,7 +204,18 @@ const WorkshopRegistration = () => {
                           <div className="workshop-card-meta" style={{ marginBottom: '0.6rem', gap: '1rem' }}>
                             {w.startDate && <span>📅 {w.startDate}{w.endDate && w.endDate !== w.startDate ? ` → ${w.endDate}` : ''}</span>}
                             {w.startTime && <span>🕐 {w.startTime}{w.endTime ? ` - ${w.endTime}` : ''}</span>}
-                            {w.totalHours && <span>⏱ {w.totalHours} {isRTL ? 'ساعة' : 'hours'}</span>}
+                            {w.totalHours && (() => {
+                              let days = 1;
+                              if (w.startDate && w.endDate && w.endDate !== w.startDate) {
+                                days = Math.max(1, Math.ceil((new Date(w.endDate) - new Date(w.startDate)) / (1000*60*60*24)) + 1);
+                              }
+                              const perDay = days > 1 ? (w.totalHours / days).toFixed(1) : null;
+                              return (
+                                <span>⏱ {w.totalHours} {isRTL ? 'ساعة إجمالية' : 'total hours'}
+                                  {perDay && <span style={{ color: '#3b82f6', fontWeight: 600 }}> ({perDay} {isRTL ? `ساعة/يوم × ${days} أيام` : `hrs/day × ${days} days`})</span>}
+                                </span>
+                              );
+                            })()}
                           </div>
                           {w.content && <p style={{ fontSize: '0.85rem', color: '#475569', lineHeight: 1.6, marginBottom: '0.5rem' }}>{w.content}</p>}
                           {w.objectives && <p style={{ fontSize: '0.82rem', color: '#3b82f6', lineHeight: 1.5, marginBottom: '0.75rem', fontWeight: 500 }}>{isRTL ? 'الأهداف: ' : 'Objectives: '}{w.objectives}</p>}
