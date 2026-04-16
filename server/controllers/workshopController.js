@@ -281,6 +281,26 @@ exports.lookupStudent = async (req, res) => {
 };
 
 // Register student for workshop (public)
+// Check if student is already registered for a workshop
+exports.checkDuplicate = async (req, res) => {
+  try {
+    const { workshopId, phone, email, nationalId } = req.query;
+    if (!workshopId || !phone) return res.json({ duplicate: false });
+
+    const orConditions = [{ phone }];
+    if (email) orConditions.push({ email });
+    if (nationalId) orConditions.push({ nationalId });
+
+    const existing = await WorkshopStudent.findOne({
+      where: { workshopId, [Op.or]: orConditions }
+    });
+
+    res.json({ duplicate: !!existing });
+  } catch (error) {
+    res.json({ duplicate: false });
+  }
+};
+
 exports.registerStudent = async (req, res) => {
   try {
     const {

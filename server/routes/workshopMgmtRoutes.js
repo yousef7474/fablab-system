@@ -7,6 +7,7 @@ const { requireManager } = require('../middleware/roleMiddleware');
 
 // Public routes
 router.get('/lookup-student', controller.lookupStudent);
+router.get('/check-duplicate', controller.checkDuplicate);
 router.post('/register', controller.registerStudent);
 router.get('/active', controller.getActiveWorkshops);
 

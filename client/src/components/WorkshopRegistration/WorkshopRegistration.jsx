@@ -40,6 +40,23 @@ const WorkshopRegistration = () => {
   const canProceedStep1 = form.workshopId;
   const canProceedStep2 = form.invoiceNumber;
 
+  const handleStep1Next = async () => {
+    if (!form.workshopId) return;
+    try {
+      const params = new URLSearchParams({ workshopId: form.workshopId, phone: form.phone });
+      if (form.email) params.append('email', form.email);
+      if (form.nationalId) params.append('nationalId', form.nationalId);
+      const res = await api.get(`/workshops/check-duplicate?${params}`);
+      if (res.data.duplicate) {
+        window.alert(isRTL
+          ? 'أنت مسجل بالفعل في هذه الورشة. لا يمكنك التسجيل مرة أخرى.'
+          : 'You are already registered for this workshop. You cannot register again.');
+        return;
+      }
+    } catch (e) {}
+    setStep(2);
+  };
+
   const handleSubmit = async () => {
     setSubmitting(true);
     try {
@@ -240,7 +257,7 @@ const WorkshopRegistration = () => {
                 )}
                 <div className="workshop-actions">
                   <button className="workshop-btn-back" onClick={() => setStep(0)}>{isRTL ? 'السابق' : 'Back'}</button>
-                  <button className="workshop-btn-next" disabled={!canProceedStep1} onClick={() => setStep(2)}>{isRTL ? 'التالي' : 'Next'}</button>
+                  <button className="workshop-btn-next" disabled={!canProceedStep1} onClick={handleStep1Next}>{isRTL ? 'التالي' : 'Next'}</button>
                 </div>
               </motion.div>
             )}
