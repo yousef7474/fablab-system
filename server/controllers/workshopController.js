@@ -240,6 +240,45 @@ exports.getActiveWorkshops = async (req, res) => {
   }
 };
 
+// Lookup student by phone or nationalId (public)
+exports.lookupStudent = async (req, res) => {
+  try {
+    const { identifier } = req.query;
+    if (!identifier) return res.json({ found: false });
+
+    const student = await WorkshopStudent.findOne({
+      where: {
+        [Op.or]: [
+          { phone: identifier },
+          { nationalId: identifier }
+        ]
+      },
+      order: [['createdAt', 'DESC']]
+    });
+
+    if (student) {
+      res.json({
+        found: true,
+        student: {
+          firstName: student.firstName,
+          lastName: student.lastName,
+          phone: student.phone,
+          email: student.email,
+          nationalId: student.nationalId,
+          gender: student.gender,
+          age: student.age,
+          city: student.city
+        }
+      });
+    } else {
+      res.json({ found: false });
+    }
+  } catch (error) {
+    console.error('Lookup error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
 // Register student for workshop (public)
 exports.registerStudent = async (req, res) => {
   try {

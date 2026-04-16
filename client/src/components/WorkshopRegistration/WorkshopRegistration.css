@@ -71,7 +71,7 @@
 }
 
 /* Workshop Cards */
-.workshop-cards { display: flex; flex-direction: column; gap: 0.75rem; max-height: 400px; overflow-y: auto; }
+.workshop-cards { display: flex; flex-direction: column; gap: 0.75rem; }
 
 .workshop-card {
   border: 2px solid #e2e8f0; border-radius: 14px; overflow: hidden; cursor: pointer;

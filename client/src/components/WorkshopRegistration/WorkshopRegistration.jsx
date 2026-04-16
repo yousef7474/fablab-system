@@ -20,6 +20,10 @@ const WorkshopRegistration = () => {
   const [submitting, setSubmitting] = useState(false);
   const [result, setResult] = useState(null);
 
+  const [lookupMode, setLookupMode] = useState(true);
+  const [lookupValue, setLookupValue] = useState('');
+  const [lookupLoading, setLookupLoading] = useState(false);
+
   const [form, setForm] = useState({
     firstName: '', lastName: '', phone: '', email: '',
     nationalId: '', gender: '', age: '', city: '',
@@ -52,6 +56,27 @@ const WorkshopRegistration = () => {
   };
 
   const selectedWorkshop = workshops.find(w => w.workshopId === form.workshopId);
+
+  const handleLookup = async () => {
+    if (!lookupValue.trim()) return;
+    setLookupLoading(true);
+    try {
+      const res = await api.get(`/workshops/lookup-student?identifier=${encodeURIComponent(lookupValue.trim())}`);
+      if (res.data.found) {
+        const s = res.data.student;
+        setForm(prev => ({ ...prev, firstName: s.firstName || '', lastName: s.lastName || '', phone: s.phone || '', email: s.email || '', nationalId: s.nationalId || '', gender: s.gender || '', age: s.age || '', city: s.city || '' }));
+        toast.success(isRTL ? 'مرحباً بعودتك! تم تعبئة بياناتك' : 'Welcome back! Your info has been filled');
+        setStep(1);
+      } else {
+        toast.info(isRTL ? 'لم يتم العثور على تسجيل سابق — يرجى إدخال بياناتك' : 'No previous registration found — please enter your info');
+        setLookupMode(false);
+      }
+    } catch (error) {
+      setLookupMode(false);
+    } finally {
+      setLookupLoading(false);
+    }
+  };
 
   const toggleLanguage = () => i18n.changeLanguage(i18n.language === 'ar' ? 'en' : 'ar');
 
@@ -88,49 +113,76 @@ const WorkshopRegistration = () => {
           <AnimatePresence mode="wait">
             {step === 0 && (
               <motion.div key="step0" className="workshop-step-content" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}>
-                <h3>{isRTL ? 'البيانات الشخصية' : 'Personal Information'}</h3>
-                <div className="workshop-form-grid">
-                  <div className="workshop-field">
-                    <label>{isRTL ? 'الاسم الأول' : 'First Name'} *</label>
-                    <input value={form.firstName} onChange={e => handleChange('firstName', e.target.value)} />
-                  </div>
-                  <div className="workshop-field">
-                    <label>{isRTL ? 'الاسم الأخير' : 'Last Name'}</label>
-                    <input value={form.lastName} onChange={e => handleChange('lastName', e.target.value)} />
-                  </div>
-                  <div className="workshop-field">
-                    <label>{isRTL ? 'رقم الهاتف' : 'Phone'} *</label>
-                    <input type="tel" dir="ltr" value={form.phone} onChange={e => handleChange('phone', e.target.value)} />
-                  </div>
-                  <div className="workshop-field">
-                    <label>{isRTL ? 'البريد الإلكتروني' : 'Email'}</label>
-                    <input type="email" dir="ltr" value={form.email} onChange={e => handleChange('email', e.target.value)} />
-                  </div>
-                  <div className="workshop-field">
-                    <label>{isRTL ? 'رقم الهوية' : 'National ID'}</label>
-                    <input dir="ltr" value={form.nationalId} onChange={e => handleChange('nationalId', e.target.value)} />
-                  </div>
-                  <div className="workshop-field">
-                    <label>{isRTL ? 'الجنس' : 'Gender'}</label>
-                    <select value={form.gender} onChange={e => handleChange('gender', e.target.value)}>
-                      <option value="">{isRTL ? 'اختر' : 'Select'}</option>
-                      <option value="male">{isRTL ? 'ذكر' : 'Male'}</option>
-                      <option value="female">{isRTL ? 'أنثى' : 'Female'}</option>
-                    </select>
-                  </div>
-                  <div className="workshop-field">
-                    <label>{isRTL ? 'العمر' : 'Age'}</label>
-                    <input type="number" value={form.age} onChange={e => handleChange('age', e.target.value)} />
-                  </div>
-                  <div className="workshop-field">
-                    <label>{isRTL ? 'المدينة' : 'City'}</label>
-                    <input value={form.city} onChange={e => handleChange('city', e.target.value)} />
-                  </div>
-                </div>
-                <div className="workshop-actions">
-                  <button className="workshop-btn-back" onClick={() => navigate('/')}>{isRTL ? 'رجوع' : 'Back'}</button>
-                  <button className="workshop-btn-next" disabled={!canProceedStep0} onClick={() => setStep(1)}>{isRTL ? 'التالي' : 'Next'}</button>
-                </div>
+                {lookupMode ? (
+                  <>
+                    <h3>{isRTL ? 'هل سبق لك التسجيل؟' : 'Already registered before?'}</h3>
+                    <p style={{ fontSize: '0.88rem', color: '#64748b', marginBottom: '1.5rem' }}>{isRTL ? 'أدخل رقم الهاتف أو رقم الهوية للمتابعة بسرعة' : 'Enter your phone or national ID to continue quickly'}</p>
+                    <div className="workshop-field" style={{ maxWidth: 400, margin: '0 auto' }}>
+                      <input
+                        dir="ltr"
+                        value={lookupValue}
+                        onChange={e => setLookupValue(e.target.value)}
+                        placeholder={isRTL ? 'رقم الهاتف أو رقم الهوية' : 'Phone number or National ID'}
+                        style={{ textAlign: 'center', fontSize: '1.1rem' }}
+                        onKeyDown={e => e.key === 'Enter' && handleLookup()}
+                      />
+                    </div>
+                    <div className="workshop-actions" style={{ justifyContent: 'center', flexDirection: 'column', alignItems: 'center', gap: '0.75rem' }}>
+                      <button className="workshop-btn-next" disabled={!lookupValue.trim() || lookupLoading} onClick={handleLookup}>
+                        {lookupLoading ? (isRTL ? 'جاري البحث...' : 'Searching...') : (isRTL ? 'بحث' : 'Search')}
+                      </button>
+                      <button onClick={() => setLookupMode(false)} style={{ background: 'none', border: 'none', color: '#3b82f6', cursor: 'pointer', fontSize: '0.88rem', fontFamily: 'inherit' }}>
+                        {isRTL ? 'تسجيل جديد' : 'Register as new'}
+                      </button>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <h3>{isRTL ? 'البيانات الشخصية' : 'Personal Information'}</h3>
+                    <div className="workshop-form-grid">
+                      <div className="workshop-field">
+                        <label>{isRTL ? 'الاسم الأول' : 'First Name'} *</label>
+                        <input value={form.firstName} onChange={e => handleChange('firstName', e.target.value)} />
+                      </div>
+                      <div className="workshop-field">
+                        <label>{isRTL ? 'الاسم الأخير' : 'Last Name'}</label>
+                        <input value={form.lastName} onChange={e => handleChange('lastName', e.target.value)} />
+                      </div>
+                      <div className="workshop-field">
+                        <label>{isRTL ? 'رقم الهاتف' : 'Phone'} *</label>
+                        <input type="tel" dir="ltr" value={form.phone} onChange={e => handleChange('phone', e.target.value)} />
+                      </div>
+                      <div className="workshop-field">
+                        <label>{isRTL ? 'البريد الإلكتروني' : 'Email'}</label>
+                        <input type="email" dir="ltr" value={form.email} onChange={e => handleChange('email', e.target.value)} />
+                      </div>
+                      <div className="workshop-field">
+                        <label>{isRTL ? 'رقم الهوية' : 'National ID'}</label>
+                        <input dir="ltr" value={form.nationalId} onChange={e => handleChange('nationalId', e.target.value)} />
+                      </div>
+                      <div className="workshop-field">
+                        <label>{isRTL ? 'الجنس' : 'Gender'}</label>
+                        <select value={form.gender} onChange={e => handleChange('gender', e.target.value)}>
+                          <option value="">{isRTL ? 'اختر' : 'Select'}</option>
+                          <option value="male">{isRTL ? 'ذكر' : 'Male'}</option>
+                          <option value="female">{isRTL ? 'أنثى' : 'Female'}</option>
+                        </select>
+                      </div>
+                      <div className="workshop-field">
+                        <label>{isRTL ? 'العمر' : 'Age'}</label>
+                        <input type="number" value={form.age} onChange={e => handleChange('age', e.target.value)} />
+                      </div>
+                      <div className="workshop-field">
+                        <label>{isRTL ? 'المدينة' : 'City'}</label>
+                        <input value={form.city} onChange={e => handleChange('city', e.target.value)} />
+                      </div>
+                    </div>
+                    <div className="workshop-actions">
+                      <button className="workshop-btn-back" onClick={() => setLookupMode(true)}>{isRTL ? 'رجوع' : 'Back'}</button>
+                      <button className="workshop-btn-next" disabled={!canProceedStep0} onClick={() => setStep(1)}>{isRTL ? 'التالي' : 'Next'}</button>
+                    </div>
+                  </>
+                )}
               </motion.div>
             )}
 
@@ -140,28 +192,34 @@ const WorkshopRegistration = () => {
                 {workshops.length === 0 ? (
                   <div className="workshop-empty">{isRTL ? 'لا توجد ورش متاحة حالياً' : 'No workshops available'}</div>
                 ) : (
-                  <div className="workshop-cards">
+                  <div className="workshop-cards" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '1.25rem', maxHeight: 'none', overflow: 'visible' }}>
                     {workshops.map(w => (
-                      <div
-                        key={w.workshopId}
-                        className={`workshop-card ${form.workshopId === w.workshopId ? 'selected' : ''} ${w.spotsRemaining <= 0 ? 'full' : ''}`}
-                        onClick={() => w.spotsRemaining > 0 && handleChange('workshopId', w.workshopId)}
-                      >
-                        {w.photo && <div className="workshop-card-img" style={{ backgroundImage: `url(${w.photo})` }} />}
-                        <div className="workshop-card-body">
-                          <h4>{w.title}</h4>
-                          {w.presenter && <div className="workshop-card-presenter">{isRTL ? 'المقدم:' : 'By:'} {w.presenter}</div>}
-                          <div className="workshop-card-meta">
+                      <div key={w.workshopId} className={`workshop-card ${form.workshopId === w.workshopId ? 'selected' : ''} ${w.spotsRemaining <= 0 ? 'full' : ''}`}
+                        style={{ cursor: w.spotsRemaining > 0 ? 'pointer' : 'not-allowed', borderRadius: 16 }}
+                        onClick={() => w.spotsRemaining > 0 && handleChange('workshopId', w.workshopId)}>
+                        {w.photo && <div className="workshop-card-img" style={{ height: 200, backgroundImage: `url(${w.photo})`, backgroundSize: 'cover', backgroundPosition: 'center' }} />}
+                        <div className="workshop-card-body" style={{ padding: '1.25rem' }}>
+                          <h4 style={{ fontSize: '1.15rem', marginBottom: '0.5rem' }}>{w.title}</h4>
+                          {w.presenter && <div className="workshop-card-presenter" style={{ marginBottom: '0.5rem' }}>{isRTL ? 'المقدم:' : 'Presenter:'} {w.presenter}</div>}
+                          <div className="workshop-card-meta" style={{ marginBottom: '0.6rem', gap: '1rem' }}>
                             {w.startDate && <span>📅 {w.startDate}{w.endDate && w.endDate !== w.startDate ? ` → ${w.endDate}` : ''}</span>}
                             {w.startTime && <span>🕐 {w.startTime}{w.endTime ? ` - ${w.endTime}` : ''}</span>}
-                            {w.totalHours && <span>⏱ {w.totalHours} {isRTL ? 'ساعة' : 'hrs'}</span>}
+                            {w.totalHours && <span>⏱ {w.totalHours} {isRTL ? 'ساعة' : 'hours'}</span>}
                           </div>
-                          {w.objectives && <p className="workshop-card-objectives">{w.objectives}</p>}
-                          <div className="workshop-card-footer">
-                            {w.price ? <span className="workshop-price">{w.price} {isRTL ? 'ر.س' : 'SAR'}</span> : <span className="workshop-price free">{isRTL ? 'مجاني' : 'Free'}</span>}
-                            <span className={`workshop-spots ${w.spotsRemaining <= 3 ? 'low' : ''}`}>
-                              {w.spotsRemaining > 0 ? `${w.spotsRemaining} ${isRTL ? 'مقعد متبقي' : 'spots left'}` : (isRTL ? 'مكتمل' : 'Full')}
-                            </span>
+                          {w.content && <p style={{ fontSize: '0.85rem', color: '#475569', lineHeight: 1.6, marginBottom: '0.5rem' }}>{w.content}</p>}
+                          {w.objectives && <p style={{ fontSize: '0.82rem', color: '#3b82f6', lineHeight: 1.5, marginBottom: '0.75rem', fontWeight: 500 }}>{isRTL ? 'الأهداف: ' : 'Objectives: '}{w.objectives}</p>}
+                          <div className="workshop-card-footer" style={{ paddingTop: '0.75rem', borderTop: '1px solid #f1f5f9', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            {w.price ? <span className="workshop-price" style={{ fontSize: '1.2rem' }}>{w.price} {isRTL ? 'ر.س' : 'SAR'}</span> : <span className="workshop-price free" style={{ fontSize: '1.2rem' }}>{isRTL ? 'مجاني' : 'Free'}</span>}
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                              <span className={`workshop-spots ${w.spotsRemaining <= 3 ? 'low' : ''}`}>
+                                {w.spotsRemaining > 0 ? `${w.spotsRemaining} ${isRTL ? 'مقعد متبقي' : 'spots left'}` : (isRTL ? 'مكتمل' : 'Full')}
+                              </span>
+                              {w.spotsRemaining > 0 && form.workshopId === w.workshopId && (
+                                <span style={{ background: '#1a56db', color: 'white', padding: '4px 12px', borderRadius: 8, fontSize: '0.78rem', fontWeight: 700 }}>
+                                  {isRTL ? '✓ محدد' : '✓ Selected'}
+                                </span>
+                              )}
+                            </div>
                           </div>
                         </div>
                         {form.workshopId === w.workshopId && <div className="workshop-card-check">✓</div>}

@@ -7438,6 +7438,20 @@ const AdminDashboard = () => {
                             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 15l-8.5-5L12 5l8.5 5L12 15z"/><path d="M12 15v6M7 11v5a5 5 0 0010 0v-5"/></svg>
                             {isRTL ? 'شهادة' : 'Cert'}
                           </button>
+                          <button onClick={async () => {
+                            if (!window.confirm(isRTL ? 'حذف هذا الطالب؟' : 'Delete this student?')) return;
+                            try {
+                              await api.delete(`/workshops/students/${s.studentId}`);
+                              toast.success(isRTL ? 'تم حذف الطالب' : 'Student deleted');
+                              const res = await api.get(`/workshops/${viewingWorkshopStudents.workshopId}`);
+                              setViewingWorkshopStudents(res.data);
+                              fetchWorkshops();
+                            } catch(e) { toast.error(isRTL ? 'خطأ' : 'Error'); }
+                          }} title={isRTL ? 'حذف' : 'Delete'}
+                            style={{ padding: '0.35rem 0.7rem', borderRadius: 6, border: 'none', background: '#fee2e2', color: '#991b1b', cursor: 'pointer', fontWeight: 600, fontSize: '0.72rem', fontFamily: 'inherit', display: 'flex', alignItems: 'center', gap: 4 }}>
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                            {isRTL ? 'حذف' : 'Del'}
+                          </button>
                         </div>
                       ))}
                       {(!viewingWorkshopStudents.students || viewingWorkshopStudents.students.length === 0) && (

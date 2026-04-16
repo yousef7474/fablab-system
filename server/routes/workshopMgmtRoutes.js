@@ -6,6 +6,7 @@ const employeeAuth = require('../middleware/employeeAuth');
 const { requireManager } = require('../middleware/roleMiddleware');
 
 // Public routes
+router.get('/lookup-student', controller.lookupStudent);
 router.post('/register', controller.registerStudent);
 router.get('/active', controller.getActiveWorkshops);
 
