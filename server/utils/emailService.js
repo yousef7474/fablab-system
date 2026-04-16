@@ -732,36 +732,53 @@ const sendWorkshopRegistrationEmail = async (studentEmail, studentName, workshop
       email: process.env.SENDGRID_FROM_EMAIL,
       name: process.env.SENDGRID_FROM_NAME || 'FABLAB Al-Ahsa'
     },
-    subject: `تأكيد التسجيل: ${workshop.title} | Registration Confirmed`,
-    html: `<div dir="rtl" style="font-family:Arial,sans-serif;max-width:550px;margin:0 auto;background:#fff;">
+    subject: `تأكيد التسجيل في الورشة: ${workshop.title} | Registration Confirmed`,
+    html: (() => {
+      // Calculate hours per day
+      let days = 1;
+      if (workshop.startDate && workshop.endDate && workshop.endDate !== workshop.startDate) {
+        days = Math.max(1, Math.ceil((new Date(workshop.endDate) - new Date(workshop.startDate)) / (1000*60*60*24)) + 1);
+      }
+      const perDay = workshop.totalHours && days > 1 ? (workshop.totalHours / days).toFixed(1) : null;
+      const hoursText = workshop.totalHours ? `${workshop.totalHours} ساعة إجمالية${perDay ? ` (${perDay} ساعة/يوم × ${days} أيام)` : ''}` : '';
+      const hoursTextEn = workshop.totalHours ? `${workshop.totalHours} total hours${perDay ? ` (${perDay} hrs/day × ${days} days)` : ''}` : '';
+
+      // Format time
+      const fmtTime = (t) => { if (!t) return ''; const [h,m]=t.split(':').map(Number); return `${h%12||12}:${String(m).padStart(2,'0')} ${h>=12?'PM':'AM'}`; };
+      const timeText = workshop.startTime ? `${fmtTime(workshop.startTime)}${workshop.endTime ? ' - ' + fmtTime(workshop.endTime) : ''}` : '';
+
+      return `<div dir="rtl" style="font-family:Arial,sans-serif;max-width:550px;margin:0 auto;background:#fff;">
 <div style="background:#1a56db;padding:20px;text-align:center;border-radius:10px 10px 0 0;">
 <h2 style="color:#fff;margin:0;font-size:18px;">فاب لاب الأحساء | FABLAB Al-Ahsa</h2>
 </div>
 <div style="padding:24px;">
-<p style="color:#1e293b;font-size:15px;margin:0 0 16px;"><b>مرحباً ${studentName}</b> — تم تسجيلك بنجاح</p>
+<p style="color:#1e293b;font-size:15px;margin:0 0 16px;"><b>مرحباً ${studentName}</b></p>
+<div style="background:#dcfce7;border:1px solid #22c55e;border-radius:8px;padding:12px;text-align:center;margin-bottom:16px;">
+<p style="margin:0;color:#166534;font-weight:700;font-size:15px;">✅ تم تأكيد تسجيلك في الورشة التدريبية بنجاح</p>
+</div>
 <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:16px;margin-bottom:16px;">
 <h3 style="color:#1a56db;margin:0 0 10px;font-size:17px;">${workshop.title}</h3>
-${workshop.presenter ? `<p style="color:#3b82f6;margin:0 0 10px;font-size:13px;">المقدم: <b>${workshop.presenter}</b></p>` : ''}
+${workshop.presenter ? `<p style="color:#3b82f6;margin:0 0 10px;font-size:13px;">المقدم / Presenter: <b>${workshop.presenter}</b></p>` : ''}
 <table style="width:100%;font-size:13px;border-collapse:collapse;">
-${startDate ? `<tr><td style="padding:5px 0;color:#64748b;">التاريخ</td><td style="padding:5px 0;color:#1e293b;font-weight:700;">${startDate}${endDate}</td></tr>` : ''}
-${workshop.totalHours ? `<tr><td style="padding:5px 0;color:#64748b;">المدة</td><td style="padding:5px 0;color:#1e293b;font-weight:700;">${workshop.totalHours} ساعة</td></tr>` : ''}
-${workshop.price ? `<tr><td style="padding:5px 0;color:#64748b;">السعر</td><td style="padding:5px 0;color:#1a56db;font-weight:700;">${workshop.price} ر.س</td></tr>` : ''}
-<tr><td style="padding:5px 0;color:#64748b;">الفاتورة</td><td style="padding:5px 0;color:#1e293b;font-weight:700;">${invoiceNumber}</td></tr>
+${startDate ? `<tr><td style="padding:5px 0;color:#64748b;">📅 التاريخ</td><td style="padding:5px 0;color:#1e293b;font-weight:700;">${startDate}${endDate}</td></tr>` : ''}
+${timeText ? `<tr><td style="padding:5px 0;color:#64748b;">🕐 الوقت</td><td style="padding:5px 0;color:#1e293b;font-weight:700;">${timeText}</td></tr>` : ''}
+${hoursText ? `<tr><td style="padding:5px 0;color:#64748b;">⏱ المدة</td><td style="padding:5px 0;color:#1e293b;font-weight:700;">${hoursText}</td></tr>` : ''}
+${workshop.price ? `<tr><td style="padding:5px 0;color:#64748b;">💰 السعر</td><td style="padding:5px 0;color:#1a56db;font-weight:700;">${workshop.price} ر.س</td></tr>` : ''}
+<tr><td style="padding:5px 0;color:#64748b;">🧾 الفاتورة</td><td style="padding:5px 0;color:#1e293b;font-weight:700;">${invoiceNumber}</td></tr>
 </table>
 ${workshop.objectives ? `<p style="margin:10px 0 0;padding:8px;background:#eff6ff;border-radius:6px;color:#1d4ed8;font-size:12px;line-height:1.5;"><b>الأهداف:</b> ${workshop.objectives}</p>` : ''}
 </div>
-<div style="background:#fffbeb;border:1px solid #f59e0b;border-radius:8px;padding:12px;text-align:center;margin-bottom:16px;">
-<p style="margin:0;color:#92400e;font-weight:700;font-size:14px;">⏳ قيد مراجعة الفاتورة — سيتم التواصل معك للتأكيد</p>
-</div>
 <div dir="ltr" style="border-top:1px solid #e2e8f0;padding-top:14px;font-size:13px;color:#475569;">
-<p style="margin:0 0 6px;"><b>Hello ${studentName}</b> — You are registered for <b>"${workshop.title}"</b></p>
-<p style="margin:0;">Date: <b>${startDate}${endDate}</b>${workshop.totalHours ? ` | ${workshop.totalHours}h` : ''} | Invoice: <b>${invoiceNumber}</b> | Status: <b style="color:#92400e;">Under Review</b></p>
+<p style="margin:0 0 6px;"><b>Hello ${studentName}</b> — Your registration is <b style="color:#166534;">confirmed</b> for <b>"${workshop.title}"</b></p>
+<p style="margin:0;">📅 ${startDate}${endDate}${timeText ? ` | 🕐 ${timeText}` : ''}${hoursTextEn ? ` | ⏱ ${hoursTextEn}` : ''}</p>
+<p style="margin:4px 0 0;">Invoice: <b>${invoiceNumber}</b></p>
 </div>
 </div>
 <div style="background:#1e293b;padding:12px;text-align:center;border-radius:0 0 10px 10px;">
 <p style="color:rgba(255,255,255,0.6);margin:0;font-size:11px;">فاب لاب الأحساء — مختبر التصنيع الرقمي</p>
 </div>
-</div>`
+</div>`;
+    })()
   };
 
   try {
