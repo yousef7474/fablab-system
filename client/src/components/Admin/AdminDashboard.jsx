@@ -13,6 +13,7 @@ import api from '../../config/api';
 import { openWhatsApp, getApprovalMessage, getRejectionMessage } from '../../utils/whatsappHelper';
 import './Admin.css';
 import '../Manager/Manager.css';
+import QRScanner from '../QRScanner/QRScanner';
 
 const COLORS = ['#6366f1', '#22c55e', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4', '#ec4899'];
 
@@ -207,6 +208,7 @@ const AdminDashboard = () => {
   const [workshopLoading, setWorkshopLoading] = useState(false);
   const [viewingWorkshopStudents, setViewingWorkshopStudents] = useState(null);
   const [workshopFilter, setWorkshopFilter] = useState('active');
+  const [showQRScanner, setShowQRScanner] = useState(false);
 
   // Workspace states
   const WORKSPACE_PASSWORD = 'nouf123';
@@ -7403,7 +7405,11 @@ const AdminDashboard = () => {
                 {/* Workshop List or Student View */}
                 {!viewingWorkshopStudents ? (
                   <div>
-                    <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem' }}>
+                    <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem', flexWrap: 'wrap' }}>
+                      <button onClick={() => setShowQRScanner(true)} style={{ padding: '0.4rem 1rem', borderRadius: 8, border: 'none', cursor: 'pointer', fontWeight: 600, fontSize: '0.82rem', fontFamily: 'inherit', background: 'linear-gradient(135deg, #8b5cf6, #6d28d9)', color: 'white', display: 'flex', alignItems: 'center', gap: 6 }}>
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+                        {isRTL ? 'مسح QR' : 'Scan QR'}
+                      </button>
                       <button onClick={() => setWorkshopFilter('active')} style={{ padding: '0.4rem 1rem', borderRadius: 8, border: 'none', cursor: 'pointer', fontWeight: 600, fontSize: '0.82rem', fontFamily: 'inherit', background: workshopFilter === 'active' ? '#3b82f6' : '#f1f5f9', color: workshopFilter === 'active' ? 'white' : '#64748b' }}>
                         {isRTL ? 'النشطة' : 'Active'} ({workshopsList.filter(w => w.isActive && w.status !== 'cancelled' && w.status !== 'completed').length})
                       </button>
@@ -7591,6 +7597,23 @@ const AdminDashboard = () => {
                   </div>
                 </motion.div>
               </div>
+            )}
+
+            {/* QR Scanner */}
+            {showQRScanner && (
+              <QRScanner
+                onClose={() => setShowQRScanner(false)}
+                onResult={(data) => {
+                  toast.success(
+                    <div dir={isRTL ? 'rtl' : 'ltr'}>
+                      {data.name && <div><strong>{data.name}</strong></div>}
+                      {data.workshop && <div>{isRTL ? 'الورشة:' : 'Workshop:'} {data.workshop}</div>}
+                      {data.phone && <div dir="ltr">{data.phone}</div>}
+                    </div>,
+                    { autoClose: 10000 }
+                  );
+                }}
+              />
             )}
 
             {/* Workshop Email Modal */}
