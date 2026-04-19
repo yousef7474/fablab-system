@@ -10,6 +10,7 @@ router.get('/lookup-student', controller.lookupStudent);
 router.get('/check-duplicate', controller.checkDuplicate);
 
 // Admin email & attendance ID routes
+router.get('/:id/export-csv', adminAuth, controller.exportStudentsCSV);
 router.post('/:id/email-all', adminAuth, controller.emailAllStudents);
 router.post('/students/:id/email', adminAuth, controller.emailOneStudent);
 router.post('/students/:id/send-attendance-id', adminAuth, controller.sendAttendanceId);

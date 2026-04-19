@@ -614,6 +614,61 @@ exports.sendAttendanceId = async (req, res) => {
 };
 
 // Get attendance ID HTML (for printing from admin)
+// Export workshop students as CSV
+exports.exportStudentsCSV = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const workshop = await Workshop.findByPk(id, {
+      include: [{ model: WorkshopStudent, as: 'students', order: [['createdAt', 'ASC']] }]
+    });
+    if (!workshop) return res.status(404).json({ message: 'Workshop not found' });
+
+    const BOM = '\uFEFF';
+    const rows = [];
+
+    // Workshop info header
+    rows.push(`"الورشة / Workshop","${workshop.title}"`);
+    rows.push(`"المقدم / Presenter","${workshop.presenter || ''}"`);
+    rows.push(`"التاريخ / Date","${workshop.startDate || ''}${workshop.endDate ? ' → ' + workshop.endDate : ''}"`);
+    rows.push(`"الساعات / Hours","${workshop.totalHours || ''}"`);
+    rows.push(`"السعر / Price","${workshop.price || 'Free'}"`);
+    rows.push(`"عدد الطلاب / Students","${(workshop.students || []).length}${workshop.maxParticipants ? ' / ' + workshop.maxParticipants : ''}"`);
+    rows.push('');
+
+    // Student table header
+    rows.push('"#","الاسم الأول","الاسم الأخير","الهاتف","البريد","الهوية","الجنس","العمر","المدينة","رقم الفاتورة","حالة الدفع","الحضور (أيام)","التقييم","ملاحظات"');
+
+    // Student rows
+    (workshop.students || []).forEach((s, i) => {
+      const attendedDays = Array.isArray(s.attendanceDates) ? s.attendanceDates.length : 0;
+      rows.push([
+        i + 1,
+        `"${s.firstName || ''}"`,
+        `"${s.lastName || ''}"`,
+        `"${s.phone || ''}"`,
+        `"${s.email || ''}"`,
+        `"${s.nationalId || ''}"`,
+        `"${s.gender || ''}"`,
+        `"${s.age || ''}"`,
+        `"${s.city || ''}"`,
+        `"${s.invoiceNumber || ''}"`,
+        `"${s.paymentStatus || ''}"`,
+        attendedDays,
+        s.performanceRating || '',
+        `"${(s.performanceNotes || '').replace(/"/g, '""')}"`
+      ].join(','));
+    });
+
+    const csv = BOM + rows.join('\n');
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader('Content-Disposition', `attachment; filename=workshop_${workshop.title.replace(/[^a-zA-Z0-9\u0600-\u06FF]/g, '_')}.csv`);
+    res.send(csv);
+  } catch (error) {
+    console.error('Export CSV error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
 exports.getAttendanceIdHtml = async (req, res) => {
   try {
     const { id } = req.params;

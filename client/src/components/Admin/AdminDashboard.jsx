@@ -7481,10 +7481,23 @@ const AdminDashboard = () => {
                         <h3 style={{ margin: 0 }}>{viewingWorkshopStudents.title}</h3>
                         <span style={{ fontSize: '0.82rem', color: '#64748b' }}>{viewingWorkshopStudents.students?.length || 0} {isRTL ? 'طالب' : 'students'}</span>
                       </div>
-                      <button onClick={() => { setWorkshopEmailTarget(null); setShowWorkshopEmailModal(true); }}
-                        style={{ marginInlineStart: 'auto', padding: '0.4rem 0.8rem', borderRadius: 8, border: 'none', background: '#3b82f6', color: 'white', cursor: 'pointer', fontWeight: 600, fontSize: '0.78rem', fontFamily: 'inherit' }}>
-                        ✉ {isRTL ? 'إرسال بريد للجميع' : 'Email All Students'}
-                      </button>
+                      <div style={{ marginInlineStart: 'auto', display: 'flex', gap: '0.4rem' }}>
+                        <button onClick={async () => {
+                          try {
+                            const res = await api.get(`/workshops/${viewingWorkshopStudents.workshopId}/export-csv`, { responseType: 'blob' });
+                            const link = document.createElement('a');
+                            link.href = URL.createObjectURL(new Blob([res.data], { type: 'text/csv' }));
+                            link.download = `workshop_students.csv`;
+                            link.click();
+                          } catch(e) { toast.error('Error'); }
+                        }} style={{ padding: '0.4rem 0.8rem', borderRadius: 8, border: 'none', background: '#22c55e', color: 'white', cursor: 'pointer', fontWeight: 600, fontSize: '0.78rem', fontFamily: 'inherit' }}>
+                          📥 CSV
+                        </button>
+                        <button onClick={() => { setWorkshopEmailTarget(null); setShowWorkshopEmailModal(true); }}
+                          style={{ padding: '0.4rem 0.8rem', borderRadius: 8, border: 'none', background: '#3b82f6', color: 'white', cursor: 'pointer', fontWeight: 600, fontSize: '0.78rem', fontFamily: 'inherit' }}>
+                          ✉ {isRTL ? 'بريد للجميع' : 'Email All'}
+                        </button>
+                      </div>
                     </div>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                       {(viewingWorkshopStudents.students || []).map(s => (
@@ -7530,6 +7543,11 @@ const AdminDashboard = () => {
                             style={{ padding: '0.35rem 0.7rem', borderRadius: 6, border: '1px solid #e2e8f0', background: 'white', color: '#334155', cursor: 'pointer', fontWeight: 600, fontSize: '0.72rem', fontFamily: 'inherit', display: 'flex', alignItems: 'center', gap: 4 }}>
                             ✉ {isRTL ? 'بريد' : 'Mail'}
                           </button>}
+                          {s.phone && <a href={`https://wa.me/${s.phone.replace(/[^0-9]/g, '')}?text=${encodeURIComponent(`مرحباً ${s.firstName}، هذه رسالة من فاب لاب الأحساء بخصوص الورشة التدريبية: ${viewingWorkshopStudents.title}`)}`} target="_blank" rel="noreferrer" title="WhatsApp"
+                            style={{ padding: '0.35rem 0.7rem', borderRadius: 6, border: 'none', background: '#22c55e', color: 'white', cursor: 'pointer', fontWeight: 600, fontSize: '0.72rem', fontFamily: 'inherit', display: 'flex', alignItems: 'center', gap: 4, textDecoration: 'none' }}>
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M12 0C5.373 0 0 5.373 0 12c0 2.126.553 4.12 1.52 5.855L0 24l6.335-1.652A11.95 11.95 0 0012 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 21.82c-1.887 0-3.64-.505-5.158-1.385l-.37-.218-3.834 1.003 1.022-3.735-.24-.38A9.803 9.803 0 012.18 12c0-5.422 4.398-9.82 9.82-9.82 5.422 0 9.82 4.398 9.82 9.82 0 5.422-4.398 9.82-9.82 9.82z"/></svg>
+                            WA
+                          </a>}
                           <button onClick={async () => {
                             if (!window.confirm(isRTL ? 'حذف هذا الطالب؟' : 'Delete this student?')) return;
                             try {
