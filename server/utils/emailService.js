@@ -888,6 +888,60 @@ const sendWorkshopCustomEmail = async (recipients, subject, messageBody, worksho
   }
 };
 
+// Send certificate via email
+const sendCertificateEmail = async (studentEmail, student, workshop) => {
+  if (!studentEmail) return;
+  const name = `${student.firstName || ''} ${student.lastName || ''}`.trim();
+  const certId = 'WS-' + (student.studentId || '').substring(0, 8).toUpperCase();
+  const attendedDays = Array.isArray(student.attendanceDates) ? student.attendanceDates.length : 0;
+  const startDateF = workshop.startDate ? workshop.startDate.split('-').reverse().join('/') : '';
+
+  const msg = {
+    to: studentEmail,
+    from: { email: process.env.SENDGRID_FROM_EMAIL, name: process.env.SENDGRID_FROM_NAME || 'FABLAB Al-Ahsa' },
+    subject: `شهادة إتمام ورشة: ${workshop.title} | Workshop Certificate`,
+    html: `<div dir="rtl" style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;background:#fff;">
+<div style="background:linear-gradient(135deg,#667eea,#764ba2);padding:20px;text-align:center;border-radius:10px 10px 0 0;">
+<h2 style="color:#fff;margin:0;font-size:18px;">شهادة إتمام ورشة تدريبية</h2>
+<p style="color:rgba(255,255,255,0.8);margin:4px 0 0;font-size:12px;">WORKSHOP COMPLETION CERTIFICATE</p>
+</div>
+<div style="padding:24px;text-align:center;">
+<p style="color:#64748b;font-size:13px;margin:0 0 8px;">تشهد إدارة فاب لاب الأحساء بأن</p>
+<h2 style="color:#1e293b;font-size:28px;margin:0 0 8px;padding-bottom:8px;border-bottom:3px solid;border-image:linear-gradient(90deg,#e02529,#ff6b6b,#feca57) 1;">${name}</h2>
+<p style="color:#475569;font-size:14px;line-height:1.7;margin:12px 0;">
+قد أتم بنجاح الورشة التدريبية <b style="color:#e02529;font-size:16px;">"${workshop.title}"</b>
+${workshop.presenter ? `<br/>التي قدمها <b>${workshop.presenter}</b>` : ''}
+</p>
+<div style="display:inline-flex;gap:16px;margin:16px 0;">
+${workshop.totalHours ? `<div style="background:linear-gradient(135deg,#e02529,#ff6b6b);color:#fff;padding:10px 24px;border-radius:10px;text-align:center;"><div style="font-size:20px;font-weight:700;">${workshop.totalHours}</div><div style="font-size:9px;opacity:0.9;">ساعة تدريبية</div></div>` : ''}
+${attendedDays > 0 ? `<div style="background:linear-gradient(135deg,#667eea,#764ba2);color:#fff;padding:10px 24px;border-radius:10px;text-align:center;"><div style="font-size:20px;font-weight:700;">${attendedDays}</div><div style="font-size:9px;opacity:0.9;">يوم حضور</div></div>` : ''}
+${startDateF ? `<div style="background:linear-gradient(135deg,#f59e0b,#fbbf24);color:#fff;padding:10px 24px;border-radius:10px;text-align:center;"><div style="font-size:20px;font-weight:700;">${startDateF}</div><div style="font-size:9px;opacity:0.9;">تاريخ البداية</div></div>` : ''}
+</div>
+${workshop.objectives ? `<p style="margin:12px auto;max-width:450px;padding:10px;background:#eff6ff;border-radius:8px;color:#1d4ed8;font-size:12px;line-height:1.5;">${workshop.objectives}</p>` : ''}
+<p style="color:#64748b;font-size:12px;font-style:italic;margin:12px 0 0;">"ومن سلك طريقاً يلتمس فيه علماً سهّل الله له به طريقاً إلى الجنة"</p>
+<div style="margin-top:16px;padding-top:12px;border-top:1px dashed #e2e8f0;display:flex;justify-content:space-between;font-size:10px;color:#94a3b8;">
+<span style="font-family:monospace;background:#f1f5f9;padding:4px 10px;border-radius:12px;">${certId}</span>
+<span>${new Date().toLocaleDateString('ar-SA')}</span>
+</div>
+</div>
+<div dir="ltr" style="padding:12px 24px;border-top:1px solid #e2e8f0;font-size:12px;color:#64748b;">
+<p style="margin:0;"><b>${name}</b> has completed the workshop <b>"${workshop.title}"</b>${workshop.totalHours ? ` (${workshop.totalHours} hours)` : ''}. Certificate ID: ${certId}</p>
+</div>
+<div style="background:#1e293b;padding:12px;text-align:center;border-radius:0 0 10px 10px;">
+<p style="color:rgba(255,255,255,0.5);margin:0;font-size:10px;">فاب لاب الأحساء — مختبر التصنيع الرقمي | FABLAB Al-Ahsa</p>
+</div>
+</div>`
+  };
+
+  try {
+    await sgMail.send(msg);
+    console.log(`✅ Certificate email sent to ${studentEmail}`);
+  } catch (error) {
+    console.error('❌ Error sending certificate email:', error);
+    throw error;
+  }
+};
+
 module.exports = {
   sendRegistrationConfirmation,
   sendEngineerNotification,
@@ -899,5 +953,6 @@ module.exports = {
   sendWorkshopRegistrationEmail,
   sendAttendanceIdEmail,
   sendWorkshopCustomEmail,
-  generateAttendanceIdHtml
+  generateAttendanceIdHtml,
+  sendCertificateEmail
 };

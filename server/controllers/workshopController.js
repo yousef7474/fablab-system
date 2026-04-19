@@ -1,7 +1,7 @@
 const { Workshop, WorkshopStudent, Employee, Admin } = require('../models');
 const { Op } = require('sequelize');
 const { sequelize } = require('../config/database');
-const { sendWorkshopRegistrationEmail, sendAttendanceIdEmail, sendWorkshopCustomEmail, generateAttendanceIdHtml } = require('../utils/emailService');
+const { sendWorkshopRegistrationEmail, sendAttendanceIdEmail, sendWorkshopCustomEmail, generateAttendanceIdHtml, sendCertificateEmail } = require('../utils/emailService');
 
 // Create a new workshop (admin)
 exports.createWorkshop = async (req, res) => {
@@ -681,6 +681,24 @@ exports.getAttendanceIdHtml = async (req, res) => {
     res.json({ html, student, workshop: student.workshop });
   } catch (error) {
     console.error('Get attendance ID error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+// Send certificate via email
+exports.sendCertificate = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const student = await WorkshopStudent.findByPk(id, {
+      include: [{ model: Workshop, as: 'workshop' }]
+    });
+    if (!student) return res.status(404).json({ message: 'Student not found' });
+    if (!student.email) return res.status(400).json({ message: 'Student has no email', messageAr: 'الطالب ليس لديه بريد إلكتروني' });
+
+    await sendCertificateEmail(student.email, student, student.workshop);
+    res.json({ message: 'Certificate sent' });
+  } catch (error) {
+    console.error('Send certificate error:', error);
     res.status(500).json({ message: 'Server error' });
   }
 };
