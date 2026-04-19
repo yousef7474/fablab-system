@@ -8,6 +8,12 @@ const { requireManager } = require('../middleware/roleMiddleware');
 // Public routes
 router.get('/lookup-student', controller.lookupStudent);
 router.get('/check-duplicate', controller.checkDuplicate);
+
+// Admin email & attendance ID routes
+router.post('/:id/email-all', adminAuth, controller.emailAllStudents);
+router.post('/students/:id/email', adminAuth, controller.emailOneStudent);
+router.post('/students/:id/send-attendance-id', adminAuth, controller.sendAttendanceId);
+router.get('/students/:id/attendance-id', adminAuth, controller.getAttendanceIdHtml);
 router.post('/register', controller.registerStudent);
 router.get('/active', controller.getActiveWorkshops);
 

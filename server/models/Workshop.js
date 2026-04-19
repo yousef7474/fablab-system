@@ -79,6 +79,12 @@ const Workshop = sequelize.define('Workshop', {
     type: DataTypes.TEXT,
     allowNull: true
   },
+  color: {
+    type: DataTypes.STRING,
+    allowNull: true,
+    defaultValue: '#1a56db',
+    comment: 'Workshop theme color for attendance ID cards'
+  },
   createdById: {
     type: DataTypes.UUID,
     allowNull: true,

@@ -202,7 +202,7 @@ const AdminDashboard = () => {
     title: '', description: '', presenter: '', assignedEmployeeId: '',
     startDate: '', endDate: '', startTime: '', endTime: '',
     totalHours: '', content: '', objectives: '', photo: '',
-    maxParticipants: '', price: '', notes: ''
+    maxParticipants: '', price: '', notes: '', color: '#1a56db'
   });
   const [workshopLoading, setWorkshopLoading] = useState(false);
   const [viewingWorkshopStudents, setViewingWorkshopStudents] = useState(null);
@@ -1022,9 +1022,59 @@ const AdminDashboard = () => {
       totalHours: workshop.totalHours || '', content: workshop.content || '',
       objectives: workshop.objectives || '', photo: workshop.photo || '',
       maxParticipants: workshop.maxParticipants || '', price: workshop.price || '',
-      notes: workshop.notes || ''
+      notes: workshop.notes || '', color: workshop.color || '#1a56db'
     });
     setShowWorkshopModal(true);
+  };
+
+  // Workshop email functions
+  const [showWorkshopEmailModal, setShowWorkshopEmailModal] = useState(false);
+  const [workshopEmailTarget, setWorkshopEmailTarget] = useState(null); // null=all, {studentId, email}=one
+  const [workshopEmailForm, setWorkshopEmailForm] = useState({ subject: '', message: '' });
+
+  const handleSendWorkshopEmail = async () => {
+    if (!workshopEmailForm.subject || !workshopEmailForm.message) {
+      toast.error(isRTL ? 'الموضوع والرسالة مطلوبان' : 'Subject and message required');
+      return;
+    }
+    try {
+      if (workshopEmailTarget) {
+        await api.post(`/workshops/students/${workshopEmailTarget.studentId}/email`, workshopEmailForm);
+        toast.success(isRTL ? 'تم إرسال البريد' : 'Email sent');
+      } else {
+        const res = await api.post(`/workshops/${viewingWorkshopStudents.workshopId}/email-all`, workshopEmailForm);
+        toast.success(isRTL ? `تم الإرسال إلى ${res.data.count} طالب` : `Sent to ${res.data.count} students`);
+      }
+      setShowWorkshopEmailModal(false);
+      setWorkshopEmailForm({ subject: '', message: '' });
+    } catch (error) {
+      toast.error(error.response?.data?.message || (isRTL ? 'خطأ' : 'Error'));
+    }
+  };
+
+  const handleSendAttendanceId = async (studentId) => {
+    try {
+      await api.post(`/workshops/students/${studentId}/send-attendance-id`);
+      toast.success(isRTL ? 'تم إرسال بطاقة الحضور' : 'Attendance ID sent');
+    } catch (error) {
+      toast.error(error.response?.data?.message || (isRTL ? 'خطأ' : 'Error'));
+    }
+  };
+
+  const handlePrintAttendanceId = async (studentId) => {
+    try {
+      const res = await api.get(`/workshops/students/${studentId}/attendance-id`);
+      const printWindow = window.open('', '_blank');
+      const color = res.data.workshop?.color || '#1a56db';
+      printWindow.document.write(`<!DOCTYPE html><html dir="rtl"><head><title>بطاقة حضور</title>
+        <style>@page{size:auto;margin:10mm;}body{display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0;background:#f0f0f0;font-family:Arial,sans-serif;}
+        @media print{body{background:none;}}</style></head><body>${res.data.html}
+        <button onclick="window.print()" style="position:fixed;bottom:20px;right:20px;padding:12px 28px;background:${color};color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;">طباعة</button>
+      </body></html>`);
+      printWindow.document.close();
+    } catch (error) {
+      toast.error(isRTL ? 'خطأ' : 'Error');
+    }
   };
 
   // Workspace functions
@@ -7425,6 +7475,10 @@ const AdminDashboard = () => {
                         <h3 style={{ margin: 0 }}>{viewingWorkshopStudents.title}</h3>
                         <span style={{ fontSize: '0.82rem', color: '#64748b' }}>{viewingWorkshopStudents.students?.length || 0} {isRTL ? 'طالب' : 'students'}</span>
                       </div>
+                      <button onClick={() => { setWorkshopEmailTarget(null); setShowWorkshopEmailModal(true); }}
+                        style={{ marginInlineStart: 'auto', padding: '0.4rem 0.8rem', borderRadius: 8, border: 'none', background: '#3b82f6', color: 'white', cursor: 'pointer', fontWeight: 600, fontSize: '0.78rem', fontFamily: 'inherit' }}>
+                        ✉ {isRTL ? 'إرسال بريد للجميع' : 'Email All Students'}
+                      </button>
                     </div>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                       {(viewingWorkshopStudents.students || []).map(s => (
@@ -7457,6 +7511,19 @@ const AdminDashboard = () => {
                             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 15l-8.5-5L12 5l8.5 5L12 15z"/><path d="M12 15v6M7 11v5a5 5 0 0010 0v-5"/></svg>
                             {isRTL ? 'شهادة' : 'Cert'}
                           </button>
+                          <button onClick={() => handlePrintAttendanceId(s.studentId)} title={isRTL ? 'بطاقة حضور' : 'Attendance ID'}
+                            style={{ padding: '0.35rem 0.7rem', borderRadius: 6, border: 'none', background: `linear-gradient(135deg, ${viewingWorkshopStudents.color || '#1a56db'}, ${viewingWorkshopStudents.color || '#1a56db'}cc)`, color: 'white', cursor: 'pointer', fontWeight: 600, fontSize: '0.72rem', fontFamily: 'inherit', display: 'flex', alignItems: 'center', gap: 4 }}>
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+                            {isRTL ? 'حضور' : 'Att.ID'}
+                          </button>
+                          {s.email && <button onClick={() => handleSendAttendanceId(s.studentId)} title={isRTL ? 'إرسال بطاقة الحضور' : 'Send Attendance ID'}
+                            style={{ padding: '0.35rem 0.7rem', borderRadius: 6, border: 'none', background: '#eff6ff', color: '#1d4ed8', cursor: 'pointer', fontWeight: 600, fontSize: '0.72rem', fontFamily: 'inherit', display: 'flex', alignItems: 'center', gap: 4 }}>
+                            📧 {isRTL ? 'إرسال' : 'Send'}
+                          </button>}
+                          {s.email && <button onClick={() => { setWorkshopEmailTarget({ studentId: s.studentId, email: s.email }); setShowWorkshopEmailModal(true); }} title={isRTL ? 'بريد' : 'Email'}
+                            style={{ padding: '0.35rem 0.7rem', borderRadius: 6, border: '1px solid #e2e8f0', background: 'white', color: '#334155', cursor: 'pointer', fontWeight: 600, fontSize: '0.72rem', fontFamily: 'inherit', display: 'flex', alignItems: 'center', gap: 4 }}>
+                            ✉ {isRTL ? 'بريد' : 'Mail'}
+                          </button>}
                           <button onClick={async () => {
                             if (!window.confirm(isRTL ? 'حذف هذا الطالب؟' : 'Delete this student?')) return;
                             try {
@@ -7514,11 +7581,43 @@ const AdminDashboard = () => {
                       {workshopForm.photo && <img src={workshopForm.photo} alt="preview" style={{ marginTop: 8, maxHeight: 120, borderRadius: 8, objectFit: 'cover' }} />}
                     </div>
                     <div style={{ gridColumn: '1/-1' }}><label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 600, marginBottom: 4 }}>{isRTL ? 'ملاحظات' : 'Notes'}</label><input style={{ width: '100%', padding: '0.5rem', borderRadius: 8, border: '1.5px solid #e2e8f0', fontFamily: 'inherit' }} value={workshopForm.notes} onChange={e => setWorkshopForm({...workshopForm, notes: e.target.value})} /></div>
+                    <div><label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 600, marginBottom: 4 }}>{isRTL ? 'لون الورشة' : 'Workshop Color'}</label><div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}><input type="color" value={workshopForm.color || '#1a56db'} onChange={e => setWorkshopForm({...workshopForm, color: e.target.value})} style={{ width: 40, height: 36, border: 'none', borderRadius: 6, cursor: 'pointer' }} /><span style={{ fontSize: '0.78rem', color: '#64748b' }}>{workshopForm.color || '#1a56db'}</span></div></div>
                   </div>
                   <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end', marginTop: '1.5rem' }}>
                     <button onClick={() => setShowWorkshopModal(false)} style={{ padding: '0.6rem 1.5rem', borderRadius: 8, border: 'none', background: '#f1f5f9', cursor: 'pointer', fontWeight: 600, fontFamily: 'inherit' }}>{isRTL ? 'إلغاء' : 'Cancel'}</button>
                     <button onClick={handleCreateWorkshop} disabled={workshopLoading} style={{ padding: '0.6rem 1.5rem', borderRadius: 8, border: 'none', background: 'linear-gradient(135deg, #3b82f6, #1d4ed8)', color: 'white', cursor: 'pointer', fontWeight: 600, fontFamily: 'inherit', opacity: workshopLoading ? 0.7 : 1 }}>
                       {workshopLoading ? '...' : selectedWorkshop ? (isRTL ? 'تحديث' : 'Update') : (isRTL ? 'إنشاء' : 'Create')}
+                    </button>
+                  </div>
+                </motion.div>
+              </div>
+            )}
+
+            {/* Workshop Email Modal */}
+            {showWorkshopEmailModal && (
+              <div className="modal-overlay" onClick={() => setShowWorkshopEmailModal(false)}>
+                <motion.div className="modal-content" onClick={e => e.stopPropagation()} initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }}
+                  style={{ maxWidth: 500, padding: '2rem' }}>
+                  <h3 style={{ marginBottom: '1rem' }}>
+                    {workshopEmailTarget
+                      ? (isRTL ? `إرسال بريد إلى: ${workshopEmailTarget.email}` : `Email to: ${workshopEmailTarget.email}`)
+                      : (isRTL ? 'إرسال بريد لجميع الطلاب' : 'Email All Students')
+                    }
+                  </h3>
+                  <div style={{ marginBottom: '0.75rem' }}>
+                    <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 600, marginBottom: 4 }}>{isRTL ? 'الموضوع' : 'Subject'}</label>
+                    <input style={{ width: '100%', padding: '0.5rem', borderRadius: 8, border: '1.5px solid #e2e8f0', fontFamily: 'inherit' }}
+                      value={workshopEmailForm.subject} onChange={e => setWorkshopEmailForm({...workshopEmailForm, subject: e.target.value})} />
+                  </div>
+                  <div style={{ marginBottom: '1rem' }}>
+                    <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 600, marginBottom: 4 }}>{isRTL ? 'الرسالة' : 'Message'}</label>
+                    <textarea style={{ width: '100%', padding: '0.5rem', borderRadius: 8, border: '1.5px solid #e2e8f0', fontFamily: 'inherit', minHeight: 120, resize: 'vertical' }}
+                      value={workshopEmailForm.message} onChange={e => setWorkshopEmailForm({...workshopEmailForm, message: e.target.value})} />
+                  </div>
+                  <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end' }}>
+                    <button onClick={() => setShowWorkshopEmailModal(false)} style={{ padding: '0.6rem 1.5rem', borderRadius: 8, border: 'none', background: '#f1f5f9', cursor: 'pointer', fontWeight: 600, fontFamily: 'inherit' }}>{isRTL ? 'إلغاء' : 'Cancel'}</button>
+                    <button onClick={handleSendWorkshopEmail} style={{ padding: '0.6rem 1.5rem', borderRadius: 8, border: 'none', background: '#3b82f6', color: 'white', cursor: 'pointer', fontWeight: 600, fontFamily: 'inherit' }}>
+                      {isRTL ? '📧 إرسال' : '📧 Send'}
                     </button>
                   </div>
                 </motion.div>

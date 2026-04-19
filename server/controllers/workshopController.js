@@ -1,7 +1,7 @@
 const { Workshop, WorkshopStudent, Employee, Admin } = require('../models');
 const { Op } = require('sequelize');
 const { sequelize } = require('../config/database');
-const { sendWorkshopRegistrationEmail } = require('../utils/emailService');
+const { sendWorkshopRegistrationEmail, sendAttendanceIdEmail, sendWorkshopCustomEmail, generateAttendanceIdHtml } = require('../utils/emailService');
 
 // Create a new workshop (admin)
 exports.createWorkshop = async (req, res) => {
@@ -10,7 +10,7 @@ exports.createWorkshop = async (req, res) => {
       title, description, presenter, assignedEmployeeId,
       startDate, endDate, startTime, endTime, totalHours,
       content, objectives, photo, maxParticipants, price,
-      status, isActive, notes
+      status, isActive, notes, color
     } = req.body;
 
     if (!title || !presenter || !startDate) {
@@ -27,6 +27,7 @@ exports.createWorkshop = async (req, res) => {
       status: status || 'upcoming',
       isActive: isActive !== undefined ? isActive : true,
       notes,
+      color: color || '#1a56db',
       createdById: req.admin.adminId
     });
 
@@ -131,7 +132,7 @@ exports.updateWorkshop = async (req, res) => {
       title, description, presenter, assignedEmployeeId,
       startDate, endDate, startTime, endTime, totalHours,
       content, objectives, photo, maxParticipants, price,
-      status, isActive, notes
+      status, isActive, notes, color
     } = req.body;
 
     await workshop.update({
@@ -151,7 +152,8 @@ exports.updateWorkshop = async (req, res) => {
       price: price !== undefined ? price : workshop.price,
       status: status !== undefined ? status : workshop.status,
       isActive: isActive !== undefined ? isActive : workshop.isActive,
-      notes: notes !== undefined ? notes : workshop.notes
+      notes: notes !== undefined ? notes : workshop.notes,
+      color: color !== undefined ? color : workshop.color
     });
 
     const updated = await Workshop.findByPk(id, {
@@ -212,7 +214,7 @@ exports.getActiveWorkshops = async (req, res) => {
         'workshopId', 'title', 'description', 'presenter',
         'startDate', 'endDate', 'startTime', 'endTime',
         'totalHours', 'content', 'objectives', 'photo',
-        'maxParticipants', 'price', 'status'
+        'maxParticipants', 'price', 'status', 'color'
       ],
       include: [
         {
@@ -367,11 +369,15 @@ exports.registerStudent = async (req, res) => {
       nationalId, gender, age, city, invoiceNumber, notes
     });
 
-    // Send confirmation email with workshop details
+    // Send confirmation email with workshop details + attendance ID
     if (email) {
       const fullName = `${firstName || ''} ${lastName || ''}`.trim();
       sendWorkshopRegistrationEmail(email, fullName, workshop, invoiceNumber).catch(err => {
         console.error('Workshop email error (non-blocking):', err.message);
+      });
+      // Also send attendance ID
+      sendAttendanceIdEmail(email, student, workshop).catch(err => {
+        console.error('Attendance ID email error (non-blocking):', err.message);
       });
     }
 
@@ -545,6 +551,85 @@ exports.verifyPayment = async (req, res) => {
 };
 
 // Get my workshops (employee)
+// Send email to all students in a workshop
+exports.emailAllStudents = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { subject, message } = req.body;
+    if (!subject || !message) return res.status(400).json({ message: 'Subject and message required' });
+
+    const workshop = await Workshop.findByPk(id, {
+      include: [{ model: WorkshopStudent, as: 'students' }]
+    });
+    if (!workshop) return res.status(404).json({ message: 'Workshop not found' });
+
+    const emails = (workshop.students || []).filter(s => s.email).map(s => s.email);
+    if (emails.length === 0) return res.status(400).json({ message: 'No students with email addresses' });
+
+    await sendWorkshopCustomEmail(emails, subject, message, workshop.title);
+    res.json({ message: `Email sent to ${emails.length} students`, count: emails.length });
+  } catch (error) {
+    console.error('Email all students error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+// Send email to one student
+exports.emailOneStudent = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { subject, message } = req.body;
+    if (!subject || !message) return res.status(400).json({ message: 'Subject and message required' });
+
+    const student = await WorkshopStudent.findByPk(id, {
+      include: [{ model: Workshop, as: 'workshop' }]
+    });
+    if (!student) return res.status(404).json({ message: 'Student not found' });
+    if (!student.email) return res.status(400).json({ message: 'Student has no email' });
+
+    await sendWorkshopCustomEmail(student.email, subject, message, student.workshop?.title || '');
+    res.json({ message: 'Email sent' });
+  } catch (error) {
+    console.error('Email student error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+// Send attendance ID email to a student
+exports.sendAttendanceId = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const student = await WorkshopStudent.findByPk(id, {
+      include: [{ model: Workshop, as: 'workshop' }]
+    });
+    if (!student) return res.status(404).json({ message: 'Student not found' });
+    if (!student.email) return res.status(400).json({ message: 'Student has no email' });
+
+    await sendAttendanceIdEmail(student.email, student, student.workshop);
+    res.json({ message: 'Attendance ID sent' });
+  } catch (error) {
+    console.error('Send attendance ID error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+// Get attendance ID HTML (for printing from admin)
+exports.getAttendanceIdHtml = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const student = await WorkshopStudent.findByPk(id, {
+      include: [{ model: Workshop, as: 'workshop' }]
+    });
+    if (!student) return res.status(404).json({ message: 'Student not found' });
+
+    const html = generateAttendanceIdHtml(student, student.workshop);
+    res.json({ html, student, workshop: student.workshop });
+  } catch (error) {
+    console.error('Get attendance ID error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
 exports.getMyWorkshops = async (req, res) => {
   try {
     const employeeId = req.employee.employeeId;

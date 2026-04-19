@@ -789,6 +789,105 @@ ${workshop.objectives ? `<p style="margin:10px 0 0;padding:8px;background:#eff6f
   }
 };
 
+// Generate attendance ID HTML (reusable for email and print)
+const generateAttendanceIdHtml = (student, workshop) => {
+  const color = workshop.color || '#1a56db';
+  const name = `${student.firstName || ''} ${student.lastName || ''}`.trim();
+  const code = `WS-${(student.studentId || '').substring(0, 8).toUpperCase()}`;
+  const qrData = JSON.stringify({ studentId: student.studentId, name, workshopId: workshop.workshopId, workshop: workshop.title, phone: student.phone });
+  const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(qrData)}`;
+
+  return `<div style="width:280px;margin:0 auto;border:3px solid ${color};border-radius:16px;overflow:hidden;font-family:Arial,sans-serif;">
+<div style="background:${color};padding:14px;text-align:center;">
+<p style="color:rgba(255,255,255,0.85);margin:0;font-size:10px;">مؤسسة عبدالمنعم الراشد الإنسانية</p>
+<h3 style="color:#fff;margin:4px 0 0;font-size:15px;">فاب لاب الأحساء</h3>
+</div>
+<div style="padding:16px;text-align:center;background:#fff;">
+<p style="margin:0 0 4px;font-size:10px;color:${color};font-weight:700;letter-spacing:1px;">بطاقة حضور ورشة تدريبية</p>
+<p style="margin:0 0 4px;font-size:9px;color:#94a3b8;">WORKSHOP ATTENDANCE ID</p>
+<div style="margin:10px auto;padding:10px;background:${color}10;border-radius:10px;display:inline-block;">
+<img src="${qrUrl}" alt="QR" style="width:130px;height:130px;" />
+</div>
+<h2 style="margin:8px 0 4px;font-size:18px;color:#1e293b;">${name}</h2>
+<div style="display:inline-block;background:${color};color:#fff;padding:4px 14px;border-radius:8px;font-size:11px;font-weight:700;margin-bottom:10px;">${workshop.title}</div>
+<table style="width:100%;font-size:11px;border-collapse:collapse;text-align:right;margin-top:8px;">
+${student.phone ? `<tr><td style="padding:4px 0;color:#64748b;">الهاتف</td><td style="padding:4px 0;color:#1e293b;font-weight:600;" dir="ltr">${student.phone}</td></tr>` : ''}
+${workshop.startDate ? `<tr><td style="padding:4px 0;color:#64748b;">التاريخ</td><td style="padding:4px 0;color:#1e293b;font-weight:600;">${workshop.startDate}${workshop.endDate && workshop.endDate !== workshop.startDate ? ' → ' + workshop.endDate : ''}</td></tr>` : ''}
+${workshop.presenter ? `<tr><td style="padding:4px 0;color:#64748b;">المقدم</td><td style="padding:4px 0;color:#1e293b;font-weight:600;">${workshop.presenter}</td></tr>` : ''}
+</table>
+</div>
+<div style="background:${color};padding:8px;text-align:center;">
+<p style="color:rgba(255,255,255,0.7);margin:0;font-size:9px;font-family:monospace;">${code}</p>
+</div>
+</div>`;
+};
+
+// Send attendance ID email to a student
+const sendAttendanceIdEmail = async (studentEmail, student, workshop) => {
+  if (!studentEmail) return;
+  const name = `${student.firstName || ''} ${student.lastName || ''}`.trim();
+  const idHtml = generateAttendanceIdHtml(student, workshop);
+
+  const msg = {
+    to: studentEmail,
+    from: { email: process.env.SENDGRID_FROM_EMAIL, name: process.env.SENDGRID_FROM_NAME || 'FABLAB Al-Ahsa' },
+    subject: `بطاقة حضور الورشة: ${workshop.title} | Attendance ID`,
+    html: `<div dir="rtl" style="font-family:Arial,sans-serif;max-width:550px;margin:0 auto;background:#fff;">
+<div style="background:${workshop.color || '#1a56db'};padding:16px;text-align:center;border-radius:10px 10px 0 0;">
+<h2 style="color:#fff;margin:0;font-size:16px;">فاب لاب الأحساء | FABLAB Al-Ahsa</h2>
+</div>
+<div style="padding:24px;">
+<p style="color:#1e293b;font-size:14px;margin:0 0 8px;"><b>مرحباً ${name}</b></p>
+<p style="color:#475569;font-size:13px;margin:0 0 20px;line-height:1.6;">مرفق بطاقة الحضور الخاصة بك للورشة التدريبية. يرجى طباعتها وإحضارها معك يوم الورشة.</p>
+<p dir="ltr" style="color:#475569;font-size:12px;margin:0 0 20px;">Please print your attendance ID below and bring it with you to the workshop.</p>
+${idHtml}
+<div style="margin-top:20px;padding:12px;background:#fef3c7;border-radius:8px;border:1px solid #f59e0b;text-align:center;">
+<p style="margin:0;color:#92400e;font-weight:700;font-size:13px;">⚠ يرجى طباعة هذه البطاقة وإحضارها معك — Print and bring this ID</p>
+</div>
+</div>
+<div style="background:#1e293b;padding:10px;text-align:center;border-radius:0 0 10px 10px;">
+<p style="color:rgba(255,255,255,0.5);margin:0;font-size:10px;">فاب لاب الأحساء — مختبر التصنيع الرقمي</p>
+</div>
+</div>`
+  };
+
+  try {
+    await sgMail.send(msg);
+    console.log(`✅ Attendance ID email sent to ${studentEmail}`);
+  } catch (error) {
+    console.error('❌ Error sending attendance ID email:', error);
+  }
+};
+
+// Send custom email to workshop student(s)
+const sendWorkshopCustomEmail = async (recipients, subject, messageBody, workshopTitle) => {
+  const msg = {
+    to: recipients,
+    from: { email: process.env.SENDGRID_FROM_EMAIL, name: process.env.SENDGRID_FROM_NAME || 'FABLAB Al-Ahsa' },
+    subject: `${workshopTitle}: ${subject}`,
+    html: `<div dir="rtl" style="font-family:Arial,sans-serif;max-width:550px;margin:0 auto;background:#fff;">
+<div style="background:#1a56db;padding:16px;text-align:center;border-radius:10px 10px 0 0;">
+<h2 style="color:#fff;margin:0;font-size:16px;">فاب لاب الأحساء | FABLAB Al-Ahsa</h2>
+</div>
+<div style="padding:24px;">
+<h3 style="color:#1e293b;margin:0 0 6px;font-size:16px;">${subject}</h3>
+<p style="color:#3b82f6;font-size:12px;margin:0 0 16px;">الورشة: ${workshopTitle}</p>
+<div style="color:#334155;font-size:14px;line-height:1.8;white-space:pre-wrap;">${messageBody}</div>
+</div>
+<div style="background:#1e293b;padding:10px;text-align:center;border-radius:0 0 10px 10px;">
+<p style="color:rgba(255,255,255,0.5);margin:0;font-size:10px;">فاب لاب الأحساء — مختبر التصنيع الرقمي</p>
+</div>
+</div>`
+  };
+
+  try {
+    await sgMail.send(msg);
+    console.log(`✅ Workshop custom email sent to ${Array.isArray(recipients) ? recipients.length + ' recipients' : recipients}`);
+  } catch (error) {
+    console.error('❌ Error sending workshop custom email:', error);
+  }
+};
+
 module.exports = {
   sendRegistrationConfirmation,
   sendEngineerNotification,
@@ -797,5 +896,8 @@ module.exports = {
   sendTaskRatingEmail,
   sendTaskReminderEmail,
   sendCourseInactivityWarning,
-  sendWorkshopRegistrationEmail
+  sendWorkshopRegistrationEmail,
+  sendAttendanceIdEmail,
+  sendWorkshopCustomEmail,
+  generateAttendanceIdHtml
 };
