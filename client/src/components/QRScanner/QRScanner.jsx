@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Html5Qrcode } from 'html5-qrcode';
+import api from '../../config/api';
 import './QRScanner.css';
 
 const QRScanner = ({ onClose }) => {
@@ -11,15 +12,25 @@ const QRScanner = ({ onClose }) => {
   const welcomeTimerRef = useRef(null);
   const cooldownRef = useRef(false);
 
-  const showWelcome = useCallback((data) => {
+  const showWelcome = useCallback(async (data) => {
     if (cooldownRef.current) return;
     cooldownRef.current = true;
 
     try {
       const parsed = typeof data === 'string' ? JSON.parse(data) : data;
+
+      // If no color in QR data, fetch from API
+      if (!parsed.color && parsed.studentId) {
+        try {
+          const res = await api.get(`/workshops/students/${parsed.studentId}/attendance-id`);
+          if (res.data.workshop?.color) {
+            parsed.color = res.data.workshop.color;
+          }
+        } catch (e) {}
+      }
+
       setWelcome(parsed);
 
-      // Auto-close after 7 seconds, then ready for next scan
       if (welcomeTimerRef.current) clearTimeout(welcomeTimerRef.current);
       welcomeTimerRef.current = setTimeout(() => {
         setWelcome(null);
