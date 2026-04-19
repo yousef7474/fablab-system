@@ -794,7 +794,7 @@ const generateAttendanceIdHtml = (student, workshop) => {
   const color = workshop.color || '#1a56db';
   const name = `${student.firstName || ''} ${student.lastName || ''}`.trim();
   const code = `WS-${(student.studentId || '').substring(0, 8).toUpperCase()}`;
-  const qrData = JSON.stringify({ studentId: student.studentId, name, workshopId: workshop.workshopId, workshop: workshop.title, phone: student.phone });
+  const qrData = JSON.stringify({ studentId: student.studentId, name, workshopId: workshop.workshopId, workshop: workshop.title, phone: student.phone, color: workshop.color || '#1a56db' });
   const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(qrData)}`;
 
   return `<div style="width:280px;margin:0 auto;border:3px solid ${color};border-radius:16px;overflow:hidden;font-family:Arial,sans-serif;">

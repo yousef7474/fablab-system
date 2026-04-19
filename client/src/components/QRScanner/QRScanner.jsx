@@ -1,180 +1,134 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
-import { toast } from 'react-toastify';
-import { motion } from 'framer-motion';
+import { Html5Qrcode } from 'html5-qrcode';
 import './QRScanner.css';
 
-const QRScanner = ({ onClose, onResult }) => {
+const QRScanner = ({ onClose }) => {
   const { i18n } = useTranslation();
   const isRTL = i18n.language === 'ar';
-  const videoRef = useRef(null);
-  const canvasRef = useRef(null);
-  const [scanning, setScanning] = useState(true);
-  const [result, setResult] = useState(null);
-  const [error, setError] = useState(null);
-  const streamRef = useRef(null);
-  const intervalRef = useRef(null);
+  const [welcome, setWelcome] = useState(null);
+  const scannerRef = useRef(null);
+  const welcomeTimerRef = useRef(null);
+  const cooldownRef = useRef(false);
 
-  useEffect(() => {
-    startCamera();
-    return () => stopCamera();
+  const showWelcome = useCallback((data) => {
+    if (cooldownRef.current) return;
+    cooldownRef.current = true;
+
+    try {
+      const parsed = typeof data === 'string' ? JSON.parse(data) : data;
+      setWelcome(parsed);
+
+      // Auto-close after 7 seconds, then ready for next scan
+      if (welcomeTimerRef.current) clearTimeout(welcomeTimerRef.current);
+      welcomeTimerRef.current = setTimeout(() => {
+        setWelcome(null);
+        cooldownRef.current = false;
+      }, 7000);
+    } catch {
+      cooldownRef.current = false;
+    }
   }, []);
 
-  const startCamera = async () => {
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: 'environment', width: { ideal: 640 }, height: { ideal: 480 } }
-      });
-      streamRef.current = stream;
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-        videoRef.current.play();
-      }
-      // Start scanning frames
-      intervalRef.current = setInterval(scanFrame, 500);
-    } catch (err) {
-      console.error('Camera error:', err);
-      setError(isRTL ? 'لا يمكن الوصول للكاميرا' : 'Cannot access camera');
-    }
-  };
+  useEffect(() => {
+    const scannerId = 'qr-reader';
+    let html5Qr = null;
 
-  const stopCamera = () => {
-    if (intervalRef.current) clearInterval(intervalRef.current);
-    if (streamRef.current) {
-      streamRef.current.getTracks().forEach(t => t.stop());
-    }
-  };
+    const startScanner = async () => {
+      try {
+        html5Qr = new Html5Qrcode(scannerId);
+        scannerRef.current = html5Qr;
 
-  const scanFrame = () => {
-    if (!videoRef.current || !canvasRef.current || !scanning) return;
-    const video = videoRef.current;
-    const canvas = canvasRef.current;
-    const ctx = canvas.getContext('2d');
-
-    if (video.readyState !== video.HAVE_ENOUGH_DATA) return;
-
-    canvas.width = video.videoWidth;
-    canvas.height = video.videoHeight;
-    ctx.drawImage(video, 0, 0);
-
-    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-
-    // Use jsQR if available, otherwise try BarcodeDetector API
-    if (window.BarcodeDetector) {
-      const detector = new window.BarcodeDetector({ formats: ['qr_code'] });
-      detector.detect(canvas).then(barcodes => {
-        if (barcodes.length > 0) {
-          handleQRResult(barcodes[0].rawValue);
+        await html5Qr.start(
+          { facingMode: 'environment' },
+          { fps: 10, qrbox: { width: 250, height: 250 }, aspectRatio: 1.0 },
+          (decodedText) => {
+            showWelcome(decodedText);
+          },
+          () => {} // ignore errors (no QR found in frame)
+        );
+      } catch (err) {
+        console.error('Scanner start error:', err);
+        // Try any available camera
+        try {
+          const devices = await Html5Qrcode.getCameras();
+          if (devices && devices.length > 0) {
+            html5Qr = new Html5Qrcode(scannerId);
+            scannerRef.current = html5Qr;
+            await html5Qr.start(
+              devices[0].id,
+              { fps: 10, qrbox: { width: 250, height: 250 } },
+              (decodedText) => {
+                showWelcome(decodedText);
+              },
+              () => {}
+            );
+          }
+        } catch (e2) {
+          console.error('Fallback camera error:', e2);
         }
-      }).catch(() => {});
-    }
-  };
+      }
+    };
 
-  const handleQRResult = (data) => {
-    if (!scanning) return;
-    setScanning(false);
+    startScanner();
 
-    try {
-      const parsed = JSON.parse(data);
-      setResult(parsed);
-      if (onResult) onResult(parsed);
-      stopCamera();
-    } catch {
-      // Not valid JSON, try as plain text
-      setResult({ raw: data });
-      stopCamera();
-    }
-  };
+    return () => {
+      if (welcomeTimerRef.current) clearTimeout(welcomeTimerRef.current);
+      if (scannerRef.current) {
+        scannerRef.current.stop().catch(() => {});
+        scannerRef.current.clear().catch(() => {});
+      }
+    };
+  }, [showWelcome]);
 
-  // Manual input fallback
-  const [manualInput, setManualInput] = useState('');
-  const handleManualSubmit = () => {
-    if (!manualInput.trim()) return;
-    try {
-      const parsed = JSON.parse(manualInput.trim());
-      setResult(parsed);
-      setScanning(false);
-      if (onResult) onResult(parsed);
-      stopCamera();
-    } catch {
-      toast.error(isRTL ? 'بيانات غير صالحة' : 'Invalid data');
+  const handleClose = () => {
+    if (scannerRef.current) {
+      scannerRef.current.stop().catch(() => {});
     }
+    onClose();
   };
 
   return (
-    <motion.div className="qr-scanner-overlay" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+    <div className="qr-scanner-overlay">
       <div className="qr-scanner-modal">
+        {/* Header */}
         <div className="qr-scanner-header">
           <h3>{isRTL ? 'مسح بطاقة الحضور' : 'Scan Attendance ID'}</h3>
-          <button className="qr-scanner-close" onClick={() => { stopCamera(); onClose(); }}>×</button>
+          <button className="qr-scanner-close" onClick={handleClose}>×</button>
         </div>
 
-        {error ? (
-          <div className="qr-scanner-error">
-            <p>{error}</p>
-            <div className="qr-scanner-manual">
-              <p style={{ fontSize: '0.85rem', color: '#64748b', marginBottom: 8 }}>
-                {isRTL ? 'أو أدخل رمز الطالب يدوياً:' : 'Or enter student code manually:'}
-              </p>
-              <input
-                value={manualInput}
-                onChange={e => setManualInput(e.target.value)}
-                placeholder={isRTL ? 'WS-XXXXXXXX أو بيانات QR' : 'WS-XXXXXXXX or QR data'}
-                style={{ width: '100%', padding: '0.6rem', borderRadius: 8, border: '1.5px solid #e2e8f0', fontFamily: 'monospace', textAlign: 'center' }}
-              />
-              <button onClick={handleManualSubmit} style={{ marginTop: 8, padding: '0.5rem 1.5rem', borderRadius: 8, border: 'none', background: '#3b82f6', color: 'white', cursor: 'pointer', fontWeight: 600, fontFamily: 'inherit' }}>
-                {isRTL ? 'بحث' : 'Search'}
-              </button>
-            </div>
-          </div>
-        ) : !result ? (
-          <div className="qr-scanner-camera">
-            <video ref={videoRef} playsInline muted />
-            <canvas ref={canvasRef} style={{ display: 'none' }} />
-            <div className="qr-scanner-frame" />
+        {/* Camera */}
+        <div style={{ position: 'relative' }}>
+          <div id="qr-reader" style={{ width: '100%' }} />
+          {!welcome && (
             <p className="qr-scanner-hint">
-              {isRTL ? 'وجّه الكاميرا نحو رمز QR في بطاقة الحضور' : 'Point camera at the QR code on the attendance ID'}
+              {isRTL ? 'وجّه الكاميرا نحو رمز QR' : 'Point camera at QR code'}
             </p>
-            {/* Manual fallback */}
-            <div className="qr-scanner-manual">
-              <p style={{ fontSize: '0.8rem', color: '#94a3b8', marginBottom: 6 }}>
-                {isRTL ? 'أو أدخل الرمز يدوياً:' : 'Or enter code manually:'}
-              </p>
-              <div style={{ display: 'flex', gap: 6 }}>
-                <input
-                  value={manualInput}
-                  onChange={e => setManualInput(e.target.value)}
-                  placeholder="WS-XXXXXXXX"
-                  style={{ flex: 1, padding: '0.5rem', borderRadius: 8, border: '1.5px solid #e2e8f0', fontFamily: 'monospace', textAlign: 'center', fontSize: '0.85rem' }}
-                />
-                <button onClick={handleManualSubmit} style={{ padding: '0.5rem 1rem', borderRadius: 8, border: 'none', background: '#3b82f6', color: 'white', cursor: 'pointer', fontWeight: 600, fontSize: '0.82rem', fontFamily: 'inherit' }}>
-                  {isRTL ? 'بحث' : 'Go'}
-                </button>
-              </div>
+          )}
+        </div>
+
+        {/* Welcome Popup */}
+        {welcome && (
+          <div
+            className="qr-welcome-popup"
+            style={{ borderColor: welcome.color || '#1a56db', '--ws-color': welcome.color || '#1a56db' }}
+          >
+            <div className="qr-welcome-icon" style={{ background: welcome.color || '#1a56db' }}>✓</div>
+            <h2 className="qr-welcome-title">
+              {isRTL ? 'أهلاً وسهلاً في فاب لاب الأحساء' : 'Welcome to FABLAB Al-Ahsa'}
+            </h2>
+            <div className="qr-welcome-name">{welcome.name || ''}</div>
+            <div className="qr-welcome-workshop" style={{ background: welcome.color || '#1a56db' }}>
+              {welcome.workshop || ''}
             </div>
-          </div>
-        ) : (
-          <div className="qr-scanner-result">
-            <div className="qr-result-icon">✓</div>
-            <h4>{isRTL ? 'تم التعرف على الطالب' : 'Student Identified'}</h4>
-            <div className="qr-result-card">
-              {result.name && <div className="qr-result-row"><span>{isRTL ? 'الاسم' : 'Name'}</span><strong>{result.name}</strong></div>}
-              {result.phone && <div className="qr-result-row"><span>{isRTL ? 'الهاتف' : 'Phone'}</span><strong dir="ltr">{result.phone}</strong></div>}
-              {result.workshop && <div className="qr-result-row"><span>{isRTL ? 'الورشة' : 'Workshop'}</span><strong>{result.workshop}</strong></div>}
-              {result.studentId && <div className="qr-result-row"><span>{isRTL ? 'الرمز' : 'Code'}</span><strong style={{ fontFamily: 'monospace' }}>WS-{result.studentId.substring(0, 8).toUpperCase()}</strong></div>}
-            </div>
-            <div className="qr-result-actions">
-              <button onClick={() => { setResult(null); setScanning(true); startCamera(); }} className="qr-btn-secondary">
-                {isRTL ? 'مسح آخر' : 'Scan Another'}
-              </button>
-              <button onClick={() => { stopCamera(); onClose(); }} className="qr-btn-primary">
-                {isRTL ? 'إغلاق' : 'Close'}
-              </button>
+            {welcome.phone && <div className="qr-welcome-phone" dir="ltr">{welcome.phone}</div>}
+            <div className="qr-welcome-bar" style={{ background: welcome.color || '#1a56db' }}>
+              <div className="qr-welcome-bar-fill" />
             </div>
           </div>
         )}
       </div>
-    </motion.div>
+    </div>
   );
 };
 
