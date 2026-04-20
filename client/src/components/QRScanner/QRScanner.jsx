@@ -77,15 +77,7 @@ const QRScanner = ({ onClose }) => {
           (decodedText) => { showWelcome(decodedText); },
           () => {}
         );
-        if (mountedRef.current) {
-          setScannerReady(true);
-          // Mirror front camera video
-          const video = document.querySelector('#qr-reader video');
-          if (video) {
-            if (facingMode === 'user') video.classList.add('front-camera');
-            else video.classList.remove('front-camera');
-          }
-        }
+        if (mountedRef.current) setScannerReady(true);
       } catch (err) {
         console.error('Scanner start error:', err);
         // Try listing all cameras and use first available

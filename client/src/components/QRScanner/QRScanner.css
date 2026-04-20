@@ -63,10 +63,6 @@
   border-radius: 0 !important;
 }
 
-#qr-reader video.front-camera {
-  transform: scaleX(-1);
-}
-
 #qr-reader__scan_region {
   min-height: 280px;
 }
