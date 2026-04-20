@@ -7525,6 +7525,20 @@ const AdminDashboard = () => {
                             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="2"/><path d="M15 8h3M15 12h3M7 16h10"/></svg>
                             {isRTL ? 'بطاقة' : 'ID'}
                           </button>
+                          <button onClick={async () => {
+                            try {
+                              const res = await api.get(`/workshops/students/${s.studentId}/certificate-pdf`, { responseType: 'blob' });
+                              const link = document.createElement('a');
+                              link.href = URL.createObjectURL(new Blob([res.data], { type: 'application/pdf' }));
+                              link.download = `certificate_${s.firstName}.pdf`;
+                              link.click();
+                              URL.revokeObjectURL(link.href);
+                            } catch(e) { toast.error(isRTL ? 'خطأ في إنشاء PDF' : 'Error generating PDF'); }
+                          }} title={isRTL ? 'تحميل PDF' : 'Download PDF'}
+                            style={{ padding: '0.35rem 0.7rem', borderRadius: 6, border: 'none', background: 'linear-gradient(135deg, #dc2626, #b91c1c)', color: 'white', cursor: 'pointer', fontWeight: 600, fontSize: '0.72rem', fontFamily: 'inherit', display: 'flex', alignItems: 'center', gap: 4 }}>
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><polyline points="9 15 12 18 15 15"/></svg>
+                            PDF
+                          </button>
                           <button onClick={() => handlePrintWorkshopCertificate(s, viewingWorkshopStudents)} title={isRTL ? 'طباعة الشهادة' : 'Print Certificate'}
                             style={{ padding: '0.35rem 0.7rem', borderRadius: 6, border: 'none', background: 'linear-gradient(135deg, #f59e0b, #d97706)', color: 'white', cursor: 'pointer', fontWeight: 600, fontSize: '0.72rem', fontFamily: 'inherit', display: 'flex', alignItems: 'center', gap: 4 }}>
                             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 15l-8.5-5L12 5l8.5 5L12 15z"/><path d="M12 15v6M7 11v5a5 5 0 0010 0v-5"/></svg>

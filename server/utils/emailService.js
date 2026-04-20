@@ -933,7 +933,7 @@ ${workshop.objectives ? `<p style="margin:12px auto;max-width:450px;padding:10px
 </div>`
   };
 
-  // Generate printable certificate HTML file for attachment
+  // Generate printable certificate HTML
   const certHtml = `<!DOCTYPE html><html dir="rtl" lang="ar"><head><meta charset="UTF-8"><title>شهادة - ${name}</title>
 <style>@page{size:A4 landscape;margin:0;}*{margin:0;padding:0;box-sizing:border-box;}html,body{width:297mm;height:210mm;overflow:hidden;}
 body{font-family:'Segoe UI',Tahoma,Arial,sans-serif;background:linear-gradient(135deg,#667eea 0%,#764ba2 50%,#f093fb 100%);display:flex;align-items:center;justify-content:center;padding:10mm;}
@@ -974,13 +974,25 @@ body{font-family:'Segoe UI',Tahoma,Arial,sans-serif;background:linear-gradient(1
 <div class="fs"><div><div class="ci">${certId}</div><div class="cd">${new Date().toLocaleDateString('ar-SA')}</div></div><div class="of">فاب لاب الأحساء — مختبر التصنيع الرقمي<br/>FABLAB Al-Ahsa</div><div style="width:140px;"></div></div>
 </div></div></body></html>`;
 
-  // Attach as HTML file (student can open in browser and print to PDF)
-  msg.attachments = [{
-    content: Buffer.from(certHtml).toString('base64'),
-    filename: `certificate_${name.replace(/\s+/g, '_')}.html`,
-    type: 'text/html',
-    disposition: 'attachment'
-  }];
+  // Generate PDF and attach
+  try {
+    const { generatePdfFromHtml } = require('./pdfGenerator');
+    const pdfBuffer = await generatePdfFromHtml(certHtml, { landscape: true });
+    msg.attachments = [{
+      content: pdfBuffer.toString('base64'),
+      filename: `certificate.pdf`,
+      type: 'application/pdf',
+      disposition: 'attachment'
+    }];
+  } catch (pdfErr) {
+    console.error('PDF generation failed, attaching HTML instead:', pdfErr.message);
+    msg.attachments = [{
+      content: Buffer.from(certHtml).toString('base64'),
+      filename: `certificate.html`,
+      type: 'text/html',
+      disposition: 'attachment'
+    }];
+  }
 
   try {
     await sgMail.send(msg);
