@@ -1,21 +1,29 @@
 const puppeteer = require('puppeteer-core');
 
 const fs = require('fs');
+const { execSync } = require('child_process');
 
 let chromiumPath;
 try {
   chromiumPath = require('chromium').path;
 } catch {
   // On Linux server, find system chromium
-  const paths = ['/usr/bin/chromium-browser', '/usr/bin/chromium', '/usr/bin/google-chrome', '/snap/bin/chromium'];
-  chromiumPath = paths.find(p => fs.existsSync(p)) || '/usr/bin/chromium-browser';
+  const paths = ['/snap/bin/chromium', '/usr/bin/chromium-browser', '/usr/bin/chromium', '/usr/bin/google-chrome'];
+  chromiumPath = paths.find(p => fs.existsSync(p));
+  if (!chromiumPath) {
+    try { chromiumPath = execSync('which chromium-browser || which chromium || which google-chrome 2>/dev/null').toString().trim(); } catch {}
+  }
 }
 
+console.log('PDF Generator: Chromium path =', chromiumPath);
+
 const generatePdfFromHtml = async (html, options = {}) => {
+  if (!chromiumPath) throw new Error('Chromium not found');
+
   const browser = await puppeteer.launch({
     executablePath: chromiumPath,
-    headless: true,
-    args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage']
+    headless: 'new',
+    args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage', '--disable-gpu']
   });
 
   try {
