@@ -29,16 +29,20 @@ const generatePdfFromHtml = async (html, options = {}) => {
 
   try {
     const page = await browser.newPage();
-    await page.setContent(html, { waitUntil: 'networkidle0', timeout: 15000 });
+    await page.setContent(html, { waitUntil: 'load', timeout: 30000 });
+    // Wait a bit for fonts/images to load
+    await new Promise(r => setTimeout(r, 2000));
 
-    const pdfBuffer = await page.pdf({
+    const pdfData = await page.pdf({
       format: options.format || 'A4',
       landscape: options.landscape !== undefined ? options.landscape : true,
       printBackground: true,
+      preferCSSPageSize: true,
       margin: { top: 0, right: 0, bottom: 0, left: 0 }
     });
 
-    return pdfBuffer;
+    // Ensure it's a proper Buffer
+    return Buffer.from(pdfData);
   } finally {
     await browser.close();
   }
