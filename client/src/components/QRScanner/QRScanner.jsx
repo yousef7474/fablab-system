@@ -73,7 +73,7 @@ const QRScanner = ({ onClose }) => {
 
         await html5Qr.start(
           { facingMode },
-          { fps: 10, qrbox: { width: 220, height: 220 } },
+          { fps: 15, qrbox: undefined },
           (decodedText) => { showWelcome(decodedText); },
           () => {}
         );
@@ -96,7 +96,7 @@ const QRScanner = ({ onClose }) => {
             scannerRef.current = html5Qr;
             await html5Qr.start(
               devices[0].id,
-              { fps: 10, qrbox: { width: 220, height: 220 } },
+              { fps: 15, qrbox: undefined },
               (decodedText) => { showWelcome(decodedText); },
               () => {}
             );
