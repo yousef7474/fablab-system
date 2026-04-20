@@ -3,16 +3,14 @@ const puppeteer = require('puppeteer-core');
 const fs = require('fs');
 const { execSync } = require('child_process');
 
-let chromiumPath;
-try {
-  chromiumPath = require('chromium').path;
-} catch {
-  // On Linux server, find system chromium
-  const paths = ['/snap/bin/chromium', '/usr/bin/chromium-browser', '/usr/bin/chromium', '/usr/bin/google-chrome'];
-  chromiumPath = paths.find(p => fs.existsSync(p));
-  if (!chromiumPath) {
-    try { chromiumPath = execSync('which chromium-browser || which chromium || which google-chrome 2>/dev/null').toString().trim(); } catch {}
-  }
+// Always prefer system/snap chromium over npm chromium package
+const paths = ['/snap/bin/chromium', '/usr/bin/chromium-browser', '/usr/bin/chromium', '/usr/bin/google-chrome'];
+let chromiumPath = paths.find(p => fs.existsSync(p));
+if (!chromiumPath) {
+  try { chromiumPath = execSync('which chromium-browser || which chromium || which google-chrome 2>/dev/null').toString().trim(); } catch {}
+}
+if (!chromiumPath) {
+  try { chromiumPath = require('chromium').path; } catch {}
 }
 
 console.log('PDF Generator: Chromium path =', chromiumPath);
