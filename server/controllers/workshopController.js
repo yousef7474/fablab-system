@@ -662,7 +662,7 @@ exports.exportStudentsCSV = async (req, res) => {
 
     const csv = BOM + rows.join('\n');
     res.setHeader('Content-Type', 'text/csv; charset=utf-8');
-    res.setHeader('Content-Disposition', `attachment; filename=workshop_${workshop.title.replace(/[^a-zA-Z0-9\u0600-\u06FF]/g, '_')}.csv`);
+    res.setHeader('Content-Disposition', `attachment; filename="workshop_export.csv"; filename*=UTF-8''${encodeURIComponent(workshop.title)}.csv`);
     res.send(csv);
   } catch (error) {
     console.error('Export CSV error:', error);
