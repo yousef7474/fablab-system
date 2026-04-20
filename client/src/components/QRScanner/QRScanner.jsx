@@ -8,6 +8,7 @@ const QRScanner = ({ onClose }) => {
   const { i18n } = useTranslation();
   const isRTL = i18n.language === 'ar';
   const [welcome, setWelcome] = useState(null);
+  const [facingMode, setFacingMode] = useState('environment');
   const scannerRef = useRef(null);
   const welcomeTimerRef = useRef(null);
   const cooldownRef = useRef(false);
@@ -46,21 +47,26 @@ const QRScanner = ({ onClose }) => {
     let html5Qr = null;
 
     const startScanner = async () => {
+      // Stop previous instance if switching camera
+      if (scannerRef.current) {
+        try { await scannerRef.current.stop(); } catch(e) {}
+        try { scannerRef.current.clear(); } catch(e) {}
+      }
+
       try {
         html5Qr = new Html5Qrcode(scannerId);
         scannerRef.current = html5Qr;
 
         await html5Qr.start(
-          { facingMode: 'environment' },
+          { facingMode },
           { fps: 10, qrbox: { width: 250, height: 250 }, aspectRatio: 1.0 },
           (decodedText) => {
             showWelcome(decodedText);
           },
-          () => {} // ignore errors (no QR found in frame)
+          () => {}
         );
       } catch (err) {
         console.error('Scanner start error:', err);
-        // Try any available camera
         try {
           const devices = await Html5Qrcode.getCameras();
           if (devices && devices.length > 0) {
@@ -69,9 +75,7 @@ const QRScanner = ({ onClose }) => {
             await html5Qr.start(
               devices[0].id,
               { fps: 10, qrbox: { width: 250, height: 250 } },
-              (decodedText) => {
-                showWelcome(decodedText);
-              },
+              (decodedText) => { showWelcome(decodedText); },
               () => {}
             );
           }
@@ -90,7 +94,7 @@ const QRScanner = ({ onClose }) => {
         scannerRef.current.clear().catch(() => {});
       }
     };
-  }, [showWelcome]);
+  }, [showWelcome, facingMode]);
 
   const handleClose = () => {
     if (scannerRef.current) {
@@ -105,7 +109,14 @@ const QRScanner = ({ onClose }) => {
         {/* Header */}
         <div className="qr-scanner-header">
           <h3>{isRTL ? 'مسح بطاقة الحضور' : 'Scan Attendance ID'}</h3>
-          <button className="qr-scanner-close" onClick={handleClose}>×</button>
+          <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+            <button onClick={() => setFacingMode(f => f === 'environment' ? 'user' : 'environment')}
+              style={{ background: '#f1f5f9', border: 'none', borderRadius: 8, padding: '0.4rem 0.7rem', cursor: 'pointer', fontSize: '0.78rem', fontWeight: 600, fontFamily: 'inherit', display: 'flex', alignItems: 'center', gap: 4 }}>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#334155" strokeWidth="2"><path d="M11 19H4a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h5"/><path d="M13 5h7a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2h-5"/><circle cx="12" cy="12" r="3"/><path d="m18 22-3-3 3-3"/><path d="m6 2 3 3-3 3"/></svg>
+              {facingMode === 'environment' ? (isRTL ? 'أمامية' : 'Front') : (isRTL ? 'خلفية' : 'Rear')}
+            </button>
+            <button className="qr-scanner-close" onClick={handleClose}>×</button>
+          </div>
         </div>
 
         {/* Camera */}

@@ -619,7 +619,8 @@ exports.exportStudentsCSV = async (req, res) => {
   try {
     const { id } = req.params;
     const workshop = await Workshop.findByPk(id, {
-      include: [{ model: WorkshopStudent, as: 'students', order: [['createdAt', 'ASC']] }]
+      include: [{ model: WorkshopStudent, as: 'students' }],
+      order: [[{ model: WorkshopStudent, as: 'students' }, 'createdAt', 'ASC']]
     });
     if (!workshop) return res.status(404).json({ message: 'Workshop not found' });
 

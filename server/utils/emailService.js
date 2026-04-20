@@ -933,6 +933,55 @@ ${workshop.objectives ? `<p style="margin:12px auto;max-width:450px;padding:10px
 </div>`
   };
 
+  // Generate printable certificate HTML file for attachment
+  const certHtml = `<!DOCTYPE html><html dir="rtl" lang="ar"><head><meta charset="UTF-8"><title>شهادة - ${name}</title>
+<style>@page{size:A4 landscape;margin:0;}*{margin:0;padding:0;box-sizing:border-box;}html,body{width:297mm;height:210mm;overflow:hidden;}
+body{font-family:'Segoe UI',Tahoma,Arial,sans-serif;background:linear-gradient(135deg,#667eea 0%,#764ba2 50%,#f093fb 100%);display:flex;align-items:center;justify-content:center;padding:10mm;}
+.cert{width:277mm;height:190mm;background:linear-gradient(145deg,#fff,#f8fafc);border-radius:16px;position:relative;overflow:hidden;box-shadow:0 30px 60px rgba(0,0,0,0.3);}
+.cert::before{content:'';position:absolute;inset:0;border:6px solid transparent;border-image:linear-gradient(135deg,#e02529,#ff6b6b,#feca57,#48dbfb,#e02529) 1;pointer-events:none;}
+.dc{position:absolute;border-radius:50%;opacity:0.1;}.d1{width:200px;height:200px;background:#e02529;top:-50px;right:-50px;}.d2{width:150px;height:150px;background:#667eea;bottom:-30px;left:-30px;}.d3{width:100px;height:100px;background:#feca57;top:50%;left:20px;transform:translateY(-50%);}
+.inner{padding:20mm 25mm;height:100%;display:flex;flex-direction:column;position:relative;z-index:1;}
+.hdr{display:flex;justify-content:space-between;align-items:center;margin-bottom:12mm;}.logo{height:85px;filter:drop-shadow(0 4px 8px rgba(0,0,0,0.15));}
+.hc{text-align:center;flex:1;padding:0 20px;}.on{font-size:11px;color:#64748b;letter-spacing:2px;margin-bottom:5px;}
+.ct{font-size:44px;font-weight:800;background:linear-gradient(135deg,#e02529,#ff6b6b);-webkit-background-clip:text;-webkit-text-fill-color:transparent;margin-bottom:4px;}
+.cs{font-size:16px;color:#475569;font-weight:500;letter-spacing:3px;}
+.div{height:4px;background:linear-gradient(90deg,#e02529,#ff6b6b,#feca57,#48dbfb,#667eea,#764ba2);border-radius:2px;margin-bottom:10mm;}
+.mc{text-align:center;flex:1;display:flex;flex-direction:column;justify-content:center;}
+.pt{font-size:14px;color:#64748b;margin-bottom:8px;}
+.vn{font-size:42px;font-weight:700;color:#1e293b;margin-bottom:8px;position:relative;display:inline-block;}
+.vn::after{content:'';position:absolute;bottom:-4px;left:50%;transform:translateX(-50%);width:80%;height:4px;background:linear-gradient(90deg,#e02529,#ff6b6b,#feca57);border-radius:2px;}
+.at{font-size:15px;line-height:1.8;color:#475569;max-width:600px;margin:15px auto;}.hl{color:#e02529;font-weight:700;font-size:17px;}
+.sc{display:flex;justify-content:center;gap:30px;margin:12px 0;}
+.st{background:linear-gradient(135deg,#e02529,#ff6b6b);color:#fff;padding:12px 30px;border-radius:12px;text-align:center;min-width:140px;}
+.st.a{background:linear-gradient(135deg,#667eea,#764ba2);}.st.g{background:linear-gradient(135deg,#f59e0b,#fbbf24);}
+.sv{font-size:22px;font-weight:700;}.sl{font-size:10px;opacity:0.9;margin-top:2px;}
+.ty{font-size:13px;color:#64748b;margin-top:10px;font-style:italic;}.hd{color:#e02529;font-weight:600;}
+.fs{display:flex;justify-content:space-between;align-items:flex-end;margin-top:auto;padding-top:10mm;}
+.ci{font-family:monospace;font-size:10px;color:#94a3b8;background:#f1f5f9;padding:6px 14px;border-radius:20px;display:inline-block;}
+.cd{font-size:10px;color:#94a3b8;margin-top:5px;}.of{text-align:center;flex:1;font-size:10px;color:#94a3b8;}
+.rb{position:absolute;top:25px;left:-35px;width:150px;height:30px;background:linear-gradient(135deg,#e02529,#c41e24);transform:rotate(-45deg);display:flex;align-items:center;justify-content:center;color:#fff;font-size:10px;font-weight:600;box-shadow:0 4px 10px rgba(0,0,0,0.2);}
+@media print{html,body{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;}body{padding:0;background:linear-gradient(135deg,#667eea 0%,#764ba2 50%,#f093fb 100%)!important;}.cert{box-shadow:none;margin:auto;}.ct{-webkit-text-fill-color:#e02529;color:#e02529;}}
+</style></head><body><div class="cert">
+<div class="dc d1"></div><div class="dc d2"></div><div class="dc d3"></div>
+<div class="rb">متدرب متميز</div>
+<div class="inner"><div class="hdr"><div><img src="https://fablabsahsa.com/found.png" class="logo"/></div><div class="hc"><div class="on">مؤسسة عبدالمنعم الراشد الإنسانية</div><div class="ct">شهادة إتمام ورشة</div><div class="cs">WORKSHOP CERTIFICATE</div></div><div><img src="https://fablabsahsa.com/fablab.png" class="logo"/></div></div>
+<div class="div"></div>
+<div class="mc"><div class="pt">تشهد إدارة فاب لاب الأحساء بأن</div><div class="vn">${name}</div>
+<div class="at">قد أتم بنجاح الورشة التدريبية <span class="hl">"${workshop.title}"</span>${workshop.presenter ? `<br/>التي قدمها <b>${workshop.presenter}</b>` : ''}
+<br/>${workshop.objectives || 'واكتسب المعارف والمهارات المطلوبة'}</div>
+<div class="sc">${workshop.totalHours ? `<div class="st"><div class="sv">${workshop.totalHours}</div><div class="sl">ساعة تدريبية</div></div>` : ''}${attendedDays > 0 ? `<div class="st a"><div class="sv">${attendedDays}</div><div class="sl">يوم حضور</div></div>` : ''}${startDateF ? `<div class="st g"><div class="sv">${startDateF}</div><div class="sl">تاريخ البداية</div></div>` : ''}</div>
+<div class="ty"><span class="hd">"ومن سلك طريقاً يلتمس فيه علماً سهّل الله له به طريقاً إلى الجنة"</span><br/>شكراً لحضورك وتفاعلك</div></div>
+<div class="fs"><div><div class="ci">${certId}</div><div class="cd">${new Date().toLocaleDateString('ar-SA')}</div></div><div class="of">فاب لاب الأحساء — مختبر التصنيع الرقمي<br/>FABLAB Al-Ahsa</div><div style="width:140px;"></div></div>
+</div></div></body></html>`;
+
+  // Attach as HTML file (student can open in browser and print to PDF)
+  msg.attachments = [{
+    content: Buffer.from(certHtml).toString('base64'),
+    filename: `certificate_${name.replace(/\s+/g, '_')}.html`,
+    type: 'text/html',
+    disposition: 'attachment'
+  }];
+
   try {
     await sgMail.send(msg);
     console.log(`✅ Certificate email sent to ${studentEmail}`);
