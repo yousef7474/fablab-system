@@ -3,11 +3,14 @@ const puppeteer = require('puppeteer-core');
 const fs = require('fs');
 const { execSync } = require('child_process');
 
-// Always prefer system/snap chromium over npm chromium package
-const paths = ['/snap/bin/chromium', '/usr/bin/chromium-browser', '/usr/bin/chromium', '/usr/bin/google-chrome'];
-let chromiumPath = paths.find(p => fs.existsSync(p));
+// Find chromium - prefer system install over npm package
+let chromiumPath;
+try {
+  chromiumPath = execSync('which chromium || which chromium-browser || which google-chrome 2>/dev/null').toString().trim();
+} catch {}
 if (!chromiumPath) {
-  try { chromiumPath = execSync('which chromium-browser || which chromium || which google-chrome 2>/dev/null').toString().trim(); } catch {}
+  const paths = ['/snap/bin/chromium', '/usr/bin/chromium-browser', '/usr/bin/chromium', '/usr/bin/google-chrome'];
+  chromiumPath = paths.find(p => { try { fs.accessSync(p, fs.constants.X_OK); return true; } catch { return false; } });
 }
 if (!chromiumPath) {
   try { chromiumPath = require('chromium').path; } catch {}
