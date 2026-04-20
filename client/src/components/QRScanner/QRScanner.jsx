@@ -9,9 +9,11 @@ const QRScanner = ({ onClose }) => {
   const isRTL = i18n.language === 'ar';
   const [welcome, setWelcome] = useState(null);
   const [facingMode, setFacingMode] = useState('environment');
+  const [scannerReady, setScannerReady] = useState(false);
   const scannerRef = useRef(null);
   const welcomeTimerRef = useRef(null);
   const cooldownRef = useRef(false);
+  const mountedRef = useRef(true);
 
   const showWelcome = useCallback(async (data) => {
     if (cooldownRef.current) return;
@@ -43,41 +45,54 @@ const QRScanner = ({ onClose }) => {
   }, []);
 
   useEffect(() => {
+    mountedRef.current = true;
     const scannerId = 'qr-reader';
-    let html5Qr = null;
 
-    const startScanner = async () => {
-      // Stop previous instance if switching camera
+    const cleanup = async () => {
       if (scannerRef.current) {
         try { await scannerRef.current.stop(); } catch(e) {}
         try { scannerRef.current.clear(); } catch(e) {}
+        scannerRef.current = null;
       }
+    };
+
+    const startScanner = async () => {
+      await cleanup();
+
+      // Small delay to let DOM settle after cleanup
+      await new Promise(r => setTimeout(r, 300));
+      if (!mountedRef.current) return;
+
+      const el = document.getElementById(scannerId);
+      if (!el) return;
 
       try {
-        html5Qr = new Html5Qrcode(scannerId);
+        const html5Qr = new Html5Qrcode(scannerId);
         scannerRef.current = html5Qr;
+        setScannerReady(false);
 
         await html5Qr.start(
           { facingMode },
-          { fps: 10, qrbox: { width: 250, height: 250 }, aspectRatio: 1.0 },
-          (decodedText) => {
-            showWelcome(decodedText);
-          },
+          { fps: 10, qrbox: { width: 220, height: 220 } },
+          (decodedText) => { showWelcome(decodedText); },
           () => {}
         );
+        if (mountedRef.current) setScannerReady(true);
       } catch (err) {
         console.error('Scanner start error:', err);
+        // Try listing all cameras and use first available
         try {
           const devices = await Html5Qrcode.getCameras();
-          if (devices && devices.length > 0) {
-            html5Qr = new Html5Qrcode(scannerId);
+          if (devices && devices.length > 0 && mountedRef.current) {
+            const html5Qr = new Html5Qrcode(scannerId);
             scannerRef.current = html5Qr;
             await html5Qr.start(
               devices[0].id,
-              { fps: 10, qrbox: { width: 250, height: 250 } },
+              { fps: 10, qrbox: { width: 220, height: 220 } },
               (decodedText) => { showWelcome(decodedText); },
               () => {}
             );
+            if (mountedRef.current) setScannerReady(true);
           }
         } catch (e2) {
           console.error('Fallback camera error:', e2);
@@ -88,11 +103,9 @@ const QRScanner = ({ onClose }) => {
     startScanner();
 
     return () => {
+      mountedRef.current = false;
       if (welcomeTimerRef.current) clearTimeout(welcomeTimerRef.current);
-      if (scannerRef.current) {
-        scannerRef.current.stop().catch(() => {});
-        scannerRef.current.clear().catch(() => {});
-      }
+      cleanup();
     };
   }, [showWelcome, facingMode]);
 

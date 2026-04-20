@@ -1,11 +1,14 @@
 const puppeteer = require('puppeteer-core');
 
+const fs = require('fs');
+
 let chromiumPath;
 try {
   chromiumPath = require('chromium').path;
 } catch {
-  // On Linux server, use system chromium
-  chromiumPath = '/usr/bin/chromium-browser' || '/usr/bin/google-chrome' || '/usr/bin/chromium';
+  // On Linux server, find system chromium
+  const paths = ['/usr/bin/chromium-browser', '/usr/bin/chromium', '/usr/bin/google-chrome', '/snap/bin/chromium'];
+  chromiumPath = paths.find(p => fs.existsSync(p)) || '/usr/bin/chromium-browser';
 }
 
 const generatePdfFromHtml = async (html, options = {}) => {
