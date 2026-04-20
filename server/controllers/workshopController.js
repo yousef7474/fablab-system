@@ -741,9 +741,12 @@ body{font-family:'Segoe UI',Tahoma,Arial,sans-serif;background:linear-gradient(1
     const { generatePdfFromHtml } = require('../utils/pdfGenerator');
     const pdfBuffer = await generatePdfFromHtml(certHtml, { landscape: true });
 
-    res.setHeader('Content-Type', 'application/pdf');
-    res.setHeader('Content-Disposition', `attachment; filename="certificate.pdf"`);
-    res.send(pdfBuffer);
+    res.writeHead(200, {
+      'Content-Type': 'application/pdf',
+      'Content-Disposition': 'attachment; filename="certificate.pdf"',
+      'Content-Length': pdfBuffer.length
+    });
+    res.end(pdfBuffer);
   } catch (error) {
     console.error('Download certificate PDF error:', error);
     res.status(500).json({ message: 'Error generating PDF. Make sure Chromium is installed on the server.' });
