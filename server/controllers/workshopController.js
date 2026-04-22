@@ -214,7 +214,7 @@ exports.getActiveWorkshops = async (req, res) => {
         'workshopId', 'title', 'description', 'presenter',
         'startDate', 'endDate', 'startTime', 'endTime',
         'totalHours', 'content', 'objectives', 'photo',
-        'maxParticipants', 'price', 'status', 'color'
+        'maxParticipants', 'price', 'status', 'color', 'minAge', 'maxAge'
       ],
       include: [
         {
@@ -359,6 +359,19 @@ exports.registerStudent = async (req, res) => {
         message: 'You are already registered for this workshop',
         messageAr: 'أنت مسجل بالفعل في هذه الورشة'
       });
+    }
+
+    // Check age range
+    if (age && (workshop.minAge || workshop.maxAge)) {
+      const studentAge = parseInt(age);
+      if (!isNaN(studentAge)) {
+        if (workshop.minAge && studentAge < workshop.minAge) {
+          return res.status(400).json({ message: `Age must be at least ${workshop.minAge} years`, messageAr: `العمر يجب أن يكون ${workshop.minAge} سنة على الأقل` });
+        }
+        if (workshop.maxAge && studentAge > workshop.maxAge) {
+          return res.status(400).json({ message: `Age must be at most ${workshop.maxAge} years`, messageAr: `العمر يجب أن لا يتجاوز ${workshop.maxAge} سنة` });
+        }
+      }
     }
 
     // Check capacity

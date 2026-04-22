@@ -241,7 +241,8 @@ const WorkshopRegistration = () => {
                             })()}
                           </div>
                           {w.content && <p style={{ fontSize: '0.85rem', color: '#475569', lineHeight: 1.6, marginBottom: '0.5rem' }}>{w.content}</p>}
-                          {w.objectives && <p style={{ fontSize: '0.82rem', color: '#3b82f6', lineHeight: 1.5, marginBottom: '0.75rem', fontWeight: 500 }}>{isRTL ? 'الأهداف: ' : 'Objectives: '}{w.objectives}</p>}
+                          {w.objectives && <p style={{ fontSize: '0.82rem', color: '#3b82f6', lineHeight: 1.5, marginBottom: '0.5rem', fontWeight: 500 }}>{isRTL ? 'الأهداف: ' : 'Objectives: '}{w.objectives}</p>}
+                          {(w.minAge || w.maxAge) && <p style={{ fontSize: '0.82rem', color: '#92400e', fontWeight: 600, marginBottom: '0.75rem' }}>👤 {isRTL ? 'الأعمار:' : 'Ages:'} {w.minAge || '?'} - {w.maxAge || '?'} {isRTL ? 'سنة' : 'years'}</p>}
                           <div className="workshop-card-footer" style={{ paddingTop: '0.75rem', borderTop: '1px solid #f1f5f9', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                             {w.price ? <span className="workshop-price" style={{ fontSize: '1.2rem' }}>{w.price} {isRTL ? 'ر.س' : 'SAR'}</span> : <span className="workshop-price free" style={{ fontSize: '1.2rem' }}>{isRTL ? 'مجاني' : 'Free'}</span>}
                             <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>

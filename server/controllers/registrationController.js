@@ -228,9 +228,11 @@ exports.createRegistration = async (req, res) => {
       });
     }
 
-    // Check time slot availability
+    // Check time slot availability (skip for volunteers)
     let isAvailable = true;
-    if (appointmentDate && appointmentTime) {
+    if (applicationType === 'Volunteer') {
+      isAvailable = true; // Volunteers bypass time slot check
+    } else if (appointmentDate && appointmentTime) {
       const endTimeCalc = appointmentDuration
         ? new Date(new Date(`1970-01-01T${appointmentTime}`).getTime() + appointmentDuration * 60000)
             .toTimeString().slice(0, 5)

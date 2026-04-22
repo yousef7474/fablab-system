@@ -85,6 +85,16 @@ const Workshop = sequelize.define('Workshop', {
     defaultValue: '#1a56db',
     comment: 'Workshop theme color for attendance ID cards'
   },
+  minAge: {
+    type: DataTypes.INTEGER,
+    allowNull: true,
+    comment: 'Minimum age for registration'
+  },
+  maxAge: {
+    type: DataTypes.INTEGER,
+    allowNull: true,
+    comment: 'Maximum age for registration'
+  },
   createdById: {
     type: DataTypes.UUID,
     allowNull: true,

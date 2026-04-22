@@ -203,12 +203,19 @@ const AdminDashboard = () => {
     title: '', description: '', presenter: '', assignedEmployeeId: '',
     startDate: '', endDate: '', startTime: '', endTime: '',
     totalHours: '', content: '', objectives: '', photo: '',
-    maxParticipants: '', price: '', notes: '', color: '#1a56db'
+    maxParticipants: '', price: '', notes: '', color: '#1a56db', minAge: '', maxAge: ''
   });
   const [workshopLoading, setWorkshopLoading] = useState(false);
-  const [viewingWorkshopStudents, setViewingWorkshopStudents] = useState(null);
+  const [viewingWorkshopStudents, setViewingWorkshopStudents] = useState(() => {
+    try { const saved = sessionStorage.getItem('viewingWorkshopId'); return saved ? { workshopId: saved, _loading: true } : null; } catch { return null; }
+  });
   const [editingStudent, setEditingStudent] = useState(null);
   const [editStudentForm, setEditStudentForm] = useState({});
+  useEffect(() => {
+    if (viewingWorkshopStudents?.workshopId) sessionStorage.setItem('viewingWorkshopId', viewingWorkshopStudents.workshopId);
+    else sessionStorage.removeItem('viewingWorkshopId');
+  }, [viewingWorkshopStudents]);
+
   const [workshopFilter, setWorkshopFilter] = useState('active');
   const [showQRScanner, setShowQRScanner] = useState(false);
 
@@ -717,6 +724,11 @@ const AdminDashboard = () => {
     if (activeTab === 'workshops') {
       fetchWorkshops();
       fetchEmployees();
+      // Restore viewing workshop if saved
+      const savedId = sessionStorage.getItem('viewingWorkshopId');
+      if (savedId) {
+        api.get(`/workshops/${savedId}`).then(res => setViewingWorkshopStudents(res.data)).catch(() => { sessionStorage.removeItem('viewingWorkshopId'); setViewingWorkshopStudents(null); });
+      }
     }
   }, [activeTab, fetchWorkshops]);
 
@@ -873,6 +885,14 @@ const AdminDashboard = () => {
 
   // Print workshop certificate - matches volunteer certificate theme
   const handlePrintWorkshopCertificate = (student, workshop) => {
+    // Check attendance
+    const wDays = (() => { if (!workshop.startDate) return 1; const s = new Date(workshop.startDate); const e = workshop.endDate ? new Date(workshop.endDate) : s; return Math.max(1, Math.ceil((e-s)/(1000*60*60*24))+1); })();
+    const aDays = Array.isArray(student.attendanceDates) ? student.attendanceDates.length : 0;
+    const reqDays = Math.ceil(wDays / 2);
+    if (aDays < reqDays) {
+      toast.error(isRTL ? `يجب على الطالب حضور ${reqDays} يوم على الأقل من أصل ${wDays} يوم. الحضور الحالي: ${aDays} يوم` : `Must attend ${reqDays} of ${wDays} days. Attended: ${aDays}`);
+      return;
+    }
     const printWindow = window.open('', '_blank');
     const studentName = `${student.firstName || ''} ${student.lastName || ''}`.trim();
     const certId = 'WS-' + (student.studentId?.substring(0, 8).toUpperCase() || Date.now());
@@ -1026,7 +1046,7 @@ const AdminDashboard = () => {
       totalHours: workshop.totalHours || '', content: workshop.content || '',
       objectives: workshop.objectives || '', photo: workshop.photo || '',
       maxParticipants: workshop.maxParticipants || '', price: workshop.price || '',
-      notes: workshop.notes || '', color: workshop.color || '#1a56db'
+      notes: workshop.notes || '', color: workshop.color || '#1a56db', minAge: workshop.minAge || '', maxAge: workshop.maxAge || ''
     });
     setShowWorkshopModal(true);
   };
@@ -7651,6 +7671,8 @@ const AdminDashboard = () => {
                       {workshopForm.photo && <img src={workshopForm.photo} alt="preview" style={{ marginTop: 8, maxHeight: 120, borderRadius: 8, objectFit: 'cover' }} />}
                     </div>
                     <div style={{ gridColumn: '1/-1' }}><label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 600, marginBottom: 4 }}>{isRTL ? 'ملاحظات' : 'Notes'}</label><input style={{ width: '100%', padding: '0.5rem', borderRadius: 8, border: '1.5px solid #e2e8f0', fontFamily: 'inherit' }} value={workshopForm.notes} onChange={e => setWorkshopForm({...workshopForm, notes: e.target.value})} /></div>
+                    <div><label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 600, marginBottom: 4 }}>{isRTL ? 'الحد الأدنى للعمر' : 'Min Age'}</label><input type="number" style={{ width: '100%', padding: '0.5rem', borderRadius: 8, border: '1.5px solid #e2e8f0', fontFamily: 'inherit' }} value={workshopForm.minAge || ''} onChange={e => setWorkshopForm({...workshopForm, minAge: e.target.value})} placeholder={isRTL ? 'مثال: 12' : 'e.g. 12'} /></div>
+                    <div><label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 600, marginBottom: 4 }}>{isRTL ? 'الحد الأقصى للعمر' : 'Max Age'}</label><input type="number" style={{ width: '100%', padding: '0.5rem', borderRadius: 8, border: '1.5px solid #e2e8f0', fontFamily: 'inherit' }} value={workshopForm.maxAge || ''} onChange={e => setWorkshopForm({...workshopForm, maxAge: e.target.value})} placeholder={isRTL ? 'مثال: 18' : 'e.g. 18'} /></div>
                     <div><label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 600, marginBottom: 4 }}>{isRTL ? 'لون الورشة' : 'Workshop Color'}</label><div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}><input type="color" value={workshopForm.color || '#1a56db'} onChange={e => setWorkshopForm({...workshopForm, color: e.target.value})} style={{ width: 40, height: 36, border: 'none', borderRadius: 6, cursor: 'pointer' }} /><span style={{ fontSize: '0.78rem', color: '#64748b' }}>{workshopForm.color || '#1a56db'}</span></div></div>
                   </div>
                   <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end', marginTop: '1.5rem' }}>
