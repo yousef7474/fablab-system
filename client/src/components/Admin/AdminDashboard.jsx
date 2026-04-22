@@ -207,6 +207,8 @@ const AdminDashboard = () => {
   });
   const [workshopLoading, setWorkshopLoading] = useState(false);
   const [viewingWorkshopStudents, setViewingWorkshopStudents] = useState(null);
+  const [editingStudent, setEditingStudent] = useState(null);
+  const [editStudentForm, setEditStudentForm] = useState({});
   const [workshopFilter, setWorkshopFilter] = useState('active');
   const [showQRScanner, setShowQRScanner] = useState(false);
 
@@ -1052,6 +1054,18 @@ const AdminDashboard = () => {
     } catch (error) {
       toast.error(error.response?.data?.message || (isRTL ? 'خطأ' : 'Error'));
     }
+  };
+
+  const handleUpdateStudent = async () => {
+    if (!editingStudent) return;
+    try {
+      await api.put(`/workshops/students/${editingStudent.studentId}`, editStudentForm);
+      toast.success(isRTL ? 'تم تحديث بيانات الطالب' : 'Student updated');
+      setEditingStudent(null);
+      // Refresh the student list
+      const res = await api.get(`/workshops/${viewingWorkshopStudents.workshopId}`);
+      setViewingWorkshopStudents(res.data);
+    } catch(e) { toast.error(isRTL ? 'خطأ' : 'Error'); }
   };
 
   const handleSendAttendanceId = async (studentId) => {
@@ -7520,6 +7534,12 @@ const AdminDashboard = () => {
                           <span style={{ padding: '2px 8px', borderRadius: 6, fontSize: '0.72rem', fontWeight: 600, background: s.attended ? '#dcfce7' : '#f1f5f9', color: s.attended ? '#166534' : '#94a3b8' }}>
                             {s.attended ? `\u2713 ${Array.isArray(s.attendanceDates) ? s.attendanceDates.length : 0}${isRTL ? 'ي' : 'd'}` : (isRTL ? 'لم يحضر' : 'Not attended')}
                           </span>
+                          <button onClick={() => { setEditingStudent(s); setEditStudentForm({ firstName: s.firstName || '', lastName: s.lastName || '', phone: s.phone || '', email: s.email || '', nationalId: s.nationalId || '', gender: s.gender || '', age: s.age || '', city: s.city || '', invoiceNumber: s.invoiceNumber || '' }); }}
+                            title={isRTL ? 'تعديل' : 'Edit'}
+                            style={{ padding: '0.35rem 0.7rem', borderRadius: 6, border: '1px solid #e2e8f0', background: 'white', color: '#334155', cursor: 'pointer', fontWeight: 600, fontSize: '0.72rem', fontFamily: 'inherit', display: 'flex', alignItems: 'center', gap: 4 }}>
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                            {isRTL ? 'تعديل' : 'Edit'}
+                          </button>
                           <button onClick={() => handlePrintStudentID(s, viewingWorkshopStudents)} title={isRTL ? 'طباعة البطاقة' : 'Print ID'}
                             style={{ padding: '0.35rem 0.7rem', borderRadius: 6, border: 'none', background: 'linear-gradient(135deg, #3b82f6, #1d4ed8)', color: 'white', cursor: 'pointer', fontWeight: 600, fontSize: '0.72rem', fontFamily: 'inherit', display: 'flex', alignItems: 'center', gap: 4 }}>
                             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="2"/><path d="M15 8h3M15 12h3M7 16h10"/></svg>
@@ -7533,7 +7553,7 @@ const AdminDashboard = () => {
                               link.download = `certificate_${s.firstName}.pdf`;
                               link.click();
                               URL.revokeObjectURL(link.href);
-                            } catch(e) { toast.error(isRTL ? 'خطأ في إنشاء PDF' : 'Error generating PDF'); }
+                            } catch(e) { toast.error(e.response?.data?.messageAr || e.response?.data?.message || (isRTL ? 'خطأ في إنشاء PDF' : 'Error generating PDF')); }
                           }} title={isRTL ? 'تحميل PDF' : 'Download PDF'}
                             style={{ padding: '0.35rem 0.7rem', borderRadius: 6, border: 'none', background: 'linear-gradient(135deg, #dc2626, #b91c1c)', color: 'white', cursor: 'pointer', fontWeight: 600, fontSize: '0.72rem', fontFamily: 'inherit', display: 'flex', alignItems: 'center', gap: 4 }}>
                             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><polyline points="9 15 12 18 15 15"/></svg>
@@ -7652,6 +7672,28 @@ const AdminDashboard = () => {
                   );
                 }}
               />
+            )}
+
+            {/* Edit Student Modal */}
+            {editingStudent && (
+              <div className="modal-overlay" onClick={() => setEditingStudent(null)}>
+                <motion.div className="modal-content" onClick={e => e.stopPropagation()} initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }}
+                  style={{ maxWidth: 500, padding: '2rem' }}>
+                  <h3 style={{ marginBottom: '1rem' }}>{isRTL ? 'تعديل بيانات الطالب' : 'Edit Student Info'}</h3>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+                    <div><label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 600, marginBottom: 4 }}>{isRTL ? 'الاسم الأول' : 'First Name'}</label><input style={{ width: '100%', padding: '0.5rem', borderRadius: 8, border: '1.5px solid #e2e8f0', fontFamily: 'inherit' }} value={editStudentForm.firstName} onChange={e => setEditStudentForm({...editStudentForm, firstName: e.target.value})} /></div>
+                    <div><label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 600, marginBottom: 4 }}>{isRTL ? 'الاسم الأخير' : 'Last Name'}</label><input style={{ width: '100%', padding: '0.5rem', borderRadius: 8, border: '1.5px solid #e2e8f0', fontFamily: 'inherit' }} value={editStudentForm.lastName} onChange={e => setEditStudentForm({...editStudentForm, lastName: e.target.value})} /></div>
+                    <div><label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 600, marginBottom: 4 }}>{isRTL ? 'الهاتف' : 'Phone'}</label><input dir="ltr" style={{ width: '100%', padding: '0.5rem', borderRadius: 8, border: '1.5px solid #e2e8f0', fontFamily: 'inherit' }} value={editStudentForm.phone} onChange={e => setEditStudentForm({...editStudentForm, phone: e.target.value})} /></div>
+                    <div><label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 600, marginBottom: 4 }}>{isRTL ? 'البريد' : 'Email'}</label><input type="email" dir="ltr" style={{ width: '100%', padding: '0.5rem', borderRadius: 8, border: '1.5px solid #e2e8f0', fontFamily: 'inherit' }} value={editStudentForm.email} onChange={e => setEditStudentForm({...editStudentForm, email: e.target.value})} /></div>
+                    <div><label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 600, marginBottom: 4 }}>{isRTL ? 'الهوية' : 'National ID'}</label><input dir="ltr" style={{ width: '100%', padding: '0.5rem', borderRadius: 8, border: '1.5px solid #e2e8f0', fontFamily: 'inherit' }} value={editStudentForm.nationalId} onChange={e => setEditStudentForm({...editStudentForm, nationalId: e.target.value})} /></div>
+                    <div><label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 600, marginBottom: 4 }}>{isRTL ? 'الفاتورة' : 'Invoice'}</label><input dir="ltr" style={{ width: '100%', padding: '0.5rem', borderRadius: 8, border: '1.5px solid #e2e8f0', fontFamily: 'inherit' }} value={editStudentForm.invoiceNumber} onChange={e => setEditStudentForm({...editStudentForm, invoiceNumber: e.target.value})} /></div>
+                  </div>
+                  <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end', marginTop: '1.5rem' }}>
+                    <button onClick={() => setEditingStudent(null)} style={{ padding: '0.6rem 1.5rem', borderRadius: 8, border: 'none', background: '#f1f5f9', cursor: 'pointer', fontWeight: 600, fontFamily: 'inherit' }}>{isRTL ? 'إلغاء' : 'Cancel'}</button>
+                    <button onClick={handleUpdateStudent} style={{ padding: '0.6rem 1.5rem', borderRadius: 8, border: 'none', background: '#3b82f6', color: 'white', cursor: 'pointer', fontWeight: 600, fontFamily: 'inherit' }}>{isRTL ? 'حفظ' : 'Save'}</button>
+                  </div>
+                </motion.div>
+              </div>
             )}
 
             {/* Workshop Email Modal */}

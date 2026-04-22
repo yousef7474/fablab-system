@@ -317,6 +317,14 @@ exports.registerStudent = async (req, res) => {
       });
     }
 
+    // Validate email format if provided
+    if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      return res.status(400).json({
+        message: 'Invalid email address',
+        messageAr: 'البريد الإلكتروني غير صحيح'
+      });
+    }
+
     // Check workshop exists and is active
     const workshop = await Workshop.findByPk(workshopId, {
       include: [{
@@ -695,6 +703,23 @@ exports.downloadCertificatePdf = async (req, res) => {
     });
     if (!student) return res.status(404).json({ message: 'Student not found' });
 
+    // Check attendance - must attend more than half the workshop days
+    const workshopDays = (() => {
+      if (!student.workshop.startDate) return 1;
+      const start = new Date(student.workshop.startDate);
+      const end = student.workshop.endDate ? new Date(student.workshop.endDate) : start;
+      return Math.max(1, Math.ceil((end - start) / (1000*60*60*24)) + 1);
+    })();
+    const attendedDaysCount = Array.isArray(student.attendanceDates) ? student.attendanceDates.length : 0;
+    const requiredDays = Math.ceil(workshopDays / 2);
+
+    if (attendedDaysCount < requiredDays) {
+      return res.status(400).json({
+        message: `Student must attend at least ${requiredDays} of ${workshopDays} days. Currently attended: ${attendedDaysCount}`,
+        messageAr: `يجب على الطالب حضور ${requiredDays} يوم على الأقل من أصل ${workshopDays} يوم. الحضور الحالي: ${attendedDaysCount} يوم`
+      });
+    }
+
     const name = `${student.firstName || ''} ${student.lastName || ''}`.trim();
     const certId = 'WS-' + (student.studentId || '').substring(0, 8).toUpperCase();
     const attendedDays = Array.isArray(student.attendanceDates) ? student.attendanceDates.length : 0;
@@ -762,6 +787,23 @@ exports.sendCertificate = async (req, res) => {
     });
     if (!student) return res.status(404).json({ message: 'Student not found' });
     if (!student.email) return res.status(400).json({ message: 'Student has no email', messageAr: 'الطالب ليس لديه بريد إلكتروني' });
+
+    // Check attendance - must attend more than half the workshop days
+    const workshopDays = (() => {
+      if (!student.workshop.startDate) return 1;
+      const start = new Date(student.workshop.startDate);
+      const end = student.workshop.endDate ? new Date(student.workshop.endDate) : start;
+      return Math.max(1, Math.ceil((end - start) / (1000*60*60*24)) + 1);
+    })();
+    const attendedDays = Array.isArray(student.attendanceDates) ? student.attendanceDates.length : 0;
+    const requiredDays = Math.ceil(workshopDays / 2);
+
+    if (attendedDays < requiredDays) {
+      return res.status(400).json({
+        message: `Student must attend at least ${requiredDays} of ${workshopDays} days. Currently attended: ${attendedDays}`,
+        messageAr: `يجب على الطالب حضور ${requiredDays} يوم على الأقل من أصل ${workshopDays} يوم. الحضور الحالي: ${attendedDays} يوم`
+      });
+    }
 
     await sendCertificateEmail(student.email, student, student.workshop);
     res.json({ message: 'Certificate sent' });

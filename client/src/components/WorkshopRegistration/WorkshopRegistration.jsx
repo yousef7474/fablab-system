@@ -36,7 +36,8 @@ const WorkshopRegistration = () => {
 
   const handleChange = (field, value) => setForm(prev => ({ ...prev, [field]: value }));
 
-  const canProceedStep0 = form.firstName && form.phone;
+  const isValidEmail = (email) => !email || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+  const canProceedStep0 = form.firstName && form.phone && isValidEmail(form.email);
   const canProceedStep1 = form.workshopId;
   const canProceedStep2 = form.invoiceNumber;
 
@@ -172,6 +173,11 @@ const WorkshopRegistration = () => {
                       <div className="workshop-field">
                         <label>{isRTL ? 'البريد الإلكتروني' : 'Email'}</label>
                         <input type="email" dir="ltr" value={form.email} onChange={e => handleChange('email', e.target.value)} />
+                        {form.email && !isValidEmail(form.email) && (
+                          <span style={{ color: '#ef4444', fontSize: '0.75rem', marginTop: 4, display: 'block' }}>
+                            {isRTL ? 'البريد الإلكتروني غير صحيح' : 'Invalid email address'}
+                          </span>
+                        )}
                       </div>
                       <div className="workshop-field">
                         <label>{isRTL ? 'رقم الهوية' : 'National ID'}</label>
