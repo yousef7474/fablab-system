@@ -10,10 +10,10 @@
 }
 
 .qr-scanner-modal {
-  background: white;
+  background: #1a1a2e;
   border-radius: 16px;
   width: 100%;
-  max-width: 420px;
+  max-width: 520px;
   overflow: hidden;
   box-shadow: 0 25px 80px rgba(0,0,0,0.5);
   position: relative;
@@ -24,61 +24,129 @@
   justify-content: space-between;
   align-items: center;
   padding: 0.85rem 1.25rem;
-  border-bottom: 1px solid #f1f5f9;
-  background: #fafafa;
+  background: #16162a;
 }
 
 .qr-scanner-header h3 {
   margin: 0;
   font-size: 1rem;
   font-weight: 700;
-  color: #1e293b;
+  color: #e2e8f0;
 }
 
 .qr-scanner-close {
-  background: none;
+  background: rgba(255,255,255,0.1);
   border: none;
-  font-size: 1.5rem;
-  color: #64748b;
+  font-size: 1.3rem;
+  color: #94a3b8;
   cursor: pointer;
-  padding: 0;
-  line-height: 1;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
-.qr-scanner-hint {
-  text-align: center;
-  padding: 0.6rem;
+.qr-scanner-close:hover {
+  background: rgba(255,255,255,0.2);
+  color: white;
+}
+
+/* Camera Selector */
+.qr-camera-selector {
+  padding: 0.5rem 1rem;
+  background: #16162a;
+  border-top: 1px solid rgba(255,255,255,0.05);
+}
+
+.qr-camera-selector select {
+  width: 100%;
+  padding: 0.5rem 0.75rem;
+  background: rgba(255,255,255,0.08);
+  border: 1px solid rgba(255,255,255,0.15);
+  border-radius: 8px;
+  color: #e2e8f0;
   font-size: 0.82rem;
-  color: #64748b;
-  background: #f8fafc;
-  margin: 0;
+  font-family: inherit;
+  outline: none;
+  cursor: pointer;
 }
 
-/* html5-qrcode overrides */
+.qr-camera-selector select option {
+  background: #1a1a2e;
+  color: #e2e8f0;
+}
+
+/* Scanner View */
+.qr-scanner-view {
+  position: relative;
+  background: #000;
+}
+
 #qr-reader {
   border: none !important;
+  width: 100% !important;
 }
 
 #qr-reader video {
   border-radius: 0 !important;
+  width: 100% !important;
 }
 
 #qr-reader__scan_region {
-  min-height: 280px;
+  min-height: 320px !important;
 }
 
 #qr-reader__dashboard {
-  padding: 8px !important;
+  display: none !important;
 }
 
-#qr-reader__dashboard button {
-  padding: 8px 16px !important;
-  border-radius: 8px !important;
-  background: #3b82f6 !important;
-  color: white !important;
-  border: none !important;
-  font-weight: 600 !important;
-  cursor: pointer !important;
+/* Scan Overlay with animated corners */
+.qr-scan-overlay {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.qr-scan-corners {
+  width: 220px;
+  height: 220px;
+  position: relative;
+}
+
+.qr-corner {
+  position: absolute;
+  width: 35px;
+  height: 35px;
+  border-color: #3b82f6;
+  border-style: solid;
+}
+
+.qr-corner.tl { top: 0; left: 0; border-width: 4px 0 0 4px; border-radius: 8px 0 0 0; }
+.qr-corner.tr { top: 0; right: 0; border-width: 4px 4px 0 0; border-radius: 0 8px 0 0; }
+.qr-corner.bl { bottom: 0; left: 0; border-width: 0 0 4px 4px; border-radius: 0 0 0 8px; }
+.qr-corner.br { bottom: 0; right: 0; border-width: 0 4px 4px 0; border-radius: 0 0 8px 0; }
+
+/* Scanning line animation */
+.qr-scan-line {
+  position: absolute;
+  left: 10%;
+  width: 80%;
+  height: 3px;
+  background: linear-gradient(90deg, transparent, #3b82f6, #60a5fa, #3b82f6, transparent);
+  border-radius: 2px;
+  box-shadow: 0 0 12px rgba(59, 130, 246, 0.6);
+  animation: scanLine 2s ease-in-out infinite;
+}
+
+@keyframes scanLine {
+  0% { top: 15%; }
+  50% { top: 75%; }
+  100% { top: 15%; }
 }
 
 /* Welcome Popup */
@@ -91,13 +159,13 @@
   align-items: center;
   justify-content: center;
   padding: 2rem 1.5rem;
-  animation: welcomeFadeIn 0.4s ease;
+  animation: welcomeFadeIn 0.3s ease;
   border-top: 5px solid var(--ws-color, #1a56db);
   z-index: 10;
 }
 
 @keyframes welcomeFadeIn {
-  from { opacity: 0; transform: scale(0.9); }
+  from { opacity: 0; transform: scale(0.92); }
   to { opacity: 1; transform: scale(1); }
 }
 
@@ -113,6 +181,13 @@
   justify-content: center;
   margin-bottom: 1rem;
   box-shadow: 0 6px 20px rgba(0,0,0,0.15);
+  animation: iconPop 0.4s ease;
+}
+
+@keyframes iconPop {
+  0% { transform: scale(0); }
+  60% { transform: scale(1.2); }
+  100% { transform: scale(1); }
 }
 
 .qr-welcome-title {
@@ -148,7 +223,6 @@
   margin-bottom: 1.25rem;
 }
 
-/* Countdown bar */
 .qr-welcome-bar {
   width: 100%;
   height: 4px;
