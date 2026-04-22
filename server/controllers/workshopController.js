@@ -10,7 +10,7 @@ exports.createWorkshop = async (req, res) => {
       title, description, presenter, assignedEmployeeId,
       startDate, endDate, startTime, endTime, totalHours,
       content, objectives, photo, maxParticipants, price,
-      status, isActive, notes, color
+      status, isActive, notes, color, minAge, maxAge
     } = req.body;
 
     if (!title || !presenter || !startDate) {
@@ -28,6 +28,8 @@ exports.createWorkshop = async (req, res) => {
       isActive: isActive !== undefined ? isActive : true,
       notes,
       color: color || '#1a56db',
+      minAge: minAge || null,
+      maxAge: maxAge || null,
       createdById: req.admin.adminId
     });
 
@@ -132,7 +134,7 @@ exports.updateWorkshop = async (req, res) => {
       title, description, presenter, assignedEmployeeId,
       startDate, endDate, startTime, endTime, totalHours,
       content, objectives, photo, maxParticipants, price,
-      status, isActive, notes, color
+      status, isActive, notes, color, minAge, maxAge
     } = req.body;
 
     await workshop.update({
@@ -153,7 +155,9 @@ exports.updateWorkshop = async (req, res) => {
       status: status !== undefined ? status : workshop.status,
       isActive: isActive !== undefined ? isActive : workshop.isActive,
       notes: notes !== undefined ? notes : workshop.notes,
-      color: color !== undefined ? color : workshop.color
+      color: color !== undefined ? color : workshop.color,
+      minAge: minAge !== undefined ? (minAge || null) : workshop.minAge,
+      maxAge: maxAge !== undefined ? (maxAge || null) : workshop.maxAge
     });
 
     const updated = await Workshop.findByPk(id, {
