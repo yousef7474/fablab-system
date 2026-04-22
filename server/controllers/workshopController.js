@@ -310,10 +310,10 @@ exports.registerStudent = async (req, res) => {
       nationalId, gender, age, city, invoiceNumber, notes
     } = req.body;
 
-    if (!workshopId || !firstName || !phone || !invoiceNumber) {
+    if (!workshopId || !firstName || !lastName || !phone || !email || !nationalId || !gender || !age || !city || !invoiceNumber) {
       return res.status(400).json({
-        message: 'Workshop ID, first name, phone, and invoice number are required',
-        messageAr: 'معرف الورشة والاسم الأول ورقم الجوال ورقم الفاتورة مطلوبة'
+        message: 'All fields are required',
+        messageAr: 'جميع الحقول مطلوبة'
       });
     }
 
@@ -362,15 +362,13 @@ exports.registerStudent = async (req, res) => {
     }
 
     // Check age range
-    if (age && (workshop.minAge || workshop.maxAge)) {
-      const studentAge = parseInt(age);
-      if (!isNaN(studentAge)) {
-        if (workshop.minAge && studentAge < workshop.minAge) {
-          return res.status(400).json({ message: `Age must be at least ${workshop.minAge} years`, messageAr: `العمر يجب أن يكون ${workshop.minAge} سنة على الأقل` });
-        }
-        if (workshop.maxAge && studentAge > workshop.maxAge) {
-          return res.status(400).json({ message: `Age must be at most ${workshop.maxAge} years`, messageAr: `العمر يجب أن لا يتجاوز ${workshop.maxAge} سنة` });
-        }
+    const studentAge = parseInt(age);
+    if (!isNaN(studentAge) && (workshop.minAge || workshop.maxAge)) {
+      if (workshop.minAge && studentAge < workshop.minAge) {
+        return res.status(400).json({ message: `Age must be between ${workshop.minAge}-${workshop.maxAge || '∞'} years. Your age: ${studentAge}`, messageAr: `العمر يجب أن يكون بين ${workshop.minAge} و ${workshop.maxAge || '∞'} سنة. عمرك: ${studentAge}` });
+      }
+      if (workshop.maxAge && studentAge > workshop.maxAge) {
+        return res.status(400).json({ message: `Age must be between ${workshop.minAge || 0}-${workshop.maxAge} years. Your age: ${studentAge}`, messageAr: `العمر يجب أن يكون بين ${workshop.minAge || 0} و ${workshop.maxAge} سنة. عمرك: ${studentAge}` });
       }
     }
 

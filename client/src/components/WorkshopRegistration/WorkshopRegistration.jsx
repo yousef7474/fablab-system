@@ -36,13 +36,28 @@ const WorkshopRegistration = () => {
 
   const handleChange = (field, value) => setForm(prev => ({ ...prev, [field]: value }));
 
-  const isValidEmail = (email) => !email || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
-  const canProceedStep0 = form.firstName && form.phone && isValidEmail(form.email);
+  const isValidEmail = (email) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+  const canProceedStep0 = form.firstName && form.lastName && form.phone && form.email && isValidEmail(form.email) && form.nationalId && form.gender && form.age && form.city;
   const canProceedStep1 = form.workshopId;
   const canProceedStep2 = form.invoiceNumber;
 
   const handleStep1Next = async () => {
     if (!form.workshopId) return;
+    // Check age range on frontend
+    const sw = workshops.find(w => w.workshopId === form.workshopId);
+    if (sw && form.age) {
+      const studentAge = parseInt(form.age);
+      if (!isNaN(studentAge)) {
+        if (sw.minAge && studentAge < sw.minAge) {
+          window.alert(isRTL ? `العمر يجب أن يكون بين ${sw.minAge} و ${sw.maxAge || '∞'} سنة. عمرك: ${studentAge}` : `Age must be ${sw.minAge}-${sw.maxAge || '∞'}. Your age: ${studentAge}`);
+          return;
+        }
+        if (sw.maxAge && studentAge > sw.maxAge) {
+          window.alert(isRTL ? `العمر يجب أن يكون بين ${sw.minAge || 0} و ${sw.maxAge} سنة. عمرك: ${studentAge}` : `Age must be ${sw.minAge || 0}-${sw.maxAge}. Your age: ${studentAge}`);
+          return;
+        }
+      }
+    }
     try {
       const params = new URLSearchParams({ workshopId: form.workshopId, phone: form.phone });
       if (form.email) params.append('email', form.email);
@@ -163,7 +178,7 @@ const WorkshopRegistration = () => {
                         <input value={form.firstName} onChange={e => handleChange('firstName', e.target.value)} />
                       </div>
                       <div className="workshop-field">
-                        <label>{isRTL ? 'الاسم الأخير' : 'Last Name'}</label>
+                        <label>{isRTL ? 'الاسم الأخير' : 'Last Name'} *</label>
                         <input value={form.lastName} onChange={e => handleChange('lastName', e.target.value)} />
                       </div>
                       <div className="workshop-field">
@@ -171,7 +186,7 @@ const WorkshopRegistration = () => {
                         <input type="tel" dir="ltr" value={form.phone} onChange={e => handleChange('phone', e.target.value)} />
                       </div>
                       <div className="workshop-field">
-                        <label>{isRTL ? 'البريد الإلكتروني' : 'Email'}</label>
+                        <label>{isRTL ? 'البريد الإلكتروني' : 'Email'} *</label>
                         <input type="email" dir="ltr" value={form.email} onChange={e => handleChange('email', e.target.value)} />
                         {form.email && !isValidEmail(form.email) && (
                           <span style={{ color: '#ef4444', fontSize: '0.75rem', marginTop: 4, display: 'block' }}>
@@ -180,11 +195,11 @@ const WorkshopRegistration = () => {
                         )}
                       </div>
                       <div className="workshop-field">
-                        <label>{isRTL ? 'رقم الهوية' : 'National ID'}</label>
+                        <label>{isRTL ? 'رقم الهوية' : 'National ID'} *</label>
                         <input dir="ltr" value={form.nationalId} onChange={e => handleChange('nationalId', e.target.value)} />
                       </div>
                       <div className="workshop-field">
-                        <label>{isRTL ? 'الجنس' : 'Gender'}</label>
+                        <label>{isRTL ? 'الجنس' : 'Gender'} *</label>
                         <select value={form.gender} onChange={e => handleChange('gender', e.target.value)}>
                           <option value="">{isRTL ? 'اختر' : 'Select'}</option>
                           <option value="male">{isRTL ? 'ذكر' : 'Male'}</option>
@@ -192,11 +207,11 @@ const WorkshopRegistration = () => {
                         </select>
                       </div>
                       <div className="workshop-field">
-                        <label>{isRTL ? 'العمر' : 'Age'}</label>
+                        <label>{isRTL ? 'العمر' : 'Age'} *</label>
                         <input type="number" value={form.age} onChange={e => handleChange('age', e.target.value)} />
                       </div>
                       <div className="workshop-field">
-                        <label>{isRTL ? 'المدينة' : 'City'}</label>
+                        <label>{isRTL ? 'المدينة' : 'City'} *</label>
                         <input value={form.city} onChange={e => handleChange('city', e.target.value)} />
                       </div>
                     </div>
