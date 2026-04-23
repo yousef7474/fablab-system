@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'react-toastify';
 import * as XLSX from 'xlsx';
+import { Html5Qrcode } from 'html5-qrcode';
 import api from '../../config/api';
 import './EducationForm.css';
 
@@ -18,6 +19,9 @@ const StudentAttendance = () => {
   const [showPeriodModal, setShowPeriodModal] = useState(false);
   const [periodStart, setPeriodStart] = useState('');
   const [periodEnd, setPeriodEnd] = useState('');
+  const [showQRScanner, setShowQRScanner] = useState(false);
+  const qrScannerRef = useRef(null);
+  const qrCooldownRef = useRef(false);
 
   const handleVerify = async () => {
     if (!educationId.trim()) {
@@ -61,30 +65,81 @@ const StudentAttendance = () => {
     loadAttendanceForDate(date);
   };
 
+  const autoSaveAttendance = async (newMap) => {
+    try {
+      const records = Object.entries(newMap).map(([studentId, status]) => ({ studentId, status }));
+      await api.post(`/education/${encodeURIComponent(educationId)}/attendance`, { date: attendanceDate, records });
+    } catch {}
+  };
+
   const toggleStatus = (studentId) => {
-    setAttendanceMap(prev => ({
-      ...prev,
-      [studentId]: prev[studentId] === 'present' ? 'absent' : 'present'
-    }));
+    setAttendanceMap(prev => {
+      const newMap = { ...prev, [studentId]: prev[studentId] === 'present' ? 'absent' : 'present' };
+      autoSaveAttendance(newMap);
+      toast.success(newMap[studentId] === 'present' ? '✓ حاضر' : '✗ غائب', { autoClose: 1500 });
+      return newMap;
+    });
   };
 
   const markAll = (status) => {
     const map = {};
     students.forEach(s => { map[s.studentId] = status; });
     setAttendanceMap(map);
+    autoSaveAttendance(map);
+    toast.success(status === 'present' ? 'تم تحضير الكل' : 'تم تغييب الكل', { autoClose: 1500 });
   };
 
-  const handleSubmit = async () => {
-    setLoading(true);
+  // QR Scanner functions
+  const startQRScanner = async () => {
+    setShowQRScanner(true);
+    await new Promise(r => setTimeout(r, 500));
+    const el = document.getElementById('edu-qr-reader');
+    if (!el) return;
+
     try {
-      const records = Object.entries(attendanceMap).map(([studentId, status]) => ({ studentId, status }));
-      await api.post(`/education/${encodeURIComponent(educationId)}/attendance`, { date: attendanceDate, records });
-      toast.success('تم تسجيل الحضور بنجاح');
-    } catch (error) {
-      toast.error(error.response?.data?.messageAr || 'حدث خطأ أثناء التسجيل');
-    } finally {
-      setLoading(false);
+      const scanner = new Html5Qrcode('edu-qr-reader');
+      qrScannerRef.current = scanner;
+      const devices = await Html5Qrcode.getCameras();
+      if (!devices.length) { toast.error('لم يتم العثور على كاميرا'); return; }
+      const cam = devices.find(d => d.label.toLowerCase().includes('back') || d.label.toLowerCase().includes('rear')) || devices[devices.length - 1];
+
+      await scanner.start(cam.id, { fps: 25, qrbox: undefined, videoConstraints: { width: { ideal: 1920 }, height: { ideal: 1080 } } },
+        async (decodedText) => {
+          if (qrCooldownRef.current) return;
+          qrCooldownRef.current = true;
+
+          // Beep
+          try { const ctx = new (window.AudioContext || window.webkitAudioContext)(); const o = ctx.createOscillator(); const g = ctx.createGain(); o.connect(g); g.connect(ctx.destination); o.frequency.value = 1200; g.gain.value = 0.3; o.start(); o.stop(ctx.currentTime + 0.15); } catch {}
+
+          try {
+            const parsed = JSON.parse(decodedText);
+            if (parsed.type === 'education' && parsed.studentId) {
+              // Auto-mark as present
+              const res = await api.post('/education/attendance/mark', { studentId: parsed.studentId, educationId: parsed.educationId || educationId });
+              if (res.data.alreadyMarked) {
+                toast.info(`${parsed.fullName || ''} — مسجل مسبقاً`, { autoClose: 3000 });
+              } else {
+                toast.success(`✓ ${parsed.fullName || ''} — حاضر`, { autoClose: 3000 });
+              }
+              // Update local map
+              setAttendanceMap(prev => ({ ...prev, [parsed.studentId]: 'present' }));
+            }
+          } catch {}
+
+          setTimeout(() => { qrCooldownRef.current = false; }, 3000);
+        },
+        () => {}
+      );
+    } catch (err) { console.error('QR error:', err); }
+  };
+
+  const stopQRScanner = async () => {
+    if (qrScannerRef.current) {
+      try { await qrScannerRef.current.stop(); } catch {}
+      try { qrScannerRef.current.clear(); } catch {}
+      qrScannerRef.current = null;
     }
+    setShowQRScanner(false);
   };
 
   const downloadDayExcel = async () => {
@@ -276,8 +331,26 @@ const StudentAttendance = () => {
                     />
                   </div>
 
+                  {/* QR Scanner */}
+                  {showQRScanner && (
+                    <div style={{ marginBottom: '16px', borderRadius: 12, overflow: 'hidden', border: '2px solid #6d28d9', position: 'relative' }}>
+                      <div style={{ background: '#6d28d9', padding: '8px 12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <span style={{ color: 'white', fontWeight: 700, fontSize: '0.85rem' }}>📷 مسح QR الطلاب</span>
+                        <button onClick={stopQRScanner} style={{ background: 'rgba(255,255,255,0.2)', border: 'none', color: 'white', borderRadius: 6, padding: '4px 10px', cursor: 'pointer', fontWeight: 700 }}>✕</button>
+                      </div>
+                      <div id="edu-qr-reader" style={{ width: '100%' }} />
+                    </div>
+                  )}
+
                   {/* Quick Actions */}
                   <div style={{ display: 'flex', gap: '10px', marginBottom: '20px', justifyContent: 'center', flexWrap: 'wrap' }}>
+                    <button onClick={() => { showQRScanner ? stopQRScanner() : startQRScanner(); }} style={{
+                      background: 'linear-gradient(135deg, #8b5cf6, #6d28d9)', color: 'white', border: 'none', padding: '8px 20px',
+                      borderRadius: '8px', fontSize: '13px', fontWeight: '600', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6
+                    }}>
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+                      {showQRScanner ? 'إغلاق الماسح' : 'مسح QR'}
+                    </button>
                     <button onClick={() => markAll('present')} style={{
                       background: '#10b981', color: 'white', border: 'none', padding: '8px 20px',
                       borderRadius: '8px', fontSize: '13px', fontWeight: '600', cursor: 'pointer'
@@ -348,19 +421,10 @@ const StudentAttendance = () => {
                     </div>
                   )}
 
-                  {/* Submit Button */}
-                  {students.length > 0 && (
-                    <div style={{ textAlign: 'center', marginBottom: '20px' }}>
-                      <button onClick={handleSubmit} disabled={loading} style={btnPrimary}>
-                        {loading ? <span style={{ width: '20px', height: '20px', border: '2px solid white', borderTopColor: 'transparent', borderRadius: '50%', display: 'inline-block', animation: 'spin 1s linear infinite' }} /> : (
-                          <>
-                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="20 6 9 17 4 12" /></svg>
-                            تسجيل الحضور
-                          </>
-                        )}
-                      </button>
-                    </div>
-                  )}
+                  {/* Auto-save indicator */}
+                  <div style={{ textAlign: 'center', marginBottom: '20px', fontSize: '0.78rem', color: '#22c55e', fontWeight: 600 }}>
+                    ✓ يتم حفظ الحضور تلقائياً عند النقر
+                  </div>
 
                   {/* Download Section */}
                   {students.length > 0 && (
