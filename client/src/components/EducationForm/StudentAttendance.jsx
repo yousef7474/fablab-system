@@ -4,8 +4,11 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'react-toastify';
 import * as XLSX from 'xlsx';
 import { Html5Qrcode } from 'html5-qrcode';
-import api from '../../config/api';
+import axios from 'axios';
 import './EducationForm.css';
+
+const API_URL = process.env.NODE_ENV === 'production' ? '/api' : (process.env.REACT_APP_API_URL || 'http://localhost:5000/api');
+const api = axios.create({ baseURL: API_URL });
 
 const StudentAttendance = () => {
   const navigate = useNavigate();
@@ -69,7 +72,10 @@ const StudentAttendance = () => {
     try {
       const records = Object.entries(newMap).map(([studentId, status]) => ({ studentId, status }));
       await api.post(`/education/${encodeURIComponent(educationId)}/attendance`, { date: attendanceDate, records });
-    } catch {}
+    } catch (err) {
+      console.error('Auto-save attendance error:', err);
+      toast.error('خطأ في حفظ الحضور', { autoClose: 2000 });
+    }
   };
 
   const toggleStatus = (studentId) => {
