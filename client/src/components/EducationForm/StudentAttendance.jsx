@@ -134,10 +134,13 @@ const StudentAttendance = () => {
             if (parsed.type === 'education' && parsed.studentId) {
               // Auto-mark as present
               const res = await api.post('/education/attendance/mark', { studentId: parsed.studentId, educationId: parsed.educationId || educationId });
+              const name = parsed.fullName || res.data.student?.fullName || '';
               if (res.data.alreadyMarked) {
-                toast.info(`${parsed.fullName || ''} — مسجل مسبقاً`, { autoClose: 3000 });
+                toast.info(`${name} — مسجل مسبقاً (دخول: ${res.data.checkInTime || '?'} | خروج: ${res.data.checkOutTime || '?'})`, { autoClose: 4000 });
+              } else if (res.data.action === 'checkout') {
+                toast.success(`📤 ${name} — تسجيل خروج ${res.data.checkOutTime} (الدخول: ${res.data.checkInTime})`, { autoClose: 4000 });
               } else {
-                toast.success(`✓ ${parsed.fullName || ''} — حاضر`, { autoClose: 3000 });
+                toast.success(`📥 ${name} — تسجيل دخول ${res.data.time}`, { autoClose: 3000 });
               }
               // Update local map
               setAttendanceMap(prev => ({ ...prev, [parsed.studentId]: 'present' }));

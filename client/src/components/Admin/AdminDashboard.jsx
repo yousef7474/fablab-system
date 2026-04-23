@@ -7043,15 +7043,22 @@ const AdminDashboard = () => {
                                     <div>{student.fullName}</div>
                                     <div style={{ fontSize: '11px', color: '#64748b' }}>{student.studentId}</div>
                                   </td>
-                                  {attendanceSheetData.dates.map(date => (
-                                    <td key={date} style={{ padding: '8px', textAlign: 'center' }}>
-                                      {student.attendance[date] === 'present' ? (
-                                        <span style={{ display: 'inline-block', width: '24px', height: '24px', borderRadius: '50%', background: '#d1fae5', color: '#059669', lineHeight: '24px', fontWeight: '700', fontSize: '14px' }}>P</span>
+                                  {attendanceSheetData.dates.map(date => {
+                                    const cell = student.attendance[date] || {};
+                                    const st = typeof cell === 'string' ? cell : cell.status;
+                                    return (
+                                    <td key={date} style={{ padding: '6px', textAlign: 'center' }}>
+                                      {st === 'present' ? (
+                                        <div>
+                                          <span style={{ display: 'inline-block', width: '24px', height: '24px', borderRadius: '50%', background: '#d1fae5', color: '#059669', lineHeight: '24px', fontWeight: '700', fontSize: '14px' }}>P</span>
+                                          {cell.checkIn && <div style={{ fontSize: '9px', color: '#64748b', marginTop: 2 }}>{cell.checkIn}{cell.checkOut ? ` → ${cell.checkOut}` : ''}</div>}
+                                        </div>
                                       ) : (
                                         <span style={{ display: 'inline-block', width: '24px', height: '24px', borderRadius: '50%', background: '#fee2e2', color: '#dc2626', lineHeight: '24px', fontWeight: '700', fontSize: '14px' }}>A</span>
                                       )}
                                     </td>
-                                  ))}
+                                    );
+                                  })}
                                   <td style={{ padding: '8px 12px', textAlign: 'center', fontWeight: '700', color: '#059669' }}>{student.totalPresent}/{student.totalDays}</td>
                                   <td style={{ padding: '8px 12px', textAlign: 'center', fontWeight: '700', color: student.totalDays > 0 && (student.totalPresent / student.totalDays) >= 0.75 ? '#059669' : '#dc2626' }}>
                                     {student.totalDays > 0 ? Math.round((student.totalPresent / student.totalDays) * 100) : 0}%

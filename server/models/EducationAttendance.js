@@ -31,6 +31,16 @@ const EducationAttendance = sequelize.define('EducationAttendance', {
     type: DataTypes.ENUM('present', 'absent'),
     allowNull: false,
     defaultValue: 'present'
+  },
+  checkInTime: {
+    type: DataTypes.TIME,
+    allowNull: true,
+    comment: 'Time student checked in (first QR scan)'
+  },
+  checkOutTime: {
+    type: DataTypes.TIME,
+    allowNull: true,
+    comment: 'Time student checked out (second QR scan)'
   }
 }, {
   tableName: 'education_attendance',

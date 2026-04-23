@@ -779,26 +779,39 @@ exports.markAttendanceByQR = async (req, res) => {
   try {
     const { studentId, educationId } = req.body;
     const today = new Date().toISOString().split('T')[0];
-    const now = new Date().toTimeString().split(' ')[0];
+    const now = new Date().toTimeString().split(' ')[0].substring(0, 5); // HH:MM
 
     const student = await EducationStudent.findByPk(studentId);
     if (!student) return res.status(404).json({ message: 'Student not found' });
     if (student.educationId !== educationId) return res.status(400).json({ message: 'Student not in this education' });
 
-    // Check if already marked today
     const existing = await EducationAttendance.findOne({
       where: { educationId, studentId, date: today }
     });
 
     if (existing) {
-      return res.json({ message: 'Already marked present today', student, alreadyMarked: true });
+      if (existing.status === 'absent') {
+        // Was marked absent manually, QR overrides to present (check-in)
+        await existing.update({ status: 'present', checkInTime: now });
+        return res.json({ message: 'Checked in', student, date: today, time: now, action: 'checkin' });
+      }
+
+      if (existing.status === 'present' && !existing.checkOutTime) {
+        // Already checked in, this is check-out
+        await existing.update({ checkOutTime: now });
+        return res.json({ message: 'Checked out', student, date: today, time: now, action: 'checkout', checkInTime: existing.checkInTime, checkOutTime: now });
+      }
+
+      // Already checked in AND out
+      return res.json({ message: 'Already checked in and out', student, alreadyMarked: true, checkInTime: existing.checkInTime, checkOutTime: existing.checkOutTime });
     }
 
+    // First scan of the day — check in
     await EducationAttendance.create({
-      educationId, studentId, date: today, status: 'present'
+      educationId, studentId, date: today, status: 'present', checkInTime: now
     });
 
-    res.json({ message: 'Attendance marked', student, date: today, time: now });
+    res.json({ message: 'Checked in', student, date: today, time: now, action: 'checkin' });
   } catch (error) {
     console.error('Mark attendance error:', error);
     res.status(500).json({ message: 'Server error' });
@@ -827,14 +840,14 @@ exports.getAttendanceSheet = async (req, res) => {
       const studentAttendance = {};
       dates.forEach(d => {
         const record = attendance.find(a => String(a.studentId) === String(s.studentId) && String(a.date).substring(0, 10) === d);
-        studentAttendance[d] = record ? record.status : 'absent';
+        studentAttendance[d] = record ? { status: record.status, checkIn: record.checkInTime || null, checkOut: record.checkOutTime || null } : { status: 'absent', checkIn: null, checkOut: null };
       });
       return {
         studentId: s.studentId,
         fullName: s.fullName,
         email: s.email,
         attendance: studentAttendance,
-        totalPresent: dates.filter(d => studentAttendance[d] === 'present').length,
+        totalPresent: dates.filter(d => studentAttendance[d]?.status === 'present').length,
         totalDays: dates.length
       };
     });

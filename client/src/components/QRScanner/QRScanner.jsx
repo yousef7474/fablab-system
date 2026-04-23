@@ -108,12 +108,17 @@ const QRScanner = ({ onClose }) => {
             studentId: parsed.studentId,
             educationId: parsed.educationId
           });
-          parsed.name = parsed.fullName || parsed.name || '';
-          parsed.workshop = `${parsed.educationId} - Education`;
+          parsed.name = parsed.fullName || res.data.student?.fullName || parsed.name || '';
           parsed.color = '#6d28d9';
           if (res.data.alreadyMarked) {
-            parsed.workshop += ` (${isRTL ? 'مسجل مسبقا' : 'Already marked'})`;
+            parsed.workshop = isRTL ? `مسجل مسبقاً (دخول: ${res.data.checkInTime || '?'} | خروج: ${res.data.checkOutTime || '?'})` : 'Already checked in & out';
             parsed.color = '#f59e0b';
+          } else if (res.data.action === 'checkout') {
+            parsed.workshop = isRTL ? `📤 تسجيل خروج ${res.data.checkOutTime}` : `📤 Checked out ${res.data.checkOutTime}`;
+            parsed.color = '#f59e0b';
+          } else {
+            parsed.workshop = isRTL ? `📥 تسجيل دخول ${res.data.time}` : `📥 Checked in ${res.data.time}`;
+            parsed.color = '#22c55e';
           }
         } catch (err) {
           parsed.name = parsed.fullName || '';
