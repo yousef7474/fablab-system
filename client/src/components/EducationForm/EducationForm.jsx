@@ -28,6 +28,7 @@ const defaultFormData = {
   periodStartTime: '',
   periodEndTime: '',
   roomPhotoBefore: '',
+  roomPhotosBefore: [],
   signature: '',
   termsAccepted: false
 };

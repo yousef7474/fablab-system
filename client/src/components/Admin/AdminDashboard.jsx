@@ -192,8 +192,11 @@ const AdminDashboard = () => {
   const [educationEmailForm, setEducationEmailForm] = useState({ subject: '', message: '' });
   const [educationStudents, setEducationStudents] = useState([]);
   const [showAddStudentModal, setShowAddStudentModal] = useState(false);
-  const [newStudentForm, setNewStudentForm] = useState({ fullName: '', nationalId: '', phoneNumber: '', schoolName: '', educationLevel: '', parentPhoneNumber: '', personalPhoto: '' });
+  const [newStudentForm, setNewStudentForm] = useState({ fullName: '', nationalId: '', phoneNumber: '', email: '', schoolName: '', educationLevel: '', parentPhoneNumber: '', personalPhoto: '' });
   const [sendingEducationEmail, setSendingEducationEmail] = useState(false);
+  const [showAttendanceSheet, setShowAttendanceSheet] = useState(false);
+  const [attendanceSheetData, setAttendanceSheetData] = useState(null);
+  const [loadingAttendanceSheet, setLoadingAttendanceSheet] = useState(false);
 
   // Workshop states
   const [workshopsList, setWorkshopsList] = useState([]);
@@ -3914,7 +3917,7 @@ const AdminDashboard = () => {
       await api.post(`/education/${encodeURIComponent(selectedEducation.educationId)}/students/add`, newStudentForm);
       toast.success(isRTL ? 'تم إضافة الطالب بنجاح' : 'Student added successfully');
       setShowAddStudentModal(false);
-      setNewStudentForm({ fullName: '', nationalId: '', phoneNumber: '', schoolName: '', educationLevel: '', parentPhoneNumber: '', personalPhoto: '' });
+      setNewStudentForm({ fullName: '', nationalId: '', phoneNumber: '', email: '', schoolName: '', educationLevel: '', parentPhoneNumber: '', personalPhoto: '' });
       fetchEducationStudents(selectedEducation.educationId);
     } catch (error) {
       toast.error(isRTL ? 'خطأ في إضافة الطالب' : 'Error adding student');
@@ -4389,6 +4392,20 @@ const AdminDashboard = () => {
       toast.error(isRTL ? 'خطأ في إرسال البريد الإلكتروني' : 'Error sending email');
     } finally {
       setSendingEducationEmail(false);
+    }
+  };
+
+  const fetchAttendanceSheet = async (educationId) => {
+    setLoadingAttendanceSheet(true);
+    try {
+      const response = await api.get(`/education/${encodeURIComponent(educationId)}/attendance-sheet`);
+      setAttendanceSheetData(response.data);
+      setShowAttendanceSheet(true);
+    } catch (error) {
+      console.error('Error fetching attendance sheet:', error);
+      toast.error(isRTL ? 'خطأ في تحميل سجل الحضور' : 'Error loading attendance sheet');
+    } finally {
+      setLoadingAttendanceSheet(false);
     }
   };
 
@@ -6635,6 +6652,10 @@ const AdminDashboard = () => {
                               {isRTL ? 'إرسال بريد' : 'Send Email'}
                             </button>
                           )}
+                          <button onClick={() => fetchAttendanceSheet(selectedEducation.educationId)} disabled={loadingAttendanceSheet} style={{ padding: '8px 16px', borderRadius: '8px', background: '#059669', color: 'white', border: 'none', cursor: 'pointer', fontWeight: '600', fontSize: '13px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+                            {loadingAttendanceSheet ? '...' : (isRTL ? 'سجل الحضور' : 'Attendance')}
+                          </button>
                         </div>
                       </div>
 
@@ -6670,11 +6691,15 @@ const AdminDashboard = () => {
                         </div>
                       </div>
 
-                      {/* Room Photo */}
-                      {selectedEducation.roomPhotoBefore && (
+                      {/* Room Photos */}
+                      {(selectedEducation.roomPhotosBefore?.length > 0 || selectedEducation.roomPhotoBefore) && (
                         <div style={{ marginBottom: '20px' }}>
-                          <h4 style={{ color: 'var(--text-primary)', marginBottom: '8px' }}>{isRTL ? 'صورة القاعة (قبل)' : 'Room Photo (Before)'}</h4>
-                          <img src={selectedEducation.roomPhotoBefore} alt="Room Before" style={{ maxWidth: '300px', maxHeight: '200px', borderRadius: '8px', border: '2px solid #e2e8f0', objectFit: 'cover' }} />
+                          <h4 style={{ color: 'var(--text-primary)', marginBottom: '8px' }}>{isRTL ? 'صور القاعة (قبل)' : 'Room Photos (Before)'}</h4>
+                          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                            {(selectedEducation.roomPhotosBefore?.length > 0 ? selectedEducation.roomPhotosBefore : [selectedEducation.roomPhotoBefore]).map((photo, idx) => (
+                              <img key={idx} src={photo} alt={`Room ${idx + 1}`} style={{ maxWidth: '200px', maxHeight: '150px', borderRadius: '8px', border: '2px solid #e2e8f0', objectFit: 'cover', cursor: 'pointer' }} onClick={() => window.open(photo, '_blank')} />
+                            ))}
+                          </div>
                         </div>
                       )}
 
@@ -6763,6 +6788,7 @@ const AdminDashboard = () => {
                               <div><label style={{ display: 'block', fontSize: '12px', color: '#475569', marginBottom: '4px', fontWeight: '600' }}>{isRTL ? 'الاسم الكامل' : 'Full Name'} *</label><input type="text" value={newStudentForm.fullName} onChange={e => setNewStudentForm(p => ({...p, fullName: e.target.value}))} style={{ width: '100%', padding: '8px 12px', borderRadius: '8px', border: '1px solid #d1d5db', fontSize: '13px', boxSizing: 'border-box' }} /></div>
                               <div><label style={{ display: 'block', fontSize: '12px', color: '#475569', marginBottom: '4px', fontWeight: '600' }}>{isRTL ? 'رقم الهوية' : 'National ID'} *</label><input type="text" value={newStudentForm.nationalId} onChange={e => setNewStudentForm(p => ({...p, nationalId: e.target.value}))} style={{ width: '100%', padding: '8px 12px', borderRadius: '8px', border: '1px solid #d1d5db', fontSize: '13px', boxSizing: 'border-box' }} /></div>
                               <div><label style={{ display: 'block', fontSize: '12px', color: '#475569', marginBottom: '4px', fontWeight: '600' }}>{isRTL ? 'رقم الهاتف' : 'Phone'} *</label><input type="text" value={newStudentForm.phoneNumber} onChange={e => setNewStudentForm(p => ({...p, phoneNumber: e.target.value}))} style={{ width: '100%', padding: '8px 12px', borderRadius: '8px', border: '1px solid #d1d5db', fontSize: '13px', boxSizing: 'border-box' }} /></div>
+                              <div><label style={{ display: 'block', fontSize: '12px', color: '#475569', marginBottom: '4px', fontWeight: '600' }}>{isRTL ? 'البريد الإلكتروني' : 'Email'}</label><input type="email" value={newStudentForm.email} onChange={e => setNewStudentForm(p => ({...p, email: e.target.value}))} placeholder="student@example.com" style={{ width: '100%', padding: '8px 12px', borderRadius: '8px', border: '1px solid #d1d5db', fontSize: '13px', boxSizing: 'border-box' }} /></div>
                               <div><label style={{ display: 'block', fontSize: '12px', color: '#475569', marginBottom: '4px', fontWeight: '600' }}>{isRTL ? 'اسم المدرسة' : 'School Name'} *</label><input type="text" value={newStudentForm.schoolName} onChange={e => setNewStudentForm(p => ({...p, schoolName: e.target.value}))} style={{ width: '100%', padding: '8px 12px', borderRadius: '8px', border: '1px solid #d1d5db', fontSize: '13px', boxSizing: 'border-box' }} /></div>
                               <div><label style={{ display: 'block', fontSize: '12px', color: '#475569', marginBottom: '4px', fontWeight: '600' }}>{isRTL ? 'المرحلة التعليمية' : 'Education Level'} *</label><select value={newStudentForm.educationLevel} onChange={e => setNewStudentForm(p => ({...p, educationLevel: e.target.value}))} style={{ width: '100%', padding: '8px 12px', borderRadius: '8px', border: '1px solid #d1d5db', fontSize: '13px', boxSizing: 'border-box' }}><option value="">--</option><option value="ابتدائي">ابتدائي</option><option value="متوسط">متوسط</option><option value="ثانوي">ثانوي</option><option value="جامعي">جامعي</option><option value="أخرى">أخرى</option></select></div>
                               <div><label style={{ display: 'block', fontSize: '12px', color: '#475569', marginBottom: '4px', fontWeight: '600' }}>{isRTL ? 'رقم ولي الأمر' : 'Parent Phone'} *</label><input type="text" value={newStudentForm.parentPhoneNumber} onChange={e => setNewStudentForm(p => ({...p, parentPhoneNumber: e.target.value}))} style={{ width: '100%', padding: '8px 12px', borderRadius: '8px', border: '1px solid #d1d5db', fontSize: '13px', boxSizing: 'border-box' }} /></div>
@@ -6980,6 +7006,67 @@ const AdminDashboard = () => {
                     </motion.div>
                   </div>
                 )}
+              {/* Attendance Sheet Modal */}
+              {showAttendanceSheet && attendanceSheetData && (
+                <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.5)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
+                  <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} style={{ background: 'var(--card-bg)', borderRadius: '16px', width: '95%', maxWidth: '1200px', maxHeight: '85vh', display: 'flex', flexDirection: 'column', boxShadow: '0 20px 60px rgba(0,0,0,0.3)' }}>
+                    <div style={{ padding: '20px 24px', borderBottom: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <h3 style={{ margin: 0, color: 'var(--text-primary)' }}>
+                        {isRTL ? 'سجل الحضور' : 'Attendance Sheet'} - {attendanceSheetData.educationId}
+                      </h3>
+                      <button onClick={() => { setShowAttendanceSheet(false); setAttendanceSheetData(null); }} style={{ background: 'none', border: 'none', fontSize: '24px', cursor: 'pointer', color: 'var(--text-primary)', padding: '4px 8px' }}>x</button>
+                    </div>
+                    <div style={{ padding: '20px 24px', overflow: 'auto', flex: 1 }}>
+                      {attendanceSheetData.dates.length === 0 ? (
+                        <div style={{ textAlign: 'center', padding: '40px', color: '#94a3b8' }}>
+                          {isRTL ? 'لا توجد بيانات حضور بعد' : 'No attendance data yet'}
+                        </div>
+                      ) : (
+                        <div style={{ overflowX: 'auto' }}>
+                          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px', minWidth: `${300 + attendanceSheetData.dates.length * 80}px` }}>
+                            <thead>
+                              <tr style={{ background: 'linear-gradient(135deg, #5b21b6, #6d28d9)', color: 'white' }}>
+                                <th style={{ padding: '10px 12px', textAlign: isRTL ? 'right' : 'left', position: 'sticky', left: 0, background: '#5b21b6', zIndex: 1 }}>{isRTL ? 'الطالب' : 'Student'}</th>
+                                {attendanceSheetData.dates.map(date => (
+                                  <th key={date} style={{ padding: '10px 8px', textAlign: 'center', whiteSpace: 'nowrap', fontSize: '11px' }}>
+                                    {new Date(date).toLocaleDateString(isRTL ? 'ar-SA' : 'en-US', { month: 'short', day: 'numeric' })}
+                                  </th>
+                                ))}
+                                <th style={{ padding: '10px 12px', textAlign: 'center', background: '#4c1d95' }}>{isRTL ? 'المجموع' : 'Total'}</th>
+                                <th style={{ padding: '10px 12px', textAlign: 'center', background: '#4c1d95' }}>%</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {attendanceSheetData.sheet.map((student, idx) => (
+                                <tr key={student.studentId} style={{ borderBottom: '1px solid #e2e8f0', background: idx % 2 === 0 ? 'var(--card-bg)' : '#f8fafc' }}>
+                                  <td style={{ padding: '8px 12px', fontWeight: '600', position: 'sticky', left: 0, background: idx % 2 === 0 ? 'var(--card-bg)' : '#f8fafc', zIndex: 1 }}>
+                                    <div>{student.fullName}</div>
+                                    <div style={{ fontSize: '11px', color: '#64748b' }}>{student.studentId}</div>
+                                  </td>
+                                  {attendanceSheetData.dates.map(date => (
+                                    <td key={date} style={{ padding: '8px', textAlign: 'center' }}>
+                                      {student.attendance[date] === 'present' ? (
+                                        <span style={{ display: 'inline-block', width: '24px', height: '24px', borderRadius: '50%', background: '#d1fae5', color: '#059669', lineHeight: '24px', fontWeight: '700', fontSize: '14px' }}>P</span>
+                                      ) : (
+                                        <span style={{ display: 'inline-block', width: '24px', height: '24px', borderRadius: '50%', background: '#fee2e2', color: '#dc2626', lineHeight: '24px', fontWeight: '700', fontSize: '14px' }}>A</span>
+                                      )}
+                                    </td>
+                                  ))}
+                                  <td style={{ padding: '8px 12px', textAlign: 'center', fontWeight: '700', color: '#059669' }}>{student.totalPresent}/{student.totalDays}</td>
+                                  <td style={{ padding: '8px 12px', textAlign: 'center', fontWeight: '700', color: student.totalDays > 0 && (student.totalPresent / student.totalDays) >= 0.75 ? '#059669' : '#dc2626' }}>
+                                    {student.totalDays > 0 ? Math.round((student.totalPresent / student.totalDays) * 100) : 0}%
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      )}
+                    </div>
+                  </motion.div>
+                </div>
+              )}
+
               </motion.div>
             )}
 

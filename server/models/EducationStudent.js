@@ -43,6 +43,16 @@ const EducationStudent = sequelize.define('EducationStudent', {
     type: DataTypes.TEXT('long'),
     allowNull: false
   },
+  email: {
+    type: DataTypes.STRING,
+    allowNull: true,
+    validate: { isEmail: true }
+  },
+  qrCode: {
+    type: DataTypes.STRING,
+    allowNull: true,
+    comment: 'Unique QR identifier for attendance scanning'
+  },
   status: {
     type: DataTypes.ENUM('active', 'removed'),
     defaultValue: 'active'

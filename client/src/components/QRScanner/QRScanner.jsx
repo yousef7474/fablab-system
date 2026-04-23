@@ -101,7 +101,36 @@ const QRScanner = ({ onClose }) => {
     try {
       const parsed = typeof data === 'string' ? JSON.parse(data) : data;
 
-      // Fetch color from API if missing
+      // Handle education QR codes - auto-mark attendance
+      if (parsed.type === 'education' && parsed.studentId && parsed.educationId) {
+        try {
+          const res = await api.post('/education/attendance/mark', {
+            studentId: parsed.studentId,
+            educationId: parsed.educationId
+          });
+          parsed.name = parsed.fullName || parsed.name || '';
+          parsed.workshop = `${parsed.educationId} - Education`;
+          parsed.color = '#6d28d9';
+          if (res.data.alreadyMarked) {
+            parsed.workshop += ` (${isRTL ? 'مسجل مسبقا' : 'Already marked'})`;
+            parsed.color = '#f59e0b';
+          }
+        } catch (err) {
+          parsed.name = parsed.fullName || '';
+          parsed.workshop = err.response?.data?.message || 'Error';
+          parsed.color = '#ef4444';
+        }
+
+        setWelcome(parsed);
+        if (welcomeTimerRef.current) clearTimeout(welcomeTimerRef.current);
+        welcomeTimerRef.current = setTimeout(() => {
+          setWelcome(null);
+          cooldownRef.current = false;
+        }, 7000);
+        return;
+      }
+
+      // Fetch color from API if missing (workshop QR codes)
       if (!parsed.color && parsed.studentId) {
         try {
           const res = await api.get(`/workshops/students/${parsed.studentId}/attendance-id`);
@@ -119,7 +148,7 @@ const QRScanner = ({ onClose }) => {
     } catch {
       cooldownRef.current = false;
     }
-  }, []);
+  }, [isRTL]);
 
   return (
     <div className="qr-scanner-overlay">

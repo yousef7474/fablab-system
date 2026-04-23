@@ -13,6 +13,7 @@ router.get('/:id/students/public', educationController.getStudentsForEducationPu
 router.post('/:id/attendance', educationController.submitAttendance);
 router.get('/:id/attendance', educationController.getAttendance);
 router.get('/:id/attendance/export', educationController.exportAttendance);
+router.post('/attendance/mark', educationController.markAttendanceByQR);
 
 // Student management routes (auth) - must be before /:id to prevent route conflicts
 router.put('/students/:studentId', authMiddleware, educationController.updateStudent);
@@ -22,6 +23,7 @@ router.delete('/students/:studentId', authMiddleware, educationController.remove
 router.get('/', authMiddleware, educationController.getAllEducations);
 router.get('/:id', authMiddleware, educationController.getEducationById);
 router.get('/:id/students', authMiddleware, educationController.getStudentsForEducation);
+router.get('/:id/attendance-sheet', authMiddleware, educationController.getAttendanceSheet);
 router.post('/:id/students/add', authMiddleware, educationController.addSingleStudent);
 router.put('/:id/status', authMiddleware, educationController.updateEducationStatus);
 

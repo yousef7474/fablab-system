@@ -17,6 +17,7 @@ const StudentRegistration = () => {
     fullName: '',
     nationalId: '',
     phoneNumber: '',
+    email: '',
     schoolName: '',
     educationLevel: '',
     parentPhoneNumber: '',
@@ -62,7 +63,7 @@ const StudentRegistration = () => {
       }
     }
     setStudents(prev => [...prev, { ...form, _tempId: Date.now() }]);
-    setForm({ fullName: '', nationalId: '', phoneNumber: '', schoolName: '', educationLevel: '', parentPhoneNumber: '', personalPhoto: '' });
+    setForm({ fullName: '', nationalId: '', phoneNumber: '', email: '', schoolName: '', educationLevel: '', parentPhoneNumber: '', personalPhoto: '' });
     toast.success('تم إضافة الطالب إلى القائمة');
   };
 
@@ -231,6 +232,10 @@ const StudentRegistration = () => {
                       <input type="text" value={form.phoneNumber} onChange={e => setForm(p => ({ ...p, phoneNumber: e.target.value }))} style={inputStyle} placeholder="05XXXXXXXX" />
                     </div>
                     <div>
+                      <label style={labelStyle}>البريد الإلكتروني (اختياري)</label>
+                      <input type="email" value={form.email} onChange={e => setForm(p => ({ ...p, email: e.target.value }))} style={inputStyle} placeholder="student@example.com" />
+                    </div>
+                    <div>
                       <label style={labelStyle}>اسم المدرسة *</label>
                       <input type="text" value={form.schoolName} onChange={e => setForm(p => ({ ...p, schoolName: e.target.value }))} style={inputStyle} placeholder="اسم المدرسة" />
                     </div>
@@ -300,6 +305,7 @@ const StudentRegistration = () => {
                               <th style={{ padding: '10px 12px', textAlign: 'right' }}>المدرسة</th>
                               <th style={{ padding: '10px 12px', textAlign: 'right' }}>المرحلة</th>
                               <th style={{ padding: '10px 12px', textAlign: 'right' }}>الهاتف</th>
+                              <th style={{ padding: '10px 12px', textAlign: 'right' }}>البريد</th>
                               <th style={{ padding: '10px 12px', textAlign: 'right' }}>ولي الأمر</th>
                               <th style={{ padding: '10px 12px', textAlign: 'center' }}>حذف</th>
                             </tr>
@@ -313,6 +319,7 @@ const StudentRegistration = () => {
                                 <td style={{ padding: '8px 12px' }}>{s.schoolName}</td>
                                 <td style={{ padding: '8px 12px' }}>{s.educationLevel}</td>
                                 <td style={{ padding: '8px 12px' }}>{s.phoneNumber}</td>
+                                <td style={{ padding: '8px 12px' }}>{s.email || '-'}</td>
                                 <td style={{ padding: '8px 12px' }}>{s.parentPhoneNumber}</td>
                                 <td style={{ padding: '8px 12px', textAlign: 'center' }}>
                                   <button onClick={() => handleRemoveFromList(s._tempId)} style={{

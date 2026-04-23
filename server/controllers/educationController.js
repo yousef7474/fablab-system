@@ -1,7 +1,7 @@
 const { User, Education, EducationRating, EducationStudent, EducationAttendance, Admin } = require('../models');
 const { generateUserId, generateEducationId, generateStudentId } = require('../utils/idGenerator');
 const { Op } = require('sequelize');
-const { sendEducationConfirmation, sendEducationStatusUpdate, sendEducationPeriodEnd, sendCustomEducationEmail } = require('../utils/educationEmailService');
+const { sendEducationConfirmation, sendEducationStatusUpdate, sendEducationPeriodEnd, sendCustomEducationEmail, sendEducationStudentConfirmation } = require('../utils/educationEmailService');
 
 // Check if user exists (public)
 exports.checkUser = async (req, res) => {
@@ -61,12 +61,14 @@ exports.createEducation = async (req, res) => {
       periodStartTime,
       periodEndTime,
       roomPhotoBefore,
+      roomPhotosBefore,
       signature,
       termsAccepted
     } = req.body;
 
     // Validate required fields
-    if (!section || !numberOfStudents || !periodStartDate || !periodEndDate || !periodStartTime || !periodEndTime || !roomPhotoBefore || !signature || !termsAccepted) {
+    const hasRoomPhoto = roomPhotoBefore || (roomPhotosBefore && roomPhotosBefore.length > 0);
+    if (!section || !numberOfStudents || !periodStartDate || !periodEndDate || !periodStartTime || !periodEndTime || !hasRoomPhoto || !signature || !termsAccepted) {
       return res.status(400).json({ message: 'All required fields must be provided', messageAr: 'يجب تقديم جميع الحقول المطلوبة' });
     }
 
@@ -121,7 +123,8 @@ exports.createEducation = async (req, res) => {
       periodEndDate,
       periodStartTime,
       periodEndTime,
-      roomPhotoBefore,
+      roomPhotoBefore: roomPhotoBefore || (roomPhotosBefore && roomPhotosBefore[0]) || null,
+      roomPhotosBefore: roomPhotosBefore || [],
       signature,
       termsAccepted,
       status: 'pending'
@@ -471,20 +474,42 @@ exports.bulkAddStudents = async (req, res) => {
       nextIdNumber = parseInt(lastStudent.studentId.replace('S#', '')) + 1;
     }
 
-    const studentRecords = students.map((student, index) => ({
-      studentId: `S#${String(nextIdNumber + index).padStart(5, '0')}`,
-      educationId,
-      fullName: student.fullName,
-      nationalId: student.nationalId,
-      phoneNumber: student.phoneNumber,
-      schoolName: student.schoolName,
-      educationLevel: student.educationLevel,
-      parentPhoneNumber: student.parentPhoneNumber,
-      personalPhoto: student.personalPhoto,
-      status: 'active'
-    }));
+    // Get teacher name for QR data
+    const educationWithUser = await Education.findByPk(educationId, {
+      include: [{ model: User, as: 'user', attributes: ['firstName', 'lastName', 'name'] }]
+    });
+    const teacherName = educationWithUser?.user?.firstName && educationWithUser?.user?.lastName
+      ? `${educationWithUser.user.firstName} ${educationWithUser.user.lastName}`
+      : educationWithUser?.user?.name || 'N/A';
+
+    const studentRecords = students.map((student, index) => {
+      const studentId = `S#${String(nextIdNumber + index).padStart(5, '0')}`;
+      const qrData = JSON.stringify({ type: 'education', studentId, fullName: student.fullName, educationId, teacherName });
+      return {
+        studentId,
+        educationId,
+        fullName: student.fullName,
+        nationalId: student.nationalId,
+        phoneNumber: student.phoneNumber,
+        schoolName: student.schoolName,
+        educationLevel: student.educationLevel,
+        parentPhoneNumber: student.parentPhoneNumber,
+        personalPhoto: student.personalPhoto,
+        email: student.email || null,
+        qrCode: qrData,
+        status: 'active'
+      };
+    });
 
     const created = await EducationStudent.bulkCreate(studentRecords);
+
+    // Send confirmation emails to students who have email
+    for (const record of studentRecords) {
+      if (record.email) {
+        const qrData = JSON.parse(record.qrCode);
+        sendEducationStudentConfirmation(record.email, record.fullName, education, qrData).catch(err => console.error('Student email error:', err));
+      }
+    }
 
     res.status(201).json({
       message: 'Students added successfully',
@@ -517,18 +542,24 @@ exports.getStudentsForEducation = async (req, res) => {
 exports.addSingleStudent = async (req, res) => {
   try {
     const educationId = req.params.id;
-    const { fullName, nationalId, phoneNumber, schoolName, educationLevel, parentPhoneNumber, personalPhoto } = req.body;
+    const { fullName, nationalId, phoneNumber, schoolName, educationLevel, parentPhoneNumber, personalPhoto, email } = req.body;
 
     if (!fullName || !nationalId || !phoneNumber || !schoolName || !educationLevel || !parentPhoneNumber || !personalPhoto) {
       return res.status(400).json({ message: 'All fields are required', messageAr: 'جميع الحقول مطلوبة' });
     }
 
-    const education = await Education.findByPk(educationId);
+    const education = await Education.findByPk(educationId, {
+      include: [{ model: User, as: 'user', attributes: ['firstName', 'lastName', 'name'] }]
+    });
     if (!education) {
       return res.status(404).json({ message: 'Education record not found' });
     }
 
     const studentId = await generateStudentId();
+    const teacherName = education.user?.firstName && education.user?.lastName
+      ? `${education.user.firstName} ${education.user.lastName}`
+      : education.user?.name || 'N/A';
+    const qrData = JSON.stringify({ type: 'education', studentId, fullName, educationId, teacherName });
 
     const student = await EducationStudent.create({
       studentId,
@@ -540,8 +571,15 @@ exports.addSingleStudent = async (req, res) => {
       educationLevel,
       parentPhoneNumber,
       personalPhoto,
+      email: email || null,
+      qrCode: qrData,
       status: 'active'
     });
+
+    // Send confirmation email if student has email
+    if (email) {
+      sendEducationStudentConfirmation(email, fullName, education, JSON.parse(qrData)).catch(err => console.error('Student email error:', err));
+    }
 
     res.status(201).json({ message: 'Student added successfully', messageAr: 'تم إضافة الطالب بنجاح', student });
   } catch (error) {
@@ -558,7 +596,7 @@ exports.updateStudent = async (req, res) => {
       return res.status(404).json({ message: 'Student not found' });
     }
 
-    const allowedFields = ['fullName', 'nationalId', 'phoneNumber', 'schoolName', 'educationLevel', 'parentPhoneNumber', 'personalPhoto'];
+    const allowedFields = ['fullName', 'nationalId', 'phoneNumber', 'schoolName', 'educationLevel', 'parentPhoneNumber', 'personalPhoto', 'email'];
     const updates = {};
     allowedFields.forEach(field => {
       if (req.body[field] !== undefined) updates[field] = req.body[field];
@@ -732,6 +770,78 @@ exports.exportAttendance = async (req, res) => {
     });
   } catch (error) {
     console.error('Error exporting attendance:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+// Mark attendance by QR code scan
+exports.markAttendanceByQR = async (req, res) => {
+  try {
+    const { studentId, educationId } = req.body;
+    const today = new Date().toISOString().split('T')[0];
+    const now = new Date().toTimeString().split(' ')[0];
+
+    const student = await EducationStudent.findByPk(studentId);
+    if (!student) return res.status(404).json({ message: 'Student not found' });
+    if (student.educationId !== educationId) return res.status(400).json({ message: 'Student not in this education' });
+
+    // Check if already marked today
+    const existing = await EducationAttendance.findOne({
+      where: { educationId, studentId, date: today }
+    });
+
+    if (existing) {
+      return res.json({ message: 'Already marked present today', student, alreadyMarked: true });
+    }
+
+    await EducationAttendance.create({
+      educationId, studentId, date: today, status: 'present'
+    });
+
+    res.json({ message: 'Attendance marked', student, date: today, time: now });
+  } catch (error) {
+    console.error('Mark attendance error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+// Get attendance sheet for an education
+exports.getAttendanceSheet = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const students = await EducationStudent.findAll({
+      where: { educationId: id, status: 'active' },
+      order: [['fullName', 'ASC']]
+    });
+
+    const attendance = await EducationAttendance.findAll({
+      where: { educationId: id },
+      order: [['date', 'ASC']]
+    });
+
+    // Get unique dates
+    const dates = [...new Set(attendance.map(a => a.date))].sort();
+
+    // Build attendance matrix
+    const sheet = students.map(s => {
+      const studentAttendance = {};
+      dates.forEach(d => {
+        const record = attendance.find(a => a.studentId === s.studentId && a.date === d);
+        studentAttendance[d] = record ? record.status : 'absent';
+      });
+      return {
+        studentId: s.studentId,
+        fullName: s.fullName,
+        email: s.email,
+        attendance: studentAttendance,
+        totalPresent: dates.filter(d => studentAttendance[d] === 'present').length,
+        totalDays: dates.length
+      };
+    });
+
+    res.json({ dates, sheet, educationId: id });
+  } catch (error) {
+    console.error('Get attendance sheet error:', error);
     res.status(500).json({ message: 'Server error' });
   }
 };

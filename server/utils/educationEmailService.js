@@ -273,9 +273,70 @@ const sendCustomEducationEmail = async (education, user, subject, messageText) =
   }
 };
 
+// Send confirmation email to education student with QR code
+const sendEducationStudentConfirmation = async (studentEmail, studentName, education, qrData) => {
+  if (!studentEmail) return;
+
+  const sectionAr = translateSection(education.section);
+  const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(JSON.stringify(qrData))}`;
+
+  const msg = {
+    to: studentEmail,
+    from: { email: process.env.SENDGRID_FROM_EMAIL, name: process.env.SENDGRID_FROM_NAME },
+    subject: 'تسجيل طالب - Student Registration Confirmation',
+    html: emailWrapper(`
+      <div dir="rtl" style="padding: 25px; background: #ffffff; border: 1px solid #e5e5e5;">
+        <h2 style="color: #333; margin-top: 0;">مرحبا ${studentName}</h2>
+        <p>تم تسجيلك بنجاح في النظام التعليمي.</p>
+        <div style="background: #f5f3ff; padding: 15px; border-radius: 8px; margin: 15px 0; border-right: 4px solid #6d28d9;">
+          <table style="width: 100%; border-collapse: collapse;">
+            <tr><td style="padding: 5px 0;"><strong>رقم التعليم:</strong></td><td>${education.educationId}</td></tr>
+            <tr><td style="padding: 5px 0;"><strong>رقم الطالب:</strong></td><td>${qrData.studentId}</td></tr>
+            <tr><td style="padding: 5px 0;"><strong>المعلم:</strong></td><td>${qrData.teacherName || 'N/A'}</td></tr>
+            <tr><td style="padding: 5px 0;"><strong>القسم:</strong></td><td>${sectionAr}</td></tr>
+            <tr><td style="padding: 5px 0;"><strong>الفترة:</strong></td><td>${formatDateAr(education.periodStartDate)} - ${formatDateAr(education.periodEndDate)}</td></tr>
+            <tr><td style="padding: 5px 0;"><strong>الوقت:</strong></td><td>${education.periodStartTime} - ${education.periodEndTime}</td></tr>
+          </table>
+        </div>
+        <div style="text-align: center; margin: 20px 0;">
+          <p style="font-weight: 600; margin-bottom: 10px;">رمز QR للحضور:</p>
+          <img src="${qrUrl}" alt="QR Code" style="width: 180px; height: 180px;" />
+        </div>
+      </div>
+      <div style="border-top: 2px solid #6d28d9; margin: 0;"></div>
+      <div dir="ltr" style="padding: 25px; background: #ffffff; border: 1px solid #e5e5e5;">
+        <h2 style="color: #333; margin-top: 0;">Hello ${studentName}</h2>
+        <p>You have been successfully registered in the education system.</p>
+        <div style="background: #f5f3ff; padding: 15px; border-radius: 8px; margin: 15px 0; border-left: 4px solid #6d28d9;">
+          <table style="width: 100%; border-collapse: collapse;">
+            <tr><td style="padding: 5px 0;"><strong>Education ID:</strong></td><td>${education.educationId}</td></tr>
+            <tr><td style="padding: 5px 0;"><strong>Student ID:</strong></td><td>${qrData.studentId}</td></tr>
+            <tr><td style="padding: 5px 0;"><strong>Teacher:</strong></td><td>${qrData.teacherName || 'N/A'}</td></tr>
+            <tr><td style="padding: 5px 0;"><strong>Section:</strong></td><td>${education.section}</td></tr>
+            <tr><td style="padding: 5px 0;"><strong>Period:</strong></td><td>${formatDate(education.periodStartDate)} - ${formatDate(education.periodEndDate)}</td></tr>
+            <tr><td style="padding: 5px 0;"><strong>Time:</strong></td><td>${education.periodStartTime} - ${education.periodEndTime}</td></tr>
+          </table>
+        </div>
+        <div style="text-align: center; margin: 20px 0;">
+          <p style="font-weight: 600; margin-bottom: 10px;">Your Attendance QR Code:</p>
+          <img src="${qrUrl}" alt="QR Code" style="width: 180px; height: 180px;" />
+        </div>
+      </div>
+    `)
+  };
+
+  try {
+    await sgMail.send(msg);
+    console.log(`Education student confirmation email sent to ${studentEmail}`);
+  } catch (error) {
+    console.error('Error sending education student confirmation email:', error);
+  }
+};
+
 module.exports = {
   sendEducationConfirmation,
   sendEducationStatusUpdate,
   sendEducationPeriodEnd,
-  sendCustomEducationEmail
+  sendCustomEducationEmail,
+  sendEducationStudentConfirmation
 };

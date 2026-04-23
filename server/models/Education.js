@@ -45,7 +45,13 @@ const Education = sequelize.define('Education', {
   },
   roomPhotoBefore: {
     type: DataTypes.TEXT('long'),
-    allowNull: false
+    allowNull: true
+  },
+  roomPhotosBefore: {
+    type: DataTypes.JSON,
+    allowNull: true,
+    defaultValue: [],
+    comment: 'Array of base64 room photos (max 10)'
   },
   signature: {
     type: DataTypes.STRING,
