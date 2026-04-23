@@ -819,14 +819,14 @@ exports.getAttendanceSheet = async (req, res) => {
       order: [['date', 'ASC']]
     });
 
-    // Get unique dates
-    const dates = [...new Set(attendance.map(a => a.date))].sort();
+    // Get unique dates (normalize to string to avoid Date vs string mismatch)
+    const dates = [...new Set(attendance.map(a => String(a.date).substring(0, 10)))].sort();
 
     // Build attendance matrix
     const sheet = students.map(s => {
       const studentAttendance = {};
       dates.forEach(d => {
-        const record = attendance.find(a => a.studentId === s.studentId && a.date === d);
+        const record = attendance.find(a => String(a.studentId) === String(s.studentId) && String(a.date).substring(0, 10) === d);
         studentAttendance[d] = record ? record.status : 'absent';
       });
       return {
