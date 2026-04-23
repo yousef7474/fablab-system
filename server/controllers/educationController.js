@@ -778,8 +778,9 @@ exports.exportAttendance = async (req, res) => {
 exports.markAttendanceByQR = async (req, res) => {
   try {
     const { studentId, educationId } = req.body;
-    const today = new Date().toISOString().split('T')[0];
-    const now = new Date().toTimeString().split(' ')[0].substring(0, 5); // HH:MM
+    const saudiTime = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Riyadh' }));
+    const today = saudiTime.toISOString().split('T')[0];
+    const now = `${String(saudiTime.getHours()).padStart(2, '0')}:${String(saudiTime.getMinutes()).padStart(2, '0')}`;
 
     const student = await EducationStudent.findByPk(studentId);
     if (!student) return res.status(404).json({ message: 'Student not found' });
