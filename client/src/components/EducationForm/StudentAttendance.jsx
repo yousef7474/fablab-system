@@ -38,9 +38,14 @@ const StudentAttendance = () => {
       // Fetch students
       const studentsRes = await api.get(`/education/${encodeURIComponent(educationId.trim())}/students/public`);
       setStudents(studentsRes.data);
-      // Initialize all as present
+      // Initialize all as absent, then load today's attendance
       const map = {};
-      studentsRes.data.forEach(s => { map[s.studentId] = 'present'; });
+      studentsRes.data.forEach(s => { map[s.studentId] = 'absent'; });
+      // Load existing attendance for today
+      try {
+        const attRes = await api.get(`/education/${encodeURIComponent(educationId.trim())}/attendance?date=${attendanceDate}`);
+        attRes.data.forEach(a => { if (map[a.studentId] !== undefined) map[a.studentId] = a.status; });
+      } catch {}
       setAttendanceMap(map);
       setStep(2);
       toast.success('تم التحقق بنجاح');
@@ -78,13 +83,20 @@ const StudentAttendance = () => {
     }
   };
 
-  const toggleStatus = (studentId) => {
-    setAttendanceMap(prev => {
-      const newMap = { ...prev, [studentId]: prev[studentId] === 'present' ? 'absent' : 'present' };
-      autoSaveAttendance(newMap);
-      toast.success(newMap[studentId] === 'present' ? '✓ حاضر' : '✗ غائب', { autoClose: 1500 });
-      return newMap;
-    });
+  const toggleStatus = async (studentId) => {
+    const newStatus = attendanceMap[studentId] === 'present' ? 'absent' : 'present';
+    const newMap = { ...attendanceMap, [studentId]: newStatus };
+    setAttendanceMap(newMap);
+    // Save only this one student
+    try {
+      await api.post(`/education/${encodeURIComponent(educationId)}/attendance`, {
+        date: attendanceDate,
+        records: [{ studentId, status: newStatus }]
+      });
+      toast.success(newStatus === 'present' ? '✓ حاضر' : '✗ غائب', { autoClose: 1500 });
+    } catch (err) {
+      toast.error('خطأ في حفظ الحضور', { autoClose: 2000 });
+    }
   };
 
   const markAll = (status) => {
