@@ -39,6 +39,7 @@ const EmployeeDashboard = () => {
   const [schedule, setSchedule] = useState([]);
   const [myEvaluations, setMyEvaluations] = useState(null);
   const [myWorkshops, setMyWorkshops] = useState([]);
+  const [workshopViewFilter, setWorkshopViewFilter] = useState('active');
   const [activityStats, setActivityStats] = useState(null);
   const [loading, setLoading] = useState(true);
   const [taskStatusFilter, setTaskStatusFilter] = useState('all');
@@ -740,9 +741,26 @@ const EmployeeDashboard = () => {
         {/* Workshops Tab */}
         {activeTab === 'workshops' && (
           <div className="emp-workshops-tab">
-            {myWorkshops.length === 0 ? (
-              <div className="emp-empty-state"><p>{isRTL ? 'لا توجد ورش مسندة إليك' : 'No workshops assigned to you'}</p></div>
-            ) : myWorkshops.map(workshop => (
+            {/* Filter tabs */}
+            <div className="emp-filter-tabs" style={{ marginBottom: '1rem' }}>
+              {[
+                { key: 'active', label: isRTL ? 'النشطة' : 'Active', color: '#3b82f6', count: myWorkshops.filter(w => w.status !== 'completed' && w.status !== 'cancelled').length },
+                { key: 'completed', label: isRTL ? 'المكتملة' : 'Completed', color: '#22c55e', count: myWorkshops.filter(w => w.status === 'completed').length },
+                { key: 'all', label: isRTL ? 'الكل' : 'All', color: '#64748b', count: myWorkshops.length },
+              ].map(f => (
+                <button key={f.key} className={`emp-filter-tab ${(workshopViewFilter || 'active') === f.key ? 'active' : ''}`}
+                  onClick={() => setWorkshopViewFilter(f.key)}>
+                  <span className="emp-filter-dot" style={{ background: f.color }}></span>
+                  {f.label}
+                  <span className="emp-filter-count">{f.count}</span>
+                </button>
+              ))}
+            </div>
+            {(() => {
+              const filtered = (workshopViewFilter || 'active') === 'all' ? myWorkshops : (workshopViewFilter || 'active') === 'completed' ? myWorkshops.filter(w => w.status === 'completed') : myWorkshops.filter(w => w.status !== 'completed' && w.status !== 'cancelled');
+              return filtered.length === 0 ? (
+              <div className="emp-empty-state"><p>{isRTL ? 'لا توجد ورش' : 'No workshops'}</p></div>
+            ) : filtered.map(workshop => (
               <div key={workshop.workshopId} className="emp-section-card" style={{ marginBottom: '1.5rem' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem' }}>
                   <div>
@@ -848,7 +866,8 @@ const EmployeeDashboard = () => {
                   </div>
                 )}
               </div>
-            ))}
+            ));
+            })()}
           </div>
         )}
 
