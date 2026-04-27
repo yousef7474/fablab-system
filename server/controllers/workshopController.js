@@ -47,11 +47,16 @@ exports.getAllWorkshops = async (req, res) => {
     const today = new Date().toISOString().split('T')[0];
     await Workshop.update(
       { status: 'completed' },
-      { where: { status: { [Op.in]: ['upcoming', 'in_progress'] }, endDate: { [Op.lt]: today }, endDate: { [Op.not]: null } } }
+      { where: { status: { [Op.in]: ['upcoming', 'in_progress'] }, endDate: { [Op.and]: [{ [Op.not]: null }, { [Op.lt]: today }] } } }
     );
     await Workshop.update(
       { status: 'in_progress' },
       { where: { status: 'upcoming', startDate: { [Op.lte]: today }, [Op.or]: [{ endDate: { [Op.gte]: today } }, { endDate: null }] } }
+    );
+    // Reset wrongly completed future workshops back to upcoming
+    await Workshop.update(
+      { status: 'upcoming' },
+      { where: { status: 'completed', startDate: { [Op.gt]: today } } }
     );
 
     const workshops = await Workshop.findAll({
