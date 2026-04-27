@@ -7648,80 +7648,38 @@ const AdminDashboard = () => {
                           <span style={{ padding: '2px 8px', borderRadius: 6, fontSize: '0.72rem', fontWeight: 600, background: s.attended ? '#dcfce7' : '#f1f5f9', color: s.attended ? '#166534' : '#94a3b8' }}>
                             {s.attended ? `\u2713 ${Array.isArray(s.attendanceDates) ? s.attendanceDates.length : 0}${isRTL ? 'ي' : 'd'}` : (isRTL ? 'لم يحضر' : 'Not attended')}
                           </span>
-                          <button onClick={() => { setEditingStudent(s); setEditStudentForm({ firstName: s.firstName || '', lastName: s.lastName || '', phone: s.phone || '', email: s.email || '', nationalId: s.nationalId || '', gender: s.gender || '', age: s.age || '', city: s.city || '', invoiceNumber: s.invoiceNumber || '' }); }}
-                            title={isRTL ? 'تعديل' : 'Edit'}
-                            style={{ padding: '0.35rem 0.7rem', borderRadius: 6, border: '1px solid #e2e8f0', background: 'white', color: '#334155', cursor: 'pointer', fontWeight: 600, fontSize: '0.72rem', fontFamily: 'inherit', display: 'flex', alignItems: 'center', gap: 4 }}>
-                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-                            {isRTL ? 'تعديل' : 'Edit'}
-                          </button>
-                          <button onClick={() => handlePrintStudentID(s, viewingWorkshopStudents)} title={isRTL ? 'طباعة البطاقة' : 'Print ID'}
-                            style={{ padding: '0.35rem 0.7rem', borderRadius: 6, border: 'none', background: 'linear-gradient(135deg, #3b82f6, #1d4ed8)', color: 'white', cursor: 'pointer', fontWeight: 600, fontSize: '0.72rem', fontFamily: 'inherit', display: 'flex', alignItems: 'center', gap: 4 }}>
-                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="2"/><path d="M15 8h3M15 12h3M7 16h10"/></svg>
-                            {isRTL ? 'بطاقة' : 'ID'}
-                          </button>
-                          <button onClick={async () => {
-                            try {
-                              const res = await api.get(`/workshops/students/${s.studentId}/certificate-pdf`, { responseType: 'blob' });
-                              const link = document.createElement('a');
-                              link.href = URL.createObjectURL(new Blob([res.data], { type: 'application/pdf' }));
-                              link.download = `certificate_${s.firstName}.pdf`;
-                              link.click();
-                              URL.revokeObjectURL(link.href);
-                            } catch(e) {
-                              let msg = isRTL ? 'خطأ في إنشاء PDF' : 'Error generating PDF';
-                              if (e.response?.data instanceof Blob) {
-                                try { const json = JSON.parse(await e.response.data.text()); msg = (isRTL ? json.messageAr : json.message) || msg; } catch {}
-                              } else { msg = (isRTL ? e.response?.data?.messageAr : e.response?.data?.message) || msg; }
-                              toast.error(msg);
-                            }
-                          }} title={isRTL ? 'تحميل PDF' : 'Download PDF'}
-                            style={{ padding: '0.35rem 0.7rem', borderRadius: 6, border: 'none', background: 'linear-gradient(135deg, #dc2626, #b91c1c)', color: 'white', cursor: 'pointer', fontWeight: 600, fontSize: '0.72rem', fontFamily: 'inherit', display: 'flex', alignItems: 'center', gap: 4 }}>
-                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><polyline points="9 15 12 18 15 15"/></svg>
-                            PDF
-                          </button>
-                          <button onClick={() => handlePrintWorkshopCertificate(s, viewingWorkshopStudents)} title={isRTL ? 'طباعة الشهادة' : 'Print Certificate'}
-                            style={{ padding: '0.35rem 0.7rem', borderRadius: 6, border: 'none', background: 'linear-gradient(135deg, #f59e0b, #d97706)', color: 'white', cursor: 'pointer', fontWeight: 600, fontSize: '0.72rem', fontFamily: 'inherit', display: 'flex', alignItems: 'center', gap: 4 }}>
-                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 15l-8.5-5L12 5l8.5 5L12 15z"/><path d="M12 15v6M7 11v5a5 5 0 0010 0v-5"/></svg>
-                            {isRTL ? 'شهادة' : 'Cert'}
-                          </button>
-                          {s.email && <button onClick={async () => {
-                            try { await api.post(`/workshops/students/${s.studentId}/send-certificate`); toast.success(isRTL ? 'تم إرسال الشهادة بالبريد' : 'Certificate emailed'); } catch(e) { toast.error(e.response?.data?.messageAr || e.response?.data?.message || 'Error'); }
-                          }} title={isRTL ? 'إرسال الشهادة بالبريد' : 'Email Certificate'}
-                            style={{ padding: '0.35rem 0.7rem', borderRadius: 6, border: 'none', background: 'linear-gradient(135deg, #8b5cf6, #6d28d9)', color: 'white', cursor: 'pointer', fontWeight: 600, fontSize: '0.72rem', fontFamily: 'inherit', display: 'flex', alignItems: 'center', gap: 4 }}>
-                            📧 {isRTL ? 'شهادة' : 'Email'}
-                          </button>}
-                          <button onClick={() => handlePrintAttendanceId(s.studentId)} title={isRTL ? 'بطاقة حضور' : 'Attendance ID'}
-                            style={{ padding: '0.35rem 0.7rem', borderRadius: 6, border: 'none', background: `linear-gradient(135deg, ${viewingWorkshopStudents.color || '#1a56db'}, ${viewingWorkshopStudents.color || '#1a56db'}cc)`, color: 'white', cursor: 'pointer', fontWeight: 600, fontSize: '0.72rem', fontFamily: 'inherit', display: 'flex', alignItems: 'center', gap: 4 }}>
-                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
-                            {isRTL ? 'حضور' : 'Att.ID'}
-                          </button>
-                          {s.email && <button onClick={() => handleSendAttendanceId(s.studentId)} title={isRTL ? 'إرسال بطاقة الحضور' : 'Send Attendance ID'}
-                            style={{ padding: '0.35rem 0.7rem', borderRadius: 6, border: 'none', background: '#eff6ff', color: '#1d4ed8', cursor: 'pointer', fontWeight: 600, fontSize: '0.72rem', fontFamily: 'inherit', display: 'flex', alignItems: 'center', gap: 4 }}>
-                            📧 {isRTL ? 'إرسال' : 'Send'}
-                          </button>}
-                          {s.email && <button onClick={() => { setWorkshopEmailTarget({ studentId: s.studentId, email: s.email }); setShowWorkshopEmailModal(true); }} title={isRTL ? 'بريد' : 'Email'}
-                            style={{ padding: '0.35rem 0.7rem', borderRadius: 6, border: '1px solid #e2e8f0', background: 'white', color: '#334155', cursor: 'pointer', fontWeight: 600, fontSize: '0.72rem', fontFamily: 'inherit', display: 'flex', alignItems: 'center', gap: 4 }}>
-                            ✉ {isRTL ? 'بريد' : 'Mail'}
-                          </button>}
-                          {s.phone && <a href={`https://wa.me/${s.phone.replace(/[^0-9]/g, '')}?text=${encodeURIComponent(`مرحباً ${s.firstName}،\n\nنبارك لك إتمام الورشة التدريبية "${viewingWorkshopStudents.title}" في فاب لاب الأحساء.\n\n${viewingWorkshopStudents.totalHours ? `المدة: ${viewingWorkshopStudents.totalHours} ساعة تدريبية\n` : ''}${viewingWorkshopStudents.presenter ? `المقدم: ${viewingWorkshopStudents.presenter}\n` : ''}\nتم إرسال شهادتك عبر البريد الإلكتروني، يرجى التحقق من بريدك.\n\nفاب لاب الأحساء — مختبر التصنيع الرقمي`)}`} target="_blank" rel="noreferrer" title="WhatsApp"
-                            style={{ padding: '0.35rem 0.7rem', borderRadius: 6, border: 'none', background: '#22c55e', color: 'white', cursor: 'pointer', fontWeight: 600, fontSize: '0.72rem', fontFamily: 'inherit', display: 'flex', alignItems: 'center', gap: 4, textDecoration: 'none' }}>
-                            <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M12 0C5.373 0 0 5.373 0 12c0 2.126.553 4.12 1.52 5.855L0 24l6.335-1.652A11.95 11.95 0 0012 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 21.82c-1.887 0-3.64-.505-5.158-1.385l-.37-.218-3.834 1.003 1.022-3.735-.24-.38A9.803 9.803 0 012.18 12c0-5.422 4.398-9.82 9.82-9.82 5.422 0 9.82 4.398 9.82 9.82 0 5.422-4.398 9.82-9.82 9.82z"/></svg>
-                            WA
-                          </a>}
-                          <button onClick={async () => {
-                            if (!window.confirm(isRTL ? 'حذف هذا الطالب؟' : 'Delete this student?')) return;
-                            try {
-                              await api.delete(`/workshops/students/${s.studentId}`);
-                              toast.success(isRTL ? 'تم حذف الطالب' : 'Student deleted');
-                              const res = await api.get(`/workshops/${viewingWorkshopStudents.workshopId}`);
-                              setViewingWorkshopStudents(res.data);
-                              fetchWorkshops();
-                            } catch(e) { toast.error(isRTL ? 'خطأ' : 'Error'); }
-                          }} title={isRTL ? 'حذف' : 'Delete'}
-                            style={{ padding: '0.35rem 0.7rem', borderRadius: 6, border: 'none', background: '#fee2e2', color: '#991b1b', cursor: 'pointer', fontWeight: 600, fontSize: '0.72rem', fontFamily: 'inherit', display: 'flex', alignItems: 'center', gap: 4 }}>
-                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
-                            {isRTL ? 'حذف' : 'Del'}
-                          </button>
+                          <select
+                            onChange={async (e) => {
+                              const action = e.target.value;
+                              e.target.value = '';
+                              if (action === 'edit') { setEditingStudent(s); setEditStudentForm({ firstName: s.firstName || '', lastName: s.lastName || '', phone: s.phone || '', email: s.email || '', nationalId: s.nationalId || '', gender: s.gender || '', age: s.age || '', city: s.city || '', invoiceNumber: s.invoiceNumber || '' }); }
+                              else if (action === 'printId') handlePrintStudentID(s, viewingWorkshopStudents);
+                              else if (action === 'printCert') handlePrintWorkshopCertificate(s, viewingWorkshopStudents);
+                              else if (action === 'downloadPdf') {
+                                try { const res = await api.get(`/workshops/students/${s.studentId}/certificate-pdf`, { responseType: 'blob' }); const link = document.createElement('a'); link.href = URL.createObjectURL(new Blob([res.data], { type: 'application/pdf' })); link.download = `certificate_${s.firstName}.pdf`; link.click(); } catch(e2) { let msg = isRTL ? 'خطأ' : 'Error'; if (e2.response?.data instanceof Blob) { try { const j = JSON.parse(await e2.response.data.text()); msg = (isRTL ? j.messageAr : j.message) || msg; } catch {} } toast.error(msg); }
+                              }
+                              else if (action === 'emailCert') { try { await api.post(`/workshops/students/${s.studentId}/send-certificate`); toast.success(isRTL ? 'تم إرسال الشهادة' : 'Certificate emailed'); } catch(e2) { toast.error(e2.response?.data?.messageAr || 'Error'); } }
+                              else if (action === 'printAttId') handlePrintAttendanceId(s.studentId);
+                              else if (action === 'emailAttId') { try { await api.post(`/workshops/students/${s.studentId}/send-attendance-id`); toast.success(isRTL ? 'تم إرسال بطاقة الحضور' : 'Attendance ID sent'); } catch(e2) { toast.error('Error'); } }
+                              else if (action === 'emailCustom') { setWorkshopEmailTarget({ studentId: s.studentId, email: s.email }); setShowWorkshopEmailModal(true); }
+                              else if (action === 'whatsapp') { window.open(`https://wa.me/${(s.phone||'').replace(/[^0-9]/g, '')}?text=${encodeURIComponent(`مرحباً ${s.firstName}،\n\nهذه رسالة من فاب لاب الأحساء بخصوص الورشة: ${viewingWorkshopStudents.title}`)}`, '_blank'); }
+                              else if (action === 'delete') { if (!window.confirm(isRTL ? 'حذف هذا الطالب؟' : 'Delete?')) return; try { await api.delete(`/workshops/students/${s.studentId}`); toast.success(isRTL ? 'تم الحذف' : 'Deleted'); const res = await api.get(`/workshops/${viewingWorkshopStudents.workshopId}`); setViewingWorkshopStudents(res.data); fetchWorkshops(); } catch(e2) { toast.error('Error'); } }
+                            }}
+                            value=""
+                            style={{ padding: '0.35rem 0.5rem', borderRadius: 6, border: '1.5px solid #e2e8f0', background: 'white', fontSize: '0.75rem', fontWeight: 600, fontFamily: 'inherit', cursor: 'pointer', color: '#334155', minWidth: 90 }}
+                          >
+                            <option value="" disabled>{isRTL ? '⚙ إجراءات' : '⚙ Actions'}</option>
+                            <option value="edit">{isRTL ? '✏ تعديل البيانات' : '✏ Edit Info'}</option>
+                            <option value="printId">{isRTL ? '🪪 طباعة البطاقة' : '🪪 Print ID'}</option>
+                            <option value="printCert">{isRTL ? '🎓 طباعة الشهادة' : '🎓 Print Cert'}</option>
+                            <option value="downloadPdf">{isRTL ? '📄 تحميل PDF' : '📄 Download PDF'}</option>
+                            {s.email && <option value="emailCert">{isRTL ? '📧 إرسال الشهادة' : '📧 Email Cert'}</option>}
+                            <option value="printAttId">{isRTL ? '🎟 بطاقة حضور' : '🎟 Att. ID'}</option>
+                            {s.email && <option value="emailAttId">{isRTL ? '📨 إرسال بطاقة الحضور' : '📨 Send Att. ID'}</option>}
+                            {s.email && <option value="emailCustom">{isRTL ? '✉ بريد مخصص' : '✉ Custom Email'}</option>}
+                            {s.phone && <option value="whatsapp">{isRTL ? '💬 واتساب' : '💬 WhatsApp'}</option>}
+                            <option value="delete" style={{ color: '#dc2626' }}>{isRTL ? '🗑 حذف' : '🗑 Delete'}</option>
+                          </select>
                         </div>
                       ))}
                       {(!viewingWorkshopStudents.students || viewingWorkshopStudents.students.length === 0) && (

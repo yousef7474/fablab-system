@@ -43,6 +43,17 @@ exports.createWorkshop = async (req, res) => {
 // Get all workshops (admin)
 exports.getAllWorkshops = async (req, res) => {
   try {
+    // Auto-update workshop statuses based on dates
+    const today = new Date().toISOString().split('T')[0];
+    await Workshop.update(
+      { status: 'completed' },
+      { where: { status: { [Op.in]: ['upcoming', 'in_progress'] }, endDate: { [Op.lt]: today }, endDate: { [Op.not]: null } } }
+    );
+    await Workshop.update(
+      { status: 'in_progress' },
+      { where: { status: 'upcoming', startDate: { [Op.lte]: today }, [Op.or]: [{ endDate: { [Op.gte]: today } }, { endDate: null }] } }
+    );
+
     const workshops = await Workshop.findAll({
       include: [
         {

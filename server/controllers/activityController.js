@@ -137,43 +137,47 @@ exports.recordInteraction = async (req, res) => {
 };
 
 // Get own weekly stats (for employee dashboard)
+// Get current calendar week (Sunday-Saturday)
+function getWeekBounds() {
+  const now = new Date();
+  const day = now.getDay(); // 0=Sun
+  const start = new Date(now);
+  start.setDate(now.getDate() - day);
+  start.setHours(0, 0, 0, 0);
+  const end = new Date(start);
+  end.setDate(start.getDate() + 6);
+  return {
+    start: start.toISOString().split('T')[0],
+    end: end.toISOString().split('T')[0],
+    daysRemaining: 6 - day
+  };
+}
+
 exports.getMyWeeklyStats = async (req, res) => {
   try {
     const employee = req.employee;
-    const today = new Date();
-    const todayStr = today.toISOString().split('T')[0];
+    const week = getWeekBounds();
 
-    // Get all credit history
-    const credits = await Rating.findAll({
+    // Get total credits ever
+    const totalCredits = await Rating.count({
+      where: { employeeId: employee.employeeId, criteria: 'Weekly Dashboard Activity', type: 'award' }
+    });
+
+    // Check if already credited THIS week
+    const creditedThisWeek = await Rating.findOne({
       where: {
         employeeId: employee.employeeId,
         criteria: 'Weekly Dashboard Activity',
-        type: 'award'
-      },
-      order: [['ratingDate', 'DESC']]
+        type: 'award',
+        ratingDate: { [Op.between]: [week.start, week.end] }
+      }
     });
-    const successfulWeeks = credits.length;
-    const lastCredit = credits[0] || null;
 
-    // Determine cycle start: day after last credit, or 6 days ago if no credit yet
-    let cycleStartDate;
-    if (lastCredit) {
-      cycleStartDate = new Date(lastCredit.ratingDate);
-      cycleStartDate.setDate(cycleStartDate.getDate() + 1);
-    } else {
-      cycleStartDate = new Date(today);
-      cycleStartDate.setDate(cycleStartDate.getDate() - 6);
-    }
-    const cycleStart = cycleStartDate.toISOString().split('T')[0];
-
-    const cycleEndDate = new Date(cycleStartDate);
-    cycleEndDate.setDate(cycleEndDate.getDate() + 6);
-    const daysRemaining = Math.max(0, Math.ceil((cycleEndDate - today) / (1000 * 60 * 60 * 24)));
-
+    // Get activity for this week
     const activities = await EmployeeActivity.findAll({
       where: {
         employeeId: employee.employeeId,
-        date: { [Op.between]: [cycleStart, todayStr] }
+        date: { [Op.between]: [week.start, week.end] }
       },
       order: [['date', 'ASC']]
     });
@@ -185,9 +189,9 @@ exports.getMyWeeklyStats = async (req, res) => {
     const daysInteracted = activities.filter(a => a.interacted).length;
     const passed = totalMinutes >= WEEKLY_TARGET_MINUTES;
 
-    // Auto-credit immediately if threshold reached in current cycle
+    // Auto-credit if passed AND not already credited this week
     let creditedNow = false;
-    if (passed) {
+    if (passed && !creditedThisWeek) {
       try {
         await Rating.create({
           employeeId: employee.employeeId,
@@ -195,20 +199,15 @@ exports.getMyWeeklyStats = async (req, res) => {
           type: 'award',
           points: 1,
           criteria: 'Weekly Dashboard Activity',
-          notes: `Auto-awarded: ${totalHours} hours on dashboard (target: ${WEEKLY_TARGET_HOURS}h)`,
-          ratingDate: today
+          notes: `Auto-awarded: ${totalHours}h on dashboard (week: ${week.start} to ${week.end})`,
+          ratingDate: new Date()
         });
         creditedNow = true;
-        console.log(`Auto-credited 1 point to ${employee.name} for weekly dashboard activity (${totalHours}h)`);
+        console.log(`Auto-credited 1 point to ${employee.name} for weekly activity (${totalHours}h)`);
+        await syncEvaluationCriterion(employee.employeeId);
       } catch (e) {
         console.error('Auto-credit error:', e);
       }
-    }
-
-    // Only sync the evaluation criterion when a new credit was just awarded
-    // (preserves any manual edits by the manager)
-    if (creditedNow) {
-      await syncEvaluationCriterion(employee.employeeId);
     }
 
     res.json({
@@ -220,11 +219,11 @@ exports.getMyWeeklyStats = async (req, res) => {
       daysInteracted,
       passed,
       creditedNow,
-      successfulWeeks,
-      lastCreditDate: lastCredit ? lastCredit.ratingDate : null,
-      cycleStart,
-      cycleEnd: cycleEndDate.toISOString().split('T')[0],
-      daysRemaining,
+      creditedThisWeek: !!creditedThisWeek,
+      successfulWeeks: totalCredits + (creditedNow ? 1 : 0),
+      cycleStart: week.start,
+      cycleEnd: week.end,
+      daysRemaining: week.daysRemaining,
       dailyBreakdown: activities.map(a => ({
         date: a.date,
         minutes: a.totalMinutes,
@@ -242,8 +241,7 @@ exports.getMyWeeklyStats = async (req, res) => {
 // Get all employees activity stats (for manager)
 exports.getAllEmployeeStats = async (req, res) => {
   try {
-    const today = new Date();
-    const todayStr = today.toISOString().split('T')[0];
+    const week = getWeekBounds();
 
     const employees = await Employee.findAll({
       where: { isActive: true },
@@ -251,51 +249,25 @@ exports.getAllEmployeeStats = async (req, res) => {
       order: [['name', 'ASC']]
     });
 
-    // Get all weekly activity credits (for "successful weeks" count + last credit date)
     const allCredits = await Rating.findAll({
-      where: {
-        criteria: 'Weekly Dashboard Activity',
-        type: 'award'
-      },
+      where: { criteria: 'Weekly Dashboard Activity', type: 'award' },
       order: [['ratingDate', 'DESC']]
     });
 
-    // Pre-fetch ALL activities to avoid N+1 queries
-    const allActivities = await EmployeeActivity.findAll();
+    const allActivities = await EmployeeActivity.findAll({
+      where: { date: { [Op.between]: [week.start, week.end] } }
+    });
 
     const stats = employees.map(emp => {
       const empCredits = allCredits.filter(c => c.employeeId === emp.employeeId);
-      const successfulWeeks = empCredits.length;
       const lastCredit = empCredits[0] || null;
-
-      // Determine cycle start: day after last credit, or 6 days ago if no credit yet
-      let cycleStart;
-      if (lastCredit) {
-        const d = new Date(lastCredit.ratingDate);
-        d.setDate(d.getDate() + 1);
-        cycleStart = d.toISOString().split('T')[0];
-      } else {
-        const d = new Date(today);
-        d.setDate(d.getDate() - 6);
-        cycleStart = d.toISOString().split('T')[0];
-      }
-
-      // Filter activities for this employee within the current cycle
-      const empActivities = allActivities.filter(a =>
-        a.employeeId === emp.employeeId && a.date >= cycleStart && a.date <= todayStr
-      );
+      const empActivities = allActivities.filter(a => a.employeeId === emp.employeeId);
 
       const totalMinutes = empActivities.reduce((sum, a) => sum + a.totalMinutes, 0);
       const totalLogins = empActivities.reduce((sum, a) => sum + a.loginCount, 0);
       const daysActive = empActivities.filter(a => a.totalMinutes > 0).length;
       const daysInteracted = empActivities.filter(a => a.interacted).length;
       const percentage = Math.min(((totalMinutes / WEEKLY_TARGET_MINUTES) * 100), 100);
-
-      // Calculate days remaining in current cycle (cycleStart + 7 days)
-      const cycleStartDate = new Date(cycleStart);
-      const cycleEndDate = new Date(cycleStartDate);
-      cycleEndDate.setDate(cycleEndDate.getDate() + 6);
-      const daysRemaining = Math.max(0, Math.ceil((cycleEndDate - today) / (1000 * 60 * 60 * 24)));
 
       return {
         employeeId: emp.employeeId,
@@ -309,22 +281,18 @@ exports.getAllEmployeeStats = async (req, res) => {
         daysInteracted,
         percentage: parseFloat(percentage.toFixed(1)),
         passed: totalMinutes >= WEEKLY_TARGET_MINUTES,
-        successfulWeeks,
+        successfulWeeks: empCredits.length,
         lastCreditDate: lastCredit ? lastCredit.ratingDate : null,
-        cycleStart,
-        cycleEnd: cycleEndDate.toISOString().split('T')[0],
-        daysRemaining,
-        dailyBreakdown: empActivities.map(a => ({
-          date: a.date,
-          minutes: a.totalMinutes,
-          logins: a.loginCount,
-          interacted: a.interacted
-        }))
+        cycleStart: week.start,
+        cycleEnd: week.end,
+        daysRemaining: week.daysRemaining
       };
     });
 
     res.json({
       targetHours: WEEKLY_TARGET_HOURS,
+      weekStart: week.start,
+      weekEnd: week.end,
       employees: stats
     });
   } catch (error) {
