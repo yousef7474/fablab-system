@@ -228,7 +228,7 @@ exports.getActiveWorkshops = async (req, res) => {
     const workshops = await Workshop.findAll({
       where: {
         isActive: true,
-        status: { [Op.ne]: 'cancelled' }
+        status: { [Op.notIn]: ['cancelled', 'completed'] }
       },
       attributes: [
         'workshopId', 'title', 'description', 'presenter',
