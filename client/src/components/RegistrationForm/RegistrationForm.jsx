@@ -237,17 +237,27 @@ const RegistrationForm = () => {
       toast.success(t('registrationSuccess'));
     } catch (error) {
       console.error('Registration error:', error);
-      // Show bilingual error message based on current language
       const errorData = error.response?.data;
       let errorMessage;
 
       if (errorData) {
-        // Use Arabic or English message based on current language
-        errorMessage = isRTL ? (errorData.messageAr || errorData.message) : errorData.message;
+        errorMessage = isRTL
+          ? (errorData.messageAr || errorData.message || errorData.error)
+          : (errorData.message || errorData.error);
       }
 
-      // Fallback to translation key if no specific message
-      toast.error(errorMessage || t('registrationError'));
+      if (!errorMessage && error.response?.status) {
+        const statusMessages = {
+          400: isRTL ? 'بيانات غير مكتملة أو غير صحيحة' : 'Incomplete or invalid data',
+          404: isRTL ? 'الخدمة غير متوفرة' : 'Service not found',
+          409: isRTL ? 'يوجد تعارض - الموعد قد يكون محجوز' : 'Conflict - time slot may be taken',
+          413: isRTL ? 'حجم الملف كبير جداً' : 'File too large',
+          500: isRTL ? 'خطأ في الخادم - يرجى المحاولة لاحقاً' : 'Server error - please try again later'
+        };
+        errorMessage = statusMessages[error.response.status];
+      }
+
+      toast.error(errorMessage || (isRTL ? 'حدث خطأ - يرجى المحاولة مرة أخرى' : 'An error occurred - please try again'));
     } finally {
       setLoading(false);
     }
