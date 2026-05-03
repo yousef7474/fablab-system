@@ -399,36 +399,38 @@ const RegistrationForm = () => {
 
   return (
     <div className="registration-page" dir={isRTL ? 'rtl' : 'ltr'}>
-      {/* Animated Background Elements */}
-      <div className="floating-orbs">
-        <div className="floating-orb"></div>
-        <div className="floating-orb"></div>
-        <div className="floating-orb"></div>
-        <div className="floating-orb"></div>
-        <div className="floating-orb"></div>
-        <div className="floating-orb"></div>
-      </div>
-      <div className="wave-container">
-        <div className="wave"></div>
-        <div className="wave"></div>
-        <div className="wave"></div>
+      {/* Editorial corner marks */}
+      <div className="editorial-marks" aria-hidden="true">
+        <div className="em-tl"><i></i><span>{isRTL ? 'فاب لاب' : 'FABLAB·AHSA'}</span></div>
+        <div className="em-tr"><span>{isRTL ? 'تسجيل / ٢٠٢٦' : 'REGISTRATION / 2026'}</span><i></i></div>
+        <div className="em-bl"><i></i><span>{isRTL ? 'النموذج ٠٧/٠٧' : 'FORM 07/07'}</span></div>
+        <div className="em-br"><span>{isRTL ? 'مختبر التصنيع الرقمي' : 'DIGITAL FABRICATION'}</span><i></i></div>
       </div>
 
       <div className="registration-container">
-        <div style={{ width: '100%', maxWidth: '900px' }}>
-          {/* Header */}
+        <div style={{ width: '100%', maxWidth: '980px' }}>
+          {/* Editorial Header */}
           <motion.div
             className="registration-header"
-            initial={{ opacity: 0, y: -20 }}
+            initial={{ opacity: 0, y: -16 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5 }}
+            transition={{ duration: 0.6, ease: [0.2, 0.9, 0.2, 1] }}
           >
-            <div className="registration-logo">
-              <img src="/logo.png" alt="FABLAB Logo" style={{ width: '70px', height: '70px', objectFit: 'contain' }} />
+            <div className="registration-eyebrow">
+              <span>{isRTL ? '— مختبر التصنيع الرقمي —' : '— DIGITAL FABRICATION LAB —'}</span>
             </div>
-            <h1 className="registration-title">FABLAB Al-Ahsa</h1>
+            <div className="registration-logo">
+              <img src="/logo.png" alt="FABLAB Logo" style={{ width: '64px', height: '64px', objectFit: 'contain' }} />
+            </div>
+            <h1 className="registration-title">
+              {isRTL ? (
+                <>فاب لاب <em>الأحساء</em></>
+              ) : (
+                <>FabLab <em>Al-Ahsa</em></>
+              )}
+            </h1>
             <p className="registration-subtitle">
-              {isRTL ? 'نظام التسجيل وحجز المواعيد' : 'Registration & Appointment System'}
+              {isRTL ? '⌁ نظام التسجيل وحجز المواعيد ⌁' : '⌁ Registration & Appointment System ⌁'}
             </p>
           </motion.div>
 
@@ -466,7 +468,10 @@ const RegistrationForm = () => {
                 </div>
 
                 {/* Stepper */}
-                <div className="stepper-container">
+                <div
+                  className="stepper-container"
+                  data-progress={`${String(Math.max(0, activeStep) + 1).padStart(2, '0')} / ${String(steps.length).padStart(2, '0')}`}
+                >
                   <div className="stepper-wrapper">
                     {steps.map((step, index) => (
                       <div
@@ -474,7 +479,7 @@ const RegistrationForm = () => {
                         className={`step-item ${index === activeStep ? 'active' : ''} ${index < activeStep ? 'completed' : ''}`}
                       >
                         <div className="step-circle">
-                          {index < activeStep ? '✓' : index + 1}
+                          {index < activeStep ? '' : String(index + 1).padStart(2, '0')}
                         </div>
                         <span className="step-label">{step.label}</span>
                         {index < steps.length - 1 && <div className="step-connector" />}
