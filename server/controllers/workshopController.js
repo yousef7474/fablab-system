@@ -809,6 +809,462 @@ body{font-family:'Segoe UI',Tahoma,Arial,sans-serif;background:linear-gradient(1
   }
 };
 
+// Download formal invoice PDF (Arabic)
+exports.downloadInvoicePdf = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const discountInput = parseFloat(req.query.discount);
+    const discount = !isNaN(discountInput) && discountInput > 0 ? discountInput : 0;
+    const discountType = (req.query.discountType === 'percent') ? 'percent' : 'amount'; // amount = SAR, percent = %
+
+    const student = await WorkshopStudent.findByPk(id, {
+      include: [{ model: Workshop, as: 'workshop' }]
+    });
+    if (!student) return res.status(404).json({ message: 'Student not found', messageAr: 'الطالب غير موجود' });
+
+    const ws = student.workshop || {};
+    const price = Number(ws.price || 0);
+    const discountValue = discountType === 'percent'
+      ? (price * Math.min(discount, 100) / 100)
+      : Math.min(discount, price);
+    const subtotal = price;
+    const total = Math.max(0, price - discountValue);
+
+    const fmt = (n) => new Intl.NumberFormat('ar-SA', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(n);
+    const invoiceNo = 'FAB-' + (student.studentId || '').substring(0, 8).toUpperCase() + '-' + new Date().getFullYear();
+    const issueDate = new Date().toLocaleDateString('ar-SA-u-ca-gregory', { year: 'numeric', month: 'long', day: 'numeric' });
+    const issueDateG = new Date().toISOString().split('T')[0];
+
+    const fullName = `${student.firstName || ''} ${student.lastName || ''}`.trim() || student.name || '—';
+    const startDateF = ws.startDate ? ws.startDate : '';
+    const endDateF = ws.endDate ? ws.endDate : '';
+    const dateRange = startDateF && endDateF && startDateF !== endDateF
+      ? `${startDateF} → ${endDateF}` : (startDateF || '—');
+
+    const html = `<!DOCTYPE html>
+<html dir="rtl" lang="ar">
+<head>
+<meta charset="UTF-8">
+<title>فاتورة - ${fullName}</title>
+<style>
+@page { size: A4; margin: 0; }
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html, body { width: 210mm; min-height: 297mm; }
+body {
+  font-family: 'Segoe UI', Tahoma, Arial, sans-serif;
+  background: #ffffff;
+  color: #0f172a;
+  padding: 14mm 14mm 16mm;
+  position: relative;
+  font-size: 11pt;
+  line-height: 1.55;
+}
+body::before {
+  content: '';
+  position: fixed;
+  top: 50%; left: 50%;
+  width: 140mm; height: 140mm;
+  transform: translate(-50%, -50%) rotate(-18deg);
+  background-image: url('https://fablabsahsa.com/fablab.png');
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
+  opacity: 0.04;
+  z-index: 0;
+}
+.sheet { position: relative; z-index: 1; }
+/* Header band */
+.hdr {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-bottom: 8mm;
+  border-bottom: 3px solid #1a56db;
+  margin-bottom: 8mm;
+}
+.hdr .logos { display: flex; align-items: center; gap: 8mm; }
+.hdr img { height: 22mm; object-fit: contain; }
+.hdr .institution {
+  text-align: center;
+  flex: 1;
+  padding: 0 6mm;
+}
+.hdr .institution .org {
+  font-size: 11pt;
+  color: #475569;
+  margin-bottom: 2mm;
+}
+.hdr .institution .name {
+  font-size: 18pt;
+  font-weight: 800;
+  color: #0f172a;
+  margin-bottom: 1mm;
+  letter-spacing: -0.01em;
+}
+.hdr .institution .sub {
+  font-size: 9pt;
+  color: #64748b;
+  letter-spacing: 0.05em;
+}
+
+/* Title row */
+.title-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  margin-bottom: 7mm;
+}
+.title-row .invoice-title {
+  font-size: 30pt;
+  font-weight: 800;
+  color: #1a56db;
+  letter-spacing: -0.02em;
+  line-height: 1;
+}
+.title-row .invoice-meta {
+  text-align: left;
+  font-size: 10pt;
+}
+.title-row .invoice-meta .row {
+  display: flex;
+  justify-content: space-between;
+  gap: 8mm;
+  margin-bottom: 1.5mm;
+  min-width: 70mm;
+}
+.title-row .invoice-meta .label { color: #64748b; font-weight: 500; }
+.title-row .invoice-meta .value { color: #0f172a; font-weight: 700; }
+.invoice-no-pill {
+  display: inline-block;
+  padding: 1.5mm 4mm;
+  background: linear-gradient(135deg, #1a56db, #3b82f6);
+  color: #fff;
+  border-radius: 6px;
+  font-family: 'Courier New', monospace;
+  font-size: 11pt;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+}
+
+/* Two-column info section */
+.info-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 5mm;
+  margin-bottom: 7mm;
+}
+.info-card {
+  border: 1.5px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 5mm;
+  background: #f8fafc;
+}
+.info-card h3 {
+  font-size: 11pt;
+  font-weight: 700;
+  color: #1a56db;
+  margin-bottom: 3.5mm;
+  padding-bottom: 2mm;
+  border-bottom: 1.5px solid #cbd5e1;
+  display: flex;
+  align-items: center;
+  gap: 2mm;
+}
+.info-card h3::before {
+  content: '';
+  width: 3mm;
+  height: 3mm;
+  background: #1a56db;
+  border-radius: 50%;
+}
+.info-card .field {
+  display: flex;
+  margin-bottom: 2mm;
+  font-size: 10pt;
+}
+.info-card .field .k {
+  color: #64748b;
+  width: 32mm;
+  flex-shrink: 0;
+  font-weight: 500;
+}
+.info-card .field .v {
+  color: #0f172a;
+  font-weight: 600;
+  flex: 1;
+  word-break: break-word;
+}
+
+/* Items table */
+.items-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 7mm;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 8px;
+  overflow: hidden;
+}
+.items-table thead {
+  background: linear-gradient(135deg, #1a56db, #3b82f6);
+}
+.items-table th {
+  color: #fff;
+  font-size: 10pt;
+  font-weight: 700;
+  padding: 4mm 5mm;
+  text-align: right;
+  letter-spacing: 0.02em;
+}
+.items-table th:last-child,
+.items-table td:last-child { text-align: left; }
+.items-table th:first-child,
+.items-table td:first-child { text-align: center; width: 12mm; }
+.items-table td {
+  padding: 4mm 5mm;
+  font-size: 10pt;
+  border-bottom: 1px solid #f1f5f9;
+}
+.items-table tr:last-child td { border-bottom: none; }
+.items-table .desc { font-weight: 600; color: #0f172a; }
+.items-table .desc-sub { color: #64748b; font-size: 9pt; margin-top: 1mm; }
+.items-table .price { font-family: 'Courier New', monospace; font-weight: 700; color: #1a56db; }
+
+/* Totals */
+.totals {
+  display: flex;
+  justify-content: flex-start;
+  margin-bottom: 7mm;
+}
+.totals .box {
+  width: 90mm;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 8px;
+  overflow: hidden;
+}
+.totals .row {
+  display: flex;
+  justify-content: space-between;
+  padding: 3mm 5mm;
+  font-size: 10pt;
+  border-bottom: 1px solid #f1f5f9;
+}
+.totals .row.discount { color: #15803d; }
+.totals .row .label { color: #64748b; font-weight: 500; }
+.totals .row .value { font-family: 'Courier New', monospace; font-weight: 700; color: #0f172a; }
+.totals .row.discount .value { color: #15803d; }
+.totals .grand {
+  background: linear-gradient(135deg, #1a56db, #3b82f6);
+  color: #fff;
+  padding: 4.5mm 5mm;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: none;
+}
+.totals .grand .label { font-weight: 700; font-size: 11pt; }
+.totals .grand .value { font-family: 'Courier New', monospace; font-weight: 800; font-size: 14pt; }
+
+/* Notes / Terms */
+.notes {
+  background: #fffbeb;
+  border-right: 4px solid #f59e0b;
+  padding: 4mm 5mm;
+  border-radius: 6px;
+  margin-bottom: 8mm;
+  font-size: 9pt;
+  color: #78350f;
+  line-height: 1.7;
+}
+.notes b { color: #92400e; }
+
+/* Signature & footer */
+.sig-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  margin-bottom: 6mm;
+  gap: 8mm;
+}
+.sig {
+  flex: 1;
+  text-align: center;
+}
+.sig .line {
+  border-top: 1.5px solid #94a3b8;
+  margin: 14mm 6mm 2mm;
+}
+.sig .label {
+  font-size: 9pt;
+  color: #64748b;
+}
+.stamp {
+  width: 35mm;
+  height: 35mm;
+  border: 2.5px solid #1a56db;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  font-size: 8pt;
+  color: #1a56db;
+  font-weight: 700;
+  transform: rotate(-12deg);
+  opacity: 0.6;
+  line-height: 1.4;
+}
+
+.footer {
+  border-top: 2px solid #e2e8f0;
+  padding-top: 4mm;
+  display: flex;
+  justify-content: space-between;
+  font-size: 8pt;
+  color: #94a3b8;
+}
+.footer .center { text-align: center; flex: 1; }
+.footer .ltr { direction: ltr; }
+</style>
+</head>
+<body>
+<div class="sheet">
+  <!-- Header -->
+  <div class="hdr">
+    <div class="logos">
+      <img src="https://fablabsahsa.com/fablab.png" alt="FabLab" />
+    </div>
+    <div class="institution">
+      <div class="org">مؤسسة عبدالمنعم الراشد الإنسانية</div>
+      <div class="name">فاب لاب الأحساء</div>
+      <div class="sub">FABLAB AL-AHSA · DIGITAL FABRICATION LAB</div>
+    </div>
+    <div class="logos">
+      <img src="https://fablabsahsa.com/found.png" alt="مؤسسة الراشد" />
+    </div>
+  </div>
+
+  <!-- Title + Meta -->
+  <div class="title-row">
+    <div class="invoice-title">فــاتـــورة<br><span style="font-size:11pt;color:#64748b;font-weight:500;letter-spacing:0.18em;">INVOICE</span></div>
+    <div class="invoice-meta">
+      <div class="row"><span class="label">رقم الفاتورة</span><span class="value"><span class="invoice-no-pill">${invoiceNo}</span></span></div>
+      <div class="row"><span class="label">تاريخ الإصدار</span><span class="value">${issueDate}</span></div>
+      <div class="row"><span class="label">التاريخ الميلادي</span><span class="value" style="direction:ltr;">${issueDateG}</span></div>
+    </div>
+  </div>
+
+  <!-- Customer + Workshop info -->
+  <div class="info-grid">
+    <div class="info-card">
+      <h3>بيانات العميل</h3>
+      <div class="field"><span class="k">الاسم الكامل</span><span class="v">${fullName}</span></div>
+      ${student.nationalId ? `<div class="field"><span class="k">رقم الهوية</span><span class="v" style="direction:ltr;text-align:right;">${student.nationalId}</span></div>` : ''}
+      ${student.phone ? `<div class="field"><span class="k">الجوال</span><span class="v" style="direction:ltr;text-align:right;">${student.phone}</span></div>` : ''}
+      ${student.email ? `<div class="field"><span class="k">البريد الإلكتروني</span><span class="v" style="direction:ltr;text-align:right;font-size:9pt;">${student.email}</span></div>` : ''}
+      ${student.city ? `<div class="field"><span class="k">المدينة</span><span class="v">${student.city}</span></div>` : ''}
+      ${student.gender ? `<div class="field"><span class="k">الجنس</span><span class="v">${student.gender === 'male' ? 'ذكر' : 'أنثى'}</span></div>` : ''}
+    </div>
+    <div class="info-card">
+      <h3>بيانات الورشة</h3>
+      <div class="field"><span class="k">عنوان الورشة</span><span class="v">${ws.title || '—'}</span></div>
+      ${ws.presenter ? `<div class="field"><span class="k">المقدّم</span><span class="v">${ws.presenter}</span></div>` : ''}
+      <div class="field"><span class="k">التاريخ</span><span class="v" style="direction:ltr;text-align:right;">${dateRange}</span></div>
+      ${ws.totalHours ? `<div class="field"><span class="k">الساعات</span><span class="v">${ws.totalHours} ساعة تدريبية</span></div>` : ''}
+      ${ws.location ? `<div class="field"><span class="k">المكان</span><span class="v">${ws.location}</span></div>` : ''}
+      ${student.invoiceNumber ? `<div class="field"><span class="k">مرجع التسجيل</span><span class="v" style="direction:ltr;text-align:right;font-family:'Courier New',monospace;font-size:9pt;">${student.invoiceNumber}</span></div>` : ''}
+    </div>
+  </div>
+
+  <!-- Items table -->
+  <table class="items-table">
+    <thead>
+      <tr>
+        <th>#</th>
+        <th>الوصف</th>
+        <th>الكمية</th>
+        <th>السعر (ر.س)</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>1</td>
+        <td>
+          <div class="desc">رسوم التسجيل في ورشة "${ws.title || ''}"</div>
+          <div class="desc-sub">${ws.totalHours ? `${ws.totalHours} ساعة تدريبية · ` : ''}${dateRange}</div>
+        </td>
+        <td style="text-align:center;">1</td>
+        <td><span class="price">${fmt(price)}</span></td>
+      </tr>
+    </tbody>
+  </table>
+
+  <!-- Totals -->
+  <div class="totals">
+    <div class="box">
+      <div class="row">
+        <span class="label">المجموع الفرعي</span>
+        <span class="value">${fmt(subtotal)} ر.س</span>
+      </div>
+      ${discountValue > 0 ? `
+        <div class="row discount">
+          <span class="label">الخصم${discountType === 'percent' ? ` (${discount}%)` : ''}</span>
+          <span class="value">- ${fmt(discountValue)} ر.س</span>
+        </div>
+      ` : ''}
+      <div class="grand">
+        <span class="label">الإجمالي المستحق</span>
+        <span class="value">${fmt(total)} ر.س</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Terms / notes -->
+  <div class="notes">
+    <b>ملاحظات:</b>
+    تعتبر هذه الفاتورة وثيقة رسمية صادرة من فاب لاب الأحساء.
+    رسوم التسجيل غير مستردة في حال انسحاب المتدرب بعد انطلاق الورشة.
+    يرجى الاحتفاظ بنسخة من هذه الفاتورة للمراجعة المستقبلية.
+  </div>
+
+  <!-- Signatures + stamp -->
+  <div class="sig-row">
+    <div class="sig">
+      <div class="line"></div>
+      <div class="label">توقيع المتدرب</div>
+    </div>
+    <div class="stamp">ختم<br>فاب لاب الأحساء<br>FABLAB AHSA</div>
+    <div class="sig">
+      <div class="line"></div>
+      <div class="label">توقيع المسؤول</div>
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <div class="footer">
+    <div>fablabsahsa.com</div>
+    <div class="center">شكراً لاختياركم فاب لاب الأحساء</div>
+    <div class="ltr">FABLAB Al-Ahsa · ${new Date().getFullYear()}</div>
+  </div>
+</div>
+</body>
+</html>`;
+
+    const { generatePdfFromHtml } = require('../utils/pdfGenerator');
+    const pdfBuffer = await generatePdfFromHtml(html, { landscape: false, format: 'A4' });
+
+    const safeName = fullName.replace(/[^؀-ۿa-zA-Z0-9]+/g, '_').substring(0, 40) || 'student';
+    res.writeHead(200, {
+      'Content-Type': 'application/pdf',
+      'Content-Disposition': `attachment; filename*=UTF-8''invoice_${invoiceNo}_${encodeURIComponent(safeName)}.pdf`,
+      'Content-Length': pdfBuffer.length
+    });
+    res.end(pdfBuffer);
+  } catch (error) {
+    console.error('Download invoice PDF error:', error);
+    res.status(500).json({ message: 'Error generating invoice', messageAr: 'خطأ في إنشاء الفاتورة' });
+  }
+};
+
 // Send certificate via email
 exports.sendCertificate = async (req, res) => {
   try {

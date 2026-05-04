@@ -7659,6 +7659,41 @@ const AdminDashboard = () => {
                                 try { const res = await api.get(`/workshops/students/${s.studentId}/certificate-pdf`, { responseType: 'blob' }); const link = document.createElement('a'); link.href = URL.createObjectURL(new Blob([res.data], { type: 'application/pdf' })); link.download = `certificate_${s.firstName}.pdf`; link.click(); } catch(e2) { let msg = isRTL ? 'خطأ' : 'Error'; if (e2.response?.data instanceof Blob) { try { const j = JSON.parse(await e2.response.data.text()); msg = (isRTL ? j.messageAr : j.message) || msg; } catch {} } toast.error(msg); }
                               }
                               else if (action === 'emailCert') { try { await api.post(`/workshops/students/${s.studentId}/send-certificate`); toast.success(isRTL ? 'تم إرسال الشهادة' : 'Certificate emailed'); } catch(e2) { toast.error(e2.response?.data?.messageAr || 'Error'); } }
+                              else if (action === 'invoice') {
+                                const wsPrice = Number(viewingWorkshopStudents?.price || 0);
+                                const promptMsg = isRTL
+                                  ? `سعر الورشة: ${wsPrice} ر.س\n\nأدخل قيمة الخصم (اختياري):\n• رقم بدون رمز = خصم بالريال (مثال: 50)\n• رقم متبوع بـ % = خصم بالنسبة (مثال: 10%)\n• اضغط موافق بدون إدخال للفاتورة بدون خصم`
+                                  : `Workshop price: ${wsPrice} SAR\n\nEnter discount (optional):\n• Plain number = SAR discount (e.g. 50)\n• Number followed by % = percent (e.g. 10%)\n• Leave empty for no discount`;
+                                const input = window.prompt(promptMsg, '');
+                                if (input === null) return;
+                                let discount = 0, discountType = 'amount';
+                                const trimmed = input.trim();
+                                if (trimmed) {
+                                  if (trimmed.endsWith('%')) {
+                                    discount = parseFloat(trimmed.replace('%', '').trim()) || 0;
+                                    discountType = 'percent';
+                                  } else {
+                                    discount = parseFloat(trimmed) || 0;
+                                  }
+                                }
+                                try {
+                                  const res = await api.get(`/workshops/students/${s.studentId}/invoice-pdf`, {
+                                    params: { discount, discountType },
+                                    responseType: 'blob'
+                                  });
+                                  const link = document.createElement('a');
+                                  link.href = URL.createObjectURL(new Blob([res.data], { type: 'application/pdf' }));
+                                  link.download = `invoice_${s.firstName || 'student'}_${Date.now()}.pdf`;
+                                  link.click();
+                                  toast.success(isRTL ? 'تم تحميل الفاتورة' : 'Invoice downloaded');
+                                } catch (e2) {
+                                  let msg = isRTL ? 'خطأ في إنشاء الفاتورة' : 'Error generating invoice';
+                                  if (e2.response?.data instanceof Blob) {
+                                    try { const j = JSON.parse(await e2.response.data.text()); msg = (isRTL ? j.messageAr : j.message) || msg; } catch {}
+                                  }
+                                  toast.error(msg);
+                                }
+                              }
                               else if (action === 'printAttId') handlePrintAttendanceId(s.studentId);
                               else if (action === 'emailAttId') { try { await api.post(`/workshops/students/${s.studentId}/send-attendance-id`); toast.success(isRTL ? 'تم إرسال بطاقة الحضور' : 'Attendance ID sent'); } catch(e2) { toast.error('Error'); } }
                               else if (action === 'emailCustom') { setWorkshopEmailTarget({ studentId: s.studentId, email: s.email }); setShowWorkshopEmailModal(true); }
@@ -7673,6 +7708,7 @@ const AdminDashboard = () => {
                             <option value="printId">{isRTL ? '🪪 طباعة البطاقة' : '🪪 Print ID'}</option>
                             <option value="printCert">{isRTL ? '🎓 طباعة الشهادة' : '🎓 Print Cert'}</option>
                             <option value="downloadPdf">{isRTL ? '📄 تحميل PDF' : '📄 Download PDF'}</option>
+                            <option value="invoice">{isRTL ? '🧾 طباعة الفاتورة' : '🧾 Print Invoice'}</option>
                             {s.email && <option value="emailCert">{isRTL ? '📧 إرسال الشهادة' : '📧 Email Cert'}</option>}
                             <option value="printAttId">{isRTL ? '🎟 بطاقة حضور' : '🎟 Att. ID'}</option>
                             {s.email && <option value="emailAttId">{isRTL ? '📨 إرسال بطاقة الحضور' : '📨 Send Att. ID'}</option>}
