@@ -215,9 +215,12 @@
   75%      { transform: translateY(-22px) rotate(4deg); }
 }
 
-@media (max-width: 700px) {
+@media (max-width: 900px) {
   .registration-page .float-icon { width: 32px; height: 32px; }
   .registration-page .float-icon svg { width: 14px; height: 14px; }
+}
+@media (max-width: 700px) {
+  .registration-page .floating-icons { display: none; }
 }
 
 /* Animated star particles */
@@ -421,18 +424,140 @@
 .registration-container {
   position: relative;
   z-index: 3;
-  padding: 3rem 1.25rem 4rem;
+  padding: 0;
   min-height: 100vh;
-  display: flex;
-  align-items: flex-start;
-  justify-content: center;
+  display: block;
+}
+.registration-container > div {
+  max-width: none !important;
+  width: 100% !important;
+  margin: 0 !important;
 }
 
-/* Header — Vibrant masthead */
+/* Top sticky bar — compact brand identity */
+.registration-topbar {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.85rem 1.5rem;
+  background: rgba(7, 9, 26, 0.55);
+  backdrop-filter: blur(20px) saturate(1.2);
+  -webkit-backdrop-filter: blur(20px) saturate(1.2);
+  border-bottom: 1px solid var(--card-border);
+  transition: background 0.5s ease, border-color 0.5s ease;
+}
+.registration-page[data-theme="light"] .registration-topbar {
+  background: rgba(255, 255, 255, 0.75);
+}
+.topbar-brand {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex: 1;
+  min-width: 0;
+}
+.topbar-logo {
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  background: var(--bg-1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  isolation: isolate;
+  flex-shrink: 0;
+}
+.topbar-logo::before {
+  content: '';
+  position: absolute;
+  inset: -1.5px;
+  border-radius: 13px;
+  background: var(--grad-primary);
+  z-index: -1;
+}
+.topbar-logo img {
+  width: 30px;
+  height: 30px;
+  object-fit: contain;
+}
+.topbar-titles {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.topbar-title {
+  font-family: var(--display);
+  font-weight: 800;
+  font-size: 0.95rem;
+  color: var(--text-hi);
+  letter-spacing: -0.01em;
+  line-height: 1.1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+[dir="rtl"] .topbar-title {
+  font-family: var(--arabic);
+  font-weight: 900;
+}
+.topbar-subtitle {
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--text-lo);
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  margin-top: 2px;
+}
+[dir="rtl"] .topbar-subtitle {
+  font-family: var(--arabic);
+  font-size: 11px;
+  letter-spacing: 0;
+  text-transform: none;
+}
+.topbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-shrink: 0;
+}
+.topbar-progress-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: var(--glass);
+  border: 1px solid var(--glass-border);
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-md);
+  letter-spacing: 0.08em;
+}
+.topbar-progress-pill::before {
+  content: '';
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--aurora-cyan);
+  box-shadow: 0 0 8px var(--aurora-cyan);
+}
+
+/* Header — Vibrant masthead (only on wide screens) */
 .registration-header {
   text-align: center;
-  margin-bottom: 2.4rem;
+  margin: 0;
+  padding: 3rem 1.25rem 2rem;
   position: relative;
+}
+.registration-header .registration-logo { display: none; }
+@media (max-width: 900px) {
+  .registration-header { display: none; }
 }
 
 .registration-eyebrow {
@@ -526,7 +651,7 @@
 .registration-title {
   color: var(--text-hi);
   font-family: var(--display);
-  font-size: clamp(2.4rem, 6vw, 4rem);
+  font-size: clamp(2rem, 5vw, 3.6rem);
   font-weight: 800;
   letter-spacing: -0.03em;
   line-height: 1.05;
@@ -542,14 +667,12 @@
   box-shadow: 0 4px 16px -4px rgba(167, 139, 250, 0.25);
 }
 
-/* THEME TOGGLE BUTTON — top-right (top-left in RTL) */
+/* THEME TOGGLE BUTTON — sits inside the topbar */
 .theme-toggle {
-  position: fixed;
-  top: 1.25rem;
-  right: 1.25rem;
+  position: relative;
   z-index: 50;
-  width: 44px;
-  height: 44px;
+  width: 38px;
+  height: 38px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -562,8 +685,9 @@
   -webkit-backdrop-filter: blur(12px);
   transition: all 0.3s cubic-bezier(0.2, 0.9, 0.2, 1);
   overflow: hidden;
+  flex-shrink: 0;
 }
-[dir="rtl"] .theme-toggle { right: auto; left: 1.25rem; }
+.theme-toggle svg { width: 18px; height: 18px; }
 
 .theme-toggle::before {
   content: '';
@@ -633,23 +757,30 @@
   font-size: 1.05rem;
 }
 
-/* Form Card — glassmorphism */
+/* Form Card — full-bleed glass on the page */
 .form-card {
   background: var(--card-bg);
-  border-radius: 24px;
-  border: 1px solid var(--card-border);
-  box-shadow:
-    0 1px 0 rgba(255, 255, 255, 0.10) inset,
-    var(--shadow-card),
-    0 0 0 1px rgba(255, 255, 255, 0.02);
+  border-radius: 0;
+  border: none;
+  border-top: 1px solid var(--card-border);
+  box-shadow: var(--shadow-card);
   backdrop-filter: blur(20px) saturate(1.2);
   -webkit-backdrop-filter: blur(20px) saturate(1.2);
-  max-width: 980px;
   width: 100%;
-  overflow: hidden;
+  max-width: none;
+  overflow: visible;
   position: relative;
   color: var(--text-hi);
   transition: background 0.5s ease, border-color 0.5s ease;
+  min-height: calc(100vh - 70px);
+}
+@media (min-width: 901px) {
+  .form-card {
+    border-radius: 32px 32px 0 0;
+    margin-top: 1rem;
+    border: 1px solid var(--card-border);
+    border-bottom: none;
+  }
 }
 .form-card::before {
   content: '';
@@ -679,10 +810,19 @@
   background: transparent;
   position: relative;
   z-index: 2;
+  max-width: 880px;
+  margin: 0 auto;
+  width: 100%;
 }
 
 [dir="rtl"] .home-button-container {
   justify-content: flex-end;
+}
+
+@media (max-width: 700px) {
+  .home-button-container {
+    padding: 1rem 1rem 0;
+  }
 }
 
 .home-button {
@@ -752,6 +892,56 @@
 .registration-page[data-theme="light"] .stepper-container {
   background: rgba(255, 255, 255, 0.85);
   border-bottom-color: rgba(15, 23, 42, 0.08);
+}
+.stepper-wrapper {
+  max-width: 880px;
+  margin: 0 auto;
+}
+@media (max-width: 700px) {
+  .stepper-container {
+    padding: 2.6rem 1rem 1rem;
+  }
+  .stepper-container::before,
+  .stepper-container::after {
+    top: 12px;
+    font-size: 10px;
+  }
+  .stepper-container::before { left: 1rem; }
+  .stepper-container::after { right: 1rem; }
+  [dir="rtl"] .stepper-container::before { left: auto; right: 1rem; }
+  [dir="rtl"] .stepper-container::after { right: auto; left: 1rem; }
+  .step-circle {
+    width: 36px;
+    height: 36px;
+    font-size: 0.75rem;
+  }
+  .step-label {
+    font-size: 0.66rem;
+    max-width: 70px;
+    margin-top: 0.5rem;
+  }
+  .step-connector { top: 18px; }
+  .step-item { min-width: 60px; }
+}
+@media (max-width: 480px) {
+  .step-label {
+    font-size: 0;
+    margin-top: 0;
+    height: 0;
+    overflow: hidden;
+  }
+  .step-item.active .step-label {
+    font-size: 0.78rem;
+    margin-top: 0.6rem;
+    height: auto;
+    overflow: visible;
+    color: #0f172a;
+    font-weight: 700;
+  }
+  .step-circle { width: 32px; height: 32px; font-size: 0.7rem; }
+  .step-connector { top: 16px; }
+  .stepper-container { padding: 3rem 0.5rem 1rem; }
+  .step-item { min-width: 36px; }
 }
 .stepper-container::before {
   content: '◐ Progress';
@@ -983,16 +1173,25 @@
 
 /* Form Content */
 .form-content {
-  padding: 3rem 2.5rem 2.5rem;
+  padding: 3rem 2.5rem 4rem;
   min-height: 400px;
   position: relative;
   z-index: 1;
   color: var(--text-hi);
+  max-width: 880px;
+  margin: 0 auto;
+  width: 100%;
 }
 
-@media (max-width: 700px) {
+@media (max-width: 900px) {
   .form-content {
-    padding: 2rem 1.25rem;
+    padding: 2rem 1.25rem 6rem;
+    max-width: none;
+  }
+}
+@media (max-width: 480px) {
+  .form-content {
+    padding: 1.5rem 1rem 6rem;
   }
 }
 

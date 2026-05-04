@@ -417,29 +417,47 @@ const RegistrationForm = () => {
 
   return (
     <div className="registration-page" data-theme={theme} dir={isRTL ? 'rtl' : 'ltr'}>
-      {/* Theme toggle */}
-      <button
-        type="button"
-        className="theme-toggle"
-        onClick={toggleTheme}
-        aria-label={theme === 'dark' ? (isRTL ? 'الوضع الفاتح' : 'Light mode') : (isRTL ? 'الوضع الداكن' : 'Dark mode')}
-        title={theme === 'dark' ? (isRTL ? 'تفعيل الوضع الفاتح' : 'Switch to light mode') : (isRTL ? 'تفعيل الوضع الداكن' : 'Switch to dark mode')}
-      >
-        <svg className="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
-        </svg>
-        <svg className="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <circle cx="12" cy="12" r="5"/>
-          <line x1="12" y1="1" x2="12" y2="3"/>
-          <line x1="12" y1="21" x2="12" y2="23"/>
-          <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/>
-          <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/>
-          <line x1="1" y1="12" x2="3" y2="12"/>
-          <line x1="21" y1="12" x2="23" y2="12"/>
-          <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/>
-          <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
-        </svg>
-      </button>
+      {/* Sticky top bar — brand identity + actions */}
+      <header className="registration-topbar">
+        <div className="topbar-brand">
+          <div className="topbar-logo">
+            <img src="/logo.png" alt="FABLAB" />
+          </div>
+          <div className="topbar-titles">
+            <span className="topbar-title">{isRTL ? 'فاب لاب الأحساء' : 'FabLab Al-Ahsa'}</span>
+            <span className="topbar-subtitle">{isRTL ? 'مختبر التصنيع الرقمي' : 'Digital Fabrication Lab'}</span>
+          </div>
+        </div>
+        <div className="topbar-actions">
+          {activeStep >= 0 && (
+            <span className="topbar-progress-pill">
+              {String(Math.max(0, activeStep) + 1).padStart(2, '0')} / {String(steps.length).padStart(2, '0')}
+            </span>
+          )}
+          <button
+            type="button"
+            className="theme-toggle"
+            onClick={toggleTheme}
+            aria-label={theme === 'dark' ? (isRTL ? 'الوضع الفاتح' : 'Light mode') : (isRTL ? 'الوضع الداكن' : 'Dark mode')}
+            title={theme === 'dark' ? (isRTL ? 'تفعيل الوضع الفاتح' : 'Switch to light mode') : (isRTL ? 'تفعيل الوضع الداكن' : 'Switch to dark mode')}
+          >
+            <svg className="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+            </svg>
+            <svg className="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="12" cy="12" r="5"/>
+              <line x1="12" y1="1" x2="12" y2="3"/>
+              <line x1="12" y1="21" x2="12" y2="23"/>
+              <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/>
+              <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/>
+              <line x1="1" y1="12" x2="3" y2="12"/>
+              <line x1="21" y1="12" x2="23" y2="12"/>
+              <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/>
+              <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
+            </svg>
+          </button>
+        </div>
+      </header>
 
       {/* Animated aurora background */}
       <div className="aurora" aria-hidden="true">
@@ -478,46 +496,40 @@ const RegistrationForm = () => {
       </div>
 
       <div className="registration-container">
-        <div style={{ width: '100%', maxWidth: '980px' }}>
-          {/* Vibrant Header */}
-          <motion.div
-            className="registration-header"
-            initial={{ opacity: 0, y: -20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.7, ease: [0.2, 0.9, 0.2, 1] }}
-          >
-            <div className="registration-eyebrow">
-              <span>{isRTL ? 'مختبر التصنيع الرقمي' : 'DIGITAL FABRICATION LAB'}</span>
-            </div>
+        <div style={{ width: '100%' }}>
+          {/* Welcome hero — only on the initial UserLookup screen */}
+          {activeStep === -1 && (
             <motion.div
-              className="registration-logo"
-              initial={{ scale: 0, rotate: -180 }}
-              animate={{ scale: 1, rotate: 0 }}
-              transition={{ type: 'spring', stiffness: 120, damping: 14, delay: 0.2 }}
-            >
-              <img src="/logo.png" alt="FABLAB Logo" style={{ width: '64px', height: '64px', objectFit: 'contain' }} />
-            </motion.div>
-            <motion.h1
-              className="registration-title"
-              initial={{ opacity: 0, y: 12 }}
+              className="registration-header"
+              initial={{ opacity: 0, y: -20 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6, delay: 0.35 }}
+              transition={{ duration: 0.7, ease: [0.2, 0.9, 0.2, 1] }}
             >
-              {isRTL ? (
-                <>فاب لاب <em>الأحساء</em></>
-              ) : (
-                <>FabLab <em>Al-Ahsa</em></>
-              )}
-            </motion.h1>
-            <motion.p
-              className="registration-subtitle"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ duration: 0.5, delay: 0.5 }}
-            >
-              {isRTL ? '✨ نظام التسجيل وحجز المواعيد' : '✨ Registration & Appointment System'}
-            </motion.p>
-          </motion.div>
+              <div className="registration-eyebrow">
+                <span>{isRTL ? 'مختبر التصنيع الرقمي' : 'DIGITAL FABRICATION LAB'}</span>
+              </div>
+              <motion.h1
+                className="registration-title"
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.6, delay: 0.2 }}
+              >
+                {isRTL ? (
+                  <>فاب لاب <em>الأحساء</em></>
+                ) : (
+                  <>FabLab <em>Al-Ahsa</em></>
+                )}
+              </motion.h1>
+              <motion.p
+                className="registration-subtitle"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ duration: 0.5, delay: 0.35 }}
+              >
+                {isRTL ? '✨ نظام التسجيل وحجز المواعيد' : '✨ Registration & Appointment System'}
+              </motion.p>
+            </motion.div>
+          )}
 
           {/* Form Card */}
           <motion.div
