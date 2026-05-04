@@ -7637,10 +7637,21 @@ const AdminDashboard = () => {
                           <div style={{ fontSize: '0.78rem' }}>
                             <span style={{ fontWeight: 600 }}>{isRTL ? 'فاتورة:' : 'Invoice:'}</span> {s.invoiceNumber}
                           </div>
+                          <span style={{
+                            display: 'inline-flex', alignItems: 'center', gap: 4,
+                            padding: '3px 10px', borderRadius: 999,
+                            fontSize: '0.72rem', fontWeight: 700, fontFamily: 'inherit',
+                            background: s.paymentStatus === 'verified' ? '#dcfce7' : '#fee2e2',
+                            color: s.paymentStatus === 'verified' ? '#166534' : '#991b1b',
+                            border: `1.5px solid ${s.paymentStatus === 'verified' ? '#16a34a' : '#dc2626'}`
+                          }}>
+                            <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'currentColor' }}></span>
+                            {s.paymentStatus === 'verified' ? (isRTL ? 'مدفوع' : 'Paid') : (isRTL ? 'غير مدفوع' : 'Not Paid')}
+                          </span>
                           <select value={s.paymentStatus} onChange={e => handleVerifyPayment(s.studentId, e.target.value)}
-                            style={{ padding: '0.3rem 0.5rem', borderRadius: 6, border: '1.5px solid #e2e8f0', fontSize: '0.78rem', fontWeight: 600, fontFamily: 'inherit',
-                              background: s.paymentStatus === 'verified' ? '#dcfce7' : s.paymentStatus === 'rejected' ? '#fee2e2' : '#fef3c7',
-                              color: s.paymentStatus === 'verified' ? '#166534' : s.paymentStatus === 'rejected' ? '#991b1b' : '#92400e' }}>
+                            title={isRTL ? 'تغيير الحالة' : 'Change status'}
+                            style={{ padding: '0.3rem 0.5rem', borderRadius: 6, border: '1.5px solid #e2e8f0', fontSize: '0.7rem', fontWeight: 600, fontFamily: 'inherit',
+                              background: '#f8fafc', color: '#475569' }}>
                             <option value="pending">{isRTL ? 'قيد المراجعة' : 'Pending'}</option>
                             <option value="verified">{isRTL ? 'تم التحقق' : 'Verified'}</option>
                             <option value="rejected">{isRTL ? 'مرفوض' : 'Rejected'}</option>

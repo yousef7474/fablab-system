@@ -717,8 +717,22 @@ exports.getAttendanceIdHtml = async (req, res) => {
     });
     if (!student) return res.status(404).json({ message: 'Student not found' });
 
+    // QR scan side-effect: auto-mark payment as verified + add today's attendance
+    const today = new Date().toISOString().split('T')[0];
+    const dates = Array.isArray(student.attendanceDates) ? [...student.attendanceDates] : [];
+    let updated = false;
+    if (!dates.includes(today)) { dates.push(today); updated = true; }
+    const willMarkPaid = student.paymentStatus !== 'verified';
+    if (updated || willMarkPaid) {
+      await student.update({
+        attendanceDates: dates,
+        attended: dates.length > 0,
+        paymentStatus: 'verified'
+      });
+    }
+
     const html = generateAttendanceIdHtml(student, student.workshop);
-    res.json({ html, student, workshop: student.workshop });
+    res.json({ html, student, workshop: student.workshop, paidNow: willMarkPaid, attendedToday: updated });
   } catch (error) {
     console.error('Get attendance ID error:', error);
     res.status(500).json({ message: 'Server error' });
@@ -841,6 +855,7 @@ exports.downloadInvoicePdf = async (req, res) => {
     const dateRange = startDateF && endDateF && startDateF !== endDateF
       ? `${startDateF} → ${endDateF}` : (startDateF || '—');
 
+    const isPaid = student.paymentStatus === 'verified';
     const html = `<!DOCTYPE html>
 <html dir="rtl" lang="ar">
 <head>
@@ -849,27 +864,29 @@ exports.downloadInvoicePdf = async (req, res) => {
 <style>
 @page { size: A4; margin: 0; }
 * { margin: 0; padding: 0; box-sizing: border-box; }
-html, body { width: 210mm; min-height: 297mm; }
+html, body { width: 210mm; height: 297mm; }
 body {
   font-family: 'Segoe UI', Tahoma, Arial, sans-serif;
   background: #ffffff;
   color: #0f172a;
-  padding: 14mm 14mm 16mm;
+  padding: 8mm 10mm 8mm;
   position: relative;
-  font-size: 11pt;
-  line-height: 1.55;
+  font-size: 9.5pt;
+  line-height: 1.4;
+  height: 297mm;
+  overflow: hidden;
 }
 body::before {
   content: '';
   position: fixed;
   top: 50%; left: 50%;
-  width: 140mm; height: 140mm;
+  width: 110mm; height: 110mm;
   transform: translate(-50%, -50%) rotate(-18deg);
   background-image: url('https://fablabsahsa.com/fablab.png');
   background-size: contain;
   background-repeat: no-repeat;
   background-position: center;
-  opacity: 0.04;
+  opacity: 0.035;
   z-index: 0;
 }
 .sheet { position: relative; z-index: 1; }
@@ -878,33 +895,33 @@ body::before {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding-bottom: 8mm;
-  border-bottom: 3px solid #1a56db;
-  margin-bottom: 8mm;
+  padding-bottom: 4mm;
+  border-bottom: 2.5px solid #1a56db;
+  margin-bottom: 5mm;
 }
-.hdr .logos { display: flex; align-items: center; gap: 8mm; }
-.hdr img { height: 22mm; object-fit: contain; }
+.hdr .logos { display: flex; align-items: center; gap: 4mm; }
+.hdr img { height: 16mm; object-fit: contain; }
 .hdr .institution {
   text-align: center;
   flex: 1;
-  padding: 0 6mm;
+  padding: 0 4mm;
 }
 .hdr .institution .org {
-  font-size: 11pt;
+  font-size: 9pt;
   color: #475569;
-  margin-bottom: 2mm;
+  margin-bottom: 1mm;
 }
 .hdr .institution .name {
-  font-size: 18pt;
+  font-size: 15pt;
   font-weight: 800;
   color: #0f172a;
-  margin-bottom: 1mm;
   letter-spacing: -0.01em;
 }
 .hdr .institution .sub {
-  font-size: 9pt;
+  font-size: 8pt;
   color: #64748b;
   letter-spacing: 0.05em;
+  margin-top: 0.5mm;
 }
 
 /* Title row */
@@ -912,79 +929,126 @@ body::before {
   display: flex;
   justify-content: space-between;
   align-items: flex-end;
-  margin-bottom: 7mm;
+  margin-bottom: 5mm;
 }
 .title-row .invoice-title {
-  font-size: 30pt;
+  font-size: 22pt;
   font-weight: 800;
   color: #1a56db;
   letter-spacing: -0.02em;
   line-height: 1;
 }
+.title-row .invoice-title .en {
+  font-size: 8pt;
+  color: #64748b;
+  font-weight: 500;
+  letter-spacing: 0.18em;
+  display: block;
+  margin-top: 1mm;
+}
 .title-row .invoice-meta {
   text-align: left;
-  font-size: 10pt;
+  font-size: 9pt;
 }
 .title-row .invoice-meta .row {
   display: flex;
   justify-content: space-between;
-  gap: 8mm;
-  margin-bottom: 1.5mm;
+  gap: 6mm;
+  margin-bottom: 1mm;
   min-width: 70mm;
 }
 .title-row .invoice-meta .label { color: #64748b; font-weight: 500; }
 .title-row .invoice-meta .value { color: #0f172a; font-weight: 700; }
 .invoice-no-pill {
   display: inline-block;
-  padding: 1.5mm 4mm;
+  padding: 1mm 3mm;
   background: linear-gradient(135deg, #1a56db, #3b82f6);
   color: #fff;
-  border-radius: 6px;
+  border-radius: 4px;
   font-family: 'Courier New', monospace;
-  font-size: 11pt;
+  font-size: 9pt;
   font-weight: 700;
   letter-spacing: 0.05em;
+}
+
+/* PAID/UNPAID stamp — positioned absolutely */
+.status-stamp {
+  position: absolute;
+  top: 60mm;
+  left: 18mm;
+  width: 50mm;
+  height: 25mm;
+  border: 3px solid;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  font-weight: 800;
+  font-family: 'Arial Black', sans-serif;
+  letter-spacing: 0.08em;
+  transform: rotate(-12deg);
+  opacity: 0.85;
+  z-index: 10;
+  line-height: 1.1;
+  font-size: 14pt;
+}
+.status-stamp.paid {
+  border-color: #16a34a;
+  color: #16a34a;
+}
+.status-stamp.unpaid {
+  border-color: #dc2626;
+  color: #dc2626;
+}
+.status-stamp .en {
+  font-size: 8pt;
+  font-weight: 600;
+  display: block;
+  margin-top: 1mm;
+  letter-spacing: 0.18em;
 }
 
 /* Two-column info section */
 .info-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 5mm;
-  margin-bottom: 7mm;
+  gap: 4mm;
+  margin-bottom: 5mm;
 }
 .info-card {
-  border: 1.5px solid #e2e8f0;
-  border-radius: 8px;
-  padding: 5mm;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  padding: 3.5mm;
   background: #f8fafc;
 }
 .info-card h3 {
-  font-size: 11pt;
+  font-size: 10pt;
   font-weight: 700;
   color: #1a56db;
-  margin-bottom: 3.5mm;
-  padding-bottom: 2mm;
-  border-bottom: 1.5px solid #cbd5e1;
+  margin-bottom: 2.5mm;
+  padding-bottom: 1.5mm;
+  border-bottom: 1px solid #cbd5e1;
   display: flex;
   align-items: center;
   gap: 2mm;
 }
 .info-card h3::before {
   content: '';
-  width: 3mm;
-  height: 3mm;
+  width: 2.5mm;
+  height: 2.5mm;
   background: #1a56db;
   border-radius: 50%;
 }
 .info-card .field {
   display: flex;
-  margin-bottom: 2mm;
-  font-size: 10pt;
+  margin-bottom: 1.2mm;
+  font-size: 8.5pt;
+  line-height: 1.35;
 }
 .info-card .field .k {
   color: #64748b;
-  width: 32mm;
+  width: 28mm;
   flex-shrink: 0;
   font-weight: 500;
 }
@@ -999,9 +1063,9 @@ body::before {
 .items-table {
   width: 100%;
   border-collapse: collapse;
-  margin-bottom: 7mm;
-  border: 1.5px solid #e2e8f0;
-  border-radius: 8px;
+  margin-bottom: 4mm;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
   overflow: hidden;
 }
 .items-table thead {
@@ -1009,43 +1073,43 @@ body::before {
 }
 .items-table th {
   color: #fff;
-  font-size: 10pt;
+  font-size: 9pt;
   font-weight: 700;
-  padding: 4mm 5mm;
+  padding: 2.5mm 4mm;
   text-align: right;
   letter-spacing: 0.02em;
 }
 .items-table th:last-child,
 .items-table td:last-child { text-align: left; }
 .items-table th:first-child,
-.items-table td:first-child { text-align: center; width: 12mm; }
+.items-table td:first-child { text-align: center; width: 10mm; }
 .items-table td {
-  padding: 4mm 5mm;
-  font-size: 10pt;
+  padding: 3mm 4mm;
+  font-size: 9pt;
   border-bottom: 1px solid #f1f5f9;
 }
 .items-table tr:last-child td { border-bottom: none; }
-.items-table .desc { font-weight: 600; color: #0f172a; }
-.items-table .desc-sub { color: #64748b; font-size: 9pt; margin-top: 1mm; }
+.items-table .desc { font-weight: 600; color: #0f172a; font-size: 9pt; }
+.items-table .desc-sub { color: #64748b; font-size: 7.5pt; margin-top: 0.5mm; }
 .items-table .price { font-family: 'Courier New', monospace; font-weight: 700; color: #1a56db; }
 
 /* Totals */
 .totals {
   display: flex;
   justify-content: flex-start;
-  margin-bottom: 7mm;
+  margin-bottom: 4mm;
 }
 .totals .box {
-  width: 90mm;
-  border: 1.5px solid #e2e8f0;
-  border-radius: 8px;
+  width: 80mm;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
   overflow: hidden;
 }
 .totals .row {
   display: flex;
   justify-content: space-between;
-  padding: 3mm 5mm;
-  font-size: 10pt;
+  padding: 2mm 4mm;
+  font-size: 9pt;
   border-bottom: 1px solid #f1f5f9;
 }
 .totals .row.discount { color: #15803d; }
@@ -1055,35 +1119,71 @@ body::before {
 .totals .grand {
   background: linear-gradient(135deg, #1a56db, #3b82f6);
   color: #fff;
-  padding: 4.5mm 5mm;
+  padding: 3mm 4mm;
   display: flex;
   justify-content: space-between;
   align-items: center;
   border-bottom: none;
 }
-.totals .grand .label { font-weight: 700; font-size: 11pt; }
-.totals .grand .value { font-family: 'Courier New', monospace; font-weight: 800; font-size: 14pt; }
+.totals .grand .label { font-weight: 700; font-size: 10pt; }
+.totals .grand .value { font-family: 'Courier New', monospace; font-weight: 800; font-size: 12pt; }
 
-/* Notes / Terms */
+/* Payment status row + notes side by side */
+.bottom-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4mm;
+  margin-bottom: 4mm;
+}
+.payment-status-card {
+  border: 1.5px solid;
+  border-radius: 6px;
+  padding: 3mm 4mm;
+  font-size: 8.5pt;
+}
+.payment-status-card.paid {
+  background: #f0fdf4;
+  border-color: #16a34a;
+  color: #14532d;
+}
+.payment-status-card.unpaid {
+  background: #fef2f2;
+  border-color: #dc2626;
+  color: #7f1d1d;
+}
+.payment-status-card .label {
+  font-weight: 700;
+  font-size: 9pt;
+  margin-bottom: 1mm;
+  display: flex;
+  align-items: center;
+  gap: 2mm;
+}
+.payment-status-card .label::before {
+  content: '';
+  width: 2.5mm;
+  height: 2.5mm;
+  border-radius: 50%;
+  background: currentColor;
+}
 .notes {
   background: #fffbeb;
-  border-right: 4px solid #f59e0b;
-  padding: 4mm 5mm;
-  border-radius: 6px;
-  margin-bottom: 8mm;
-  font-size: 9pt;
+  border-right: 3px solid #f59e0b;
+  padding: 3mm 4mm;
+  border-radius: 4px;
+  font-size: 8pt;
   color: #78350f;
-  line-height: 1.7;
+  line-height: 1.5;
 }
-.notes b { color: #92400e; }
+.notes b { color: #92400e; display: block; margin-bottom: 1mm; }
 
 /* Signature & footer */
 .sig-row {
   display: flex;
   justify-content: space-between;
   align-items: flex-end;
-  margin-bottom: 6mm;
-  gap: 8mm;
+  margin-bottom: 3mm;
+  gap: 6mm;
 }
 .sig {
   flex: 1;
@@ -1091,35 +1191,35 @@ body::before {
 }
 .sig .line {
   border-top: 1.5px solid #94a3b8;
-  margin: 14mm 6mm 2mm;
+  margin: 8mm 4mm 1mm;
 }
 .sig .label {
-  font-size: 9pt;
+  font-size: 8pt;
   color: #64748b;
 }
 .stamp {
-  width: 35mm;
-  height: 35mm;
-  border: 2.5px solid #1a56db;
+  width: 24mm;
+  height: 24mm;
+  border: 2px solid #1a56db;
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
   text-align: center;
-  font-size: 8pt;
+  font-size: 7pt;
   color: #1a56db;
   font-weight: 700;
   transform: rotate(-12deg);
   opacity: 0.6;
-  line-height: 1.4;
+  line-height: 1.3;
 }
 
 .footer {
-  border-top: 2px solid #e2e8f0;
-  padding-top: 4mm;
+  border-top: 1px solid #e2e8f0;
+  padding-top: 2.5mm;
   display: flex;
   justify-content: space-between;
-  font-size: 8pt;
+  font-size: 7pt;
   color: #94a3b8;
 }
 .footer .center { text-align: center; flex: 1; }
@@ -1145,12 +1245,17 @@ body::before {
 
   <!-- Title + Meta -->
   <div class="title-row">
-    <div class="invoice-title">فــاتـــورة<br><span style="font-size:11pt;color:#64748b;font-weight:500;letter-spacing:0.18em;">INVOICE</span></div>
+    <div class="invoice-title">فــاتـــورة<span class="en">INVOICE</span></div>
     <div class="invoice-meta">
       <div class="row"><span class="label">رقم الفاتورة</span><span class="value"><span class="invoice-no-pill">${invoiceNo}</span></span></div>
       <div class="row"><span class="label">تاريخ الإصدار</span><span class="value">${issueDate}</span></div>
       <div class="row"><span class="label">التاريخ الميلادي</span><span class="value" style="direction:ltr;">${issueDateG}</span></div>
     </div>
+  </div>
+
+  <!-- Diagonal status stamp -->
+  <div class="status-stamp ${isPaid ? 'paid' : 'unpaid'}">
+    ${isPaid ? 'مدفوعة<span class="en">PAID</span>' : 'غير مدفوعة<span class="en">UNPAID</span>'}
   </div>
 
   <!-- Customer + Workshop info -->
@@ -1218,12 +1323,22 @@ body::before {
     </div>
   </div>
 
-  <!-- Terms / notes -->
-  <div class="notes">
-    <b>ملاحظات:</b>
-    تعتبر هذه الفاتورة وثيقة رسمية صادرة من فاب لاب الأحساء.
-    رسوم التسجيل غير مستردة في حال انسحاب المتدرب بعد انطلاق الورشة.
-    يرجى الاحتفاظ بنسخة من هذه الفاتورة للمراجعة المستقبلية.
+  <!-- Status + Notes side by side -->
+  <div class="bottom-row">
+    <div class="payment-status-card ${isPaid ? 'paid' : 'unpaid'}">
+      <div class="label">حالة الدفع · Payment Status</div>
+      <div>${isPaid
+        ? 'تم استلام كامل المبلغ المستحق. الفاتورة مدفوعة.'
+        : 'لم يتم استلام المبلغ بعد. الفاتورة غير مدفوعة.'}</div>
+      <div style="margin-top:1mm;font-size:8pt;opacity:0.85;">
+        ${isPaid ? 'Amount received in full.' : 'Payment is still pending.'}
+      </div>
+    </div>
+    <div class="notes">
+      <b>ملاحظات</b>
+      وثيقة رسمية من فاب لاب الأحساء. الرسوم غير مستردة بعد بدء الورشة.
+      يرجى الاحتفاظ بنسخة للمراجعة.
+    </div>
   </div>
 
   <!-- Signatures + stamp -->
