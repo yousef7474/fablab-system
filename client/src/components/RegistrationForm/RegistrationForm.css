@@ -3205,3 +3205,301 @@
     font-size: 0.65rem;
   }
 }
+
+/* ============================================================
+   MAKER STUDIO DARK THEME — comprehensive content overrides
+   Adapts every step's inner cards, inputs, labels, and slots so
+   nothing reads as black-on-dark or white-on-light.
+   ============================================================ */
+
+.registration-page .form-card .step-title,
+.registration-page .form-card .section-title,
+.registration-page .form-card .selection-card-title,
+.registration-page .form-card .section-card-title,
+.registration-page .form-card .form-section-title,
+.registration-page .form-card .info-card-title,
+.registration-page .form-card h1,
+.registration-page .form-card h2,
+.registration-page .form-card h3,
+.registration-page .form-card h4 {
+  color: var(--text-hi) !important;
+}
+
+.registration-page .form-card .step-description,
+.registration-page .form-card .selection-card-description,
+.registration-page .form-card .section-card-description,
+.registration-page .form-card .info-card-description,
+.registration-page .form-card .form-helper-text,
+.registration-page .form-card .help-text {
+  color: var(--text-md) !important;
+}
+
+.registration-page .form-card .form-label,
+.registration-page .form-card label {
+  color: var(--text-md) !important;
+  font-weight: 500;
+}
+
+/* All "card-like" containers inside the form */
+.registration-page .form-card .selection-card,
+.registration-page .form-card .section-card,
+.registration-page .form-card .info-card,
+.registration-page .form-card .service-card,
+.registration-page .form-card .application-type-card,
+.registration-page .form-card .commitment-box,
+.registration-page .form-card .day-card,
+.registration-page .form-card .summary-card {
+  background: var(--glass) !important;
+  border: 1.5px solid var(--glass-border) !important;
+  color: var(--text-hi) !important;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  transition: all 0.3s cubic-bezier(0.2, 0.9, 0.2, 1);
+}
+
+.registration-page .form-card .selection-card:hover,
+.registration-page .form-card .section-card:hover,
+.registration-page .form-card .info-card:hover,
+.registration-page .form-card .service-card:hover,
+.registration-page .form-card .application-type-card:hover,
+.registration-page .form-card .day-card:hover {
+  background: var(--glass-strong) !important;
+  border-color: var(--glass-border-hot) !important;
+  transform: translateY(-3px);
+  box-shadow: 0 14px 30px -12px rgba(167, 139, 250, 0.45) !important;
+}
+
+.registration-page .form-card .selection-card.selected,
+.registration-page .form-card .section-card.selected,
+.registration-page .form-card .application-type-card.selected,
+.registration-page .form-card .service-card.selected,
+.registration-page .form-card .day-card.selected {
+  background: linear-gradient(135deg, rgba(167, 139, 250, 0.18), rgba(34, 211, 238, 0.10)) !important;
+  border-color: rgba(167, 139, 250, 0.7) !important;
+  box-shadow:
+    0 0 0 1px rgba(167, 139, 250, 0.4),
+    0 16px 36px -10px rgba(167, 139, 250, 0.5) !important;
+}
+
+.registration-page .form-card .selection-card.selected::after,
+.registration-page .form-card .section-card.selected::after,
+.registration-page .form-card .application-type-card.selected::after,
+.registration-page .form-card .day-card.selected::after {
+  background: var(--grad-primary) !important;
+  color: #07091a !important;
+  box-shadow: 0 0 12px rgba(167, 139, 250, 0.6);
+}
+
+/* All inputs (dedicated + generic) */
+.registration-page .form-card .form-input,
+.registration-page .form-card input[type="text"],
+.registration-page .form-card input[type="email"],
+.registration-page .form-card input[type="tel"],
+.registration-page .form-card input[type="number"],
+.registration-page .form-card input[type="date"],
+.registration-page .form-card input[type="time"],
+.registration-page .form-card input[type="search"],
+.registration-page .form-card input[type="password"],
+.registration-page .form-card select,
+.registration-page .form-card textarea {
+  background: var(--glass) !important;
+  border: 1.5px solid var(--glass-border) !important;
+  color: var(--text-hi) !important;
+  border-radius: 12px !important;
+}
+.registration-page .form-card .form-input::placeholder,
+.registration-page .form-card input::placeholder,
+.registration-page .form-card textarea::placeholder {
+  color: var(--text-lo) !important;
+  opacity: 0.7;
+}
+.registration-page .form-card .form-input:hover,
+.registration-page .form-card input:hover,
+.registration-page .form-card select:hover,
+.registration-page .form-card textarea:hover {
+  border-color: rgba(167, 139, 250, 0.4) !important;
+}
+.registration-page .form-card .form-input:focus,
+.registration-page .form-card input:focus,
+.registration-page .form-card select:focus,
+.registration-page .form-card textarea:focus {
+  border-color: rgba(167, 139, 250, 0.7) !important;
+  box-shadow: 0 0 0 4px rgba(167, 139, 250, 0.15) !important;
+  background: rgba(255, 255, 255, 0.08) !important;
+  outline: none !important;
+}
+
+/* Native picker icons → light */
+.registration-page .form-card input[type="date"]::-webkit-calendar-picker-indicator,
+.registration-page .form-card input[type="time"]::-webkit-calendar-picker-indicator {
+  filter: invert(1) brightness(1.4);
+  cursor: pointer;
+  opacity: 0.7;
+}
+
+/* Select dropdown options pop on dark */
+.registration-page .form-card select option {
+  background: #0f1330;
+  color: var(--text-hi);
+}
+
+/* Info / alert / commitment boxes */
+.registration-page .form-card .info-box,
+.registration-page .form-card .alert-box,
+.registration-page .form-card .warning-box {
+  background: var(--glass) !important;
+  border: 1.5px solid var(--glass-border) !important;
+  color: var(--text-md) !important;
+  border-radius: 14px !important;
+}
+.registration-page .form-card .info-box {
+  background: linear-gradient(135deg, rgba(34, 211, 238, 0.10), rgba(167, 139, 250, 0.08)) !important;
+  border-color: rgba(34, 211, 238, 0.28) !important;
+}
+.registration-page .form-card .warning-box {
+  background: linear-gradient(135deg, rgba(251, 146, 60, 0.12), rgba(244, 114, 182, 0.08)) !important;
+  border-color: rgba(251, 146, 60, 0.35) !important;
+}
+
+/* Time-slot pills */
+.registration-page .form-card .time-slot,
+.registration-page .form-card .date-slot,
+.registration-page .form-card .available-slot {
+  background: var(--glass) !important;
+  border: 1.5px solid var(--glass-border) !important;
+  color: var(--text-hi) !important;
+}
+.registration-page .form-card .time-slot:hover,
+.registration-page .form-card .date-slot:hover,
+.registration-page .form-card .available-slot:hover {
+  background: var(--glass-strong) !important;
+  border-color: rgba(167, 139, 250, 0.5) !important;
+}
+.registration-page .form-card .time-slot.selected,
+.registration-page .form-card .date-slot.selected,
+.registration-page .form-card .available-slot.selected,
+.registration-page .form-card .time-slot.active {
+  background: var(--grad-primary) !important;
+  border-color: transparent !important;
+  color: #07091a !important;
+  font-weight: 700;
+  box-shadow: 0 8px 20px -8px rgba(167, 139, 250, 0.6);
+}
+.registration-page .form-card .time-slot.unavailable,
+.registration-page .form-card .time-slot.disabled,
+.registration-page .form-card .time-slot.booked {
+  background: rgba(255, 255, 255, 0.03) !important;
+  color: var(--text-lo) !important;
+  border-color: rgba(255, 255, 255, 0.05) !important;
+  text-decoration: line-through;
+  opacity: 0.55;
+}
+
+/* Checkboxes / radios accent */
+.registration-page .form-card input[type="checkbox"],
+.registration-page .form-card input[type="radio"] {
+  accent-color: #a78bfa;
+}
+
+/* Muted / secondary text classes */
+.registration-page .form-card .text-muted,
+.registration-page .form-card .text-secondary,
+.registration-page .form-card .text-gray,
+.registration-page .form-card small {
+  color: var(--text-lo) !important;
+}
+
+/* Required asterisk pops on dark */
+.registration-page .form-card .required,
+.registration-page .form-card label .required,
+.registration-page .form-card .form-label .required {
+  color: var(--aurora-pink) !important;
+}
+
+/* Error / success messages */
+.registration-page .form-card .error-message,
+.registration-page .form-card .form-error {
+  color: #fca5a5 !important;
+}
+.registration-page .form-card .success-message,
+.registration-page .form-card .form-success {
+  color: #86efac !important;
+}
+
+/* User lookup entry screen */
+.registration-page .form-card .user-lookup-icon {
+  background: linear-gradient(135deg, rgba(34, 211, 238, 0.18), rgba(167, 139, 250, 0.12)) !important;
+  border: 1px solid rgba(34, 211, 238, 0.35);
+  box-shadow: 0 0 30px -8px rgba(34, 211, 238, 0.4);
+}
+.registration-page .form-card .user-lookup-icon svg {
+  color: var(--aurora-cyan) !important;
+}
+.registration-page .form-card .user-lookup h2,
+.registration-page .form-card .user-lookup h3 {
+  color: var(--text-hi) !important;
+}
+.registration-page .form-card .user-lookup p,
+.registration-page .form-card .user-lookup label {
+  color: var(--text-md) !important;
+}
+
+/* "Found user" / summary cards */
+.registration-page .form-card .user-found-card,
+.registration-page .form-card .user-info-card,
+.registration-page .form-card .summary-section {
+  background: var(--glass) !important;
+  border: 1.5px solid var(--glass-border) !important;
+  color: var(--text-hi) !important;
+}
+.registration-page .form-card .user-found-card *,
+.registration-page .form-card .user-info-card *,
+.registration-page .form-card .summary-section * {
+  color: inherit;
+}
+.registration-page .form-card .summary-section .label,
+.registration-page .form-card .summary-section .field-label {
+  color: var(--text-lo) !important;
+}
+
+/* Commitment / consent / terms text */
+.registration-page .form-card .commitment-text,
+.registration-page .form-card .terms-text,
+.registration-page .form-card .commitment-box {
+  color: var(--text-md) !important;
+}
+
+/* Step navigation footer */
+.registration-page .form-card .step-actions,
+.registration-page .form-card .form-actions,
+.registration-page .form-card .button-group {
+  border-top: 1px solid var(--glass-border) !important;
+}
+
+/* Loose <span>/<div> color classes the steps may use */
+.registration-page .form-card [style*="color: var(--gray-500)"],
+.registration-page .form-card [style*="color: var(--gray-600)"],
+.registration-page .form-card [style*="color: var(--gray-700)"],
+.registration-page .form-card [style*="color: #64748b"],
+.registration-page .form-card [style*="color: #6b7280"],
+.registration-page .form-card [style*="color: #475569"],
+.registration-page .form-card [style*="color: #334155"] {
+  color: var(--text-md) !important;
+}
+.registration-page .form-card [style*="color: var(--gray-800)"],
+.registration-page .form-card [style*="color: var(--gray-900)"],
+.registration-page .form-card [style*="color: #1f2937"],
+.registration-page .form-card [style*="color: #111827"],
+.registration-page .form-card [style*="color: #1e293b"],
+.registration-page .form-card [style*="color: #0f172a"],
+.registration-page .form-card [style*="color: black"],
+.registration-page .form-card [style*="color: #000"] {
+  color: var(--text-hi) !important;
+}
+.registration-page .form-card [style*="background: white"],
+.registration-page .form-card [style*="background: #fff"],
+.registration-page .form-card [style*="background-color: white"],
+.registration-page .form-card [style*="background-color: #fff"] {
+  background: var(--glass) !important;
+  border-color: var(--glass-border) !important;
+}
