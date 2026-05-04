@@ -2,11 +2,14 @@
 
 @import url('https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700;800&family=Outfit:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Tajawal:wght@400;500;700;800;900&display=swap');
 
-/* Vibrant Maker Studio tokens */
-.registration-page {
+/* Vibrant Maker Studio tokens — theme-aware */
+.registration-page,
+.registration-page[data-theme="dark"] {
   --bg-0: #07091a;
   --bg-1: #0f1330;
   --bg-2: #161a3d;
+  --card-bg: rgba(15, 19, 48, 0.55);
+  --card-border: rgba(255, 255, 255, 0.14);
   --aurora-cyan: #22d3ee;
   --aurora-blue: #3b82f6;
   --aurora-violet: #a78bfa;
@@ -20,6 +23,10 @@
   --glass-strong: rgba(255, 255, 255, 0.10);
   --glass-border: rgba(255, 255, 255, 0.14);
   --glass-border-hot: rgba(167, 139, 250, 0.45);
+  --aurora-opacity: 0.55;
+  --grid-opacity: 0.5;
+  --shadow-card: 0 30px 80px -30px rgba(0, 0, 0, 0.6);
+  --text-on-grad: #07091a;
   --grad-primary: linear-gradient(135deg, #22d3ee 0%, #a78bfa 50%, #f472b6 100%);
   --grad-secondary: linear-gradient(135deg, #fb923c 0%, #f472b6 100%);
   --grad-success: linear-gradient(135deg, #a3e635 0%, #22d3ee 100%);
@@ -29,7 +36,26 @@
   --arabic: 'Tajawal', system-ui, sans-serif;
 }
 
-/* Main Container — vibrant deep-space canvas */
+/* Light theme overrides */
+.registration-page[data-theme="light"] {
+  --bg-0: #f5f3ff;
+  --bg-1: #ffffff;
+  --bg-2: #faf5ff;
+  --card-bg: rgba(255, 255, 255, 0.75);
+  --card-border: rgba(15, 23, 42, 0.10);
+  --text-hi: #0f172a;
+  --text-md: #475569;
+  --text-lo: #64748b;
+  --glass: rgba(255, 255, 255, 0.65);
+  --glass-strong: rgba(255, 255, 255, 0.85);
+  --glass-border: rgba(15, 23, 42, 0.10);
+  --glass-border-hot: rgba(139, 92, 246, 0.55);
+  --aurora-opacity: 0.45;
+  --grid-opacity: 0.35;
+  --shadow-card: 0 30px 80px -30px rgba(99, 102, 241, 0.30);
+}
+
+/* Main Container — vibrant canvas */
 .registration-page {
   min-height: 100vh;
   background: var(--bg-0);
@@ -38,6 +64,13 @@
   font-family: var(--body);
   color: var(--text-hi);
   -webkit-font-smoothing: antialiased;
+  transition: background 0.5s ease;
+}
+.registration-page[data-theme="light"] {
+  background:
+    radial-gradient(1000px 700px at 20% 10%, rgba(167, 139, 250, 0.18), transparent 60%),
+    radial-gradient(800px 600px at 90% 90%, rgba(244, 114, 182, 0.14), transparent 60%),
+    linear-gradient(135deg, #f5f3ff 0%, #faf5ff 50%, #fef3f8 100%);
 }
 .registration-page[dir="rtl"] {
   font-family: var(--arabic);
@@ -90,9 +123,13 @@
 .registration-page .aurora-blob {
   position: absolute;
   border-radius: 50%;
-  opacity: 0.55;
+  opacity: var(--aurora-opacity);
   mix-blend-mode: screen;
   animation: blobDrift 22s ease-in-out infinite alternate;
+}
+.registration-page[data-theme="light"] .aurora-blob {
+  mix-blend-mode: multiply;
+  opacity: 0.32;
 }
 .registration-page .aurora-blob:nth-child(1) {
   top: -10%; left: -5%;
@@ -199,6 +236,8 @@
   opacity: 0.6;
   animation: twinkle 3s ease-in-out infinite;
 }
+.registration-page[data-theme="light"] .stars { display: none; }
+.registration-page[data-theme="light"] .registration-page::before { opacity: var(--grid-opacity); }
 .registration-page .stars span:nth-child(1)  { top: 8%;  left: 12%; animation-delay: 0s; }
 .registration-page .stars span:nth-child(2)  { top: 18%; left: 78%; animation-delay: 0.5s; }
 .registration-page .stars span:nth-child(3)  { top: 28%; left: 32%; animation-delay: 1s; }
@@ -494,6 +533,71 @@
   margin: 0.4rem 0 0.6rem;
   text-shadow: none;
 }
+.registration-page[data-theme="light"] .registration-title { color: #0f172a; }
+.registration-page[data-theme="light"] .registration-subtitle { color: #475569; }
+.registration-page[data-theme="light"] .registration-eyebrow {
+  background: rgba(255, 255, 255, 0.85);
+  border-color: rgba(15, 23, 42, 0.12);
+  color: #475569;
+  box-shadow: 0 4px 16px -4px rgba(167, 139, 250, 0.25);
+}
+
+/* THEME TOGGLE BUTTON — top-right (top-left in RTL) */
+.theme-toggle {
+  position: fixed;
+  top: 1.25rem;
+  right: 1.25rem;
+  z-index: 50;
+  width: 44px;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--glass);
+  border: 1px solid var(--glass-border);
+  border-radius: 999px;
+  color: var(--text-hi);
+  cursor: pointer;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  transition: all 0.3s cubic-bezier(0.2, 0.9, 0.2, 1);
+  overflow: hidden;
+}
+[dir="rtl"] .theme-toggle { right: auto; left: 1.25rem; }
+
+.theme-toggle::before {
+  content: '';
+  position: absolute;
+  inset: -1px;
+  border-radius: 999px;
+  background: var(--grad-primary);
+  opacity: 0;
+  z-index: -1;
+  transition: opacity 0.3s ease;
+}
+.theme-toggle:hover {
+  border-color: transparent;
+  transform: rotate(20deg) scale(1.08);
+  box-shadow: 0 12px 28px -8px rgba(167, 139, 250, 0.55);
+  color: #fff;
+}
+.theme-toggle:hover::before { opacity: 1; }
+
+.theme-toggle svg {
+  width: 20px;
+  height: 20px;
+  transition: transform 0.5s cubic-bezier(0.2, 0.9, 0.2, 1);
+}
+.theme-toggle .icon-sun { display: none; }
+.theme-toggle .icon-moon { display: block; }
+.registration-page[data-theme="light"] .theme-toggle .icon-sun { display: block; }
+.registration-page[data-theme="light"] .theme-toggle .icon-moon { display: none; }
+.registration-page[data-theme="light"] .theme-toggle {
+  background: rgba(255, 255, 255, 0.9);
+  border-color: rgba(15, 23, 42, 0.12);
+  color: #f59e0b;
+  box-shadow: 0 8px 22px -8px rgba(167, 139, 250, 0.35);
+}
 .registration-title em {
   font-style: normal;
   font-weight: 800;
@@ -531,12 +635,12 @@
 
 /* Form Card — glassmorphism */
 .form-card {
-  background: rgba(15, 19, 48, 0.55);
+  background: var(--card-bg);
   border-radius: 24px;
-  border: 1px solid var(--glass-border);
+  border: 1px solid var(--card-border);
   box-shadow:
-    0 1px 0 rgba(255, 255, 255, 0.06) inset,
-    0 30px 80px -30px rgba(0, 0, 0, 0.6),
+    0 1px 0 rgba(255, 255, 255, 0.10) inset,
+    var(--shadow-card),
     0 0 0 1px rgba(255, 255, 255, 0.02);
   backdrop-filter: blur(20px) saturate(1.2);
   -webkit-backdrop-filter: blur(20px) saturate(1.2);
@@ -545,6 +649,7 @@
   overflow: hidden;
   position: relative;
   color: var(--text-hi);
+  transition: background 0.5s ease, border-color 0.5s ease;
 }
 .form-card::before {
   content: '';
@@ -767,11 +872,15 @@
 .step-item.active .step-circle {
   border-color: transparent;
   background: var(--bg-1);
-  color: #fff;
+  color: var(--text-hi);
   transform: scale(1.12);
   box-shadow:
     0 0 0 2px transparent,
     0 12px 30px -10px rgba(167, 139, 250, 0.6);
+}
+.registration-page[data-theme="light"] .step-item.active .step-circle {
+  background: #1e1b4b;
+  color: #fff;
 }
 .step-item.active .step-circle::before {
   opacity: 1;
@@ -810,14 +919,18 @@
 .step-label {
   margin-top: 0.85rem;
   font-family: var(--body);
-  font-size: 0.78rem;
-  font-weight: 500;
-  color: var(--text-lo);
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--text-md);
   text-align: center;
-  max-width: 92px;
+  max-width: 96px;
   line-height: 1.35;
   transition: color 0.3s ease;
   letter-spacing: 0;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.15);
+}
+.registration-page[data-theme="light"] .step-label {
+  text-shadow: none;
 }
 [dir="rtl"] .step-label {
   font-family: var(--arabic);
@@ -3502,6 +3615,297 @@
 .registration-page .form-card [style*="background-color: #fff"] {
   background: var(--glass) !important;
   border-color: var(--glass-border) !important;
+}
+
+/* ============================================================
+   LIGHT-THEME — restore proper contrast for inline-styled text
+   that was force-overridden in dark theme via attribute selectors
+   ============================================================ */
+.registration-page[data-theme="light"] .form-card [style*="color: var(--gray-500)"],
+.registration-page[data-theme="light"] .form-card [style*="color: var(--gray-600)"],
+.registration-page[data-theme="light"] .form-card [style*="color: var(--gray-700)"],
+.registration-page[data-theme="light"] .form-card [style*="color: #64748b"],
+.registration-page[data-theme="light"] .form-card [style*="color: #6b7280"],
+.registration-page[data-theme="light"] .form-card [style*="color: #475569"],
+.registration-page[data-theme="light"] .form-card [style*="color: #334155"] {
+  color: #475569 !important;
+}
+.registration-page[data-theme="light"] .form-card [style*="color: var(--gray-800)"],
+.registration-page[data-theme="light"] .form-card [style*="color: var(--gray-900)"],
+.registration-page[data-theme="light"] .form-card [style*="color: #1f2937"],
+.registration-page[data-theme="light"] .form-card [style*="color: #111827"],
+.registration-page[data-theme="light"] .form-card [style*="color: #1e293b"],
+.registration-page[data-theme="light"] .form-card [style*="color: #0f172a"],
+.registration-page[data-theme="light"] .form-card [style*="color: black"],
+.registration-page[data-theme="light"] .form-card [style*="color: #000"] {
+  color: #0f172a !important;
+}
+.registration-page[data-theme="light"] .form-card [style*="background: white"],
+.registration-page[data-theme="light"] .form-card [style*="background: #fff"],
+.registration-page[data-theme="light"] .form-card [style*="background-color: white"],
+.registration-page[data-theme="light"] .form-card [style*="background-color: #fff"] {
+  background: rgba(255, 255, 255, 0.85) !important;
+  border-color: rgba(15, 23, 42, 0.10) !important;
+}
+
+/* Light theme: warning/info banners need stronger color contrast */
+.registration-page[data-theme="light"] .form-card .info-banner {
+  background: linear-gradient(135deg, rgba(34, 211, 238, 0.18), rgba(167, 139, 250, 0.14)) !important;
+  border-color: rgba(34, 211, 238, 0.45) !important;
+  color: #1e3a8a !important;
+}
+.registration-page[data-theme="light"] .form-card .info-banner span,
+.registration-page[data-theme="light"] .form-card .info-banner p {
+  color: #1e3a8a !important;
+}
+.registration-page[data-theme="light"] .form-card .info-banner.success {
+  background: linear-gradient(135deg, rgba(163, 230, 53, 0.22), rgba(34, 211, 238, 0.14)) !important;
+  border-color: rgba(34, 197, 94, 0.5) !important;
+  color: #14532d !important;
+}
+.registration-page[data-theme="light"] .form-card .info-banner.success span,
+.registration-page[data-theme="light"] .form-card .info-banner.success p {
+  color: #14532d !important;
+}
+.registration-page[data-theme="light"] .form-card .info-banner[style*="fef3c7"] {
+  background: linear-gradient(135deg, #fef3c7, #fde68a) !important;
+  border-color: #f59e0b !important;
+  color: #78350f !important;
+}
+
+/* Light theme: warning / conflicts */
+.registration-page[data-theme="light"] .form-card .conflicts-warning,
+.registration-page[data-theme="light"] .form-card .section-deactivation-warning {
+  background: linear-gradient(135deg, #fed7aa, #fecaca) !important;
+  border-color: #fb923c !important;
+  color: #7c2d12 !important;
+}
+
+/* Light theme: time selected message */
+.registration-page[data-theme="light"] .form-card .time-selected-message,
+.registration-page[data-theme="light"] .form-card .time-selected-message.success {
+  background: linear-gradient(135deg, rgba(163, 230, 53, 0.30), rgba(34, 211, 238, 0.18)) !important;
+  border-color: rgba(34, 197, 94, 0.55) !important;
+  color: #14532d !important;
+}
+
+/* Light theme: visit time summary + selected date display + info-card */
+.registration-page[data-theme="light"] .form-card .visit-time-summary,
+.registration-page[data-theme="light"] .form-card .selected-date-display,
+.registration-page[data-theme="light"] .form-card .info-card {
+  background: linear-gradient(135deg, rgba(167, 139, 250, 0.18), rgba(34, 211, 238, 0.10)) !important;
+  border-color: rgba(139, 92, 246, 0.4) !important;
+  color: #1e1b4b !important;
+}
+.registration-page[data-theme="light"] .form-card .visit-time-summary *,
+.registration-page[data-theme="light"] .form-card .selected-date-display *,
+.registration-page[data-theme="light"] .form-card .info-card * {
+  color: inherit;
+}
+
+/* Light theme: commitment box stronger background */
+.registration-page[data-theme="light"] .form-card .commitment-box {
+  background: linear-gradient(135deg, rgba(167, 139, 250, 0.12), rgba(34, 211, 238, 0.08)) !important;
+  border-color: rgba(139, 92, 246, 0.40) !important;
+  color: #0f172a !important;
+}
+.registration-page[data-theme="light"] .form-card .commitment-text {
+  color: #475569 !important;
+}
+
+/* Light theme: calendar fixes */
+.registration-page[data-theme="light"] .form-card .booking-calendar-container {
+  background: rgba(255, 255, 255, 0.85) !important;
+  border-color: rgba(15, 23, 42, 0.10) !important;
+}
+.registration-page[data-theme="light"] .form-card .calendar-weekdays .weekday {
+  color: #64748b !important;
+}
+.registration-page[data-theme="light"] .form-card .calendar-weekdays .weekday.weekend {
+  color: #be185d !important;
+}
+.registration-page[data-theme="light"] .form-card .calendar-days-grid .calendar-day {
+  background: rgba(255, 255, 255, 0.7) !important;
+  border-color: rgba(15, 23, 42, 0.06) !important;
+  color: #334155 !important;
+}
+.registration-page[data-theme="light"] .form-card .calendar-days-grid .calendar-day.available {
+  background: rgba(34, 211, 238, 0.18) !important;
+  border-color: rgba(34, 211, 238, 0.40) !important;
+  color: #0c4a6e !important;
+}
+.registration-page[data-theme="light"] .form-card .calendar-days-grid .calendar-day.available:hover {
+  background: rgba(34, 211, 238, 0.32) !important;
+  border-color: rgba(8, 145, 178, 0.6) !important;
+  color: #082f49 !important;
+}
+.registration-page[data-theme="light"] .form-card .calendar-days-grid .calendar-day.unavailable {
+  background: rgba(241, 245, 249, 0.65) !important;
+  color: #94a3b8 !important;
+}
+.registration-page[data-theme="light"] .form-card .calendar-days-grid .calendar-day.weekend {
+  background: rgba(244, 114, 182, 0.10) !important;
+  border-color: rgba(244, 114, 182, 0.25) !important;
+}
+.registration-page[data-theme="light"] .form-card .calendar-days-grid .calendar-day.today {
+  border-color: #16a34a !important;
+  box-shadow: 0 0 0 1px #16a34a, 0 4px 16px -4px rgba(22, 163, 74, 0.5) !important;
+}
+.registration-page[data-theme="light"] .form-card .calendar-days-grid .calendar-day.today .day-number {
+  color: #15803d !important;
+}
+.registration-page[data-theme="light"] .form-card .calendar-legend {
+  background: rgba(255, 255, 255, 0.6) !important;
+}
+.registration-page[data-theme="light"] .form-card .legend-item {
+  color: #475569 !important;
+}
+
+/* Light theme: time slots & duration options */
+.registration-page[data-theme="light"] .form-card .time-slots-section,
+.registration-page[data-theme="light"] .form-card .duration-selection {
+  background: rgba(255, 255, 255, 0.75) !important;
+  border-color: rgba(15, 23, 42, 0.08) !important;
+}
+.registration-page[data-theme="light"] .form-card .time-slots-grid .time-slot {
+  background: rgba(255, 255, 255, 0.9) !important;
+  border-color: rgba(15, 23, 42, 0.10) !important;
+  color: #1e293b !important;
+}
+.registration-page[data-theme="light"] .form-card .time-slots-grid .time-slot:hover:not(:disabled) {
+  background: rgba(167, 139, 250, 0.18) !important;
+  border-color: rgba(139, 92, 246, 0.55) !important;
+  color: #1e1b4b !important;
+}
+.registration-page[data-theme="light"] .form-card .duration-option {
+  background: rgba(255, 255, 255, 0.9) !important;
+  border-color: rgba(15, 23, 42, 0.10) !important;
+  color: #1e293b !important;
+}
+.registration-page[data-theme="light"] .form-card .duration-option:hover {
+  background: rgba(167, 139, 250, 0.16) !important;
+  border-color: rgba(139, 92, 246, 0.5) !important;
+}
+.registration-page[data-theme="light"] .form-card .no-slots-message {
+  background: rgba(255, 255, 255, 0.75) !important;
+  color: #64748b !important;
+}
+
+/* Light theme: checkbox cards & selection cards & section cards */
+.registration-page[data-theme="light"] .form-card .checkbox-card,
+.registration-page[data-theme="light"] .form-card .selection-card,
+.registration-page[data-theme="light"] .form-card .section-card,
+.registration-page[data-theme="light"] .form-card .application-type-card,
+.registration-page[data-theme="light"] .form-card .service-card {
+  background: rgba(255, 255, 255, 0.9) !important;
+  border-color: rgba(15, 23, 42, 0.08) !important;
+  color: #0f172a !important;
+}
+.registration-page[data-theme="light"] .form-card .checkbox-card:hover:not(.disabled),
+.registration-page[data-theme="light"] .form-card .selection-card:hover,
+.registration-page[data-theme="light"] .form-card .section-card:hover,
+.registration-page[data-theme="light"] .form-card .application-type-card:hover,
+.registration-page[data-theme="light"] .form-card .service-card:hover {
+  background: rgba(255, 255, 255, 0.98) !important;
+  border-color: rgba(139, 92, 246, 0.5) !important;
+  box-shadow: 0 14px 30px -10px rgba(139, 92, 246, 0.30) !important;
+}
+.registration-page[data-theme="light"] .form-card .checkbox-card.selected,
+.registration-page[data-theme="light"] .form-card .selection-card.selected,
+.registration-page[data-theme="light"] .form-card .section-card.selected,
+.registration-page[data-theme="light"] .form-card .application-type-card.selected,
+.registration-page[data-theme="light"] .form-card .service-card.selected {
+  background: linear-gradient(135deg, rgba(167, 139, 250, 0.20), rgba(34, 211, 238, 0.14)) !important;
+  border-color: rgba(139, 92, 246, 0.65) !important;
+  color: #1e1b4b !important;
+}
+.registration-page[data-theme="light"] .form-card .checkbox-card-label,
+.registration-page[data-theme="light"] .form-card .selection-card-title,
+.registration-page[data-theme="light"] .form-card .section-card-title {
+  color: #0f172a !important;
+}
+.registration-page[data-theme="light"] .form-card .selection-card-icon {
+  color: #0891b2 !important;
+}
+.registration-page[data-theme="light"] .form-card .selection-card.selected .selection-card-icon {
+  color: #7c3aed !important;
+}
+
+/* Light theme: form inputs */
+.registration-page[data-theme="light"] .form-card input,
+.registration-page[data-theme="light"] .form-card select,
+.registration-page[data-theme="light"] .form-card textarea,
+.registration-page[data-theme="light"] .form-card .form-input,
+.registration-page[data-theme="light"] .form-card .form-select,
+.registration-page[data-theme="light"] .form-card .form-textarea {
+  background: rgba(255, 255, 255, 0.95) !important;
+  border-color: rgba(15, 23, 42, 0.12) !important;
+  color: #0f172a !important;
+}
+.registration-page[data-theme="light"] .form-card input::placeholder,
+.registration-page[data-theme="light"] .form-card textarea::placeholder {
+  color: #94a3b8 !important;
+}
+.registration-page[data-theme="light"] .form-card input:focus,
+.registration-page[data-theme="light"] .form-card select:focus,
+.registration-page[data-theme="light"] .form-card textarea:focus {
+  background: #ffffff !important;
+  border-color: rgba(139, 92, 246, 0.7) !important;
+  box-shadow: 0 0 0 4px rgba(139, 92, 246, 0.15) !important;
+}
+.registration-page[data-theme="light"] .form-card input[type="date"]::-webkit-calendar-picker-indicator,
+.registration-page[data-theme="light"] .form-card input[type="time"]::-webkit-calendar-picker-indicator {
+  filter: none;
+  opacity: 0.7;
+}
+.registration-page[data-theme="light"] .form-card select option {
+  background: #fff;
+  color: #0f172a;
+}
+
+/* Light theme: home button */
+.registration-page[data-theme="light"] .home-button {
+  background: rgba(255, 255, 255, 0.85);
+  border-color: rgba(15, 23, 42, 0.12);
+  color: #0f172a;
+}
+
+/* Light theme: stepper container */
+.registration-page[data-theme="light"] .stepper-container {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.55), transparent);
+  border-bottom-color: rgba(15, 23, 42, 0.08);
+}
+.registration-page[data-theme="light"] .stepper-container::before {
+  color: #64748b;
+}
+.registration-page[data-theme="light"] .step-circle {
+  background: rgba(255, 255, 255, 0.9);
+  border-color: rgba(15, 23, 42, 0.12);
+  color: #64748b;
+}
+.registration-page[data-theme="light"] .step-connector {
+  background: rgba(15, 23, 42, 0.10);
+}
+.registration-page[data-theme="light"] .step-item.active .step-label {
+  color: #1e1b4b;
+}
+.registration-page[data-theme="light"] .step-item .step-label {
+  color: #475569;
+}
+
+/* Light theme: floating fab icons */
+.registration-page[data-theme="light"] .float-icon {
+  background: rgba(255, 255, 255, 0.85);
+  border-color: rgba(15, 23, 42, 0.10);
+  box-shadow: 0 8px 24px -10px rgba(99, 102, 241, 0.25);
+}
+
+/* Light theme: form card top hairline + radial wash */
+.registration-page[data-theme="light"] .form-card::before {
+  background: linear-gradient(90deg, transparent, rgba(139, 92, 246, 0.7), rgba(34, 211, 238, 0.7), rgba(244, 114, 182, 0.7), transparent);
+}
+.registration-page[data-theme="light"] .form-card::after {
+  background: radial-gradient(120% 60% at 50% 0%, rgba(139, 92, 246, 0.06), transparent 50%);
 }
 
 /* ============================================================
