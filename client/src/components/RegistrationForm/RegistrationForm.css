@@ -741,13 +741,17 @@
   transform: scale(1.1) rotate(-6deg);
 }
 
-/* Stepper — vibrant progress with glow */
+/* Stepper — light control strip (works in both themes) */
 .stepper-container {
-  background: linear-gradient(180deg, rgba(255,255,255,0.04), transparent);
+  background: rgba(255, 255, 255, 0.96);
   padding: 2.4rem 2rem 1.75rem;
-  border-bottom: 1px solid var(--glass-border);
+  border-bottom: 1px solid rgba(15, 23, 42, 0.10);
   position: relative;
   z-index: 2;
+}
+.registration-page[data-theme="light"] .stepper-container {
+  background: rgba(255, 255, 255, 0.85);
+  border-bottom-color: rgba(15, 23, 42, 0.08);
 }
 .stepper-container::before {
   content: '◐ Progress';
@@ -757,7 +761,7 @@
   font-family: var(--mono);
   font-size: 11px;
   letter-spacing: 0.18em;
-  color: var(--text-lo);
+  color: #64748b;
   text-transform: uppercase;
 }
 [dir="rtl"] .stepper-container::before {
@@ -767,6 +771,7 @@
   font-family: var(--arabic);
   letter-spacing: 0;
   font-size: 13px;
+  font-weight: 700;
   text-transform: none;
 }
 .stepper-container::after {
@@ -849,19 +854,11 @@
   font-size: 0.95rem;
   letter-spacing: 0;
   transition: all 0.45s cubic-bezier(0.2, 0.9, 0.2, 1);
-  border: 1.5px solid rgba(255, 255, 255, 0.22);
-  background: rgba(255, 255, 255, 0.10);
-  color: #cbd5e1;
+  border: 1.5px solid rgba(15, 23, 42, 0.15);
+  background: #ffffff;
+  color: #64748b;
   position: relative;
   z-index: 2;
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
-  box-shadow: 0 4px 12px -4px rgba(0, 0, 0, 0.3);
-}
-.registration-page[data-theme="light"] .step-circle {
-  background: rgba(255, 255, 255, 0.95);
-  border-color: rgba(15, 23, 42, 0.15);
-  color: #64748b;
   box-shadow: 0 4px 12px -4px rgba(99, 102, 241, 0.20);
 }
 .step-circle::before {
@@ -878,16 +875,12 @@
 
 .step-item.active .step-circle {
   border-color: transparent;
-  background: var(--bg-1);
-  color: var(--text-hi);
+  background: #1e1b4b;
+  color: #fff;
   transform: scale(1.12);
   box-shadow:
     0 0 0 2px transparent,
     0 12px 30px -10px rgba(167, 139, 250, 0.6);
-}
-.registration-page[data-theme="light"] .step-item.active .step-circle {
-  background: #1e1b4b;
-  color: #fff;
 }
 .step-item.active .step-circle::before {
   opacity: 1;
@@ -928,17 +921,19 @@
   font-family: var(--body);
   font-size: 0.82rem;
   font-weight: 600;
-  color: #e2e8f0;
+  color: #475569;
   text-align: center;
   max-width: 96px;
   line-height: 1.35;
   transition: color 0.3s ease;
   letter-spacing: 0;
-  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
 }
-.registration-page[data-theme="light"] .step-label {
-  color: #475569;
-  text-shadow: none;
+.step-item.active .step-label,
+.registration-page .step-item.active .step-label {
+  color: #0f172a;
+}
+.step-item.completed .step-label {
+  color: #334155;
 }
 [dir="rtl"] .step-label {
   font-weight: 700;
@@ -963,7 +958,7 @@
   left: calc(50% + 26px);
   width: calc(100% - 52px);
   height: 2px;
-  background: rgba(255, 255, 255, 0.08);
+  background: rgba(15, 23, 42, 0.12);
   border-radius: 2px;
   z-index: 1;
   overflow: hidden;
@@ -3881,27 +3876,9 @@
   color: #0f172a;
 }
 
-/* Light theme: stepper container */
-.registration-page[data-theme="light"] .stepper-container {
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.55), transparent);
-  border-bottom-color: rgba(15, 23, 42, 0.08);
-}
-.registration-page[data-theme="light"] .stepper-container::before {
-  color: #64748b;
-}
-.registration-page[data-theme="light"] .step-circle {
-  background: rgba(255, 255, 255, 0.9);
-  border-color: rgba(15, 23, 42, 0.12);
-  color: #64748b;
-}
-.registration-page[data-theme="light"] .step-connector {
-  background: rgba(15, 23, 42, 0.10);
-}
+/* Light theme: stepper subtle tonal shift */
 .registration-page[data-theme="light"] .step-item.active .step-label {
   color: #1e1b4b;
-}
-.registration-page[data-theme="light"] .step-item .step-label {
-  color: #475569;
 }
 
 /* Light theme: floating fab icons */
