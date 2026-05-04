@@ -849,13 +849,20 @@
   font-size: 0.95rem;
   letter-spacing: 0;
   transition: all 0.45s cubic-bezier(0.2, 0.9, 0.2, 1);
-  border: 1.5px solid var(--glass-border);
-  background: var(--glass);
-  color: var(--text-lo);
+  border: 1.5px solid rgba(255, 255, 255, 0.22);
+  background: rgba(255, 255, 255, 0.10);
+  color: #cbd5e1;
   position: relative;
   z-index: 2;
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
+  box-shadow: 0 4px 12px -4px rgba(0, 0, 0, 0.3);
+}
+.registration-page[data-theme="light"] .step-circle {
+  background: rgba(255, 255, 255, 0.95);
+  border-color: rgba(15, 23, 42, 0.15);
+  color: #64748b;
+  box-shadow: 0 4px 12px -4px rgba(99, 102, 241, 0.20);
 }
 .step-circle::before {
   content: '';
@@ -919,18 +926,22 @@
 .step-label {
   margin-top: 0.85rem;
   font-family: var(--body);
-  font-size: 0.8rem;
+  font-size: 0.82rem;
   font-weight: 600;
-  color: var(--text-md);
+  color: #e2e8f0;
   text-align: center;
   max-width: 96px;
   line-height: 1.35;
   transition: color 0.3s ease;
   letter-spacing: 0;
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.15);
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
 }
 .registration-page[data-theme="light"] .step-label {
+  color: #475569;
   text-shadow: none;
+}
+[dir="rtl"] .step-label {
+  font-weight: 700;
 }
 [dir="rtl"] .step-label {
   font-family: var(--arabic);
@@ -4030,7 +4041,10 @@
   color: var(--text-hi) !important;
 }
 .registration-page .form-card .commitment-header {
+  background: linear-gradient(135deg, rgba(167, 139, 250, 0.18), rgba(34, 211, 238, 0.10)) !important;
+  border-bottom: 1px solid rgba(167, 139, 250, 0.25) !important;
   color: var(--text-hi) !important;
+  font-weight: 700 !important;
 }
 .registration-page .form-card .commitment-header svg {
   color: var(--aurora-violet) !important;
@@ -4040,6 +4054,13 @@
 }
 .registration-page .form-card .commitment-name-field {
   color: var(--text-hi) !important;
+}
+
+/* Light theme: commitment header */
+.registration-page[data-theme="light"] .form-card .commitment-header {
+  background: linear-gradient(135deg, rgba(139, 92, 246, 0.12), rgba(34, 211, 238, 0.08)) !important;
+  border-bottom-color: rgba(139, 92, 246, 0.20) !important;
+  color: #1e1b4b !important;
 }
 
 /* Form navigation row */
