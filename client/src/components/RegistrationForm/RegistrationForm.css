@@ -3503,3 +3503,456 @@
   background: var(--glass) !important;
   border-color: var(--glass-border) !important;
 }
+
+/* ============================================================
+   STEP-SPECIFIC TARGETED OVERRIDES
+   ============================================================ */
+
+/* selection-card icon + title */
+.registration-page .form-card .selection-card-icon {
+  color: var(--aurora-cyan) !important;
+  filter: drop-shadow(0 0 8px rgba(34, 211, 238, 0.4));
+}
+.registration-page .form-card .selection-card.selected .selection-card-icon {
+  color: var(--aurora-violet) !important;
+  filter: drop-shadow(0 0 12px rgba(167, 139, 250, 0.6));
+}
+.registration-page .form-card .selection-card-title {
+  color: var(--text-hi) !important;
+}
+
+/* form-select / form-textarea */
+.registration-page .form-card .form-select,
+.registration-page .form-card .form-textarea {
+  background: var(--glass) !important;
+  border: 1.5px solid var(--glass-border) !important;
+  color: var(--text-hi) !important;
+  border-radius: 12px !important;
+}
+.registration-page .form-card .form-select:hover,
+.registration-page .form-card .form-textarea:hover {
+  border-color: rgba(167, 139, 250, 0.4) !important;
+}
+.registration-page .form-card .form-select:focus,
+.registration-page .form-card .form-textarea:focus {
+  border-color: rgba(167, 139, 250, 0.7) !important;
+  box-shadow: 0 0 0 4px rgba(167, 139, 250, 0.15) !important;
+  background: rgba(255, 255, 255, 0.08) !important;
+}
+.registration-page .form-card .form-textarea::placeholder {
+  color: var(--text-lo) !important;
+}
+
+/* Info banner — fix yellow inline style + cyan style */
+.registration-page .form-card .info-banner {
+  background: linear-gradient(135deg, rgba(34, 211, 238, 0.10), rgba(167, 139, 250, 0.08)) !important;
+  border: 1.5px solid rgba(34, 211, 238, 0.28) !important;
+  color: var(--text-md) !important;
+  border-radius: 14px !important;
+}
+.registration-page .form-card .info-banner svg {
+  color: var(--aurora-cyan) !important;
+}
+.registration-page .form-card .info-banner span,
+.registration-page .form-card .info-banner p {
+  color: var(--text-md) !important;
+}
+.registration-page .form-card .info-banner.success {
+  background: linear-gradient(135deg, rgba(163, 230, 53, 0.12), rgba(34, 211, 238, 0.08)) !important;
+  border-color: rgba(163, 230, 53, 0.32) !important;
+}
+.registration-page .form-card .info-banner.success svg {
+  color: var(--aurora-lime) !important;
+}
+/* Override yellow inline-styled info-banner (DateTimeSelection 501) */
+.registration-page .form-card .info-banner[style*="#fef3c7"],
+.registration-page .form-card .info-banner[style*="fef3c7"],
+.registration-page .form-card .info-banner[style*="#92400e"] {
+  background: linear-gradient(135deg, rgba(251, 146, 60, 0.14), rgba(244, 114, 182, 0.08)) !important;
+  border: 1.5px solid rgba(251, 146, 60, 0.4) !important;
+  color: #fed7aa !important;
+}
+
+/* Checkbox cards (RequiredService) */
+.registration-page .form-card .checkbox-card {
+  background: var(--glass) !important;
+  border: 1.5px solid var(--glass-border) !important;
+  color: var(--text-hi) !important;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  transition: all 0.3s cubic-bezier(0.2, 0.9, 0.2, 1) !important;
+}
+.registration-page .form-card .checkbox-card:hover:not(.disabled) {
+  background: var(--glass-strong) !important;
+  border-color: rgba(167, 139, 250, 0.5) !important;
+  transform: translateY(-2px);
+  box-shadow: 0 12px 28px -10px rgba(167, 139, 250, 0.4) !important;
+}
+.registration-page .form-card .checkbox-card.selected {
+  background: linear-gradient(135deg, rgba(167, 139, 250, 0.18), rgba(34, 211, 238, 0.10)) !important;
+  border-color: rgba(167, 139, 250, 0.7) !important;
+  box-shadow:
+    0 0 0 1px rgba(167, 139, 250, 0.4),
+    0 14px 32px -10px rgba(167, 139, 250, 0.5) !important;
+}
+.registration-page .form-card .checkbox-card.disabled {
+  background: rgba(255, 255, 255, 0.03) !important;
+  opacity: 0.5;
+}
+.registration-page .form-card .checkbox-card-check {
+  border-color: var(--glass-border) !important;
+  background: rgba(255, 255, 255, 0.05) !important;
+}
+.registration-page .form-card .checkbox-card.selected .checkbox-card-check {
+  background: var(--grad-primary) !important;
+  border-color: transparent !important;
+  color: #07091a !important;
+  box-shadow: 0 0 12px rgba(167, 139, 250, 0.6);
+}
+.registration-page .form-card .checkbox-card-icon {
+  color: var(--aurora-cyan) !important;
+}
+.registration-page .form-card .checkbox-card.selected .checkbox-card-icon {
+  color: var(--aurora-violet) !important;
+}
+.registration-page .form-card .checkbox-card-label {
+  color: var(--text-hi) !important;
+}
+
+/* Commitment box */
+.registration-page .form-card .commitment-box {
+  background: linear-gradient(135deg, rgba(167, 139, 250, 0.10), rgba(34, 211, 238, 0.06)) !important;
+  border: 1.5px solid rgba(167, 139, 250, 0.30) !important;
+  color: var(--text-hi) !important;
+}
+.registration-page .form-card .commitment-header {
+  color: var(--text-hi) !important;
+}
+.registration-page .form-card .commitment-header svg {
+  color: var(--aurora-violet) !important;
+}
+.registration-page .form-card .commitment-text {
+  color: var(--text-md) !important;
+}
+.registration-page .form-card .commitment-name-field {
+  color: var(--text-hi) !important;
+}
+
+/* Form navigation row */
+.registration-page .form-card .form-navigation {
+  border-top: 1px solid var(--glass-border) !important;
+  padding-top: 1.5rem;
+  margin-top: 1.5rem;
+}
+
+/* Conflicts warning */
+.registration-page .form-card .conflicts-warning {
+  background: linear-gradient(135deg, rgba(251, 146, 60, 0.14), rgba(244, 114, 182, 0.08)) !important;
+  border: 1.5px solid rgba(251, 146, 60, 0.4) !important;
+  color: #fed7aa !important;
+  border-radius: 14px !important;
+}
+.registration-page .form-card .conflicts-warning * {
+  color: inherit;
+}
+
+/* ============================================================
+   CALENDAR (booking-calendar) — DateTimeSelection step
+   ============================================================ */
+.registration-page .form-card .booking-calendar-container {
+  background: var(--glass) !important;
+  border: 1.5px solid var(--glass-border) !important;
+  border-radius: 16px !important;
+  color: var(--text-hi) !important;
+}
+
+.registration-page .form-card .booking-calendar {
+  background: transparent !important;
+  color: var(--text-hi) !important;
+}
+
+.registration-page .form-card .calendar-nav-header {
+  background: transparent !important;
+  border-bottom: 1px solid var(--glass-border) !important;
+}
+
+.registration-page .form-card .calendar-month-title {
+  color: var(--text-hi) !important;
+  font-family: var(--display);
+  font-weight: 700;
+  background: var(--grad-primary);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent !important;
+}
+
+.registration-page .form-card .calendar-nav-btn {
+  background: var(--glass) !important;
+  border: 1.5px solid var(--glass-border) !important;
+  color: var(--text-hi) !important;
+  border-radius: 10px !important;
+  transition: all 0.25s ease !important;
+}
+.registration-page .form-card .calendar-nav-btn:hover {
+  background: var(--grad-primary) !important;
+  border-color: transparent !important;
+  color: #07091a !important;
+  transform: scale(1.06);
+  box-shadow: 0 8px 20px -8px rgba(167, 139, 250, 0.6) !important;
+}
+.registration-page .form-card .calendar-nav-btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.registration-page .form-card .calendar-weekdays {
+  background: transparent !important;
+  border-bottom: 1px solid var(--glass-border) !important;
+}
+.registration-page .form-card .calendar-weekdays .weekday {
+  color: var(--text-lo) !important;
+  font-family: var(--mono);
+  font-weight: 600;
+  letter-spacing: 0.05em;
+}
+.registration-page .form-card .calendar-weekdays .weekday.weekend {
+  color: var(--aurora-pink) !important;
+  opacity: 0.85;
+}
+
+.registration-page .form-card .calendar-days-grid {
+  background: transparent !important;
+}
+
+.registration-page .form-card .calendar-days-grid .calendar-day {
+  background: rgba(255, 255, 255, 0.03) !important;
+  border: 1px solid transparent !important;
+  color: var(--text-md) !important;
+  border-radius: 10px !important;
+  transition: all 0.25s cubic-bezier(0.2, 0.9, 0.2, 1) !important;
+}
+
+.registration-page .form-card .calendar-days-grid .calendar-day .day-number {
+  color: inherit !important;
+  font-weight: 500;
+}
+
+.registration-page .form-card .calendar-days-grid .calendar-day.empty {
+  background: transparent !important;
+  border: none !important;
+}
+
+.registration-page .form-card .calendar-days-grid .calendar-day.available {
+  background: rgba(34, 211, 238, 0.08) !important;
+  border-color: rgba(34, 211, 238, 0.18) !important;
+  color: var(--text-hi) !important;
+  cursor: pointer;
+}
+.registration-page .form-card .calendar-days-grid .calendar-day.available:hover {
+  background: rgba(34, 211, 238, 0.18) !important;
+  border-color: rgba(34, 211, 238, 0.5) !important;
+  transform: translateY(-2px) scale(1.03);
+  box-shadow: 0 10px 22px -8px rgba(34, 211, 238, 0.45) !important;
+}
+.registration-page .form-card .calendar-days-grid .calendar-day.available:active {
+  transform: translateY(0) scale(1);
+}
+
+.registration-page .form-card .calendar-days-grid .calendar-day.unavailable,
+.registration-page .form-card .calendar-days-grid .calendar-day.unavailable:disabled {
+  background: rgba(255, 255, 255, 0.02) !important;
+  border-color: rgba(255, 255, 255, 0.04) !important;
+  color: rgba(148, 163, 184, 0.4) !important;
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.registration-page .form-card .calendar-days-grid .calendar-day.weekend {
+  background: rgba(244, 114, 182, 0.05) !important;
+  border-color: rgba(244, 114, 182, 0.12) !important;
+}
+
+.registration-page .form-card .calendar-days-grid .calendar-day.today {
+  border-color: var(--aurora-lime) !important;
+  box-shadow: 0 0 0 1px var(--aurora-lime), 0 0 14px -4px rgba(163, 230, 53, 0.5) !important;
+}
+.registration-page .form-card .calendar-days-grid .calendar-day.today .day-number {
+  color: var(--aurora-lime) !important;
+  font-weight: 700;
+}
+
+.registration-page .form-card .calendar-days-grid .calendar-day.selected {
+  background: var(--grad-primary) !important;
+  border-color: transparent !important;
+  color: #07091a !important;
+  font-weight: 800;
+  box-shadow:
+    0 0 0 2px rgba(167, 139, 250, 0.5),
+    0 14px 32px -10px rgba(167, 139, 250, 0.6) !important;
+  transform: scale(1.05);
+}
+.registration-page .form-card .calendar-days-grid .calendar-day.selected .day-number {
+  color: #07091a !important;
+}
+
+.registration-page .form-card .calendar-days-grid .calendar-day.section-closed {
+  background: rgba(251, 146, 60, 0.08) !important;
+  border-color: rgba(251, 146, 60, 0.25) !important;
+  color: rgba(254, 215, 170, 0.7) !important;
+}
+
+.registration-page .form-card .calendar-days-grid .calendar-day .deactivated-indicator {
+  background: var(--aurora-orange) !important;
+  color: #07091a !important;
+  font-weight: 800;
+}
+
+/* Calendar legend */
+.registration-page .form-card .calendar-legend {
+  background: rgba(255, 255, 255, 0.03) !important;
+  border-top: 1px solid var(--glass-border) !important;
+  border-radius: 0 0 16px 16px !important;
+}
+.registration-page .form-card .legend-item {
+  color: var(--text-md) !important;
+}
+.registration-page .form-card .legend-dot {
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+}
+.registration-page .form-card .legend-dot.available {
+  background: rgba(34, 211, 238, 0.5) !important;
+  border-color: rgba(34, 211, 238, 0.7) !important;
+}
+.registration-page .form-card .legend-dot.unavailable {
+  background: rgba(148, 163, 184, 0.3) !important;
+}
+.registration-page .form-card .legend-dot.selected {
+  background: var(--grad-primary) !important;
+}
+.registration-page .form-card .legend-dot.section-closed {
+  background: rgba(251, 146, 60, 0.6) !important;
+}
+
+/* Section closed warning under calendar */
+.registration-page .form-card .section-deactivation-warning {
+  background: linear-gradient(135deg, rgba(251, 146, 60, 0.14), rgba(244, 114, 182, 0.08)) !important;
+  border: 1.5px solid rgba(251, 146, 60, 0.4) !important;
+  color: #fed7aa !important;
+  border-radius: 14px !important;
+}
+.registration-page .form-card .section-deactivation-warning .warning-content {
+  color: inherit;
+}
+.registration-page .form-card .section-deactivation-warning * {
+  color: inherit;
+}
+
+/* Time slot section */
+.registration-page .form-card .time-slots-section {
+  background: var(--glass) !important;
+  border: 1.5px solid var(--glass-border) !important;
+  border-radius: 16px !important;
+  color: var(--text-hi) !important;
+}
+.registration-page .form-card .selected-date-display {
+  background: linear-gradient(135deg, rgba(167, 139, 250, 0.12), rgba(34, 211, 238, 0.06)) !important;
+  border-color: rgba(167, 139, 250, 0.3) !important;
+  color: var(--text-hi) !important;
+}
+.registration-page .form-card .selected-date-display * {
+  color: inherit;
+}
+.registration-page .form-card .time-slots-title {
+  color: var(--text-hi) !important;
+  font-weight: 700;
+}
+.registration-page .form-card .time-slots-grid .time-slot {
+  background: rgba(255, 255, 255, 0.04) !important;
+  border: 1.5px solid var(--glass-border) !important;
+  color: var(--text-hi) !important;
+  border-radius: 10px !important;
+  transition: all 0.25s cubic-bezier(0.2, 0.9, 0.2, 1) !important;
+}
+.registration-page .form-card .time-slots-grid .time-slot:hover:not(:disabled) {
+  background: rgba(167, 139, 250, 0.14) !important;
+  border-color: rgba(167, 139, 250, 0.5) !important;
+  transform: translateY(-1px);
+  box-shadow: 0 8px 20px -8px rgba(167, 139, 250, 0.45) !important;
+}
+.registration-page .form-card .time-slots-grid .time-slot.selected {
+  background: var(--grad-primary) !important;
+  border-color: transparent !important;
+  color: #07091a !important;
+  font-weight: 700;
+  box-shadow: 0 12px 26px -8px rgba(167, 139, 250, 0.6) !important;
+  transform: scale(1.04);
+}
+.registration-page .form-card .no-slots-message {
+  background: rgba(255, 255, 255, 0.04) !important;
+  border: 1.5px dashed var(--glass-border) !important;
+  color: var(--text-md) !important;
+  border-radius: 12px !important;
+}
+.registration-page .form-card .time-selected-message,
+.registration-page .form-card .time-selected-message.success {
+  background: linear-gradient(135deg, rgba(163, 230, 53, 0.14), rgba(34, 211, 238, 0.08)) !important;
+  border: 1.5px solid rgba(163, 230, 53, 0.4) !important;
+  color: #d9f99d !important;
+  border-radius: 12px !important;
+}
+.registration-page .form-card .slots-loading {
+  color: var(--text-md) !important;
+}
+.registration-page .form-card .slots-loading .loading-spinner {
+  border-color: rgba(255, 255, 255, 0.15) !important;
+  border-top-color: var(--aurora-violet) !important;
+}
+
+/* Duration selection */
+.registration-page .form-card .duration-selection {
+  background: rgba(255, 255, 255, 0.03) !important;
+  border-radius: 14px !important;
+  border: 1.5px solid var(--glass-border) !important;
+  color: var(--text-hi) !important;
+}
+.registration-page .form-card .duration-title {
+  color: var(--text-hi) !important;
+}
+.registration-page .form-card .duration-option {
+  background: rgba(255, 255, 255, 0.04) !important;
+  border: 1.5px solid var(--glass-border) !important;
+  color: var(--text-hi) !important;
+  border-radius: 10px !important;
+  transition: all 0.25s ease !important;
+}
+.registration-page .form-card .duration-option:hover {
+  background: rgba(167, 139, 250, 0.12) !important;
+  border-color: rgba(167, 139, 250, 0.5) !important;
+}
+.registration-page .form-card .duration-option.selected {
+  background: var(--grad-primary) !important;
+  border-color: transparent !important;
+  color: #07091a !important;
+  font-weight: 700;
+  box-shadow: 0 10px 22px -8px rgba(167, 139, 250, 0.55) !important;
+}
+
+/* Visit time summary */
+.registration-page .form-card .visit-time-summary {
+  background: linear-gradient(135deg, rgba(34, 211, 238, 0.10), rgba(167, 139, 250, 0.06)) !important;
+  border: 1.5px solid rgba(34, 211, 238, 0.28) !important;
+  color: var(--text-hi) !important;
+  border-radius: 14px !important;
+}
+.registration-page .form-card .visit-time-summary * {
+  color: inherit;
+}
+.registration-page .form-card .hint {
+  color: var(--text-lo) !important;
+}
+
+/* Loading spinner */
+.registration-page .form-card .loading-spinner {
+  border-color: rgba(255, 255, 255, 0.15) !important;
+  border-top-color: var(--aurora-violet) !important;
+}
