@@ -830,6 +830,8 @@ exports.downloadInvoicePdf = async (req, res) => {
     const discountInput = parseFloat(req.query.discount);
     const discount = !isNaN(discountInput) && discountInput > 0 ? discountInput : 0;
     const discountType = (req.query.discountType === 'percent') ? 'percent' : 'amount'; // amount = SAR, percent = %
+    const approverRaw = (req.query.approver || '').toString().trim().slice(0, 80);
+    const approver = approverRaw.replace(/[<>]/g, ''); // basic sanitization (HTML rendered later)
 
     const student = await WorkshopStudent.findByPk(id, {
       include: [{ model: Workshop, as: 'workshop' }]
@@ -1116,6 +1118,15 @@ body::before {
 .totals .row .label { color: #64748b; font-weight: 500; }
 .totals .row .value { font-family: 'Courier New', monospace; font-weight: 700; color: #0f172a; }
 .totals .row.discount .value { color: #15803d; }
+.totals .row.approver-row {
+  font-size: 8pt;
+  padding: 0.5mm 4mm 1.5mm;
+  border-top: 0;
+  margin-top: -1mm;
+  color: #475569;
+}
+.totals .row.approver-row .label { color: #94a3b8; font-weight: 500; font-size: 7.8pt; }
+.totals .row.approver-row .value { color: #1e293b; font-family: inherit; font-weight: 600; font-size: 8pt; }
 .totals .grand {
   background: linear-gradient(135deg, #1a56db, #3b82f6);
   color: #fff;
@@ -1315,6 +1326,12 @@ body::before {
           <span class="label">الخصم${discountType === 'percent' ? ` (${discount}%)` : ''}</span>
           <span class="value">- ${fmt(discountValue)} ر.س</span>
         </div>
+        ${approver ? `
+        <div class="row approver-row">
+          <span class="label">اعتمد الخصم</span>
+          <span class="value approver-name">${approver}</span>
+        </div>
+        ` : ''}
       ` : ''}
       <div class="grand">
         <span class="label">الإجمالي المستحق</span>

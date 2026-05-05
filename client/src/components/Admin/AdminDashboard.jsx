@@ -1058,6 +1058,10 @@ const AdminDashboard = () => {
   const [showWorkshopEmailModal, setShowWorkshopEmailModal] = useState(false);
   const [workshopEmailTarget, setWorkshopEmailTarget] = useState(null); // null=all, {studentId, email}=one
   const [workshopEmailForm, setWorkshopEmailForm] = useState({ subject: '', message: '' });
+  // Invoice print modal (discount + approver)
+  const [showInvoiceModal, setShowInvoiceModal] = useState(false);
+  const [invoiceTarget, setInvoiceTarget] = useState(null); // { studentId, firstName, price }
+  const [invoiceForm, setInvoiceForm] = useState({ discount: '', discountType: 'amount', approver: '', customApprover: '' });
 
   const handleSendWorkshopEmail = async () => {
     if (!workshopEmailForm.subject || !workshopEmailForm.message) {
@@ -1076,6 +1080,42 @@ const AdminDashboard = () => {
       setWorkshopEmailForm({ subject: '', message: '' });
     } catch (error) {
       toast.error(error.response?.data?.message || (isRTL ? 'خطأ' : 'Error'));
+    }
+  };
+
+  const handleGenerateInvoice = async () => {
+    if (!invoiceTarget) return;
+    const rawDiscount = String(invoiceForm.discount || '').trim();
+    const discount = rawDiscount === '' ? 0 : (parseFloat(rawDiscount) || 0);
+    const discountType = invoiceForm.discountType === 'percent' ? 'percent' : 'amount';
+    let approver = '';
+    if (discount > 0) {
+      approver = invoiceForm.approver === '__custom__'
+        ? (invoiceForm.customApprover || '').trim()
+        : (invoiceForm.approver || '').trim();
+      if (!approver) {
+        toast.error(isRTL ? 'يرجى اختيار أو إدخال اسم من اعتمد الخصم' : 'Please select or enter who approved the discount');
+        return;
+      }
+    }
+    try {
+      const res = await api.get(`/workshops/students/${invoiceTarget.studentId}/invoice-pdf`, {
+        params: { discount, discountType, approver },
+        responseType: 'blob'
+      });
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(new Blob([res.data], { type: 'application/pdf' }));
+      link.download = `invoice_${invoiceTarget.firstName || 'student'}_${Date.now()}.pdf`;
+      link.click();
+      toast.success(isRTL ? 'تم تحميل الفاتورة' : 'Invoice downloaded');
+      setShowInvoiceModal(false);
+      setInvoiceTarget(null);
+    } catch (e2) {
+      let msg = isRTL ? 'خطأ في إنشاء الفاتورة' : 'Error generating invoice';
+      if (e2.response?.data instanceof Blob) {
+        try { const j = JSON.parse(await e2.response.data.text()); msg = (isRTL ? j.messageAr : j.message) || msg; } catch {}
+      }
+      toast.error(msg);
     }
   };
 
@@ -7671,39 +7711,14 @@ const AdminDashboard = () => {
                               }
                               else if (action === 'emailCert') { try { await api.post(`/workshops/students/${s.studentId}/send-certificate`); toast.success(isRTL ? 'تم إرسال الشهادة' : 'Certificate emailed'); } catch(e2) { toast.error(e2.response?.data?.messageAr || 'Error'); } }
                               else if (action === 'invoice') {
-                                const wsPrice = Number(viewingWorkshopStudents?.price || 0);
-                                const promptMsg = isRTL
-                                  ? `سعر الورشة: ${wsPrice} ر.س\n\nأدخل قيمة الخصم (اختياري):\n• رقم بدون رمز = خصم بالريال (مثال: 50)\n• رقم متبوع بـ % = خصم بالنسبة (مثال: 10%)\n• اضغط موافق بدون إدخال للفاتورة بدون خصم`
-                                  : `Workshop price: ${wsPrice} SAR\n\nEnter discount (optional):\n• Plain number = SAR discount (e.g. 50)\n• Number followed by % = percent (e.g. 10%)\n• Leave empty for no discount`;
-                                const input = window.prompt(promptMsg, '');
-                                if (input === null) return;
-                                let discount = 0, discountType = 'amount';
-                                const trimmed = input.trim();
-                                if (trimmed) {
-                                  if (trimmed.endsWith('%')) {
-                                    discount = parseFloat(trimmed.replace('%', '').trim()) || 0;
-                                    discountType = 'percent';
-                                  } else {
-                                    discount = parseFloat(trimmed) || 0;
-                                  }
-                                }
-                                try {
-                                  const res = await api.get(`/workshops/students/${s.studentId}/invoice-pdf`, {
-                                    params: { discount, discountType },
-                                    responseType: 'blob'
-                                  });
-                                  const link = document.createElement('a');
-                                  link.href = URL.createObjectURL(new Blob([res.data], { type: 'application/pdf' }));
-                                  link.download = `invoice_${s.firstName || 'student'}_${Date.now()}.pdf`;
-                                  link.click();
-                                  toast.success(isRTL ? 'تم تحميل الفاتورة' : 'Invoice downloaded');
-                                } catch (e2) {
-                                  let msg = isRTL ? 'خطأ في إنشاء الفاتورة' : 'Error generating invoice';
-                                  if (e2.response?.data instanceof Blob) {
-                                    try { const j = JSON.parse(await e2.response.data.text()); msg = (isRTL ? j.messageAr : j.message) || msg; } catch {}
-                                  }
-                                  toast.error(msg);
-                                }
+                                setInvoiceTarget({
+                                  studentId: s.studentId,
+                                  firstName: s.firstName || '',
+                                  lastName: s.lastName || '',
+                                  price: Number(viewingWorkshopStudents?.price || 0),
+                                });
+                                setInvoiceForm({ discount: '', discountType: 'amount', approver: '', customApprover: '' });
+                                setShowInvoiceModal(true);
                               }
                               else if (action === 'printAttId') handlePrintAttendanceId(s.studentId);
                               else if (action === 'emailAttId') { try { await api.post(`/workshops/students/${s.studentId}/send-attendance-id`); toast.success(isRTL ? 'تم إرسال بطاقة الحضور' : 'Attendance ID sent'); } catch(e2) { toast.error('Error'); } }
@@ -7848,6 +7863,90 @@ const AdminDashboard = () => {
                     <button onClick={() => setShowWorkshopEmailModal(false)} style={{ padding: '0.6rem 1.5rem', borderRadius: 8, border: 'none', background: '#f1f5f9', cursor: 'pointer', fontWeight: 600, fontFamily: 'inherit' }}>{isRTL ? 'إلغاء' : 'Cancel'}</button>
                     <button onClick={handleSendWorkshopEmail} style={{ padding: '0.6rem 1.5rem', borderRadius: 8, border: 'none', background: '#3b82f6', color: 'white', cursor: 'pointer', fontWeight: 600, fontFamily: 'inherit' }}>
                       {isRTL ? '📧 إرسال' : '📧 Send'}
+                    </button>
+                  </div>
+                </motion.div>
+              </div>
+            )}
+
+            {showInvoiceModal && invoiceTarget && (
+              <div className="modal-overlay" onClick={() => { setShowInvoiceModal(false); setInvoiceTarget(null); }}>
+                <motion.div className="modal-content" onClick={e => e.stopPropagation()} initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }}
+                  style={{ maxWidth: 520, padding: '2rem' }}>
+                  <h3 style={{ marginBottom: '0.4rem' }}>
+                    {isRTL ? '🧾 طباعة الفاتورة' : '🧾 Print Invoice'}
+                  </h3>
+                  <div style={{ fontSize: '0.85rem', color: '#64748b', marginBottom: '1rem' }}>
+                    {isRTL
+                      ? `الطالب: ${invoiceTarget.firstName} ${invoiceTarget.lastName} • سعر الورشة: ${invoiceTarget.price} ر.س`
+                      : `Student: ${invoiceTarget.firstName} ${invoiceTarget.lastName} • Price: ${invoiceTarget.price} SAR`}
+                  </div>
+
+                  <div style={{ marginBottom: '0.85rem' }}>
+                    <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 600, marginBottom: 4 }}>
+                      {isRTL ? 'قيمة الخصم (اختياري)' : 'Discount (optional)'}
+                    </label>
+                    <div style={{ display: 'flex', gap: 8 }}>
+                      <input
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        placeholder={isRTL ? 'مثال: 50' : 'e.g. 50'}
+                        style={{ flex: 1, padding: '0.5rem', borderRadius: 8, border: '1.5px solid #e2e8f0', fontFamily: 'inherit' }}
+                        value={invoiceForm.discount}
+                        onChange={e => setInvoiceForm({ ...invoiceForm, discount: e.target.value })}
+                      />
+                      <select
+                        style={{ padding: '0.5rem', borderRadius: 8, border: '1.5px solid #e2e8f0', fontFamily: 'inherit', minWidth: 120 }}
+                        value={invoiceForm.discountType}
+                        onChange={e => setInvoiceForm({ ...invoiceForm, discountType: e.target.value })}
+                      >
+                        <option value="amount">{isRTL ? 'ر.س (مبلغ)' : 'SAR (amount)'}</option>
+                        <option value="percent">{isRTL ? '% (نسبة)' : '% (percent)'}</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  {Number(invoiceForm.discount) > 0 && (
+                    <div style={{ marginBottom: '0.85rem', padding: '0.75rem', background: '#fffbeb', border: '1.5px solid #fbbf24', borderRadius: 8 }}>
+                      <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 700, marginBottom: 6, color: '#92400e' }}>
+                        {isRTL ? '👤 من اعتمد الخصم؟' : '👤 Who approved this discount?'}
+                      </label>
+                      <select
+                        style={{ width: '100%', padding: '0.5rem', borderRadius: 8, border: '1.5px solid #e2e8f0', fontFamily: 'inherit', background: '#fff' }}
+                        value={invoiceForm.approver}
+                        onChange={e => setInvoiceForm({ ...invoiceForm, approver: e.target.value, customApprover: e.target.value === '__custom__' ? invoiceForm.customApprover : '' })}
+                      >
+                        <option value="">{isRTL ? '— اختر الاسم —' : '— Select name —'}</option>
+                        <option value="أ. عبدالمحسن السلطان">أ. عبدالمحسن السلطان</option>
+                        <option value="أ. زكي اللويم">أ. زكي اللويم</option>
+                        <option value="عبدالله الصفي">عبدالله الصفي</option>
+                        <option value="__custom__">{isRTL ? '✏️ اسم آخر (إدخال يدوي)' : '✏️ Other (custom name)'}</option>
+                      </select>
+                      {invoiceForm.approver === '__custom__' && (
+                        <input
+                          type="text"
+                          placeholder={isRTL ? 'أدخل الاسم الكامل' : 'Enter full name'}
+                          style={{ width: '100%', padding: '0.5rem', borderRadius: 8, border: '1.5px solid #e2e8f0', fontFamily: 'inherit', marginTop: 8 }}
+                          value={invoiceForm.customApprover}
+                          onChange={e => setInvoiceForm({ ...invoiceForm, customApprover: e.target.value })}
+                        />
+                      )}
+                    </div>
+                  )}
+
+                  <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end', marginTop: '1rem' }}>
+                    <button
+                      onClick={() => { setShowInvoiceModal(false); setInvoiceTarget(null); }}
+                      style={{ padding: '0.6rem 1.5rem', borderRadius: 8, border: 'none', background: '#f1f5f9', cursor: 'pointer', fontWeight: 600, fontFamily: 'inherit' }}
+                    >
+                      {isRTL ? 'إلغاء' : 'Cancel'}
+                    </button>
+                    <button
+                      onClick={handleGenerateInvoice}
+                      style={{ padding: '0.6rem 1.5rem', borderRadius: 8, border: 'none', background: '#1a56db', color: 'white', cursor: 'pointer', fontWeight: 600, fontFamily: 'inherit' }}
+                    >
+                      {isRTL ? '🧾 توليد الفاتورة' : '🧾 Generate Invoice'}
                     </button>
                   </div>
                 </motion.div>
