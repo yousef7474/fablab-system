@@ -550,7 +550,11 @@ const AdminDashboard = () => {
       fetchUsers();
     } catch (error) {
       console.error('Error updating user:', error);
-      toast.error(isRTL ? 'خطأ في تحديث بيانات المستخدم' : 'Error updating user');
+      const data = error.response?.data;
+      const reason = isRTL
+        ? (data?.messageAr || data?.message)
+        : data?.message;
+      toast.error(reason || (isRTL ? 'خطأ في تحديث بيانات المستخدم' : 'Error updating user'));
     }
   };
 

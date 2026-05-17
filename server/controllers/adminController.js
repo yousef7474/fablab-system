@@ -693,15 +693,32 @@ exports.updateUser = async (req, res) => {
     const allowedFields = [
       'firstName', 'lastName', 'name', 'email', 'phoneNumber',
       'sex', 'nationality', 'nationalId', 'currentJob', 'nationalAddress',
-      'applicationType', 'entityName', 'personInCharge', 'profilePicture'
+      'applicationType', 'entityName', 'visitingEntity', 'personInCharge', 'profilePicture'
     ];
+
+    // ENUM-typed fields: '' must become null (the model hook handles this, but
+    // we normalise here too so the value never reaches Sequelize as '').
+    const enumFields = ['sex', 'entityName', 'applicationType'];
 
     const filteredData = {};
     allowedFields.forEach(field => {
       if (updateData[field] !== undefined) {
-        filteredData[field] = updateData[field];
+        let value = updateData[field];
+        if (enumFields.includes(field) && value === '') value = null;
+        filteredData[field] = value;
       }
     });
+
+    // applicationType is NOT NULL — never overwrite it with null/empty.
+    if (filteredData.applicationType === null || filteredData.applicationType === undefined) {
+      delete filteredData.applicationType;
+    }
+
+    // Treat empty nationalId as null so UNIQUE constraint allows multiple users
+    // without one. Trim whitespace to avoid stealth duplicates.
+    if (typeof filteredData.nationalId === 'string') {
+      filteredData.nationalId = filteredData.nationalId.trim() || null;
+    }
 
     await user.update(filteredData);
 
@@ -710,8 +727,26 @@ exports.updateUser = async (req, res) => {
       user
     });
   } catch (error) {
-    console.error('Error updating user:', error);
-    res.status(500).json({ message: 'Server error' });
+    console.error('Error updating user:', { userId: req.params.userId, name: error.name, message: error.message, errors: error.errors });
+
+    if (error.name === 'SequelizeUniqueConstraintError') {
+      const field = error.errors?.[0]?.path || 'field';
+      return res.status(409).json({
+        message: `${field} already in use by another user`,
+        messageAr: `${field} مستخدم بالفعل من قبل مستخدم آخر`,
+        field
+      });
+    }
+
+    if (error.name === 'SequelizeValidationError') {
+      const detail = error.errors?.[0];
+      return res.status(400).json({
+        message: detail?.message || 'Validation error',
+        field: detail?.path
+      });
+    }
+
+    res.status(500).json({ message: 'Server error', detail: error.message });
   }
 };
 
