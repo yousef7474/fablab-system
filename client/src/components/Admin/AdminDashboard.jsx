@@ -8843,8 +8843,8 @@ const AdminDashboard = () => {
                       onChange={(e) => setUserEditForm({ ...userEditForm, sex: e.target.value })}
                     >
                       <option value="">{isRTL ? 'اختر' : 'Select'}</option>
-                      <option value="male">{isRTL ? 'ذكر' : 'Male'}</option>
-                      <option value="female">{isRTL ? 'أنثى' : 'Female'}</option>
+                      <option value="Male">{isRTL ? 'ذكر' : 'Male'}</option>
+                      <option value="Female">{isRTL ? 'أنثى' : 'Female'}</option>
                     </select>
                   </div>
                   <div className="form-group">

@@ -709,6 +709,13 @@ exports.updateUser = async (req, res) => {
       }
     });
 
+    // sex ENUM is 'Male'/'Female' — normalise any case variant.
+    if (typeof filteredData.sex === 'string' && filteredData.sex) {
+      const s = filteredData.sex.toLowerCase();
+      if (s === 'male') filteredData.sex = 'Male';
+      else if (s === 'female') filteredData.sex = 'Female';
+    }
+
     // applicationType is NOT NULL — never overwrite it with null/empty.
     if (filteredData.applicationType === null || filteredData.applicationType === undefined) {
       delete filteredData.applicationType;
