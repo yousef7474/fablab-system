@@ -62,7 +62,10 @@ const ApplicationData = ({ formData, onChange, onNext, onBack }) => {
     } else if (formData.applicationType === 'Entity') {
       return formData.entityName && formData.name && formData.phoneNumber && formData.email;
     } else if (formData.applicationType === 'FABLAB Visit') {
-      return formData.visitingEntity && formData.personInCharge && formData.phoneNumber && formData.email;
+      return formData.firstName && formData.lastName && formData.sex &&
+             formData.nationality && formData.nationalId && formData.currentJob &&
+             formData.visitingEntity && formData.personInCharge &&
+             formData.phoneNumber && formData.email;
     }
     return false;
   };
@@ -122,7 +125,7 @@ const ApplicationData = ({ formData, onChange, onNext, onBack }) => {
       </p>
 
       <div className="form-grid">
-        {['Beneficiary', 'Visitor', 'Volunteer', 'Talented'].includes(formData.applicationType) && (
+        {['Beneficiary', 'Visitor', 'Volunteer', 'Talented', 'FABLAB Visit'].includes(formData.applicationType) && (
           <>
             <motion.div
               className="form-group"
