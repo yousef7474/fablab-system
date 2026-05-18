@@ -1,6 +1,6 @@
 .workshop-reg-page {
   min-height: 100vh;
-  background: linear-gradient(135deg, #0f172a 0%, #1e3a5f 50%, #1a56db 100%);
+  background: linear-gradient(135deg, #0f172a 0%, #4c1d1d 50%, #dc2626 100%);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -17,7 +17,7 @@
 }
 
 .workshop-reg-header {
-  background: linear-gradient(135deg, #1a56db, #3b82f6);
+  background: linear-gradient(135deg, #dc2626, #ef4444);
   padding: 2rem 2rem 1.5rem;
   text-align: center;
   color: white;
@@ -40,11 +40,11 @@
   transition: all 0.3s;
 }
 
-.workshop-step.active .workshop-step-circle { border-color: #1a56db; background: #1a56db; color: white; box-shadow: 0 0 0 4px rgba(26,86,219,0.2); }
+.workshop-step.active .workshop-step-circle { border-color: #dc2626; background: #dc2626; color: white; box-shadow: 0 0 0 4px rgba(220, 38, 38,0.2); }
 .workshop-step.completed .workshop-step-circle { border-color: #22c55e; background: #22c55e; color: white; }
 
 .workshop-step-label { font-size: 0.75rem; color: #64748b; font-weight: 500; white-space: nowrap; }
-.workshop-step.active .workshop-step-label { color: #1a56db; font-weight: 600; }
+.workshop-step.active .workshop-step-label { color: #dc2626; font-weight: 600; }
 .workshop-step.completed .workshop-step-label { color: #22c55e; }
 
 .workshop-step-line { width: 40px; height: 2.5px; background: #cbd5e1; margin: 0 0.5rem; flex-shrink: 0; }
@@ -67,7 +67,7 @@
 }
 
 .workshop-field input:focus, .workshop-field select:focus {
-  border-color: #1a56db; box-shadow: 0 0 0 3px rgba(26,86,219,0.1);
+  border-color: #dc2626; box-shadow: 0 0 0 3px rgba(220, 38, 38,0.1);
 }
 
 /* Workshop Cards */
@@ -77,27 +77,27 @@
   border: 2px solid #e2e8f0; border-radius: 14px; overflow: hidden; cursor: pointer;
   transition: all 0.2s; position: relative;
 }
-.workshop-card:hover { border-color: #93c5fd; box-shadow: 0 4px 16px rgba(26,86,219,0.1); }
-.workshop-card.selected { border-color: #1a56db; box-shadow: 0 0 0 3px rgba(26,86,219,0.15); }
+.workshop-card:hover { border-color: #fca5a5; box-shadow: 0 4px 16px rgba(220, 38, 38,0.1); }
+.workshop-card.selected { border-color: #dc2626; box-shadow: 0 0 0 3px rgba(220, 38, 38,0.15); }
 .workshop-card.full { opacity: 0.5; cursor: not-allowed; }
 
 .workshop-card-img { height: 140px; background-size: cover; background-position: center; }
 
 .workshop-card-body { padding: 1rem; }
 .workshop-card-body h4 { font-size: 1rem; font-weight: 700; color: #1e293b; margin: 0 0 0.35rem; }
-.workshop-card-presenter { font-size: 0.8rem; color: #3b82f6; font-weight: 600; margin-bottom: 0.5rem; }
+.workshop-card-presenter { font-size: 0.8rem; color: #ef4444; font-weight: 600; margin-bottom: 0.5rem; }
 .workshop-card-meta { display: flex; gap: 0.75rem; flex-wrap: wrap; font-size: 0.78rem; color: #64748b; margin-bottom: 0.5rem; }
 .workshop-card-objectives { font-size: 0.82rem; color: #475569; line-height: 1.5; margin: 0 0 0.5rem; }
 
 .workshop-card-footer { display: flex; justify-content: space-between; align-items: center; }
-.workshop-price { font-weight: 800; color: #1a56db; font-size: 0.95rem; }
+.workshop-price { font-weight: 800; color: #dc2626; font-size: 0.95rem; }
 .workshop-price.free { color: #22c55e; }
 .workshop-spots { font-size: 0.75rem; color: #64748b; font-weight: 600; }
 .workshop-spots.low { color: #ef4444; }
 
 .workshop-card-check {
   position: absolute; top: 12px; right: 12px; width: 28px; height: 28px;
-  background: #1a56db; color: white; border-radius: 50%;
+  background: #dc2626; color: white; border-radius: 50%;
   display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 0.85rem;
 }
 
@@ -135,8 +135,8 @@
 .workshop-btn-back { background: #f1f5f9; color: #334155; }
 .workshop-btn-back:hover { background: #e2e8f0; }
 
-.workshop-btn-next { background: linear-gradient(135deg, #1a56db, #3b82f6); color: white; }
-.workshop-btn-next:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 4px 16px rgba(26,86,219,0.3); }
+.workshop-btn-next { background: linear-gradient(135deg, #dc2626, #ef4444); color: white; }
+.workshop-btn-next:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 4px 16px rgba(220, 38, 38,0.3); }
 .workshop-btn-next:disabled { opacity: 0.5; cursor: not-allowed; }
 
 .workshop-btn-submit { background: linear-gradient(135deg, #22c55e, #16a34a); color: white; }

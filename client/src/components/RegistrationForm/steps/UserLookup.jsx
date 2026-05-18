@@ -3,6 +3,8 @@ import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'react-toastify';
+import Lottie from 'lottie-react';
+import welcomeAnimation from '../../../lottie/welcome.json';
 import api from '../../../config/api';
 
 const ELITE_PASSWORD = 'fabstar123';
@@ -78,11 +80,8 @@ const UserLookup = ({ onUserFound, onNewUser }) => {
         animate={{ scale: 1, opacity: 1 }}
         transition={{ duration: 0.5 }}
       >
-        <div className="user-lookup-icon">
-          <svg width="50" height="50" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
-            <circle cx="12" cy="7" r="4"/>
-          </svg>
+        <div className="user-lookup-lottie">
+          <Lottie animationData={welcomeAnimation} loop autoplay style={{ width: 180, height: 180, margin: '0 auto' }} />
         </div>
       </motion.div>
 
@@ -161,238 +160,169 @@ const UserLookup = ({ onUserFound, onNewUser }) => {
         </button>
       </motion.div>
 
-      {/* Borrow Components Button */}
+      {/* Divider */}
       <motion.div
-        initial={{ y: 20, opacity: 0 }}
-        animate={{ y: 0, opacity: 1 }}
+        className="service-divider"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ delay: 0.55 }}
+      >
+        <span>{isRTL ? 'أو تصفح خدماتنا' : 'or browse our services'}</span>
+      </motion.div>
+
+      {/* Service cards grid */}
+      <motion.div
+        className="service-cards-grid"
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.6 }}
-        style={{ marginTop: '24px', textAlign: 'center' }}
       >
+        {/* Borrow Components */}
         <button
+          type="button"
+          className="service-card service-card--borrow"
           onClick={() => navigate('/borrow')}
-          style={{
-            background: 'linear-gradient(135deg, #1a56db, #2563eb)',
-            color: 'white',
-            border: 'none',
-            padding: '12px 32px',
-            borderRadius: '12px',
-            fontSize: '16px',
-            fontWeight: '700',
-            cursor: 'pointer',
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: '10px',
-            boxShadow: '0 4px 15px rgba(37, 99, 235, 0.3)',
-            transition: 'all 0.3s ease'
-          }}
         >
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
-            <polyline points="3.27 6.96 12 12.01 20.73 6.96"/>
-            <line x1="12" y1="22.08" x2="12" y2="12"/>
-          </svg>
-          {isRTL ? 'استعارة مكونات' : 'Borrow Components'}
+          <div className="service-card-icon">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
+              <polyline points="3.27 6.96 12 12.01 20.73 6.96"/>
+              <line x1="12" y1="22.08" x2="12" y2="12"/>
+            </svg>
+          </div>
+          <div className="service-card-body">
+            <div className="service-card-title">{isRTL ? 'استعارة مكونات' : 'Borrow Components'}</div>
+            <div className="service-card-description">
+              {isRTL ? 'استعارة الأدوات والمكونات الإلكترونية لمشاريعك' : 'Borrow tools and electronic components for your projects'}
+            </div>
+          </div>
+          <div className="service-card-arrow" aria-hidden="true">{isRTL ? '←' : '→'}</div>
         </button>
-      </motion.div>
 
-      {/* Workshop Button */}
-      <motion.div
-        initial={{ y: 20, opacity: 0 }}
-        animate={{ y: 0, opacity: 1 }}
-        transition={{ delay: 0.625 }}
-        style={{ marginTop: '16px', textAlign: 'center' }}
-      >
+        {/* Workshops */}
         <button
+          type="button"
+          className="service-card service-card--workshop"
           onClick={() => navigate('/workshop')}
-          style={{
-            background: 'linear-gradient(135deg, #dc2626, #ef4444)',
-            color: 'white',
-            border: 'none',
-            padding: '12px 32px',
-            borderRadius: '12px',
-            fontSize: '16px',
-            fontWeight: '700',
-            cursor: 'pointer',
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: '10px',
-            boxShadow: '0 4px 15px rgba(220, 38, 38, 0.3)',
-            transition: 'all 0.3s ease'
-          }}
         >
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <path d="M22 10v6M2 10l10-5 10 5-10 5z"/>
-            <path d="M6 12v5c3 3 9 3 12 0v-5"/>
-          </svg>
-          {isRTL ? 'الورش التدريبية' : 'Training Workshops'}
+          <div className="service-card-icon">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M22 10v6M2 10l10-5 10 5-10 5z"/>
+              <path d="M6 12v5c3 3 9 3 12 0v-5"/>
+            </svg>
+          </div>
+          <div className="service-card-body">
+            <div className="service-card-title">{isRTL ? 'الورش التدريبية' : 'Training Workshops'}</div>
+            <div className="service-card-description">
+              {isRTL ? 'سجّل في ورش الإلكترونيات، الطباعة ثلاثية الأبعاد والمزيد' : 'Sign up for electronics, 3D printing and more'}
+            </div>
+          </div>
+          <div className="service-card-arrow" aria-hidden="true">{isRTL ? '←' : '→'}</div>
         </button>
-      </motion.div>
 
-      {/* Education Button with Expandable Options */}
-      <motion.div
-        initial={{ y: 20, opacity: 0 }}
-        animate={{ y: 0, opacity: 1 }}
-        transition={{ delay: 0.65 }}
-        style={{ marginTop: '16px', textAlign: 'center' }}
-      >
+        {/* Education */}
         <button
+          type="button"
+          className={`service-card service-card--education${showEducationOptions ? ' is-active' : ''}`}
           onClick={() => setShowEducationOptions(!showEducationOptions)}
-          style={{
-            background: 'linear-gradient(135deg, #6d28d9, #7c3aed)',
-            color: 'white',
-            border: 'none',
-            padding: '12px 32px',
-            borderRadius: '12px',
-            fontSize: '16px',
-            fontWeight: '700',
-            cursor: 'pointer',
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: '10px',
-            boxShadow: '0 4px 15px rgba(109, 40, 217, 0.3)',
-            transition: 'all 0.3s ease'
-          }}
+          aria-expanded={showEducationOptions}
         >
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/>
-            <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/>
-          </svg>
-          {isRTL ? 'التعليم' : 'Education'}
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
-            style={{ transform: showEducationOptions ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.3s' }}>
-            <polyline points="6 9 12 15 18 9"/>
-          </svg>
+          <div className="service-card-icon">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/>
+              <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/>
+            </svg>
+          </div>
+          <div className="service-card-body">
+            <div className="service-card-title">{isRTL ? 'التعليم' : 'Education'}</div>
+            <div className="service-card-description">
+              {isRTL ? 'تسجيل المعلمين والطلاب وإدارة الحضور' : 'Teacher and student registration, attendance management'}
+            </div>
+          </div>
+          <div className="service-card-arrow" aria-hidden="true">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ transform: showEducationOptions ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.3s' }}>
+              <polyline points="6 9 12 15 18 9"/>
+            </svg>
+          </div>
         </button>
 
-        <AnimatePresence>
-          {showEducationOptions && (
-            <motion.div
-              initial={{ opacity: 0, height: 0 }}
-              animate={{ opacity: 1, height: 'auto' }}
-              exit={{ opacity: 0, height: 0 }}
-              style={{ overflow: 'hidden', marginTop: '10px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}
-            >
-              <motion.button
-                initial={{ opacity: 0, y: -10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.05 }}
-                onClick={() => openEducationModal('/educate')}
-                style={{
-                  background: 'linear-gradient(135deg, #5b21b6, #6d28d9)',
-                  color: 'white',
-                  border: 'none',
-                  padding: '10px 28px',
-                  borderRadius: '10px',
-                  fontSize: '14px',
-                  fontWeight: '600',
-                  cursor: 'pointer',
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: '8px',
-                  boxShadow: '0 3px 12px rgba(109, 40, 217, 0.25)',
-                  transition: 'all 0.3s ease'
-                }}
-              >
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
-                  <circle cx="12" cy="7" r="4"/>
-                </svg>
-                {isRTL ? 'تسجيل المعلم' : 'Teacher Registration'}
-              </motion.button>
-              <motion.button
-                initial={{ opacity: 0, y: -10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.1 }}
-                onClick={() => openEducationModal('/educate/students')}
-                style={{
-                  background: 'linear-gradient(135deg, #6d28d9, #7c3aed)',
-                  color: 'white',
-                  border: 'none',
-                  padding: '10px 28px',
-                  borderRadius: '10px',
-                  fontSize: '14px',
-                  fontWeight: '600',
-                  cursor: 'pointer',
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: '8px',
-                  boxShadow: '0 3px 12px rgba(109, 40, 217, 0.25)',
-                  transition: 'all 0.3s ease'
-                }}
-              >
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
-                  <circle cx="9" cy="7" r="4"/>
-                  <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
-                  <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
-                </svg>
-                {isRTL ? 'تسجيل الطلاب' : 'Student Registration'}
-              </motion.button>
-              <motion.button
-                initial={{ opacity: 0, y: -10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.15 }}
-                onClick={() => openEducationModal('/educate/attendance')}
-                style={{
-                  background: 'linear-gradient(135deg, #7c3aed, #8b5cf6)',
-                  color: 'white',
-                  border: 'none',
-                  padding: '10px 28px',
-                  borderRadius: '10px',
-                  fontSize: '14px',
-                  fontWeight: '600',
-                  cursor: 'pointer',
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: '8px',
-                  boxShadow: '0 3px 12px rgba(109, 40, 217, 0.25)',
-                  transition: 'all 0.3s ease'
-                }}
-              >
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path d="M9 11l3 3L22 4"/>
-                  <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>
-                </svg>
-                {isRTL ? 'حضور الطلاب' : 'Student Attendance'}
-              </motion.button>
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </motion.div>
-
-      {/* Elite Button */}
-      <motion.div
-        className="elite-button-container"
-        initial={{ y: 20, opacity: 0 }}
-        animate={{ y: 0, opacity: 1 }}
-        transition={{ delay: 0.7 }}
-        style={{ marginTop: '16px', textAlign: 'center' }}
-      >
+        {/* Elite */}
         <button
-          className="btn btn-elite"
+          type="button"
+          className="service-card service-card--elite"
           onClick={() => setShowEliteModal(true)}
-          style={{
-            background: 'linear-gradient(135deg, #006c35, #00a651)',
-            color: 'white',
-            border: 'none',
-            padding: '12px 32px',
-            borderRadius: '12px',
-            fontSize: '16px',
-            fontWeight: '700',
-            cursor: 'pointer',
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: '10px',
-            boxShadow: '0 4px 15px rgba(0, 166, 81, 0.3)',
-            transition: 'all 0.3s ease'
-          }}
         >
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
-          </svg>
-          النخبة
+          <div className="service-card-icon">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+            </svg>
+          </div>
+          <div className="service-card-body">
+            <div className="service-card-title">{isRTL ? 'النخبة' : 'Elite'}</div>
+            <div className="service-card-description">
+              {isRTL ? 'برنامج النخبة للمميزين — تسجيل بكلمة مرور' : 'Elite program for top members — password protected'}
+            </div>
+          </div>
+          <div className="service-card-arrow" aria-hidden="true">{isRTL ? '←' : '→'}</div>
         </button>
       </motion.div>
+
+      {/* Education sub-options revealed when Education card is clicked */}
+      <AnimatePresence>
+        {showEducationOptions && (
+          <motion.div
+            className="service-suboptions"
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: 'auto' }}
+            exit={{ opacity: 0, height: 0 }}
+          >
+            <motion.button
+              type="button"
+              className="service-suboption"
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.05 }}
+              onClick={() => openEducationModal('/educate')}
+            >
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+                <circle cx="12" cy="7" r="4"/>
+              </svg>
+              {isRTL ? 'تسجيل المعلم' : 'Teacher Registration'}
+            </motion.button>
+            <motion.button
+              type="button"
+              className="service-suboption"
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.1 }}
+              onClick={() => openEducationModal('/educate/students')}
+            >
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                <circle cx="9" cy="7" r="4"/>
+                <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+                <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+              </svg>
+              {isRTL ? 'تسجيل الطلاب' : 'Student Registration'}
+            </motion.button>
+            <motion.button
+              type="button"
+              className="service-suboption"
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.15 }}
+              onClick={() => openEducationModal('/educate/attendance')}
+            >
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M9 11l3 3L22 4"/>
+                <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>
+              </svg>
+              {isRTL ? 'حضور الطلاب' : 'Student Attendance'}
+            </motion.button>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Education Password Modal */}
       <AnimatePresence>

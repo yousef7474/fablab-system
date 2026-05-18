@@ -810,7 +810,7 @@
   background: transparent;
   position: relative;
   z-index: 2;
-  max-width: 880px;
+  max-width: 1200px;
   margin: 0 auto;
   width: 100%;
 }
@@ -4556,4 +4556,597 @@
 .registration-page .form-card .loading-spinner {
   border-color: rgba(255, 255, 255, 0.15) !important;
   border-top-color: var(--aurora-violet) !important;
+}
+
+/* =====================================================
+ * Topbar "back to main site" link — sits between
+ * progress pill and theme toggle. Matches glass aesthetic.
+ * ===================================================== */
+.registration-page .topbar-main-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.55rem 1rem;
+  border-radius: 999px;
+  font-size: 0.92rem;
+  font-weight: 600;
+  font-family: var(--body);
+  color: var(--text-hi);
+  background: var(--glass);
+  border: 1.5px solid var(--glass-border);
+  text-decoration: none;
+  white-space: nowrap;
+  cursor: pointer;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  transition: transform 0.2s ease, background 0.25s ease, border-color 0.25s ease, box-shadow 0.25s ease;
+}
+.registration-page .topbar-main-link svg {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+}
+.registration-page .topbar-main-link:hover {
+  transform: translateY(-1px);
+  background: rgba(167, 139, 250, 0.18);
+  border-color: rgba(167, 139, 250, 0.55);
+  box-shadow: 0 6px 20px -8px rgba(167, 139, 250, 0.5);
+}
+.registration-page[data-theme="light"] .topbar-main-link {
+  color: #1f2937;
+  background: rgba(255, 255, 255, 0.7);
+  border-color: rgba(15, 23, 42, 0.15);
+}
+.registration-page[data-theme="light"] .topbar-main-link:hover {
+  background: rgba(167, 139, 250, 0.18);
+  border-color: rgba(167, 139, 250, 0.55);
+}
+@media (max-width: 700px) {
+  .registration-page .topbar-main-link span { display: none; }
+  .registration-page .topbar-main-link {
+    padding: 0.55rem;
+    width: 2.5rem;
+    height: 2.5rem;
+    justify-content: center;
+  }
+}
+
+/* =====================================================
+ * Scale-up pass: enlarges fonts, inputs, buttons,
+ * and content max-width so the form fills the new
+ * full-bleed canvas comfortably.
+ * Scoped under .registration-page so it cannot leak out.
+ * ===================================================== */
+
+/* Wider content column on desktop, more breathing padding */
+.registration-page .form-content {
+  max-width: 1200px;
+  padding: 3.75rem 3rem 5rem;
+}
+@media (max-width: 1100px) {
+  .registration-page .form-content {
+    max-width: none;
+    padding: 2.5rem 2rem 5rem;
+  }
+}
+@media (max-width: 700px) {
+  .registration-page .form-content {
+    padding: 1.75rem 1.25rem 6rem;
+  }
+}
+
+/* Bigger step title and description */
+.registration-page .step-title {
+  font-size: 2rem;
+  line-height: 1.25;
+  margin-bottom: 0.75rem;
+}
+.registration-page .step-description {
+  font-size: 1.08rem;
+  line-height: 1.65;
+  margin-bottom: 2.25rem;
+}
+@media (max-width: 700px) {
+  .registration-page .step-title       { font-size: 1.45rem; }
+  .registration-page .step-description { font-size: 1rem; }
+}
+
+/* Larger section headings inside steps */
+.registration-page .form-content h2,
+.registration-page .form-card h2 {
+  font-size: 1.6rem;
+  line-height: 1.3;
+}
+.registration-page .form-content h3,
+.registration-page .form-card h3 {
+  font-size: 1.25rem;
+}
+
+/* Labels — slightly larger so they don't feel cramped */
+.registration-page .form-card label,
+.registration-page .form-content label {
+  font-size: 1rem;
+  margin-bottom: 0.5rem;
+}
+
+/* Inputs / selects / textareas — taller, larger text */
+.registration-page .form-card input,
+.registration-page .form-card select,
+.registration-page .form-card textarea,
+.registration-page .form-content input,
+.registration-page .form-content select,
+.registration-page .form-content textarea {
+  font-size: 1.05rem !important;
+  padding: 0.95rem 1.1rem !important;
+  min-height: 3.25rem;
+}
+.registration-page .form-card textarea,
+.registration-page .form-content textarea {
+  min-height: 7rem;
+}
+
+/* Buttons — proportional to the new larger canvas */
+.registration-page .btn {
+  padding: 1.05rem 2.25rem;
+  font-size: 1.05rem;
+  border-radius: 14px;
+  min-height: 3.25rem;
+}
+.registration-page .btn svg {
+  width: 1.25rem;
+  height: 1.25rem;
+}
+
+/* Selection grid cards (used by ApplicationType, FablabSection, etc.) */
+.registration-page .selection-grid {
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 1.25rem;
+}
+
+/* Generic icons inside cards — slightly bigger */
+.registration-page .form-content svg:not(.icon-sun):not(.icon-moon) {
+  /* No-op fallback; specific component icons already use their own sizes */
+}
+
+@media (max-width: 700px) {
+  .registration-page .form-card input,
+  .registration-page .form-card select,
+  .registration-page .form-card textarea,
+  .registration-page .form-content input,
+  .registration-page .form-content select,
+  .registration-page .form-content textarea {
+    font-size: 1rem !important;
+    padding: 0.85rem 1rem !important;
+    min-height: 3rem;
+  }
+  .registration-page .btn {
+    padding: 0.9rem 1.6rem;
+    font-size: 1rem;
+    min-height: 3rem;
+  }
+  .registration-page .selection-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+
+/* =====================================================
+ * UserLookup — service cards grid
+ * Replaces the old stacked vertical buttons with a grid
+ * of service tiles that fill the wide canvas.
+ * ===================================================== */
+
+/* Widen the user-lookup container so service cards have room */
+.registration-page .user-lookup {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 2.5rem 1.5rem;
+}
+
+/* "or browse our services" divider */
+.registration-page .service-divider {
+  position: relative;
+  margin: 2.5rem auto 1.5rem;
+  max-width: 480px;
+  text-align: center;
+  color: var(--text-lo);
+  font-size: 0.85rem;
+  letter-spacing: 0.06em;
+}
+.registration-page .service-divider::before,
+.registration-page .service-divider::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  width: calc(50% - 6rem);
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--glass-border), transparent);
+}
+.registration-page .service-divider::before { left: 0; }
+.registration-page .service-divider::after { right: 0; }
+.registration-page .service-divider span {
+  display: inline-block;
+  padding: 0 1rem;
+  background: transparent;
+  position: relative;
+  font-weight: 600;
+  color: var(--text-md);
+}
+
+/* The grid itself */
+.registration-page .service-cards-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 1.25rem;
+  width: 100%;
+  margin: 0 auto;
+}
+
+/* Each card */
+.registration-page .service-card {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 1.4rem 1.4rem;
+  background: var(--glass);
+  border: 1.5px solid var(--glass-border);
+  border-radius: 18px;
+  text-align: start;
+  cursor: pointer;
+  font-family: var(--body);
+  color: var(--text-hi);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  transition: transform 0.25s ease, background 0.25s ease, border-color 0.25s ease, box-shadow 0.25s ease;
+  position: relative;
+  overflow: hidden;
+}
+.registration-page .service-card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: var(--service-grad, linear-gradient(135deg, rgba(167, 139, 250, 0.18), rgba(244, 114, 182, 0.12)));
+  opacity: 0;
+  transition: opacity 0.25s ease;
+  pointer-events: none;
+}
+.registration-page .service-card:hover {
+  transform: translateY(-3px);
+  border-color: var(--service-accent, rgba(167, 139, 250, 0.55));
+  box-shadow: 0 14px 36px -14px var(--service-shadow, rgba(167, 139, 250, 0.5));
+}
+.registration-page .service-card:hover::before {
+  opacity: 1;
+}
+.registration-page .service-card.is-active {
+  border-color: var(--service-accent, rgba(167, 139, 250, 0.7));
+  background: var(--glass);
+  box-shadow: 0 0 0 3px var(--service-accent, rgba(167, 139, 250, 0.25));
+}
+.registration-page .service-card > * { position: relative; z-index: 1; }
+
+.registration-page .service-card-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 52px;
+  height: 52px;
+  border-radius: 14px;
+  flex-shrink: 0;
+  background: var(--service-icon-bg, linear-gradient(135deg, rgba(167, 139, 250, 0.25), rgba(244, 114, 182, 0.18)));
+  color: var(--service-icon-color, #fff);
+  border: 1px solid var(--service-accent, rgba(167, 139, 250, 0.35));
+}
+.registration-page .service-card-icon svg {
+  width: 28px;
+  height: 28px;
+}
+
+.registration-page .service-card-body {
+  flex: 1;
+  min-width: 0;
+}
+.registration-page .service-card-title {
+  font-size: 1.08rem;
+  font-weight: 700;
+  color: var(--text-hi);
+  margin-bottom: 0.3rem;
+  line-height: 1.3;
+}
+.registration-page .service-card-description {
+  font-size: 0.88rem;
+  line-height: 1.5;
+  color: var(--text-md);
+}
+
+.registration-page .service-card-arrow {
+  flex-shrink: 0;
+  font-size: 1.4rem;
+  color: var(--service-accent, rgba(167, 139, 250, 0.7));
+  opacity: 0.6;
+  transition: transform 0.25s ease, opacity 0.25s ease;
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+}
+.registration-page .service-card:hover .service-card-arrow {
+  opacity: 1;
+  transform: translateX(4px);
+}
+[dir="rtl"] .registration-page .service-card:hover .service-card-arrow {
+  transform: translateX(-4px);
+}
+
+/* Per-card color accents */
+.registration-page .service-card--borrow {
+  --service-grad: linear-gradient(135deg, rgba(37, 99, 235, 0.22), rgba(96, 165, 250, 0.12));
+  --service-accent: rgba(96, 165, 250, 0.55);
+  --service-shadow: rgba(37, 99, 235, 0.5);
+  --service-icon-bg: linear-gradient(135deg, rgba(37, 99, 235, 0.4), rgba(96, 165, 250, 0.3));
+}
+.registration-page .service-card--workshop {
+  --service-grad: linear-gradient(135deg, rgba(220, 38, 38, 0.22), rgba(248, 113, 113, 0.12));
+  --service-accent: rgba(248, 113, 113, 0.55);
+  --service-shadow: rgba(220, 38, 38, 0.5);
+  --service-icon-bg: linear-gradient(135deg, rgba(220, 38, 38, 0.4), rgba(248, 113, 113, 0.3));
+}
+.registration-page .service-card--education {
+  --service-grad: linear-gradient(135deg, rgba(124, 58, 237, 0.22), rgba(167, 139, 250, 0.12));
+  --service-accent: rgba(167, 139, 250, 0.6);
+  --service-shadow: rgba(124, 58, 237, 0.5);
+  --service-icon-bg: linear-gradient(135deg, rgba(124, 58, 237, 0.4), rgba(167, 139, 250, 0.3));
+}
+.registration-page .service-card--elite {
+  --service-grad: linear-gradient(135deg, rgba(0, 166, 81, 0.22), rgba(34, 197, 94, 0.12));
+  --service-accent: rgba(34, 197, 94, 0.55);
+  --service-shadow: rgba(0, 166, 81, 0.5);
+  --service-icon-bg: linear-gradient(135deg, rgba(0, 166, 81, 0.4), rgba(34, 197, 94, 0.3));
+}
+
+/* Education sub-options revealed when Education card clicked */
+.registration-page .service-suboptions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.65rem;
+  margin: 1rem 0 0;
+  overflow: hidden;
+}
+.registration-page .service-suboption {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.7rem 1.4rem;
+  background: linear-gradient(135deg, rgba(124, 58, 237, 0.18), rgba(167, 139, 250, 0.12));
+  border: 1.5px solid rgba(167, 139, 250, 0.4);
+  border-radius: 999px;
+  font-size: 0.92rem;
+  font-weight: 600;
+  color: var(--text-hi);
+  cursor: pointer;
+  font-family: var(--body);
+  transition: transform 0.2s ease, background 0.25s ease, border-color 0.25s ease;
+}
+.registration-page .service-suboption:hover {
+  transform: translateY(-2px);
+  background: linear-gradient(135deg, rgba(124, 58, 237, 0.3), rgba(167, 139, 250, 0.2));
+  border-color: rgba(167, 139, 250, 0.65);
+}
+.registration-page .service-suboption svg {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+}
+
+/* Light theme tweaks */
+.registration-page[data-theme="light"] .service-card {
+  background: rgba(255, 255, 255, 0.8);
+  border-color: rgba(15, 23, 42, 0.12);
+}
+.registration-page[data-theme="light"] .service-card-icon { color: #fff; }
+.registration-page[data-theme="light"] .service-suboption {
+  background: rgba(255, 255, 255, 0.7);
+  color: #1f2937;
+}
+
+/* Mobile */
+@media (max-width: 640px) {
+  .registration-page .service-cards-grid {
+    grid-template-columns: 1fr;
+  }
+  .registration-page .service-card {
+    padding: 1.1rem 1.1rem;
+  }
+  .registration-page .service-card-icon {
+    width: 44px;
+    height: 44px;
+  }
+  .registration-page .service-card-icon svg {
+    width: 24px;
+    height: 24px;
+  }
+  .registration-page .service-divider::before,
+  .registration-page .service-divider::after {
+    width: calc(50% - 5rem);
+  }
+}
+
+/* =====================================================
+ * RTL fix: step-connector position
+ * In LTR the connector sits to the right of the step circle.
+ * In RTL it must sit to the LEFT (the visual "next" direction).
+ * The transform on ::after already handles direction; we
+ * just need to flip the parent's anchor.
+ * ===================================================== */
+[dir="rtl"] .step-connector {
+  left: auto;
+  right: calc(50% + 26px);
+}
+
+/* =====================================================
+ * Education sub-buttons — solid violet matching the
+ * education service card (was too transparent).
+ * ===================================================== */
+.registration-page .service-suboption {
+  background: linear-gradient(135deg, #6d28d9 0%, #7c3aed 100%);
+  border: none;
+  color: #ffffff;
+  box-shadow: 0 4px 14px -4px rgba(124, 58, 237, 0.55);
+}
+.registration-page .service-suboption:hover {
+  background: linear-gradient(135deg, #7c3aed 0%, #8b5cf6 100%);
+  border: none;
+  box-shadow: 0 6px 18px -4px rgba(124, 58, 237, 0.7);
+}
+
+/* =====================================================
+ * Per-page CSS variables for the OTHER form pages
+ * (borrowing, workshop, education, elite).
+ *
+ * The global form styles use var(--glass), var(--glass-border),
+ * var(--grad-primary), var(--text-*), etc. — these are only
+ * defined under .registration-page. Without defining them
+ * here, fields on the other pages have no border or use
+ * fallback (transparent) colors → "invisible borders" bug.
+ *
+ * Each page also overrides --grad-primary with its own
+ * accent color so primary buttons / step connectors /
+ * focused-input glow follow the page's color theme.
+ * ===================================================== */
+.borrowing-page,
+.workshop-reg-page,
+.education-page,
+.elite-page {
+  --card-bg: rgba(15, 19, 48, 0.55);
+  --card-border: rgba(255, 255, 255, 0.18);
+  --text-hi: #f8fafc;
+  --text-md: #e2e8f0;
+  --text-lo: #cbd5e1;
+  --glass: rgba(255, 255, 255, 0.10);
+  --glass-strong: rgba(255, 255, 255, 0.18);
+  --glass-border: rgba(255, 255, 255, 0.38);
+  --glass-border-hot: rgba(255, 255, 255, 0.7);
+  --display: 'Sora', 'Tajawal', system-ui, sans-serif;
+  --body: 'Outfit', 'Tajawal', system-ui, sans-serif;
+  --arabic: 'Tajawal', system-ui, sans-serif;
+}
+
+/* Borrowing — blue accent */
+.borrowing-page {
+  --grad-primary: linear-gradient(135deg, #1a56db 0%, #2563eb 50%, #3b82f6 100%);
+  --accent: #3b82f6;
+  --accent-strong: #1a56db;
+  --accent-soft: rgba(59, 130, 246, 0.18);
+}
+
+/* Workshop — red accent */
+.workshop-reg-page {
+  --grad-primary: linear-gradient(135deg, #dc2626 0%, #ef4444 50%, #f87171 100%);
+  --accent: #ef4444;
+  --accent-strong: #dc2626;
+  --accent-soft: rgba(239, 68, 68, 0.18);
+}
+
+/* Education — violet accent */
+.education-page {
+  --grad-primary: linear-gradient(135deg, #6d28d9 0%, #7c3aed 50%, #8b5cf6 100%);
+  --accent: #7c3aed;
+  --accent-strong: #6d28d9;
+  --accent-soft: rgba(124, 58, 237, 0.18);
+}
+
+/* Elite — green accent */
+.elite-page {
+  --grad-primary: linear-gradient(135deg, #006c35 0%, #00a651 50%, #22c55e 100%);
+  --accent: #22c55e;
+  --accent-strong: #006c35;
+  --accent-soft: rgba(34, 197, 94, 0.18);
+}
+
+/* Make the focused-input glow match each page's accent color */
+.borrowing-page .form-card input:focus,
+.borrowing-page .form-card select:focus,
+.borrowing-page .form-card textarea:focus,
+.workshop-reg-page .form-card input:focus,
+.workshop-reg-page .form-card select:focus,
+.workshop-reg-page .form-card textarea:focus,
+.education-page .form-card input:focus,
+.education-page .form-card select:focus,
+.education-page .form-card textarea:focus,
+.elite-page .form-card input:focus,
+.elite-page .form-card select:focus,
+.elite-page .form-card textarea:focus {
+  border-color: var(--accent) !important;
+  box-shadow: 0 0 0 4px var(--accent-soft), 0 8px 24px -10px var(--accent) !important;
+}
+
+/* Step circle active state uses the accent color */
+.borrowing-page .step-item.active .step-circle,
+.workshop-reg-page .step-item.active .step-circle,
+.education-page .step-item.active .step-circle,
+.elite-page .step-item.active .step-circle {
+  background: var(--grad-primary);
+}
+
+/* =====================================================
+ * Step label dark text fix for non-registration pages
+ * The stepper strip has a light background; the global
+ * `.step-item.active .step-label { color: var(--text-hi) }`
+ * rule makes the text white which is invisible on light strip.
+ * Use higher specificity here to force dark text on those pages.
+ * ===================================================== */
+.borrowing-page .step-item.active .step-label,
+.workshop-reg-page .step-item.active .step-label,
+.education-page .step-item.active .step-label,
+.elite-page .step-item.active .step-label {
+  color: #0f172a !important;
+  font-weight: 700;
+}
+.borrowing-page .step-item .step-label,
+.workshop-reg-page .step-item .step-label,
+.education-page .step-item .step-label,
+.elite-page .step-item .step-label {
+  color: #334155;
+}
+.borrowing-page .step-item.completed .step-label,
+.workshop-reg-page .step-item.completed .step-label,
+.education-page .step-item.completed .step-label,
+.elite-page .step-item.completed .step-label {
+  color: #475569;
+}
+
+/* =====================================================
+ * Per-step illustrations (undraw SVGs) shown above
+ * each step's content. Hidden on mobile to keep
+ * the form fields above the fold.
+ * ===================================================== */
+.registration-page .step-illustration {
+  display: flex;
+  justify-content: center;
+  margin: 0 0 1.75rem;
+  pointer-events: none;
+}
+.registration-page .step-illustration img {
+  width: 100%;
+  max-width: 280px;
+  height: auto;
+  max-height: 200px;
+  object-fit: contain;
+  filter: drop-shadow(0 8px 24px rgba(167, 139, 250, 0.18));
+}
+.registration-page[data-theme="light"] .step-illustration img {
+  filter: drop-shadow(0 8px 24px rgba(99, 102, 241, 0.15));
+}
+@media (max-width: 700px) {
+  .registration-page .step-illustration img {
+    max-width: 200px;
+    max-height: 140px;
+  }
+  .registration-page .step-illustration {
+    margin-bottom: 1.25rem;
+  }
+}
+@media (max-width: 480px) {
+  /* Free up vertical space on tiny screens */
+  .registration-page .step-illustration { display: none; }
 }

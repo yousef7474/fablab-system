@@ -13,8 +13,21 @@ import DateTimeSelection from './steps/DateTimeSelection';
 import ServiceDetails from './steps/ServiceDetails';
 import Commitment from './steps/Commitment';
 import SuccessPage from './SuccessPage';
+import step1Illustration from '../../illustrations/step1.svg';
+import step2Illustration from '../../illustrations/step2.svg';
+import step3Illustration from '../../illustrations/step3.svg';
+import step4Illustration from '../../illustrations/step4.svg';
+import step5Illustration from '../../illustrations/step5.svg';
+import step6Illustration from '../../illustrations/step6.svg';
+import step7Illustration from '../../illustrations/step7.svg';
 import FabyBot from './FabyBot';
 import './RegistrationForm.css';
+
+const stepIllustrations = [
+  step1Illustration, step2Illustration, step3Illustration,
+  step4Illustration, step5Illustration, step6Illustration,
+  step7Illustration
+];
 
 const STORAGE_KEY = 'fablab_registration_form';
 
@@ -434,6 +447,18 @@ const RegistrationForm = () => {
               {String(Math.max(0, activeStep) + 1).padStart(2, '0')} / {String(steps.length).padStart(2, '0')}
             </span>
           )}
+          <a
+            href="https://main.fablabsahsa.com/"
+            className="topbar-main-link"
+            title={isRTL ? 'العودة للموقع الرئيسي' : 'Back to main site'}
+            aria-label={isRTL ? 'العودة للموقع الرئيسي' : 'Back to main site'}
+          >
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+              <polyline points="9 22 9 12 15 12 15 22"/>
+            </svg>
+            <span>{isRTL ? 'الموقع الرئيسي' : 'Main site'}</span>
+          </a>
           <button
             type="button"
             className="theme-toggle"
@@ -595,6 +620,17 @@ const RegistrationForm = () => {
                       exit={{ opacity: 0, x: isRTL ? 30 : -30 }}
                       transition={{ duration: 0.3 }}
                     >
+                      {activeStep >= 0 && activeStep < stepIllustrations.length && (
+                        <motion.div
+                          className="step-illustration"
+                          initial={{ opacity: 0, scale: 0.9 }}
+                          animate={{ opacity: 1, scale: 1 }}
+                          transition={{ delay: 0.1, duration: 0.45 }}
+                          aria-hidden="true"
+                        >
+                          <img src={stepIllustrations[activeStep]} alt="" />
+                        </motion.div>
+                      )}
                       {renderStepContent(activeStep)}
                     </motion.div>
                   </AnimatePresence>

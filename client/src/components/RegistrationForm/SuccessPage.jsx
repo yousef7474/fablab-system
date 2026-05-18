@@ -1,7 +1,10 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { motion } from 'framer-motion';
 import QRCode from 'react-qr-code';
+import confetti from 'canvas-confetti';
+import Lottie from 'lottie-react';
+import successAnimation from '../../lottie/success.json';
 
 const formatTimeAMPM = (time24) => {
   if (!time24) return '';
@@ -17,6 +20,24 @@ const SuccessPage = ({ registration }) => {
 
   const handlePrint = () => window.print();
   const handleNewRegistration = () => window.location.reload();
+
+  // Celebratory confetti burst when the success page mounts
+  useEffect(() => {
+    const fire = (particleRatio, opts) => {
+      confetti({
+        origin: { y: 0.7 },
+        ...opts,
+        particleCount: Math.floor(200 * particleRatio),
+        colors: ['#a78bfa', '#22d3ee', '#f472b6', '#a3e635', '#fb923c']
+      });
+    };
+    // Layered burst for richer effect
+    fire(0.25, { spread: 26, startVelocity: 55 });
+    fire(0.2,  { spread: 60 });
+    fire(0.35, { spread: 100, decay: 0.91, scalar: 0.8 });
+    fire(0.1,  { spread: 120, startVelocity: 25, decay: 0.92, scalar: 1.2 });
+    fire(0.1,  { spread: 120, startVelocity: 45 });
+  }, []);
 
   const steps = [
     { icon: '📝', labelAr: 'تم إرسال الطلب', labelEn: 'Request Submitted', done: true },
@@ -37,13 +58,9 @@ const SuccessPage = ({ registration }) => {
           initial={{ scale: 0 }}
           animate={{ scale: 1 }}
           transition={{ type: 'spring', stiffness: 200 }}
-          style={{ width: 70, height: 70, borderRadius: '50%', background: '#fef3c7', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 1rem' }}
+          style={{ width: 140, height: 140, margin: '0 auto 0.5rem' }}
         >
-          <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" strokeWidth="2.5">
-            <circle cx="12" cy="12" r="10"/>
-            <line x1="12" y1="8" x2="12" y2="12"/>
-            <line x1="12" y1="16" x2="12.01" y2="16"/>
-          </svg>
+          <Lottie animationData={successAnimation} loop={false} autoplay style={{ width: '100%', height: '100%' }} />
         </motion.div>
 
         <motion.h2
