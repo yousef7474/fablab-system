@@ -3085,6 +3085,28 @@
 .settings-card svg { color: currentColor; }
 .settings-card h3 svg { color: var(--racing-red); }
 
+/* The global .btn-primary (from RegistrationForm.css) paints buttons with a
+   pastel cyan→pink gradient and white text — fine on the registration page's
+   dark canvas but illegible on the admin dashboard's light surfaces.
+   Force readable colors for any primary button rendered inside admin chrome. */
+.admin-layout .btn-primary,
+.admin-layout .btn.btn-primary {
+  color: #0f172a;
+  text-shadow: none;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.12);
+}
+
+.admin-layout .btn-primary:disabled,
+.admin-layout .btn.btn-primary:disabled {
+  color: #475569;
+}
+
+[data-theme="dark"] .admin-layout .btn-primary,
+[data-theme="dark"] .admin-layout .btn.btn-primary {
+  color: #fff;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.35);
+}
+
 .language-options {
   display: flex;
   gap: 1rem;
