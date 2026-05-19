@@ -277,7 +277,7 @@ const ApplicationData = ({ formData, onChange, onNext, onBack }) => {
                     height: '120px',
                     borderRadius: '8px',
                     overflow: 'hidden',
-                    border: '2px solid #e02529',
+                    border: '2px solid #16a34a',
                     boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
                   }}>
                     <img
@@ -298,7 +298,7 @@ const ApplicationData = ({ formData, onChange, onNext, onBack }) => {
                         right: '4px',
                         width: '24px',
                         height: '24px',
-                        background: '#e02529',
+                        background: '#16a34a',
                         color: 'white',
                         border: 'none',
                         borderRadius: '50%',
@@ -330,8 +330,8 @@ const ApplicationData = ({ formData, onChange, onNext, onBack }) => {
                       background: '#f9f9f9'
                     }}
                     onMouseEnter={(e) => {
-                      e.currentTarget.style.borderColor = '#e02529';
-                      e.currentTarget.style.background = '#fff5f5';
+                      e.currentTarget.style.borderColor = '#16a34a';
+                      e.currentTarget.style.background = '#f0fdf4';
                     }}
                     onMouseLeave={(e) => {
                       e.currentTarget.style.borderColor = '#ccc';
