@@ -340,23 +340,6 @@ const DateTimeSelection = ({ formData, onChange, onNext, onBack }) => {
           : `Working hours: ${(() => { const dayNamesEn = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday']; const sorted = [...workingHours.workingDays].sort(); return sorted.length > 0 ? `${dayNamesEn[sorted[0]]} - ${dayNamesEn[sorted[sorted.length-1]]}` : ''; })()}, ${formatTimeAMPM(workingHours.startTime)} - ${formatTimeAMPM(workingHours.endTime)}`}
       </p>
 
-      <motion.div
-        className="info-banner"
-        initial={{ opacity: 0, y: -10 }}
-        animate={{ opacity: 1, y: 0 }}
-      >
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-          <circle cx="12" cy="12" r="10"/>
-          <line x1="12" y1="16" x2="12" y2="12"/>
-          <line x1="12" y1="8" x2="12.01" y2="8"/>
-        </svg>
-        <span>
-          {isRTL
-            ? 'الأيام الخضراء متاحة للحجز. اختر يوماً ثم اختر الوقت المناسب.'
-            : 'Green days are available for booking. Select a day, then choose your time slot.'}
-        </span>
-      </motion.div>
-
       {/* Calendar View for appointment types */}
       {['Beneficiary', 'Talented', 'Visitor', 'FABLAB Visit'].includes(formData.applicationType) && (
         <div className="booking-calendar-container">

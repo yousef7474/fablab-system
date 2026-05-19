@@ -193,6 +193,37 @@ exports.createRegistration = async (req, res) => {
       if (!user) {
         return res.status(404).json({ message: 'User not found' });
       }
+
+      // Refresh the user's profile with whatever the form submitted this time.
+      // A returning user may pick a new applicationType, upload a profile
+      // picture, or correct their personal info — none of that was persisted
+      // before, so the admin saw stale data on the ID card / dashboard.
+      const updatable = {
+        applicationType, firstName, lastName, sex, nationality, nationalId,
+        phoneNumber, email, currentJob, nationalAddress, entityName,
+        visitingEntity, personInCharge, profilePicture
+      };
+      const updates = {};
+      Object.entries(updatable).forEach(([k, v]) => {
+        if (v !== undefined && v !== '' && v !== null) updates[k] = v;
+      });
+
+      // Keep the display name in sync with the new application type.
+      if (updates.applicationType) {
+        if (['Beneficiary', 'Visitor', 'Volunteer', 'Talented'].includes(updates.applicationType)) {
+          const fn = updates.firstName || user.firstName;
+          const ln = updates.lastName || user.lastName;
+          if (fn || ln) updates.name = [fn, ln].filter(Boolean).join(' ');
+        } else if (updates.applicationType === 'FABLAB Visit') {
+          updates.name = updates.personInCharge || user.personInCharge || updates.name || user.name;
+        } else if (updates.applicationType === 'Entity') {
+          updates.name = updates.name || updates.entityName || user.entityName;
+        }
+      }
+
+      if (Object.keys(updates).length) {
+        await user.update(updates);
+      }
     } else {
       // Generate new user ID
       userId = await generateUserId();
