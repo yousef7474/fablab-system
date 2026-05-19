@@ -434,13 +434,15 @@
 }
 
 [data-theme="dark"] .settings-form input,
-[data-theme="dark"] .settings-form select {
+[data-theme="dark"] .settings-form select,
+[data-theme="dark"] .settings-form textarea {
   background: var(--input-bg);
   border-color: var(--border-color);
   color: var(--text-primary);
 }
 
-[data-theme="dark"] .settings-form input:disabled {
+[data-theme="dark"] .settings-form input:disabled,
+[data-theme="dark"] .settings-form textarea:disabled {
   background: var(--bg-tertiary);
   color: var(--text-muted);
 }
@@ -3053,7 +3055,8 @@
 }
 
 .settings-form input,
-.settings-form select {
+.settings-form select,
+.settings-form textarea {
   width: 100%;
   padding: 0.75rem 1rem;
   border: 1px solid var(--gray-200);
@@ -3061,13 +3064,26 @@
   font-size: 0.9rem;
   color: var(--gray-800);
   background: var(--gray-50);
+  font-family: inherit;
 }
 
-.settings-form input:disabled {
+.settings-form textarea {
+  resize: vertical;
+  min-height: 64px;
+}
+
+.settings-form input:disabled,
+.settings-form textarea:disabled {
   background: var(--gray-100);
   color: var(--gray-500);
   cursor: not-allowed;
 }
+
+/* SVG icons inside the settings cards inherit current text color so they
+   stay legible in both themes; the icon-only buttons below get an
+   explicit fill for safety. */
+.settings-card svg { color: currentColor; }
+.settings-card h3 svg { color: var(--racing-red); }
 
 .language-options {
   display: flex;

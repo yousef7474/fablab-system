@@ -40,6 +40,7 @@ const EmployeeEvaluation = require('./EmployeeEvaluation');
 const EmployeeActivity = require('./EmployeeActivity');
 const Workshop = require('./Workshop');
 const WorkshopStudent = require('./WorkshopStudent');
+const RegistrationClosure = require('./RegistrationClosure');
 
 // Define relationships
 User.hasMany(Registration, { foreignKey: 'userId', as: 'registrations' });
@@ -250,6 +251,10 @@ Employee.hasMany(Workshop, { foreignKey: 'assignedEmployeeId', as: 'assignedWork
 Workshop.hasMany(WorkshopStudent, { foreignKey: 'workshopId', as: 'students' });
 WorkshopStudent.belongsTo(Workshop, { foreignKey: 'workshopId', as: 'workshop' });
 
+// Registration Closure relationships
+RegistrationClosure.belongsTo(Admin, { foreignKey: 'createdById', as: 'creator', constraints: false });
+Admin.hasMany(RegistrationClosure, { foreignKey: 'createdById', as: 'createdClosures' });
+
 // Sync database
 const syncDatabase = async () => {
   try {
@@ -367,5 +372,6 @@ module.exports = {
   EmployeeActivity,
   Workshop,
   WorkshopStudent,
+  RegistrationClosure,
   syncDatabase
 };

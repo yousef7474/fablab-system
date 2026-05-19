@@ -2620,6 +2620,21 @@
   justify-content: center;
 }
 
+/* Registration-wide closure (admin-set, all sections) */
+.calendar-days-grid .calendar-day.registration-closed {
+  background: rgba(239, 68, 68, 0.15) !important;
+  border-color: rgba(239, 68, 68, 0.45) !important;
+  color: var(--gray-500) !important;
+  cursor: not-allowed !important;
+  pointer-events: none !important;
+  position: relative;
+}
+
+.calendar-days-grid .calendar-day.registration-closed .deactivated-indicator {
+  color: #b91c1c;
+  background: rgba(239, 68, 68, 0.2);
+}
+
 /* Section deactivation warning banner */
 .section-deactivation-warning {
   display: flex;

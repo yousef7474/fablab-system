@@ -21,6 +21,8 @@ const educationRoutes = require('./routes/educationRoutes');
 const employeeRoutes = require('./routes/employeeRoutes');
 const evaluationRoutes = require('./routes/evaluationRoutes');
 const workshopMgmtRoutes = require('./routes/workshopMgmtRoutes');
+const userHistoryRoutes = require('./routes/userHistoryRoutes');
+const registrationClosureRoutes = require('./routes/registrationClosureRoutes');
 const { startBorrowingScheduler } = require('./utils/borrowingScheduler');
 const { startTaskReminderScheduler } = require('./utils/taskReminderScheduler');
 const { startEliteCourseScheduler } = require('./utils/eliteCourseScheduler');
@@ -51,6 +53,7 @@ app.use('/api/interns', internRoutes);
 app.use('/api/manager-todos', managerTodoRoutes);
 app.use('/api/workspaces', workspaceRoutes);
 app.use('/api/sections', sectionAvailabilityRoutes);
+app.use('/api/closures', registrationClosureRoutes);
 app.use('/api/elite', eliteRoutes);
 app.use('/api/settings', settingsRoutes);
 app.use('/api/settings/working-hours-overrides', workingHoursOverrideRoutes);
@@ -59,6 +62,7 @@ app.use('/api/education', educationRoutes);
 app.use('/api/employee', employeeRoutes);
 app.use('/api/evaluations', evaluationRoutes);
 app.use('/api/workshops', workshopMgmtRoutes);
+app.use('/api/user-history', userHistoryRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {

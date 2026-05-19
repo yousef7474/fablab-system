@@ -21,6 +21,7 @@ const DateTimeSelection = ({ formData, onChange, onNext, onBack }) => {
   const [selectedMonth, setSelectedMonth] = useState(new Date());
   const [bookedDates, setBookedDates] = useState([]);
   const [sectionDeactivations, setSectionDeactivations] = useState([]);
+  const [closures, setClosures] = useState([]);
   const [workingHours, setWorkingHours] = useState({ startTime: '11:00', endTime: '19:00', workingDays: [0, 1, 2, 3, 4] });
   const [activeOverrides, setActiveOverrides] = useState([]);
   const [effectiveHours, setEffectiveHours] = useState(null);
@@ -122,6 +123,15 @@ const DateTimeSelection = ({ formData, onChange, onNext, onBack }) => {
     fetchSectionDeactivations();
   }, [formData.fablabSection]);
 
+  // Fetch global registration closures (apply to every section)
+  useEffect(() => {
+    let cancelled = false;
+    api.get('/closures')
+      .then(res => { if (!cancelled) setClosures(Array.isArray(res.data) ? res.data : []); })
+      .catch(err => { console.error('Error fetching closures:', err); if (!cancelled) setClosures([]); });
+    return () => { cancelled = true; };
+  }, []);
+
   // Check if a date falls within a section deactivation period
   const isDateInDeactivationPeriod = (date) => {
     if (!date || sectionDeactivations.length === 0) return false;
@@ -147,6 +157,18 @@ const DateTimeSelection = ({ formData, onChange, onNext, onBack }) => {
       return dateStr >= startStr && dateStr <= endStr;
     });
   };
+
+  // Registration-wide closure: blocks every section on the same day.
+  const getClosureInfo = (date) => {
+    if (!date || closures.length === 0) return null;
+    const dateStr = formatDateForInput(date);
+    return closures.find(c => {
+      const startStr = String(c.startDate).substring(0, 10);
+      const endStr = String(c.endDate).substring(0, 10);
+      return dateStr >= startStr && dateStr <= endStr;
+    });
+  };
+  const isDateClosed = (date) => !!getClosureInfo(date);
 
   const canProceed = () => {
     if (['Beneficiary', 'Talented', 'Visitor'].includes(formData.applicationType)) {
@@ -229,6 +251,9 @@ const DateTimeSelection = ({ formData, onChange, onNext, onBack }) => {
 
     // Check if date falls within a section deactivation period
     if (isDateInDeactivationPeriod(date)) return false;
+
+    // Check global registration closure (blocks every section)
+    if (isDateClosed(date)) return false;
 
     return true;
   };
@@ -391,6 +416,14 @@ const DateTimeSelection = ({ formData, onChange, onNext, onBack }) => {
                 const isWeekend = !workingHours.workingDays.includes(date.getDay());
                 const isDeactivated = isDateInDeactivationPeriod(date);
                 const deactivationInfo = isDeactivated ? getDeactivationInfo(date) : null;
+                const closureInfo = getClosureInfo(date);
+                const isClosed = !!closureInfo;
+                const closedTitle = isClosed
+                  ? (isRTL ? (closureInfo.reasonAr || closureInfo.reasonEn) : closureInfo.reasonEn)
+                  : '';
+                const deactivatedTitle = isDeactivated
+                  ? (isRTL ? deactivationInfo?.reasonAr || deactivationInfo?.reasonEn : deactivationInfo?.reasonEn)
+                  : '';
 
                 return (
                   <button
@@ -401,13 +434,14 @@ const DateTimeSelection = ({ formData, onChange, onNext, onBack }) => {
                       ${isSelected ? 'selected' : ''}
                       ${isToday ? 'today' : ''}
                       ${isWeekend ? 'weekend' : ''}
+                      ${isClosed ? 'registration-closed' : ''}
                       ${isDeactivated ? 'section-deactivated' : ''}`}
                     onClick={() => handleDateSelect(date)}
                     disabled={!isSelectable}
-                    title={isDeactivated ? (isRTL ? deactivationInfo?.reasonAr || deactivationInfo?.reasonEn : deactivationInfo?.reasonEn) : ''}
+                    title={closedTitle || deactivatedTitle}
                   >
                     <span className="day-number">{date.getDate()}</span>
-                    {isDeactivated && <span className="deactivated-indicator">!</span>}
+                    {(isClosed || isDeactivated) && <span className="deactivated-indicator">!</span>}
                   </button>
                 );
               })}
@@ -432,7 +466,39 @@ const DateTimeSelection = ({ formData, onChange, onNext, onBack }) => {
                   <span>{isRTL ? 'القسم مغلق' : 'Section Closed'}</span>
                 </div>
               )}
+              {closures.length > 0 && (
+                <div className="legend-item">
+                  <span className="legend-dot section-closed"></span>
+                  <span>{isRTL ? 'التسجيل مغلق' : 'Registration Closed'}</span>
+                </div>
+              )}
             </div>
+
+            {closures.length > 0 && (
+              <motion.div
+                className="section-deactivation-warning"
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+              >
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <circle cx="12" cy="12" r="10"/>
+                  <line x1="12" y1="8" x2="12" y2="12"/>
+                  <line x1="12" y1="16" x2="12.01" y2="16"/>
+                </svg>
+                <div className="warning-content">
+                  <strong>{isRTL ? 'إغلاق التسجيل:' : 'Registration Closures:'}</strong>
+                  <ul style={{ margin: '6px 0 0', paddingInlineStart: '18px' }}>
+                    {closures.map(c => (
+                      <li key={c.closureId} style={{ fontSize: '13px' }}>
+                        {String(c.startDate).slice(0, 10)} → {String(c.endDate).slice(0, 10)}
+                        {' — '}
+                        {isRTL ? (c.reasonAr || c.reasonEn) : c.reasonEn}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              </motion.div>
+            )}
 
             {/* Section Deactivation Warning */}
             {sectionDeactivations.length > 0 && (

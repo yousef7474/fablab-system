@@ -165,6 +165,11 @@ const AdminDashboard = () => {
   const [pauseReason, setPauseReason] = useState('');
   const [savingPause, setSavingPause] = useState(false);
 
+  // Registration closures (date-range, all sections)
+  const [closures, setClosures] = useState([]);
+  const [closureForm, setClosureForm] = useState({ startDate: '', endDate: '', reasonEn: '', reasonAr: '' });
+  const [savingClosure, setSavingClosure] = useState(false);
+
   // Borrowing states
   const [borrowings, setBorrowings] = useState([]);
   const [borrowingFilters, setBorrowingFilters] = useState({ status: '', section: '', search: '' });
@@ -623,6 +628,51 @@ const AdminDashboard = () => {
     }
   };
 
+  const fetchClosures = async () => {
+    try {
+      const res = await api.get('/closures/all');
+      setClosures(Array.isArray(res.data) ? res.data : []);
+    } catch (err) {
+      console.error('Error fetching closures:', err);
+    }
+  };
+
+  const handleCreateClosure = async () => {
+    const { startDate, endDate, reasonEn } = closureForm;
+    if (!startDate || !endDate || !reasonEn.trim()) {
+      toast.error(isRTL ? 'يرجى تعبئة التاريخ والسبب' : 'Please fill dates and reason');
+      return;
+    }
+    if (startDate > endDate) {
+      toast.error(isRTL ? 'تاريخ النهاية يجب أن يكون بعد تاريخ البداية' : 'End date must be after start date');
+      return;
+    }
+    setSavingClosure(true);
+    try {
+      await api.post('/closures', closureForm);
+      setClosureForm({ startDate: '', endDate: '', reasonEn: '', reasonAr: '' });
+      await fetchClosures();
+      toast.success(isRTL ? 'تم إضافة فترة الإغلاق' : 'Closure added');
+    } catch (err) {
+      console.error('Error creating closure:', err);
+      toast.error(isRTL ? 'خطأ في إضافة فترة الإغلاق' : 'Error adding closure');
+    } finally {
+      setSavingClosure(false);
+    }
+  };
+
+  const handleDeleteClosure = async (id) => {
+    if (!window.confirm(isRTL ? 'هل أنت متأكد من حذف فترة الإغلاق؟' : 'Delete this closure?')) return;
+    try {
+      await api.delete(`/closures/${id}`);
+      await fetchClosures();
+      toast.success(isRTL ? 'تم الحذف' : 'Deleted');
+    } catch (err) {
+      console.error('Error deleting closure:', err);
+      toast.error(isRTL ? 'خطأ في الحذف' : 'Error deleting');
+    }
+  };
+
   // Section Availability functions
   const fetchSectionAvailability = async () => {
     try {
@@ -707,6 +757,7 @@ const AdminDashboard = () => {
     } else if (activeTab === 'settings') {
       fetchSectionAvailability();
       fetchRegistrationStatus();
+      fetchClosures();
     } else if (activeTab === 'borrowing') {
       fetchBorrowings();
     } else if (activeTab === 'education') {
@@ -8040,6 +8091,131 @@ const AdminDashboard = () => {
                         )}
                       </div>
                     </div>
+                  </div>
+
+                  <div className="settings-card" style={{ gridColumn: '1 / -1' }}>
+                    <h3 style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+                        <line x1="16" y1="2" x2="16" y2="6"/>
+                        <line x1="8" y1="2" x2="8" y2="6"/>
+                        <line x1="3" y1="10" x2="21" y2="10"/>
+                      </svg>
+                      {isRTL ? 'فترات إغلاق التسجيل' : 'Registration Closures'}
+                    </h3>
+                    <p style={{ fontSize: '13px', color: 'var(--text-secondary, #64748b)', marginBottom: '14px' }}>
+                      {isRTL
+                        ? 'حدد فترة لإغلاق التسجيل في جميع أقسام فاب لاب. الأيام في التقويم ستكون غير متاحة وسيظهر السبب للمستخدمين.'
+                        : 'Set a date range to close registration across ALL FabLab sections. Days will be unavailable on the calendar and the reason will be shown to users.'}
+                    </p>
+
+                    <div className="settings-form" style={{ background: 'var(--bg-secondary, #f8fafc)', padding: '16px', borderRadius: '8px', marginBottom: '16px' }}>
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                        <div className="form-group">
+                          <label>{isRTL ? 'تاريخ البداية' : 'Start Date'}</label>
+                          <input
+                            type="date"
+                            value={closureForm.startDate}
+                            onChange={(e) => setClosureForm(p => ({ ...p, startDate: e.target.value }))}
+                          />
+                        </div>
+                        <div className="form-group">
+                          <label>{isRTL ? 'تاريخ النهاية' : 'End Date'}</label>
+                          <input
+                            type="date"
+                            value={closureForm.endDate}
+                            onChange={(e) => setClosureForm(p => ({ ...p, endDate: e.target.value }))}
+                          />
+                        </div>
+                      </div>
+                      <div className="form-group">
+                        <label>{isRTL ? 'السبب (إنجليزي)' : 'Reason (English)'} <span style={{ color: '#dc2626' }}>*</span></label>
+                        <input
+                          type="text"
+                          value={closureForm.reasonEn}
+                          onChange={(e) => setClosureForm(p => ({ ...p, reasonEn: e.target.value }))}
+                          placeholder="e.g., FabLab closed for maintenance"
+                        />
+                      </div>
+                      <div className="form-group">
+                        <label>{isRTL ? 'السبب (عربي)' : 'Reason (Arabic)'}</label>
+                        <input
+                          type="text"
+                          value={closureForm.reasonAr}
+                          onChange={(e) => setClosureForm(p => ({ ...p, reasonAr: e.target.value }))}
+                          placeholder="مثال: فاب لاب مغلق للصيانة"
+                          dir="rtl"
+                        />
+                      </div>
+                      <button
+                        className="btn btn-primary"
+                        onClick={handleCreateClosure}
+                        disabled={savingClosure}
+                        style={{ marginTop: '4px' }}
+                      >
+                        {savingClosure
+                          ? (isRTL ? 'جاري الحفظ...' : 'Saving...')
+                          : (isRTL ? '+ إضافة فترة إغلاق' : '+ Add Closure')}
+                      </button>
+                    </div>
+
+                    {closures.length === 0 ? (
+                      <p style={{ color: 'var(--text-secondary, #64748b)', fontSize: '13px' }}>
+                        {isRTL ? 'لا توجد فترات إغلاق' : 'No closures configured'}
+                      </p>
+                    ) : (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                        {closures.map(c => {
+                          const today = new Date().toISOString().slice(0, 10);
+                          const startStr = String(c.startDate).slice(0, 10);
+                          const endStr = String(c.endDate).slice(0, 10);
+                          const isActiveNow = c.isActive && startStr <= today && endStr >= today;
+                          const isExpired = endStr < today;
+                          const isUpcoming = c.isActive && startStr > today;
+                          return (
+                            <div key={c.closureId} style={{
+                              display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                              padding: '10px 14px', borderRadius: '8px',
+                              background: 'var(--bg-secondary, #f8fafc)',
+                              border: isActiveNow ? '2px solid #ef4444' : '1px solid var(--border-color, #e2e8f0)',
+                              opacity: c.isActive ? 1 : 0.5
+                            }}>
+                              <div>
+                                <strong style={{ fontSize: '14px', color: 'var(--text-primary, #0f172a)' }}>
+                                  {isRTL ? (c.reasonAr || c.reasonEn) : c.reasonEn}
+                                </strong>
+                                <div style={{ fontSize: '12px', color: 'var(--text-secondary, #64748b)', marginTop: '2px' }}>
+                                  {startStr} → {endStr}
+                                </div>
+                                <span style={{
+                                  display: 'inline-block', marginTop: '4px', padding: '2px 8px',
+                                  borderRadius: '10px', fontSize: '11px', fontWeight: 600,
+                                  background: isActiveNow ? '#fee2e2' : isExpired ? '#e5e7eb' : isUpcoming ? '#fef9c3' : '#e5e7eb',
+                                  color: isActiveNow ? '#991b1b' : isExpired ? '#374151' : isUpcoming ? '#854d0e' : '#374151'
+                                }}>
+                                  {!c.isActive
+                                    ? (isRTL ? 'محذوف' : 'Deleted')
+                                    : isActiveNow
+                                      ? (isRTL ? 'نشط الآن' : 'Active Now')
+                                      : isExpired
+                                        ? (isRTL ? 'منتهي' : 'Expired')
+                                        : (isRTL ? 'قادم' : 'Upcoming')}
+                                </span>
+                              </div>
+                              {c.isActive && (
+                                <button
+                                  className="btn btn-danger"
+                                  style={{ padding: '4px 12px', fontSize: '12px' }}
+                                  onClick={() => handleDeleteClosure(c.closureId)}
+                                >
+                                  {isRTL ? 'حذف' : 'Delete'}
+                                </button>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
                   </div>
 
                   <div className="settings-card">
