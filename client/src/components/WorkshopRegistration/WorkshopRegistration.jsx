@@ -59,15 +59,15 @@ const WorkshopRegistration = () => {
       }
     }
     try {
-      const params = new URLSearchParams({ workshopId: form.workshopId, phone: form.phone });
-      if (form.email) params.append('email', form.email);
-      if (form.nationalId) params.append('nationalId', form.nationalId);
-      const res = await api.get(`/workshops/check-duplicate?${params}`);
-      if (res.data.duplicate) {
-        window.alert(isRTL
-          ? 'أنت مسجل بالفعل في هذه الورشة. لا يمكنك التسجيل مرة أخرى.'
-          : 'You are already registered for this workshop. You cannot register again.');
-        return;
+      if (form.nationalId) {
+        const params = new URLSearchParams({ workshopId: form.workshopId, nationalId: form.nationalId });
+        const res = await api.get(`/workshops/check-duplicate?${params}`);
+        if (res.data.duplicate) {
+          window.alert(isRTL
+            ? 'هذا الطالب مسجل بالفعل في هذه الورشة بنفس رقم الهوية.'
+            : 'This student is already registered for this workshop with the same National ID.');
+          return;
+        }
       }
     } catch (e) {}
     setStep(2);
@@ -195,7 +195,7 @@ const WorkshopRegistration = () => {
                         )}
                       </div>
                       <div className="workshop-field">
-                        <label>{isRTL ? 'رقم الهوية' : 'National ID'} *</label>
+                        <label>{isRTL ? 'رقم هوية الطالب' : "Student's National ID"} *</label>
                         <input dir="ltr" value={form.nationalId} onChange={e => handleChange('nationalId', e.target.value)} />
                       </div>
                       <div className="workshop-field">
@@ -306,6 +306,11 @@ const WorkshopRegistration = () => {
                     placeholder={isRTL ? 'مثال: #12345' : 'e.g. #12345'}
                     style={{ fontSize: '1.1rem', textAlign: 'center', letterSpacing: 2 }}
                   />
+                  <p style={{ marginTop: '0.5rem', fontSize: '0.85rem', color: '#64748b', textAlign: 'center' }}>
+                    {isRTL
+                      ? 'إذا لم يكن لديك رقم فاتورة، اكتب أي رقم.'
+                      : "If you don't have an invoice number, type any number."}
+                  </p>
                 </div>
 
                 <div className="workshop-actions">

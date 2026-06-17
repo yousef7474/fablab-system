@@ -303,18 +303,14 @@ exports.lookupStudent = async (req, res) => {
 };
 
 // Register student for workshop (public)
-// Check if student is already registered for a workshop
+// Check if student is already registered for a workshop (by national ID only).
 exports.checkDuplicate = async (req, res) => {
   try {
-    const { workshopId, phone, email, nationalId } = req.query;
-    if (!workshopId || !phone) return res.json({ duplicate: false });
-
-    const orConditions = [{ phone }];
-    if (email) orConditions.push({ email });
-    if (nationalId) orConditions.push({ nationalId });
+    const { workshopId, nationalId } = req.query;
+    if (!workshopId || !nationalId) return res.json({ duplicate: false });
 
     const existing = await WorkshopStudent.findOne({
-      where: { workshopId, [Op.or]: orConditions }
+      where: { workshopId, nationalId }
     });
 
     res.json({ duplicate: !!existing });
@@ -362,13 +358,17 @@ exports.registerStudent = async (req, res) => {
         throw { status: 400, message: 'This workshop is not accepting registrations', messageAr: 'هذه الورشة لا تقبل التسجيل حالياً' };
       }
 
-      const duplicateWhere = { workshopId, [Op.or]: [{ phone }] };
-      if (email) duplicateWhere[Op.or].push({ email });
-      if (nationalId) duplicateWhere[Op.or].push({ nationalId });
-
-      const existing = await WorkshopStudent.findOne({ where: duplicateWhere, transaction: t });
-      if (existing) {
-        throw { status: 400, message: 'You are already registered for this workshop', messageAr: 'أنت مسجل بالفعل في هذه الورشة' };
+      // Duplicate check is by student national ID only. Repeated emails,
+      // phones, and names are allowed (e.g. a parent registering multiple
+      // children from the same contact info).
+      if (nationalId) {
+        const existing = await WorkshopStudent.findOne({
+          where: { workshopId, nationalId },
+          transaction: t
+        });
+        if (existing) {
+          throw { status: 400, message: 'This student is already registered for this workshop', messageAr: 'هذا الطالب مسجل بالفعل في هذه الورشة' };
+        }
       }
 
       const studentAge = parseInt(age);
