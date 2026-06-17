@@ -337,7 +337,6 @@ exports.registerStudent = async (req, res) => {
       });
     }
 
-    // Validate email format if provided
     if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
       return res.status(400).json({
         message: 'Invalid email address',
@@ -345,76 +344,68 @@ exports.registerStudent = async (req, res) => {
       });
     }
 
-    // Check workshop exists and is active
-    const workshop = await Workshop.findByPk(workshopId, {
-      include: [{
-        model: WorkshopStudent,
-        as: 'students',
-        attributes: ['studentId']
-      }]
-    });
-
-    if (!workshop) {
-      return res.status(404).json({
-        message: 'Workshop not found',
-        messageAr: 'الورشة غير موجودة'
+    // Concurrency note: capacity + duplicate checks MUST happen under a row
+    // lock on the workshop. Without the lock, N concurrent requests can each
+    // observe `count < maxParticipants` before any of them inserts, then all
+    // insert — producing overbooked workshops (e.g. 30 students in 25 seats).
+    const result = await sequelize.transaction(async (t) => {
+      const workshop = await Workshop.findByPk(workshopId, {
+        transaction: t,
+        lock: t.LOCK.UPDATE
       });
-    }
 
-    if (!workshop.isActive || workshop.status === 'cancelled') {
-      return res.status(400).json({
-        message: 'This workshop is not accepting registrations',
-        messageAr: 'هذه الورشة لا تقبل التسجيل حالياً'
-      });
-    }
-
-    // Check duplicate registration (same workshop + same phone or email)
-    const duplicateWhere = { workshopId, [Op.or]: [{ phone }] };
-    if (email) duplicateWhere[Op.or].push({ email });
-    if (nationalId) duplicateWhere[Op.or].push({ nationalId });
-
-    const existing = await WorkshopStudent.findOne({ where: duplicateWhere });
-    if (existing) {
-      return res.status(400).json({
-        message: 'You are already registered for this workshop',
-        messageAr: 'أنت مسجل بالفعل في هذه الورشة'
-      });
-    }
-
-    // Check age range
-    const studentAge = parseInt(age);
-    if (!isNaN(studentAge) && (workshop.minAge || workshop.maxAge)) {
-      if (workshop.minAge && studentAge < workshop.minAge) {
-        return res.status(400).json({ message: `Age must be between ${workshop.minAge}-${workshop.maxAge || '∞'} years. Your age: ${studentAge}`, messageAr: `العمر يجب أن يكون بين ${workshop.minAge} و ${workshop.maxAge || '∞'} سنة. عمرك: ${studentAge}` });
+      if (!workshop) {
+        throw { status: 404, message: 'Workshop not found', messageAr: 'الورشة غير موجودة' };
       }
-      if (workshop.maxAge && studentAge > workshop.maxAge) {
-        return res.status(400).json({ message: `Age must be between ${workshop.minAge || 0}-${workshop.maxAge} years. Your age: ${studentAge}`, messageAr: `العمر يجب أن يكون بين ${workshop.minAge || 0} و ${workshop.maxAge} سنة. عمرك: ${studentAge}` });
-      }
-    }
 
-    // Check capacity
-    if (workshop.maxParticipants) {
-      const currentCount = workshop.students ? workshop.students.length : 0;
-      if (currentCount >= workshop.maxParticipants) {
-        return res.status(400).json({
-          message: 'This workshop is full',
-          messageAr: 'هذه الورشة ممتلئة'
+      if (!workshop.isActive || workshop.status === 'cancelled') {
+        throw { status: 400, message: 'This workshop is not accepting registrations', messageAr: 'هذه الورشة لا تقبل التسجيل حالياً' };
+      }
+
+      const duplicateWhere = { workshopId, [Op.or]: [{ phone }] };
+      if (email) duplicateWhere[Op.or].push({ email });
+      if (nationalId) duplicateWhere[Op.or].push({ nationalId });
+
+      const existing = await WorkshopStudent.findOne({ where: duplicateWhere, transaction: t });
+      if (existing) {
+        throw { status: 400, message: 'You are already registered for this workshop', messageAr: 'أنت مسجل بالفعل في هذه الورشة' };
+      }
+
+      const studentAge = parseInt(age);
+      if (!isNaN(studentAge) && (workshop.minAge || workshop.maxAge)) {
+        if (workshop.minAge && studentAge < workshop.minAge) {
+          throw { status: 400, message: `Age must be between ${workshop.minAge}-${workshop.maxAge || '∞'} years. Your age: ${studentAge}`, messageAr: `العمر يجب أن يكون بين ${workshop.minAge} و ${workshop.maxAge || '∞'} سنة. عمرك: ${studentAge}` };
+        }
+        if (workshop.maxAge && studentAge > workshop.maxAge) {
+          throw { status: 400, message: `Age must be between ${workshop.minAge || 0}-${workshop.maxAge} years. Your age: ${studentAge}`, messageAr: `العمر يجب أن يكون بين ${workshop.minAge || 0} و ${workshop.maxAge} سنة. عمرك: ${studentAge}` };
+        }
+      }
+
+      if (workshop.maxParticipants) {
+        const currentCount = await WorkshopStudent.count({
+          where: { workshopId },
+          transaction: t
         });
+        if (currentCount >= workshop.maxParticipants) {
+          throw { status: 400, message: 'This workshop is full', messageAr: 'هذه الورشة ممتلئة' };
+        }
       }
-    }
 
-    const student = await WorkshopStudent.create({
-      workshopId, firstName, lastName, phone, email,
-      nationalId, gender, age, city, invoiceNumber, notes
+      const student = await WorkshopStudent.create({
+        workshopId, firstName, lastName, phone, email,
+        nationalId, gender, age, city, invoiceNumber, notes
+      }, { transaction: t });
+
+      return { student, workshop };
     });
 
-    // Send confirmation email with workshop details + attendance ID
+    const { student, workshop } = result;
+
     if (email) {
       const fullName = `${firstName || ''} ${lastName || ''}`.trim();
       sendWorkshopRegistrationEmail(email, fullName, workshop, invoiceNumber).catch(err => {
         console.error('Workshop email error (non-blocking):', err.message);
       });
-      // Also send attendance ID
       sendAttendanceIdEmail(email, student, workshop).catch(err => {
         console.error('Attendance ID email error (non-blocking):', err.message);
       });
@@ -427,6 +418,9 @@ exports.registerStudent = async (req, res) => {
       workshop: { title: workshop.title, startDate: workshop.startDate, endDate: workshop.endDate }
     });
   } catch (error) {
+    if (error && error.status) {
+      return res.status(error.status).json({ message: error.message, messageAr: error.messageAr });
+    }
     console.error('Error registering student:', error);
     res.status(500).json({ message: 'Server error', messageAr: 'خطأ في الخادم' });
   }
