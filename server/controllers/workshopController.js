@@ -657,50 +657,59 @@ exports.exportStudentsCSV = async (req, res) => {
     });
     if (!workshop) return res.status(404).json({ message: 'Workshop not found' });
 
-    const BOM = '\uFEFF';
+    // Why this exact format: a plain UTF-8 CSV either (a) opens as a
+    // single column in Excel locales whose default list separator is ';'
+    // instead of ',', or (b) loses the UTF-8 BOM (and mangles Arabic)
+    // when we add the `sep=,` directive that forces comma splitting.
+    // UTF-16 LE with a leading FF FE BOM + tab as the field separator is
+    // the only encoding every Excel locale opens cleanly: the BOM forces
+    // Unicode rendering (Arabic intact), and tabs split into columns
+    // regardless of regional settings.
+    const TAB = '\t';
+    const NL = '\r\n';
+    const cell = (v) => String(v == null ? '' : v).replace(/[\t\r\n]+/g, ' ');
     const rows = [];
 
-    // Workshop info header
-    rows.push(`"الورشة / Workshop","${workshop.title}"`);
-    rows.push(`"المقدم / Presenter","${workshop.presenter || ''}"`);
-    rows.push(`"التاريخ / Date","${workshop.startDate || ''}${workshop.endDate ? ' → ' + workshop.endDate : ''}"`);
-    rows.push(`"الساعات / Hours","${workshop.totalHours || ''}"`);
-    rows.push(`"السعر / Price","${workshop.price || 'Free'}"`);
-    rows.push(`"عدد الطلاب / Students","${(workshop.students || []).length}${workshop.maxParticipants ? ' / ' + workshop.maxParticipants : ''}"`);
+    rows.push(`الورشة / Workshop${TAB}${cell(workshop.title)}`);
+    rows.push(`المقدم / Presenter${TAB}${cell(workshop.presenter)}`);
+    rows.push(`التاريخ / Date${TAB}${cell(workshop.startDate)}${workshop.endDate ? ' → ' + cell(workshop.endDate) : ''}`);
+    rows.push(`الساعات / Hours${TAB}${cell(workshop.totalHours)}`);
+    rows.push(`السعر / Price${TAB}${cell(workshop.price || 'Free')}`);
+    rows.push(`عدد الطلاب / Students${TAB}${(workshop.students || []).length}${workshop.maxParticipants ? ' / ' + workshop.maxParticipants : ''}`);
     rows.push('');
 
-    // Student table header
-    rows.push('"#","الاسم الأول","الاسم الأخير","الهاتف","البريد","الهوية","الجنس","العمر","المدينة","رقم الفاتورة","حالة الدفع","الحضور (أيام)","التقييم","ملاحظات"');
+    rows.push([
+      '#', 'الاسم الأول', 'الاسم الأخير', 'الهاتف', 'البريد', 'الهوية',
+      'الجنس', 'العمر', 'المدينة', 'رقم الفاتورة', 'حالة الدفع',
+      'الحضور (أيام)', 'التقييم', 'ملاحظات'
+    ].join(TAB));
 
-    // Student rows
     (workshop.students || []).forEach((s, i) => {
       const attendedDays = Array.isArray(s.attendanceDates) ? s.attendanceDates.length : 0;
       rows.push([
         i + 1,
-        `"${s.firstName || ''}"`,
-        `"${s.lastName || ''}"`,
-        `"${s.phone || ''}"`,
-        `"${s.email || ''}"`,
-        `"${s.nationalId || ''}"`,
-        `"${s.gender || ''}"`,
-        `"${s.age || ''}"`,
-        `"${s.city || ''}"`,
-        `"${s.invoiceNumber || ''}"`,
-        `"${s.paymentStatus || ''}"`,
+        cell(s.firstName),
+        cell(s.lastName),
+        cell(s.phone),
+        cell(s.email),
+        cell(s.nationalId),
+        cell(s.gender),
+        cell(s.age),
+        cell(s.city),
+        cell(s.invoiceNumber),
+        cell(s.paymentStatus),
         attendedDays,
-        s.performanceRating || '',
-        `"${(s.performanceNotes || '').replace(/"/g, '""')}"`
-      ].join(','));
+        cell(s.performanceRating),
+        cell(s.performanceNotes)
+      ].join(TAB));
     });
 
-    // Excel in Arabic locales defaults to ';' as the list separator, which
-    // makes a comma-delimited CSV import as a single column. The `sep=,`
-    // hint on the very first line forces Excel to split on commas
-    // regardless of locale; Google Sheets / LibreOffice ignore it.
-    const csv = BOM + 'sep=,\n' + rows.join('\r\n');
-    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    const text = '﻿' + rows.join(NL);
+    const buf = Buffer.from(text, 'utf16le');
+
+    res.setHeader('Content-Type', 'text/csv; charset=utf-16le');
     res.setHeader('Content-Disposition', `attachment; filename="workshop_export.csv"; filename*=UTF-8''${encodeURIComponent(workshop.title)}.csv`);
-    res.send(csv);
+    res.send(buf);
   } catch (error) {
     console.error('Export CSV error:', error);
     res.status(500).json({ message: 'Server error' });
