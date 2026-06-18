@@ -693,7 +693,11 @@ exports.exportStudentsCSV = async (req, res) => {
       ].join(','));
     });
 
-    const csv = BOM + rows.join('\n');
+    // Excel in Arabic locales defaults to ';' as the list separator, which
+    // makes a comma-delimited CSV import as a single column. The `sep=,`
+    // hint on the very first line forces Excel to split on commas
+    // regardless of locale; Google Sheets / LibreOffice ignore it.
+    const csv = BOM + 'sep=,\n' + rows.join('\r\n');
     res.setHeader('Content-Type', 'text/csv; charset=utf-8');
     res.setHeader('Content-Disposition', `attachment; filename="workshop_export.csv"; filename*=UTF-8''${encodeURIComponent(workshop.title)}.csv`);
     res.send(csv);
