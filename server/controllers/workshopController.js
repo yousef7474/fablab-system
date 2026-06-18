@@ -679,17 +679,17 @@ exports.exportStudentsCSV = async (req, res) => {
     rows.push('');
 
     rows.push([
-      '#', 'الاسم الأول', 'الاسم الأخير', 'الهاتف', 'البريد', 'الهوية',
+      '#', 'الاسم الكامل', 'الهاتف', 'البريد', 'الهوية',
       'الجنس', 'العمر', 'المدينة', 'رقم الفاتورة', 'حالة الدفع',
       'الحضور (أيام)', 'التقييم', 'ملاحظات'
     ].join(TAB));
 
     (workshop.students || []).forEach((s, i) => {
       const attendedDays = Array.isArray(s.attendanceDates) ? s.attendanceDates.length : 0;
+      const fullName = [s.firstName, s.lastName].filter(Boolean).join(' ');
       rows.push([
         i + 1,
-        cell(s.firstName),
-        cell(s.lastName),
+        cell(fullName),
         cell(s.phone),
         cell(s.email),
         cell(s.nationalId),
