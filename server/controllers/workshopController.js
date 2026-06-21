@@ -426,6 +426,93 @@ exports.registerStudent = async (req, res) => {
   }
 };
 
+// Admin: manually add a student to a workshop.
+// Same lock-protected capacity + duplicate-by-nationalId check as the
+// public registerStudent endpoint, but more permissive: invoice number,
+// email, gender, age, and city are all optional. Only first name and
+// phone are required so the admin can record a walk-in quickly.
+exports.adminAddStudent = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const {
+      firstName, lastName, phone, email, nationalId,
+      gender, age, city, invoiceNumber, notes
+    } = req.body || {};
+
+    if (!firstName || !phone) {
+      return res.status(400).json({
+        message: 'First name and phone are required',
+        messageAr: 'الاسم الأول ورقم الهاتف مطلوبان'
+      });
+    }
+    if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      return res.status(400).json({
+        message: 'Invalid email address',
+        messageAr: 'البريد الإلكتروني غير صحيح'
+      });
+    }
+
+    const result = await sequelize.transaction(async (t) => {
+      const workshop = await Workshop.findByPk(id, {
+        transaction: t,
+        lock: t.LOCK.UPDATE
+      });
+
+      if (!workshop) {
+        throw { status: 404, message: 'Workshop not found', messageAr: 'الورشة غير موجودة' };
+      }
+
+      if (nationalId) {
+        const existing = await WorkshopStudent.findOne({
+          where: { workshopId: id, nationalId },
+          transaction: t
+        });
+        if (existing) {
+          throw { status: 400, message: 'This student is already registered for this workshop', messageAr: 'هذا الطالب مسجل بالفعل في هذه الورشة' };
+        }
+      }
+
+      if (workshop.maxParticipants) {
+        const currentCount = await WorkshopStudent.count({
+          where: { workshopId: id },
+          transaction: t
+        });
+        if (currentCount >= workshop.maxParticipants) {
+          throw { status: 400, message: 'This workshop is full', messageAr: 'هذه الورشة ممتلئة' };
+        }
+      }
+
+      const student = await WorkshopStudent.create({
+        workshopId: id,
+        firstName,
+        lastName: lastName || '',
+        phone,
+        email: email || '',
+        nationalId: nationalId || '',
+        gender: gender || '',
+        age: age || '',
+        city: city || '',
+        invoiceNumber: invoiceNumber || '',
+        notes: notes || ''
+      }, { transaction: t });
+
+      return { student, workshop };
+    });
+
+    res.status(201).json({
+      message: 'Student added',
+      messageAr: 'تم إضافة الطالب',
+      student: result.student
+    });
+  } catch (error) {
+    if (error && error.status) {
+      return res.status(error.status).json({ message: error.message, messageAr: error.messageAr });
+    }
+    console.error('Admin add student error:', error);
+    res.status(500).json({ message: 'Server error', messageAr: 'خطأ في الخادم' });
+  }
+};
+
 // Update student (admin)
 exports.updateStudent = async (req, res) => {
   try {

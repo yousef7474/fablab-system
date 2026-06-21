@@ -219,6 +219,10 @@ const AdminDashboard = () => {
   });
   const [editingStudent, setEditingStudent] = useState(null);
   const [editStudentForm, setEditStudentForm] = useState({});
+  const emptyWorkshopStudentForm = { firstName: '', lastName: '', phone: '', email: '', nationalId: '', gender: '', age: '', city: '', invoiceNumber: '', notes: '' };
+  const [showWorkshopAddStudent, setShowWorkshopAddStudent] = useState(false);
+  const [workshopAddStudentForm, setWorkshopAddStudentForm] = useState(emptyWorkshopStudentForm);
+  const [addingWorkshopStudent, setAddingWorkshopStudent] = useState(false);
   useEffect(() => {
     if (viewingWorkshopStudents?.workshopId) sessionStorage.setItem('viewingWorkshopId', viewingWorkshopStudents.workshopId);
     else sessionStorage.removeItem('viewingWorkshopId');
@@ -1184,6 +1188,28 @@ const AdminDashboard = () => {
       const res = await api.get(`/workshops/${viewingWorkshopStudents.workshopId}`);
       setViewingWorkshopStudents(res.data);
     } catch(e) { toast.error(isRTL ? 'خطأ' : 'Error'); }
+  };
+
+  const handleAdminAddWorkshopStudent = async () => {
+    if (!viewingWorkshopStudents?.workshopId) return;
+    if (!workshopAddStudentForm.firstName.trim() || !workshopAddStudentForm.phone.trim()) {
+      toast.error(isRTL ? 'الاسم الأول ورقم الهاتف مطلوبان' : 'First name and phone are required');
+      return;
+    }
+    setAddingWorkshopStudent(true);
+    try {
+      await api.post(`/workshops/${viewingWorkshopStudents.workshopId}/students`, workshopAddStudentForm);
+      toast.success(isRTL ? 'تم إضافة الطالب' : 'Student added');
+      setShowWorkshopAddStudent(false);
+      setWorkshopAddStudentForm(emptyWorkshopStudentForm);
+      const res = await api.get(`/workshops/${viewingWorkshopStudents.workshopId}`);
+      setViewingWorkshopStudents(res.data);
+    } catch (e) {
+      const data = e.response?.data;
+      toast.error((isRTL ? data?.messageAr : data?.message) || (isRTL ? 'خطأ' : 'Error'));
+    } finally {
+      setAddingWorkshopStudent(false);
+    }
   };
 
   const handleSendAttendanceId = async (studentId) => {
@@ -7716,6 +7742,10 @@ const AdminDashboard = () => {
                         }} style={{ padding: '0.4rem 0.8rem', borderRadius: 8, border: 'none', background: '#22c55e', color: 'white', cursor: 'pointer', fontWeight: 600, fontSize: '0.78rem', fontFamily: 'inherit' }}>
                           📥 CSV
                         </button>
+                        <button onClick={() => { setWorkshopAddStudentForm(emptyWorkshopStudentForm); setShowWorkshopAddStudent(true); }}
+                          style={{ padding: '0.4rem 0.8rem', borderRadius: 8, border: 'none', background: '#a78bfa', color: 'white', cursor: 'pointer', fontWeight: 600, fontSize: '0.78rem', fontFamily: 'inherit' }}>
+                          ➕ {isRTL ? 'إضافة طالب' : 'Add Student'}
+                        </button>
                         <button onClick={() => { setWorkshopEmailTarget(null); setShowWorkshopEmailModal(true); }}
                           style={{ padding: '0.4rem 0.8rem', borderRadius: 8, border: 'none', background: '#3b82f6', color: 'white', cursor: 'pointer', fontWeight: 600, fontSize: '0.78rem', fontFamily: 'inherit' }}>
                           ✉ {isRTL ? 'بريد للجميع' : 'Email All'}
@@ -7869,6 +7899,43 @@ const AdminDashboard = () => {
                   );
                 }}
               />
+            )}
+
+            {/* Admin Add Student Modal (workshop) */}
+            {showWorkshopAddStudent && viewingWorkshopStudents && (
+              <div className="modal-overlay" onClick={() => !addingWorkshopStudent && setShowWorkshopAddStudent(false)}>
+                <motion.div className="modal-content" onClick={e => e.stopPropagation()} initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }}
+                  style={{ maxWidth: 540, padding: '2rem' }}>
+                  <h3 style={{ marginBottom: '0.25rem' }}>{isRTL ? 'إضافة طالب يدوياً' : 'Add Student Manually'}</h3>
+                  <p style={{ marginTop: 0, marginBottom: '1rem', fontSize: '0.82rem', color: '#64748b' }}>
+                    {isRTL ? `إلى: ${viewingWorkshopStudents.title}` : `To: ${viewingWorkshopStudents.title}`}
+                  </p>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+                    <div><label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 600, marginBottom: 4 }}>{isRTL ? 'الاسم الأول' : 'First Name'} *</label><input style={{ width: '100%', padding: '0.5rem', borderRadius: 8, border: '1.5px solid #e2e8f0', fontFamily: 'inherit' }} value={workshopAddStudentForm.firstName} onChange={e => setWorkshopAddStudentForm({...workshopAddStudentForm, firstName: e.target.value})} /></div>
+                    <div><label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 600, marginBottom: 4 }}>{isRTL ? 'الاسم الأخير' : 'Last Name'}</label><input style={{ width: '100%', padding: '0.5rem', borderRadius: 8, border: '1.5px solid #e2e8f0', fontFamily: 'inherit' }} value={workshopAddStudentForm.lastName} onChange={e => setWorkshopAddStudentForm({...workshopAddStudentForm, lastName: e.target.value})} /></div>
+                    <div><label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 600, marginBottom: 4 }}>{isRTL ? 'الهاتف' : 'Phone'} *</label><input dir="ltr" style={{ width: '100%', padding: '0.5rem', borderRadius: 8, border: '1.5px solid #e2e8f0', fontFamily: 'inherit' }} value={workshopAddStudentForm.phone} onChange={e => setWorkshopAddStudentForm({...workshopAddStudentForm, phone: e.target.value})} /></div>
+                    <div><label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 600, marginBottom: 4 }}>{isRTL ? 'البريد' : 'Email'}</label><input type="email" dir="ltr" style={{ width: '100%', padding: '0.5rem', borderRadius: 8, border: '1.5px solid #e2e8f0', fontFamily: 'inherit' }} value={workshopAddStudentForm.email} onChange={e => setWorkshopAddStudentForm({...workshopAddStudentForm, email: e.target.value})} /></div>
+                    <div><label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 600, marginBottom: 4 }}>{isRTL ? 'رقم هوية الطالب' : "Student's National ID"}</label><input dir="ltr" style={{ width: '100%', padding: '0.5rem', borderRadius: 8, border: '1.5px solid #e2e8f0', fontFamily: 'inherit' }} value={workshopAddStudentForm.nationalId} onChange={e => setWorkshopAddStudentForm({...workshopAddStudentForm, nationalId: e.target.value})} /></div>
+                    <div><label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 600, marginBottom: 4 }}>{isRTL ? 'الجنس' : 'Gender'}</label>
+                      <select style={{ width: '100%', padding: '0.5rem', borderRadius: 8, border: '1.5px solid #e2e8f0', fontFamily: 'inherit' }} value={workshopAddStudentForm.gender} onChange={e => setWorkshopAddStudentForm({...workshopAddStudentForm, gender: e.target.value})}>
+                        <option value="">—</option>
+                        <option value="Male">{isRTL ? 'ذكر' : 'Male'}</option>
+                        <option value="Female">{isRTL ? 'أنثى' : 'Female'}</option>
+                      </select>
+                    </div>
+                    <div><label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 600, marginBottom: 4 }}>{isRTL ? 'العمر' : 'Age'}</label><input type="number" min="0" style={{ width: '100%', padding: '0.5rem', borderRadius: 8, border: '1.5px solid #e2e8f0', fontFamily: 'inherit' }} value={workshopAddStudentForm.age} onChange={e => setWorkshopAddStudentForm({...workshopAddStudentForm, age: e.target.value})} /></div>
+                    <div><label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 600, marginBottom: 4 }}>{isRTL ? 'المدينة' : 'City'}</label><input style={{ width: '100%', padding: '0.5rem', borderRadius: 8, border: '1.5px solid #e2e8f0', fontFamily: 'inherit' }} value={workshopAddStudentForm.city} onChange={e => setWorkshopAddStudentForm({...workshopAddStudentForm, city: e.target.value})} /></div>
+                    <div style={{ gridColumn: '1 / -1' }}><label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 600, marginBottom: 4 }}>{isRTL ? 'رقم الفاتورة' : 'Invoice Number'}</label><input dir="ltr" style={{ width: '100%', padding: '0.5rem', borderRadius: 8, border: '1.5px solid #e2e8f0', fontFamily: 'inherit' }} value={workshopAddStudentForm.invoiceNumber} onChange={e => setWorkshopAddStudentForm({...workshopAddStudentForm, invoiceNumber: e.target.value})} /></div>
+                    <div style={{ gridColumn: '1 / -1' }}><label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 600, marginBottom: 4 }}>{isRTL ? 'ملاحظات' : 'Notes'}</label><textarea rows={2} style={{ width: '100%', padding: '0.5rem', borderRadius: 8, border: '1.5px solid #e2e8f0', fontFamily: 'inherit', resize: 'vertical' }} value={workshopAddStudentForm.notes} onChange={e => setWorkshopAddStudentForm({...workshopAddStudentForm, notes: e.target.value})} /></div>
+                  </div>
+                  <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end', marginTop: '1.5rem' }}>
+                    <button onClick={() => setShowWorkshopAddStudent(false)} disabled={addingWorkshopStudent} style={{ padding: '0.6rem 1.5rem', borderRadius: 8, border: 'none', background: '#f1f5f9', cursor: 'pointer', fontWeight: 600, fontFamily: 'inherit' }}>{isRTL ? 'إلغاء' : 'Cancel'}</button>
+                    <button onClick={handleAdminAddWorkshopStudent} disabled={addingWorkshopStudent} style={{ padding: '0.6rem 1.5rem', borderRadius: 8, border: 'none', background: '#a78bfa', color: 'white', cursor: addingWorkshopStudent ? 'not-allowed' : 'pointer', fontWeight: 600, fontFamily: 'inherit', opacity: addingWorkshopStudent ? 0.7 : 1 }}>
+                      {addingWorkshopStudent ? (isRTL ? 'جاري الحفظ...' : 'Saving...') : (isRTL ? 'إضافة' : 'Add')}
+                    </button>
+                  </div>
+                </motion.div>
+              </div>
             )}
 
             {/* Edit Student Modal */}

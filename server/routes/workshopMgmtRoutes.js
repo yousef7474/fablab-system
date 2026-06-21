@@ -32,6 +32,7 @@ router.post('/', adminAuth, requireManager, controller.createWorkshop);
 router.get('/:id', adminAuth, controller.getWorkshopById);
 router.put('/:id', adminAuth, requireManager, controller.updateWorkshop);
 router.delete('/:id', adminAuth, requireManager, controller.deleteWorkshop);
+router.post('/:id/students', adminAuth, controller.adminAddStudent);
 router.patch('/students/:id/verify', adminAuth, controller.verifyPayment);
 router.delete('/students/:id', adminAuth, controller.deleteStudent);
 router.put('/students/:id', adminAuth, controller.updateStudent);
