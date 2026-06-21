@@ -1152,11 +1152,11 @@ const WorkerManagement = () => {
 
   return (
     <>
-          <div className="workers-content">
-            <div className="workers-header">
+          <div className="volunteers-content">
+            <div className="volunteers-header">
               <h2>{isRTL ? 'إدارة العمال' : 'Worker Management'}</h2>
-              <div className="workers-actions">
-                <button className="add-worker-btn" onClick={() => setShowWorkerModal(true)}>
+              <div className="volunteers-actions">
+                <button className="add-volunteer-btn" onClick={() => setShowWorkerModal(true)}>
                   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                     <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
                     <circle cx="8.5" cy="7" r="4"/>
@@ -1189,7 +1189,7 @@ const WorkerManagement = () => {
               </div>
             </div>
 
-            <div className="workers-grid">
+            <div className="volunteers-grid">
               {workers.length === 0 ? (
                 <div className="empty-state" style={{ gridColumn: '1 / -1' }}>
                   <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
@@ -1202,17 +1202,17 @@ const WorkerManagement = () => {
                 </div>
               ) : (
                 workers.map(worker => (
-                  <div key={worker.workerId} className="worker-card">
-                    <div className="worker-header">
-                      <div className="worker-avatar">
+                  <div key={worker.workerId} className="volunteer-card">
+                    <div className="volunteer-header">
+                      <div className="volunteer-avatar">
                         {worker.name?.charAt(0) || 'V'}
                       </div>
-                      <div className="worker-info">
+                      <div className="volunteer-info">
                         <h3>{worker.name}</h3>
                         <p>{worker.phone}</p>
                       </div>
                     </div>
-                    <div className="worker-stats">
+                    <div className="volunteer-stats">
                       <div className="stat-item">
                         <div className="stat-value">{worker.totalOpportunities || 0}</div>
                         <div className="stat-label">{isRTL ? 'فرص' : 'Opportunities'}</div>
@@ -1229,7 +1229,7 @@ const WorkerManagement = () => {
                       </div>
                     </div>
                     {worker.opportunities && worker.opportunities.length > 0 && (
-                      <div className="worker-opportunities">
+                      <div className="volunteer-opportunities">
                         <strong style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
                           {isRTL ? 'آخر الفرص:' : 'Recent:'}
                         </strong>
@@ -1241,9 +1241,9 @@ const WorkerManagement = () => {
                         ))}
                       </div>
                     )}
-                    <div className="worker-card-actions">
+                    <div className="volunteer-card-actions">
                       <button
-                        className="view-worker-btn"
+                        className="view-volunteer-btn"
                         onClick={() => handleViewWorker(worker)}
                         title={isRTL ? 'عرض التفاصيل' : 'View Details'}
                       >
@@ -1254,7 +1254,7 @@ const WorkerManagement = () => {
                         {isRTL ? 'عرض' : 'View'}
                       </button>
                       <button
-                        className="export-worker-btn"
+                        className="export-volunteer-btn"
                         onClick={() => handlePrintWorkerIDCard(worker)}
                         title={isRTL ? 'طباعة البطاقة' : 'Print ID Card'}
                       >
@@ -1266,7 +1266,7 @@ const WorkerManagement = () => {
                         {isRTL ? 'بطاقة' : 'Card'}
                       </button>
                       <button
-                        className="export-worker-btn"
+                        className="export-volunteer-btn"
                         onClick={() => handleExportWorkerHistory(worker)}
                         title={isRTL ? 'تصدير السجل' : 'Export History'}
                       >
@@ -1278,7 +1278,7 @@ const WorkerManagement = () => {
                         {isRTL ? 'تصدير' : 'Export'}
                       </button>
                       <button
-                        className="rate-worker-btn"
+                        className="rate-volunteer-btn"
                         onClick={() => handleOpenWorkerRating(worker)}
                         title={isRTL ? 'تقييم العامل' : 'Rate Worker'}
                       >
@@ -1288,7 +1288,7 @@ const WorkerManagement = () => {
                         {isRTL ? 'تقييم' : 'Rate'}
                       </button>
                       <button
-                        className="delete-worker-btn"
+                        className="delete-volunteer-btn"
                         onClick={() => handleDeleteWorker(worker.workerId)}
                         title={isRTL ? 'حذف العامل' : 'Delete Worker'}
                       >
@@ -1311,13 +1311,13 @@ const WorkerManagement = () => {
         {showWorkerModal && (
           <div className="modal-overlay" onClick={() => setShowWorkerModal(false)}>
             <motion.div
-              className="modal-content modern-modal worker-modal"
+              className="modal-content modern-modal volunteer-modal"
               onClick={(e) => e.stopPropagation()}
               initial={{ opacity: 0, scale: 0.9, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               transition={{ type: "spring", damping: 25, stiffness: 300 }}
             >
-              <div className="modern-modal-header worker-header-gradient">
+              <div className="modern-modal-header volunteer-header-gradient">
                 <div className="modal-header-icon">
                   <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                     <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
@@ -1470,7 +1470,7 @@ const WorkerManagement = () => {
                   {isRTL ? 'إلغاء' : 'Cancel'}
                 </button>
                 <button
-                  className="btn-submit worker-submit"
+                  className="btn-submit volunteer-submit"
                   onClick={handleCreateWorker}
                   disabled={workerLoading || !workerForm.name || !workerForm.nationalId || !workerForm.phone}
                 >
@@ -1556,9 +1556,9 @@ const WorkerManagement = () => {
                     </label>
                   </div>
                   {!opportunityForm.selectAllWorkers && (
-                    <div className="worker-checkbox-list modern-list">
+                    <div className="volunteer-checkbox-list modern-list">
                       {workers.map(v => (
-                        <label key={v.workerId} className={`worker-checkbox-item modern ${opportunityForm.workerIds.includes(v.workerId) ? 'selected' : ''}`}>
+                        <label key={v.workerId} className={`volunteer-checkbox-item modern ${opportunityForm.workerIds.includes(v.workerId) ? 'selected' : ''}`}>
                           <input
                             type="checkbox"
                             checked={opportunityForm.workerIds.includes(v.workerId)}
@@ -1574,12 +1574,12 @@ const WorkerManagement = () => {
                               }));
                             }}
                           />
-                          <div className="worker-checkbox-avatar">
+                          <div className="volunteer-checkbox-avatar">
                             {v.name?.charAt(0) || 'V'}
                           </div>
-                          <div className="worker-checkbox-info">
-                            <span className="worker-checkbox-name">{v.name}</span>
-                            <span className="worker-checkbox-id">{v.nationalId}</span>
+                          <div className="volunteer-checkbox-info">
+                            <span className="volunteer-checkbox-name">{v.name}</span>
+                            <span className="volunteer-checkbox-id">{v.nationalId}</span>
                           </div>
                           <div className="checkbox-indicator">
                             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
@@ -1741,7 +1741,7 @@ const WorkerManagement = () => {
         {showWorkerDetailModal && selectedWorker && (
           <div className="modal-overlay" onClick={() => setShowWorkerDetailModal(false)}>
             <motion.div
-              className="modal-content worker-detail-modal"
+              className="modal-content volunteer-detail-modal"
               onClick={(e) => e.stopPropagation()}
               initial={{ opacity: 0, scale: 0.9 }}
               animate={{ opacity: 1, scale: 1 }}
@@ -1750,19 +1750,19 @@ const WorkerManagement = () => {
                 <h2>{isRTL ? 'معلومات العامل' : 'Worker Details'}</h2>
                 <button className="close-btn" onClick={() => setShowWorkerDetailModal(false)}>×</button>
               </div>
-              <div className="modal-body worker-detail-body">
+              <div className="modal-body volunteer-detail-body">
                 {/* Worker Profile Section */}
-                <div className="worker-detail-profile">
-                  <div className="worker-detail-avatar">
+                <div className="volunteer-detail-profile">
+                  <div className="volunteer-detail-avatar">
                     {selectedWorker.nationalIdPhoto ? (
-                      <img src={selectedWorker.nationalIdPhoto} alt="ID" className="worker-id-photo" />
+                      <img src={selectedWorker.nationalIdPhoto} alt="ID" className="volunteer-id-photo" />
                     ) : (
                       <div className="avatar-placeholder">
                         {selectedWorker.name?.charAt(0) || 'V'}
                       </div>
                     )}
                   </div>
-                  <div className="worker-detail-info">
+                  <div className="volunteer-detail-info">
                     <h3>{selectedWorker.name}</h3>
                     <div className="info-row">
                       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -1793,7 +1793,7 @@ const WorkerManagement = () => {
                 </div>
 
                 {/* Stats Section */}
-                <div className="worker-detail-stats">
+                <div className="volunteer-detail-stats">
                   <div className="detail-stat">
                     <div className="detail-stat-value">{selectedWorker.totalOpportunities || 0}</div>
                     <div className="detail-stat-label">{isRTL ? 'فرص عمل' : 'Opportunities'}</div>
@@ -1831,7 +1831,7 @@ const WorkerManagement = () => {
 
                 {/* Ratings History */}
                 {selectedWorker.ratings && selectedWorker.ratings.length > 0 && (
-                  <div className="worker-history-section">
+                  <div className="volunteer-history-section">
                     <h4>{isRTL ? 'سجل التقييمات' : 'Ratings History'}</h4>
                     <div className="ratings-history-list">
                       {selectedWorker.ratings.map(rating => (
@@ -1866,19 +1866,19 @@ const WorkerManagement = () => {
 
                 {/* ID Photo Full View */}
                 {selectedWorker.nationalIdPhoto && (
-                  <div className="worker-id-section">
+                  <div className="volunteer-id-section">
                     <h4>{isRTL ? 'صورة الهوية' : 'National ID Photo'}</h4>
                     <img
                       src={selectedWorker.nationalIdPhoto}
                       alt="National ID"
-                      className="worker-id-full"
+                      className="volunteer-id-full"
                       onClick={() => window.open(selectedWorker.nationalIdPhoto, '_blank')}
                     />
                   </div>
                 )}
 
                 {/* Opportunities History */}
-                <div className="worker-history-section">
+                <div className="volunteer-history-section">
                   <h4>{isRTL ? 'سجل العمل' : 'Workering History'}</h4>
                   {(!selectedWorker.opportunities || selectedWorker.opportunities.length === 0) ? (
                     <p className="no-history">{isRTL ? 'لا توجد فرص عمل مسجلة' : 'No workering history'}</p>
