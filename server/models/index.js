@@ -8,6 +8,9 @@ const Rating = require('./Rating');
 const Volunteer = require('./Volunteer');
 const VolunteerOpportunity = require('./VolunteerOpportunity');
 const VolunteerRating = require('./VolunteerRating');
+const Worker = require('./Worker');
+const WorkerOpportunity = require('./WorkerOpportunity');
+const WorkerRating = require('./WorkerRating');
 const Intern = require('./Intern');
 const InternTraining = require('./InternTraining');
 const InternRating = require('./InternRating');
@@ -79,6 +82,22 @@ VolunteerOpportunity.hasMany(VolunteerRating, { foreignKey: 'opportunityId', as:
 
 VolunteerRating.belongsTo(Admin, { foreignKey: 'createdById', as: 'ratedBy' });
 Admin.hasMany(VolunteerRating, { foreignKey: 'createdById', as: 'givenVolunteerRatings' });
+
+// Worker relationships (parallel to volunteer)
+WorkerOpportunity.belongsTo(Worker, { foreignKey: 'workerId', as: 'worker' });
+Worker.hasMany(WorkerOpportunity, { foreignKey: 'workerId', as: 'opportunities' });
+
+WorkerOpportunity.belongsTo(Admin, { foreignKey: 'createdById', as: 'creator' });
+Admin.hasMany(WorkerOpportunity, { foreignKey: 'createdById', as: 'createdWorkerOpportunities' });
+
+WorkerRating.belongsTo(Worker, { foreignKey: 'workerId', as: 'worker' });
+Worker.hasMany(WorkerRating, { foreignKey: 'workerId', as: 'ratings' });
+
+WorkerRating.belongsTo(WorkerOpportunity, { foreignKey: 'opportunityId', as: 'opportunity' });
+WorkerOpportunity.hasMany(WorkerRating, { foreignKey: 'opportunityId', as: 'ratings' });
+
+WorkerRating.belongsTo(Admin, { foreignKey: 'createdById', as: 'ratedBy' });
+Admin.hasMany(WorkerRating, { foreignKey: 'createdById', as: 'givenWorkerRatings' });
 
 // Intern relationships
 InternTraining.belongsTo(Intern, { foreignKey: 'internId', as: 'intern' });
@@ -340,6 +359,9 @@ module.exports = {
   Volunteer,
   VolunteerOpportunity,
   VolunteerRating,
+  Worker,
+  WorkerOpportunity,
+  WorkerRating,
   Intern,
   InternTraining,
   InternRating,
