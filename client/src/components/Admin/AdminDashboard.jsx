@@ -8081,11 +8081,23 @@ const AdminDashboard = () => {
               </div>
             )}
 
-            {/* Volunteers Tab */}
-            {activeTab === 'volunteers' && <VolunteerManagement />}
+            {/* Volunteers Tab — wrapped with data-page="manager" because the
+                volunteer/opportunity modal CSS (.modern-modal, .volunteer-modal,
+                .opportunity-modal, etc. in Manager.css) is scoped under that
+                attribute. Without the wrapper, none of those rules apply and
+                the modals render unstyled. Same reason for the Workers tab. */}
+            {activeTab === 'volunteers' && (
+              <div data-page="manager">
+                <VolunteerManagement />
+              </div>
+            )}
 
             {/* Workers Tab */}
-            {activeTab === 'workers' && <WorkerManagement />}
+            {activeTab === 'workers' && (
+              <div data-page="manager">
+                <WorkerManagement />
+              </div>
+            )}
 
             {/* Settings Tab */}
             {activeTab === 'settings' && (
