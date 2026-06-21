@@ -60,6 +60,12 @@ const ReceiptModal = ({ open, onClose, recipient }) => {
       } catch { return safe(form.receiptDate); }
     })();
 
+    // Page 1 layout: the PNG carries only the official letterhead frame
+    // (logo/header/footer decoration) — the docx had the labels and the
+    // signature block as real text, so we re-render that structured
+    // content on top of the background image. Layout is a 2-column
+    // label/value table for the 6 fields, then a notes box, then a
+    // 3-column signature row at the bottom matching the template.
     const html = `<!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
@@ -68,7 +74,7 @@ const ReceiptModal = ({ open, onClose, recipient }) => {
 <style>
   @page { size: A4; margin: 0; }
   * { box-sizing: border-box; }
-  html, body { margin: 0; padding: 0; font-family: 'Tajawal', 'Segoe UI', Tahoma, sans-serif; }
+  html, body { margin: 0; padding: 0; font-family: 'Tajawal', 'Segoe UI', Tahoma, sans-serif; color: #1a1a1a; }
 
   .page {
     position: relative;
@@ -79,28 +85,116 @@ const ReceiptModal = ({ open, onClose, recipient }) => {
   }
   .page:last-child { page-break-after: auto; }
 
-  /* Page 1 — the official letterhead with the form values overlaid */
+  /* Page 1 — letterhead background; structured content sits in the
+     middle band so it doesn't overlap the printed header/footer. */
   .page.receipt {
     background-image: url('${window.location.origin}/receipt-bg.png');
     background-size: 100% 100%;
     background-repeat: no-repeat;
   }
-  .field {
+  .receipt-content {
     position: absolute;
-    font-size: 14pt;
-    font-weight: 600;
-    color: #111;
-    line-height: 1.4;
-    white-space: nowrap;
+    top: 18%;
+    bottom: 12%;
+    left: 14mm;
+    right: 14mm;
+    display: flex;
+    flex-direction: column;
   }
-  /* Coordinates expressed as % of the A4 page so the layout survives
-     print-scale changes. Tune these if a value lands off the line. */
-  .field.recipient   { top: 28.5%; right: 38%; }
-  .field.nationalId  { top: 33.2%; right: 38%; }
-  .field.amount      { top: 38.0%; right: 38%; }
-  .field.purpose     { top: 42.8%; right: 38%; max-width: 50%; white-space: normal; }
-  .field.date        { top: 47.6%; right: 38%; direction: ltr; }
-  .field.phone       { top: 52.3%; right: 38%; direction: ltr; }
+  .receipt-title {
+    text-align: center;
+    font-size: 26pt;
+    font-weight: 800;
+    letter-spacing: 4px;
+    margin: 0 0 8mm 0;
+    color: #0f172a;
+  }
+  .receipt-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 6mm;
+  }
+  .receipt-table th, .receipt-table td {
+    border: 1.5px solid #475569;
+    padding: 3.5mm 4mm;
+    font-size: 13pt;
+    vertical-align: middle;
+  }
+  .receipt-table th {
+    background: rgba(241, 245, 249, 0.85);
+    width: 38%;
+    font-weight: 700;
+    text-align: right;
+    color: #0f172a;
+  }
+  .receipt-table td {
+    background: rgba(255, 255, 255, 0.7);
+    font-weight: 600;
+    color: #111827;
+  }
+  .receipt-table td.amount-cell {
+    font-size: 14pt;
+    letter-spacing: 1px;
+  }
+  .signature-box {
+    border: 1.5px solid #475569;
+    padding: 4mm;
+    margin-bottom: 6mm;
+    background: rgba(255, 255, 255, 0.7);
+  }
+  .signature-box h4 {
+    margin: 0 0 3mm 0;
+    font-size: 13pt;
+    color: #0f172a;
+    font-weight: 700;
+  }
+  .signature-box .sig-row {
+    display: flex;
+    gap: 8mm;
+    font-size: 12pt;
+  }
+  .signature-box .sig-row > div { flex: 1; }
+  .signature-box .sig-line {
+    border-bottom: 1px solid #1f2937;
+    height: 7mm;
+    margin-top: 2mm;
+  }
+  .notes-box {
+    border: 1.5px solid #475569;
+    padding: 4mm;
+    margin-bottom: 8mm;
+    background: rgba(255, 255, 255, 0.7);
+    min-height: 22mm;
+  }
+  .notes-box h4 {
+    margin: 0 0 3mm 0;
+    font-size: 13pt;
+    color: #0f172a;
+    font-weight: 700;
+  }
+  .signers-row {
+    margin-top: auto;
+    display: flex;
+    gap: 4mm;
+    justify-content: space-between;
+    padding-top: 4mm;
+    border-top: 1.5px dashed #475569;
+  }
+  .signer {
+    flex: 1;
+    text-align: center;
+    font-size: 11pt;
+  }
+  .signer .signer-title {
+    color: #475569;
+    font-weight: 600;
+    margin-bottom: 2mm;
+  }
+  .signer .signer-name {
+    font-weight: 700;
+    color: #0f172a;
+    font-size: 12pt;
+  }
 
   /* Page 2 — the National ID photo on its own page */
   .page.idphoto {
@@ -145,13 +239,47 @@ const ReceiptModal = ({ open, onClose, recipient }) => {
 </head>
 <body>
   <div class="page receipt">
-    <div class="field recipient">${safe(form.recipientName)}</div>
-    <div class="field nationalId">${safe(form.nationalId)}</div>
-    <div class="field amount">${safe(form.amount)}</div>
-    <div class="field purpose">${safe(form.purpose)}</div>
-    <div class="field date">${dateStr}</div>
-    <div class="field phone">${safe(form.recipientPhone)}</div>
+    <div class="receipt-content">
+      <div class="receipt-title">سند استلام</div>
+
+      <table class="receipt-table">
+        <tr><th>المستلم</th><td>${safe(form.recipientName) || '&nbsp;'}</td></tr>
+        <tr><th>رقم الهوية</th><td dir="ltr" style="text-align:right">${safe(form.nationalId) || '&nbsp;'}</td></tr>
+        <tr><th>المبلغ</th><td class="amount-cell">${safe(form.amount) ? safe(form.amount) + ' ريال' : '&nbsp;'}</td></tr>
+        <tr><th>وذلك عن</th><td>${safe(form.purpose) || '&nbsp;'}</td></tr>
+        <tr><th>تاريخ الاستلام</th><td>${dateStr || '&nbsp;'}</td></tr>
+        <tr><th>جوال المستلم</th><td dir="ltr" style="text-align:right">${safe(form.recipientPhone) || '&nbsp;'}</td></tr>
+      </table>
+
+      <div class="signature-box">
+        <h4>التوقيع بالاستلام</h4>
+        <div class="sig-row">
+          <div>الاسم<div class="sig-line"></div></div>
+          <div>التوقيع<div class="sig-line"></div></div>
+        </div>
+      </div>
+
+      <div class="notes-box">
+        <h4>ملاحظات</h4>
+      </div>
+
+      <div class="signers-row">
+        <div class="signer">
+          <div class="signer-title">المسؤول التنفيذي للفاب لاب</div>
+          <div class="signer-name">أ. زكي اللويم</div>
+        </div>
+        <div class="signer">
+          <div class="signer-title">الشؤون المالية والإدارية</div>
+          <div class="signer-name">بيان سلطان السميح</div>
+        </div>
+        <div class="signer">
+          <div class="signer-title">&nbsp;</div>
+          <div class="signer-name">إبراهيم صالح الرميح</div>
+        </div>
+      </div>
+    </div>
   </div>
+
   <div class="page idphoto">
     <h2>صورة الهوية</h2>
     <div class="photo-wrap">
