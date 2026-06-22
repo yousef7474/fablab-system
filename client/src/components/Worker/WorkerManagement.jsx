@@ -219,6 +219,25 @@ const WorkerManagement = () => {
     }
   };
 
+  const handleDeleteOpportunity = async (opportunityId) => {
+    if (!window.confirm(isRTL ? 'حذف فرصة العمل وسجل الحضور الخاص بها نهائياً؟' : 'Delete this opportunity and its attendance log permanently?')) {
+      return;
+    }
+    try {
+      await api.delete(`/workers/opportunities/${opportunityId}`);
+      toast.success(isRTL ? 'تم حذف فرصة العمل' : 'Opportunity deleted');
+      fetchWorkers();
+      // Refresh the open detail view so the row disappears immediately.
+      if (selectedWorker) {
+        const fresh = await api.get(`/workers/${selectedWorker.workerId}`);
+        if (fresh.data) setSelectedWorker(fresh.data);
+      }
+    } catch (err) {
+      console.error('Error deleting opportunity:', err);
+      toast.error(isRTL ? 'خطأ في حذف فرصة العمل' : 'Error deleting opportunity');
+    }
+  };
+
   const handleDeleteWorker = async (workerId, forceDelete = false) => {
     const confirmMessage = forceDelete
       ? (isRTL ? 'هل أنت متأكد؟ سيتم حذف العامل وجميع سجلات العمل الخاصة به نهائياً!' : 'Are you sure? This will permanently delete the worker and ALL their worker records!')
@@ -1963,6 +1982,23 @@ const WorkerManagement = () => {
                                 <polyline points="8.21 13.89 7 23 12 20 17 23 15.79 13.88"/>
                               </svg>
                               {isRTL ? 'شهادة' : 'Certificate'}
+                            </button>
+                            <button
+                              onClick={() => handleDeleteOpportunity(opp.opportunityId)}
+                              title={isRTL ? 'حذف فرصة العمل' : 'Delete Opportunity'}
+                              style={{
+                                background: '#fee2e2', color: '#991b1b', border: 'none',
+                                padding: '6px 12px', borderRadius: '6px', cursor: 'pointer',
+                                display: 'flex', alignItems: 'center', gap: '4px',
+                                fontSize: '12px', fontWeight: 700, fontFamily: 'inherit'
+                              }}
+                            >
+                              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                <polyline points="3 6 5 6 21 6"/>
+                                <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
+                                <path d="M10 11v6M14 11v6"/>
+                              </svg>
+                              {isRTL ? 'حذف' : 'Delete'}
                             </button>
                           </div>
                         </div>
