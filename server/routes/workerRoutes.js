@@ -55,4 +55,10 @@ router.post('/ratings', requireManager, workerController.createWorkerRating);
 // Delete worker rating (manager or admin only)
 router.delete('/ratings/:id', requireManager, workerController.deleteWorkerRating);
 
+// ============== WORKER RECEIPTS ==============
+
+router.get('/:id/receipts', workerController.listWorkerReceipts);
+router.post('/:id/receipts', requireManager, workerController.createWorkerReceipt);
+router.delete('/receipts/:id', requireManager, workerController.deleteWorkerReceipt);
+
 module.exports = router;

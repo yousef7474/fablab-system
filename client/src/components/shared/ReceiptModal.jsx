@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import api from '../../config/api';
 
 // Receipt voucher (سند استلام) modal.
 //
@@ -13,7 +14,10 @@ import React, { useState, useEffect } from 'react';
 // so the layout survives a print-scale resize. If a value lands in the
 // wrong spot just tweak the corresponding `top: 'XX%'` below.
 
-const ReceiptModal = ({ open, onClose, recipient }) => {
+// `personType` ('volunteer' | 'worker') decides which archive endpoint
+// receives the receipt snapshot on print, so the same person's receipts
+// can be listed back later from the detail view.
+const ReceiptModal = ({ open, onClose, recipient, personType = 'volunteer', onSaved }) => {
   const [form, setForm] = useState({
     recipientName: '',
     nationalId: '',
@@ -40,11 +44,32 @@ const ReceiptModal = ({ open, onClose, recipient }) => {
 
   const handleChange = (field, value) => setForm(prev => ({ ...prev, [field]: value }));
 
-  const handlePrint = () => {
+  const handlePrint = async () => {
     if (!form.recipientName.trim() || !form.amount.trim()) {
       alert('يرجى تعبئة اسم المستلم والمبلغ');
       return;
     }
+
+    // Archive the receipt snapshot under the person before printing.
+    // The print itself doesn't depend on the network call succeeding, so
+    // we just surface a non-blocking message if the save fails.
+    const personId = recipient?.volunteerId || recipient?.workerId;
+    if (personId) {
+      try {
+        await api.post(`/${personType === 'worker' ? 'workers' : 'volunteers'}/${personId}/receipts`, {
+          recipientName: form.recipientName,
+          nationalId: form.nationalId,
+          amount: form.amount,
+          purpose: form.purpose,
+          receiptDate: form.receiptDate,
+          recipientPhone: form.recipientPhone
+        });
+        if (typeof onSaved === 'function') onSaved();
+      } catch (err) {
+        console.warn('Failed to archive receipt (printing anyway):', err);
+      }
+    }
+
     const win = window.open('', '_blank', 'width=900,height=1200');
     if (!win) {
       alert('يرجى السماح بالنوافذ المنبثقة لطباعة السند');

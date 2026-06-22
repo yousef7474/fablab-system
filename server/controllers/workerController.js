@@ -1,4 +1,4 @@
-const { Worker, WorkerOpportunity, WorkerRating, Admin } = require('../models');
+const { Worker, WorkerOpportunity, WorkerRating, WorkerReceipt, Admin } = require('../models');
 const { Op } = require('sequelize');
 
 // ============== WORKER PROFILE MANAGEMENT ==============
@@ -645,6 +645,60 @@ exports.deleteWorkerRating = async (req, res) => {
   } catch (error) {
     console.error('Error deleting worker rating:', error);
     res.status(500).json({ message: 'Error deleting rating', error: error.message });
+  }
+};
+
+// ============== WORKER RECEIPTS (سند استلام) ==============
+
+exports.listWorkerReceipts = async (req, res) => {
+  try {
+    const receipts = await WorkerReceipt.findAll({
+      where: { workerId: req.params.id },
+      include: [{ model: Admin, as: 'creator', attributes: ['adminId', 'fullName'] }],
+      order: [['receiptDate', 'DESC'], ['createdAt', 'DESC']]
+    });
+    res.json(receipts);
+  } catch (err) {
+    console.error('Error listing worker receipts:', err);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+exports.createWorkerReceipt = async (req, res) => {
+  try {
+    const { recipientName, nationalId, amount, purpose, receiptDate, recipientPhone } = req.body || {};
+    if (!recipientName || !amount || !receiptDate) {
+      return res.status(400).json({ message: 'recipientName, amount and receiptDate are required' });
+    }
+    const worker = await Worker.findByPk(req.params.id);
+    if (!worker) return res.status(404).json({ message: 'Worker not found' });
+
+    const receipt = await WorkerReceipt.create({
+      workerId: worker.workerId,
+      recipientName,
+      nationalId: nationalId || null,
+      amount,
+      purpose: purpose || null,
+      receiptDate,
+      recipientPhone: recipientPhone || null,
+      createdById: req.admin?.adminId || null
+    });
+    res.status(201).json(receipt);
+  } catch (err) {
+    console.error('Error creating worker receipt:', err);
+    res.status(500).json({ message: 'Server error', detail: err.message });
+  }
+};
+
+exports.deleteWorkerReceipt = async (req, res) => {
+  try {
+    const receipt = await WorkerReceipt.findByPk(req.params.id);
+    if (!receipt) return res.status(404).json({ message: 'Receipt not found' });
+    await receipt.destroy();
+    res.json({ message: 'Receipt deleted' });
+  } catch (err) {
+    console.error('Error deleting worker receipt:', err);
+    res.status(500).json({ message: 'Server error' });
   }
 };
 

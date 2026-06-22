@@ -4,6 +4,7 @@ import { motion } from 'framer-motion';
 import { toast } from 'react-toastify';
 import api from '../../config/api';
 import ReceiptModal from '../shared/ReceiptModal';
+import ReceiptArchiveModal from '../shared/ReceiptArchiveModal';
 
 const VolunteerManagement = () => {
   const { i18n } = useTranslation();
@@ -16,6 +17,7 @@ const VolunteerManagement = () => {
   const [showVolunteerDetailModal, setShowVolunteerDetailModal] = useState(false);
   const [showVolunteerRatingModal, setShowVolunteerRatingModal] = useState(false);
   const [receiptTarget, setReceiptTarget] = useState(null);
+  const [archiveTarget, setArchiveTarget] = useState(null);
   const [selectedOpportunity, setSelectedOpportunity] = useState(null);
   const [selectedVolunteer, setSelectedVolunteer] = useState(null);
   const [volunteerLoading, setVolunteerLoading] = useState(false);
@@ -1303,6 +1305,18 @@ const VolunteerManagement = () => {
                         {isRTL ? 'سند' : 'Receipt'}
                       </button>
                       <button
+                        className="export-volunteer-btn"
+                        onClick={() => setArchiveTarget(volunteer)}
+                        title="سجل السندات"
+                      >
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                          <path d="M20 7l-9 9-5-5"/>
+                          <path d="M4 4h16v4H4z"/>
+                          <path d="M4 12h16v8H4z"/>
+                        </svg>
+                        {isRTL ? 'السجل' : 'Archive'}
+                      </button>
+                      <button
                         className="delete-volunteer-btn"
                         onClick={() => handleDeleteVolunteer(volunteer.volunteerId)}
                         title={isRTL ? 'حذف المتطوع' : 'Delete Volunteer'}
@@ -2248,6 +2262,13 @@ const VolunteerManagement = () => {
           open={!!receiptTarget}
           onClose={() => setReceiptTarget(null)}
           recipient={receiptTarget}
+          personType="volunteer"
+        />
+        <ReceiptArchiveModal
+          open={!!archiveTarget}
+          onClose={() => setArchiveTarget(null)}
+          recipient={archiveTarget}
+          personType="volunteer"
         />
     </>
   );

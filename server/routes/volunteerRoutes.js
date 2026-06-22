@@ -55,4 +55,10 @@ router.post('/ratings', requireManager, volunteerController.createVolunteerRatin
 // Delete volunteer rating (manager or admin only)
 router.delete('/ratings/:id', requireManager, volunteerController.deleteVolunteerRating);
 
+// ============== VOLUNTEER RECEIPTS ==============
+
+router.get('/:id/receipts', volunteerController.listVolunteerReceipts);
+router.post('/:id/receipts', requireManager, volunteerController.createVolunteerReceipt);
+router.delete('/receipts/:id', requireManager, volunteerController.deleteVolunteerReceipt);
+
 module.exports = router;

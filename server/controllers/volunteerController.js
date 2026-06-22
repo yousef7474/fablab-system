@@ -1,4 +1,4 @@
-const { Volunteer, VolunteerOpportunity, VolunteerRating, Admin } = require('../models');
+const { Volunteer, VolunteerOpportunity, VolunteerRating, VolunteerReceipt, Admin } = require('../models');
 const { Op } = require('sequelize');
 
 // ============== VOLUNTEER PROFILE MANAGEMENT ==============
@@ -645,6 +645,60 @@ exports.deleteVolunteerRating = async (req, res) => {
   } catch (error) {
     console.error('Error deleting volunteer rating:', error);
     res.status(500).json({ message: 'Error deleting rating', error: error.message });
+  }
+};
+
+// ============== VOLUNTEER RECEIPTS (سند استلام) ==============
+
+exports.listVolunteerReceipts = async (req, res) => {
+  try {
+    const receipts = await VolunteerReceipt.findAll({
+      where: { volunteerId: req.params.id },
+      include: [{ model: Admin, as: 'creator', attributes: ['adminId', 'fullName'] }],
+      order: [['receiptDate', 'DESC'], ['createdAt', 'DESC']]
+    });
+    res.json(receipts);
+  } catch (err) {
+    console.error('Error listing volunteer receipts:', err);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+exports.createVolunteerReceipt = async (req, res) => {
+  try {
+    const { recipientName, nationalId, amount, purpose, receiptDate, recipientPhone } = req.body || {};
+    if (!recipientName || !amount || !receiptDate) {
+      return res.status(400).json({ message: 'recipientName, amount and receiptDate are required' });
+    }
+    const volunteer = await Volunteer.findByPk(req.params.id);
+    if (!volunteer) return res.status(404).json({ message: 'Volunteer not found' });
+
+    const receipt = await VolunteerReceipt.create({
+      volunteerId: volunteer.volunteerId,
+      recipientName,
+      nationalId: nationalId || null,
+      amount,
+      purpose: purpose || null,
+      receiptDate,
+      recipientPhone: recipientPhone || null,
+      createdById: req.admin?.adminId || null
+    });
+    res.status(201).json(receipt);
+  } catch (err) {
+    console.error('Error creating volunteer receipt:', err);
+    res.status(500).json({ message: 'Server error', detail: err.message });
+  }
+};
+
+exports.deleteVolunteerReceipt = async (req, res) => {
+  try {
+    const receipt = await VolunteerReceipt.findByPk(req.params.id);
+    if (!receipt) return res.status(404).json({ message: 'Receipt not found' });
+    await receipt.destroy();
+    res.json({ message: 'Receipt deleted' });
+  } catch (err) {
+    console.error('Error deleting volunteer receipt:', err);
+    res.status(500).json({ message: 'Server error' });
   }
 };
 
