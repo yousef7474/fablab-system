@@ -34,11 +34,13 @@ const buildDateRange = (start, end) => {
   return out;
 };
 
-const AttendanceLog = ({ opportunity, isRTL, onSaved, hourlyRate = 0, dayRate = 0, apiPath }) => {
+const AttendanceLog = ({ opportunity, isRTL, onSaved, hourlyRate = 0, dayRate = 0, hideHours = false, apiPath }) => {
   const isDailyMode = dayRate > 0;
   const isHourlyMode = !isDailyMode && hourlyRate > 0;
   const showCost = isDailyMode || isHourlyMode;
-  const showHoursColumn = !isDailyMode; // hide hours input for flat-day-rate mode
+  // Hide hours when caller forces it (e.g. student attendance) or when
+  // we're in flat day-rate mode where hours are irrelevant.
+  const showHoursColumn = !isDailyMode && !hideHours;
 
   const dates = useMemo(
     () => buildDateRange(opportunity.startDate, opportunity.endDate),

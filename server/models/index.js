@@ -14,6 +14,9 @@ const WorkerRating = require('./WorkerRating');
 const VolunteerReceipt = require('./VolunteerReceipt');
 const WorkerReceipt = require('./WorkerReceipt');
 const SummerProgram = require('./SummerProgram');
+const SummerTeacher = require('./SummerTeacher');
+const SummerTeacherRating = require('./SummerTeacherRating');
+const SummerStudent = require('./SummerStudent');
 const Intern = require('./Intern');
 const InternTraining = require('./InternTraining');
 const InternRating = require('./InternRating');
@@ -110,6 +113,17 @@ VolunteerReceipt.belongsTo(Admin, { foreignKey: 'createdById', as: 'creator', co
 WorkerReceipt.belongsTo(Worker, { foreignKey: 'workerId', as: 'worker' });
 Worker.hasMany(WorkerReceipt, { foreignKey: 'workerId', as: 'receipts' });
 WorkerReceipt.belongsTo(Admin, { foreignKey: 'createdById', as: 'creator', constraints: false });
+
+// Summer FabLab relationships
+SummerProgram.belongsTo(SummerTeacher, { foreignKey: 'teacherId', as: 'teacher', constraints: false });
+SummerTeacher.hasMany(SummerProgram,   { foreignKey: 'teacherId', as: 'programs', constraints: false });
+
+SummerTeacherRating.belongsTo(SummerTeacher, { foreignKey: 'teacherId', as: 'teacher', constraints: false });
+SummerTeacher.hasMany(SummerTeacherRating,   { foreignKey: 'teacherId', as: 'ratings', constraints: false });
+SummerTeacherRating.belongsTo(SummerProgram, { foreignKey: 'programId', as: 'program', constraints: false });
+
+SummerStudent.belongsTo(SummerProgram, { foreignKey: 'programId', as: 'program', constraints: false });
+SummerProgram.hasMany(SummerStudent,   { foreignKey: 'programId', as: 'students', constraints: false });
 
 // Intern relationships
 InternTraining.belongsTo(Intern, { foreignKey: 'internId', as: 'intern' });
@@ -377,6 +391,9 @@ module.exports = {
   VolunteerReceipt,
   WorkerReceipt,
   SummerProgram,
+  SummerTeacher,
+  SummerTeacherRating,
+  SummerStudent,
   Intern,
   InternTraining,
   InternRating,

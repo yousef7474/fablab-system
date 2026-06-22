@@ -18,7 +18,12 @@ const SummerProgram = sequelize.define('SummerProgram', {
   teacherName: {
     type: DataTypes.STRING,
     allowNull: true,
-    comment: 'Engineer/teacher responsible. Free text for now.'
+    comment: 'Legacy free-text teacher field (kept for back-compat).'
+  },
+  teacherId: {
+    type: DataTypes.UUID,
+    allowNull: true,
+    comment: 'FK to SummerTeacher when a teacher record is selected.'
   },
   studentCount: {
     type: DataTypes.INTEGER,

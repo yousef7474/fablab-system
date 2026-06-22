@@ -248,6 +248,85 @@
   margin-top: 1.5rem;
 }
 
+.summer-btn-rate {
+  padding: 0.45rem 1rem;
+  background: #fef3c7;
+  color: #854d0e;
+  border: none;
+  border-radius: 8px;
+  font-weight: 700;
+  font-size: 0.85rem;
+  cursor: pointer;
+  font-family: inherit;
+}
+.summer-btn-rate:hover { background: #fde68a; }
+
+.teacher-card {
+  background: linear-gradient(135deg, #eef2ff 0%, #ffffff 60%);
+  border-color: #c7d2fe;
+}
+
+.teacher-score {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-top: 6px;
+}
+.teacher-score-pill {
+  font-size: 0.78rem;
+  padding: 2px 10px;
+  border-radius: 999px;
+  font-weight: 700;
+}
+.teacher-score-pill.awards { background: #dcfce7; color: #166534; }
+.teacher-score-pill.deductions { background: #fee2e2; color: #991b1b; }
+.teacher-score-pill.net.positive { background: #dbeafe; color: #1d4ed8; }
+.teacher-score-pill.net.negative { background: #fee2e2; color: #991b1b; }
+
+.teacher-ratings-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 6px;
+  max-height: 140px;
+  overflow-y: auto;
+}
+.teacher-rating-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 4px 8px;
+  border-radius: 6px;
+  font-size: 0.82rem;
+}
+.teacher-rating-row.award { background: #f0fdf4; color: #166534; }
+.teacher-rating-row.deduction { background: #fef2f2; color: #991b1b; }
+
+.summer-student-row {
+  background: white;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+}
+.summer-student-row-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.85rem 1rem;
+  flex-wrap: wrap;
+}
+.summer-student-row-name {
+  flex: 1 1 200px;
+  min-width: 0;
+  color: #0f172a;
+}
+.summer-student-row-meta {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
 @media (max-width: 540px) {
   .summer-form-grid { grid-template-columns: 1fr; }
   .summer-subnav-btn { flex: 1 1 calc(50% - 0.5rem); }

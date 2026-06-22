@@ -1,9 +1,13 @@
-const { SummerProgram, Admin } = require('../models');
+const { SummerProgram, SummerTeacher, SummerStudent, Admin } = require('../models');
 
 exports.list = async (req, res) => {
   try {
     const programs = await SummerProgram.findAll({
       where: { isActive: true },
+      include: [
+        { model: SummerTeacher, as: 'teacher', attributes: ['teacherId', 'name', 'fablabSection'] },
+        { model: SummerStudent, as: 'students', where: { isActive: true }, required: false, attributes: ['studentId'] }
+      ],
       order: [['startDate', 'ASC']]
     });
     res.json(programs);
@@ -16,7 +20,7 @@ exports.list = async (req, res) => {
 exports.create = async (req, res) => {
   try {
     const {
-      name, teacherName, studentCount, startDate, endDate,
+      name, teacherName, teacherId, studentCount, startDate, endDate,
       startTime, endTime, fablabSection, sectionVolunteers, notes
     } = req.body || {};
 
@@ -36,6 +40,7 @@ exports.create = async (req, res) => {
     const program = await SummerProgram.create({
       name,
       teacherName: teacherName || null,
+      teacherId: teacherId || null,
       studentCount: studentCount != null ? Number(studentCount) : 0,
       startDate,
       endDate,
@@ -60,7 +65,7 @@ exports.update = async (req, res) => {
     if (!program) return res.status(404).json({ message: 'Program not found' });
 
     const fields = [
-      'name', 'teacherName', 'studentCount', 'startDate', 'endDate',
+      'name', 'teacherName', 'teacherId', 'studentCount', 'startDate', 'endDate',
       'startTime', 'endTime', 'fablabSection', 'sectionVolunteers', 'notes'
     ];
     const patch = {};
