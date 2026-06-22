@@ -184,11 +184,20 @@ const ReceiptModal = ({ open, onClose, recipient }) => {
     flex: 1;
     text-align: center;
     font-size: 11pt;
+    display: flex;
+    flex-direction: column;
   }
   .signer .signer-title {
     color: #475569;
     font-weight: 600;
     margin-bottom: 2mm;
+  }
+  /* Empty space the user can sign in by hand, then the printed name
+     sits directly below the line. */
+  .signer .signature-space {
+    height: 18mm;
+    border-bottom: 1.5px solid #1f2937;
+    margin: 0 6mm 2mm 6mm;
   }
   .signer .signer-name {
     font-weight: 700;
@@ -196,40 +205,52 @@ const ReceiptModal = ({ open, onClose, recipient }) => {
     font-size: 12pt;
   }
 
-  /* Page 2 — the National ID photo on its own page */
+  /* Page 2 — same letterhead background as page 1 for visual consistency. */
   .page.idphoto {
-    background: #fff;
+    background-image: url('${window.location.origin}/receipt-bg.png');
+    background-size: 100% 100%;
+    background-repeat: no-repeat;
+  }
+  .idphoto-content {
+    position: absolute;
+    top: 18%;
+    bottom: 12%;
+    left: 14mm;
+    right: 14mm;
     display: flex;
-    align-items: center;
-    justify-content: center;
     flex-direction: column;
-    padding: 20mm;
+    align-items: center;
   }
-  .page.idphoto h2 {
+  .idphoto-content h2 {
     font-size: 22pt;
-    margin: 0 0 12mm 0;
-    color: #111;
+    margin: 0 0 10mm 0;
+    color: #0f172a;
+    font-weight: 800;
+    letter-spacing: 2px;
   }
-  .page.idphoto .photo-wrap {
+  .idphoto-content .photo-wrap {
     flex: 1;
     width: 100%;
     display: flex;
     align-items: center;
     justify-content: center;
   }
-  .page.idphoto img {
+  .idphoto-content img {
     max-width: 100%;
     max-height: 100%;
     object-fit: contain;
     box-shadow: 0 2px 18px rgba(0,0,0,0.18);
     border-radius: 6px;
+    background: rgba(255, 255, 255, 0.9);
+    padding: 6mm;
   }
-  .page.idphoto .nophoto {
+  .idphoto-content .nophoto {
     color: #888;
     font-size: 14pt;
     border: 2px dashed #d4d4d8;
     padding: 30mm;
     border-radius: 12px;
+    background: rgba(255, 255, 255, 0.85);
   }
 
   @media print {
@@ -266,14 +287,17 @@ const ReceiptModal = ({ open, onClose, recipient }) => {
       <div class="signers-row">
         <div class="signer">
           <div class="signer-title">المسؤول التنفيذي للفاب لاب</div>
+          <div class="signature-space"></div>
           <div class="signer-name">أ. زكي اللويم</div>
         </div>
         <div class="signer">
           <div class="signer-title">الشؤون المالية والإدارية</div>
+          <div class="signature-space"></div>
           <div class="signer-name">بيان سلطان السميح</div>
         </div>
         <div class="signer">
           <div class="signer-title">&nbsp;</div>
+          <div class="signature-space"></div>
           <div class="signer-name">إبراهيم صالح الرميح</div>
         </div>
       </div>
@@ -281,11 +305,13 @@ const ReceiptModal = ({ open, onClose, recipient }) => {
   </div>
 
   <div class="page idphoto">
-    <h2>صورة الهوية</h2>
-    <div class="photo-wrap">
-      ${photo
-        ? `<img src="${photo}" alt="National ID" />`
-        : '<div class="nophoto">لا توجد صورة هوية محفوظة لهذا الشخص</div>'}
+    <div class="idphoto-content">
+      <h2>صورة الهوية</h2>
+      <div class="photo-wrap">
+        ${photo
+          ? `<img src="${photo}" alt="National ID" />`
+          : '<div class="nophoto">لا توجد صورة هوية محفوظة لهذا الشخص</div>'}
+      </div>
     </div>
   </div>
   <script>
