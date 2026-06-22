@@ -30,7 +30,7 @@ exports.getAllWorkers = async (req, res) => {
         {
           model: WorkerOpportunity,
           as: 'opportunities',
-          attributes: ['opportunityId', 'title', 'startDate', 'endDate', 'totalHours', 'hoursAdjustment', 'rating', 'status']
+          attributes: ['opportunityId', 'title', 'description', 'startDate', 'endDate', 'totalHours', 'hoursAdjustment', 'attendanceDays', 'rating', 'status']
         },
         {
           model: WorkerRating,
@@ -301,7 +301,10 @@ exports.createOpportunity = async (req, res) => {
     const start = new Date(startDate);
     const end = new Date(endDate);
     const days = Math.ceil((end - start) / (1000 * 60 * 60 * 24)) + 1;
-    const hours = dailyHours || 8;
+    // Workers don't supply dailyHours upfront — billable hours come from
+    // per-day attendance entered later in the worker profile. Default to
+    // 0 so the legacy "hours × days" field stays meaningful but unused.
+    const hours = dailyHours || 0;
     const totalHours = days * hours;
 
     const opportunity = await WorkerOpportunity.create({
@@ -345,6 +348,7 @@ exports.updateOpportunity = async (req, res) => {
       startDate,
       endDate,
       dailyHours,
+      attendanceDays,
       rating,
       ratingCriteria,
       ratingNotes,
@@ -376,6 +380,7 @@ exports.updateOpportunity = async (req, res) => {
       endDate: newEndDate,
       dailyHours: newDailyHours,
       totalHours,
+      attendanceDays: attendanceDays !== undefined ? attendanceDays : opportunity.attendanceDays,
       rating: rating !== undefined ? rating : opportunity.rating,
       ratingCriteria: ratingCriteria !== undefined ? ratingCriteria : opportunity.ratingCriteria,
       ratingNotes: ratingNotes !== undefined ? ratingNotes : opportunity.ratingNotes,

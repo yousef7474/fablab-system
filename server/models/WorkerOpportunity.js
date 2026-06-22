@@ -49,6 +49,16 @@ const WorkerOpportunity = sequelize.define('WorkerOpportunity', {
     allowNull: true,
     comment: 'Reason for hours adjustment'
   },
+  // Per-day attendance log. Filled in after the opportunity is created.
+  // Shape: [{ date: 'YYYY-MM-DD', attended: true, hours: 8 }, ...]
+  // totalHours/dailyHours kept for backwards compatibility with the
+  // existing volunteer flow, but for paid workers the source of truth
+  // for billable hours is sum(attendanceDays[i].hours where attended).
+  attendanceDays: {
+    type: DataTypes.JSON,
+    allowNull: true,
+    defaultValue: []
+  },
   rating: {
     type: DataTypes.INTEGER,
     allowNull: true,

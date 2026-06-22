@@ -14,9 +14,16 @@ import api from '../../config/api';
 // so the layout survives a print-scale resize. If a value lands in the
 // wrong spot just tweak the corresponding `top: 'XX%'` below.
 
+// Worker hourly rate — keep in sync with WORKER_HOURLY_RATE in
+// Worker/OpportunityAttendance.jsx. Used by the opportunity picker to
+// auto-fill the amount field from a worker's logged attendance.
+const WORKER_HOURLY_RATE = 15;
+
 // `personType` ('volunteer' | 'worker') decides which archive endpoint
 // receives the receipt snapshot on print, so the same person's receipts
-// can be listed back later from the detail view.
+// can be listed back later from the detail view. For workers it also
+// enables the opportunity picker that auto-fills the amount from logged
+// attendance hours × WORKER_HOURLY_RATE.
 const ReceiptModal = ({ open, onClose, recipient, personType = 'volunteer', onSaved }) => {
   const [form, setForm] = useState({
     recipientName: '',
@@ -43,6 +50,23 @@ const ReceiptModal = ({ open, onClose, recipient, personType = 'volunteer', onSa
   if (!open) return null;
 
   const handleChange = (field, value) => setForm(prev => ({ ...prev, [field]: value }));
+
+  // For workers: when the admin picks an opportunity, sum its attendance
+  // days and auto-fill the amount + purpose.
+  const handlePickOpportunity = (opportunityId) => {
+    const opp = (recipient?.opportunities || []).find(o => o.opportunityId === opportunityId);
+    if (!opp) return;
+    const days = Array.isArray(opp.attendanceDays) ? opp.attendanceDays : [];
+    const totalCost = days.reduce(
+      (sum, d) => sum + (d.attended ? (Number(d.hours) || 0) * WORKER_HOURLY_RATE : 0),
+      0
+    );
+    setForm(prev => ({
+      ...prev,
+      amount: totalCost ? String(totalCost.toFixed(2).replace(/\.00$/, '')) : prev.amount,
+      purpose: opp.title || prev.purpose
+    }));
+  };
 
   const handlePrint = async () => {
     if (!form.recipientName.trim() || !form.amount.trim()) {
@@ -372,6 +396,39 @@ const ReceiptModal = ({ open, onClose, recipient, personType = 'volunteer', onSa
         <p style={{ margin: '0 0 1rem 0', fontSize: '0.82rem', color: '#64748b' }}>
           املأ البيانات ثم اطبع. الصفحة الثانية ستحوي صورة الهوية المحفوظة.
         </p>
+
+        {personType === 'worker' && Array.isArray(recipient?.opportunities) && recipient.opportunities.length > 0 && (
+          <div style={{
+            background: '#f0fdf4', border: '1.5px solid #86efac',
+            padding: '0.75rem 1rem', borderRadius: 10, marginBottom: '0.75rem'
+          }}>
+            <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 700, marginBottom: 6, color: '#166534' }}>
+              تعبئة المبلغ من فرصة عمل
+            </label>
+            <select
+              defaultValue=""
+              onChange={(e) => handlePickOpportunity(e.target.value)}
+              style={{
+                width: '100%', padding: '0.5rem', borderRadius: 8,
+                border: '1.5px solid #86efac', fontFamily: 'inherit', background: 'white'
+              }}
+            >
+              <option value="">— اختر فرصة لاستخراج المبلغ تلقائياً —</option>
+              {recipient.opportunities.map(opp => {
+                const days = Array.isArray(opp.attendanceDays) ? opp.attendanceDays : [];
+                const cost = days.reduce(
+                  (sum, d) => sum + (d.attended ? (Number(d.hours) || 0) * WORKER_HOURLY_RATE : 0),
+                  0
+                );
+                return (
+                  <option key={opp.opportunityId} value={opp.opportunityId}>
+                    {opp.title} ({String(opp.startDate).slice(0,10)} → {String(opp.endDate).slice(0,10)}) — {cost.toFixed(2)} ر.س
+                  </option>
+                );
+              })}
+            </select>
+          </div>
+        )}
 
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
           <div>

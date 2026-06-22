@@ -5,6 +5,7 @@ import { toast } from 'react-toastify';
 import api from '../../config/api';
 import ReceiptModal from '../shared/ReceiptModal';
 import ReceiptArchiveModal from '../shared/ReceiptArchiveModal';
+import OpportunityAttendance, { WORKER_HOURLY_RATE } from './OpportunityAttendance';
 
 const WorkerManagement = () => {
   const { i18n } = useTranslation();
@@ -1696,33 +1697,9 @@ const WorkerManagement = () => {
                       />
                     </div>
                   </div>
-                  <div className="form-group modern-input" style={{ marginTop: '1rem' }}>
-                    <label>
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                        <circle cx="12" cy="12" r="10"/>
-                        <polyline points="12 6 12 12 16 14"/>
-                      </svg>
-                      {isRTL ? 'ساعات العمل اليومية' : 'Daily Hours'}
-                    </label>
-                    <input
-                      type="number"
-                      min="1"
-                      max="24"
-                      value={opportunityForm.dailyHours}
-                      onChange={(e) => setOpportunityForm(prev => ({ ...prev, dailyHours: parseInt(e.target.value) || 8 }))}
-                      className="modern-input-field"
-                    />
-                  </div>
-                  {opportunityForm.startDate && opportunityForm.endDate && (
-                    <div className="total-hours-display">
-                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                        <circle cx="12" cy="12" r="10"/>
-                        <polyline points="12 6 12 12 16 14"/>
-                      </svg>
-                      <span>{isRTL ? 'إجمالي الساعات' : 'Total Hours'}</span>
-                      <strong>{calculateTotalHours(opportunityForm.startDate, opportunityForm.endDate, opportunityForm.dailyHours)}</strong>
-                    </div>
-                  )}
+                  {/* Workers don't enter daily hours upfront — hours are
+                      logged per day in the worker profile after the
+                      opportunity is created. */}
                 </div>
 
                 <div className="info-note-modern">
@@ -1936,19 +1913,12 @@ const WorkerManagement = () => {
                               </svg>
                               {opp.startDate} → {opp.endDate}
                             </span>
-                            <span className="hours-display">
-                              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                <circle cx="12" cy="12" r="10"/>
-                                <polyline points="12 6 12 12 16 14"/>
-                              </svg>
-                              {(opp.totalHours || 0) + (opp.hoursAdjustment || 0)} {isRTL ? 'ساعة' : 'hours'}
-                              {opp.hoursAdjustment !== 0 && opp.hoursAdjustment && (
-                                <span className={`hours-adjustment ${opp.hoursAdjustment > 0 ? 'positive' : 'negative'}`}>
-                                  ({opp.hoursAdjustment > 0 ? '+' : ''}{opp.hoursAdjustment})
-                                </span>
-                              )}
-                            </span>
                           </div>
+                          <OpportunityAttendance
+                            opportunity={opp}
+                            isRTL={isRTL}
+                            onSaved={fetchWorkers}
+                          />
                           <div className="history-actions">
                             <button
                               className="adjust-hours-btn"
