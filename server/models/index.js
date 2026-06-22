@@ -125,6 +125,10 @@ SummerTeacherRating.belongsTo(SummerProgram, { foreignKey: 'programId', as: 'pro
 SummerStudent.belongsTo(SummerProgram, { foreignKey: 'programId', as: 'program', constraints: false });
 SummerProgram.hasMany(SummerStudent,   { foreignKey: 'programId', as: 'students', constraints: false });
 
+// Summer Volunteers are just Volunteers with a summerProgramId set.
+Volunteer.belongsTo(SummerProgram,    { foreignKey: 'summerProgramId', as: 'summerProgram', constraints: false });
+SummerProgram.hasMany(Volunteer,      { foreignKey: 'summerProgramId', as: 'summerVolunteers', constraints: false });
+
 // Intern relationships
 InternTraining.belongsTo(Intern, { foreignKey: 'internId', as: 'intern' });
 Intern.hasMany(InternTraining, { foreignKey: 'internId', as: 'trainings' });

@@ -30,9 +30,15 @@ const emptyProgramForm = {
   fablabSection: '', sectionVolunteers: '', notes: ''
 };
 const emptyTeacherForm = {
+  source: 'manual', // 'manual' | 'employee' — see Teacher modal
+  employeeId: '',
   name: '', nationalId: '', phone: '', email: '',
   fablabSection: '', sectionMode: 'standard', customSection: '',
   bio: ''
+};
+const emptySummerVolunteerForm = {
+  name: '', nationalId: '', phone: '', email: '',
+  summerProgramId: ''
 };
 const emptyRatingForm = {
   type: 'award', points: 1, criteria: '', notes: '',
@@ -61,8 +67,10 @@ const SummerFablab = () => {
   const [programs, setPrograms] = useState([]);
   const [teachers, setTeachers] = useState([]);
   const [students, setStudents] = useState([]);
+  const [employees, setEmployees] = useState([]);
+  const [allVolunteers, setAllVolunteers] = useState([]);
 
-  const [loading, setLoading] = useState({ programs: false, teachers: false, students: false });
+  const [loading, setLoading] = useState({ programs: false, teachers: false, students: false, volunteers: false });
   const setLoadingKey = (k, v) => setLoading(prev => ({ ...prev, [k]: v }));
 
   const fetchPrograms = useCallback(async () => {
@@ -92,16 +100,34 @@ const SummerFablab = () => {
     finally { setLoadingKey('students', false); }
   }, [isRTL]);
 
+  const fetchEmployees = useCallback(async () => {
+    try {
+      const res = await api.get('/admin/employees');
+      setEmployees(Array.isArray(res.data) ? res.data : (res.data?.employees || []));
+    } catch (err) { console.warn('employees fetch failed:', err.message); }
+  }, []);
+
+  const fetchVolunteers = useCallback(async () => {
+    setLoadingKey('volunteers', true);
+    try {
+      const res = await api.get('/volunteers');
+      setAllVolunteers(Array.isArray(res.data) ? res.data : []);
+    } catch (err) { console.error(err); toast.error(isRTL ? 'خطأ في تحميل المتطوعين' : 'Error loading volunteers'); }
+    finally { setLoadingKey('volunteers', false); }
+  }, [isRTL]);
+
   useEffect(() => {
     // Always need programs (form pickers reference them in multiple
     // tabs). Teachers are referenced by the program form too.
     fetchPrograms();
     fetchTeachers();
-  }, [fetchPrograms, fetchTeachers]);
+    fetchEmployees(); // for the teacher form "from employee" picker
+  }, [fetchPrograms, fetchTeachers, fetchEmployees]);
 
   useEffect(() => {
     if (subTab === 'students') fetchStudents();
-  }, [subTab, fetchStudents]);
+    if (subTab === 'volunteers') fetchVolunteers();
+  }, [subTab, fetchStudents, fetchVolunteers]);
 
   // ---------- Programs ----------
   const [showProgramForm, setShowProgramForm] = useState(false);
@@ -180,6 +206,30 @@ const SummerFablab = () => {
     setTeacherForm(emptyTeacherForm);
     setShowTeacherForm(true);
   };
+
+  // When the admin picks an existing employee, prefill the teacher
+  // form with their name + section + contact. Fields stay editable.
+  const fillFromEmployee = (employeeId) => {
+    const emp = employees.find(e => (e.employeeId || e.id) === employeeId);
+    if (!emp) {
+      setTeacherForm(prev => ({ ...prev, employeeId: '' }));
+      return;
+    }
+    const empSection = emp.section || emp.fablabSection || '';
+    const isStandard = STANDARD_SECTIONS.some(s => s.value === empSection);
+    setTeacherForm(prev => ({
+      ...prev,
+      employeeId,
+      name: emp.fullName || emp.name || prev.name,
+      email: emp.email || prev.email,
+      phone: emp.phone || prev.phone,
+      nationalId: emp.nationalId || prev.nationalId,
+      fablabSection: isStandard ? empSection : '',
+      customSection: !isStandard && empSection ? empSection : prev.customSection,
+      sectionMode: isStandard ? 'standard' : (empSection ? 'custom' : prev.sectionMode),
+      bio: emp.bio || prev.bio
+    }));
+  };
   const openEditTeacher = (t) => {
     setEditingTeacherId(t.teacherId);
     const isStandard = STANDARD_SECTIONS.some(s => s.value === t.fablabSection);
@@ -255,6 +305,89 @@ const SummerFablab = () => {
     if (!window.confirm(isRTL ? 'حذف التقييم؟' : 'Delete this rating?')) return;
     try { await api.delete(`/summer/teacher-ratings/${id}`); toast.success(isRTL ? 'تم الحذف' : 'Deleted'); fetchTeachers(); }
     catch (err) { console.error(err); toast.error(isRTL ? 'خطأ' : 'Error'); }
+  };
+
+  // ---------- Summer Volunteers ----------
+  // Same backing store as the main Volunteers tab — these are just
+  // Volunteer records with summerProgramId set. So they automatically
+  // show up in the main admin Volunteers tab too.
+  const [showSummerVolunteerForm, setShowSummerVolunteerForm] = useState(false);
+  const [editingSummerVolunteerId, setEditingSummerVolunteerId] = useState(null);
+  const [summerVolunteerForm, setSummerVolunteerForm] = useState(emptySummerVolunteerForm);
+  const [savingSummerVolunteer, setSavingSummerVolunteer] = useState(false);
+  const [summerVolunteerRatingTarget, setSummerVolunteerRatingTarget] = useState(null);
+  const [summerVolunteerRatingForm, setSummerVolunteerRatingForm] = useState(emptyRatingForm);
+
+  const summerVolunteers = allVolunteers.filter(v => v.summerProgramId);
+
+  const openCreateSummerVolunteer = () => {
+    setEditingSummerVolunteerId(null);
+    setSummerVolunteerForm(emptySummerVolunteerForm);
+    setShowSummerVolunteerForm(true);
+  };
+  const openEditSummerVolunteer = (v) => {
+    setEditingSummerVolunteerId(v.volunteerId);
+    setSummerVolunteerForm({
+      name: v.name || '',
+      nationalId: v.nationalId || '',
+      phone: v.phone || '',
+      email: v.email || '',
+      summerProgramId: v.summerProgramId || ''
+    });
+    setShowSummerVolunteerForm(true);
+  };
+  const saveSummerVolunteer = async () => {
+    if (!summerVolunteerForm.name.trim() || !summerVolunteerForm.nationalId.trim() || !summerVolunteerForm.phone.trim()) {
+      return toast.error(isRTL ? 'الاسم ورقم الهوية والجوال مطلوبة' : 'Name, national ID and phone are required');
+    }
+    if (!summerVolunteerForm.summerProgramId) {
+      return toast.error(isRTL ? 'يرجى اختيار البرنامج' : 'Please select a program');
+    }
+    setSavingSummerVolunteer(true);
+    try {
+      if (editingSummerVolunteerId) {
+        await api.put(`/volunteers/${editingSummerVolunteerId}`, summerVolunteerForm);
+        toast.success(isRTL ? 'تم تحديث المتطوع' : 'Volunteer updated');
+      } else {
+        await api.post('/volunteers', summerVolunteerForm);
+        toast.success(isRTL ? 'تم إضافة المتطوع' : 'Volunteer added');
+      }
+      setShowSummerVolunteerForm(false);
+      setEditingSummerVolunteerId(null);
+      fetchVolunteers();
+    } catch (err) {
+      console.error(err);
+      const msg = err.response?.data?.messageAr || err.response?.data?.message || (isRTL ? 'خطأ في الحفظ' : 'Error saving');
+      toast.error(msg);
+    } finally { setSavingSummerVolunteer(false); }
+  };
+  const deleteSummerVolunteer = async (id) => {
+    if (!window.confirm(isRTL ? 'حذف المتطوع؟ سيُحذف من قائمة المتطوعين الرئيسية أيضاً.' : 'Delete this volunteer? Will also remove from the main Volunteers list.')) return;
+    try {
+      await api.delete(`/volunteers/${id}?force=true`);
+      toast.success(isRTL ? 'تم الحذف' : 'Deleted');
+      fetchVolunteers();
+    } catch (err) { console.error(err); toast.error(isRTL ? 'خطأ' : 'Error'); }
+  };
+  const openRateSummerVolunteer = (v) => {
+    setSummerVolunteerRatingTarget(v);
+    setSummerVolunteerRatingForm(emptyRatingForm);
+  };
+  const submitSummerVolunteerRating = async () => {
+    if (!summerVolunteerRatingTarget) return;
+    try {
+      await api.post('/volunteers/ratings', {
+        volunteerId: summerVolunteerRatingTarget.volunteerId,
+        type: summerVolunteerRatingForm.type,
+        points: summerVolunteerRatingForm.points,
+        criteria: summerVolunteerRatingForm.criteria || null,
+        notes: summerVolunteerRatingForm.notes || null,
+        ratingDate: summerVolunteerRatingForm.ratingDate
+      });
+      toast.success(isRTL ? 'تم إضافة التقييم' : 'Rating added');
+      setSummerVolunteerRatingTarget(null);
+      fetchVolunteers();
+    } catch (err) { console.error(err); toast.error(isRTL ? 'خطأ' : 'Error'); }
   };
 
   // ---------- Students ----------
@@ -481,12 +614,61 @@ const SummerFablab = () => {
         </div>
       )}
 
-      {/* ============= VOLUNTEERS placeholder ============= */}
+      {/* ============= SUMMER VOLUNTEERS ============= */}
       {subTab === 'volunteers' && (
         <div className="summer-panel">
-          <p style={{ color: '#64748b', fontSize: '0.95rem', textAlign: 'center', padding: '2rem 0' }}>
-            {isRTL ? 'هذا القسم قيد الإنشاء.' : 'This section is under construction.'}
+          <div className="summer-panel-header">
+            <h3>{isRTL ? 'متطوعو الصيف' : 'Summer Volunteers'}</h3>
+            <button className="summer-btn-primary" onClick={openCreateSummerVolunteer}>
+              + {isRTL ? 'إضافة متطوع' : 'Add Volunteer'}
+            </button>
+          </div>
+
+          <p style={{ fontSize: '0.82rem', color: '#64748b', margin: '0 0 0.75rem 0' }}>
+            {isRTL ? 'هؤلاء المتطوعون يظهرون أيضاً في تبويب المتطوعين الرئيسي مع نفس سجل التقييمات والفرص.' : 'These volunteers also appear in the main Volunteers tab with the same ratings and opportunity history.'}
           </p>
+
+          {loading.volunteers ? (
+            <p style={{ color: '#64748b' }}>{isRTL ? 'جاري التحميل...' : 'Loading...'}</p>
+          ) : summerVolunteers.length === 0 ? (
+            <p style={{ color: '#64748b', fontSize: '0.9rem' }}>
+              {isRTL ? 'لا يوجد متطوعون مرتبطون ببرامج صيفية.' : 'No volunteers linked to a summer program yet.'}
+            </p>
+          ) : (
+            <div className="summer-grid">
+              {summerVolunteers.map(v => {
+                const prog = v.summerProgram || programById(v.summerProgramId);
+                const awards = (v.ratings || []).filter(r => r.type === 'award').reduce((s, r) => s + (r.points || 0), 0);
+                const deductions = (v.ratings || []).filter(r => r.type === 'deduction').reduce((s, r) => s + (r.points || 0), 0);
+                const net = awards - deductions;
+                return (
+                  <div key={v.volunteerId} className="summer-card teacher-card">
+                    <div className="summer-card-head">
+                      <strong className="summer-card-name">{v.name}</strong>
+                      {prog && <span className="summer-card-section">{prog.name}</span>}
+                    </div>
+                    <div className="summer-card-meta">
+                      {v.phone && <div><span>{isRTL ? 'الجوال:' : 'Phone:'}</span> <span dir="ltr">{v.phone}</span></div>}
+                      {v.email && <div><span>{isRTL ? 'البريد:' : 'Email:'}</span> <span dir="ltr">{v.email}</span></div>}
+                      {v.nationalId && <div><span>{isRTL ? 'الهوية:' : 'National ID:'}</span> <span dir="ltr">{v.nationalId}</span></div>}
+                      <div className="teacher-score">
+                        <span className="teacher-score-pill awards">+{awards}</span>
+                        <span className="teacher-score-pill deductions">−{deductions}</span>
+                        <span className={`teacher-score-pill net ${net >= 0 ? 'positive' : 'negative'}`}>
+                          {isRTL ? 'صافي' : 'Net'}: {net}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="summer-card-actions">
+                      <button className="summer-btn-secondary" onClick={() => openEditSummerVolunteer(v)}>{isRTL ? 'تعديل' : 'Edit'}</button>
+                      <button className="summer-btn-rate" onClick={() => openRateSummerVolunteer(v)}>★ {isRTL ? 'تقييم' : 'Rate'}</button>
+                      <button className="summer-btn-danger" onClick={() => deleteSummerVolunteer(v.volunteerId)}>{isRTL ? 'حذف' : 'Delete'}</button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </div>
       )}
 
@@ -661,6 +843,55 @@ const SummerFablab = () => {
         <div className="summer-modal-overlay" onClick={() => !savingTeacher && setShowTeacherForm(false)}>
           <div className="summer-modal" onClick={(e) => e.stopPropagation()}>
             <h3>{editingTeacherId ? (isRTL ? 'تعديل معلم' : 'Edit Teacher') : (isRTL ? 'إضافة معلم' : 'Add Teacher')}</h3>
+
+            {!editingTeacherId && (
+              <div style={{
+                background: '#eef2ff', border: '1.5px solid #c7d2fe',
+                padding: '0.75rem 1rem', borderRadius: 10, marginBottom: '0.75rem'
+              }}>
+                <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', marginBottom: 6 }}>
+                  <label style={{ fontSize: '0.85rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 4, color: '#3730a3' }}>
+                    <input
+                      type="radio"
+                      name="teacherSource"
+                      checked={teacherForm.source === 'manual'}
+                      onChange={() => setTeacherForm({ ...teacherForm, source: 'manual', employeeId: '' })}
+                    />
+                    {isRTL ? 'إدخال يدوي (معلم جديد)' : 'Manual entry (new teacher)'}
+                  </label>
+                  <label style={{ fontSize: '0.85rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 4, color: '#3730a3' }}>
+                    <input
+                      type="radio"
+                      name="teacherSource"
+                      checked={teacherForm.source === 'employee'}
+                      onChange={() => setTeacherForm({ ...teacherForm, source: 'employee' })}
+                    />
+                    {isRTL ? 'اختيار من موظفي فاب لاب' : 'Pick from FabLab employees'}
+                  </label>
+                </div>
+                {teacherForm.source === 'employee' && (
+                  <select
+                    value={teacherForm.employeeId}
+                    onChange={(e) => fillFromEmployee(e.target.value)}
+                    style={{ width: '100%', padding: '0.5rem', borderRadius: 8, border: '1.5px solid #c7d2fe', fontFamily: 'inherit', background: 'white' }}
+                  >
+                    <option value="">— {isRTL ? 'اختر الموظف' : 'Select an employee'} —</option>
+                    {employees.map(e => {
+                      const id = e.employeeId || e.id;
+                      const sec = e.section || e.fablabSection || '';
+                      const label = `${e.fullName || e.name}${sec ? ` — ${sec}` : ''}`;
+                      return <option key={id} value={id}>{label}</option>;
+                    })}
+                  </select>
+                )}
+                {teacherForm.source === 'employee' && (
+                  <p style={{ fontSize: '0.75rem', color: '#475569', margin: '6px 0 0 0' }}>
+                    {isRTL ? 'يمكنك تعديل الحقول أدناه قبل الحفظ.' : 'You can edit the fields below before saving.'}
+                  </p>
+                )}
+              </div>
+            )}
+
             <div className="summer-form-grid">
               <div className="summer-field full">
                 <label>{isRTL ? 'الاسم' : 'Name'} *</label>
@@ -783,6 +1014,96 @@ const SummerFablab = () => {
               <button className="summer-btn-primary" disabled={savingRating} onClick={submitRating}>
                 {savingRating ? (isRTL ? 'جاري الحفظ...' : 'Saving...') : (isRTL ? 'حفظ التقييم' : 'Save Rating')}
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ============= Summer Volunteer form modal ============= */}
+      {showSummerVolunteerForm && (
+        <div className="summer-modal-overlay" onClick={() => !savingSummerVolunteer && setShowSummerVolunteerForm(false)}>
+          <div className="summer-modal" onClick={(e) => e.stopPropagation()}>
+            <h3>{editingSummerVolunteerId ? (isRTL ? 'تعديل متطوع' : 'Edit Volunteer') : (isRTL ? 'إضافة متطوع' : 'Add Volunteer')}</h3>
+            <div className="summer-form-grid">
+              <div className="summer-field full">
+                <label>{isRTL ? 'البرنامج' : 'Program'} *</label>
+                <select value={summerVolunteerForm.summerProgramId}
+                  onChange={(e) => setSummerVolunteerForm({ ...summerVolunteerForm, summerProgramId: e.target.value })}>
+                  <option value="">— {isRTL ? 'اختر البرنامج' : 'Select a program'} —</option>
+                  {programs.map(p => (
+                    <option key={p.programId} value={p.programId}>{p.name}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="summer-field full">
+                <label>{isRTL ? 'الاسم الكامل' : 'Full Name'} *</label>
+                <input value={summerVolunteerForm.name}
+                  onChange={(e) => setSummerVolunteerForm({ ...summerVolunteerForm, name: e.target.value })} />
+              </div>
+              <div className="summer-field">
+                <label>{isRTL ? 'رقم الهوية' : 'National ID'} *</label>
+                <input dir="ltr" value={summerVolunteerForm.nationalId}
+                  onChange={(e) => setSummerVolunteerForm({ ...summerVolunteerForm, nationalId: e.target.value })} />
+              </div>
+              <div className="summer-field">
+                <label>{isRTL ? 'الجوال' : 'Phone'} *</label>
+                <input dir="ltr" value={summerVolunteerForm.phone}
+                  onChange={(e) => setSummerVolunteerForm({ ...summerVolunteerForm, phone: e.target.value })} />
+              </div>
+              <div className="summer-field full">
+                <label>{isRTL ? 'البريد الإلكتروني' : 'Email'}</label>
+                <input type="email" dir="ltr" value={summerVolunteerForm.email}
+                  onChange={(e) => setSummerVolunteerForm({ ...summerVolunteerForm, email: e.target.value })} />
+              </div>
+            </div>
+            <div className="summer-modal-actions">
+              <button className="summer-btn-secondary" disabled={savingSummerVolunteer} onClick={() => setShowSummerVolunteerForm(false)}>{isRTL ? 'إلغاء' : 'Cancel'}</button>
+              <button className="summer-btn-primary" disabled={savingSummerVolunteer} onClick={saveSummerVolunteer}>
+                {savingSummerVolunteer ? (isRTL ? 'جاري الحفظ...' : 'Saving...') : (editingSummerVolunteerId ? (isRTL ? 'حفظ التعديل' : 'Save Changes') : (isRTL ? 'إضافة' : 'Add'))}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ============= Summer Volunteer Rating modal ============= */}
+      {summerVolunteerRatingTarget && (
+        <div className="summer-modal-overlay" onClick={() => setSummerVolunteerRatingTarget(null)}>
+          <div className="summer-modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 480 }}>
+            <h3>{isRTL ? `تقييم: ${summerVolunteerRatingTarget.name}` : `Rate: ${summerVolunteerRatingTarget.name}`}</h3>
+            <div className="summer-form-grid">
+              <div className="summer-field">
+                <label>{isRTL ? 'النوع' : 'Type'}</label>
+                <select value={summerVolunteerRatingForm.type}
+                  onChange={(e) => setSummerVolunteerRatingForm({ ...summerVolunteerRatingForm, type: e.target.value })}>
+                  <option value="award">{isRTL ? 'مكافأة (+)' : 'Award (+)'}</option>
+                  <option value="deduction">{isRTL ? 'خصم (−)' : 'Deduction (−)'}</option>
+                </select>
+              </div>
+              <div className="summer-field">
+                <label>{isRTL ? 'النقاط (1-5)' : 'Points (1-5)'}</label>
+                <input type="number" min="1" max="5" value={summerVolunteerRatingForm.points}
+                  onChange={(e) => setSummerVolunteerRatingForm({ ...summerVolunteerRatingForm, points: Math.max(1, Math.min(5, Number(e.target.value) || 1)) })} />
+              </div>
+              <div className="summer-field full">
+                <label>{isRTL ? 'المعيار' : 'Criteria'}</label>
+                <input value={summerVolunteerRatingForm.criteria}
+                  onChange={(e) => setSummerVolunteerRatingForm({ ...summerVolunteerRatingForm, criteria: e.target.value })} />
+              </div>
+              <div className="summer-field full">
+                <label>{isRTL ? 'ملاحظات' : 'Notes'}</label>
+                <textarea rows={2} value={summerVolunteerRatingForm.notes}
+                  onChange={(e) => setSummerVolunteerRatingForm({ ...summerVolunteerRatingForm, notes: e.target.value })} />
+              </div>
+              <div className="summer-field">
+                <label>{isRTL ? 'التاريخ' : 'Date'}</label>
+                <input type="date" value={summerVolunteerRatingForm.ratingDate}
+                  onChange={(e) => setSummerVolunteerRatingForm({ ...summerVolunteerRatingForm, ratingDate: e.target.value })} />
+              </div>
+            </div>
+            <div className="summer-modal-actions">
+              <button className="summer-btn-secondary" onClick={() => setSummerVolunteerRatingTarget(null)}>{isRTL ? 'إلغاء' : 'Cancel'}</button>
+              <button className="summer-btn-primary" onClick={submitSummerVolunteerRating}>{isRTL ? 'حفظ التقييم' : 'Save Rating'}</button>
             </div>
           </div>
         </div>

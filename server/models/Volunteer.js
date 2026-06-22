@@ -35,6 +35,13 @@ const Volunteer = sequelize.define('Volunteer', {
   isActive: {
     type: DataTypes.BOOLEAN,
     defaultValue: true
+  },
+  // Optional link to a Summer FabLab program. Volunteers added via the
+  // Summer Volunteers sub-tab carry this; they otherwise behave like
+  // any other volunteer and show up in the main Volunteers tab too.
+  summerProgramId: {
+    type: DataTypes.UUID,
+    allowNull: true
   }
 }, {
   tableName: 'volunteers',

@@ -1,4 +1,4 @@
-const { Volunteer, VolunteerOpportunity, VolunteerRating, VolunteerReceipt, Admin } = require('../models');
+const { Volunteer, VolunteerOpportunity, VolunteerRating, VolunteerReceipt, SummerProgram, Admin } = require('../models');
 const { Op } = require('sequelize');
 
 // ============== VOLUNTEER PROFILE MANAGEMENT ==============
@@ -36,6 +36,12 @@ exports.getAllVolunteers = async (req, res) => {
           model: VolunteerRating,
           as: 'ratings',
           attributes: ['ratingId', 'type', 'points', 'criteria', 'notes', 'ratingDate', 'opportunityId']
+        },
+        {
+          model: SummerProgram,
+          as: 'summerProgram',
+          required: false,
+          attributes: ['programId', 'name', 'startDate', 'endDate']
         }
       ],
       order: [['name', 'ASC']]
@@ -112,7 +118,7 @@ exports.getVolunteerById = async (req, res) => {
  */
 exports.createVolunteer = async (req, res) => {
   try {
-    const { name, nationalId, phone, email, nationalIdPhoto } = req.body;
+    const { name, nationalId, phone, email, nationalIdPhoto, summerProgramId } = req.body;
 
     if (!name || !nationalId || !phone) {
       return res.status(400).json({
@@ -136,7 +142,8 @@ exports.createVolunteer = async (req, res) => {
       nationalId,
       phone,
       email: email || null,
-      nationalIdPhoto: nationalIdPhoto || null
+      nationalIdPhoto: nationalIdPhoto || null,
+      summerProgramId: summerProgramId || null
     });
 
     res.status(201).json(volunteer);
@@ -152,7 +159,7 @@ exports.createVolunteer = async (req, res) => {
 exports.updateVolunteer = async (req, res) => {
   try {
     const { id } = req.params;
-    const { name, nationalId, phone, email, nationalIdPhoto, isActive } = req.body;
+    const { name, nationalId, phone, email, nationalIdPhoto, isActive, summerProgramId } = req.body;
 
     const volunteer = await Volunteer.findByPk(id);
     if (!volunteer) {
@@ -176,7 +183,8 @@ exports.updateVolunteer = async (req, res) => {
       phone: phone !== undefined ? phone : volunteer.phone,
       email: email !== undefined ? email : volunteer.email,
       nationalIdPhoto: nationalIdPhoto !== undefined ? nationalIdPhoto : volunteer.nationalIdPhoto,
-      isActive: isActive !== undefined ? isActive : volunteer.isActive
+      isActive: isActive !== undefined ? isActive : volunteer.isActive,
+      summerProgramId: summerProgramId !== undefined ? (summerProgramId || null) : volunteer.summerProgramId
     });
 
     res.json(volunteer);
