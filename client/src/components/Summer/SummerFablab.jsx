@@ -27,7 +27,7 @@ const SUB_TABS = [
 const emptyProgramForm = {
   name: '', teacherName: '', teacherId: '', studentCount: '',
   startDate: '', endDate: '', startTime: '', endTime: '',
-  fablabSection: '', sectionVolunteers: '', notes: ''
+  fablabSection: '', sectionVolunteers: [], extraVolunteers: '', notes: ''
 };
 const emptyTeacherForm = {
   source: 'manual', // 'manual' | 'employee' — see Teacher modal
@@ -103,9 +103,14 @@ const SummerFablab = () => {
   const fetchEmployees = useCallback(async () => {
     try {
       const res = await api.get('/admin/employees');
-      setEmployees(Array.isArray(res.data) ? res.data : (res.data?.employees || []));
-    } catch (err) { console.warn('employees fetch failed:', err.message); }
-  }, []);
+      const list = Array.isArray(res.data) ? res.data : (res.data?.employees || []);
+      // Show active employees only.
+      setEmployees(list.filter(e => e.isActive !== false));
+    } catch (err) {
+      console.error('employees fetch failed:', err);
+      toast.error(isRTL ? 'تعذر تحميل قائمة الموظفين' : "Couldn't load employees list");
+    }
+  }, [isRTL]);
 
   const fetchVolunteers = useCallback(async () => {
     setLoadingKey('volunteers', true);
@@ -118,16 +123,17 @@ const SummerFablab = () => {
 
   useEffect(() => {
     // Always need programs (form pickers reference them in multiple
-    // tabs). Teachers are referenced by the program form too.
+    // tabs). Teachers, volunteers, and employees are also referenced
+    // by the program/teacher forms, so load them upfront too.
     fetchPrograms();
     fetchTeachers();
-    fetchEmployees(); // for the teacher form "from employee" picker
-  }, [fetchPrograms, fetchTeachers, fetchEmployees]);
+    fetchEmployees();
+    fetchVolunteers();
+  }, [fetchPrograms, fetchTeachers, fetchEmployees, fetchVolunteers]);
 
   useEffect(() => {
     if (subTab === 'students') fetchStudents();
-    if (subTab === 'volunteers') fetchVolunteers();
-  }, [subTab, fetchStudents, fetchVolunteers]);
+  }, [subTab, fetchStudents]);
 
   // ---------- Programs ----------
   const [showProgramForm, setShowProgramForm] = useState(false);
@@ -152,7 +158,17 @@ const SummerFablab = () => {
       startTime: (p.startTime || '').slice(0, 5),
       endTime: (p.endTime || '').slice(0, 5),
       fablabSection: p.fablabSection || '',
-      sectionVolunteers: Array.isArray(p.sectionVolunteers) ? p.sectionVolunteers.join(', ') : '',
+      // Split saved names: matches against existing volunteers stay in
+      // sectionVolunteers, anything else falls into a free-text bucket
+      // so we don't lose names of volunteers that may have been deleted.
+      ...(function () {
+        const saved = Array.isArray(p.sectionVolunteers) ? p.sectionVolunteers : [];
+        const known = new Set(allVolunteers.map(v => v.name));
+        return {
+          sectionVolunteers: saved.filter(n => known.has(n)),
+          extraVolunteers: saved.filter(n => !known.has(n)).join(', ')
+        };
+      })(),
       notes: p.notes || ''
     });
     setShowProgramForm(true);
@@ -164,12 +180,19 @@ const SummerFablab = () => {
     if (programForm.startDate > programForm.endDate) {
       return toast.error(isRTL ? 'تاريخ النهاية يجب أن يكون بعد البداية' : 'End date must be on/after start');
     }
+    // Combine picked volunteers with the free-text extras (kept for
+    // backwards compatibility — admin can still type names of people
+    // who aren't yet in the volunteers list).
+    const extras = (programForm.extraVolunteers || '')
+      .split(',').map(s => s.trim()).filter(Boolean);
+    const allNames = [...(programForm.sectionVolunteers || []), ...extras];
     const payload = {
       ...programForm,
       teacherId: programForm.teacherId || null,
       studentCount: programForm.studentCount === '' ? 0 : Number(programForm.studentCount),
-      sectionVolunteers: programForm.sectionVolunteers.split(',').map(s => s.trim()).filter(Boolean)
+      sectionVolunteers: allNames
     };
+    delete payload.extraVolunteers;
     setSavingProgram(true);
     try {
       if (editingProgramId) {
@@ -820,8 +843,55 @@ const SummerFablab = () => {
                 <input type="time" value={programForm.endTime} onChange={(e) => setProgramForm({ ...programForm, endTime: e.target.value })} />
               </div>
               <div className="summer-field full">
-                <label>{isRTL ? 'متطوعو القسم (أسماء مفصولة بفواصل)' : 'Section Volunteers (comma-separated)'}</label>
-                <input value={programForm.sectionVolunteers} onChange={(e) => setProgramForm({ ...programForm, sectionVolunteers: e.target.value })} />
+                <label>{isRTL ? 'متطوعو القسم' : 'Section Volunteers'}</label>
+                {allVolunteers.length === 0 ? (
+                  <p style={{ fontSize: '0.8rem', color: '#94a3b8', margin: '0.25rem 0' }}>
+                    {isRTL ? 'لا يوجد متطوعون. أضفهم من تبويب المتطوعين أولاً.' : 'No volunteers yet. Add some from the Volunteers tab first.'}
+                  </p>
+                ) : (
+                  <div style={{
+                    border: '1.5px solid #e2e8f0', borderRadius: 8, padding: '0.5rem',
+                    maxHeight: 180, overflowY: 'auto', background: '#fff'
+                  }}>
+                    {allVolunteers.map(v => {
+                      const checked = (programForm.sectionVolunteers || []).includes(v.name);
+                      return (
+                        <label key={v.volunteerId} style={{
+                          display: 'flex', alignItems: 'center', gap: '0.5rem',
+                          padding: '0.25rem 0.4rem', cursor: 'pointer',
+                          fontSize: '0.86rem', borderRadius: 4,
+                          background: checked ? '#fef3c7' : 'transparent'
+                        }}>
+                          <input
+                            type="checkbox"
+                            checked={checked}
+                            onChange={(e) => {
+                              const current = programForm.sectionVolunteers || [];
+                              setProgramForm({
+                                ...programForm,
+                                sectionVolunteers: e.target.checked
+                                  ? [...current, v.name]
+                                  : current.filter(n => n !== v.name)
+                              });
+                            }}
+                          />
+                          <span>{v.name}</span>
+                          {v.summerProgramId && (
+                            <span style={{ fontSize: '0.7rem', background: '#dbeafe', color: '#1d4ed8', padding: '1px 6px', borderRadius: 999 }}>
+                              {isRTL ? 'صيفي' : 'summer'}
+                            </span>
+                          )}
+                        </label>
+                      );
+                    })}
+                  </div>
+                )}
+                <input
+                  style={{ marginTop: 6, fontSize: '0.85rem' }}
+                  placeholder={isRTL ? 'أسماء إضافية مفصولة بفواصل (اختياري)' : 'Extra names, comma-separated (optional)'}
+                  value={programForm.extraVolunteers}
+                  onChange={(e) => setProgramForm({ ...programForm, extraVolunteers: e.target.value })}
+                />
               </div>
               <div className="summer-field full">
                 <label>{isRTL ? 'ملاحظات' : 'Notes'}</label>
@@ -870,24 +940,30 @@ const SummerFablab = () => {
                   </label>
                 </div>
                 {teacherForm.source === 'employee' && (
-                  <select
-                    value={teacherForm.employeeId}
-                    onChange={(e) => fillFromEmployee(e.target.value)}
-                    style={{ width: '100%', padding: '0.5rem', borderRadius: 8, border: '1.5px solid #c7d2fe', fontFamily: 'inherit', background: 'white' }}
-                  >
-                    <option value="">— {isRTL ? 'اختر الموظف' : 'Select an employee'} —</option>
-                    {employees.map(e => {
-                      const id = e.employeeId || e.id;
-                      const sec = e.section || e.fablabSection || '';
-                      const label = `${e.fullName || e.name}${sec ? ` — ${sec}` : ''}`;
-                      return <option key={id} value={id}>{label}</option>;
-                    })}
-                  </select>
-                )}
-                {teacherForm.source === 'employee' && (
-                  <p style={{ fontSize: '0.75rem', color: '#475569', margin: '6px 0 0 0' }}>
-                    {isRTL ? 'يمكنك تعديل الحقول أدناه قبل الحفظ.' : 'You can edit the fields below before saving.'}
-                  </p>
+                  <>
+                    <select
+                      value={teacherForm.employeeId}
+                      onChange={(e) => fillFromEmployee(e.target.value)}
+                      style={{ width: '100%', padding: '0.5rem', borderRadius: 8, border: '1.5px solid #c7d2fe', fontFamily: 'inherit', background: 'white' }}
+                    >
+                      <option value="">
+                        — {employees.length === 0
+                          ? (isRTL ? 'لا يوجد موظفون مسجلون' : 'No employees on file')
+                          : (isRTL ? `اختر الموظف (${employees.length})` : `Select an employee (${employees.length})`)} —
+                      </option>
+                      {employees.map(e => {
+                        const id = e.employeeId || e.id;
+                        const sec = e.section || e.fablabSection || '';
+                        const label = `${e.name || e.fullName}${sec ? ` — ${sec}` : ''}`;
+                        return <option key={id} value={id}>{label}</option>;
+                      })}
+                    </select>
+                    <p style={{ fontSize: '0.75rem', color: '#475569', margin: '6px 0 0 0' }}>
+                      {employees.length === 0
+                        ? (isRTL ? 'لم يتم تحميل أي موظفين. تحقق من تبويب الموظفين أو حاول إعادة فتح هذه النافذة.' : 'No employees were loaded. Check the Employees tab or reopen this dialog.')
+                        : (isRTL ? 'يمكنك تعديل الحقول أدناه قبل الحفظ.' : 'You can edit the fields below before saving.')}
+                    </p>
+                  </>
                 )}
               </div>
             )}
