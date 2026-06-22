@@ -5,6 +5,7 @@ import { toast } from 'react-toastify';
 import api from '../../config/api';
 import ReceiptModal from '../shared/ReceiptModal';
 import ReceiptArchiveModal from '../shared/ReceiptArchiveModal';
+import AttendanceLog from '../shared/AttendanceLog';
 
 const VolunteerManagement = () => {
   const { i18n } = useTranslation();
@@ -215,6 +216,24 @@ const VolunteerManagement = () => {
     } catch (error) {
       console.error('Error deleting rating:', error);
       toast.error(isRTL ? 'خطأ في حذف التقييم' : 'Error deleting rating');
+    }
+  };
+
+  const handleDeleteOpportunity = async (opportunityId) => {
+    if (!window.confirm(isRTL ? 'حذف الفرصة التطوعية وسجل الحضور الخاص بها نهائياً؟' : 'Delete this opportunity and its attendance log permanently?')) {
+      return;
+    }
+    try {
+      await api.delete(`/volunteers/opportunities/${opportunityId}`);
+      toast.success(isRTL ? 'تم حذف الفرصة' : 'Opportunity deleted');
+      fetchVolunteers();
+      if (selectedVolunteer) {
+        const fresh = await api.get(`/volunteers/${selectedVolunteer.volunteerId}`);
+        if (fresh.data) setSelectedVolunteer(fresh.data);
+      }
+    } catch (err) {
+      console.error('Error deleting opportunity:', err);
+      toast.error(isRTL ? 'خطأ في الحذف' : 'Error deleting');
     }
   };
 
@@ -1696,33 +1715,9 @@ const VolunteerManagement = () => {
                       />
                     </div>
                   </div>
-                  <div className="form-group modern-input" style={{ marginTop: '1rem' }}>
-                    <label>
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                        <circle cx="12" cy="12" r="10"/>
-                        <polyline points="12 6 12 12 16 14"/>
-                      </svg>
-                      {isRTL ? 'ساعات العمل اليومية' : 'Daily Hours'}
-                    </label>
-                    <input
-                      type="number"
-                      min="1"
-                      max="24"
-                      value={opportunityForm.dailyHours}
-                      onChange={(e) => setOpportunityForm(prev => ({ ...prev, dailyHours: parseInt(e.target.value) || 8 }))}
-                      className="modern-input-field"
-                    />
-                  </div>
-                  {opportunityForm.startDate && opportunityForm.endDate && (
-                    <div className="total-hours-display">
-                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                        <circle cx="12" cy="12" r="10"/>
-                        <polyline points="12 6 12 12 16 14"/>
-                      </svg>
-                      <span>{isRTL ? 'إجمالي الساعات' : 'Total Hours'}</span>
-                      <strong>{calculateTotalHours(opportunityForm.startDate, opportunityForm.endDate, opportunityForm.dailyHours)}</strong>
-                    </div>
-                  )}
+                  {/* Daily hours are no longer asked upfront — hours are
+                      logged per day in the volunteer profile after the
+                      opportunity is created. */}
                 </div>
 
                 <div className="info-note-modern">
@@ -1936,19 +1931,13 @@ const VolunteerManagement = () => {
                               </svg>
                               {opp.startDate} → {opp.endDate}
                             </span>
-                            <span className="hours-display">
-                              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                <circle cx="12" cy="12" r="10"/>
-                                <polyline points="12 6 12 12 16 14"/>
-                              </svg>
-                              {(opp.totalHours || 0) + (opp.hoursAdjustment || 0)} {isRTL ? 'ساعة' : 'hours'}
-                              {opp.hoursAdjustment !== 0 && opp.hoursAdjustment && (
-                                <span className={`hours-adjustment ${opp.hoursAdjustment > 0 ? 'positive' : 'negative'}`}>
-                                  ({opp.hoursAdjustment > 0 ? '+' : ''}{opp.hoursAdjustment})
-                                </span>
-                              )}
-                            </span>
                           </div>
+                          <AttendanceLog
+                            opportunity={opp}
+                            isRTL={isRTL}
+                            onSaved={fetchVolunteers}
+                            apiPath="/volunteers/opportunities"
+                          />
                           <div className="history-actions">
                             <button
                               className="adjust-hours-btn"
@@ -1993,6 +1982,23 @@ const VolunteerManagement = () => {
                                 <polyline points="8.21 13.89 7 23 12 20 17 23 15.79 13.88"/>
                               </svg>
                               {isRTL ? 'شهادة' : 'Certificate'}
+                            </button>
+                            <button
+                              onClick={() => handleDeleteOpportunity(opp.opportunityId)}
+                              title={isRTL ? 'حذف الفرصة' : 'Delete Opportunity'}
+                              style={{
+                                background: '#fee2e2', color: '#991b1b', border: 'none',
+                                padding: '6px 12px', borderRadius: '6px', cursor: 'pointer',
+                                display: 'flex', alignItems: 'center', gap: '4px',
+                                fontSize: '12px', fontWeight: 700, fontFamily: 'inherit'
+                              }}
+                            >
+                              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                <polyline points="3 6 5 6 21 6"/>
+                                <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
+                                <path d="M10 11v6M14 11v6"/>
+                              </svg>
+                              {isRTL ? 'حذف' : 'Delete'}
                             </button>
                           </div>
                         </div>

@@ -30,7 +30,7 @@ exports.getAllVolunteers = async (req, res) => {
         {
           model: VolunteerOpportunity,
           as: 'opportunities',
-          attributes: ['opportunityId', 'title', 'startDate', 'endDate', 'totalHours', 'hoursAdjustment', 'rating', 'status']
+          attributes: ['opportunityId', 'title', 'description', 'startDate', 'endDate', 'totalHours', 'hoursAdjustment', 'attendanceDays', 'rating', 'status']
         },
         {
           model: VolunteerRating,
@@ -301,7 +301,10 @@ exports.createOpportunity = async (req, res) => {
     const start = new Date(startDate);
     const end = new Date(endDate);
     const days = Math.ceil((end - start) / (1000 * 60 * 60 * 24)) + 1;
-    const hours = dailyHours || 8;
+    // Hours come from per-day attendance entered later in the volunteer
+    // profile. Default to 0 so the legacy hours×days field stays
+    // computable but unused as the source of truth.
+    const hours = dailyHours || 0;
     const totalHours = days * hours;
 
     const opportunity = await VolunteerOpportunity.create({
@@ -345,6 +348,7 @@ exports.updateOpportunity = async (req, res) => {
       startDate,
       endDate,
       dailyHours,
+      attendanceDays,
       rating,
       ratingCriteria,
       ratingNotes,
@@ -376,6 +380,7 @@ exports.updateOpportunity = async (req, res) => {
       endDate: newEndDate,
       dailyHours: newDailyHours,
       totalHours,
+      attendanceDays: attendanceDays !== undefined ? attendanceDays : opportunity.attendanceDays,
       rating: rating !== undefined ? rating : opportunity.rating,
       ratingCriteria: ratingCriteria !== undefined ? ratingCriteria : opportunity.ratingCriteria,
       ratingNotes: ratingNotes !== undefined ? ratingNotes : opportunity.ratingNotes,

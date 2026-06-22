@@ -1,13 +1,19 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import { toast } from 'react-toastify';
 import api from '../../config/api';
 
-// Per-day attendance log for one worker opportunity. Renders a row for
-// every date from startDate to endDate (inclusive) with an attendance
-// checkbox and an hours input. Cost per row = hours × WORKER_HOURLY_RATE.
-// Save persists the array to WorkerOpportunity.attendanceDays.
-
-export const WORKER_HOURLY_RATE = 15; // SAR per hour
+// Per-day attendance log for one opportunity (worker or volunteer).
+//
+// Renders a row for every date from startDate to endDate (inclusive)
+// with an attendance checkbox and an hours input. When `hourlyRate` is
+// a positive number, a "cost" column appears and the footer shows total
+// cost in SAR (workers, paid). When `hourlyRate` is 0/undefined, the
+// cost column is hidden and the footer only totals hours (volunteers).
+//
+// `apiPath` is the PUT endpoint that persists `{ attendanceDays }`.
+// Existing endpoints:
+//   /workers/opportunities/:id        (workers)
+//   /volunteers/opportunities/:id     (volunteers)
 
 const fmt = (d) => {
   if (!d) return '';
@@ -16,28 +22,26 @@ const fmt = (d) => {
   return date.toISOString().slice(0, 10);
 };
 
-// Build the array of dates from start..end inclusive.
 const buildDateRange = (start, end) => {
   const out = [];
   if (!start || !end) return out;
   const s = new Date(start);
   const e = new Date(end);
   if (isNaN(s.getTime()) || isNaN(e.getTime()) || s > e) return out;
-  // Cap absurdly long ranges so we don't render thousands of rows.
   for (let d = new Date(s); d <= e && out.length < 366; d.setUTCDate(d.getUTCDate() + 1)) {
     out.push(d.toISOString().slice(0, 10));
   }
   return out;
 };
 
-const OpportunityAttendance = ({ opportunity, isRTL, onSaved }) => {
+const AttendanceLog = ({ opportunity, isRTL, onSaved, hourlyRate = 0, apiPath }) => {
+  const showCost = hourlyRate > 0;
+
   const dates = useMemo(
     () => buildDateRange(opportunity.startDate, opportunity.endDate),
     [opportunity.startDate, opportunity.endDate]
   );
 
-  // Seed local state from the saved array, filling in defaults for any
-  // dates that don't have a record yet.
   const seed = useMemo(() => {
     const saved = Array.isArray(opportunity.attendanceDays) ? opportunity.attendanceDays : [];
     const byDate = Object.fromEntries(saved.map(d => [fmt(d.date), d]));
@@ -52,9 +56,7 @@ const OpportunityAttendance = ({ opportunity, isRTL, onSaved }) => {
   const [saving, setSaving] = useState(false);
   const [dirty, setDirty] = useState(false);
 
-  // If a sibling re-render shipped a fresh `opportunity` prop (e.g.
-  // after fetchWorkers), reseed unless the admin is mid-edit.
-  React.useEffect(() => {
+  useEffect(() => {
     if (!dirty) setRows(seed);
   }, [seed, dirty]);
 
@@ -63,21 +65,18 @@ const OpportunityAttendance = ({ opportunity, isRTL, onSaved }) => {
     setDirty(true);
   };
 
-  const totalCost = rows.reduce(
-    (sum, r) => sum + (r.attended ? (Number(r.hours) || 0) * WORKER_HOURLY_RATE : 0),
-    0
-  );
   const totalHours = rows.reduce(
     (sum, r) => sum + (r.attended ? (Number(r.hours) || 0) : 0),
     0
   );
+  const totalCost = showCost
+    ? rows.reduce((sum, r) => sum + (r.attended ? (Number(r.hours) || 0) * hourlyRate : 0), 0)
+    : 0;
 
   const handleSave = async () => {
     setSaving(true);
     try {
-      await api.put(`/workers/opportunities/${opportunity.opportunityId}`, {
-        attendanceDays: rows
-      });
+      await api.put(`${apiPath}/${opportunity.opportunityId}`, { attendanceDays: rows });
       toast.success(isRTL ? 'تم حفظ الحضور' : 'Attendance saved');
       setDirty(false);
       if (typeof onSaved === 'function') onSaved();
@@ -106,9 +105,11 @@ const OpportunityAttendance = ({ opportunity, isRTL, onSaved }) => {
         <strong style={{ fontSize: '0.92rem', color: '#0f172a' }}>
           {isRTL ? 'سجل الحضور اليومي' : 'Daily Attendance Log'}
         </strong>
-        <span style={{ fontSize: '0.78rem', color: '#64748b' }}>
-          {WORKER_HOURLY_RATE} {isRTL ? 'ريال/ساعة' : 'SAR/hour'}
-        </span>
+        {showCost && (
+          <span style={{ fontSize: '0.78rem', color: '#64748b' }}>
+            {hourlyRate} {isRTL ? 'ريال/ساعة' : 'SAR/hour'}
+          </span>
+        )}
       </div>
 
       <div style={{
@@ -127,14 +128,16 @@ const OpportunityAttendance = ({ opportunity, isRTL, onSaved }) => {
               <th style={{ padding: '6px 10px', textAlign: 'center', fontWeight: 700, color: '#0f172a', width: '20%' }}>
                 {isRTL ? 'الساعات' : 'Hours'}
               </th>
-              <th style={{ padding: '6px 10px', textAlign: isRTL ? 'left' : 'right', fontWeight: 700, color: '#0f172a', width: '20%' }}>
-                {isRTL ? 'التكلفة' : 'Cost'}
-              </th>
+              {showCost && (
+                <th style={{ padding: '6px 10px', textAlign: isRTL ? 'left' : 'right', fontWeight: 700, color: '#0f172a', width: '20%' }}>
+                  {isRTL ? 'التكلفة' : 'Cost'}
+                </th>
+              )}
             </tr>
           </thead>
           <tbody>
             {rows.map((r, i) => {
-              const cost = r.attended ? (Number(r.hours) || 0) * WORKER_HOURLY_RATE : 0;
+              const cost = r.attended ? (Number(r.hours) || 0) * hourlyRate : 0;
               return (
                 <tr key={r.date} style={{ borderTop: '1px solid #f1f5f9', background: r.attended ? '#f0fdf4' : 'transparent' }}>
                   <td style={{ padding: '6px 10px' }}>
@@ -164,9 +167,11 @@ const OpportunityAttendance = ({ opportunity, isRTL, onSaved }) => {
                       }}
                     />
                   </td>
-                  <td style={{ padding: '6px 10px', textAlign: isRTL ? 'left' : 'right', fontWeight: 600, color: r.attended ? '#16a34a' : '#94a3b8' }}>
-                    {cost.toFixed(2)} {isRTL ? 'ر.س' : 'SAR'}
-                  </td>
+                  {showCost && (
+                    <td style={{ padding: '6px 10px', textAlign: isRTL ? 'left' : 'right', fontWeight: 600, color: r.attended ? '#16a34a' : '#94a3b8' }}>
+                      {cost.toFixed(2)} {isRTL ? 'ر.س' : 'SAR'}
+                    </td>
+                  )}
                 </tr>
               );
             })}
@@ -182,9 +187,11 @@ const OpportunityAttendance = ({ opportunity, isRTL, onSaved }) => {
               <td style={{ padding: '8px 10px', textAlign: 'center', fontWeight: 700, color: '#0f172a' }}>
                 {totalHours} {isRTL ? 'س' : 'h'}
               </td>
-              <td style={{ padding: '8px 10px', textAlign: isRTL ? 'left' : 'right', fontWeight: 800, color: '#16a34a', fontSize: '0.95rem' }}>
-                {totalCost.toFixed(2)} {isRTL ? 'ر.س' : 'SAR'}
-              </td>
+              {showCost && (
+                <td style={{ padding: '8px 10px', textAlign: isRTL ? 'left' : 'right', fontWeight: 800, color: '#16a34a', fontSize: '0.95rem' }}>
+                  {totalCost.toFixed(2)} {isRTL ? 'ر.س' : 'SAR'}
+                </td>
+              )}
             </tr>
           </tfoot>
         </table>
@@ -214,4 +221,4 @@ const OpportunityAttendance = ({ opportunity, isRTL, onSaved }) => {
   );
 };
 
-export default OpportunityAttendance;
+export default AttendanceLog;

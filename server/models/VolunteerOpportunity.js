@@ -49,6 +49,14 @@ const VolunteerOpportunity = sequelize.define('VolunteerOpportunity', {
     allowNull: true,
     comment: 'Reason for hours adjustment'
   },
+  // Per-day attendance log. Same shape as the worker variant —
+  // [{ date: 'YYYY-MM-DD', attended: true, hours: 8 }, ...] — but used
+  // only for hours tracking (no cost calculation; volunteers are unpaid).
+  attendanceDays: {
+    type: DataTypes.JSON,
+    allowNull: true,
+    defaultValue: []
+  },
   rating: {
     type: DataTypes.INTEGER,
     allowNull: true,

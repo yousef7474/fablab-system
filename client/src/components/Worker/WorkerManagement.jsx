@@ -5,7 +5,10 @@ import { toast } from 'react-toastify';
 import api from '../../config/api';
 import ReceiptModal from '../shared/ReceiptModal';
 import ReceiptArchiveModal from '../shared/ReceiptArchiveModal';
-import OpportunityAttendance, { WORKER_HOURLY_RATE } from './OpportunityAttendance';
+import AttendanceLog from '../shared/AttendanceLog';
+
+// Worker hourly rate — pass to AttendanceLog so it shows the cost column.
+const WORKER_HOURLY_RATE = 15;
 
 const WorkerManagement = () => {
   const { i18n } = useTranslation();
@@ -1933,10 +1936,12 @@ const WorkerManagement = () => {
                               {opp.startDate} → {opp.endDate}
                             </span>
                           </div>
-                          <OpportunityAttendance
+                          <AttendanceLog
                             opportunity={opp}
                             isRTL={isRTL}
                             onSaved={fetchWorkers}
+                            hourlyRate={WORKER_HOURLY_RATE}
+                            apiPath="/workers/opportunities"
                           />
                           <div className="history-actions">
                             <button
