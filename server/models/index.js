@@ -13,6 +13,7 @@ const WorkerOpportunity = require('./WorkerOpportunity');
 const WorkerRating = require('./WorkerRating');
 const VolunteerReceipt = require('./VolunteerReceipt');
 const WorkerReceipt = require('./WorkerReceipt');
+const SummerProgram = require('./SummerProgram');
 const Intern = require('./Intern');
 const InternTraining = require('./InternTraining');
 const InternRating = require('./InternRating');
@@ -375,6 +376,7 @@ module.exports = {
   WorkerRating,
   VolunteerReceipt,
   WorkerReceipt,
+  SummerProgram,
   Intern,
   InternTraining,
   InternRating,

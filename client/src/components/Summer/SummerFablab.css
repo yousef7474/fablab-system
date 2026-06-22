@@ -1,0 +1,254 @@
+/* Summer FabLab tab — admin dashboard */
+
+.summer-tab {
+  padding: 1rem 0.25rem 2.5rem;
+  font-family: inherit;
+}
+
+.summer-header {
+  margin-bottom: 1.25rem;
+}
+.summer-title {
+  margin: 0;
+  font-size: 1.5rem;
+  font-weight: 800;
+  color: #0f172a;
+  background: linear-gradient(135deg, #f59e0b, #ef4444);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+.summer-sub {
+  margin: 0.25rem 0 0 0;
+  color: #64748b;
+  font-size: 0.9rem;
+}
+
+.summer-subnav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 1.5rem;
+  padding: 0.4rem;
+  background: #f1f5f9;
+  border-radius: 12px;
+}
+.summer-subnav-btn {
+  flex: 1;
+  min-width: 110px;
+  padding: 0.65rem 1rem;
+  border: none;
+  background: transparent;
+  color: #475569;
+  font-weight: 700;
+  font-size: 0.92rem;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.15s;
+  font-family: inherit;
+}
+.summer-subnav-btn:hover { background: #e2e8f0; }
+.summer-subnav-btn.active {
+  background: linear-gradient(135deg, #f59e0b, #ef4444);
+  color: white;
+  box-shadow: 0 6px 14px -6px rgba(245, 158, 11, 0.55);
+}
+
+.summer-panel {
+  background: white;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  padding: 1.25rem;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04);
+}
+.summer-panel-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+.summer-panel-header h3 {
+  margin: 0;
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.summer-btn-primary {
+  padding: 0.55rem 1.1rem;
+  background: linear-gradient(135deg, #f59e0b, #ef4444);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-weight: 700;
+  font-size: 0.88rem;
+  cursor: pointer;
+  font-family: inherit;
+  transition: transform 0.1s;
+}
+.summer-btn-primary:hover:not(:disabled) { transform: translateY(-1px); }
+.summer-btn-primary:disabled { opacity: 0.6; cursor: not-allowed; }
+
+.summer-btn-secondary {
+  padding: 0.45rem 1rem;
+  background: #f1f5f9;
+  color: #334155;
+  border: none;
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 0.85rem;
+  cursor: pointer;
+  font-family: inherit;
+}
+.summer-btn-secondary:hover { background: #e2e8f0; }
+
+.summer-btn-danger {
+  padding: 0.45rem 1rem;
+  background: #fee2e2;
+  color: #991b1b;
+  border: none;
+  border-radius: 8px;
+  font-weight: 700;
+  font-size: 0.85rem;
+  cursor: pointer;
+  font-family: inherit;
+}
+.summer-btn-danger:hover { background: #fecaca; }
+
+.summer-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 1rem;
+}
+.summer-card {
+  background: linear-gradient(135deg, #fff8eb 0%, #ffffff 60%);
+  border: 1px solid #fde68a;
+  border-radius: 12px;
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  transition: transform 0.1s;
+}
+.summer-card:hover { transform: translateY(-2px); box-shadow: 0 8px 20px -10px rgba(245, 158, 11, 0.3); }
+.summer-card-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+.summer-card-name {
+  font-size: 1rem;
+  color: #0f172a;
+}
+.summer-card-section {
+  font-size: 0.72rem;
+  background: #fde68a;
+  color: #92400e;
+  padding: 0.2rem 0.6rem;
+  border-radius: 999px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.summer-card-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  font-size: 0.85rem;
+  color: #334155;
+}
+.summer-card-meta span { font-weight: 600; color: #64748b; margin-inline-end: 0.4rem; }
+.summer-card-volunteers .summer-volunteer-chip {
+  display: inline-block;
+  background: white;
+  border: 1px solid #cbd5e1;
+  padding: 1px 8px;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  margin: 2px 4px 2px 0;
+  color: #1e293b;
+  font-weight: 500;
+}
+.summer-card-notes {
+  background: rgba(255,255,255,0.7);
+  border-radius: 8px;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.82rem;
+  color: #475569;
+}
+.summer-card-actions {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: auto;
+}
+
+/* Modal */
+.summer-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.55);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 1rem;
+}
+.summer-modal {
+  background: white;
+  border-radius: 14px;
+  padding: 1.75rem;
+  width: min(640px, 95vw);
+  max-height: 92vh;
+  overflow-y: auto;
+  box-shadow: 0 20px 50px -20px rgba(15, 23, 42, 0.5);
+}
+.summer-modal h3 {
+  margin: 0 0 1.25rem 0;
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: #0f172a;
+}
+.summer-form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.85rem;
+}
+.summer-field { display: flex; flex-direction: column; gap: 0.3rem; }
+.summer-field.full { grid-column: 1 / -1; }
+.summer-field label {
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: #334155;
+}
+.summer-field input,
+.summer-field select,
+.summer-field textarea {
+  padding: 0.55rem 0.7rem;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  font-family: inherit;
+  color: #0f172a;
+  background: white;
+}
+.summer-field input:focus,
+.summer-field select:focus,
+.summer-field textarea:focus {
+  outline: none;
+  border-color: #f59e0b;
+  box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.15);
+}
+.summer-field textarea { resize: vertical; min-height: 60px; }
+
+.summer-modal-actions {
+  display: flex;
+  gap: 0.75rem;
+  justify-content: flex-end;
+  margin-top: 1.5rem;
+}
+
+@media (max-width: 540px) {
+  .summer-form-grid { grid-template-columns: 1fr; }
+  .summer-subnav-btn { flex: 1 1 calc(50% - 0.5rem); }
+}
