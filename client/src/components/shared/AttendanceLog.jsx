@@ -4,11 +4,11 @@ import api from '../../config/api';
 
 // Per-day attendance log for one opportunity (worker or volunteer).
 //
-// Renders a row for every date from startDate to endDate (inclusive)
-// with an attendance checkbox and an hours input. When `hourlyRate` is
-// a positive number, a "cost" column appears and the footer shows total
-// cost in SAR (workers, paid). When `hourlyRate` is 0/undefined, the
-// cost column is hidden and the footer only totals hours (volunteers).
+// Two pricing modes (exactly one should be passed):
+//   * `hourlyRate` — workers: shows hours input + cost = hours × rate.
+//   * `dayRate`    — volunteers: hides hours input, cost = attended ? rate : 0.
+//                    The day rate is a flat per-attended-day amount.
+// Neither: no cost column, only hours tracking.
 //
 // `apiPath` is the PUT endpoint that persists `{ attendanceDays }`.
 // Existing endpoints:
@@ -34,8 +34,11 @@ const buildDateRange = (start, end) => {
   return out;
 };
 
-const AttendanceLog = ({ opportunity, isRTL, onSaved, hourlyRate = 0, apiPath }) => {
-  const showCost = hourlyRate > 0;
+const AttendanceLog = ({ opportunity, isRTL, onSaved, hourlyRate = 0, dayRate = 0, apiPath }) => {
+  const isDailyMode = dayRate > 0;
+  const isHourlyMode = !isDailyMode && hourlyRate > 0;
+  const showCost = isDailyMode || isHourlyMode;
+  const showHoursColumn = !isDailyMode; // hide hours input for flat-day-rate mode
 
   const dates = useMemo(
     () => buildDateRange(opportunity.startDate, opportunity.endDate),
@@ -69,9 +72,16 @@ const AttendanceLog = ({ opportunity, isRTL, onSaved, hourlyRate = 0, apiPath })
     (sum, r) => sum + (r.attended ? (Number(r.hours) || 0) : 0),
     0
   );
-  const totalCost = showCost
-    ? rows.reduce((sum, r) => sum + (r.attended ? (Number(r.hours) || 0) * hourlyRate : 0), 0)
-    : 0;
+  const totalCost = isDailyMode
+    ? rows.reduce((sum, r) => sum + (r.attended ? dayRate : 0), 0)
+    : isHourlyMode
+      ? rows.reduce((sum, r) => sum + (r.attended ? (Number(r.hours) || 0) * hourlyRate : 0), 0)
+      : 0;
+  const rateLabel = isDailyMode
+    ? `${dayRate} ${isRTL ? 'ريال/يوم' : 'SAR/day'}`
+    : isHourlyMode
+      ? `${hourlyRate} ${isRTL ? 'ريال/ساعة' : 'SAR/hour'}`
+      : '';
 
   const handleSave = async () => {
     setSaving(true);
@@ -106,9 +116,7 @@ const AttendanceLog = ({ opportunity, isRTL, onSaved, hourlyRate = 0, apiPath })
           {isRTL ? 'سجل الحضور اليومي' : 'Daily Attendance Log'}
         </strong>
         {showCost && (
-          <span style={{ fontSize: '0.78rem', color: '#64748b' }}>
-            {hourlyRate} {isRTL ? 'ريال/ساعة' : 'SAR/hour'}
-          </span>
+          <span style={{ fontSize: '0.78rem', color: '#64748b' }}>{rateLabel}</span>
         )}
       </div>
 
@@ -125,9 +133,11 @@ const AttendanceLog = ({ opportunity, isRTL, onSaved, hourlyRate = 0, apiPath })
               <th style={{ padding: '6px 10px', textAlign: 'center', fontWeight: 700, color: '#0f172a', width: '15%' }}>
                 {isRTL ? 'حضر' : 'Attended'}
               </th>
-              <th style={{ padding: '6px 10px', textAlign: 'center', fontWeight: 700, color: '#0f172a', width: '20%' }}>
-                {isRTL ? 'الساعات' : 'Hours'}
-              </th>
+              {showHoursColumn && (
+                <th style={{ padding: '6px 10px', textAlign: 'center', fontWeight: 700, color: '#0f172a', width: '20%' }}>
+                  {isRTL ? 'الساعات' : 'Hours'}
+                </th>
+              )}
               {showCost && (
                 <th style={{ padding: '6px 10px', textAlign: isRTL ? 'left' : 'right', fontWeight: 700, color: '#0f172a', width: '20%' }}>
                   {isRTL ? 'التكلفة' : 'Cost'}
@@ -137,7 +147,11 @@ const AttendanceLog = ({ opportunity, isRTL, onSaved, hourlyRate = 0, apiPath })
           </thead>
           <tbody>
             {rows.map((r, i) => {
-              const cost = r.attended ? (Number(r.hours) || 0) * hourlyRate : 0;
+              const cost = !r.attended
+                ? 0
+                : isDailyMode
+                  ? dayRate
+                  : (Number(r.hours) || 0) * hourlyRate;
               return (
                 <tr key={r.date} style={{ borderTop: '1px solid #f1f5f9', background: r.attended ? '#f0fdf4' : 'transparent' }}>
                   <td style={{ padding: '6px 10px' }}>
@@ -151,22 +165,24 @@ const AttendanceLog = ({ opportunity, isRTL, onSaved, hourlyRate = 0, apiPath })
                       style={{ width: 18, height: 18, cursor: 'pointer' }}
                     />
                   </td>
-                  <td style={{ padding: '6px 10px', textAlign: 'center' }}>
-                    <input
-                      type="number"
-                      min="0"
-                      max="24"
-                      step="0.5"
-                      value={r.attended ? r.hours : ''}
-                      onChange={(e) => updateRow(i, { hours: parseFloat(e.target.value) || 0 })}
-                      disabled={!r.attended}
-                      style={{
-                        width: 72, padding: '4px 6px', borderRadius: 6, border: '1px solid #cbd5e1',
-                        textAlign: 'center', background: r.attended ? 'white' : '#f1f5f9',
-                        cursor: r.attended ? 'text' : 'not-allowed', fontFamily: 'inherit'
-                      }}
-                    />
-                  </td>
+                  {showHoursColumn && (
+                    <td style={{ padding: '6px 10px', textAlign: 'center' }}>
+                      <input
+                        type="number"
+                        min="0"
+                        max="24"
+                        step="0.5"
+                        value={r.attended ? r.hours : ''}
+                        onChange={(e) => updateRow(i, { hours: parseFloat(e.target.value) || 0 })}
+                        disabled={!r.attended}
+                        style={{
+                          width: 72, padding: '4px 6px', borderRadius: 6, border: '1px solid #cbd5e1',
+                          textAlign: 'center', background: r.attended ? 'white' : '#f1f5f9',
+                          cursor: r.attended ? 'text' : 'not-allowed', fontFamily: 'inherit'
+                        }}
+                      />
+                    </td>
+                  )}
                   {showCost && (
                     <td style={{ padding: '6px 10px', textAlign: isRTL ? 'left' : 'right', fontWeight: 600, color: r.attended ? '#16a34a' : '#94a3b8' }}>
                       {cost.toFixed(2)} {isRTL ? 'ر.س' : 'SAR'}
@@ -184,9 +200,11 @@ const AttendanceLog = ({ opportunity, isRTL, onSaved, hourlyRate = 0, apiPath })
               <td style={{ padding: '8px 10px', textAlign: 'center', fontSize: '0.78rem', color: '#64748b' }}>
                 {rows.filter(r => r.attended).length} {isRTL ? 'يوم' : 'days'}
               </td>
-              <td style={{ padding: '8px 10px', textAlign: 'center', fontWeight: 700, color: '#0f172a' }}>
-                {totalHours} {isRTL ? 'س' : 'h'}
-              </td>
+              {showHoursColumn && (
+                <td style={{ padding: '8px 10px', textAlign: 'center', fontWeight: 700, color: '#0f172a' }}>
+                  {totalHours} {isRTL ? 'س' : 'h'}
+                </td>
+              )}
               {showCost && (
                 <td style={{ padding: '8px 10px', textAlign: isRTL ? 'left' : 'right', fontWeight: 800, color: '#16a34a', fontSize: '0.95rem' }}>
                   {totalCost.toFixed(2)} {isRTL ? 'ر.س' : 'SAR'}

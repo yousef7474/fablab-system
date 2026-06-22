@@ -1937,6 +1937,7 @@ const VolunteerManagement = () => {
                             isRTL={isRTL}
                             onSaved={fetchVolunteers}
                             apiPath="/volunteers/opportunities"
+                            dayRate={50}
                           />
                           <div className="history-actions">
                             <button

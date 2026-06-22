@@ -14,16 +14,23 @@ import api from '../../config/api';
 // so the layout survives a print-scale resize. If a value lands in the
 // wrong spot just tweak the corresponding `top: 'XX%'` below.
 
-// Worker hourly rate — keep in sync with WORKER_HOURLY_RATE in
-// Worker/OpportunityAttendance.jsx. Used by the opportunity picker to
-// auto-fill the amount field from a worker's logged attendance.
-const WORKER_HOURLY_RATE = 15;
+// Pricing rates — keep in sync with the props passed to AttendanceLog
+// in WorkerManagement (hourlyRate=15) and VolunteerManagement (dayRate=50).
+const WORKER_HOURLY_RATE = 15; // SAR per hour
+const VOLUNTEER_DAY_RATE  = 50; // SAR per attended day (flat)
+
+const sumOpportunityCost = (opp, personType) => {
+  const days = Array.isArray(opp?.attendanceDays) ? opp.attendanceDays : [];
+  if (personType === 'worker') {
+    return days.reduce((sum, d) => sum + (d.attended ? (Number(d.hours) || 0) * WORKER_HOURLY_RATE : 0), 0);
+  }
+  // volunteer (flat 50 SAR / attended day)
+  return days.reduce((sum, d) => sum + (d.attended ? VOLUNTEER_DAY_RATE : 0), 0);
+};
 
 // `personType` ('volunteer' | 'worker') decides which archive endpoint
-// receives the receipt snapshot on print, so the same person's receipts
-// can be listed back later from the detail view. For workers it also
-// enables the opportunity picker that auto-fills the amount from logged
-// attendance hours × WORKER_HOURLY_RATE.
+// receives the receipt snapshot on print, and which pricing model the
+// opportunity picker uses when auto-filling the amount.
 const ReceiptModal = ({ open, onClose, recipient, personType = 'volunteer', onSaved }) => {
   const [form, setForm] = useState({
     recipientName: '',
@@ -51,16 +58,12 @@ const ReceiptModal = ({ open, onClose, recipient, personType = 'volunteer', onSa
 
   const handleChange = (field, value) => setForm(prev => ({ ...prev, [field]: value }));
 
-  // For workers: when the admin picks an opportunity, sum its attendance
-  // days and auto-fill the amount + purpose.
+  // For workers/volunteers: when the admin picks an opportunity, sum its
+  // attendance days using the right rate model and auto-fill amount + purpose.
   const handlePickOpportunity = (opportunityId) => {
     const opp = (recipient?.opportunities || []).find(o => o.opportunityId === opportunityId);
     if (!opp) return;
-    const days = Array.isArray(opp.attendanceDays) ? opp.attendanceDays : [];
-    const totalCost = days.reduce(
-      (sum, d) => sum + (d.attended ? (Number(d.hours) || 0) * WORKER_HOURLY_RATE : 0),
-      0
-    );
+    const totalCost = sumOpportunityCost(opp, personType);
     setForm(prev => ({
       ...prev,
       amount: totalCost ? String(totalCost.toFixed(2).replace(/\.00$/, '')) : prev.amount,
@@ -397,13 +400,13 @@ const ReceiptModal = ({ open, onClose, recipient, personType = 'volunteer', onSa
           املأ البيانات ثم اطبع. الصفحة الثانية ستحوي صورة الهوية المحفوظة.
         </p>
 
-        {personType === 'worker' && Array.isArray(recipient?.opportunities) && recipient.opportunities.length > 0 && (
+        {Array.isArray(recipient?.opportunities) && recipient.opportunities.length > 0 && (
           <div style={{
             background: '#f0fdf4', border: '1.5px solid #86efac',
             padding: '0.75rem 1rem', borderRadius: 10, marginBottom: '0.75rem'
           }}>
             <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 700, marginBottom: 6, color: '#166534' }}>
-              تعبئة المبلغ من فرصة عمل
+              {personType === 'worker' ? 'تعبئة المبلغ من فرصة عمل' : 'تعبئة المبلغ من فرصة تطوعية'}
             </label>
             <select
               defaultValue=""
@@ -415,11 +418,7 @@ const ReceiptModal = ({ open, onClose, recipient, personType = 'volunteer', onSa
             >
               <option value="">— اختر فرصة لاستخراج المبلغ تلقائياً —</option>
               {recipient.opportunities.map(opp => {
-                const days = Array.isArray(opp.attendanceDays) ? opp.attendanceDays : [];
-                const cost = days.reduce(
-                  (sum, d) => sum + (d.attended ? (Number(d.hours) || 0) * WORKER_HOURLY_RATE : 0),
-                  0
-                );
+                const cost = sumOpportunityCost(opp, personType);
                 return (
                   <option key={opp.opportunityId} value={opp.opportunityId}>
                     {opp.title} ({String(opp.startDate).slice(0,10)} → {String(opp.endDate).slice(0,10)}) — {cost.toFixed(2)} ر.س
