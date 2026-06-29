@@ -121,7 +121,7 @@ const buildMawhbaEmailHtml = ({ studentName, subject, messageBody }) => {
       <tr>
         <td dir="rtl" style="padding:36px 32px 28px;background:#ffffff;">
           <p style="margin:0 0 6px;color:#64748b;font-size:12px;font-weight:700;letter-spacing:2px;">السلام عليكم ورحمة الله وبركاته</p>
-          ${safeName ? `<h2 style="margin:6px 0 22px;color:#0f172a;font-size:24px;font-weight:800;">عزيزي/تي <span style="background:linear-gradient(135deg,#8b5cf6,#ec4899);-webkit-background-clip:text;background-clip:text;color:transparent;">${safeName}</span></h2>` : `<h2 style="margin:6px 0 22px;color:#0f172a;font-size:24px;font-weight:800;">عزيزي الطالب/ـة</h2>`}
+          ${safeName ? `<h2 style="margin:6px 0 22px;color:#0f172a;font-size:24px;font-weight:800;"><span style="background:linear-gradient(135deg,#8b5cf6,#ec4899);-webkit-background-clip:text;background-clip:text;color:transparent;">${safeName}</span></h2>` : ''}
           <div style="color:#1f2937;line-height:2.05;font-size:16px;font-weight:500;">
             ${safeBody}
           </div>
