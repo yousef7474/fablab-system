@@ -619,7 +619,16 @@ exports.remove = async (req, res) => {
   }
 };
 
-const buildMawhbaEmailHtml = ({ studentName, subject, messageBody }) => {
+// Accepts a data URL ("data:image/jpeg;base64,...") or undefined.
+// Returns { mime, base64 } or null if invalid.
+const parseDataUrl = (dataUrl) => {
+  if (!dataUrl || typeof dataUrl !== 'string') return null;
+  const m = /^data:(image\/[a-zA-Z0-9.+-]+);base64,(.+)$/i.exec(dataUrl.trim());
+  if (!m) return null;
+  return { mime: m[1], base64: m[2] };
+};
+
+const buildMawhbaEmailHtml = ({ studentName, subject, messageBody, hasPhoto }) => {
   const safeBody = String(messageBody || '').replace(/\n/g, '<br>');
   const safeSubject = String(subject || '').trim();
   const safeName = studentName ? String(studentName) : '';
@@ -665,6 +674,10 @@ const buildMawhbaEmailHtml = ({ studentName, subject, messageBody }) => {
           <div style="color:#1f2937;line-height:2.05;font-size:16px;font-weight:500;">
             ${safeBody}
           </div>
+          ${hasPhoto ? `
+          <div style="margin-top:22px;text-align:center;">
+            <img src="cid:mawhba-photo-1" alt="" style="max-width:100%;height:auto;border-radius:12px;border:1px solid #e2e8f0;box-shadow:0 12px 28px -16px rgba(15,23,42,0.4);" />
+          </div>` : ''}
         </td>
       </tr>
 
@@ -699,12 +712,13 @@ const buildMawhbaEmailHtml = ({ studentName, subject, messageBody }) => {
   `;
 };
 
-const sendMawhbaEmail = async (student, subject, messageBody) => {
+const sendMawhbaEmail = async (student, subject, messageBody, photo) => {
   const sgMail = require('@sendgrid/mail');
   const html = buildMawhbaEmailHtml({
     studentName: student.nameAr || student.nameEn,
     subject,
-    messageBody
+    messageBody,
+    hasPhoto: Boolean(photo)
   });
   const msg = {
     to: student.email,
@@ -715,17 +729,38 @@ const sendMawhbaEmail = async (student, subject, messageBody) => {
     subject: subject,
     html
   };
+  if (photo) {
+    const ext = (photo.mime.split('/')[1] || 'jpg').toLowerCase();
+    msg.attachments = [{
+      content: photo.base64,
+      filename: `photo.${ext}`,
+      type: photo.mime,
+      disposition: 'inline',
+      content_id: 'mawhba-photo-1'
+    }];
+  }
   await sgMail.send(msg);
 };
 
 exports.sendEmail = async (req, res) => {
   try {
-    const { studentIds, subject, message } = req.body;
+    const { studentIds, subject, message, photo: photoDataUrl } = req.body;
     if (!Array.isArray(studentIds) || studentIds.length === 0) {
       return res.status(400).json({ message: 'No students selected' });
     }
     if (!subject || !subject.trim()) return res.status(400).json({ message: 'Subject required' });
     if (!message || !message.trim()) return res.status(400).json({ message: 'Message required' });
+
+    let photo = null;
+    if (photoDataUrl) {
+      photo = parseDataUrl(photoDataUrl);
+      if (!photo) return res.status(400).json({ message: 'Photo must be a data URL like data:image/png;base64,...' });
+      // SendGrid hard-caps a single message attachment at ~30 MB; we cap stricter for safety.
+      const approxBytes = Math.floor((photo.base64.length * 3) / 4);
+      if (approxBytes > 8 * 1024 * 1024) {
+        return res.status(400).json({ message: 'Photo too large (max 8 MB)' });
+      }
+    }
 
     const students = await MawhbaStudent.findAll({
       where: { studentId: { [Op.in]: studentIds } }
@@ -741,7 +776,7 @@ exports.sendEmail = async (req, res) => {
         continue;
       }
       try {
-        await sendMawhbaEmail(s, subject.trim(), message.trim());
+        await sendMawhbaEmail(s, subject.trim(), message.trim(), photo);
         successCount++;
       } catch (e) {
         console.error(`Failed to email ${s.email}:`, e?.response?.body || e?.message || e);

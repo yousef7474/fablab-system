@@ -12,7 +12,8 @@ const EMPTY_STUDENT = {
   courseAmount: '', registrationDate: '', studentPhone: '', email: '', guardianPhone: ''
 };
 
-const EMPTY_EMAIL = { subject: '', message: '' };
+const EMPTY_EMAIL = { subject: '', message: '', photo: null, photoName: '' };
+const MAX_PHOTO_BYTES = 6 * 1024 * 1024; // 6 MB before base64 inflation (~8 MB after)
 
 const Mawhba = () => {
   const { i18n } = useTranslation();
@@ -195,6 +196,26 @@ const Mawhba = () => {
     setShowEmailModal(true);
   };
 
+  const onPickPhoto = (file) => {
+    if (!file) return;
+    if (!file.type.startsWith('image/')) {
+      toast.error(isRTL ? 'يرجى اختيار صورة' : 'Please select an image');
+      return;
+    }
+    if (file.size > MAX_PHOTO_BYTES) {
+      toast.error(isRTL ? 'الصورة كبيرة جداً (الحد الأقصى 6 ميجابايت)' : 'Image too large (max 6 MB)');
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => {
+      setEmailForm(prev => ({ ...prev, photo: reader.result, photoName: file.name }));
+    };
+    reader.onerror = () => toast.error(isRTL ? 'تعذر قراءة الصورة' : 'Failed to read image');
+    reader.readAsDataURL(file);
+  };
+
+  const clearPhoto = () => setEmailForm(prev => ({ ...prev, photo: null, photoName: '' }));
+
   const sendEmail = async (e) => {
     e?.preventDefault?.();
     if (!emailForm.subject.trim()) { toast.error(isRTL ? 'الموضوع مطلوب' : 'Subject required'); return; }
@@ -204,7 +225,8 @@ const Mawhba = () => {
       const { data } = await api.post('/mawhba/send-email', {
         studentIds: emailTargets,
         subject: emailForm.subject.trim(),
-        message: emailForm.message.trim()
+        message: emailForm.message.trim(),
+        photo: emailForm.photo || undefined
       });
       const skipped = (data?.skippedNoEmail || []).length;
       toast.success(
@@ -923,12 +945,41 @@ const Mawhba = () => {
               <Field label={isRTL ? 'نص الرسالة' : 'Message Body'} full>
                 <textarea
                   required
-                  rows={8}
+                  rows={7}
                   value={emailForm.message}
                   onChange={(e) => setEmailForm({ ...emailForm, message: e.target.value })}
                   placeholder={isRTL ? 'اكتب رسالتك هنا. سيتم تنسيقها تلقائيًا.' : 'Write your message here. It will be formatted automatically.'}
                 />
               </Field>
+
+              <Field label={isRTL ? 'صورة مرفقة (اختياري)' : 'Photo Attachment (optional)'} full>
+                {emailForm.photo ? (
+                  <div className="mawhba-photo-preview">
+                    <img src={emailForm.photo} alt="preview" />
+                    <div className="mawhba-photo-meta">
+                      <div className="mawhba-photo-name" title={emailForm.photoName}>{emailForm.photoName || 'image'}</div>
+                      <button type="button" className="mawhba-btn-secondary" onClick={clearPhoto}>
+                        {isRTL ? '× إزالة' : '× Remove'}
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <label className="mawhba-photo-picker">
+                    <input
+                      type="file"
+                      accept="image/*"
+                      style={{ display: 'none' }}
+                      onChange={(e) => onPickPhoto(e.target.files?.[0])}
+                    />
+                    <span className="mawhba-photo-picker-icon">🖼️</span>
+                    <span className="mawhba-photo-picker-label">
+                      {isRTL ? 'اختر صورة لإرفاقها (سيتم تضمينها داخل البريد)' : 'Pick an image to attach (will be embedded inline)'}
+                    </span>
+                    <span className="mawhba-photo-picker-hint">{isRTL ? 'الحد الأقصى 6 ميجابايت' : 'Max 6 MB'}</span>
+                  </label>
+                )}
+              </Field>
+
               <p className="mawhba-email-hint">
                 {isRTL
                   ? 'سيتم تضمين الرسالة في قالب رسمي يحمل شعار فاب لاب وعنوان برنامج موهبة.'
