@@ -50,6 +50,7 @@ const EmployeeActivity = require('./EmployeeActivity');
 const Workshop = require('./Workshop');
 const WorkshopStudent = require('./WorkshopStudent');
 const RegistrationClosure = require('./RegistrationClosure');
+const MawhbaStudent = require('./MawhbaStudent');
 
 // Define relationships
 User.hasMany(Registration, { foreignKey: 'userId', as: 'registrations' });
@@ -431,5 +432,6 @@ module.exports = {
   Workshop,
   WorkshopStudent,
   RegistrationClosure,
+  MawhbaStudent,
   syncDatabase
 };
