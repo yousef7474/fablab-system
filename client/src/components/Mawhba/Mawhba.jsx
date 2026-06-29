@@ -2,6 +2,7 @@ import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'react-toastify';
 import api from '../../config/api';
+import QRScanner from '../QRScanner/QRScanner';
 import './Mawhba.css';
 
 const EMPTY_STUDENT = {
@@ -31,6 +32,19 @@ const Mawhba = () => {
   const [colorMap, setColorMap] = useState({});
   const [colorDraft, setColorDraft] = useState({});
   const [savingColor, setSavingColor] = useState(null);
+
+  const [showScanner, setShowScanner] = useState(false);
+  const [showLogModal, setShowLogModal] = useState(false);
+  const [logStudent, setLogStudent] = useState(null);
+  const [logRecords, setLogRecords] = useState([]);
+  const [logLoading, setLogLoading] = useState(false);
+
+  const [showExportModal, setShowExportModal] = useState(false);
+  const today = new Date().toISOString().slice(0, 10);
+  const aMonthAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+  const [exportFrom, setExportFrom] = useState(aMonthAgo);
+  const [exportTo, setExportTo] = useState(today);
+  const [exporting, setExporting] = useState(false);
 
   const [showStudentModal, setShowStudentModal] = useState(false);
   const [editingId, setEditingId] = useState(null);
@@ -365,6 +379,92 @@ const Mawhba = () => {
     setShowColorsModal(true);
   };
 
+  const openAttendanceLog = async (s) => {
+    setLogStudent(s);
+    setShowLogModal(true);
+    setLogLoading(true);
+    setLogRecords([]);
+    try {
+      const { data } = await api.get(`/mawhba/students/${s.studentId}/attendance`);
+      setLogRecords(Array.isArray(data) ? data : []);
+    } catch (err) {
+      console.error(err);
+      toast.error(isRTL ? 'تعذر تحميل سجل الحضور' : 'Failed to load attendance log');
+    } finally {
+      setLogLoading(false);
+    }
+  };
+
+  const deleteAttendanceRecord = async (rec) => {
+    if (!window.confirm(isRTL ? `حذف سجل ${rec.date}؟` : `Delete record for ${rec.date}?`)) return;
+    try {
+      await api.delete(`/mawhba/attendance/${rec.attendanceId}`);
+      setLogRecords(prev => prev.filter(r => r.attendanceId !== rec.attendanceId));
+      toast.success(isRTL ? 'تم الحذف' : 'Deleted');
+    } catch (err) {
+      console.error(err);
+      toast.error(isRTL ? 'فشل الحذف' : 'Delete failed');
+    }
+  };
+
+  const downloadAttendance = async () => {
+    if (selected.size === 0) {
+      toast.warning(isRTL ? 'اختر طالباً واحداً على الأقل' : 'Select at least one student');
+      return;
+    }
+    if (!exportFrom || !exportTo) {
+      toast.error(isRTL ? 'حدد نطاق التواريخ' : 'Pick a date range');
+      return;
+    }
+    setExporting(true);
+    try {
+      const res = await api.post(
+        '/mawhba/attendance/export',
+        { studentIds: [...selected], from: exportFrom, to: exportTo },
+        { responseType: 'blob' }
+      );
+      const url = URL.createObjectURL(res.data);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `mawhba-attendance-${exportFrom}_to_${exportTo}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+      toast.success(isRTL ? 'تم تنزيل الملف' : 'File downloaded');
+      setShowExportModal(false);
+    } catch (err) {
+      console.error(err);
+      toast.error(isRTL ? 'فشل التصدير' : 'Export failed');
+    } finally {
+      setExporting(false);
+    }
+  };
+
+  const fmtTime = (iso) => {
+    if (!iso) return '—';
+    const d = new Date(iso);
+    if (isNaN(d.getTime())) return '—';
+    const pad = (n) => String(n).padStart(2, '0');
+    return `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+  };
+  const durationMin = (rec) => {
+    if (!rec.checkInAt || !rec.checkOutAt) return null;
+    const m = Math.max(0, Math.round((new Date(rec.checkOutAt) - new Date(rec.checkInAt)) / 60000));
+    return m;
+  };
+  const logSummary = useMemo(() => {
+    const completed = logRecords.filter(r => r.checkInAt && r.checkOutAt);
+    const totalMin = completed.reduce((acc, r) => acc + durationMin(r), 0);
+    return {
+      total: logRecords.length,
+      completed: completed.length,
+      stillIn: logRecords.filter(r => r.checkInAt && !r.checkOutAt).length,
+      hours: Math.floor(totalMin / 60),
+      minutes: totalMin % 60
+    };
+  }, [logRecords]);
+
   const saveCourseColor = async (courseName, color) => {
     setSavingColor(courseName);
     try {
@@ -453,6 +553,21 @@ const Mawhba = () => {
         >
           🎨 {isRTL ? 'ألوان الدورات' : 'Course Colors'}
         </button>
+        <button
+          className="mawhba-btn-scanner"
+          onClick={() => setShowScanner(true)}
+          title={isRTL ? 'فتح ماسح رمز الحضور' : 'Open attendance scanner'}
+        >
+          📷 {isRTL ? 'مسح الحضور' : 'Scan Attendance'}
+        </button>
+        <button
+          className="mawhba-btn-export"
+          onClick={() => setShowExportModal(true)}
+          disabled={selected.size === 0}
+          title={isRTL ? 'تصدير سجل حضور المحددين' : 'Export attendance for selected'}
+        >
+          📥 {isRTL ? `تصدير حضور (${selected.size})` : `Export Attendance (${selected.size})`}
+        </button>
       </div>
 
       <div className="mawhba-summary">
@@ -512,6 +627,7 @@ const Mawhba = () => {
                   <td className="mono">{s.studentPhone || '—'}</td>
                   <td>
                     <div className="mawhba-actions">
+                      <button className="mawhba-btn-small mawhba-btn-log" onClick={() => openAttendanceLog(s)} title={isRTL ? 'سجل الحضور' : 'Attendance log'}>📅</button>
                       <button className="mawhba-btn-small mawhba-btn-print-row" onClick={() => printOne(s)} disabled={printing} title={isRTL ? 'طباعة البطاقة' : 'Print card'}>🖨</button>
                       <button className="mawhba-btn-small mawhba-btn-card" onClick={() => emailCard(s)} disabled={emailingCard === s.studentId} title={isRTL ? 'إرسال البطاقة عبر البريد' : 'Email card to student'}>{emailingCard === s.studentId ? '…' : '🎫'}</button>
                       <button className="mawhba-btn-small mawhba-btn-mail" onClick={() => openEmailSingle(s)} title={isRTL ? 'إرسال بريد' : 'Send email'}>✉</button>
@@ -599,6 +715,106 @@ const Mawhba = () => {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {showScanner && (
+        <QRScanner onClose={() => setShowScanner(false)} />
+      )}
+
+      {showLogModal && logStudent && (
+        <div className="mawhba-modal-overlay" onClick={() => setShowLogModal(false)}>
+          <div className="mawhba-modal mawhba-log-modal" onClick={(e) => e.stopPropagation()}>
+            <h3>📅 {isRTL ? `سجل الحضور — ${logStudent.nameAr}` : `Attendance Log — ${logStudent.nameAr}`}</h3>
+
+            <div className="mawhba-log-summary">
+              <div><span>{isRTL ? 'إجمالي الأيام' : 'Total days'}</span><b>{logSummary.total}</b></div>
+              <div><span>{isRTL ? 'مكتملة' : 'Completed'}</span><b>{logSummary.completed}</b></div>
+              <div><span>{isRTL ? 'لم يخرج بعد' : 'Still in'}</span><b>{logSummary.stillIn}</b></div>
+              <div><span>{isRTL ? 'إجمالي الوقت' : 'Total time'}</span><b>{logSummary.hours}h {logSummary.minutes}m</b></div>
+            </div>
+
+            <div className="mawhba-log-table-wrap">
+              {logLoading ? (
+                <div className="mawhba-empty">{isRTL ? 'جارٍ التحميل...' : 'Loading...'}</div>
+              ) : logRecords.length === 0 ? (
+                <div className="mawhba-empty">{isRTL ? 'لا يوجد سجل حضور بعد' : 'No attendance records yet'}</div>
+              ) : (
+                <table className="mawhba-log-table">
+                  <thead>
+                    <tr>
+                      <th>{isRTL ? 'التاريخ' : 'Date'}</th>
+                      <th>{isRTL ? 'الدخول' : 'Check In'}</th>
+                      <th>{isRTL ? 'الخروج' : 'Check Out'}</th>
+                      <th>{isRTL ? 'المدة' : 'Duration'}</th>
+                      <th>{isRTL ? 'الحالة' : 'Status'}</th>
+                      <th></th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {logRecords.map(r => {
+                      const dur = durationMin(r);
+                      const completed = r.checkInAt && r.checkOutAt;
+                      return (
+                        <tr key={r.attendanceId} className={completed ? 'is-completed' : 'is-partial'}>
+                          <td className="mono">{r.date}</td>
+                          <td className="mono">{fmtTime(r.checkInAt)}</td>
+                          <td className="mono">{fmtTime(r.checkOutAt)}</td>
+                          <td className="mono">{dur != null ? `${Math.floor(dur / 60)}h ${dur % 60}m` : '—'}</td>
+                          <td>
+                            <span className={`mawhba-log-pill ${completed ? 'ok' : 'partial'}`}>
+                              {completed ? (isRTL ? '✓ مكتمل' : '✓ Complete') : (isRTL ? '⏳ داخل الآن' : '⏳ Still in')}
+                            </span>
+                          </td>
+                          <td>
+                            <button className="mawhba-btn-small mawhba-btn-del" onClick={() => deleteAttendanceRecord(r)} title={isRTL ? 'حذف' : 'Delete'}>×</button>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              )}
+            </div>
+
+            <div className="mawhba-modal-actions">
+              <button className="mawhba-btn-secondary" onClick={() => setShowLogModal(false)}>
+                {isRTL ? 'إغلاق' : 'Close'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showExportModal && (
+        <div className="mawhba-modal-overlay" onClick={() => !exporting && setShowExportModal(false)}>
+          <div className="mawhba-modal mawhba-email-modal" onClick={(e) => e.stopPropagation()}>
+            <h3>📥 {isRTL ? 'تصدير سجل الحضور' : 'Export Attendance'}</h3>
+            <p className="mawhba-email-targets">
+              {isRTL ? `سيتم تصدير سجل ${selected.size} طالب` : `Will export ${selected.size} student(s)`}
+            </p>
+            <div className="mawhba-form-grid">
+              <Field label={isRTL ? 'من تاريخ' : 'From'}>
+                <input type="date" value={exportFrom} onChange={(e) => setExportFrom(e.target.value)} />
+              </Field>
+              <Field label={isRTL ? 'إلى تاريخ' : 'To'}>
+                <input type="date" value={exportTo} onChange={(e) => setExportTo(e.target.value)} />
+              </Field>
+            </div>
+            <p className="mawhba-email-hint" style={{ marginTop: 8 }}>
+              {isRTL
+                ? 'سيتم تنزيل ملف CSV متوافق مع Excel (مع دعم اللغة العربية).'
+                : 'Downloads a UTF-16 CSV that opens cleanly in Excel.'}
+            </p>
+            <div className="mawhba-modal-actions">
+              <button className="mawhba-btn-secondary" onClick={() => setShowExportModal(false)} disabled={exporting}>
+                {isRTL ? 'إلغاء' : 'Cancel'}
+              </button>
+              <button className="mawhba-btn-primary" onClick={downloadAttendance} disabled={exporting}>
+                {exporting ? (isRTL ? 'جارٍ التصدير...' : 'Exporting...') : (isRTL ? 'تنزيل' : 'Download')}
+              </button>
+            </div>
           </div>
         </div>
       )}

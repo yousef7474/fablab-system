@@ -1,4 +1,4 @@
-const { MawhbaStudent, MawhbaCourseColor } = require('../models');
+const { MawhbaStudent, MawhbaCourseColor, MawhbaAttendance } = require('../models');
 const { Op } = require('sequelize');
 const QRCode = require('qrcode');
 const { sendCustomEmail } = require('../utils/emailService');
@@ -603,6 +603,135 @@ exports.sendEmail = async (req, res) => {
     });
   } catch (err) {
     console.error('Mawhba sendEmail error:', err);
+    res.status(500).json({ message: 'Server error', error: err.message });
+  }
+};
+
+// ───────────────── Attendance ─────────────────
+
+// "today" is computed in the server's local TZ via YYYY-MM-DD
+const todayStr = () => {
+  const d = new Date();
+  const pad = (n) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+};
+
+exports.scanAttendance = async (req, res) => {
+  try {
+    const raw = String(req.body?.code || '').trim();
+    if (!raw) return res.status(400).json({ message: 'No code provided' });
+
+    // The Mawhba QR encodes the student's national ID
+    const student = await MawhbaStudent.findOne({ where: { nationalId: raw } });
+    if (!student) return res.status(404).json({ message: 'No Mawhba student matches this code', code: raw });
+
+    const date = todayStr();
+    const now = new Date();
+    let record = await MawhbaAttendance.findOne({ where: { studentId: student.studentId, date } });
+
+    let action = null;
+    if (!record) {
+      record = await MawhbaAttendance.create({ studentId: student.studentId, date, checkInAt: now });
+      action = 'checkin';
+    } else if (!record.checkOutAt) {
+      // require a small gap to avoid the same scan registering twice — 30 seconds
+      const since = now.getTime() - new Date(record.checkInAt).getTime();
+      if (since < 30 * 1000) {
+        return res.json({ action: 'duplicate', student, record, message: 'Just checked in — wait a moment before scanning to leave' });
+      }
+      await record.update({ checkOutAt: now });
+      action = 'checkout';
+    } else {
+      return res.json({ action: 'already_done', student, record, message: 'Already checked in and out today' });
+    }
+
+    res.json({ action, student, record });
+  } catch (err) {
+    console.error('Mawhba scanAttendance error:', err);
+    res.status(500).json({ message: 'Server error', error: err.message });
+  }
+};
+
+exports.listStudentAttendance = async (req, res) => {
+  try {
+    const records = await MawhbaAttendance.findAll({
+      where: { studentId: req.params.id },
+      order: [['date', 'DESC'], ['checkInAt', 'DESC']]
+    });
+    res.json(records);
+  } catch (err) {
+    console.error('Mawhba listStudentAttendance error:', err);
+    res.status(500).json({ message: 'Server error', error: err.message });
+  }
+};
+
+exports.deleteAttendance = async (req, res) => {
+  try {
+    const rec = await MawhbaAttendance.findByPk(req.params.id);
+    if (!rec) return res.status(404).json({ message: 'Record not found' });
+    await rec.destroy();
+    res.json({ message: 'Deleted' });
+  } catch (err) {
+    console.error('Mawhba deleteAttendance error:', err);
+    res.status(500).json({ message: 'Server error', error: err.message });
+  }
+};
+
+const fmtTime = (d) => {
+  if (!d) return '';
+  const dt = new Date(d);
+  if (isNaN(dt.getTime())) return '';
+  const pad = (n) => String(n).padStart(2, '0');
+  return `${pad(dt.getHours())}:${pad(dt.getMinutes())}:${pad(dt.getSeconds())}`;
+};
+
+exports.exportAttendance = async (req, res) => {
+  try {
+    const { studentIds, from, to } = req.body || {};
+    if (!Array.isArray(studentIds) || studentIds.length === 0) {
+      return res.status(400).json({ message: 'No students selected' });
+    }
+    const where = { studentId: { [Op.in]: studentIds } };
+    if (from) where.date = { ...(where.date || {}), [Op.gte]: from };
+    if (to) where.date = { ...(where.date || {}), [Op.lte]: to };
+
+    const records = await MawhbaAttendance.findAll({
+      where,
+      include: [{ model: MawhbaStudent, as: 'student', required: false }],
+      order: [['date', 'ASC'], ['checkInAt', 'ASC']]
+    });
+
+    // Build TSV (Excel reads UTF-16 LE TSV natively as a workbook)
+    const header = ['اسم الطالب', 'رقم الهوية', 'اسم الدورة', 'التاريخ', 'وقت الدخول', 'وقت الخروج', 'المدة (دقيقة)'];
+    const lines = [header.join('\t')];
+    for (const r of records) {
+      const s = r.student || {};
+      const minutes = r.checkInAt && r.checkOutAt
+        ? Math.max(0, Math.round((new Date(r.checkOutAt) - new Date(r.checkInAt)) / 60000))
+        : '';
+      lines.push([
+        s.nameAr || s.nameEn || '',
+        s.nationalId || '',
+        s.courseName || '',
+        r.date || '',
+        fmtTime(r.checkInAt),
+        fmtTime(r.checkOutAt),
+        minutes
+      ].map(v => String(v ?? '').replace(/\t/g, ' ').replace(/\r?\n/g, ' ')).join('\t'));
+    }
+
+    const text = lines.join('\r\n');
+    // UTF-16 LE BOM (Excel-friendly Arabic)
+    const bom = Buffer.from([0xFF, 0xFE]);
+    const body = Buffer.from(text, 'utf16le');
+    const out = Buffer.concat([bom, body]);
+
+    const today = todayStr();
+    res.setHeader('Content-Type', 'text/csv; charset=utf-16le');
+    res.setHeader('Content-Disposition', `attachment; filename="mawhba-attendance-${today}.csv"`);
+    res.send(out);
+  } catch (err) {
+    console.error('Mawhba exportAttendance error:', err);
     res.status(500).json({ message: 'Server error', error: err.message });
   }
 };

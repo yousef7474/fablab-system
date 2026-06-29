@@ -151,6 +151,63 @@ const QRScanner = ({ onClose }) => {
         cooldownRef.current = false;
       }, 7000);
     } catch {
+      // Not JSON — fall back to Mawhba card lookup (plain-text national ID)
+      const raw = typeof data === 'string' ? data.trim() : '';
+      if (/^\d{6,15}$/.test(raw)) {
+        try {
+          const res = await api.post('/mawhba/attendance/scan', { code: raw });
+          const s = res.data.student || {};
+          const action = res.data.action;
+          const rec = res.data.record || {};
+          const fmt = (iso) => {
+            if (!iso) return '';
+            const d = new Date(iso);
+            const pad = (n) => String(n).padStart(2, '0');
+            return `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+          };
+          let workshop = '';
+          let color = '#8b5cf6';
+          if (action === 'checkin') {
+            workshop = isRTL ? `📥 تسجيل دخول ${fmt(rec.checkInAt)}` : `📥 Checked in ${fmt(rec.checkInAt)}`;
+            color = '#22c55e';
+          } else if (action === 'checkout') {
+            workshop = isRTL ? `📤 تسجيل خروج ${fmt(rec.checkOutAt)}` : `📤 Checked out ${fmt(rec.checkOutAt)}`;
+            color = '#f59e0b';
+          } else if (action === 'already_done') {
+            workshop = isRTL
+              ? `تم تسجيل الحضور والانصراف اليوم (${fmt(rec.checkInAt)} → ${fmt(rec.checkOutAt)})`
+              : `Already checked in & out today (${fmt(rec.checkInAt)} → ${fmt(rec.checkOutAt)})`;
+            color = '#64748b';
+          } else if (action === 'duplicate') {
+            workshop = isRTL ? 'انتظر قليلاً قبل تسجيل الخروج' : 'Wait a moment before checking out';
+            color = '#f59e0b';
+          }
+          setWelcome({
+            name: s.nameAr || s.nameEn || raw,
+            workshop,
+            color,
+            phone: s.studentPhone || ''
+          });
+          if (welcomeTimerRef.current) clearTimeout(welcomeTimerRef.current);
+          welcomeTimerRef.current = setTimeout(() => {
+            setWelcome(null);
+            cooldownRef.current = false;
+          }, 6000);
+          return;
+        } catch (err) {
+          setWelcome({
+            name: raw,
+            workshop: err?.response?.data?.message || (isRTL ? 'لم يتم العثور على الطالب' : 'Student not found'),
+            color: '#ef4444'
+          });
+          if (welcomeTimerRef.current) clearTimeout(welcomeTimerRef.current);
+          welcomeTimerRef.current = setTimeout(() => {
+            setWelcome(null);
+            cooldownRef.current = false;
+          }, 5000);
+          return;
+        }
+      }
       cooldownRef.current = false;
     }
   }, [isRTL]);
