@@ -27,6 +27,11 @@ const Mawhba = () => {
   const [printing, setPrinting] = useState(false);
   const [emailingCard, setEmailingCard] = useState(null);
 
+  const [showColorsModal, setShowColorsModal] = useState(false);
+  const [colorMap, setColorMap] = useState({});
+  const [colorDraft, setColorDraft] = useState({});
+  const [savingColor, setSavingColor] = useState(null);
+
   const [showStudentModal, setShowStudentModal] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [studentForm, setStudentForm] = useState(EMPTY_STUDENT);
@@ -63,8 +68,20 @@ const Mawhba = () => {
     }
   }, []);
 
+  const fetchColorMap = useCallback(async () => {
+    try {
+      const { data } = await api.get('/mawhba/course-colors');
+      const map = {};
+      (data || []).forEach(r => { map[r.courseName] = r.color; });
+      setColorMap(map);
+    } catch (err) {
+      console.error(err);
+    }
+  }, []);
+
   useEffect(() => { fetchStudents(); }, [fetchStudents]);
   useEffect(() => { fetchCourses(); }, [fetchCourses]);
+  useEffect(() => { fetchColorMap(); }, [fetchColorMap]);
 
   const openAdd = () => {
     setEditingId(null);
@@ -195,15 +212,27 @@ const Mawhba = () => {
     [students, selected]
   );
 
-  const renderCardHtml = (student, qrDataUrl) => {
+  const darkenHex = (hex, amount = 0.55) => {
+    const m = /^#?([0-9a-fA-F]{6})$/.exec(hex || '');
+    if (!m) return '#0f172a';
+    const n = parseInt(m[1], 16);
+    const r = Math.max(0, Math.round(((n >> 16) & 0xff) * (1 - amount)));
+    const g = Math.max(0, Math.round(((n >> 8) & 0xff) * (1 - amount)));
+    const b = Math.max(0, Math.round((n & 0xff) * (1 - amount)));
+    return '#' + ((1 << 24) | (r << 16) | (g << 8) | b).toString(16).slice(1);
+  };
+
+  const renderCardHtml = (student, qrDataUrl, color) => {
     const name = student.nameAr || student.nameEn || '';
     const nid = student.nationalId || '';
     const guardian = student.guardianPhone || student.studentPhone || '';
     const course = student.courseName || '';
     const grade = student.schoolGrade || '';
+    const c = color || colorMap[student.courseName] || '#8b5cf6';
+    const cDark = darkenHex(c, 0.55);
     const logoSrc = `${window.location.origin}/fablab.png`;
     return `
-      <div class="mawhba-card" dir="rtl">
+      <div class="mawhba-card" dir="rtl" style="--course-color:${c}; --course-color-dark:${cDark};">
         <div class="mawhba-card-top">
           <div class="mawhba-card-brand">
             <img src="${logoSrc}" alt="FabLab" class="mawhba-card-logo" />
@@ -218,34 +247,27 @@ const Mawhba = () => {
           </div>
         </div>
         <div class="mawhba-card-body">
-          <div class="mawhba-card-name-label">اسم الطالب / STUDENT NAME</div>
           <div class="mawhba-card-name">${name}</div>
-          <div class="mawhba-card-row">
-            <div class="mawhba-card-field">
-              <div class="mawhba-card-field-label">رقم الهوية</div>
-              <div class="mawhba-card-field-value mono">${nid}</div>
-            </div>
-            <div class="mawhba-card-field">
-              <div class="mawhba-card-field-label">رقم ولي الأمر</div>
-              <div class="mawhba-card-field-value mono">${guardian || '—'}</div>
-            </div>
+          <div class="mawhba-card-field">
+            <div class="mawhba-card-field-label">رقم الهوية</div>
+            <div class="mawhba-card-field-value mono">${nid}</div>
           </div>
-          <div class="mawhba-card-row">
-            <div class="mawhba-card-field wide">
-              <div class="mawhba-card-field-label">اسم الدورة</div>
-              <div class="mawhba-card-field-value">${course || '—'}</div>
-            </div>
-            ${grade ? `<div class="mawhba-card-field">
-              <div class="mawhba-card-field-label">الصف</div>
-              <div class="mawhba-card-field-value">${grade}</div>
-            </div>` : ''}
+          <div class="mawhba-card-field">
+            <div class="mawhba-card-field-label">رقم ولي الأمر</div>
+            <div class="mawhba-card-field-value mono">${guardian || '—'}</div>
           </div>
+          ${grade ? `<div class="mawhba-card-field">
+            <div class="mawhba-card-field-label">الصف</div>
+            <div class="mawhba-card-field-value">${grade}</div>
+          </div>` : ''}
+        </div>
+        <div class="mawhba-card-course">
+          <div class="mawhba-card-course-label">اسم الدورة</div>
+          <div class="mawhba-card-course-name">${course || '—'}</div>
         </div>
         <div class="mawhba-card-bottom">
-          <div class="mawhba-card-qr-wrap">
-            <img src="${qrDataUrl}" alt="QR" class="mawhba-card-qr" />
-            <div class="mawhba-card-qr-label">رمز الحضور · ATTENDANCE</div>
-          </div>
+          <img src="${qrDataUrl}" alt="QR" class="mawhba-card-qr" />
+          <div class="mawhba-card-qr-label">رمز الحضور</div>
           <div class="mawhba-card-footer-text">
             <div>هذه البطاقة ملك لفاب لاب الأحساء — يرجى إعادتها عند الفقدان</div>
             <div class="mono">ID · ${nid}</div>
@@ -257,41 +279,40 @@ const Mawhba = () => {
   const CARD_PRINT_CSS = `
     body { margin: 0; background: #f1f5f9; padding: 24px; font-family: 'Segoe UI', Tahoma, Arial, sans-serif; }
     .mawhba-cards-wrap { display: flex; flex-wrap: wrap; gap: 24px; justify-content: center; }
-    .mawhba-card { width: 340px; min-height: 540px; background: white; border-radius: 18px;
+    .mawhba-card { width: 360px; min-height: 600px; background: white; border-radius: 18px;
       box-shadow: 0 20px 40px -20px rgba(15,23,42,0.4); overflow: hidden; position: relative;
       color: #0f172a; border: 1px solid #e2e8f0; }
     .mawhba-card::after { content: ''; position: absolute; bottom: 0; left: 0; right: 0; height: 6px;
-      background: linear-gradient(90deg,#f59e0b 0%,#ef4444 35%,#ec4899 65%,#8b5cf6 100%); }
-    .mawhba-card-top { background: linear-gradient(135deg,#0f172a 0%,#1e1b4b 60%,#4c1d95 100%);
-      padding: 16px 18px; display: flex; justify-content: space-between; align-items: center; color: white; }
+      background: var(--course-color, #8b5cf6); }
+    .mawhba-card-top { background: linear-gradient(135deg, var(--course-color, #8b5cf6) 0%, var(--course-color-dark, #0f172a) 100%);
+      padding: 18px 20px; display: flex; justify-content: space-between; align-items: center; color: white; }
     .mawhba-card-brand { display: flex; align-items: center; gap: 10px; }
-    .mawhba-card-logo { width: 38px; height: 38px; background: white; border-radius: 8px; padding: 4px; object-fit: contain; }
+    .mawhba-card-logo { width: 40px; height: 40px; background: white; border-radius: 8px; padding: 4px; object-fit: contain; }
     .mawhba-card-fablab { font-size: 13px; font-weight: 800; line-height: 1.2; }
-    .mawhba-card-fablab-en { font-size: 9px; letter-spacing: 1.4px; color: rgba(255,255,255,0.7); margin-top: 2px; }
+    .mawhba-card-fablab-en { font-size: 9px; letter-spacing: 1.4px; color: rgba(255,255,255,0.75); margin-top: 2px; }
     .mawhba-card-program { text-align: end; }
-    .mawhba-card-program-ar { font-size: 18px; font-weight: 800; background: linear-gradient(135deg,#fde68a,#fbbf24);
-      -webkit-background-clip: text; background-clip: text; color: transparent; }
-    .mawhba-card-program-en { font-size: 9px; letter-spacing: 2.5px; color: rgba(255,255,255,0.65); margin-top: 2px; }
-    .mawhba-card-body { padding: 18px 18px 8px; }
-    .mawhba-card-name-label { font-size: 9px; letter-spacing: 1.4px; color: #94a3b8; font-weight: 700; margin-bottom: 4px; }
-    .mawhba-card-name { font-size: 19px; font-weight: 800; color: #0f172a; line-height: 1.35;
-      padding-bottom: 12px; border-bottom: 1px dashed #e2e8f0; margin-bottom: 12px; }
-    .mawhba-card-row { display: flex; gap: 10px; margin-bottom: 12px; }
-    .mawhba-card-field { flex: 1; min-width: 0; }
-    .mawhba-card-field.wide { flex: 2; }
-    .mawhba-card-field-label { font-size: 9px; letter-spacing: 1.3px; color: #8b5cf6; font-weight: 700; margin-bottom: 3px; }
-    .mawhba-card-field-value { font-size: 13px; font-weight: 700; color: #0f172a; word-break: break-word; }
-    .mawhba-card-field-value.mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 13px; letter-spacing: 0.5px; }
-    .mawhba-card-bottom { padding: 6px 18px 22px; text-align: center; }
-    .mawhba-card-qr-wrap { background: linear-gradient(135deg,#faf5ff 0%,#fef3c7 100%); border: 1px solid #e9d5ff;
-      border-radius: 12px; padding: 10px; display: inline-flex; flex-direction: column; align-items: center; gap: 4px; }
-    .mawhba-card-qr { width: 130px; height: 130px; display: block; }
-    .mawhba-card-qr-label { font-size: 9px; letter-spacing: 1.6px; color: #6d28d9; font-weight: 800; }
-    .mawhba-card-footer-text { margin-top: 10px; font-size: 9px; color: #64748b; line-height: 1.5; }
+    .mawhba-card-program-ar { font-size: 19px; font-weight: 800; color: #ffffff; text-shadow: 0 1px 2px rgba(0,0,0,0.2); }
+    .mawhba-card-program-en { font-size: 9px; letter-spacing: 2.5px; color: rgba(255,255,255,0.7); margin-top: 2px; }
+    .mawhba-card-body { padding: 18px 20px 6px; }
+    .mawhba-card-name { font-size: 21px; font-weight: 800; color: #0f172a; line-height: 1.35;
+      padding-bottom: 12px; border-bottom: 2px solid var(--course-color, #8b5cf6); margin-bottom: 14px; text-align: center; }
+    .mawhba-card-field { margin-bottom: 10px; }
+    .mawhba-card-field-label { font-size: 10px; letter-spacing: 1.3px; color: var(--course-color, #8b5cf6); font-weight: 800; margin-bottom: 3px; }
+    .mawhba-card-field-value { font-size: 14px; font-weight: 700; color: #0f172a; word-break: break-word; }
+    .mawhba-card-field-value.mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 14px; letter-spacing: 0.5px; }
+    .mawhba-card-course { margin: 10px 20px 8px; background: var(--course-color, #8b5cf6); color: white;
+      border-radius: 10px; padding: 10px 14px; text-align: center; box-shadow: 0 6px 14px -6px var(--course-color, #8b5cf6); }
+    .mawhba-card-course-label { font-size: 10px; letter-spacing: 2px; color: rgba(255,255,255,0.85); font-weight: 700; margin-bottom: 3px; }
+    .mawhba-card-course-name { font-size: 17px; font-weight: 800; color: white; }
+    .mawhba-card-bottom { padding: 6px 20px 22px; text-align: center; }
+    .mawhba-card-qr { width: 175px; height: 175px; display: block; margin: 0 auto; background: white;
+      padding: 6px; border: 3px solid var(--course-color, #8b5cf6); border-radius: 14px; }
+    .mawhba-card-qr-label { margin-top: 8px; font-size: 12px; letter-spacing: 2px; color: var(--course-color-dark, #0f172a); font-weight: 800; text-align: center; }
+    .mawhba-card-footer-text { margin-top: 12px; font-size: 9px; color: #64748b; line-height: 1.5; }
     .mawhba-card-footer-text .mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
       margin-top: 2px; color: #334155; letter-spacing: 1px; }
     @media print {
-      body { background: white; padding: 0; }
+      body { background: white; padding: 0; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
       .mawhba-cards-wrap { gap: 12px; padding: 8px; }
       .mawhba-card { box-shadow: none; break-inside: avoid; }
     }
@@ -312,7 +333,7 @@ const Mawhba = () => {
     setPrinting(true);
     try {
       const { data } = await api.get(`/mawhba/students/${s.studentId}/card`);
-      openPrintWindow(renderCardHtml(data.student, data.qrDataUrl));
+      openPrintWindow(renderCardHtml(data.student, data.qrDataUrl, data.color));
     } catch (err) {
       console.error(err);
       toast.error(isRTL ? 'تعذر تحضير البطاقة' : 'Failed to prepare card');
@@ -326,7 +347,7 @@ const Mawhba = () => {
     setPrinting(true);
     try {
       const { data } = await api.post('/mawhba/cards', { studentIds: [...selected] });
-      const html = (data || []).map(d => renderCardHtml(d.student, d.qrDataUrl)).join('');
+      const html = (data || []).map(d => renderCardHtml(d.student, d.qrDataUrl, d.color)).join('');
       if (!html) { toast.error(isRTL ? 'لا توجد بطاقات' : 'No cards'); return; }
       openPrintWindow(html);
     } catch (err) {
@@ -334,6 +355,27 @@ const Mawhba = () => {
       toast.error(isRTL ? 'تعذر تحضير البطاقات' : 'Failed to prepare cards');
     } finally {
       setPrinting(false);
+    }
+  };
+
+  const openColorsModal = () => {
+    const draft = {};
+    courses.forEach(c => { draft[c] = colorMap[c] || '#8b5cf6'; });
+    setColorDraft(draft);
+    setShowColorsModal(true);
+  };
+
+  const saveCourseColor = async (courseName, color) => {
+    setSavingColor(courseName);
+    try {
+      await api.post('/mawhba/course-colors', { courseName, color });
+      setColorMap(prev => ({ ...prev, [courseName]: color }));
+      toast.success(isRTL ? `تم حفظ لون "${courseName}"` : `Saved color for "${courseName}"`);
+    } catch (err) {
+      console.error(err);
+      toast.error(err?.response?.data?.message || (isRTL ? 'فشل الحفظ' : 'Save failed'));
+    } finally {
+      setSavingColor(null);
     }
   };
 
@@ -403,6 +445,13 @@ const Mawhba = () => {
           title={isRTL ? 'طباعة بطاقات المحددين' : 'Print cards for selected'}
         >
           🖨 {isRTL ? `طباعة (${selected.size})` : `Print (${selected.size})`}
+        </button>
+        <button
+          className="mawhba-btn-colors"
+          onClick={openColorsModal}
+          title={isRTL ? 'تخصيص لون كل دورة' : 'Customize course colors'}
+        >
+          🎨 {isRTL ? 'ألوان الدورات' : 'Course Colors'}
         </button>
       </div>
 
@@ -550,6 +599,64 @@ const Mawhba = () => {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {showColorsModal && (
+        <div className="mawhba-modal-overlay" onClick={() => setShowColorsModal(false)}>
+          <div className="mawhba-modal mawhba-colors-modal" onClick={(e) => e.stopPropagation()}>
+            <h3>🎨 {isRTL ? 'ألوان الدورات' : 'Course Colors'}</h3>
+            <p className="mawhba-email-hint" style={{ marginBottom: 14 }}>
+              {isRTL
+                ? 'اختر لوناً مميزاً لكل دورة — سيظهر على بطاقات طلابها (الترويسة + إطار الكود + شريط الدورة).'
+                : 'Pick a distinctive color per course — applied to the card header, QR border, and course banner.'}
+            </p>
+            {courses.length === 0 ? (
+              <div className="mawhba-empty">{isRTL ? 'لا توجد دورات بعد' : 'No courses yet'}</div>
+            ) : (
+              <div className="mawhba-colors-list">
+                {courses.map((c) => {
+                  const current = colorDraft[c] || colorMap[c] || '#8b5cf6';
+                  const saved = colorMap[c];
+                  const dirty = saved !== current;
+                  return (
+                    <div key={c} className="mawhba-color-row">
+                      <div className="mawhba-color-swatch" style={{ background: current }} />
+                      <div className="mawhba-color-name">{c}</div>
+                      <input
+                        type="color"
+                        className="mawhba-color-input"
+                        value={current}
+                        onChange={(e) => setColorDraft(prev => ({ ...prev, [c]: e.target.value }))}
+                      />
+                      <input
+                        type="text"
+                        className="mawhba-color-hex"
+                        value={current}
+                        onChange={(e) => {
+                          const v = e.target.value.trim();
+                          setColorDraft(prev => ({ ...prev, [c]: v }));
+                        }}
+                        placeholder="#8b5cf6"
+                      />
+                      <button
+                        className="mawhba-btn-secondary"
+                        disabled={!dirty || savingColor === c || !/^#[0-9a-fA-F]{6}$/.test(current)}
+                        onClick={() => saveCourseColor(c, current)}
+                      >
+                        {savingColor === c ? (isRTL ? '...' : '...') : (isRTL ? 'حفظ' : 'Save')}
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+            <div className="mawhba-modal-actions">
+              <button className="mawhba-btn-secondary" onClick={() => setShowColorsModal(false)}>
+                {isRTL ? 'إغلاق' : 'Close'}
+              </button>
+            </div>
           </div>
         </div>
       )}

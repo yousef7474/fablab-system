@@ -51,6 +51,7 @@ const Workshop = require('./Workshop');
 const WorkshopStudent = require('./WorkshopStudent');
 const RegistrationClosure = require('./RegistrationClosure');
 const MawhbaStudent = require('./MawhbaStudent');
+const MawhbaCourseColor = require('./MawhbaCourseColor');
 
 // Define relationships
 User.hasMany(Registration, { foreignKey: 'userId', as: 'registrations' });
@@ -433,5 +434,6 @@ module.exports = {
   WorkshopStudent,
   RegistrationClosure,
   MawhbaStudent,
+  MawhbaCourseColor,
   syncDatabase
 };

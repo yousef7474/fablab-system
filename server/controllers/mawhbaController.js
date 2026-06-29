@@ -1,7 +1,20 @@
-const { MawhbaStudent } = require('../models');
+const { MawhbaStudent, MawhbaCourseColor } = require('../models');
 const { Op } = require('sequelize');
 const QRCode = require('qrcode');
 const { sendCustomEmail } = require('../utils/emailService');
+
+const DEFAULT_COURSE_COLOR = '#8b5cf6';
+
+// Derives a darker shade of a hex color for gradient endpoints
+const darken = (hex, amount = 0.45) => {
+  const m = /^#?([0-9a-f]{6})$/i.exec(hex || '');
+  if (!m) return '#0f172a';
+  const n = parseInt(m[1], 16);
+  const r = Math.max(0, Math.round(((n >> 16) & 0xff) * (1 - amount)));
+  const g = Math.max(0, Math.round(((n >> 8) & 0xff) * (1 - amount)));
+  const b = Math.max(0, Math.round((n & 0xff) * (1 - amount)));
+  return '#' + ((1 << 24) | (r << 16) | (g << 8) | b).toString(16).slice(1);
+};
 
 const ALLOWED_FIELDS = [
   'nameAr', 'nameEn', 'nationalId', 'nationality', 'schoolGrade',
@@ -58,14 +71,49 @@ exports.listCourses = async (req, res) => {
   }
 };
 
-const buildIdCardHtml = ({ student, qrDataUrl, logoSrc }) => {
+exports.listCourseColors = async (req, res) => {
+  try {
+    const rows = await MawhbaCourseColor.findAll({ order: [['courseName', 'ASC']] });
+    res.json(rows);
+  } catch (err) {
+    console.error('Mawhba listCourseColors error:', err);
+    res.status(500).json({ message: 'Server error', error: err.message });
+  }
+};
+
+exports.setCourseColor = async (req, res) => {
+  try {
+    const { courseName, color } = req.body;
+    if (!courseName) return res.status(400).json({ message: 'courseName required' });
+    if (!color || !/^#[0-9a-fA-F]{6}$/.test(color)) return res.status(400).json({ message: 'Valid hex color required (e.g. #8b5cf6)' });
+    const [row] = await MawhbaCourseColor.findOrCreate({
+      where: { courseName },
+      defaults: { color }
+    });
+    if (row.color !== color) await row.update({ color });
+    res.json(row);
+  } catch (err) {
+    console.error('Mawhba setCourseColor error:', err);
+    res.status(500).json({ message: 'Server error', error: err.message });
+  }
+};
+
+const getColorForCourse = async (courseName) => {
+  if (!courseName) return DEFAULT_COURSE_COLOR;
+  const row = await MawhbaCourseColor.findOne({ where: { courseName } });
+  return row?.color || DEFAULT_COURSE_COLOR;
+};
+
+const buildIdCardHtml = ({ student, qrDataUrl, logoSrc, color }) => {
   const name = student.nameAr || student.nameEn || '';
   const nid = student.nationalId || '';
   const guardian = student.guardianPhone || student.studentPhone || '';
   const course = student.courseName || '';
   const grade = student.schoolGrade || '';
+  const c = color || DEFAULT_COURSE_COLOR;
+  const cDark = darken(c, 0.55);
   return `
-  <div class="mawhba-card" dir="rtl">
+  <div class="mawhba-card" dir="rtl" style="--course-color:${c}; --course-color-dark:${cDark};">
     <div class="mawhba-card-top">
       <div class="mawhba-card-brand">
         <img src="${logoSrc}" alt="FabLab" class="mawhba-card-logo" />
@@ -81,37 +129,30 @@ const buildIdCardHtml = ({ student, qrDataUrl, logoSrc }) => {
     </div>
 
     <div class="mawhba-card-body">
-      <div class="mawhba-card-name-label">اسم الطالب / STUDENT NAME</div>
       <div class="mawhba-card-name">${name}</div>
 
-      <div class="mawhba-card-row">
-        <div class="mawhba-card-field">
-          <div class="mawhba-card-field-label">رقم الهوية</div>
-          <div class="mawhba-card-field-value mono">${nid}</div>
-        </div>
-        <div class="mawhba-card-field">
-          <div class="mawhba-card-field-label">رقم ولي الأمر</div>
-          <div class="mawhba-card-field-value mono">${guardian || '—'}</div>
-        </div>
+      <div class="mawhba-card-field">
+        <div class="mawhba-card-field-label">رقم الهوية</div>
+        <div class="mawhba-card-field-value mono">${nid}</div>
       </div>
+      <div class="mawhba-card-field">
+        <div class="mawhba-card-field-label">رقم ولي الأمر</div>
+        <div class="mawhba-card-field-value mono">${guardian || '—'}</div>
+      </div>
+      ${grade ? `<div class="mawhba-card-field">
+        <div class="mawhba-card-field-label">الصف</div>
+        <div class="mawhba-card-field-value">${grade}</div>
+      </div>` : ''}
+    </div>
 
-      <div class="mawhba-card-row">
-        <div class="mawhba-card-field wide">
-          <div class="mawhba-card-field-label">اسم الدورة</div>
-          <div class="mawhba-card-field-value">${course || '—'}</div>
-        </div>
-        ${grade ? `<div class="mawhba-card-field">
-          <div class="mawhba-card-field-label">الصف</div>
-          <div class="mawhba-card-field-value">${grade}</div>
-        </div>` : ''}
-      </div>
+    <div class="mawhba-card-course">
+      <div class="mawhba-card-course-label">اسم الدورة</div>
+      <div class="mawhba-card-course-name">${course || '—'}</div>
     </div>
 
     <div class="mawhba-card-bottom">
-      <div class="mawhba-card-qr-wrap">
-        <img src="${qrDataUrl}" alt="QR" class="mawhba-card-qr" />
-        <div class="mawhba-card-qr-label">رمز الحضور · ATTENDANCE</div>
-      </div>
+      <img src="${qrDataUrl}" alt="QR" class="mawhba-card-qr" />
+      <div class="mawhba-card-qr-label">رمز الحضور</div>
       <div class="mawhba-card-footer-text">
         <div>هذه البطاقة ملك لفاب لاب الأحساء — يرجى إعادتها عند الفقدان</div>
         <div class="mono">ID · ${nid}</div>
@@ -122,8 +163,8 @@ const buildIdCardHtml = ({ student, qrDataUrl, logoSrc }) => {
 
 const CARD_CSS = `
   .mawhba-card {
-    width: 340px;
-    min-height: 540px;
+    width: 360px;
+    min-height: 600px;
     background: white;
     border-radius: 18px;
     box-shadow: 0 20px 40px -20px rgba(15, 23, 42, 0.4);
@@ -138,11 +179,11 @@ const CARD_CSS = `
     position: absolute;
     bottom: 0; left: 0; right: 0;
     height: 6px;
-    background: linear-gradient(90deg, #f59e0b 0%, #ef4444 35%, #ec4899 65%, #8b5cf6 100%);
+    background: var(--course-color, #8b5cf6);
   }
   .mawhba-card-top {
-    background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 60%, #4c1d95 100%);
-    padding: 16px 18px;
+    background: linear-gradient(135deg, var(--course-color, #8b5cf6) 0%, var(--course-color-dark, #0f172a) 100%);
+    padding: 18px 20px;
     display: flex;
     justify-content: space-between;
     align-items: center;
@@ -150,96 +191,107 @@ const CARD_CSS = `
   }
   .mawhba-card-brand { display: flex; align-items: center; gap: 10px; }
   .mawhba-card-logo {
-    width: 38px; height: 38px;
+    width: 40px; height: 40px;
     background: white;
     border-radius: 8px;
     padding: 4px;
     object-fit: contain;
   }
   .mawhba-card-fablab { font-size: 13px; font-weight: 800; line-height: 1.2; }
-  .mawhba-card-fablab-en { font-size: 9px; letter-spacing: 1.4px; color: rgba(255,255,255,0.7); margin-top: 2px; }
+  .mawhba-card-fablab-en { font-size: 9px; letter-spacing: 1.4px; color: rgba(255,255,255,0.75); margin-top: 2px; }
   .mawhba-card-program { text-align: end; }
   .mawhba-card-program-ar {
-    font-size: 18px;
+    font-size: 19px;
     font-weight: 800;
-    background: linear-gradient(135deg, #fde68a, #fbbf24);
-    -webkit-background-clip: text;
-    background-clip: text;
-    color: transparent;
+    color: #ffffff;
+    text-shadow: 0 1px 2px rgba(0,0,0,0.2);
   }
   .mawhba-card-program-en {
     font-size: 9px;
     letter-spacing: 2.5px;
-    color: rgba(255,255,255,0.65);
+    color: rgba(255,255,255,0.7);
     margin-top: 2px;
   }
 
-  .mawhba-card-body { padding: 18px 18px 8px; }
-  .mawhba-card-name-label {
-    font-size: 9px;
-    letter-spacing: 1.4px;
-    color: #94a3b8;
-    font-weight: 700;
-    margin-bottom: 4px;
-  }
+  .mawhba-card-body { padding: 18px 20px 6px; }
   .mawhba-card-name {
-    font-size: 19px;
+    font-size: 21px;
     font-weight: 800;
     color: #0f172a;
     line-height: 1.35;
     padding-bottom: 12px;
-    border-bottom: 1px dashed #e2e8f0;
-    margin-bottom: 12px;
+    border-bottom: 2px solid var(--course-color, #8b5cf6);
+    margin-bottom: 14px;
+    text-align: center;
   }
-  .mawhba-card-row {
-    display: flex;
-    gap: 10px;
-    margin-bottom: 12px;
+  .mawhba-card-field {
+    margin-bottom: 10px;
   }
-  .mawhba-card-field { flex: 1; min-width: 0; }
-  .mawhba-card-field.wide { flex: 2; }
   .mawhba-card-field-label {
-    font-size: 9px;
+    font-size: 10px;
     letter-spacing: 1.3px;
-    color: #8b5cf6;
-    font-weight: 700;
+    color: var(--course-color, #8b5cf6);
+    font-weight: 800;
     margin-bottom: 3px;
   }
   .mawhba-card-field-value {
-    font-size: 13px;
+    font-size: 14px;
     font-weight: 700;
     color: #0f172a;
     word-break: break-word;
   }
   .mawhba-card-field-value.mono {
     font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-    font-size: 13px;
+    font-size: 14px;
     letter-spacing: 0.5px;
   }
 
+  .mawhba-card-course {
+    margin: 10px 20px 8px;
+    background: var(--course-color, #8b5cf6);
+    color: white;
+    border-radius: 10px;
+    padding: 10px 14px;
+    text-align: center;
+    box-shadow: 0 6px 14px -6px var(--course-color, #8b5cf6);
+  }
+  .mawhba-card-course-label {
+    font-size: 10px;
+    letter-spacing: 2px;
+    color: rgba(255,255,255,0.85);
+    font-weight: 700;
+    margin-bottom: 3px;
+  }
+  .mawhba-card-course-name {
+    font-size: 17px;
+    font-weight: 800;
+    color: white;
+  }
+
   .mawhba-card-bottom {
-    padding: 6px 18px 22px;
+    padding: 6px 20px 22px;
     text-align: center;
   }
-  .mawhba-card-qr-wrap {
-    background: linear-gradient(135deg, #faf5ff 0%, #fef3c7 100%);
-    border: 1px solid #e9d5ff;
-    border-radius: 12px;
-    padding: 10px;
-    display: inline-flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 4px;
+  .mawhba-card-qr {
+    width: 175px;
+    height: 175px;
+    display: block;
+    margin: 0 auto;
+    background: white;
+    padding: 6px;
+    border: 3px solid var(--course-color, #8b5cf6);
+    border-radius: 14px;
   }
-  .mawhba-card-qr { width: 130px; height: 130px; display: block; }
   .mawhba-card-qr-label {
-    font-size: 9px;
-    letter-spacing: 1.6px;
-    color: #6d28d9;
+    margin-top: 8px;
+    font-size: 12px;
+    letter-spacing: 2px;
+    color: var(--course-color-dark, #0f172a);
     font-weight: 800;
+    text-align: center;
   }
   .mawhba-card-footer-text {
-    margin-top: 10px;
+    margin-top: 12px;
     font-size: 9px;
     color: #64748b;
     line-height: 1.5;
@@ -285,13 +337,14 @@ exports.cardData = async (req, res) => {
   try {
     const student = await MawhbaStudent.findByPk(req.params.id);
     if (!student) return res.status(404).json({ message: 'Student not found' });
+    const color = await getColorForCourse(student.courseName);
     const qrDataUrl = await QRCode.toDataURL(student.nationalId, {
       errorCorrectionLevel: 'M',
       margin: 0,
-      width: 260,
+      width: 340,
       color: { dark: '#0f172a', light: '#ffffff' }
     });
-    res.json({ student, qrDataUrl });
+    res.json({ student, qrDataUrl, color });
   } catch (err) {
     console.error('Mawhba cardData error:', err);
     res.status(500).json({ message: 'Server error', error: err.message });
@@ -307,13 +360,19 @@ exports.cardsBulk = async (req, res) => {
     const students = await MawhbaStudent.findAll({
       where: { studentId: { [Op.in]: studentIds } }
     });
+    const colorRows = await MawhbaCourseColor.findAll();
+    const colorMap = Object.fromEntries(colorRows.map(r => [r.courseName, r.color]));
     const result = [];
     for (const s of students) {
       const qrDataUrl = await QRCode.toDataURL(s.nationalId, {
-        errorCorrectionLevel: 'M', margin: 0, width: 260,
+        errorCorrectionLevel: 'M', margin: 0, width: 340,
         color: { dark: '#0f172a', light: '#ffffff' }
       });
-      result.push({ student: s, qrDataUrl });
+      result.push({
+        student: s,
+        qrDataUrl,
+        color: colorMap[s.courseName] || DEFAULT_COURSE_COLOR
+      });
     }
     res.json(result);
   } catch (err) {
@@ -330,11 +389,12 @@ exports.emailCard = async (req, res) => {
     if (!student) return res.status(404).json({ message: 'Student not found' });
     if (!student.email) return res.status(400).json({ message: 'Student has no email on file' });
 
+    const color = await getColorForCourse(student.courseName);
     const qrDataUrl = await QRCode.toDataURL(student.nationalId, {
-      errorCorrectionLevel: 'M', margin: 0, width: 260,
+      errorCorrectionLevel: 'M', margin: 0, width: 340,
       color: { dark: '#0f172a', light: '#ffffff' }
     });
-    const cardHtml = buildIdCardHtml({ student, qrDataUrl, logoSrc: PUBLIC_LOGO_URL });
+    const cardHtml = buildIdCardHtml({ student, qrDataUrl, logoSrc: PUBLIC_LOGO_URL, color });
 
     const sgMail = require('@sendgrid/mail');
     const emailHtml = `

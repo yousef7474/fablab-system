@@ -5,6 +5,8 @@ const authMiddleware = require('../middleware/auth');
 
 router.get('/students', authMiddleware, ctrl.list);
 router.get('/courses', authMiddleware, ctrl.listCourses);
+router.get('/course-colors', authMiddleware, ctrl.listCourseColors);
+router.post('/course-colors', authMiddleware, ctrl.setCourseColor);
 router.post('/students', authMiddleware, ctrl.create);
 router.put('/students/:id', authMiddleware, ctrl.update);
 router.delete('/students/:id', authMiddleware, ctrl.remove);
