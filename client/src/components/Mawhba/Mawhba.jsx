@@ -21,7 +21,11 @@ const Mawhba = () => {
   const [loading, setLoading] = useState(false);
   const [search, setSearch] = useState('');
   const [sexFilter, setSexFilter] = useState('');
+  const [courseFilter, setCourseFilter] = useState('');
+  const [courses, setCourses] = useState([]);
   const [selected, setSelected] = useState(new Set());
+  const [printing, setPrinting] = useState(false);
+  const [emailingCard, setEmailingCard] = useState(null);
 
   const [showStudentModal, setShowStudentModal] = useState(false);
   const [editingId, setEditingId] = useState(null);
@@ -38,6 +42,7 @@ const Mawhba = () => {
     try {
       const params = new URLSearchParams();
       if (sexFilter) params.set('sex', sexFilter);
+      if (courseFilter) params.set('course', courseFilter);
       if (search.trim()) params.set('search', search.trim());
       const { data } = await api.get(`/mawhba/students?${params.toString()}`);
       setStudents(Array.isArray(data) ? data : []);
@@ -47,9 +52,19 @@ const Mawhba = () => {
     } finally {
       setLoading(false);
     }
-  }, [sexFilter, search, isRTL]);
+  }, [sexFilter, courseFilter, search, isRTL]);
+
+  const fetchCourses = useCallback(async () => {
+    try {
+      const { data } = await api.get('/mawhba/courses');
+      setCourses(Array.isArray(data) ? data : []);
+    } catch (err) {
+      console.error(err);
+    }
+  }, []);
 
   useEffect(() => { fetchStudents(); }, [fetchStudents]);
+  useEffect(() => { fetchCourses(); }, [fetchCourses]);
 
   const openAdd = () => {
     setEditingId(null);
@@ -100,6 +115,7 @@ const Mawhba = () => {
       }
       setShowStudentModal(false);
       fetchStudents();
+      fetchCourses();
     } catch (err) {
       console.error(err);
       toast.error(err?.response?.data?.message || (isRTL ? 'حدث خطأ' : 'Save failed'));
@@ -179,6 +195,162 @@ const Mawhba = () => {
     [students, selected]
   );
 
+  const renderCardHtml = (student, qrDataUrl) => {
+    const name = student.nameAr || student.nameEn || '';
+    const nid = student.nationalId || '';
+    const guardian = student.guardianPhone || student.studentPhone || '';
+    const course = student.courseName || '';
+    const grade = student.schoolGrade || '';
+    const logoSrc = `${window.location.origin}/fablab.png`;
+    return `
+      <div class="mawhba-card" dir="rtl">
+        <div class="mawhba-card-top">
+          <div class="mawhba-card-brand">
+            <img src="${logoSrc}" alt="FabLab" class="mawhba-card-logo" />
+            <div>
+              <div class="mawhba-card-fablab">فاب لاب الأحساء</div>
+              <div class="mawhba-card-fablab-en">FABLAB AL-AHSA</div>
+            </div>
+          </div>
+          <div class="mawhba-card-program">
+            <div class="mawhba-card-program-ar">برنامج موهبة</div>
+            <div class="mawhba-card-program-en">MAWHBA</div>
+          </div>
+        </div>
+        <div class="mawhba-card-body">
+          <div class="mawhba-card-name-label">اسم الطالب / STUDENT NAME</div>
+          <div class="mawhba-card-name">${name}</div>
+          <div class="mawhba-card-row">
+            <div class="mawhba-card-field">
+              <div class="mawhba-card-field-label">رقم الهوية</div>
+              <div class="mawhba-card-field-value mono">${nid}</div>
+            </div>
+            <div class="mawhba-card-field">
+              <div class="mawhba-card-field-label">رقم ولي الأمر</div>
+              <div class="mawhba-card-field-value mono">${guardian || '—'}</div>
+            </div>
+          </div>
+          <div class="mawhba-card-row">
+            <div class="mawhba-card-field wide">
+              <div class="mawhba-card-field-label">اسم الدورة</div>
+              <div class="mawhba-card-field-value">${course || '—'}</div>
+            </div>
+            ${grade ? `<div class="mawhba-card-field">
+              <div class="mawhba-card-field-label">الصف</div>
+              <div class="mawhba-card-field-value">${grade}</div>
+            </div>` : ''}
+          </div>
+        </div>
+        <div class="mawhba-card-bottom">
+          <div class="mawhba-card-qr-wrap">
+            <img src="${qrDataUrl}" alt="QR" class="mawhba-card-qr" />
+            <div class="mawhba-card-qr-label">رمز الحضور · ATTENDANCE</div>
+          </div>
+          <div class="mawhba-card-footer-text">
+            <div>هذه البطاقة ملك لفاب لاب الأحساء — يرجى إعادتها عند الفقدان</div>
+            <div class="mono">ID · ${nid}</div>
+          </div>
+        </div>
+      </div>`;
+  };
+
+  const CARD_PRINT_CSS = `
+    body { margin: 0; background: #f1f5f9; padding: 24px; font-family: 'Segoe UI', Tahoma, Arial, sans-serif; }
+    .mawhba-cards-wrap { display: flex; flex-wrap: wrap; gap: 24px; justify-content: center; }
+    .mawhba-card { width: 340px; min-height: 540px; background: white; border-radius: 18px;
+      box-shadow: 0 20px 40px -20px rgba(15,23,42,0.4); overflow: hidden; position: relative;
+      color: #0f172a; border: 1px solid #e2e8f0; }
+    .mawhba-card::after { content: ''; position: absolute; bottom: 0; left: 0; right: 0; height: 6px;
+      background: linear-gradient(90deg,#f59e0b 0%,#ef4444 35%,#ec4899 65%,#8b5cf6 100%); }
+    .mawhba-card-top { background: linear-gradient(135deg,#0f172a 0%,#1e1b4b 60%,#4c1d95 100%);
+      padding: 16px 18px; display: flex; justify-content: space-between; align-items: center; color: white; }
+    .mawhba-card-brand { display: flex; align-items: center; gap: 10px; }
+    .mawhba-card-logo { width: 38px; height: 38px; background: white; border-radius: 8px; padding: 4px; object-fit: contain; }
+    .mawhba-card-fablab { font-size: 13px; font-weight: 800; line-height: 1.2; }
+    .mawhba-card-fablab-en { font-size: 9px; letter-spacing: 1.4px; color: rgba(255,255,255,0.7); margin-top: 2px; }
+    .mawhba-card-program { text-align: end; }
+    .mawhba-card-program-ar { font-size: 18px; font-weight: 800; background: linear-gradient(135deg,#fde68a,#fbbf24);
+      -webkit-background-clip: text; background-clip: text; color: transparent; }
+    .mawhba-card-program-en { font-size: 9px; letter-spacing: 2.5px; color: rgba(255,255,255,0.65); margin-top: 2px; }
+    .mawhba-card-body { padding: 18px 18px 8px; }
+    .mawhba-card-name-label { font-size: 9px; letter-spacing: 1.4px; color: #94a3b8; font-weight: 700; margin-bottom: 4px; }
+    .mawhba-card-name { font-size: 19px; font-weight: 800; color: #0f172a; line-height: 1.35;
+      padding-bottom: 12px; border-bottom: 1px dashed #e2e8f0; margin-bottom: 12px; }
+    .mawhba-card-row { display: flex; gap: 10px; margin-bottom: 12px; }
+    .mawhba-card-field { flex: 1; min-width: 0; }
+    .mawhba-card-field.wide { flex: 2; }
+    .mawhba-card-field-label { font-size: 9px; letter-spacing: 1.3px; color: #8b5cf6; font-weight: 700; margin-bottom: 3px; }
+    .mawhba-card-field-value { font-size: 13px; font-weight: 700; color: #0f172a; word-break: break-word; }
+    .mawhba-card-field-value.mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 13px; letter-spacing: 0.5px; }
+    .mawhba-card-bottom { padding: 6px 18px 22px; text-align: center; }
+    .mawhba-card-qr-wrap { background: linear-gradient(135deg,#faf5ff 0%,#fef3c7 100%); border: 1px solid #e9d5ff;
+      border-radius: 12px; padding: 10px; display: inline-flex; flex-direction: column; align-items: center; gap: 4px; }
+    .mawhba-card-qr { width: 130px; height: 130px; display: block; }
+    .mawhba-card-qr-label { font-size: 9px; letter-spacing: 1.6px; color: #6d28d9; font-weight: 800; }
+    .mawhba-card-footer-text { margin-top: 10px; font-size: 9px; color: #64748b; line-height: 1.5; }
+    .mawhba-card-footer-text .mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      margin-top: 2px; color: #334155; letter-spacing: 1px; }
+    @media print {
+      body { background: white; padding: 0; }
+      .mawhba-cards-wrap { gap: 12px; padding: 8px; }
+      .mawhba-card { box-shadow: none; break-inside: avoid; }
+    }
+  `;
+
+  const openPrintWindow = (cardsHtml) => {
+    const win = window.open('', '_blank', 'width=820,height=900');
+    if (!win) {
+      toast.error(isRTL ? 'تم منع النوافذ المنبثقة' : 'Pop-up blocked — allow pop-ups for this site');
+      return;
+    }
+    win.document.open();
+    win.document.write(`<!DOCTYPE html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><title>${isRTL ? 'بطاقات موهبة' : 'Mawhba Cards'}</title><style>${CARD_PRINT_CSS}</style></head><body><div class="mawhba-cards-wrap">${cardsHtml}</div><script>window.onload=function(){setTimeout(function(){window.print()},400)}<\/script></body></html>`);
+    win.document.close();
+  };
+
+  const printOne = async (s) => {
+    setPrinting(true);
+    try {
+      const { data } = await api.get(`/mawhba/students/${s.studentId}/card`);
+      openPrintWindow(renderCardHtml(data.student, data.qrDataUrl));
+    } catch (err) {
+      console.error(err);
+      toast.error(isRTL ? 'تعذر تحضير البطاقة' : 'Failed to prepare card');
+    } finally {
+      setPrinting(false);
+    }
+  };
+
+  const printSelected = async () => {
+    if (selected.size === 0) { toast.warning(isRTL ? 'اختر طالباً واحداً على الأقل' : 'Select at least one student'); return; }
+    setPrinting(true);
+    try {
+      const { data } = await api.post('/mawhba/cards', { studentIds: [...selected] });
+      const html = (data || []).map(d => renderCardHtml(d.student, d.qrDataUrl)).join('');
+      if (!html) { toast.error(isRTL ? 'لا توجد بطاقات' : 'No cards'); return; }
+      openPrintWindow(html);
+    } catch (err) {
+      console.error(err);
+      toast.error(isRTL ? 'تعذر تحضير البطاقات' : 'Failed to prepare cards');
+    } finally {
+      setPrinting(false);
+    }
+  };
+
+  const emailCard = async (s) => {
+    if (!s.email) { toast.warning(isRTL ? 'هذا الطالب لا يوجد لديه بريد إلكتروني' : 'No email on file'); return; }
+    setEmailingCard(s.studentId);
+    try {
+      await api.post(`/mawhba/students/${s.studentId}/email-card`);
+      toast.success(isRTL ? `تم إرسال البطاقة إلى ${s.email}` : `Card sent to ${s.email}`);
+    } catch (err) {
+      console.error(err);
+      toast.error(err?.response?.data?.message || (isRTL ? 'فشل الإرسال' : 'Send failed'));
+    } finally {
+      setEmailingCard(null);
+    }
+  };
+
   return (
     <div className="mawhba-tab" dir={isRTL ? 'rtl' : 'ltr'}>
       <div className="mawhba-header">
@@ -207,12 +379,30 @@ const Mawhba = () => {
           <option value="male">{isRTL ? 'ذكر' : 'Male'}</option>
           <option value="female">{isRTL ? 'أنثى' : 'Female'}</option>
         </select>
+        <select
+          className="mawhba-select"
+          value={courseFilter}
+          onChange={(e) => setCourseFilter(e.target.value)}
+        >
+          <option value="">{isRTL ? 'كل الدورات' : 'All courses'}</option>
+          {courses.map((c) => (
+            <option key={c} value={c}>{c}</option>
+          ))}
+        </select>
         <button
           className="mawhba-btn-email"
           onClick={openEmailBulk}
           disabled={selected.size === 0}
         >
           ✉ {isRTL ? `إرسال بريد (${selected.size})` : `Send Email (${selected.size})`}
+        </button>
+        <button
+          className="mawhba-btn-print"
+          onClick={printSelected}
+          disabled={selected.size === 0 || printing}
+          title={isRTL ? 'طباعة بطاقات المحددين' : 'Print cards for selected'}
+        >
+          🖨 {isRTL ? `طباعة (${selected.size})` : `Print (${selected.size})`}
         </button>
       </div>
 
@@ -273,6 +463,8 @@ const Mawhba = () => {
                   <td className="mono">{s.studentPhone || '—'}</td>
                   <td>
                     <div className="mawhba-actions">
+                      <button className="mawhba-btn-small mawhba-btn-print-row" onClick={() => printOne(s)} disabled={printing} title={isRTL ? 'طباعة البطاقة' : 'Print card'}>🖨</button>
+                      <button className="mawhba-btn-small mawhba-btn-card" onClick={() => emailCard(s)} disabled={emailingCard === s.studentId} title={isRTL ? 'إرسال البطاقة عبر البريد' : 'Email card to student'}>{emailingCard === s.studentId ? '…' : '🎫'}</button>
                       <button className="mawhba-btn-small mawhba-btn-mail" onClick={() => openEmailSingle(s)} title={isRTL ? 'إرسال بريد' : 'Send email'}>✉</button>
                       <button className="mawhba-btn-small" onClick={() => openEdit(s)} title={isRTL ? 'تعديل' : 'Edit'}>✎</button>
                       <button className="mawhba-btn-small mawhba-btn-del" onClick={() => deleteStudent(s)} title={isRTL ? 'حذف' : 'Delete'}>×</button>

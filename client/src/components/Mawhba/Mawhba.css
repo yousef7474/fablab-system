@@ -113,6 +113,23 @@
   cursor: not-allowed;
 }
 
+.mawhba-btn-print {
+  padding: 0.55rem 1.1rem;
+  background: linear-gradient(135deg, #6366f1, #8b5cf6);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-weight: 700;
+  font-size: 0.88rem;
+  cursor: pointer;
+  font-family: inherit;
+}
+.mawhba-btn-print:disabled {
+  background: #e2e8f0;
+  color: #94a3b8;
+  cursor: not-allowed;
+}
+
 .mawhba-summary {
   display: flex;
   gap: 1.25rem;
@@ -191,8 +208,13 @@
 .mawhba-btn-small:hover { background: #e2e8f0; }
 .mawhba-btn-small.mawhba-btn-mail { background: #ede9fe; color: #6d28d9; }
 .mawhba-btn-small.mawhba-btn-mail:hover { background: #ddd6fe; }
+.mawhba-btn-small.mawhba-btn-print-row { background: #e0e7ff; color: #4338ca; }
+.mawhba-btn-small.mawhba-btn-print-row:hover:not(:disabled) { background: #c7d2fe; }
+.mawhba-btn-small.mawhba-btn-card { background: #fef3c7; color: #92400e; }
+.mawhba-btn-small.mawhba-btn-card:hover:not(:disabled) { background: #fde68a; }
 .mawhba-btn-small.mawhba-btn-del { background: #fee2e2; color: #991b1b; }
 .mawhba-btn-small.mawhba-btn-del:hover { background: #fecaca; }
+.mawhba-btn-small:disabled { opacity: 0.5; cursor: not-allowed; }
 
 .mawhba-empty {
   padding: 2.5rem 1rem;

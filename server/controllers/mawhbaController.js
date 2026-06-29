@@ -1,5 +1,6 @@
 const { MawhbaStudent } = require('../models');
 const { Op } = require('sequelize');
+const QRCode = require('qrcode');
 const { sendCustomEmail } = require('../utils/emailService');
 
 const ALLOWED_FIELDS = [
@@ -19,9 +20,10 @@ const pickFields = (body) => {
 
 exports.list = async (req, res) => {
   try {
-    const { sex, search } = req.query;
+    const { sex, search, course } = req.query;
     const where = {};
     if (sex && ['male', 'female'].includes(sex)) where.sex = sex;
+    if (course) where.courseName = course;
     if (search) {
       const q = `%${search}%`;
       where[Op.or] = [
@@ -38,6 +40,330 @@ exports.list = async (req, res) => {
   } catch (err) {
     console.error('Mawhba list error:', err);
     res.status(500).json({ message: 'Server error', error: err.message });
+  }
+};
+
+exports.listCourses = async (req, res) => {
+  try {
+    const rows = await MawhbaStudent.findAll({
+      attributes: ['courseName'],
+      where: { courseName: { [Op.ne]: null } },
+      group: ['courseName'],
+      order: [['courseName', 'ASC']]
+    });
+    res.json(rows.map(r => r.courseName).filter(Boolean));
+  } catch (err) {
+    console.error('Mawhba listCourses error:', err);
+    res.status(500).json({ message: 'Server error', error: err.message });
+  }
+};
+
+const buildIdCardHtml = ({ student, qrDataUrl, logoSrc }) => {
+  const name = student.nameAr || student.nameEn || '';
+  const nid = student.nationalId || '';
+  const guardian = student.guardianPhone || student.studentPhone || '';
+  const course = student.courseName || '';
+  const grade = student.schoolGrade || '';
+  return `
+  <div class="mawhba-card" dir="rtl">
+    <div class="mawhba-card-top">
+      <div class="mawhba-card-brand">
+        <img src="${logoSrc}" alt="FabLab" class="mawhba-card-logo" />
+        <div class="mawhba-card-brand-text">
+          <div class="mawhba-card-fablab">فاب لاب الأحساء</div>
+          <div class="mawhba-card-fablab-en">FABLAB AL-AHSA</div>
+        </div>
+      </div>
+      <div class="mawhba-card-program">
+        <div class="mawhba-card-program-ar">برنامج موهبة</div>
+        <div class="mawhba-card-program-en">MAWHBA</div>
+      </div>
+    </div>
+
+    <div class="mawhba-card-body">
+      <div class="mawhba-card-name-label">اسم الطالب / STUDENT NAME</div>
+      <div class="mawhba-card-name">${name}</div>
+
+      <div class="mawhba-card-row">
+        <div class="mawhba-card-field">
+          <div class="mawhba-card-field-label">رقم الهوية</div>
+          <div class="mawhba-card-field-value mono">${nid}</div>
+        </div>
+        <div class="mawhba-card-field">
+          <div class="mawhba-card-field-label">رقم ولي الأمر</div>
+          <div class="mawhba-card-field-value mono">${guardian || '—'}</div>
+        </div>
+      </div>
+
+      <div class="mawhba-card-row">
+        <div class="mawhba-card-field wide">
+          <div class="mawhba-card-field-label">اسم الدورة</div>
+          <div class="mawhba-card-field-value">${course || '—'}</div>
+        </div>
+        ${grade ? `<div class="mawhba-card-field">
+          <div class="mawhba-card-field-label">الصف</div>
+          <div class="mawhba-card-field-value">${grade}</div>
+        </div>` : ''}
+      </div>
+    </div>
+
+    <div class="mawhba-card-bottom">
+      <div class="mawhba-card-qr-wrap">
+        <img src="${qrDataUrl}" alt="QR" class="mawhba-card-qr" />
+        <div class="mawhba-card-qr-label">رمز الحضور · ATTENDANCE</div>
+      </div>
+      <div class="mawhba-card-footer-text">
+        <div>هذه البطاقة ملك لفاب لاب الأحساء — يرجى إعادتها عند الفقدان</div>
+        <div class="mono">ID · ${nid}</div>
+      </div>
+    </div>
+  </div>`;
+};
+
+const CARD_CSS = `
+  .mawhba-card {
+    width: 340px;
+    min-height: 540px;
+    background: white;
+    border-radius: 18px;
+    box-shadow: 0 20px 40px -20px rgba(15, 23, 42, 0.4);
+    font-family: 'Segoe UI', Tahoma, Arial, sans-serif;
+    overflow: hidden;
+    position: relative;
+    color: #0f172a;
+    border: 1px solid #e2e8f0;
+  }
+  .mawhba-card::after {
+    content: '';
+    position: absolute;
+    bottom: 0; left: 0; right: 0;
+    height: 6px;
+    background: linear-gradient(90deg, #f59e0b 0%, #ef4444 35%, #ec4899 65%, #8b5cf6 100%);
+  }
+  .mawhba-card-top {
+    background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 60%, #4c1d95 100%);
+    padding: 16px 18px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    color: white;
+  }
+  .mawhba-card-brand { display: flex; align-items: center; gap: 10px; }
+  .mawhba-card-logo {
+    width: 38px; height: 38px;
+    background: white;
+    border-radius: 8px;
+    padding: 4px;
+    object-fit: contain;
+  }
+  .mawhba-card-fablab { font-size: 13px; font-weight: 800; line-height: 1.2; }
+  .mawhba-card-fablab-en { font-size: 9px; letter-spacing: 1.4px; color: rgba(255,255,255,0.7); margin-top: 2px; }
+  .mawhba-card-program { text-align: end; }
+  .mawhba-card-program-ar {
+    font-size: 18px;
+    font-weight: 800;
+    background: linear-gradient(135deg, #fde68a, #fbbf24);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+  .mawhba-card-program-en {
+    font-size: 9px;
+    letter-spacing: 2.5px;
+    color: rgba(255,255,255,0.65);
+    margin-top: 2px;
+  }
+
+  .mawhba-card-body { padding: 18px 18px 8px; }
+  .mawhba-card-name-label {
+    font-size: 9px;
+    letter-spacing: 1.4px;
+    color: #94a3b8;
+    font-weight: 700;
+    margin-bottom: 4px;
+  }
+  .mawhba-card-name {
+    font-size: 19px;
+    font-weight: 800;
+    color: #0f172a;
+    line-height: 1.35;
+    padding-bottom: 12px;
+    border-bottom: 1px dashed #e2e8f0;
+    margin-bottom: 12px;
+  }
+  .mawhba-card-row {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 12px;
+  }
+  .mawhba-card-field { flex: 1; min-width: 0; }
+  .mawhba-card-field.wide { flex: 2; }
+  .mawhba-card-field-label {
+    font-size: 9px;
+    letter-spacing: 1.3px;
+    color: #8b5cf6;
+    font-weight: 700;
+    margin-bottom: 3px;
+  }
+  .mawhba-card-field-value {
+    font-size: 13px;
+    font-weight: 700;
+    color: #0f172a;
+    word-break: break-word;
+  }
+  .mawhba-card-field-value.mono {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 13px;
+    letter-spacing: 0.5px;
+  }
+
+  .mawhba-card-bottom {
+    padding: 6px 18px 22px;
+    text-align: center;
+  }
+  .mawhba-card-qr-wrap {
+    background: linear-gradient(135deg, #faf5ff 0%, #fef3c7 100%);
+    border: 1px solid #e9d5ff;
+    border-radius: 12px;
+    padding: 10px;
+    display: inline-flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+  }
+  .mawhba-card-qr { width: 130px; height: 130px; display: block; }
+  .mawhba-card-qr-label {
+    font-size: 9px;
+    letter-spacing: 1.6px;
+    color: #6d28d9;
+    font-weight: 800;
+  }
+  .mawhba-card-footer-text {
+    margin-top: 10px;
+    font-size: 9px;
+    color: #64748b;
+    line-height: 1.5;
+  }
+  .mawhba-card-footer-text .mono {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    margin-top: 2px;
+    color: #334155;
+    letter-spacing: 1px;
+  }
+`;
+
+const buildCardPage = ({ cardHtml, autoPrint }) => `<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8" />
+<title>بطاقة موهبة</title>
+<style>
+  body {
+    margin: 0;
+    background: #f1f5f9;
+    padding: 24px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 24px;
+  }
+  ${CARD_CSS}
+  @media print {
+    body { background: white; padding: 0; gap: 0; }
+    .mawhba-card { box-shadow: none; page-break-after: always; margin: 0 auto; }
+    .mawhba-card:last-child { page-break-after: auto; }
+  }
+</style>
+</head>
+<body>
+${cardHtml}
+${autoPrint ? '<script>window.onload = function() { setTimeout(function(){ window.print(); }, 350); };</script>' : ''}
+</body>
+</html>`;
+
+exports.cardData = async (req, res) => {
+  try {
+    const student = await MawhbaStudent.findByPk(req.params.id);
+    if (!student) return res.status(404).json({ message: 'Student not found' });
+    const qrDataUrl = await QRCode.toDataURL(student.nationalId, {
+      errorCorrectionLevel: 'M',
+      margin: 0,
+      width: 260,
+      color: { dark: '#0f172a', light: '#ffffff' }
+    });
+    res.json({ student, qrDataUrl });
+  } catch (err) {
+    console.error('Mawhba cardData error:', err);
+    res.status(500).json({ message: 'Server error', error: err.message });
+  }
+};
+
+exports.cardsBulk = async (req, res) => {
+  try {
+    const { studentIds } = req.body;
+    if (!Array.isArray(studentIds) || studentIds.length === 0) {
+      return res.status(400).json({ message: 'No students provided' });
+    }
+    const students = await MawhbaStudent.findAll({
+      where: { studentId: { [Op.in]: studentIds } }
+    });
+    const result = [];
+    for (const s of students) {
+      const qrDataUrl = await QRCode.toDataURL(s.nationalId, {
+        errorCorrectionLevel: 'M', margin: 0, width: 260,
+        color: { dark: '#0f172a', light: '#ffffff' }
+      });
+      result.push({ student: s, qrDataUrl });
+    }
+    res.json(result);
+  } catch (err) {
+    console.error('Mawhba cardsBulk error:', err);
+    res.status(500).json({ message: 'Server error', error: err.message });
+  }
+};
+
+const PUBLIC_LOGO_URL = process.env.PUBLIC_LOGO_URL || 'https://fablabsahsa.com/fablab.png';
+
+exports.emailCard = async (req, res) => {
+  try {
+    const student = await MawhbaStudent.findByPk(req.params.id);
+    if (!student) return res.status(404).json({ message: 'Student not found' });
+    if (!student.email) return res.status(400).json({ message: 'Student has no email on file' });
+
+    const qrDataUrl = await QRCode.toDataURL(student.nationalId, {
+      errorCorrectionLevel: 'M', margin: 0, width: 260,
+      color: { dark: '#0f172a', light: '#ffffff' }
+    });
+    const cardHtml = buildIdCardHtml({ student, qrDataUrl, logoSrc: PUBLIC_LOGO_URL });
+
+    const sgMail = require('@sendgrid/mail');
+    const emailHtml = `
+      <div style="font-family:'Segoe UI',Tahoma,Arial,sans-serif;max-width:640px;margin:0 auto;background:#f8fafc;padding:24px;">
+        <h2 style="color:#0f172a;text-align:center;margin:0 0 8px;">بطاقة موهبة الخاصة بك</h2>
+        <p style="text-align:center;color:#64748b;margin:0 0 20px;font-size:14px;">Your Mawhba ID Card — please print it and bring it with you</p>
+        <style>${CARD_CSS}</style>
+        <div style="display:flex;justify-content:center;">${cardHtml}</div>
+        <p dir="rtl" style="text-align:center;color:#64748b;font-size:13px;margin-top:24px;line-height:1.8;">
+          يرجى طباعة هذه البطاقة وإحضارها معك إلى الفاب لاب.<br>
+          سيتم مسح رمز الحضور عند الدخول والخروج لتسجيل وقت الحضور.
+        </p>
+        <div style="text-align:center;margin-top:20px;color:#94a3b8;font-size:11px;">فاب لاب الأحساء · FABLAB Al-Ahsa</div>
+      </div>`;
+
+    await sgMail.send({
+      to: student.email,
+      from: {
+        email: process.env.SENDGRID_FROM_EMAIL,
+        name: process.env.SENDGRID_FROM_NAME
+      },
+      subject: 'بطاقة موهبة الخاصة بك — Your Mawhba ID Card',
+      html: emailHtml
+    });
+
+    res.json({ message: 'Card emailed', to: student.email });
+  } catch (err) {
+    console.error('Mawhba emailCard error:', err?.response?.body || err);
+    res.status(500).json({ message: 'Failed to send card', error: err.message });
   }
 };
 
