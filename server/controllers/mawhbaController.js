@@ -383,6 +383,142 @@ exports.cardsBulk = async (req, res) => {
 
 const PUBLIC_LOGO_URL = process.env.PUBLIC_LOGO_URL || 'https://fablabsahsa.com/fablab.png';
 
+// Bulletproof table-based card that survives Gmail / Outlook.
+// All styles are inlined, no CSS variables, no <style> blocks, no flex/grid.
+const buildIdCardEmailHtml = ({ student, qrDataUrl, logoSrc, color }) => {
+  const name = (student.nameAr || student.nameEn || '').replace(/</g, '&lt;');
+  const nid = (student.nationalId || '').replace(/</g, '&lt;');
+  const guardian = (student.guardianPhone || student.studentPhone || '').replace(/</g, '&lt;');
+  const course = (student.courseName || '').replace(/</g, '&lt;');
+  const grade = (student.schoolGrade || '').replace(/</g, '&lt;');
+  const c = color || DEFAULT_COURSE_COLOR;
+  const cDark = darken(c, 0.55);
+  const headerGradient = `linear-gradient(135deg, ${c} 0%, ${cDark} 100%)`;
+
+  // helper row for stacked fields in the body
+  const fieldRow = (label, value, mono) => `
+    <tr>
+      <td style="padding:0 20px 10px 20px;font-family:'Segoe UI',Tahoma,Arial,sans-serif;">
+        <div style="font-size:10px;letter-spacing:1.3px;color:${c};font-weight:800;margin-bottom:3px;">${label}</div>
+        <div style="font-size:14px;font-weight:700;color:#0f172a;${mono ? "font-family:Consolas,'Courier New',monospace;letter-spacing:0.5px;" : ''}">${value || '—'}</div>
+      </td>
+    </tr>`;
+
+  return `
+  <table role="presentation" cellspacing="0" cellpadding="0" border="0" align="center" dir="rtl" style="width:360px;background:#ffffff;border-radius:18px;border:1px solid #e2e8f0;box-shadow:0 20px 40px -20px rgba(15,23,42,0.4);font-family:'Segoe UI',Tahoma,Arial,sans-serif;color:#0f172a;border-collapse:separate;overflow:hidden;">
+    <!-- Header -->
+    <tr>
+      <td bgcolor="${c}" style="background-color:${c};background:${headerGradient};padding:18px 20px;color:#ffffff;" align="right">
+        <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%">
+          <tr>
+            <td valign="middle" align="right" width="60%">
+              <table role="presentation" cellspacing="0" cellpadding="0" border="0" align="right"><tr>
+                <td valign="middle">
+                  <img src="${logoSrc}" alt="FabLab" width="40" height="40" style="display:block;background:#ffffff;border-radius:8px;padding:4px;border:0;" />
+                </td>
+                <td valign="middle" style="padding-${dirSide()}:10px;">
+                  <div style="font-size:13px;font-weight:800;line-height:1.2;color:#ffffff;">فاب لاب الأحساء</div>
+                  <div style="font-size:9px;letter-spacing:1.4px;color:rgba(255,255,255,0.75);margin-top:2px;">FABLAB AL-AHSA</div>
+                </td>
+              </tr></table>
+            </td>
+            <td valign="middle" align="left" width="40%">
+              <div style="font-size:19px;font-weight:800;color:#ffffff;text-shadow:0 1px 2px rgba(0,0,0,0.2);">برنامج موهبة</div>
+              <div style="font-size:9px;letter-spacing:2.5px;color:rgba(255,255,255,0.7);margin-top:2px;">MAWHBA</div>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+
+    <!-- Student name -->
+    <tr>
+      <td align="center" style="padding:18px 20px 12px 20px;">
+        <div style="font-size:21px;font-weight:800;color:#0f172a;line-height:1.35;padding-bottom:12px;border-bottom:2px solid ${c};text-align:center;">${name}</div>
+      </td>
+    </tr>
+
+    ${fieldRow('رقم الهوية', nid, true)}
+    ${fieldRow('رقم ولي الأمر', guardian, true)}
+    ${grade ? fieldRow('الصف', grade, false) : ''}
+
+    <!-- Course banner -->
+    <tr>
+      <td style="padding:8px 20px 8px 20px;">
+        <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" bgcolor="${c}" style="background-color:${c};border-radius:10px;">
+          <tr>
+            <td align="center" style="padding:10px 14px;color:#ffffff;">
+              <div style="font-size:10px;letter-spacing:2px;color:rgba(255,255,255,0.85);font-weight:700;margin-bottom:3px;">اسم الدورة</div>
+              <div style="font-size:17px;font-weight:800;color:#ffffff;">${course || '—'}</div>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+
+    <!-- QR -->
+    <tr>
+      <td align="center" style="padding:8px 20px 6px 20px;">
+        <img src="${qrDataUrl}" width="175" height="175" alt="QR" style="display:block;background:#ffffff;padding:6px;border:3px solid ${c};border-radius:14px;" />
+      </td>
+    </tr>
+
+    <!-- Scan label -->
+    <tr>
+      <td align="center" style="padding:0 20px 14px 20px;">
+        <div style="font-size:12px;letter-spacing:2px;color:${cDark};font-weight:800;">رمز الحضور</div>
+      </td>
+    </tr>
+
+    <!-- Card footer text -->
+    <tr>
+      <td align="center" style="padding:0 20px 14px 20px;">
+        <div style="font-size:9px;color:#64748b;line-height:1.5;">هذه البطاقة ملك لفاب لاب الأحساء — يرجى إعادتها عند الفقدان</div>
+        <div style="font-family:Consolas,'Courier New',monospace;font-size:9px;color:#334155;letter-spacing:1px;margin-top:2px;">ID · ${nid}</div>
+      </td>
+    </tr>
+
+    <!-- Bottom accent stripe -->
+    <tr>
+      <td bgcolor="${c}" style="background-color:${c};font-size:0;line-height:0;height:6px;">&nbsp;</td>
+    </tr>
+  </table>`;
+};
+
+// Small RTL helper — Arabic emails go right-to-left so logo padding goes on the left
+function dirSide() { return 'left'; }
+
+const buildEmailWrap = (cardHtml) => `
+  <div style="background:#eef2f7;padding:24px 12px;font-family:'Segoe UI',Tahoma,Arial,sans-serif;">
+    <h2 style="color:#0f172a;text-align:center;margin:0 0 6px;font-size:20px;">بطاقة موهبة الخاصة بك</h2>
+    <p style="text-align:center;color:#64748b;margin:0 0 20px;font-size:13px;">Your Mawhba ID Card — print it and bring it with you</p>
+    <div style="text-align:center;">${cardHtml}</div>
+    <p dir="rtl" style="text-align:center;color:#475569;font-size:13px;margin-top:20px;line-height:1.8;max-width:520px;margin-left:auto;margin-right:auto;">
+      يرجى طباعة هذه البطاقة وإحضارها معك إلى الفاب لاب.<br>
+      سيتم مسح رمز الحضور عند الدخول والخروج لتسجيل وقت الحضور.
+    </p>
+    <div style="text-align:center;margin-top:20px;color:#94a3b8;font-size:11px;letter-spacing:1px;">فاب لاب الأحساء · FABLAB Al-Ahsa</div>
+  </div>`;
+
+const sendCardEmailFor = async (student, color) => {
+  const sgMail = require('@sendgrid/mail');
+  const qrDataUrl = await QRCode.toDataURL(student.nationalId, {
+    errorCorrectionLevel: 'M', margin: 0, width: 340,
+    color: { dark: '#0f172a', light: '#ffffff' }
+  });
+  const cardHtml = buildIdCardEmailHtml({ student, qrDataUrl, logoSrc: PUBLIC_LOGO_URL, color });
+  const emailHtml = buildEmailWrap(cardHtml);
+  await sgMail.send({
+    to: student.email,
+    from: {
+      email: process.env.SENDGRID_FROM_EMAIL,
+      name: process.env.SENDGRID_FROM_NAME
+    },
+    subject: 'بطاقة موهبة الخاصة بك — Your Mawhba ID Card',
+    html: emailHtml
+  });
+};
+
 exports.emailCard = async (req, res) => {
   try {
     const student = await MawhbaStudent.findByPk(req.params.id);
@@ -390,40 +526,58 @@ exports.emailCard = async (req, res) => {
     if (!student.email) return res.status(400).json({ message: 'Student has no email on file' });
 
     const color = await getColorForCourse(student.courseName);
-    const qrDataUrl = await QRCode.toDataURL(student.nationalId, {
-      errorCorrectionLevel: 'M', margin: 0, width: 340,
-      color: { dark: '#0f172a', light: '#ffffff' }
-    });
-    const cardHtml = buildIdCardHtml({ student, qrDataUrl, logoSrc: PUBLIC_LOGO_URL, color });
-
-    const sgMail = require('@sendgrid/mail');
-    const emailHtml = `
-      <div style="font-family:'Segoe UI',Tahoma,Arial,sans-serif;max-width:640px;margin:0 auto;background:#f8fafc;padding:24px;">
-        <h2 style="color:#0f172a;text-align:center;margin:0 0 8px;">بطاقة موهبة الخاصة بك</h2>
-        <p style="text-align:center;color:#64748b;margin:0 0 20px;font-size:14px;">Your Mawhba ID Card — please print it and bring it with you</p>
-        <style>${CARD_CSS}</style>
-        <div style="display:flex;justify-content:center;">${cardHtml}</div>
-        <p dir="rtl" style="text-align:center;color:#64748b;font-size:13px;margin-top:24px;line-height:1.8;">
-          يرجى طباعة هذه البطاقة وإحضارها معك إلى الفاب لاب.<br>
-          سيتم مسح رمز الحضور عند الدخول والخروج لتسجيل وقت الحضور.
-        </p>
-        <div style="text-align:center;margin-top:20px;color:#94a3b8;font-size:11px;">فاب لاب الأحساء · FABLAB Al-Ahsa</div>
-      </div>`;
-
-    await sgMail.send({
-      to: student.email,
-      from: {
-        email: process.env.SENDGRID_FROM_EMAIL,
-        name: process.env.SENDGRID_FROM_NAME
-      },
-      subject: 'بطاقة موهبة الخاصة بك — Your Mawhba ID Card',
-      html: emailHtml
-    });
-
+    await sendCardEmailFor(student, color);
     res.json({ message: 'Card emailed', to: student.email });
   } catch (err) {
     console.error('Mawhba emailCard error:', err?.response?.body || err);
     res.status(500).json({ message: 'Failed to send card', error: err.message });
+  }
+};
+
+exports.emailCardsBulk = async (req, res) => {
+  try {
+    const { studentIds } = req.body || {};
+    if (!Array.isArray(studentIds) || studentIds.length === 0) {
+      return res.status(400).json({ message: 'No students selected' });
+    }
+
+    const students = await MawhbaStudent.findAll({
+      where: { studentId: { [Op.in]: studentIds } }
+    });
+    const colorRows = await MawhbaCourseColor.findAll();
+    const colorMap = Object.fromEntries(colorRows.map(r => [r.courseName, r.color]));
+
+    let successCount = 0;
+    let failCount = 0;
+    const skippedNoEmail = [];
+    const failures = [];
+
+    for (const s of students) {
+      if (!s.email) {
+        skippedNoEmail.push(s.nameAr || s.nameEn || s.studentId);
+        continue;
+      }
+      const color = colorMap[s.courseName] || DEFAULT_COURSE_COLOR;
+      try {
+        await sendCardEmailFor(s, color);
+        successCount++;
+      } catch (err) {
+        failCount++;
+        failures.push({ name: s.nameAr || s.nameEn, email: s.email, error: err?.message });
+        console.error(`Mawhba bulk card send failed for ${s.email}:`, err?.response?.body || err);
+      }
+    }
+
+    res.json({
+      message: `Sent: ${successCount}, Failed: ${failCount}, Skipped (no email): ${skippedNoEmail.length}`,
+      successCount,
+      failCount,
+      skippedNoEmail,
+      failures: failures.slice(0, 5)
+    });
+  } catch (err) {
+    console.error('Mawhba emailCardsBulk error:', err);
+    res.status(500).json({ message: 'Server error', error: err.message });
   }
 };
 

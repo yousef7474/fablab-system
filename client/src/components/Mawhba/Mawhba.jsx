@@ -493,6 +493,33 @@ const Mawhba = () => {
     }
   };
 
+  const [sendingCards, setSendingCards] = useState(false);
+  const emailCardsBulk = async () => {
+    if (selected.size === 0) { toast.warning(isRTL ? 'اختر طالباً واحداً على الأقل' : 'Select at least one student'); return; }
+    const list = students.filter(s => selected.has(s.studentId));
+    const withEmail = list.filter(s => s.email).length;
+    const noEmail = list.length - withEmail;
+    const confirmMsg = isRTL
+      ? `سيتم إرسال البطاقة لـ ${withEmail} طالب${noEmail ? ` (سيتم تخطي ${noEmail} بدون بريد)` : ''}.\n\nهل تريد المتابعة؟`
+      : `Will send cards to ${withEmail} student(s)${noEmail ? ` (skipping ${noEmail} with no email)` : ''}.\n\nProceed?`;
+    if (!window.confirm(confirmMsg)) return;
+    setSendingCards(true);
+    try {
+      const { data } = await api.post('/mawhba/email-cards-bulk', { studentIds: [...selected] });
+      const skipped = (data?.skippedNoEmail || []).length;
+      toast.success(
+        isRTL
+          ? `تم إرسال البطاقات: ${data.successCount} | فشل: ${data.failCount}${skipped ? ` | بدون بريد: ${skipped}` : ''}`
+          : `Cards sent: ${data.successCount} | Failed: ${data.failCount}${skipped ? ` | No email: ${skipped}` : ''}`
+      );
+    } catch (err) {
+      console.error(err);
+      toast.error(err?.response?.data?.message || (isRTL ? 'فشل الإرسال' : 'Send failed'));
+    } finally {
+      setSendingCards(false);
+    }
+  };
+
   return (
     <div className="mawhba-tab" dir={isRTL ? 'rtl' : 'ltr'}>
       <div className="mawhba-header">

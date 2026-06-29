@@ -18,5 +18,6 @@ router.post('/send-email', authMiddleware, ctrl.sendEmail);
 router.get('/students/:id/card', authMiddleware, ctrl.cardData);
 router.post('/cards', authMiddleware, ctrl.cardsBulk);
 router.post('/students/:id/email-card', authMiddleware, ctrl.emailCard);
+router.post('/email-cards-bulk', authMiddleware, ctrl.emailCardsBulk);
 
 module.exports = router;

@@ -172,6 +172,23 @@
   cursor: not-allowed;
 }
 
+.mawhba-btn-cards-bulk {
+  padding: 0.55rem 1.1rem;
+  background: linear-gradient(135deg, #f59e0b, #d97706);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-weight: 700;
+  font-size: 0.88rem;
+  cursor: pointer;
+  font-family: inherit;
+}
+.mawhba-btn-cards-bulk:disabled {
+  background: #e2e8f0;
+  color: #94a3b8;
+  cursor: not-allowed;
+}
+
 .mawhba-btn-small.mawhba-btn-log { background: #dcfce7; color: #166534; }
 .mawhba-btn-small.mawhba-btn-log:hover:not(:disabled) { background: #bbf7d0; }
 
