@@ -385,7 +385,8 @@ const PUBLIC_LOGO_URL = process.env.PUBLIC_LOGO_URL || 'https://fablabsahsa.com/
 
 // Bulletproof table-based card that survives Gmail / Outlook.
 // All styles are inlined, no CSS variables, no <style> blocks, no flex/grid.
-const buildIdCardEmailHtml = ({ student, qrDataUrl, logoSrc, color }) => {
+// qrSrc is a cid: reference (Gmail blocks data: URLs in <img>).
+const buildIdCardEmailHtml = ({ student, qrSrc, logoSrc, color }) => {
   const name = (student.nameAr || student.nameEn || '').replace(/</g, '&lt;');
   const nid = (student.nationalId || '').replace(/</g, '&lt;');
   const guardian = (student.guardianPhone || student.studentPhone || '').replace(/</g, '&lt;');
@@ -459,7 +460,7 @@ const buildIdCardEmailHtml = ({ student, qrDataUrl, logoSrc, color }) => {
     <!-- QR -->
     <tr>
       <td align="center" style="padding:8px 20px 6px 20px;">
-        <img src="${qrDataUrl}" width="175" height="175" alt="QR" style="display:block;background:#ffffff;padding:6px;border:3px solid ${c};border-radius:14px;" />
+        <img src="${qrSrc}" width="175" height="175" alt="QR" style="display:block;background:#ffffff;padding:6px;border:3px solid ${c};border-radius:14px;" />
       </td>
     </tr>
 
@@ -502,11 +503,17 @@ const buildEmailWrap = (cardHtml) => `
 
 const sendCardEmailFor = async (student, color) => {
   const sgMail = require('@sendgrid/mail');
-  const qrDataUrl = await QRCode.toDataURL(student.nationalId, {
-    errorCorrectionLevel: 'M', margin: 0, width: 340,
+  const qrBuffer = await QRCode.toBuffer(student.nationalId, {
+    errorCorrectionLevel: 'M', margin: 0, width: 340, type: 'png',
     color: { dark: '#0f172a', light: '#ffffff' }
   });
-  const cardHtml = buildIdCardEmailHtml({ student, qrDataUrl, logoSrc: PUBLIC_LOGO_URL, color });
+  const qrCid = 'mawhba-qr-1';
+  const cardHtml = buildIdCardEmailHtml({
+    student,
+    qrSrc: `cid:${qrCid}`,
+    logoSrc: PUBLIC_LOGO_URL,
+    color
+  });
   const emailHtml = buildEmailWrap(cardHtml);
   await sgMail.send({
     to: student.email,
@@ -515,7 +522,14 @@ const sendCardEmailFor = async (student, color) => {
       name: process.env.SENDGRID_FROM_NAME
     },
     subject: 'بطاقة موهبة الخاصة بك — Your Mawhba ID Card',
-    html: emailHtml
+    html: emailHtml,
+    attachments: [{
+      content: qrBuffer.toString('base64'),
+      filename: 'mawhba-qr.png',
+      type: 'image/png',
+      disposition: 'inline',
+      content_id: qrCid
+    }]
   });
 };
 
