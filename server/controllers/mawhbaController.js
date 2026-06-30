@@ -457,10 +457,14 @@ const buildIdCardEmailHtml = ({ student, qrSrc, logoSrc, color }) => {
       </td>
     </tr>
 
-    <!-- QR -->
+    <!-- QR (forced white wrapper so Gmail / Outlook render solid white behind the code) -->
     <tr>
       <td align="center" style="padding:8px 20px 6px 20px;">
-        <img src="${qrSrc}" width="175" height="175" alt="QR" style="display:block;background:#ffffff;padding:6px;border:3px solid ${c};border-radius:14px;" />
+        <table role="presentation" cellspacing="0" cellpadding="0" border="0" align="center"><tr>
+          <td bgcolor="#ffffff" style="background-color:#ffffff;padding:14px;border-radius:14px;border:1px solid #e5e7eb;">
+            <img src="${qrSrc}" width="175" height="175" alt="QR" style="display:block;background:#ffffff;" />
+          </td>
+        </tr></table>
       </td>
     </tr>
 
@@ -840,8 +844,8 @@ exports.scanAttendance = async (req, res) => {
     } else if (!record.checkOutAt) {
       // require a small gap to avoid the same scan registering twice — 30 seconds
       const since = now.getTime() - new Date(record.checkInAt).getTime();
-      if (since < 30 * 1000) {
-        return res.json({ action: 'duplicate', student, record, color, message: 'Just checked in — wait a moment before scanning to leave' });
+      if (since < 15 * 60 * 1000) {
+        return res.json({ action: 'duplicate', student, record, color, message: 'Already checked in — please wait at least 15 minutes before checking out' });
       }
       await record.update({ checkOutAt: now });
       action = 'checkout';

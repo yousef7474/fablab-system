@@ -189,22 +189,235 @@
   cursor: not-allowed;
 }
 
-.mawhba-btn-hw-scanner {
-  padding: 0.5rem 1rem;
-  background: white;
-  border: 2px solid #e2e8f0;
+.mawhba-btn-attendance-mode {
+  padding: 0.55rem 1.1rem;
+  background: linear-gradient(135deg, #22c55e, #16a34a);
+  color: white;
+  border: none;
   border-radius: 8px;
   font-weight: 700;
-  font-size: 0.82rem;
+  font-size: 0.88rem;
   cursor: pointer;
   font-family: inherit;
-  display: inline-flex;
-  align-items: center;
-  gap: 0.45rem;
-  transition: border-color 0.15s, color 0.15s;
+  box-shadow: 0 6px 14px -6px rgba(34, 197, 94, 0.5);
 }
-.mawhba-btn-hw-scanner.is-on { border-color: #22c55e; color: #166534; box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.12); }
-.mawhba-btn-hw-scanner.is-off { color: #64748b; }
+.mawhba-btn-attendance-mode:hover { transform: translateY(-1px); }
+
+/* ───────── Attendance Mode (dedicated scanning page) ───────── */
+.mawhba-attendance-mode {
+  position: fixed;
+  inset: 0;
+  z-index: 9000;
+  background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 50%, #312e81 100%);
+  color: white;
+  overflow-y: auto;
+  animation: mawhba-am-fadein 0.3s ease;
+}
+@keyframes mawhba-am-fadein { from { opacity: 0; } to { opacity: 1; } }
+
+.mawhba-am-close {
+  position: absolute;
+  top: 18px;
+  inset-inline-end: 18px;
+  width: 44px; height: 44px;
+  border: none;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.12);
+  color: white;
+  font-size: 1.6rem;
+  font-weight: 700;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s;
+}
+.mawhba-am-close:hover { background: rgba(255,255,255,0.22); }
+
+.mawhba-am-inner {
+  max-width: 980px;
+  margin: 0 auto;
+  padding: 3rem 1.5rem 4rem;
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+}
+
+.mawhba-am-header { text-align: center; }
+.mawhba-am-eyebrow {
+  display: inline-block;
+  padding: 6px 14px;
+  background: rgba(253, 224, 71, 0.14);
+  border: 1px solid rgba(253, 224, 71, 0.4);
+  border-radius: 999px;
+  color: #fde68a;
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 1.5px;
+  margin-bottom: 1rem;
+}
+.mawhba-am-title {
+  margin: 0;
+  font-size: 2.4rem;
+  font-weight: 900;
+  letter-spacing: -0.5px;
+  background: linear-gradient(135deg, #ffffff 0%, #c4b5fd 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+.mawhba-am-sub {
+  margin: 0.7rem 0 0;
+  color: rgba(255,255,255,0.7);
+  font-size: 1.05rem;
+}
+
+.mawhba-am-info {
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 16px;
+  padding: 1.25rem 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+  backdrop-filter: blur(8px);
+}
+.mawhba-am-info-row {
+  display: flex;
+  gap: 0.85rem;
+  align-items: center;
+}
+.mawhba-am-info-icon {
+  width: 34px; height: 34px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 800;
+  font-size: 1rem;
+  color: white;
+  flex: 0 0 auto;
+  box-shadow: 0 4px 10px -2px rgba(0,0,0,0.3);
+}
+.mawhba-am-info-title { font-size: 1rem; font-weight: 800; color: white; line-height: 1.3; }
+.mawhba-am-info-text { font-size: 0.86rem; color: rgba(255,255,255,0.7); margin-top: 2px; }
+
+.mawhba-am-ready {
+  text-align: center;
+  padding: 1.5rem 0;
+  position: relative;
+}
+.mawhba-am-ready-pulse {
+  width: 110px;
+  height: 110px;
+  border-radius: 50%;
+  margin: 0 auto 1rem;
+  background: radial-gradient(circle, #22c55e 0%, #16a34a 70%);
+  box-shadow: 0 0 60px rgba(34, 197, 94, 0.6);
+  position: relative;
+  animation: mawhba-am-pulse 2s ease-in-out infinite;
+}
+.mawhba-am-ready-pulse::after {
+  content: '';
+  position: absolute;
+  inset: -16px;
+  border-radius: 50%;
+  border: 2px solid rgba(34, 197, 94, 0.5);
+  animation: mawhba-am-ring 2s ease-out infinite;
+}
+@keyframes mawhba-am-pulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.08); }
+}
+@keyframes mawhba-am-ring {
+  0% { transform: scale(0.85); opacity: 1; }
+  100% { transform: scale(1.6); opacity: 0; }
+}
+.mawhba-am-ready-label {
+  font-size: 1.5rem;
+  font-weight: 900;
+  color: white;
+  letter-spacing: 3px;
+}
+.mawhba-am-ready-hint {
+  margin-top: 0.4rem;
+  color: rgba(255,255,255,0.6);
+  font-size: 0.88rem;
+}
+
+.mawhba-am-stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1rem;
+}
+.mawhba-am-stat {
+  background: rgba(255,255,255,0.06);
+  border: 2px solid rgba(255,255,255,0.1);
+  border-radius: 14px;
+  padding: 1.1rem 0.5rem;
+  text-align: center;
+}
+.mawhba-am-stat-value {
+  font-size: 2.4rem;
+  font-weight: 900;
+  line-height: 1;
+}
+.mawhba-am-stat-label {
+  margin-top: 4px;
+  font-size: 0.82rem;
+  color: rgba(255,255,255,0.65);
+  font-weight: 700;
+  letter-spacing: 1.5px;
+}
+
+.mawhba-am-recent {
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 14px;
+  padding: 1rem 1.25rem;
+}
+.mawhba-am-recent-title {
+  font-size: 0.8rem;
+  color: rgba(255,255,255,0.6);
+  font-weight: 800;
+  letter-spacing: 2px;
+  margin-bottom: 0.7rem;
+}
+.mawhba-am-recent-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+.mawhba-am-recent-item {
+  --popup-color: #8b5cf6;
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  padding: 0.55rem 0.8rem;
+  background: rgba(255,255,255,0.06);
+  border-inline-start: 4px solid var(--popup-color);
+  border-radius: 10px;
+  font-size: 0.92rem;
+}
+.mawhba-am-recent-icon { font-size: 1.1rem; }
+.mawhba-am-recent-name { flex: 1; font-weight: 700; color: white; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mawhba-am-recent-course {
+  font-size: 0.74rem;
+  background: var(--popup-color);
+  color: white;
+  padding: 2px 10px;
+  border-radius: 999px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.mawhba-am-recent-time { color: rgba(255,255,255,0.75); font-size: 0.82rem; }
+.mawhba-am-recent-item.kind-error { border-color: #ef4444; }
+
+@media (max-width: 640px) {
+  .mawhba-am-title { font-size: 1.7rem; }
+  .mawhba-am-stats { grid-template-columns: 1fr; }
+  .mawhba-am-ready-pulse { width: 88px; height: 88px; }
+}
 
 /* ───────── Hardware scanner popup ───────── */
 .mawhba-scan-popup-overlay {

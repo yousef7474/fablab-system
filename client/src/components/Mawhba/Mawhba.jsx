@@ -36,14 +36,16 @@ const Mawhba = () => {
 
   const [showScanner, setShowScanner] = useState(false);
 
-  // Hardware (USB HID) barcode-reader listener.
-  // The reader types the QR text + Enter into the focused window;
-  // we capture rapid keystrokes here and POST to the scan endpoint.
-  const [hwScannerOn, setHwScannerOn] = useState(true);
+  // Hardware (USB HID) barcode-reader listener — only active while the
+  // dedicated Attendance Mode page is open, so it never fights with
+  // normal typing on the regular Mawhba list view.
+  const [attendanceMode, setAttendanceMode] = useState(false);
   const hwBufferRef = useRef('');
   const hwLastKeyRef = useRef(0);
   const [scanPopup, setScanPopup] = useState(null);
   const scanPopupTimerRef = useRef(null);
+  const [sessionStats, setSessionStats] = useState({ checkins: 0, checkouts: 0, errors: 0 });
+  const [recentScans, setRecentScans] = useState([]); // last 5 scans, newest first
   const [showLogModal, setShowLogModal] = useState(false);
   const [logStudent, setLogStudent] = useState(null);
   const [logRecords, setLogRecords] = useState([]);
@@ -107,17 +109,16 @@ const Mawhba = () => {
   useEffect(() => { fetchCourses(); }, [fetchCourses]);
   useEffect(() => { fetchColorMap(); }, [fetchColorMap]);
 
-  // Hardware scanner: capture rapid character bursts ending in Enter.
+  // Hardware scanner: only listen while the Attendance Mode page is open.
   // Guard against text-field typing so admins can still use search / forms.
   useEffect(() => {
-    if (!hwScannerOn) return undefined;
+    if (!attendanceMode) return undefined;
 
     const onKey = (e) => {
       const el = document.activeElement;
       const tag = (el?.tagName || '').toLowerCase();
       const inField = tag === 'input' || tag === 'textarea' || tag === 'select' || el?.isContentEditable;
       if (inField) return;
-      // Ignore while the camera scanner modal is open
       if (showScanner) return;
 
       const now = Date.now();
@@ -145,7 +146,18 @@ const Mawhba = () => {
     document.addEventListener('keydown', onKey);
     return () => document.removeEventListener('keydown', onKey);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [hwScannerOn, showScanner, isRTL]);
+  }, [attendanceMode, showScanner, isRTL]);
+
+  const openAttendanceMode = () => {
+    setSessionStats({ checkins: 0, checkouts: 0, errors: 0 });
+    setRecentScans([]);
+    setAttendanceMode(true);
+  };
+  const closeAttendanceMode = () => {
+    setAttendanceMode(false);
+    setScanPopup(null);
+    if (scanPopupTimerRef.current) clearTimeout(scanPopupTimerRef.current);
+  };
 
   const showScanResult = useCallback((payload) => {
     if (scanPopupTimerRef.current) clearTimeout(scanPopupTimerRef.current);
@@ -187,7 +199,7 @@ const Mawhba = () => {
       if (data.action === 'checkout') { kind = 'checkout'; label = isRTL ? 'تم تسجيل الخروج' : 'Checked Out'; }
       else if (data.action === 'already_done') { kind = 'done'; label = isRTL ? 'مكتمل اليوم' : 'Already Done Today'; }
       else if (data.action === 'duplicate') { kind = 'warning'; label = isRTL ? 'انتظر قليلاً قبل تسجيل الخروج' : 'Wait before checking out'; }
-      showScanResult({
+      const payload = {
         kind,
         label,
         name: s.nameAr || s.nameEn || code,
@@ -195,9 +207,13 @@ const Mawhba = () => {
         date: fmtDate(refTime || new Date().toISOString()),
         time: fmt(refTime || new Date().toISOString()),
         color
-      });
+      };
+      showScanResult(payload);
+      if (kind === 'checkin') setSessionStats(p => ({ ...p, checkins: p.checkins + 1 }));
+      else if (kind === 'checkout') setSessionStats(p => ({ ...p, checkouts: p.checkouts + 1 }));
+      setRecentScans(prev => [payload, ...prev].slice(0, 6));
     } catch (err) {
-      showScanResult({
+      const payload = {
         kind: 'error',
         label: isRTL ? 'لم يتم العثور على الطالب' : 'Student not found',
         name: code,
@@ -205,7 +221,10 @@ const Mawhba = () => {
         date: '',
         time: '',
         color: '#ef4444'
-      });
+      };
+      showScanResult(payload);
+      setSessionStats(p => ({ ...p, errors: p.errors + 1 }));
+      setRecentScans(prev => [payload, ...prev].slice(0, 6));
     }
   };
 
@@ -739,11 +758,11 @@ const Mawhba = () => {
           📥 {isRTL ? `تصدير حضور (${selected.size})` : `Export Attendance (${selected.size})`}
         </button>
         <button
-          className={`mawhba-btn-hw-scanner ${hwScannerOn ? 'is-on' : 'is-off'}`}
-          onClick={() => setHwScannerOn(v => !v)}
-          title={isRTL ? 'تشغيل/إيقاف استقبال الماسح اليدوي (USB)' : 'Toggle hardware (USB) scanner listener'}
+          className="mawhba-btn-attendance-mode"
+          onClick={openAttendanceMode}
+          title={isRTL ? 'فتح صفحة الحضور المخصصة (USB scanner)' : 'Open dedicated attendance page'}
         >
-          {hwScannerOn ? '🟢' : '⚫'} {isRTL ? (hwScannerOn ? 'الماسح اليدوي: جاهز' : 'الماسح اليدوي: متوقف') : (hwScannerOn ? 'Hardware: Ready' : 'Hardware: Off')}
+          🎯 {isRTL ? 'فتح صفحة الحضور' : 'Open Attendance Page'}
         </button>
       </div>
 
@@ -898,6 +917,91 @@ const Mawhba = () => {
 
       {showScanner && (
         <QRScanner onClose={() => setShowScanner(false)} />
+      )}
+
+      {attendanceMode && (
+        <div className="mawhba-attendance-mode" dir={isRTL ? 'rtl' : 'ltr'}>
+          <button className="mawhba-am-close" onClick={closeAttendanceMode} title={isRTL ? 'إغلاق' : 'Close'}>×</button>
+
+          <div className="mawhba-am-inner">
+            <header className="mawhba-am-header">
+              <div className="mawhba-am-eyebrow">📡 {isRTL ? 'برنامج موهبة · فاب لاب الأحساء' : 'Mawhba · FABLAB Al-Ahsa'}</div>
+              <h1 className="mawhba-am-title">
+                {isRTL ? 'صفحة تسجيل الحضور' : 'Attendance Page'}
+              </h1>
+              <p className="mawhba-am-sub">
+                {isRTL ? 'امسح بطاقة الطالب باستخدام الماسح اليدوي (USB) لتسجيل الدخول أو الخروج' : 'Scan a Mawhba card with the USB reader to record check-in or check-out'}
+              </p>
+            </header>
+
+            <div className="mawhba-am-info">
+              <div className="mawhba-am-info-row">
+                <span className="mawhba-am-info-icon" style={{ background: '#22c55e' }}>1</span>
+                <div>
+                  <div className="mawhba-am-info-title">{isRTL ? 'المسح الأول اليوم' : 'First scan today'}</div>
+                  <div className="mawhba-am-info-text">{isRTL ? 'يسجل دخول الطالب وتاريخ ووقت الحضور' : 'Records the student as checked in with date and time'}</div>
+                </div>
+              </div>
+              <div className="mawhba-am-info-row">
+                <span className="mawhba-am-info-icon" style={{ background: '#f59e0b' }}>2</span>
+                <div>
+                  <div className="mawhba-am-info-title">{isRTL ? 'المسح الثاني اليوم' : 'Second scan today'}</div>
+                  <div className="mawhba-am-info-text">{isRTL ? 'يسجل خروج الطالب (بعد ١٥ دقيقة من الدخول على الأقل)' : 'Records check-out (at least 15 minutes after check-in)'}</div>
+                </div>
+              </div>
+              <div className="mawhba-am-info-row">
+                <span className="mawhba-am-info-icon" style={{ background: '#64748b' }}>✓</span>
+                <div>
+                  <div className="mawhba-am-info-title">{isRTL ? 'بعد إكمال الحضور' : 'After both scans'}</div>
+                  <div className="mawhba-am-info-text">{isRTL ? 'لن يتم تسجيل مسح إضافي لنفس اليوم' : 'No further scans are recorded for the same day'}</div>
+                </div>
+              </div>
+            </div>
+
+            <div className="mawhba-am-ready">
+              <div className="mawhba-am-ready-pulse"></div>
+              <div className="mawhba-am-ready-label">{isRTL ? 'جاهز للمسح' : 'READY TO SCAN'}</div>
+              <div className="mawhba-am-ready-hint">{isRTL ? 'وجّه الماسح نحو رمز الحضور على البطاقة' : 'Point the reader at the QR on the card'}</div>
+            </div>
+
+            <div className="mawhba-am-stats">
+              <div className="mawhba-am-stat" style={{ borderColor: '#22c55e' }}>
+                <div className="mawhba-am-stat-value" style={{ color: '#16a34a' }}>{sessionStats.checkins}</div>
+                <div className="mawhba-am-stat-label">{isRTL ? 'دخول' : 'Check-ins'}</div>
+              </div>
+              <div className="mawhba-am-stat" style={{ borderColor: '#f59e0b' }}>
+                <div className="mawhba-am-stat-value" style={{ color: '#d97706' }}>{sessionStats.checkouts}</div>
+                <div className="mawhba-am-stat-label">{isRTL ? 'خروج' : 'Check-outs'}</div>
+              </div>
+              <div className="mawhba-am-stat" style={{ borderColor: '#ef4444' }}>
+                <div className="mawhba-am-stat-value" style={{ color: '#dc2626' }}>{sessionStats.errors}</div>
+                <div className="mawhba-am-stat-label">{isRTL ? 'فشل' : 'Errors'}</div>
+              </div>
+            </div>
+
+            {recentScans.length > 0 && (
+              <div className="mawhba-am-recent">
+                <div className="mawhba-am-recent-title">{isRTL ? 'آخر المسحات' : 'Recent Scans'}</div>
+                <div className="mawhba-am-recent-list">
+                  {recentScans.map((sc, i) => (
+                    <div key={i} className={`mawhba-am-recent-item kind-${sc.kind}`} style={{ '--popup-color': sc.color }}>
+                      <span className="mawhba-am-recent-icon">
+                        {sc.kind === 'checkin' && '📥'}
+                        {sc.kind === 'checkout' && '📤'}
+                        {sc.kind === 'done' && '✓'}
+                        {sc.kind === 'warning' && '⏳'}
+                        {sc.kind === 'error' && '✕'}
+                      </span>
+                      <span className="mawhba-am-recent-name">{sc.name}</span>
+                      {sc.course && <span className="mawhba-am-recent-course">{sc.course}</span>}
+                      <span className="mawhba-am-recent-time mono">{sc.time || '—'}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
       )}
 
       {scanPopup && (
