@@ -833,6 +833,7 @@ exports.scanAttendance = async (req, res) => {
     let record = await MawhbaAttendance.findOne({ where: { studentId: student.studentId, date } });
 
     let action = null;
+    const color = await getColorForCourse(student.courseName);
     if (!record) {
       record = await MawhbaAttendance.create({ studentId: student.studentId, date, checkInAt: now });
       action = 'checkin';
@@ -840,15 +841,15 @@ exports.scanAttendance = async (req, res) => {
       // require a small gap to avoid the same scan registering twice — 30 seconds
       const since = now.getTime() - new Date(record.checkInAt).getTime();
       if (since < 30 * 1000) {
-        return res.json({ action: 'duplicate', student, record, message: 'Just checked in — wait a moment before scanning to leave' });
+        return res.json({ action: 'duplicate', student, record, color, message: 'Just checked in — wait a moment before scanning to leave' });
       }
       await record.update({ checkOutAt: now });
       action = 'checkout';
     } else {
-      return res.json({ action: 'already_done', student, record, message: 'Already checked in and out today' });
+      return res.json({ action: 'already_done', student, record, color, message: 'Already checked in and out today' });
     }
 
-    res.json({ action, student, record });
+    res.json({ action, student, record, color });
   } catch (err) {
     console.error('Mawhba scanAttendance error:', err);
     res.status(500).json({ message: 'Server error', error: err.message });

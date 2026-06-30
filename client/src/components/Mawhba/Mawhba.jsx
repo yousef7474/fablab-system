@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback, useMemo } from 'react';
+import React, { useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'react-toastify';
 import api from '../../config/api';
@@ -35,6 +35,15 @@ const Mawhba = () => {
   const [savingColor, setSavingColor] = useState(null);
 
   const [showScanner, setShowScanner] = useState(false);
+
+  // Hardware (USB HID) barcode-reader listener.
+  // The reader types the QR text + Enter into the focused window;
+  // we capture rapid keystrokes here and POST to the scan endpoint.
+  const [hwScannerOn, setHwScannerOn] = useState(true);
+  const hwBufferRef = useRef('');
+  const hwLastKeyRef = useRef(0);
+  const [scanPopup, setScanPopup] = useState(null);
+  const scanPopupTimerRef = useRef(null);
   const [showLogModal, setShowLogModal] = useState(false);
   const [logStudent, setLogStudent] = useState(null);
   const [logRecords, setLogRecords] = useState([]);
@@ -97,6 +106,108 @@ const Mawhba = () => {
   useEffect(() => { fetchStudents(); }, [fetchStudents]);
   useEffect(() => { fetchCourses(); }, [fetchCourses]);
   useEffect(() => { fetchColorMap(); }, [fetchColorMap]);
+
+  // Hardware scanner: capture rapid character bursts ending in Enter.
+  // Guard against text-field typing so admins can still use search / forms.
+  useEffect(() => {
+    if (!hwScannerOn) return undefined;
+
+    const onKey = (e) => {
+      const el = document.activeElement;
+      const tag = (el?.tagName || '').toLowerCase();
+      const inField = tag === 'input' || tag === 'textarea' || tag === 'select' || el?.isContentEditable;
+      if (inField) return;
+      // Ignore while the camera scanner modal is open
+      if (showScanner) return;
+
+      const now = Date.now();
+      const dt = now - hwLastKeyRef.current;
+      hwLastKeyRef.current = now;
+
+      // Gap > 250ms with no Enter → likely manual typing; reset buffer
+      if (dt > 250) hwBufferRef.current = '';
+
+      if (e.key === 'Enter') {
+        const code = hwBufferRef.current.trim();
+        hwBufferRef.current = '';
+        if (code.length >= 5) {
+          e.preventDefault();
+          handleHardwareScan(code);
+        }
+        return;
+      }
+
+      if (e.key && e.key.length === 1) {
+        hwBufferRef.current += e.key;
+      }
+    };
+
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hwScannerOn, showScanner, isRTL]);
+
+  const showScanResult = useCallback((payload) => {
+    if (scanPopupTimerRef.current) clearTimeout(scanPopupTimerRef.current);
+    setScanPopup(payload);
+    scanPopupTimerRef.current = setTimeout(() => setScanPopup(null), 3000);
+    try {
+      const ctx = new (window.AudioContext || window.webkitAudioContext)();
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain); gain.connect(ctx.destination);
+      osc.frequency.value = payload.kind === 'error' ? 320 : (payload.kind === 'checkout' ? 880 : 1200);
+      gain.gain.value = 0.25;
+      osc.start();
+      osc.stop(ctx.currentTime + 0.13);
+    } catch {}
+  }, []);
+
+  const handleHardwareScan = async (code) => {
+    try {
+      const { data } = await api.post('/mawhba/attendance/scan', { code });
+      const s = data.student || {};
+      const r = data.record || {};
+      const color = data.color || colorMap[s.courseName] || '#8b5cf6';
+      const fmt = (iso) => {
+        if (!iso) return '';
+        const d = new Date(iso);
+        const pad = (n) => String(n).padStart(2, '0');
+        return `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+      };
+      const fmtDate = (iso) => {
+        if (!iso) return '';
+        const d = new Date(iso);
+        const pad = (n) => String(n).padStart(2, '0');
+        return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+      };
+      const refTime = data.action === 'checkout' ? r.checkOutAt : r.checkInAt;
+      let kind = 'checkin';
+      let label = isRTL ? 'تم تسجيل الدخول' : 'Checked In';
+      if (data.action === 'checkout') { kind = 'checkout'; label = isRTL ? 'تم تسجيل الخروج' : 'Checked Out'; }
+      else if (data.action === 'already_done') { kind = 'done'; label = isRTL ? 'مكتمل اليوم' : 'Already Done Today'; }
+      else if (data.action === 'duplicate') { kind = 'warning'; label = isRTL ? 'انتظر قليلاً قبل تسجيل الخروج' : 'Wait before checking out'; }
+      showScanResult({
+        kind,
+        label,
+        name: s.nameAr || s.nameEn || code,
+        course: s.courseName || '',
+        date: fmtDate(refTime || new Date().toISOString()),
+        time: fmt(refTime || new Date().toISOString()),
+        color
+      });
+    } catch (err) {
+      showScanResult({
+        kind: 'error',
+        label: isRTL ? 'لم يتم العثور على الطالب' : 'Student not found',
+        name: code,
+        course: '',
+        date: '',
+        time: '',
+        color: '#ef4444'
+      });
+    }
+  };
 
   const openAdd = () => {
     setEditingId(null);
@@ -627,6 +738,13 @@ const Mawhba = () => {
         >
           📥 {isRTL ? `تصدير حضور (${selected.size})` : `Export Attendance (${selected.size})`}
         </button>
+        <button
+          className={`mawhba-btn-hw-scanner ${hwScannerOn ? 'is-on' : 'is-off'}`}
+          onClick={() => setHwScannerOn(v => !v)}
+          title={isRTL ? 'تشغيل/إيقاف استقبال الماسح اليدوي (USB)' : 'Toggle hardware (USB) scanner listener'}
+        >
+          {hwScannerOn ? '🟢' : '⚫'} {isRTL ? (hwScannerOn ? 'الماسح اليدوي: جاهز' : 'الماسح اليدوي: متوقف') : (hwScannerOn ? 'Hardware: Ready' : 'Hardware: Off')}
+        </button>
       </div>
 
       <div className="mawhba-summary">
@@ -780,6 +898,36 @@ const Mawhba = () => {
 
       {showScanner && (
         <QRScanner onClose={() => setShowScanner(false)} />
+      )}
+
+      {scanPopup && (
+        <div className="mawhba-scan-popup-overlay" onClick={() => setScanPopup(null)}>
+          <div
+            className={`mawhba-scan-popup mawhba-scan-${scanPopup.kind}`}
+            style={{ '--popup-color': scanPopup.color }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="mawhba-scan-icon">
+              {scanPopup.kind === 'checkin' && '📥'}
+              {scanPopup.kind === 'checkout' && '📤'}
+              {scanPopup.kind === 'done' && '✓'}
+              {scanPopup.kind === 'warning' && '⏳'}
+              {scanPopup.kind === 'error' && '✕'}
+            </div>
+            <div className="mawhba-scan-label">{scanPopup.label}</div>
+            <div className="mawhba-scan-name">{scanPopup.name}</div>
+            {scanPopup.course && (
+              <div className="mawhba-scan-course">{scanPopup.course}</div>
+            )}
+            {(scanPopup.date || scanPopup.time) && (
+              <div className="mawhba-scan-datetime">
+                {scanPopup.date && <span className="mawhba-scan-date">{scanPopup.date}</span>}
+                {scanPopup.time && <span className="mawhba-scan-time">{scanPopup.time}</span>}
+              </div>
+            )}
+            <div className="mawhba-scan-fadebar"><div /></div>
+          </div>
+        </div>
       )}
 
       {showLogModal && logStudent && (
