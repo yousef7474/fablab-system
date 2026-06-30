@@ -456,7 +456,7 @@ const Mawhba = () => {
             <img src="${logoSrc}" alt="FabLab" class="mawhba-card-logo" />
             <div>
               <div class="mawhba-card-fablab">فاب لاب الأحساء</div>
-              <div class="mawhba-card-fablab-en">FABLAB AL-AHSA</div>
+              <div class="mawhba-card-fablab-en">FABLAB</div>
             </div>
           </div>
           <div class="mawhba-card-program">
@@ -467,83 +467,215 @@ const Mawhba = () => {
         <div class="mawhba-card-body">
           <div class="mawhba-card-name">${name}</div>
           <div class="mawhba-card-field">
-            <div class="mawhba-card-field-label">رقم الهوية</div>
-            <div class="mawhba-card-field-value mono">${nid}</div>
+            <span class="mawhba-card-field-label">الهوية</span>
+            <span class="mawhba-card-field-value mono">${nid}</span>
           </div>
           <div class="mawhba-card-field">
-            <div class="mawhba-card-field-label">رقم ولي الأمر</div>
-            <div class="mawhba-card-field-value mono">${guardian || '—'}</div>
+            <span class="mawhba-card-field-label">ولي الأمر</span>
+            <span class="mawhba-card-field-value mono">${guardian || '—'}</span>
           </div>
           ${grade ? `<div class="mawhba-card-field">
-            <div class="mawhba-card-field-label">الصف</div>
-            <div class="mawhba-card-field-value">${grade}</div>
+            <span class="mawhba-card-field-label">الصف</span>
+            <span class="mawhba-card-field-value">${grade}</span>
           </div>` : ''}
         </div>
         <div class="mawhba-card-course">
-          <div class="mawhba-card-course-label">اسم الدورة</div>
           <div class="mawhba-card-course-name">${course || '—'}</div>
         </div>
         <div class="mawhba-card-bottom">
           <img src="${qrDataUrl}" alt="QR" class="mawhba-card-qr" />
           <div class="mawhba-card-qr-label">رمز الحضور</div>
-          <div class="mawhba-card-footer-text">
-            <div>هذه البطاقة ملك لفاب لاب الأحساء — يرجى إعادتها عند الفقدان</div>
-            <div class="mono">ID · ${nid}</div>
-          </div>
         </div>
       </div>`;
   };
 
+  // Print layout: A4 portrait, 2×2 grid of 72×102mm cards (= 4 per page),
+  // with a dashed cut guide around each card.
   const CARD_PRINT_CSS = `
-    body { margin: 0; background: #f1f5f9; padding: 24px; font-family: 'Segoe UI', Tahoma, Arial, sans-serif; }
-    .mawhba-cards-wrap { display: flex; flex-wrap: wrap; gap: 24px; justify-content: center; }
-    .mawhba-card { width: 360px; min-height: 600px; background: white; border-radius: 18px;
-      box-shadow: 0 20px 40px -20px rgba(15,23,42,0.4); overflow: hidden; position: relative;
-      color: #0f172a; border: 1px solid #e2e8f0; }
-    .mawhba-card::after { content: ''; position: absolute; bottom: 0; left: 0; right: 0; height: 6px;
-      background: var(--course-color, #8b5cf6); }
-    .mawhba-card-top { background: linear-gradient(135deg, var(--course-color, #8b5cf6) 0%, var(--course-color-dark, #0f172a) 100%);
-      padding: 18px 20px; display: flex; justify-content: space-between; align-items: center; color: white; }
-    .mawhba-card-brand { display: flex; align-items: center; gap: 10px; }
-    .mawhba-card-logo { width: 40px; height: 40px; background: white; border-radius: 8px; padding: 4px; object-fit: contain; }
-    .mawhba-card-fablab { font-size: 13px; font-weight: 800; line-height: 1.2; }
-    .mawhba-card-fablab-en { font-size: 9px; letter-spacing: 1.4px; color: rgba(255,255,255,0.75); margin-top: 2px; }
+    @page { size: A4 portrait; margin: 14mm 12mm; }
+    html, body { margin: 0; padding: 0; background: #f1f5f9; font-family: 'Segoe UI', Tahoma, Arial, sans-serif; }
+    body { padding: 18mm 0; }
+
+    .mawhba-print-page {
+      width: 186mm;
+      margin: 0 auto;
+      display: grid;
+      grid-template-columns: 72mm 72mm;
+      grid-template-rows: 102mm 102mm;
+      column-gap: 18mm;
+      row-gap: 14mm;
+      justify-content: center;
+      page-break-after: always;
+    }
+    .mawhba-print-page:last-child { page-break-after: auto; }
+
+    .mawhba-card {
+      width: 72mm;
+      height: 102mm;
+      background: white;
+      box-sizing: border-box;
+      overflow: hidden;
+      color: #0f172a;
+      position: relative;
+      border: 0.45mm dashed #475569; /* cut guide */
+      display: flex;
+      flex-direction: column;
+    }
+    .mawhba-card::after {
+      content: '';
+      position: absolute;
+      left: 0; right: 0; bottom: 0;
+      height: 1.5mm;
+      background: var(--course-color, #8b5cf6);
+    }
+
+    .mawhba-card-top {
+      background: var(--course-color, #8b5cf6);
+      background-image: linear-gradient(135deg, var(--course-color, #8b5cf6) 0%, var(--course-color-dark, #0f172a) 100%);
+      padding: 2.5mm 3.5mm;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      color: white;
+      height: 13mm;
+      box-sizing: border-box;
+    }
+    .mawhba-card-brand { display: flex; align-items: center; gap: 2mm; }
+    .mawhba-card-logo {
+      width: 8mm; height: 8mm;
+      background: white;
+      border-radius: 1.5mm;
+      padding: 0.6mm;
+      object-fit: contain;
+      box-sizing: border-box;
+    }
+    .mawhba-card-fablab { font-size: 7pt; font-weight: 800; line-height: 1.1; color: white; }
+    .mawhba-card-fablab-en { font-size: 5pt; letter-spacing: 0.8px; color: rgba(255,255,255,0.78); margin-top: 0.3mm; }
     .mawhba-card-program { text-align: end; }
-    .mawhba-card-program-ar { font-size: 19px; font-weight: 800; color: #ffffff; text-shadow: 0 1px 2px rgba(0,0,0,0.2); }
-    .mawhba-card-program-en { font-size: 9px; letter-spacing: 2.5px; color: rgba(255,255,255,0.7); margin-top: 2px; }
-    .mawhba-card-body { padding: 18px 20px 6px; }
-    .mawhba-card-name { font-size: 21px; font-weight: 800; color: #0f172a; line-height: 1.35;
-      padding-bottom: 12px; border-bottom: 2px solid var(--course-color, #8b5cf6); margin-bottom: 14px; text-align: center; }
-    .mawhba-card-field { margin-bottom: 10px; }
-    .mawhba-card-field-label { font-size: 10px; letter-spacing: 1.3px; color: var(--course-color, #8b5cf6); font-weight: 800; margin-bottom: 3px; }
-    .mawhba-card-field-value { font-size: 14px; font-weight: 700; color: #0f172a; word-break: break-word; }
-    .mawhba-card-field-value.mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 14px; letter-spacing: 0.5px; }
-    .mawhba-card-course { margin: 10px 20px 8px; background: var(--course-color, #8b5cf6); color: white;
-      border-radius: 10px; padding: 10px 14px; text-align: center; box-shadow: 0 6px 14px -6px var(--course-color, #8b5cf6); }
-    .mawhba-card-course-label { font-size: 10px; letter-spacing: 2px; color: rgba(255,255,255,0.85); font-weight: 700; margin-bottom: 3px; }
-    .mawhba-card-course-name { font-size: 17px; font-weight: 800; color: white; }
-    .mawhba-card-bottom { padding: 6px 20px 22px; text-align: center; }
-    .mawhba-card-qr { width: 175px; height: 175px; display: block; margin: 0 auto; background: white;
-      padding: 6px; border: 3px solid var(--course-color, #8b5cf6); border-radius: 14px; }
-    .mawhba-card-qr-label { margin-top: 8px; font-size: 12px; letter-spacing: 2px; color: var(--course-color-dark, #0f172a); font-weight: 800; text-align: center; }
-    .mawhba-card-footer-text { margin-top: 12px; font-size: 9px; color: #64748b; line-height: 1.5; }
-    .mawhba-card-footer-text .mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-      margin-top: 2px; color: #334155; letter-spacing: 1px; }
+    .mawhba-card-program-ar { font-size: 10pt; font-weight: 800; color: white; line-height: 1; }
+    .mawhba-card-program-en { font-size: 4.5pt; letter-spacing: 1.5px; color: rgba(255,255,255,0.75); margin-top: 0.6mm; }
+
+    .mawhba-card-body {
+      padding: 3mm 4mm 0;
+    }
+    .mawhba-card-name {
+      font-size: 11pt;
+      font-weight: 800;
+      text-align: center;
+      padding-bottom: 1.8mm;
+      border-bottom: 0.4mm solid var(--course-color, #8b5cf6);
+      margin-bottom: 2.2mm;
+      line-height: 1.2;
+      color: #0f172a;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+    }
+    .mawhba-card-field {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      margin-bottom: 1.4mm;
+      gap: 2mm;
+    }
+    .mawhba-card-field-label {
+      font-size: 6pt;
+      color: var(--course-color, #8b5cf6);
+      font-weight: 800;
+      letter-spacing: 0.5px;
+      white-space: nowrap;
+    }
+    .mawhba-card-field-value {
+      font-size: 8.5pt;
+      font-weight: 700;
+      color: #0f172a;
+      text-align: end;
+      word-break: break-word;
+    }
+    .mawhba-card-field-value.mono {
+      font-family: 'Consolas', 'Courier New', monospace;
+      letter-spacing: 0.3px;
+    }
+
+    .mawhba-card-course {
+      background: var(--course-color, #8b5cf6);
+      color: white;
+      text-align: center;
+      padding: 1.5mm 2mm;
+      margin: 1mm 4mm 1.5mm;
+      border-radius: 1.5mm;
+    }
+    .mawhba-card-course-name { font-size: 9pt; font-weight: 800; color: white; line-height: 1.15; }
+
+    .mawhba-card-bottom {
+      text-align: center;
+      padding: 0 2mm 3mm;
+      margin-top: auto;
+    }
+    .mawhba-card-qr {
+      width: 28mm;
+      height: 28mm;
+      display: block;
+      margin: 0 auto;
+      background: white;
+      padding: 1mm;
+      border: 0.3mm solid #cbd5e1;
+      border-radius: 1.5mm;
+      box-sizing: border-box;
+    }
+    .mawhba-card-qr-label {
+      margin-top: 1mm;
+      font-size: 6pt;
+      letter-spacing: 1.2px;
+      color: var(--course-color-dark, #0f172a);
+      font-weight: 800;
+    }
+
+    /* Page preview (non-print) */
+    .mawhba-print-page-screen-note {
+      max-width: 186mm;
+      margin: 0 auto 8mm;
+      padding: 8px 14px;
+      background: white;
+      border-radius: 8px;
+      font-size: 12px;
+      color: #475569;
+      text-align: center;
+      border: 1px dashed #cbd5e1;
+    }
+
     @media print {
       body { background: white; padding: 0; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-      .mawhba-cards-wrap { gap: 12px; padding: 8px; }
+      .mawhba-print-page { margin: 0 auto; }
+      .mawhba-print-page-screen-note { display: none; }
       .mawhba-card { box-shadow: none; break-inside: avoid; }
     }
   `;
 
-  const openPrintWindow = (cardsHtml) => {
-    const win = window.open('', '_blank', 'width=820,height=900');
+  // cardsHtmlArray: string[] — each item is one card's HTML.
+  // We chunk into pages of 4 (2×2 grid, A4 portrait, 72×102mm each).
+  const openPrintWindow = (cardsHtmlArray) => {
+    const cards = Array.isArray(cardsHtmlArray) ? cardsHtmlArray : [cardsHtmlArray];
+    if (cards.length === 0) {
+      toast.error(isRTL ? 'لا توجد بطاقات للطباعة' : 'No cards to print');
+      return;
+    }
+    const win = window.open('', '_blank', 'width=900,height=1100');
     if (!win) {
       toast.error(isRTL ? 'تم منع النوافذ المنبثقة' : 'Pop-up blocked — allow pop-ups for this site');
       return;
     }
+    const pages = [];
+    for (let i = 0; i < cards.length; i += 4) {
+      pages.push(`<div class="mawhba-print-page">${cards.slice(i, i + 4).join('')}</div>`);
+    }
+    const note = isRTL
+      ? `${cards.length} بطاقة · ${pages.length} صفحة · حجم البطاقة: 72×102 ملم · اقطع حسب الخط المتقطع`
+      : `${cards.length} card(s) · ${pages.length} page(s) · Card size: 72×102 mm · Cut along the dashed line`;
     win.document.open();
-    win.document.write(`<!DOCTYPE html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><title>${isRTL ? 'بطاقات موهبة' : 'Mawhba Cards'}</title><style>${CARD_PRINT_CSS}</style></head><body><div class="mawhba-cards-wrap">${cardsHtml}</div><script>window.onload=function(){setTimeout(function(){window.print()},400)}<\/script></body></html>`);
+    win.document.write(`<!DOCTYPE html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><title>${isRTL ? 'بطاقات موهبة' : 'Mawhba Cards'}</title><style>${CARD_PRINT_CSS}</style></head><body><div class="mawhba-print-page-screen-note">${note}</div>${pages.join('')}<script>window.onload=function(){setTimeout(function(){window.print()},500)}<\/script></body></html>`);
     win.document.close();
   };
 
@@ -551,7 +683,7 @@ const Mawhba = () => {
     setPrinting(true);
     try {
       const { data } = await api.get(`/mawhba/students/${s.studentId}/card`);
-      openPrintWindow(renderCardHtml(data.student, data.qrDataUrl, data.color));
+      openPrintWindow([renderCardHtml(data.student, data.qrDataUrl, data.color)]);
     } catch (err) {
       console.error(err);
       toast.error(isRTL ? 'تعذر تحضير البطاقة' : 'Failed to prepare card');
@@ -565,9 +697,9 @@ const Mawhba = () => {
     setPrinting(true);
     try {
       const { data } = await api.post('/mawhba/cards', { studentIds: [...selected] });
-      const html = (data || []).map(d => renderCardHtml(d.student, d.qrDataUrl, d.color)).join('');
-      if (!html) { toast.error(isRTL ? 'لا توجد بطاقات' : 'No cards'); return; }
-      openPrintWindow(html);
+      const cards = (data || []).map(d => renderCardHtml(d.student, d.qrDataUrl, d.color));
+      if (!cards.length) { toast.error(isRTL ? 'لا توجد بطاقات' : 'No cards'); return; }
+      openPrintWindow(cards);
     } catch (err) {
       console.error(err);
       toast.error(isRTL ? 'تعذر تحضير البطاقات' : 'Failed to prepare cards');
