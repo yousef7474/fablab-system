@@ -148,15 +148,67 @@ const Mawhba = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [attendanceMode, showScanner, isRTL]);
 
-  const openAttendanceMode = () => {
-    setSessionStats({ checkins: 0, checkouts: 0, errors: 0 });
-    setRecentScans([]);
+  const hydrateAttendance = useCallback(async () => {
+    try {
+      const { data } = await api.get('/mawhba/attendance/today');
+      const events = data?.events || [];
+      const fmt = (iso) => {
+        if (!iso) return '';
+        const d = new Date(iso);
+        const pad = (n) => String(n).padStart(2, '0');
+        return `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+      };
+      const fmtDate = (iso) => {
+        if (!iso) return '';
+        const d = new Date(iso);
+        const pad = (n) => String(n).padStart(2, '0');
+        return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+      };
+      setRecentScans(events.slice(0, 12).map(e => ({
+        kind: e.kind,
+        name: e.name,
+        course: e.course,
+        color: e.color,
+        time: fmt(e.at),
+        date: fmtDate(e.at)
+      })));
+      setSessionStats(prev => ({
+        checkins: data?.stats?.checkins || 0,
+        checkouts: data?.stats?.checkouts || 0,
+        errors: prev.errors // errors aren't stored on the server; keep session counter
+      }));
+    } catch (err) {
+      console.error('hydrateAttendance failed', err);
+    }
+  }, []);
+
+  const openAttendanceMode = async () => {
     setAttendanceMode(true);
+    setSessionStats(p => ({ checkins: 0, checkouts: 0, errors: 0 }));
+    setRecentScans([]);
+    await hydrateAttendance();
   };
   const closeAttendanceMode = () => {
     setAttendanceMode(false);
     setScanPopup(null);
     if (scanPopupTimerRef.current) clearTimeout(scanPopupTimerRef.current);
+  };
+
+  const [clearingToday, setClearingToday] = useState(false);
+  const clearTodayLogs = async () => {
+    if (!window.confirm(isRTL ? 'سيتم حذف جميع سجلات الحضور لهذا اليوم. هل أنت متأكد؟' : 'This will delete ALL of today\'s attendance records. Are you sure?')) return;
+    setClearingToday(true);
+    try {
+      const { data } = await api.delete('/mawhba/attendance/today');
+      setRecentScans([]);
+      setSessionStats({ checkins: 0, checkouts: 0, errors: 0 });
+      toast.success(isRTL ? `تم حذف ${data.count} سجل` : `Deleted ${data.count} record(s)`);
+    } catch (err) {
+      console.error(err);
+      toast.error(isRTL ? 'فشل الحذف' : 'Clear failed');
+    } finally {
+      setClearingToday(false);
+    }
   };
 
   const showScanResult = useCallback((payload) => {
@@ -211,7 +263,7 @@ const Mawhba = () => {
       showScanResult(payload);
       if (kind === 'checkin') setSessionStats(p => ({ ...p, checkins: p.checkins + 1 }));
       else if (kind === 'checkout') setSessionStats(p => ({ ...p, checkouts: p.checkouts + 1 }));
-      setRecentScans(prev => [payload, ...prev].slice(0, 6));
+      setRecentScans(prev => [payload, ...prev].slice(0, 30));
     } catch (err) {
       const payload = {
         kind: 'error',
@@ -224,7 +276,7 @@ const Mawhba = () => {
       };
       showScanResult(payload);
       setSessionStats(p => ({ ...p, errors: p.errors + 1 }));
-      setRecentScans(prev => [payload, ...prev].slice(0, 6));
+      setRecentScans(prev => [payload, ...prev].slice(0, 30));
     }
   };
 
@@ -922,6 +974,9 @@ const Mawhba = () => {
       {attendanceMode && (
         <div className="mawhba-attendance-mode" dir={isRTL ? 'rtl' : 'ltr'}>
           <button className="mawhba-am-close" onClick={closeAttendanceMode} title={isRTL ? 'إغلاق' : 'Close'}>×</button>
+          <button className="mawhba-am-clear" onClick={clearTodayLogs} disabled={clearingToday} title={isRTL ? 'مسح سجلات اليوم' : 'Clear today\'s logs'}>
+            🗑 {clearingToday ? (isRTL ? 'جارٍ المسح...' : 'Clearing...') : (isRTL ? 'مسح سجلات اليوم' : 'Clear Today')}
+          </button>
 
           <div className="mawhba-am-inner">
             <header className="mawhba-am-header">

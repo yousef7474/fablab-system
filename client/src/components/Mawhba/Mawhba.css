@@ -234,6 +234,27 @@
 }
 .mawhba-am-close:hover { background: rgba(255,255,255,0.22); }
 
+.mawhba-am-clear {
+  position: absolute;
+  top: 24px;
+  inset-inline-start: 24px;
+  padding: 0.55rem 1rem;
+  background: rgba(239, 68, 68, 0.18);
+  color: #fecaca;
+  border: 1px solid rgba(239, 68, 68, 0.5);
+  border-radius: 8px;
+  font-weight: 700;
+  font-size: 0.82rem;
+  cursor: pointer;
+  font-family: inherit;
+  transition: background 0.15s, color 0.15s;
+}
+.mawhba-am-clear:hover:not(:disabled) {
+  background: rgba(239, 68, 68, 0.32);
+  color: white;
+}
+.mawhba-am-clear:disabled { opacity: 0.6; cursor: not-allowed; }
+
 .mawhba-am-inner {
   max-width: 980px;
   margin: 0 auto;

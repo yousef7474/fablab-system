@@ -496,13 +496,44 @@ function dirSide() { return 'left'; }
 const buildEmailWrap = (cardHtml) => `
   <div style="background:#eef2f7;padding:24px 12px;font-family:'Segoe UI',Tahoma,Arial,sans-serif;">
     <h2 style="color:#0f172a;text-align:center;margin:0 0 6px;font-size:20px;">بطاقة موهبة الخاصة بك</h2>
-    <p style="text-align:center;color:#64748b;margin:0 0 20px;font-size:13px;">Your Mawhba ID Card — print it and bring it with you</p>
+    <p style="text-align:center;color:#64748b;margin:0 0 20px;font-size:13px;">Your Mawhba ID Card</p>
+
+    <!-- Arabic instructions card -->
+    <table role="presentation" cellspacing="0" cellpadding="0" border="0" align="center" style="max-width:560px;width:100%;margin:0 auto 22px auto;background:#ffffff;border:1px solid #e2e8f0;border-radius:14px;">
+      <tr>
+        <td dir="rtl" style="padding:18px 22px;color:#334155;font-size:14px;line-height:1.85;">
+          <div style="font-size:15px;font-weight:800;color:#0f172a;margin-bottom:8px;">السلام عليكم ورحمة الله وبركاته،</div>
+          <p style="margin:0 0 10px;">نرفق لك أدناه بطاقة الحضور الخاصة بك في برنامج <strong>موهبة</strong> بفاب لاب الأحساء.</p>
+          <div style="background:#fef3c7;border-inline-start:4px solid #f59e0b;border-radius:8px;padding:10px 14px;margin:10px 0;">
+            <div style="font-weight:800;color:#92400e;margin-bottom:6px;">📌 ملاحظات هامة:</div>
+            <ul style="margin:0;padding-inline-start:18px;color:#78350f;">
+              <li><strong>اطبع البطاقة</strong> بحجم مناسب وبجودة عالية على ورق صلب إن أمكن.</li>
+              <li><strong>أحضرها معك يومياً</strong> عند الحضور للفاب لاب.</li>
+              <li>سيتم <strong>مسح رمز الحضور</strong> عند الدخول والخروج من المركز لتسجيل وقت حضورك آلياً.</li>
+            </ul>
+          </div>
+          <p style="margin:6px 0 0;color:#64748b;font-size:13px;">شكراً لتعاونك،<br><strong style="color:#0f172a;">إدارة برنامج موهبة</strong></p>
+        </td>
+      </tr>
+    </table>
+
     <div style="text-align:center;">${cardHtml}</div>
-    <p dir="rtl" style="text-align:center;color:#475569;font-size:13px;margin-top:20px;line-height:1.8;max-width:520px;margin-left:auto;margin-right:auto;">
-      يرجى طباعة هذه البطاقة وإحضارها معك إلى الفاب لاب.<br>
-      سيتم مسح رمز الحضور عند الدخول والخروج لتسجيل وقت الحضور.
-    </p>
-    <div style="text-align:center;margin-top:20px;color:#94a3b8;font-size:11px;letter-spacing:1px;">فاب لاب الأحساء · FABLAB Al-Ahsa</div>
+
+    <!-- English summary -->
+    <table role="presentation" cellspacing="0" cellpadding="0" border="0" align="center" style="max-width:560px;width:100%;margin:22px auto 0 auto;background:#ffffff;border:1px solid #e2e8f0;border-radius:14px;">
+      <tr>
+        <td dir="ltr" style="padding:16px 22px;color:#334155;font-size:13px;line-height:1.7;">
+          <div style="font-weight:700;color:#0f172a;margin-bottom:6px;">Important · Please read</div>
+          <ul style="margin:0;padding-inline-start:18px;color:#475569;">
+            <li><strong>Print</strong> this card at a good quality and reasonable size.</li>
+            <li><strong>Bring it every day</strong> when coming to FabLab Al-Ahsa.</li>
+            <li>The QR code will be <strong>scanned at entry and exit</strong> to automatically record your attendance.</li>
+          </ul>
+        </td>
+      </tr>
+    </table>
+
+    <div style="text-align:center;margin-top:22px;color:#94a3b8;font-size:11px;letter-spacing:1px;">فاب لاب الأحساء · FABLAB Al-Ahsa · برنامج موهبة</div>
   </div>`;
 
 const sendCardEmailFor = async (student, color) => {
@@ -856,6 +887,52 @@ exports.scanAttendance = async (req, res) => {
     res.json({ action, student, record, color });
   } catch (err) {
     console.error('Mawhba scanAttendance error:', err);
+    res.status(500).json({ message: 'Server error', error: err.message });
+  }
+};
+
+exports.todayAttendance = async (req, res) => {
+  try {
+    const date = todayStr();
+    const records = await MawhbaAttendance.findAll({
+      where: { date },
+      include: [{ model: MawhbaStudent, as: 'student', required: false }]
+    });
+
+    const colorRows = await MawhbaCourseColor.findAll();
+    const colorMap = Object.fromEntries(colorRows.map(r => [r.courseName, r.color]));
+
+    const events = [];
+    for (const r of records) {
+      const s = r.student || {};
+      const base = {
+        attendanceId: r.attendanceId,
+        studentId: r.studentId,
+        name: s.nameAr || s.nameEn || '',
+        course: s.courseName || '',
+        color: colorMap[s.courseName] || DEFAULT_COURSE_COLOR
+      };
+      if (r.checkInAt) events.push({ ...base, kind: 'checkin', at: r.checkInAt });
+      if (r.checkOutAt) events.push({ ...base, kind: 'checkout', at: r.checkOutAt });
+    }
+    events.sort((a, b) => new Date(b.at) - new Date(a.at));
+
+    const checkins = events.filter(e => e.kind === 'checkin').length;
+    const checkouts = events.filter(e => e.kind === 'checkout').length;
+    res.json({ date, events, stats: { checkins, checkouts } });
+  } catch (err) {
+    console.error('Mawhba todayAttendance error:', err);
+    res.status(500).json({ message: 'Server error', error: err.message });
+  }
+};
+
+exports.clearTodayAttendance = async (req, res) => {
+  try {
+    const date = todayStr();
+    const count = await MawhbaAttendance.destroy({ where: { date } });
+    res.json({ message: 'Today cleared', date, count });
+  } catch (err) {
+    console.error('Mawhba clearTodayAttendance error:', err);
     res.status(500).json({ message: 'Server error', error: err.message });
   }
 };
