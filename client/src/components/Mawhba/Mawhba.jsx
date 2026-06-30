@@ -596,6 +596,16 @@ const Mawhba = () => {
           🖨 {isRTL ? `طباعة (${selected.size})` : `Print (${selected.size})`}
         </button>
         <button
+          className="mawhba-btn-cards-bulk"
+          onClick={emailCardsBulk}
+          disabled={selected.size === 0 || sendingCards}
+          title={isRTL ? 'إرسال بطاقة كل طالب لبريده' : 'Send each student their card'}
+        >
+          🎫 {sendingCards
+            ? (isRTL ? 'جارٍ الإرسال...' : 'Sending...')
+            : (isRTL ? `إرسال البطاقات (${selected.size})` : `Send Cards (${selected.size})`)}
+        </button>
+        <button
           className="mawhba-btn-colors"
           onClick={openColorsModal}
           title={isRTL ? 'تخصيص لون كل دورة' : 'Customize course colors'}
