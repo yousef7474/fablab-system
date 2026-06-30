@@ -3060,236 +3060,110 @@ const AdminDashboard = () => {
         <meta charset="UTF-8">
         <title>${isRTL ? 'بطاقة تعريف المستخدم' : 'User ID Card'}</title>
         <style>
-          @page {
-            size: 53.98mm 100mm;
-            margin: 0;
-          }
-          * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-          }
-          body {
-            font-family: 'Segoe UI', Tahoma, Arial, sans-serif;
-            background: #f0f0f0;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            min-height: 100vh;
-            padding: 20px;
-          }
-          .id-card-wrapper {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-          }
-          .card-holder-area {
-            width: 53.98mm;
-            height: 15mm;
-            background: #f8f9fa;
-            border: 2px dashed #ccc;
-            border-bottom: none;
-            border-radius: 10px 10px 0 0;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            gap: 2mm;
-          }
-          .punch-hole {
-            width: 8mm;
-            height: 8mm;
-            border: 2px dashed #999;
-            border-radius: 50%;
-            background: white;
-          }
-          .cut-line-text {
-            font-size: 7px;
-            color: #999;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-          }
+          @page { size: A4 portrait; margin: 14mm 12mm; }
+          * { margin: 0; padding: 0; box-sizing: border-box; }
+          html, body { font-family: 'Segoe UI', Tahoma, Arial, sans-serif; background: #f1f5f9; }
+          body { padding: 24mm 0; display: flex; justify-content: center; }
+          .print-note { font-size: 12px; color: #475569; background: white; border: 1px dashed #cbd5e1; border-radius: 8px; padding: 8px 14px; margin-bottom: 8mm; text-align: center; max-width: 80mm; }
+          .id-card-wrapper { display: flex; flex-direction: column; align-items: center; }
+
           .id-card {
-            width: 53.98mm;
-            height: 85.6mm;
-            background: linear-gradient(180deg, #ffffff 0%, #f8f9fa 100%);
-            border-radius: 0 0 10px 10px;
+            width: 72mm;
+            height: 102mm;
+            background: linear-gradient(180deg, #ffffff 0%, #fef2f2 100%);
+            border: 0.45mm dashed #475569;
             overflow: hidden;
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
             position: relative;
             display: flex;
             flex-direction: column;
+            color: #0f172a;
+            box-sizing: border-box;
           }
           .card-header {
             background: linear-gradient(135deg, #e02529 0%, #c41e24 100%);
-            padding: 10px 8px;
+            padding: 3mm 3.5mm;
             text-align: center;
           }
-          .card-title {
-            color: white;
-            font-size: 11px;
-            font-weight: 700;
-            letter-spacing: 0.5px;
-          }
-          .card-subtitle {
-            color: rgba(255,255,255,0.85);
-            font-size: 8px;
-            margin-top: 2px;
-          }
+          .card-title { color: white; font-size: 10pt; font-weight: 700; letter-spacing: 0.4px; line-height: 1.15; }
+          .card-subtitle { color: rgba(255,255,255,0.88); font-size: 7pt; margin-top: 1mm; }
           .card-body {
             flex: 1;
-            padding: 10px;
+            padding: 3.5mm 4mm 0;
             display: flex;
             flex-direction: column;
             align-items: center;
-            gap: 8px;
+            gap: 2mm;
           }
           .user-photo {
-            width: 70px;
-            height: 85px;
-            background: linear-gradient(135deg, #e8e8e8, #d0d0d0);
-            border-radius: 6px;
+            width: 24mm;
+            height: 29mm;
+            background: linear-gradient(135deg, #fecaca, #fca5a5);
+            border-radius: 2mm;
             display: flex;
             align-items: center;
             justify-content: center;
             color: #e02529;
-            font-size: 32px;
             font-weight: bold;
-            border: 3px solid #e02529;
+            border: 0.8mm solid #e02529;
             box-shadow: 0 3px 10px rgba(0, 0, 0, 0.15);
             overflow: hidden;
+            flex-shrink: 0;
           }
-          .user-photo img {
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-          }
-          .user-photo .initials {
-            font-size: 32px;
-            font-weight: bold;
-            color: #e02529;
-          }
+          .user-photo img { width: 100%; height: 100%; object-fit: cover; }
+          .user-photo .initials { font-size: 22pt; font-weight: bold; color: #e02529; }
           .user-name {
-            font-size: 13px;
-            font-weight: 700;
+            font-size: 12pt;
+            font-weight: 800;
             color: #1a1a2e;
             text-align: center;
             line-height: 1.2;
+            max-height: 11mm;
+            overflow: hidden;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
           }
           .user-type-badge {
             display: inline-block;
             background: linear-gradient(135deg, #e02529, #c41e24);
             color: white;
-            font-size: 9px;
-            padding: 3px 12px;
-            border-radius: 12px;
-            font-weight: 600;
+            font-size: 8pt;
+            padding: 0.8mm 4mm;
+            border-radius: 999px;
+            font-weight: 700;
           }
-          .info-section {
-            width: 100%;
-            display: flex;
-            flex-direction: column;
-            gap: 4px;
-            margin-top: 6px;
-          }
-          .info-row {
-            display: flex;
-            justify-content: space-between;
-            font-size: 9px;
-            padding: 3px 0;
-            border-bottom: 1px dotted #ddd;
-          }
-          .info-row:last-child {
-            border-bottom: none;
-          }
-          .info-label {
-            font-weight: 600;
-            color: #555;
-          }
-          .info-value {
-            color: #1a1a2e;
-            font-weight: 500;
-            text-align: ${isRTL ? 'left' : 'right'};
-            max-width: 55%;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            white-space: nowrap;
-          }
+          .info-section { width: 100%; display: flex; flex-direction: column; gap: 1mm; margin-top: 1.5mm; }
+          .info-row { display: flex; justify-content: space-between; font-size: 8pt; padding: 1mm 0; border-bottom: 0.2mm dotted #ddd; }
+          .info-row:last-child { border-bottom: none; }
+          .info-label { font-weight: 700; color: #555; }
+          .info-value { color: #1a1a2e; font-weight: 600; text-align: ${isRTL ? 'left' : 'right'}; max-width: 60%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
           .card-footer {
             background: #ffffff;
-            padding: 8px 6px;
+            padding: 2mm 3mm;
             display: flex;
-            flex-direction: row;
             align-items: center;
             justify-content: space-between;
-            border-top: 1px solid #e0e0e0;
+            border-top: 0.3mm solid #e0e0e0;
+            gap: 1.5mm;
           }
-          .card-footer .logo {
-            height: 24px;
-            width: auto;
-            flex-shrink: 0;
-          }
-          .card-footer .logo-left {
-            order: 1;
-          }
-          .card-footer .logo-right {
-            order: 3;
-          }
-          .member-id-section {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 1px;
-            order: 2;
-            flex: 1;
-            text-align: center;
-          }
-          .member-id-label {
-            font-size: 6px;
-            color: #666;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-          }
-          .member-id-value {
-            font-size: 11px;
-            font-weight: 700;
-            color: #e02529;
-            font-family: 'Consolas', 'Courier New', monospace;
-          }
-          .decorative-stripe {
-            position: absolute;
-            top: 40%;
-            ${isRTL ? 'right' : 'left'}: 0;
-            width: 3px;
-            height: 25%;
-            background: linear-gradient(to bottom, transparent, #e02529, transparent);
-          }
+          .card-footer .logo { height: 8mm; width: auto; flex-shrink: 0; }
+          .card-footer .logo-left { order: 1; }
+          .card-footer .logo-right { order: 3; }
+          .member-id-section { display: flex; flex-direction: column; align-items: center; order: 2; flex: 1; text-align: center; gap: 0.3mm; }
+          .member-id-label { font-size: 5.5pt; color: #666; text-transform: uppercase; letter-spacing: 0.5px; }
+          .member-id-value { font-size: 8.5pt; font-weight: 700; color: #e02529; font-family: 'Consolas', 'Courier New', monospace; }
+          .decorative-stripe { position: absolute; top: 40%; ${isRTL ? 'right' : 'left'}: 0; width: 1mm; height: 25%; background: linear-gradient(to bottom, transparent, #e02529, transparent); }
           @media print {
-            body {
-              background: none;
-              padding: 0;
-              min-height: auto;
-            }
-            .id-card-wrapper {
-              box-shadow: none;
-              margin: 0;
-            }
-            .card-holder-area {
-              border: 2px dashed #ccc;
-              border-bottom: none;
-            }
-            .punch-hole {
-              border: 2px dashed #999;
-            }
+            html, body { background: white; padding: 0; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+            body { padding: 0; }
+            .print-note { display: none; }
+            .id-card { box-shadow: none; break-inside: avoid; }
           }
         </style>
       </head>
       <body>
         <div class="id-card-wrapper">
-          <div class="card-holder-area">
-            <div class="punch-hole"></div>
-            <span class="cut-line-text">${isRTL ? '✂ خط القطع' : '✂ CUT LINE'}</span>
-          </div>
+          <div class="print-note">${isRTL ? 'حجم البطاقة 72×102 ملم — اقطع حسب الخط المتقطع' : 'Card size 72×102 mm — cut along the dashed line'}</div>
           <div class="id-card">
             <div class="card-header">
               <div class="card-title">${isRTL ? 'بطاقة مستفيد فاب لاب الأحساء' : 'FABLAB Al-Ahsa Beneficiary Card'}</div>
