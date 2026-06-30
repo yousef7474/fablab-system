@@ -518,8 +518,6 @@ const Mawhba = () => {
       color: #0f172a;
       position: relative;
       border: 0.45mm dashed #475569; /* cut guide */
-      display: flex;
-      flex-direction: column;
     }
     .mawhba-card::after {
       content: '';
@@ -556,15 +554,15 @@ const Mawhba = () => {
     .mawhba-card-program-en { font-size: 4.5pt; letter-spacing: 1.5px; color: rgba(255,255,255,0.75); margin-top: 0.6mm; }
 
     .mawhba-card-body {
-      padding: 3mm 4mm 0;
+      padding: 2.5mm 4mm 0;
     }
     .mawhba-card-name {
-      font-size: 11pt;
+      font-size: 10pt;
       font-weight: 800;
       text-align: center;
-      padding-bottom: 1.8mm;
+      padding-bottom: 1.5mm;
       border-bottom: 0.4mm solid var(--course-color, #8b5cf6);
-      margin-bottom: 2.2mm;
+      margin-bottom: 1.8mm;
       line-height: 1.2;
       color: #0f172a;
       overflow: hidden;
@@ -577,18 +575,18 @@ const Mawhba = () => {
       display: flex;
       justify-content: space-between;
       align-items: baseline;
-      margin-bottom: 1.4mm;
+      margin-bottom: 1.1mm;
       gap: 2mm;
     }
     .mawhba-card-field-label {
-      font-size: 6pt;
+      font-size: 5.5pt;
       color: var(--course-color, #8b5cf6);
       font-weight: 800;
-      letter-spacing: 0.5px;
+      letter-spacing: 0.4px;
       white-space: nowrap;
     }
     .mawhba-card-field-value {
-      font-size: 8.5pt;
+      font-size: 8pt;
       font-weight: 700;
       color: #0f172a;
       text-align: end;
@@ -603,20 +601,19 @@ const Mawhba = () => {
       background: var(--course-color, #8b5cf6);
       color: white;
       text-align: center;
-      padding: 1.5mm 2mm;
-      margin: 1mm 4mm 1.5mm;
+      padding: 1.2mm 2mm;
+      margin: 2mm 4mm 2mm;
       border-radius: 1.5mm;
     }
-    .mawhba-card-course-name { font-size: 9pt; font-weight: 800; color: white; line-height: 1.15; }
+    .mawhba-card-course-name { font-size: 8.5pt; font-weight: 800; color: white; line-height: 1.15; }
 
     .mawhba-card-bottom {
       text-align: center;
-      padding: 0 2mm 3mm;
-      margin-top: auto;
+      padding: 0 2mm 0;
     }
     .mawhba-card-qr {
-      width: 28mm;
-      height: 28mm;
+      width: 32mm;
+      height: 32mm;
       display: block;
       margin: 0 auto;
       background: white;
