@@ -493,47 +493,70 @@ const buildIdCardEmailHtml = ({ student, qrSrc, logoSrc, color }) => {
 // Small RTL helper — Arabic emails go right-to-left so logo padding goes on the left
 function dirSide() { return 'left'; }
 
+// Plain-text alternative — Gmail / Outlook show this in the inbox preview line
+// and use it as a fallback. Keeping the visible top of the HTML version close to
+// this same text prevents Gmail from collapsing the body behind a "…".
+const buildEmailText = () => [
+  'السلام عليكم ورحمة الله وبركاته،',
+  '',
+  'نرفق لك بطاقة الحضور الخاصة بك في برنامج موهبة بفاب لاب الأحساء.',
+  '',
+  'يرجى الالتزام بالتالي:',
+  '• اطبع البطاقة بحجم مناسب وبجودة عالية على ورق صلب إن أمكن.',
+  '• أحضرها معك يومياً عند الحضور للفاب لاب.',
+  '• سيتم مسح رمز الحضور عند الدخول والخروج لتسجيل وقت حضورك آلياً.',
+  '',
+  'البطاقة مرفقة في أسفل الرسالة كصورة.',
+  '',
+  'شكراً لتعاونك،',
+  'إدارة برنامج موهبة — فاب لاب الأحساء',
+  '',
+  '— Mawhba · FABLAB Al-Ahsa',
+  'Please print your attached ID card, bring it daily, and use it to check in / out at the FabLab.'
+].join('\n');
+
+// HTML version: plain styled paragraphs FIRST, then the card. This gives
+// Gmail real preview text and stops it from showing the body as "…".
 const buildEmailWrap = (cardHtml) => `
-  <div style="background:#eef2f7;padding:24px 12px;font-family:'Segoe UI',Tahoma,Arial,sans-serif;">
-    <h2 style="color:#0f172a;text-align:center;margin:0 0 6px;font-size:20px;">بطاقة موهبة الخاصة بك</h2>
-    <p style="text-align:center;color:#64748b;margin:0 0 20px;font-size:13px;">Your Mawhba ID Card</p>
+  <div dir="rtl" style="font-family:'Segoe UI',Tahoma,Arial,sans-serif;background:#ffffff;padding:24px 18px;max-width:640px;margin:0 auto;color:#0f172a;line-height:1.85;">
 
-    <!-- Arabic instructions card -->
-    <table role="presentation" cellspacing="0" cellpadding="0" border="0" align="center" style="max-width:560px;width:100%;margin:0 auto 22px auto;background:#ffffff;border:1px solid #e2e8f0;border-radius:14px;">
-      <tr>
-        <td dir="rtl" style="padding:18px 22px;color:#334155;font-size:14px;line-height:1.85;">
-          <div style="font-size:15px;font-weight:800;color:#0f172a;margin-bottom:8px;">السلام عليكم ورحمة الله وبركاته،</div>
-          <p style="margin:0 0 10px;">نرفق لك أدناه بطاقة الحضور الخاصة بك في برنامج <strong>موهبة</strong> بفاب لاب الأحساء.</p>
-          <div style="background:#fef3c7;border-inline-start:4px solid #f59e0b;border-radius:8px;padding:10px 14px;margin:10px 0;">
-            <div style="font-weight:800;color:#92400e;margin-bottom:6px;">📌 ملاحظات هامة:</div>
-            <ul style="margin:0;padding-inline-start:18px;color:#78350f;">
-              <li><strong>اطبع البطاقة</strong> بحجم مناسب وبجودة عالية على ورق صلب إن أمكن.</li>
-              <li><strong>أحضرها معك يومياً</strong> عند الحضور للفاب لاب.</li>
-              <li>سيتم <strong>مسح رمز الحضور</strong> عند الدخول والخروج من المركز لتسجيل وقت حضورك آلياً.</li>
-            </ul>
-          </div>
-          <p style="margin:6px 0 0;color:#64748b;font-size:13px;">شكراً لتعاونك،<br><strong style="color:#0f172a;">إدارة برنامج موهبة</strong></p>
-        </td>
-      </tr>
-    </table>
+    <p style="margin:0 0 14px;font-size:16px;font-weight:700;color:#0f172a;">
+      السلام عليكم ورحمة الله وبركاته،
+    </p>
 
-    <div style="text-align:center;">${cardHtml}</div>
+    <p style="margin:0 0 14px;font-size:15px;color:#334155;">
+      نرفق لك بطاقة الحضور الخاصة بك في برنامج <strong style="color:#0f172a;">موهبة</strong> بفاب لاب الأحساء.
+    </p>
 
-    <!-- English summary -->
-    <table role="presentation" cellspacing="0" cellpadding="0" border="0" align="center" style="max-width:560px;width:100%;margin:22px auto 0 auto;background:#ffffff;border:1px solid #e2e8f0;border-radius:14px;">
-      <tr>
-        <td dir="ltr" style="padding:16px 22px;color:#334155;font-size:13px;line-height:1.7;">
-          <div style="font-weight:700;color:#0f172a;margin-bottom:6px;">Important · Please read</div>
-          <ul style="margin:0;padding-inline-start:18px;color:#475569;">
-            <li><strong>Print</strong> this card at a good quality and reasonable size.</li>
-            <li><strong>Bring it every day</strong> when coming to FabLab Al-Ahsa.</li>
-            <li>The QR code will be <strong>scanned at entry and exit</strong> to automatically record your attendance.</li>
-          </ul>
-        </td>
-      </tr>
-    </table>
+    <p style="margin:0 0 8px;font-size:15px;font-weight:700;color:#0f172a;">
+      📌 يرجى الالتزام بالتالي:
+    </p>
+    <p style="margin:0 0 6px;font-size:15px;color:#475569;padding-inline-start:14px;">
+      • <strong>اطبع البطاقة</strong> بحجم مناسب وبجودة عالية على ورق صلب إن أمكن.
+    </p>
+    <p style="margin:0 0 6px;font-size:15px;color:#475569;padding-inline-start:14px;">
+      • <strong>أحضرها معك يومياً</strong> عند الحضور للفاب لاب.
+    </p>
+    <p style="margin:0 0 18px;font-size:15px;color:#475569;padding-inline-start:14px;">
+      • سيتم <strong>مسح رمز الحضور</strong> عند الدخول والخروج من المركز لتسجيل وقت حضورك آلياً.
+    </p>
 
-    <div style="text-align:center;margin-top:22px;color:#94a3b8;font-size:11px;letter-spacing:1px;">فاب لاب الأحساء · FABLAB Al-Ahsa · برنامج موهبة</div>
+    <p style="margin:0 0 22px;font-size:14px;color:#64748b;">
+      شكراً لتعاونك،<br>
+      <strong style="color:#0f172a;">إدارة برنامج موهبة — فاب لاب الأحساء</strong>
+    </p>
+
+    <hr style="border:none;border-top:1px solid #e2e8f0;margin:0 0 22px;" />
+
+    <p style="margin:0 0 12px;font-size:13px;color:#64748b;text-align:center;">
+      بطاقتك أدناه — Your ID card below
+    </p>
+
+    <div style="text-align:center;margin:0 0 22px;">${cardHtml}</div>
+
+    <p dir="ltr" style="margin:0;color:#94a3b8;font-size:11px;text-align:center;letter-spacing:0.8px;">
+      FABLAB Al-Ahsa · Mawhba Program · Print the card, bring it every day, scan at entry &amp; exit.
+    </p>
   </div>`;
 
 const sendCardEmailFor = async (student, color) => {
@@ -557,6 +580,7 @@ const sendCardEmailFor = async (student, color) => {
       name: process.env.SENDGRID_FROM_NAME
     },
     subject: 'بطاقة موهبة الخاصة بك — Your Mawhba ID Card',
+    text: buildEmailText(),
     html: emailHtml,
     attachments: [{
       content: qrBuffer.toString('base64'),
