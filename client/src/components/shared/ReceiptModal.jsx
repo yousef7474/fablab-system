@@ -88,19 +88,27 @@ const ReceiptModal = ({ open, onClose, recipient, personType = 'volunteer', onSa
       .filter(d => d && d.attended)
       .sort((a, b) => String(a.date).localeCompare(String(b.date)));
     if (attended.length === 0) return '';
+    // Fallback per-day hours when the row wasn't saved with an explicit
+    // value — use the opportunity's dailyHours (defaults to 8).
+    const fallbackHours = Number(opp.dailyHours) || 0;
+    const hoursFor = (d) => {
+      const h = Number(d.hours);
+      return h > 0 ? h : fallbackHours;
+    };
     const rows = attended.map(d => {
       const dt = new Date(d.date);
       const dateFmt = isNaN(dt.getTime())
         ? safe(d.date)
         : dt.toLocaleDateString('ar-SA-u-ca-gregory-nu-latn', { weekday: 'short', day: '2-digit', month: 'long', year: 'numeric' });
-      const hoursCell = d.hours != null ? Number(d.hours) : '';
+      const h = hoursFor(d);
       return `
         <tr>
           <td>${dateFmt}</td>
-          <td class="hours">${hoursCell === '' ? '—' : hoursCell + ' س'}</td>
+          <td class="hours">${h > 0 ? h + ' س' : '—'}</td>
           <td class="task">${safe(d.task || '')}</td>
         </tr>`;
     }).join('');
+    const totalHours = attended.reduce((s, d) => s + hoursFor(d), 0);
     return `
       <div class="page tasks">
         <div class="tasks-content">
@@ -117,7 +125,7 @@ const ReceiptModal = ({ open, onClose, recipient, personType = 'volunteer', onSa
           </table>
           <div class="tasks-footer">
             <div>عدد الأيام: ${attended.length}</div>
-            <div>الإجمالي: ${attended.reduce((s, d) => s + (Number(d.hours) || 0), 0)} ساعة</div>
+            <div>الإجمالي: ${totalHours} ساعة</div>
           </div>
         </div>
       </div>

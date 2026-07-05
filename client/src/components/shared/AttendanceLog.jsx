@@ -40,7 +40,12 @@ const AttendanceLog = ({ opportunity, isRTL, onSaved, hourlyRate = 0, dayRate = 
   const showCost = isDailyMode || isHourlyMode;
   // Hide hours when caller forces it (e.g. student attendance) or when
   // we're in flat day-rate mode where hours are irrelevant.
-  const showHoursColumn = !isDailyMode && !hideHours;
+  // Show the hours input for both pricing modes. In day-rate mode the
+  // hours don't affect cost, but they still need to be tracked so the
+  // "سند" print can show real per-day hours instead of "0 س".
+  const showHoursColumn = !hideHours;
+  // Default hours per attended day, falls back to opportunity.dailyHours
+  const defaultDailyHours = Number(opportunity?.dailyHours) || 0;
 
   const dates = useMemo(
     () => buildDateRange(opportunity.startDate, opportunity.endDate),
@@ -167,7 +172,12 @@ const AttendanceLog = ({ opportunity, isRTL, onSaved, hourlyRate = 0, dayRate = 
                     <input
                       type="checkbox"
                       checked={r.attended}
-                      onChange={(e) => updateRow(i, { attended: e.target.checked, hours: e.target.checked ? r.hours : 0 })}
+                      onChange={(e) => updateRow(i, {
+                        attended: e.target.checked,
+                        hours: e.target.checked
+                          ? (Number(r.hours) > 0 ? r.hours : defaultDailyHours)
+                          : 0
+                      })}
                       style={{ width: 18, height: 18, cursor: 'pointer' }}
                     />
                   </td>
