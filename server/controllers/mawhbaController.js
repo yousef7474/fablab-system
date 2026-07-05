@@ -1029,12 +1029,20 @@ exports.deleteAttendance = async (req, res) => {
   }
 };
 
+// Format the DB timestamp as HH:MM:SS in Riyadh time, regardless of the
+// server's local timezone (production containers run UTC, so getHours()
+// would print UTC hours in the Excel export).
+const riyadhTimeFmt = new Intl.DateTimeFormat('en-GB', {
+  timeZone: 'Asia/Riyadh',
+  hour12: false,
+  hour: '2-digit', minute: '2-digit', second: '2-digit'
+});
 const fmtTime = (d) => {
   if (!d) return '';
   const dt = new Date(d);
   if (isNaN(dt.getTime())) return '';
-  const pad = (n) => String(n).padStart(2, '0');
-  return `${pad(dt.getHours())}:${pad(dt.getMinutes())}:${pad(dt.getSeconds())}`;
+  // "24:15:03" style output from Intl in en-GB; normalize a 24 hour to 00
+  return riyadhTimeFmt.format(dt).replace(/^24:/, '00:');
 };
 
 exports.exportAttendance = async (req, res) => {
