@@ -927,25 +927,60 @@ exports.todayAttendance = async (req, res) => {
     const colorMap = Object.fromEntries(colorRows.map(r => [r.courseName, r.color]));
 
     const events = [];
+    const byCourse = new Map();
     for (const r of records) {
       const s = r.student || {};
+      const color = colorMap[s.courseName] || DEFAULT_COURSE_COLOR;
+      const courseKey = s.courseName || '—';
       const base = {
         attendanceId: r.attendanceId,
         studentId: r.studentId,
         name: s.nameAr || s.nameEn || '',
         course: s.courseName || '',
-        color: colorMap[s.courseName] || DEFAULT_COURSE_COLOR
+        color
       };
       if (r.checkInAt) events.push({ ...base, kind: 'checkin', at: r.checkInAt });
       if (r.checkOutAt) events.push({ ...base, kind: 'checkout', at: r.checkOutAt });
+
+      if (!byCourse.has(courseKey)) {
+        byCourse.set(courseKey, { course: courseKey, color, students: [] });
+      }
+      byCourse.get(courseKey).students.push({
+        ...base,
+        checkInAt: r.checkInAt,
+        checkOutAt: r.checkOutAt,
+        status: r.checkOutAt ? 'checked_out' : 'checked_in'
+      });
     }
     events.sort((a, b) => new Date(b.at) - new Date(a.at));
 
+    const groups = [...byCourse.values()];
+    for (const g of groups) {
+      g.students.sort((a, b) => {
+        const at = new Date(b.checkOutAt || b.checkInAt || 0) - new Date(a.checkOutAt || a.checkInAt || 0);
+        return at;
+      });
+    }
+    groups.sort((a, b) => String(a.course).localeCompare(String(b.course), 'ar'));
+
     const checkins = events.filter(e => e.kind === 'checkin').length;
     const checkouts = events.filter(e => e.kind === 'checkout').length;
-    res.json({ date, events, stats: { checkins, checkouts } });
+    res.json({ date, events, groups, stats: { checkins, checkouts } });
   } catch (err) {
     console.error('Mawhba todayAttendance error:', err);
+    res.status(500).json({ message: 'Server error', error: err.message });
+  }
+};
+
+exports.clearCheckout = async (req, res) => {
+  try {
+    const rec = await MawhbaAttendance.findByPk(req.params.id);
+    if (!rec) return res.status(404).json({ message: 'Record not found' });
+    if (!rec.checkOutAt) return res.status(400).json({ message: 'No check-out to clear' });
+    await rec.update({ checkOutAt: null });
+    res.json({ message: 'Check-out cleared', record: rec });
+  } catch (err) {
+    console.error('Mawhba clearCheckout error:', err);
     res.status(500).json({ message: 'Server error', error: err.message });
   }
 };

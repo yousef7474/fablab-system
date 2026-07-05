@@ -11,6 +11,7 @@ router.post('/attendance/scan', authMiddleware, ctrl.scanAttendance);
 router.get('/attendance/today', authMiddleware, ctrl.todayAttendance);
 router.delete('/attendance/today', authMiddleware, ctrl.clearTodayAttendance);
 router.get('/students/:id/attendance', authMiddleware, ctrl.listStudentAttendance);
+router.patch('/attendance/:id/checkout', authMiddleware, ctrl.clearCheckout);
 router.delete('/attendance/:id', authMiddleware, ctrl.deleteAttendance);
 router.post('/attendance/export', authMiddleware, ctrl.exportAttendance);
 router.post('/students', authMiddleware, ctrl.create);

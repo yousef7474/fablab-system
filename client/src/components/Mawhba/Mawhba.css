@@ -766,7 +766,100 @@
 .mawhba-btn-small.mawhba-btn-card:hover:not(:disabled) { background: #fde68a; }
 .mawhba-btn-small.mawhba-btn-del { background: #fee2e2; color: #991b1b; }
 .mawhba-btn-small.mawhba-btn-del:hover { background: #fecaca; }
+.mawhba-btn-small.mawhba-btn-warn { background: #fef3c7; color: #92400e; }
+.mawhba-btn-small.mawhba-btn-warn:hover { background: #fde68a; }
 .mawhba-btn-small:disabled { opacity: 0.5; cursor: not-allowed; }
+.mawhba-log-row-actions { display: inline-flex; gap: 4px; }
+
+/* ───────── Attendance Mode: grouped-by-course status view ───────── */
+.mawhba-am-groups {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+}
+.mawhba-am-group {
+  --group-color: #8b5cf6;
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-inline-start: 4px solid var(--group-color);
+  border-radius: 12px;
+  overflow: hidden;
+}
+.mawhba-am-group-header {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.55rem 0.9rem;
+  background: color-mix(in srgb, var(--group-color) 22%, transparent);
+  color: white;
+  font-weight: 800;
+  font-size: 0.95rem;
+  letter-spacing: 0.3px;
+}
+.mawhba-am-group-dot {
+  width: 10px; height: 10px; border-radius: 50%;
+  background: var(--group-color);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--group-color) 30%, transparent);
+}
+.mawhba-am-group-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mawhba-am-group-count {
+  background: rgba(255,255,255,0.15);
+  color: white;
+  padding: 1px 10px;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+.mawhba-am-group-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  padding: 0.6rem 0.75rem;
+}
+.mawhba-am-student {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  padding: 0.4rem 0.6rem;
+  background: rgba(255,255,255,0.05);
+  border-radius: 8px;
+  font-size: 0.88rem;
+}
+.mawhba-am-student-badge {
+  font-size: 0.72rem;
+  font-weight: 800;
+  padding: 3px 10px;
+  border-radius: 999px;
+  letter-spacing: 0.4px;
+  min-width: 52px;
+  text-align: center;
+}
+.mawhba-am-student-badge.is-in {
+  background: #22c55e; color: white;
+}
+.mawhba-am-student-badge.is-out {
+  background: #f59e0b; color: #422006;
+}
+.mawhba-am-student-name {
+  flex: 1;
+  color: white;
+  font-weight: 700;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.mawhba-am-student-times {
+  display: flex;
+  gap: 0.6rem;
+  color: rgba(255,255,255,0.75);
+  font-size: 0.78rem;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+@media (max-width: 640px) {
+  .mawhba-am-student { flex-wrap: wrap; }
+  .mawhba-am-student-times { width: 100%; justify-content: flex-end; }
+}
 
 .mawhba-empty {
   padding: 2.5rem 1rem;

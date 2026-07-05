@@ -46,6 +46,7 @@ const Mawhba = () => {
   const scanPopupTimerRef = useRef(null);
   const [sessionStats, setSessionStats] = useState({ checkins: 0, checkouts: 0, errors: 0 });
   const [recentScans, setRecentScans] = useState([]); // last 5 scans, newest first
+  const [attendanceGroups, setAttendanceGroups] = useState([]); // students grouped by course
   const [showLogModal, setShowLogModal] = useState(false);
   const [logStudent, setLogStudent] = useState(null);
   const [logRecords, setLogRecords] = useState([]);
@@ -177,6 +178,7 @@ const Mawhba = () => {
         checkouts: data?.stats?.checkouts || 0,
         errors: prev.errors // errors aren't stored on the server; keep session counter
       }));
+      setAttendanceGroups(Array.isArray(data?.groups) ? data.groups : []);
     } catch (err) {
       console.error('hydrateAttendance failed', err);
     }
@@ -186,6 +188,7 @@ const Mawhba = () => {
     setAttendanceMode(true);
     setSessionStats(p => ({ checkins: 0, checkouts: 0, errors: 0 }));
     setRecentScans([]);
+    setAttendanceGroups([]);
     await hydrateAttendance();
   };
   const closeAttendanceMode = () => {
@@ -201,6 +204,7 @@ const Mawhba = () => {
     try {
       const { data } = await api.delete('/mawhba/attendance/today');
       setRecentScans([]);
+      setAttendanceGroups([]);
       setSessionStats({ checkins: 0, checkouts: 0, errors: 0 });
       toast.success(isRTL ? `تم حذف ${data.count} سجل` : `Deleted ${data.count} record(s)`);
     } catch (err) {
@@ -264,6 +268,8 @@ const Mawhba = () => {
       if (kind === 'checkin') setSessionStats(p => ({ ...p, checkins: p.checkins + 1 }));
       else if (kind === 'checkout') setSessionStats(p => ({ ...p, checkouts: p.checkouts + 1 }));
       setRecentScans(prev => [payload, ...prev].slice(0, 30));
+      // refresh the grouped-by-course view so this student's status is reflected
+      hydrateAttendance();
     } catch (err) {
       const payload = {
         kind: 'error',
@@ -740,6 +746,22 @@ const Mawhba = () => {
     }
   };
 
+  const clearCheckoutRecord = async (rec) => {
+    if (!window.confirm(
+      isRTL
+        ? `حذف تسجيل الخروج لتاريخ ${rec.date}؟ سيبقى تسجيل الدخول محفوظاً.`
+        : `Clear check-out for ${rec.date}? Check-in will remain.`
+    )) return;
+    try {
+      await api.patch(`/mawhba/attendance/${rec.attendanceId}/checkout`);
+      setLogRecords(prev => prev.map(r => r.attendanceId === rec.attendanceId ? { ...r, checkOutAt: null } : r));
+      toast.success(isRTL ? 'تم حذف تسجيل الخروج' : 'Check-out cleared');
+    } catch (err) {
+      console.error(err);
+      toast.error(err?.response?.data?.message || (isRTL ? 'فشل الحذف' : 'Clear failed'));
+    }
+  };
+
   const downloadAttendance = async () => {
     if (selected.size === 0) {
       toast.warning(isRTL ? 'اختر طالباً واحداً على الأقل' : 'Select at least one student');
@@ -1163,11 +1185,64 @@ const Mawhba = () => {
               </div>
             </div>
 
+            {attendanceGroups.length > 0 && (
+              <div className="mawhba-am-groups">
+                <div className="mawhba-am-recent-title">
+                  {isRTL ? 'حضور اليوم مجموعاً حسب الدورة' : "Today's Attendance by Course"}
+                </div>
+                {attendanceGroups.map((g) => (
+                  <div
+                    key={g.course}
+                    className="mawhba-am-group"
+                    style={{ '--group-color': g.color }}
+                  >
+                    <div className="mawhba-am-group-header">
+                      <span className="mawhba-am-group-dot" />
+                      <span className="mawhba-am-group-name">{g.course || (isRTL ? 'بدون دورة' : 'No course')}</span>
+                      <span className="mawhba-am-group-count">{g.students.length}</span>
+                    </div>
+                    <div className="mawhba-am-group-body">
+                      {g.students.map((st) => {
+                        const isOut = st.status === 'checked_out';
+                        const fmt = (iso) => {
+                          if (!iso) return '—';
+                          const d = new Date(iso);
+                          const pad = (n) => String(n).padStart(2, '0');
+                          return `${pad(d.getHours())}:${pad(d.getMinutes())}`;
+                        };
+                        return (
+                          <div
+                            key={st.attendanceId}
+                            className={`mawhba-am-student status-${st.status}`}
+                          >
+                            <span className={`mawhba-am-student-badge ${isOut ? 'is-out' : 'is-in'}`}>
+                              {isOut ? (isRTL ? 'خرج' : 'Left') : (isRTL ? 'داخل' : 'Inside')}
+                            </span>
+                            <span className="mawhba-am-student-name">{st.name}</span>
+                            <span className="mawhba-am-student-times mono">
+                              <span title={isRTL ? 'دخول' : 'Check-in'}>
+                                {isRTL ? 'د' : 'IN'} {fmt(st.checkInAt)}
+                              </span>
+                              {st.checkOutAt && (
+                                <span title={isRTL ? 'خروج' : 'Check-out'}>
+                                  {isRTL ? 'خ' : 'OUT'} {fmt(st.checkOutAt)}
+                                </span>
+                              )}
+                            </span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
             {recentScans.length > 0 && (
               <div className="mawhba-am-recent">
                 <div className="mawhba-am-recent-title">{isRTL ? 'آخر المسحات' : 'Recent Scans'}</div>
                 <div className="mawhba-am-recent-list">
-                  {recentScans.map((sc, i) => (
+                  {recentScans.slice(0, 6).map((sc, i) => (
                     <div key={i} className={`mawhba-am-recent-item kind-${sc.kind}`} style={{ '--popup-color': sc.color }}>
                       <span className="mawhba-am-recent-icon">
                         {sc.kind === 'checkin' && '📥'}
@@ -1263,7 +1338,20 @@ const Mawhba = () => {
                             </span>
                           </td>
                           <td>
-                            <button className="mawhba-btn-small mawhba-btn-del" onClick={() => deleteAttendanceRecord(r)} title={isRTL ? 'حذف' : 'Delete'}>×</button>
+                            <div className="mawhba-log-row-actions">
+                              {r.checkOutAt && (
+                                <button
+                                  className="mawhba-btn-small mawhba-btn-warn"
+                                  onClick={() => clearCheckoutRecord(r)}
+                                  title={isRTL ? 'حذف تسجيل الخروج فقط' : 'Clear check-out only'}
+                                >↩</button>
+                              )}
+                              <button
+                                className="mawhba-btn-small mawhba-btn-del"
+                                onClick={() => deleteAttendanceRecord(r)}
+                                title={isRTL ? 'حذف السجل بالكامل' : 'Delete entire record'}
+                              >×</button>
+                            </div>
                           </td>
                         </tr>
                       );
