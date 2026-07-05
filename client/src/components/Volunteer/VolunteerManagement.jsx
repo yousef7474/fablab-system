@@ -755,7 +755,7 @@ const VolunteerManagement = () => {
 
         <div class="footer">
           <p>${isRTL ? 'مؤسسة عبدالمنعم الراشد الإنسانية - فاب لاب الأحساء' : 'Abdulmonem Alrashed Humanitarian Foundation - FABLAB Al-Ahsa'}</p>
-          <p>${isRTL ? 'تم الطباعة في' : 'Printed on'}: ${new Date().toLocaleString(isRTL ? 'ar-SA' : 'en-US')}</p>
+          <p>${isRTL ? 'تم الطباعة في' : 'Printed on'}: ${new Date().toLocaleString(isRTL ? 'ar-SA-u-ca-gregory-nu-latn' : 'en-US', { calendar: 'gregory' })}</p>
         </div>
       </body>
       </html>
@@ -1166,7 +1166,7 @@ const VolunteerManagement = () => {
             <div class="footer-section">
               <div class="cert-info">
                 <div class="cert-id">${certId}</div>
-                <div class="cert-date">${new Date().toLocaleDateString('ar-SA')}</div>
+                <div class="cert-date">${new Date().toLocaleDateString('ar-SA-u-ca-gregory-nu-latn', { calendar: 'gregory' })}</div>
               </div>
 
               <div class="org-footer">
@@ -1282,7 +1282,7 @@ const VolunteerManagement = () => {
       display: flex; align-items: center; justify-content: center;
       margin-top: 1mm;
     }
-    .card-qr img { width: 18mm; height: 18mm; background: white; padding: 0.5mm; border-radius: 1mm; }
+    .card-qr img { width: 26mm; height: 26mm; background: white; padding: 0.8mm; border-radius: 1mm; box-shadow: 0 0 0 0.3mm #f97316 inset; }
 
     .card-footer {
       background: #ffffff; padding: 1.5mm 3mm;

@@ -1067,7 +1067,7 @@ const AdminDashboard = () => {
             <div class="footer-section">
               <div class="cert-info">
                 <div class="cert-id">${certId}</div>
-                <div class="cert-date">${new Date().toLocaleDateString('ar-SA')}</div>
+                <div class="cert-date">${new Date().toLocaleDateString('ar-SA-u-ca-gregory-nu-latn', { calendar: 'gregory' })}</div>
               </div>
               <div class="org-footer">
                 <div class="org-footer-text">
@@ -3008,7 +3008,7 @@ const AdminDashboard = () => {
         <!-- Footer -->
         <div class="footer">
           <p>${isRTL ? 'مؤسسة عبدالمنعم الراشد الإنسانية - فاب لاب الأحساء' : 'Abdulmonem Alrashed Humanitarian Foundation - FABLAB Al-Ahsa'}</p>
-          <p>${isRTL ? 'تم الطباعة في' : 'Printed on'}: ${new Date().toLocaleString(isRTL ? 'ar-SA' : 'en-US')}</p>
+          <p>${isRTL ? 'تم الطباعة في' : 'Printed on'}: ${new Date().toLocaleString(isRTL ? 'ar-SA-u-ca-gregory-nu-latn' : 'en-US', { calendar: 'gregory' })}</p>
         </div>
       </body>
       </html>
@@ -3225,10 +3225,11 @@ const AdminDashboard = () => {
       ? `${user.firstName} ${user.lastName}`
       : user.name || (isRTL ? 'غير متوفر' : 'N/A');
 
-    const today = new Date().toLocaleDateString(isRTL ? 'ar-SA' : 'en-US', {
+    const today = new Date().toLocaleDateString(isRTL ? 'ar-SA-u-ca-gregory-nu-latn' : 'en-US', {
       year: 'numeric',
       month: 'long',
-      day: 'numeric'
+      day: 'numeric',
+      calendar: 'gregory'
     });
 
     const termsArabic = [
@@ -4441,10 +4442,13 @@ const AdminDashboard = () => {
 
   const formatDate = (dateString) => {
     if (!dateString) return 'N/A';
-    return new Date(dateString).toLocaleDateString(isRTL ? 'ar-SA' : 'en-US', {
+    // Force Gregorian calendar so mobile Safari doesn't render Hijri
+    // for the ar-SA locale.
+    return new Date(dateString).toLocaleDateString(isRTL ? 'ar-SA-u-ca-gregory-nu-latn' : 'en-US', {
       year: 'numeric',
       month: 'short',
-      day: 'numeric'
+      day: 'numeric',
+      calendar: 'gregory'
     });
   };
 
@@ -7036,7 +7040,7 @@ const AdminDashboard = () => {
                                 <th style={{ padding: '10px 12px', textAlign: isRTL ? 'right' : 'left', position: 'sticky', left: 0, background: '#5b21b6', zIndex: 1 }}>{isRTL ? 'الطالب' : 'Student'}</th>
                                 {attendanceSheetData.dates.map(date => (
                                   <th key={date} style={{ padding: '10px 8px', textAlign: 'center', whiteSpace: 'nowrap', fontSize: '11px' }}>
-                                    {new Date(date).toLocaleDateString(isRTL ? 'ar-SA' : 'en-US', { month: 'short', day: 'numeric' })}
+                                    {new Date(date).toLocaleDateString(isRTL ? 'ar-SA-u-ca-gregory-nu-latn' : 'en-US', { month: 'short', day: 'numeric', calendar: 'gregory' })}
                                   </th>
                                 ))}
                                 <th style={{ padding: '10px 12px', textAlign: 'center', background: '#4c1d95' }}>{isRTL ? 'المجموع' : 'Total'}</th>
@@ -8558,7 +8562,7 @@ const AdminDashboard = () => {
                                   <div className="period-header">
                                     <span className="period-number">#{index + 1}</span>
                                     <span className="period-dates">
-                                      {new Date(period.startDate).toLocaleDateString(isRTL ? 'ar-SA' : 'en-US')} - {new Date(period.endDate).toLocaleDateString(isRTL ? 'ar-SA' : 'en-US')}
+                                      {new Date(period.startDate).toLocaleDateString(isRTL ? 'ar-SA-u-ca-gregory-nu-latn' : 'en-US', { calendar: 'gregory' })} - {new Date(period.endDate).toLocaleDateString(isRTL ? 'ar-SA-u-ca-gregory-nu-latn' : 'en-US', { calendar: 'gregory' })}
                                     </span>
                                   </div>
                                   <p className="period-reason">

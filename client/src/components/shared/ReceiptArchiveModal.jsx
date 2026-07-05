@@ -53,7 +53,7 @@ const ReceiptArchiveModal = ({ open, onClose, recipient, personType = 'volunteer
       try {
         const d = new Date(r.receiptDate);
         if (isNaN(d.getTime())) return safe(r.receiptDate);
-        return d.toLocaleDateString('ar-SA-u-nu-latn');
+        return d.toLocaleDateString('ar-SA-u-ca-gregory-nu-latn');
       } catch { return safe(r.receiptDate); }
     })();
 

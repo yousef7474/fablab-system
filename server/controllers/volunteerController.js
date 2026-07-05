@@ -718,10 +718,18 @@ exports.deleteVolunteerReceipt = async (req, res) => {
 
 // ============== VOLUNTEER ID CARD (QR) ==============
 
+// "Today" is computed in Riyadh time (UTC+3) so the attendance day
+// rolls over at Riyadh midnight regardless of the server's local
+// timezone (production containers usually run in UTC).
 const todayStr = () => {
-  const d = new Date();
-  const pad = (n) => String(n).padStart(2, '0');
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Asia/Riyadh',
+    year: 'numeric', month: '2-digit', day: '2-digit'
+  }).formatToParts(new Date());
+  const y = parts.find(p => p.type === 'year').value;
+  const m = parts.find(p => p.type === 'month').value;
+  const d = parts.find(p => p.type === 'day').value;
+  return `${y}-${m}-${d}`;
 };
 
 const makeQrDataUrl = async (payload) => {

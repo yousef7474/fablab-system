@@ -1759,7 +1759,7 @@ const ManagerDashboard = () => {
 
         <div class="footer">
           <p>${isRTL ? 'مؤسسة عبدالمنعم الراشد الإنسانية - فاب لاب الأحساء' : 'Abdulmonem Alrashed Humanitarian Foundation - FABLAB Al-Ahsa'}</p>
-          <p>${isRTL ? 'تم الطباعة في' : 'Printed on'}: ${new Date().toLocaleString(isRTL ? 'ar-SA' : 'en-US')}</p>
+          <p>${isRTL ? 'تم الطباعة في' : 'Printed on'}: ${new Date().toLocaleString(isRTL ? 'ar-SA-u-ca-gregory-nu-latn' : 'en-US', { calendar: 'gregory' })}</p>
         </div>
       </body>
       </html>
@@ -2156,7 +2156,7 @@ const ManagerDashboard = () => {
             <div class="footer">
               <div class="cert-info">
                 <div class="cert-id">${certId}</div>
-                <div class="cert-date">${new Date().toLocaleDateString('ar-SA')}</div>
+                <div class="cert-date">${new Date().toLocaleDateString('ar-SA-u-ca-gregory-nu-latn', { calendar: 'gregory' })}</div>
               </div>
               <div class="org-footer">
                 <div class="org-footer-text">مؤسسة عبدالمنعم الراشد الإنسانية - فاب لاب الأحساء</div>

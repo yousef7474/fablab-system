@@ -656,10 +656,11 @@ const EliteUserAccount = () => {
 
   const formatDate = (dateString) => {
     if (!dateString) return text.notProvided;
-    return new Date(dateString).toLocaleDateString(isRTL ? 'ar-SA' : 'en-US', {
+    return new Date(dateString).toLocaleDateString(isRTL ? 'ar-SA-u-ca-gregory-nu-latn' : 'en-US', {
       year: 'numeric',
       month: 'long',
-      day: 'numeric'
+      day: 'numeric',
+      calendar: 'gregory'
     });
   };
 
@@ -1610,7 +1611,7 @@ const EliteUserAccount = () => {
                             <div className="schedule-date-badge" style={{ backgroundColor: schedule.color || '#006c35' }}>
                               <span className="date-day">{new Date(schedule.date).getDate()}</span>
                               <span className="date-month">
-                                {new Date(schedule.date).toLocaleDateString(isRTL ? 'ar-SA' : 'en-US', { month: 'short' })}
+                                {new Date(schedule.date).toLocaleDateString(isRTL ? 'ar-SA-u-ca-gregory-nu-latn' : 'en-US', { month: 'short', calendar: 'gregory' })}
                               </span>
                               {isToday && <span className="today-badge">{text.today}</span>}
                             </div>

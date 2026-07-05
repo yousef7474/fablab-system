@@ -516,7 +516,7 @@ const DateTimeSelection = ({ formData, onChange, onNext, onBack }) => {
                   <strong>{isRTL ? 'ملاحظة:' : 'Notice:'}</strong>
                   <span>
                     {isRTL
-                      ? `القسم المحدد (${formData.fablabSection}) غير متاح في الفترة من ${new Date(sectionDeactivations[0].startDate).toLocaleDateString('ar-SA')} إلى ${new Date(sectionDeactivations[0].endDate).toLocaleDateString('ar-SA')}. السبب: ${sectionDeactivations[0].reasonAr || sectionDeactivations[0].reasonEn}`
+                      ? `القسم المحدد (${formData.fablabSection}) غير متاح في الفترة من ${new Date(sectionDeactivations[0].startDate).toLocaleDateString('ar-SA-u-ca-gregory-nu-latn', { calendar: 'gregory' })} إلى ${new Date(sectionDeactivations[0].endDate).toLocaleDateString('ar-SA-u-ca-gregory-nu-latn', { calendar: 'gregory' })}. السبب: ${sectionDeactivations[0].reasonAr || sectionDeactivations[0].reasonEn}`
                       : `The selected section (${formData.fablabSection}) is unavailable from ${new Date(sectionDeactivations[0].startDate).toLocaleDateString('en-US')} to ${new Date(sectionDeactivations[0].endDate).toLocaleDateString('en-US')}. Reason: ${sectionDeactivations[0].reasonEn}`}
                   </span>
                 </div>

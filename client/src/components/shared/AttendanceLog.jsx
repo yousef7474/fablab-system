@@ -161,7 +161,7 @@ const AttendanceLog = ({ opportunity, isRTL, onSaved, hourlyRate = 0, dayRate = 
               return (
                 <tr key={r.date} style={{ borderTop: '1px solid #f1f5f9', background: r.attended ? '#f0fdf4' : 'transparent' }}>
                   <td style={{ padding: '6px 10px' }}>
-                    {new Date(r.date).toLocaleDateString(isRTL ? 'ar-SA-u-nu-latn' : 'en-US', { weekday: 'short', day: '2-digit', month: 'short' })}
+                    {new Date(r.date).toLocaleDateString(isRTL ? 'ar-SA-u-ca-gregory-nu-latn' : 'en-US', { weekday: 'short', day: '2-digit', month: 'short', calendar: 'gregory' })}
                   </td>
                   <td style={{ padding: '6px 10px', textAlign: 'center' }}>
                     <input

@@ -92,7 +92,7 @@ const ReceiptModal = ({ open, onClose, recipient, personType = 'volunteer', onSa
       const dt = new Date(d.date);
       const dateFmt = isNaN(dt.getTime())
         ? safe(d.date)
-        : dt.toLocaleDateString('ar-SA-u-nu-latn', { weekday: 'short', day: '2-digit', month: 'long', year: 'numeric' });
+        : dt.toLocaleDateString('ar-SA-u-ca-gregory-nu-latn', { weekday: 'short', day: '2-digit', month: 'long', year: 'numeric' });
       const hoursCell = d.hours != null ? Number(d.hours) : '';
       return `
         <tr>
@@ -161,7 +161,7 @@ const ReceiptModal = ({ open, onClose, recipient, personType = 'volunteer', onSa
       try {
         const d = new Date(form.receiptDate);
         if (isNaN(d.getTime())) return safe(form.receiptDate);
-        return d.toLocaleDateString('ar-SA-u-nu-latn');
+        return d.toLocaleDateString('ar-SA-u-ca-gregory-nu-latn');
       } catch { return safe(form.receiptDate); }
     })();
 
