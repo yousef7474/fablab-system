@@ -1,5 +1,6 @@
-const { Volunteer, VolunteerOpportunity, VolunteerRating, VolunteerReceipt, SummerProgram, Admin } = require('../models');
+const { Volunteer, VolunteerOpportunity, VolunteerRating, VolunteerReceipt, VolunteerAttendance, SummerProgram, Admin } = require('../models');
 const { Op } = require('sequelize');
+const QRCode = require('qrcode');
 
 // ============== VOLUNTEER PROFILE MANAGEMENT ==============
 
@@ -712,6 +713,206 @@ exports.deleteVolunteerReceipt = async (req, res) => {
   } catch (err) {
     console.error('Error deleting volunteer receipt:', err);
     res.status(500).json({ message: 'Server error' });
+  }
+};
+
+// ============== VOLUNTEER ID CARD (QR) ==============
+
+const todayStr = () => {
+  const d = new Date();
+  const pad = (n) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+};
+
+const makeQrDataUrl = async (payload) => {
+  return QRCode.toDataURL(String(payload), {
+    errorCorrectionLevel: 'M',
+    margin: 1,
+    scale: 8,
+    color: { dark: '#000000', light: '#FFFFFF' }
+  });
+};
+
+// GET /volunteers/:id/card — returns { volunteer, qrDataUrl }
+exports.getVolunteerCard = async (req, res) => {
+  try {
+    const volunteer = await Volunteer.findByPk(req.params.id);
+    if (!volunteer) return res.status(404).json({ message: 'Volunteer not found' });
+    const qrDataUrl = await makeQrDataUrl(volunteer.nationalId);
+    res.json({ volunteer, qrDataUrl });
+  } catch (err) {
+    console.error('Error getting volunteer card:', err);
+    res.status(500).json({ message: 'Server error', detail: err.message });
+  }
+};
+
+// POST /volunteers/cards — body { volunteerIds: [...] } → array of {volunteer, qrDataUrl}
+exports.getVolunteerCardsBulk = async (req, res) => {
+  try {
+    const { volunteerIds } = req.body || {};
+    if (!Array.isArray(volunteerIds) || volunteerIds.length === 0) {
+      return res.status(400).json({ message: 'volunteerIds array required' });
+    }
+    const volunteers = await Volunteer.findAll({ where: { volunteerId: volunteerIds } });
+    const cards = await Promise.all(volunteers.map(async (v) => ({
+      volunteer: v,
+      qrDataUrl: await makeQrDataUrl(v.nationalId)
+    })));
+    res.json({ cards });
+  } catch (err) {
+    console.error('Error getting volunteer cards bulk:', err);
+    res.status(500).json({ message: 'Server error', detail: err.message });
+  }
+};
+
+// ============== VOLUNTEER ATTENDANCE ==============
+
+// POST /volunteers/attendance/scan — body { code } — accepts nationalId scan
+exports.scanAttendance = async (req, res) => {
+  try {
+    const raw = String(req.body?.code || '').trim();
+    if (!raw) return res.status(400).json({ message: 'No code provided' });
+
+    const volunteer = await Volunteer.findOne({ where: { nationalId: raw } });
+    if (!volunteer) {
+      return res.status(404).json({ message: 'No volunteer matches this code', code: raw });
+    }
+
+    const date = todayStr();
+    const now = new Date();
+    let record = await VolunteerAttendance.findOne({
+      where: { volunteerId: volunteer.volunteerId, date }
+    });
+
+    let action = null;
+    if (!record) {
+      record = await VolunteerAttendance.create({
+        volunteerId: volunteer.volunteerId,
+        date,
+        checkInAt: now
+      });
+      action = 'checkin';
+    } else if (!record.checkOutAt) {
+      const since = now.getTime() - new Date(record.checkInAt).getTime();
+      if (since < 15 * 60 * 1000) {
+        return res.json({
+          action: 'duplicate',
+          volunteer,
+          record,
+          message: 'Already checked in — please wait at least 15 minutes before checking out'
+        });
+      }
+      await record.update({ checkOutAt: now });
+      action = 'checkout';
+    } else {
+      return res.json({
+        action: 'already_done',
+        volunteer,
+        record,
+        message: 'Already checked in and out today'
+      });
+    }
+
+    res.json({ action, volunteer, record });
+  } catch (err) {
+    console.error('Volunteer scanAttendance error:', err);
+    res.status(500).json({ message: 'Server error', error: err.message });
+  }
+};
+
+// GET /volunteers/attendance/today — today's events + volunteers array
+exports.todayAttendance = async (req, res) => {
+  try {
+    const date = todayStr();
+    const records = await VolunteerAttendance.findAll({
+      where: { date },
+      include: [{ model: Volunteer, as: 'volunteer', required: false }]
+    });
+
+    const events = [];
+    const volunteersList = [];
+    for (const r of records) {
+      const v = r.volunteer || {};
+      const base = {
+        attendanceId: r.attendanceId,
+        volunteerId: r.volunteerId,
+        name: v.name || '',
+        phone: v.phone || ''
+      };
+      if (r.checkInAt) events.push({ ...base, kind: 'checkin', at: r.checkInAt });
+      if (r.checkOutAt) events.push({ ...base, kind: 'checkout', at: r.checkOutAt });
+
+      volunteersList.push({
+        ...base,
+        checkInAt: r.checkInAt,
+        checkOutAt: r.checkOutAt,
+        status: r.checkOutAt ? 'checked_out' : 'checked_in'
+      });
+    }
+    events.sort((a, b) => new Date(b.at) - new Date(a.at));
+    volunteersList.sort((a, b) => {
+      return new Date(b.checkOutAt || b.checkInAt || 0) - new Date(a.checkOutAt || a.checkInAt || 0);
+    });
+
+    const checkins = events.filter(e => e.kind === 'checkin').length;
+    const checkouts = events.filter(e => e.kind === 'checkout').length;
+    res.json({ date, events, volunteers: volunteersList, stats: { checkins, checkouts } });
+  } catch (err) {
+    console.error('Volunteer todayAttendance error:', err);
+    res.status(500).json({ message: 'Server error', error: err.message });
+  }
+};
+
+// DELETE /volunteers/attendance/today
+exports.clearTodayAttendance = async (req, res) => {
+  try {
+    const date = todayStr();
+    const count = await VolunteerAttendance.destroy({ where: { date } });
+    res.json({ message: 'Today cleared', date, count });
+  } catch (err) {
+    console.error('Volunteer clearTodayAttendance error:', err);
+    res.status(500).json({ message: 'Server error', error: err.message });
+  }
+};
+
+// GET /volunteers/:id/attendance
+exports.listVolunteerAttendance = async (req, res) => {
+  try {
+    const records = await VolunteerAttendance.findAll({
+      where: { volunteerId: req.params.id },
+      order: [['date', 'DESC'], ['checkInAt', 'DESC']]
+    });
+    res.json(records);
+  } catch (err) {
+    console.error('Volunteer listVolunteerAttendance error:', err);
+    res.status(500).json({ message: 'Server error', error: err.message });
+  }
+};
+
+// PATCH /volunteers/attendance/:id/checkout — clears only checkOutAt
+exports.clearCheckout = async (req, res) => {
+  try {
+    const rec = await VolunteerAttendance.findByPk(req.params.id);
+    if (!rec) return res.status(404).json({ message: 'Record not found' });
+    if (!rec.checkOutAt) return res.status(400).json({ message: 'No check-out to clear' });
+    await rec.update({ checkOutAt: null });
+    res.json({ message: 'Check-out cleared', record: rec });
+  } catch (err) {
+    console.error('Volunteer clearCheckout error:', err);
+    res.status(500).json({ message: 'Server error', error: err.message });
+  }
+};
+
+// DELETE /volunteers/attendance/:id
+exports.deleteAttendance = async (req, res) => {
+  try {
+    const rec = await VolunteerAttendance.findByPk(req.params.id);
+    if (!rec) return res.status(404).json({ message: 'Record not found' });
+    await rec.destroy();
+    res.json({ message: 'Deleted' });
+  } catch (err) {
+    console.error('Volunteer deleteAttendance error:', err);
+    res.status(500).json({ message: 'Server error', error: err.message });
   }
 };
 

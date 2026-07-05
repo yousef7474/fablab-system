@@ -55,6 +55,20 @@ router.post('/ratings', requireManager, volunteerController.createVolunteerRatin
 // Delete volunteer rating (manager or admin only)
 router.delete('/ratings/:id', requireManager, volunteerController.deleteVolunteerRating);
 
+// ============== VOLUNTEER ID CARD (QR) ==============
+
+router.get('/:id/card', volunteerController.getVolunteerCard);
+router.post('/cards', volunteerController.getVolunteerCardsBulk);
+
+// ============== VOLUNTEER ATTENDANCE ==============
+
+router.post('/attendance/scan', volunteerController.scanAttendance);
+router.get('/attendance/today', volunteerController.todayAttendance);
+router.delete('/attendance/today', requireManager, volunteerController.clearTodayAttendance);
+router.get('/:id/attendance', volunteerController.listVolunteerAttendance);
+router.patch('/attendance/:id/checkout', requireManager, volunteerController.clearCheckout);
+router.delete('/attendance/:id', requireManager, volunteerController.deleteAttendance);
+
 // ============== VOLUNTEER RECEIPTS ==============
 
 router.get('/:id/receipts', volunteerController.listVolunteerReceipts);

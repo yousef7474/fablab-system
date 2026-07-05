@@ -53,7 +53,8 @@ const AttendanceLog = ({ opportunity, isRTL, onSaved, hourlyRate = 0, dayRate = 
     return dates.map(date => ({
       date,
       attended: !!byDate[date]?.attended,
-      hours: byDate[date]?.hours != null ? Number(byDate[date].hours) : 0
+      hours: byDate[date]?.hours != null ? Number(byDate[date].hours) : 0,
+      task: byDate[date]?.task || ''
     }));
   }, [dates, opportunity.attendanceDays]);
 
@@ -141,10 +142,13 @@ const AttendanceLog = ({ opportunity, isRTL, onSaved, hourlyRate = 0, dayRate = 
                 </th>
               )}
               {showCost && (
-                <th style={{ padding: '6px 10px', textAlign: isRTL ? 'left' : 'right', fontWeight: 700, color: '#0f172a', width: '20%' }}>
+                <th style={{ padding: '6px 10px', textAlign: isRTL ? 'left' : 'right', fontWeight: 700, color: '#0f172a', width: '15%' }}>
                   {isRTL ? 'التكلفة' : 'Cost'}
                 </th>
               )}
+              <th style={{ padding: '6px 10px', textAlign: isRTL ? 'right' : 'left', fontWeight: 700, color: '#0f172a' }}>
+                {isRTL ? 'المهمة' : 'Task done'}
+              </th>
             </tr>
           </thead>
           <tbody>
@@ -190,6 +194,23 @@ const AttendanceLog = ({ opportunity, isRTL, onSaved, hourlyRate = 0, dayRate = 
                       {cost.toFixed(2)} {isRTL ? 'ر.س' : 'SAR'}
                     </td>
                   )}
+                  <td style={{ padding: '6px 10px' }}>
+                    <input
+                      type="text"
+                      value={r.task}
+                      onChange={(e) => updateRow(i, { task: e.target.value })}
+                      disabled={!r.attended}
+                      placeholder={r.attended ? (isRTL ? 'اكتب المهمة المنجزة' : 'Describe the task done') : ''}
+                      style={{
+                        width: '100%', padding: '4px 8px', borderRadius: 6,
+                        border: '1px solid #cbd5e1',
+                        background: r.attended ? 'white' : '#f1f5f9',
+                        cursor: r.attended ? 'text' : 'not-allowed',
+                        fontFamily: 'inherit', fontSize: '0.85rem',
+                        color: r.attended ? '#0f172a' : '#94a3b8'
+                      }}
+                    />
+                  </td>
                 </tr>
               );
             })}
@@ -212,6 +233,7 @@ const AttendanceLog = ({ opportunity, isRTL, onSaved, hourlyRate = 0, dayRate = 
                   {totalCost.toFixed(2)} {isRTL ? 'ر.س' : 'SAR'}
                 </td>
               )}
+              <td style={{ padding: '8px 10px' }}></td>
             </tr>
           </tfoot>
         </table>

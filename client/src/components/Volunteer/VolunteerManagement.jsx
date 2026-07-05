@@ -1,8 +1,9 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { motion } from 'framer-motion';
 import { toast } from 'react-toastify';
 import api from '../../config/api';
+import '../Mawhba/Mawhba.css';
 import ReceiptModal from '../shared/ReceiptModal';
 import ReceiptArchiveModal from '../shared/ReceiptArchiveModal';
 import AttendanceLog from '../shared/AttendanceLog';
@@ -14,6 +15,17 @@ const VolunteerManagement = () => {
   // Volunteer state
   const [volunteers, setVolunteers] = useState([]);
   const [showVolunteerModal, setShowVolunteerModal] = useState(false);
+  const [editingVolunteerId, setEditingVolunteerId] = useState(null);
+  // Attendance mode state
+  const [volunteerAttendanceMode, setVolunteerAttendanceMode] = useState(false);
+  const [volAttendanceList, setVolAttendanceList] = useState([]);
+  const [volSessionStats, setVolSessionStats] = useState({ checkins: 0, checkouts: 0, errors: 0 });
+  const [volRecentScans, setVolRecentScans] = useState([]);
+  const [volScanPopup, setVolScanPopup] = useState(null);
+  const [volClearingToday, setVolClearingToday] = useState(false);
+  const volHwBufferRef = useRef('');
+  const volHwLastKeyRef = useRef(0);
+  const volScanPopupTimerRef = useRef(null);
   const [showOpportunityModal, setShowOpportunityModal] = useState(false);
   const [showVolunteerDetailModal, setShowVolunteerDetailModal] = useState(false);
   const [showVolunteerRatingModal, setShowVolunteerRatingModal] = useState(false);
@@ -110,6 +122,160 @@ const VolunteerManagement = () => {
     });
   };
 
+  const openEditVolunteer = (volunteer) => {
+    setEditingVolunteerId(volunteer.volunteerId);
+    setVolunteerForm({
+      name: volunteer.name || '',
+      nationalId: volunteer.nationalId || '',
+      phone: volunteer.phone || '',
+      email: volunteer.email || '',
+      nationalIdPhoto: volunteer.nationalIdPhoto || ''
+    });
+    setShowVolunteerModal(true);
+  };
+
+  const closeVolunteerModal = () => {
+    setShowVolunteerModal(false);
+    setEditingVolunteerId(null);
+    resetVolunteerForm();
+  };
+
+  // ─── Volunteer Attendance Mode ───────────────────────────────────
+  const fmtTimeShort = (iso) => {
+    if (!iso) return '—';
+    const d = new Date(iso);
+    if (isNaN(d.getTime())) return '—';
+    const pad = (n) => String(n).padStart(2, '0');
+    return `${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  };
+  const fmtTimeLong = (iso) => {
+    if (!iso) return '';
+    const d = new Date(iso);
+    if (isNaN(d.getTime())) return '';
+    const pad = (n) => String(n).padStart(2, '0');
+    return `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+  };
+
+  const hydrateVolAttendance = useCallback(async () => {
+    try {
+      const { data } = await api.get('/volunteers/attendance/today');
+      setVolAttendanceList(Array.isArray(data?.volunteers) ? data.volunteers : []);
+      setVolSessionStats(prev => ({
+        checkins: data?.stats?.checkins || 0,
+        checkouts: data?.stats?.checkouts || 0,
+        errors: prev.errors
+      }));
+      const events = data?.events || [];
+      setVolRecentScans(events.slice(0, 12).map(e => ({
+        kind: e.kind, name: e.name, time: fmtTimeLong(e.at)
+      })));
+    } catch (err) {
+      console.error('hydrateVolAttendance failed', err);
+    }
+  }, []);
+
+  const openVolunteerAttendanceMode = async () => {
+    setVolunteerAttendanceMode(true);
+    setVolSessionStats({ checkins: 0, checkouts: 0, errors: 0 });
+    setVolRecentScans([]);
+    setVolAttendanceList([]);
+    await hydrateVolAttendance();
+  };
+
+  const closeVolunteerAttendanceMode = () => {
+    setVolunteerAttendanceMode(false);
+    setVolScanPopup(null);
+    if (volScanPopupTimerRef.current) clearTimeout(volScanPopupTimerRef.current);
+  };
+
+  const clearVolTodayLogs = async () => {
+    if (!window.confirm(isRTL
+      ? 'سيتم حذف جميع سجلات حضور المتطوعين لهذا اليوم. هل أنت متأكد؟'
+      : 'This will delete ALL of today\'s volunteer attendance records. Are you sure?')) return;
+    setVolClearingToday(true);
+    try {
+      const { data } = await api.delete('/volunteers/attendance/today');
+      setVolAttendanceList([]);
+      setVolRecentScans([]);
+      setVolSessionStats({ checkins: 0, checkouts: 0, errors: 0 });
+      toast.success(isRTL ? `تم حذف ${data.count} سجل` : `Deleted ${data.count} record(s)`);
+    } catch (err) {
+      console.error(err);
+      toast.error(isRTL ? 'فشل الحذف' : 'Clear failed');
+    } finally {
+      setVolClearingToday(false);
+    }
+  };
+
+  const showVolScanResult = useCallback((payload) => {
+    if (volScanPopupTimerRef.current) clearTimeout(volScanPopupTimerRef.current);
+    setVolScanPopup(payload);
+    volScanPopupTimerRef.current = setTimeout(() => setVolScanPopup(null), 3000);
+    try {
+      const ctx = new (window.AudioContext || window.webkitAudioContext)();
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain); gain.connect(ctx.destination);
+      osc.frequency.value = payload.kind === 'error' ? 320 : (payload.kind === 'checkout' ? 880 : 1200);
+      gain.gain.value = 0.25;
+      osc.start(); osc.stop(ctx.currentTime + 0.13);
+    } catch {}
+  }, []);
+
+  const handleVolHardwareScan = async (code) => {
+    try {
+      const { data } = await api.post('/volunteers/attendance/scan', { code });
+      const v = data.volunteer || {};
+      const r = data.record || {};
+      const refTime = data.action === 'checkout' ? r.checkOutAt : r.checkInAt;
+      let kind = 'checkin';
+      let label = isRTL ? 'تم تسجيل الدخول' : 'Checked In';
+      if (data.action === 'checkout') { kind = 'checkout'; label = isRTL ? 'تم تسجيل الخروج' : 'Checked Out'; }
+      else if (data.action === 'already_done') { kind = 'done'; label = isRTL ? 'مكتمل اليوم' : 'Already Done Today'; }
+      else if (data.action === 'duplicate') { kind = 'warning'; label = isRTL ? 'انتظر قليلاً قبل تسجيل الخروج' : 'Wait before checking out'; }
+      const payload = {
+        kind, label,
+        name: v.name || code,
+        time: fmtTimeLong(refTime || new Date().toISOString())
+      };
+      showVolScanResult(payload);
+      if (kind === 'checkin') setVolSessionStats(p => ({ ...p, checkins: p.checkins + 1 }));
+      else if (kind === 'checkout') setVolSessionStats(p => ({ ...p, checkouts: p.checkouts + 1 }));
+      setVolRecentScans(prev => [payload, ...prev].slice(0, 30));
+      hydrateVolAttendance();
+    } catch (err) {
+      const payload = { kind: 'error', label: isRTL ? 'لم يتم العثور على المتطوع' : 'Volunteer not found', name: code, time: '' };
+      showVolScanResult(payload);
+      setVolSessionStats(p => ({ ...p, errors: p.errors + 1 }));
+      setVolRecentScans(prev => [payload, ...prev].slice(0, 30));
+    }
+  };
+
+  // USB HID barcode reader listener — only active when attendance mode is open
+  useEffect(() => {
+    if (!volunteerAttendanceMode) return undefined;
+    const onKey = (e) => {
+      const tag = (e.target && e.target.tagName) || '';
+      const editable = e.target && (e.target.isContentEditable ||
+        tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT');
+      if (editable) return;
+      const now = Date.now();
+      const gap = now - (volHwLastKeyRef.current || 0);
+      if (gap > 300) volHwBufferRef.current = '';
+      volHwLastKeyRef.current = now;
+      if (e.key === 'Enter') {
+        const code = (volHwBufferRef.current || '').trim();
+        volHwBufferRef.current = '';
+        if (code.length >= 3) { e.preventDefault(); handleVolHardwareScan(code); }
+        return;
+      }
+      if (e.key && e.key.length === 1) volHwBufferRef.current += e.key;
+    };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [volunteerAttendanceMode, isRTL]);
+
   const handleCreateVolunteer = async () => {
     if (!volunteerForm.name || !volunteerForm.nationalId || !volunteerForm.phone) {
       toast.error(isRTL ? 'الاسم ورقم الهوية والجوال مطلوبة' : 'Name, national ID, and phone are required');
@@ -118,13 +284,19 @@ const VolunteerManagement = () => {
 
     setVolunteerLoading(true);
     try {
-      await api.post('/volunteers', volunteerForm);
-      toast.success(isRTL ? 'تم إضافة المتطوع بنجاح' : 'Volunteer added successfully');
+      if (editingVolunteerId) {
+        await api.put(`/volunteers/${editingVolunteerId}`, volunteerForm);
+        toast.success(isRTL ? 'تم تحديث بيانات المتطوع' : 'Volunteer updated successfully');
+      } else {
+        await api.post('/volunteers', volunteerForm);
+        toast.success(isRTL ? 'تم إضافة المتطوع بنجاح' : 'Volunteer added successfully');
+      }
       setShowVolunteerModal(false);
+      setEditingVolunteerId(null);
       resetVolunteerForm();
       fetchVolunteers();
     } catch (error) {
-      console.error('Error creating volunteer:', error);
+      console.error('Error saving volunteer:', error);
       if (error.response?.status === 409) {
         toast.error(isRTL ? 'يوجد متطوع بنفس رقم الهوية' : 'Volunteer with this national ID already exists');
       } else {
@@ -1025,217 +1197,218 @@ const VolunteerManagement = () => {
 
   // Print intern profile
 
-  const handlePrintVolunteerIDCard = (volunteer) => {
-    const printWindow = window.open('', '_blank');
-    const volunteerName = volunteer.name || (isRTL ? 'غير متوفر' : 'N/A');
-    const na = isRTL ? 'غير محدد' : 'N/A';
+  // Builds the styles + a single card body. Used by both the single
+  // print and the 4-per-A4 bulk print.
+  const buildVolunteerCardStyles = () => `
+    @page { size: A4 portrait; margin: 10mm 8mm; }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body { font-family: 'Segoe UI', Tahoma, Arial, sans-serif; background: #f1f5f9; }
+    body { padding: 6mm 0; }
 
-    const idCardContent = `
+    .print-note {
+      font-size: 12px; color: #475569; background: white;
+      border: 1px dashed #cbd5e1; border-radius: 8px;
+      padding: 8px 14px; margin: 0 auto 8mm; text-align: center; max-width: 120mm;
+    }
+
+    /* 4-up A4 page: 2 columns × 2 rows */
+    .page {
+      display: grid;
+      grid-template-columns: 72mm 72mm;
+      grid-auto-rows: 102mm;
+      column-gap: 6mm;
+      row-gap: 6mm;
+      justify-content: center;
+      align-content: start;
+      width: 100%;
+    }
+    .page + .page { page-break-before: always; }
+
+    .id-card {
+      width: 72mm; height: 102mm;
+      background: linear-gradient(180deg, #ffffff 0%, #fff7ed 100%);
+      border: 0.45mm dashed #475569;
+      overflow: hidden; position: relative;
+      display: flex; flex-direction: column;
+      color: #1a1a2e; box-sizing: border-box;
+    }
+    .card-header {
+      background: linear-gradient(135deg, #f97316 0%, #ea580c 100%);
+      padding: 2.5mm 3.5mm; text-align: center;
+    }
+    .card-title { color: white; font-size: 9pt; font-weight: 700; line-height: 1.15; }
+    .card-subtitle { color: rgba(255,255,255,0.88); font-size: 6.5pt; margin-top: 0.6mm; }
+
+    .card-body {
+      flex: 1; padding: 2.5mm 3mm 0;
+      display: flex; flex-direction: column; align-items: center; gap: 1.4mm;
+    }
+    .user-photo {
+      width: 22mm; height: 26mm;
+      background: linear-gradient(135deg, #fed7aa, #fdba74);
+      border-radius: 2mm; display: flex; align-items: center; justify-content: center;
+      color: #ea580c; font-weight: bold;
+      border: 0.6mm solid #f97316;
+      overflow: hidden; flex-shrink: 0;
+    }
+    .user-photo img { width: 100%; height: 100%; object-fit: cover; }
+    .user-photo .initials { font-size: 18pt; font-weight: bold; color: #ea580c; }
+
+    .user-name {
+      font-size: 10.5pt; font-weight: 800; color: #1a1a2e;
+      text-align: center; line-height: 1.15; max-height: 10mm; overflow: hidden;
+      display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+    }
+    .user-type-badge {
+      display: inline-block;
+      background: linear-gradient(135deg, #f97316, #ea580c);
+      color: white; font-size: 7.5pt; padding: 0.6mm 3.5mm;
+      border-radius: 999px; font-weight: 700;
+    }
+
+    .info-section { width: 100%; display: flex; flex-direction: column; gap: 0.6mm; margin-top: 1mm; }
+    .info-row {
+      display: flex; justify-content: space-between; align-items: center;
+      font-size: 7.2pt; padding: 0.6mm 0; border-bottom: 0.2mm dotted #d4d4d8;
+    }
+    .info-row:last-child { border-bottom: none; }
+    .info-label { font-weight: 700; color: #555; }
+    .info-value {
+      color: #1a1a2e; font-weight: 600; text-align: ${isRTL ? 'left' : 'right'};
+      max-width: 60%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    }
+
+    .card-qr {
+      display: flex; align-items: center; justify-content: center;
+      margin-top: 1mm;
+    }
+    .card-qr img { width: 18mm; height: 18mm; background: white; padding: 0.5mm; border-radius: 1mm; }
+
+    .card-footer {
+      background: #ffffff; padding: 1.5mm 3mm;
+      display: flex; align-items: center; justify-content: space-between;
+      border-top: 0.3mm solid #e0e0e0;
+    }
+    .card-footer .logo { height: 7mm; width: auto; flex-shrink: 0; }
+    .card-footer .qr-label { font-size: 6pt; color: #ea580c; font-weight: 700; }
+
+    .decorative-stripe {
+      position: absolute; top: 40%; ${isRTL ? 'right' : 'left'}: 0;
+      width: 1mm; height: 25%;
+      background: linear-gradient(to bottom, transparent, #f97316, transparent);
+    }
+
+    @media print {
+      html, body { background: white; padding: 0; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+      body { padding: 0; }
+      .print-note { display: none; }
+      .id-card { box-shadow: none; break-inside: avoid; }
+    }
+  `;
+
+  const buildVolunteerCardHTML = (volunteer, qrDataUrl) => {
+    const na = isRTL ? 'غير محدد' : 'N/A';
+    const volunteerName = volunteer.name || (isRTL ? 'غير متوفر' : 'N/A');
+    const qrImg = qrDataUrl ? `<img src="${qrDataUrl}" alt="QR" />` : '';
+    return `
+      <div class="id-card">
+        <div class="card-header">
+          <div class="card-title">${isRTL ? 'بطاقة متطوع فاب لاب الأحساء' : 'FABLAB Al-Ahsa Volunteer Card'}</div>
+          <div class="card-subtitle">${isRTL ? 'مؤسسة عبدالمنعم الراشد الإنسانية' : 'Abdulmonem Al-Rashed Foundation'}</div>
+        </div>
+        <div class="card-body">
+          <div class="user-photo">
+            ${volunteer.nationalIdPhoto
+              ? `<img src="${volunteer.nationalIdPhoto}" alt="${volunteerName}" />`
+              : `<span class="initials">${volunteerName.charAt(0).toUpperCase()}</span>`
+            }
+          </div>
+          <div class="user-name">${volunteerName}</div>
+          <div class="user-type-badge">${isRTL ? 'متطوع' : 'Volunteer'}</div>
+          <div class="info-section">
+            <div class="info-row">
+              <span class="info-label">${isRTL ? 'رقم الهوية' : 'National ID'}</span>
+              <span class="info-value">${volunteer.nationalId || na}</span>
+            </div>
+            <div class="info-row">
+              <span class="info-label">${isRTL ? 'الهاتف' : 'Phone'}</span>
+              <span class="info-value">${volunteer.phone || na}</span>
+            </div>
+          </div>
+          <div class="card-qr">${qrImg}</div>
+        </div>
+        <div class="decorative-stripe"></div>
+        <div class="card-footer">
+          <img src="/found.png" alt="Foundation" class="logo">
+          <span class="qr-label">${isRTL ? 'رمز الحضور' : 'Attendance QR'}</span>
+          <img src="/fablab.png" alt="FABLAB" class="logo">
+        </div>
+      </div>
+    `;
+  };
+
+  const openVolunteerPrintWindow = (cardsHtml) => {
+    const printWindow = window.open('', '_blank');
+    const html = `
       <!DOCTYPE html>
       <html dir="${isRTL ? 'rtl' : 'ltr'}" lang="${isRTL ? 'ar' : 'en'}">
       <head>
         <meta charset="UTF-8">
-        <title>${isRTL ? 'بطاقة متطوع' : 'Volunteer ID Card'}</title>
-        <style>
-          @page { size: A4 portrait; margin: 14mm 12mm; }
-          * { margin: 0; padding: 0; box-sizing: border-box; }
-          html, body { font-family: 'Segoe UI', Tahoma, Arial, sans-serif; background: #f1f5f9; }
-          body { padding: 24mm 0; display: flex; justify-content: center; }
-
-          .print-note {
-            font-size: 12px;
-            color: #475569;
-            background: white;
-            border: 1px dashed #cbd5e1;
-            border-radius: 8px;
-            padding: 8px 14px;
-            margin-bottom: 8mm;
-            text-align: center;
-            max-width: 80mm;
-          }
-
-          .id-card-wrapper {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-          }
-
-          /* Card outer: 72x102mm with dashed cut guide */
-          .id-card {
-            width: 72mm;
-            height: 102mm;
-            background: linear-gradient(180deg, #ffffff 0%, #fff7ed 100%);
-            border: 0.45mm dashed #475569;
-            border-radius: 0;
-            overflow: hidden;
-            position: relative;
-            display: flex;
-            flex-direction: column;
-            color: #1a1a2e;
-            box-sizing: border-box;
-          }
-
-          .card-header {
-            background: linear-gradient(135deg, #f97316 0%, #ea580c 100%);
-            padding: 3mm 3.5mm;
-            text-align: center;
-          }
-          .card-title { color: white; font-size: 10pt; font-weight: 700; letter-spacing: 0.4px; line-height: 1.15; }
-          .card-subtitle { color: rgba(255,255,255,0.88); font-size: 7pt; margin-top: 1mm; }
-
-          .card-body {
-            flex: 1;
-            padding: 3.5mm 4mm 0;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 2mm;
-          }
-          .user-photo {
-            width: 24mm;
-            height: 29mm;
-            background: linear-gradient(135deg, #fed7aa, #fdba74);
-            border-radius: 2mm;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: #ea580c;
-            font-weight: bold;
-            border: 0.8mm solid #f97316;
-            box-shadow: 0 3px 10px rgba(0, 0, 0, 0.15);
-            overflow: hidden;
-            flex-shrink: 0;
-          }
-          .user-photo img { width: 100%; height: 100%; object-fit: cover; }
-          .user-photo .initials { font-size: 22pt; font-weight: bold; color: #ea580c; }
-
-          .user-name {
-            font-size: 12pt;
-            font-weight: 800;
-            color: #1a1a2e;
-            text-align: center;
-            line-height: 1.2;
-            max-height: 11mm;
-            overflow: hidden;
-            display: -webkit-box;
-            -webkit-line-clamp: 2;
-            -webkit-box-orient: vertical;
-          }
-
-          .user-type-badge {
-            display: inline-block;
-            background: linear-gradient(135deg, #f97316, #ea580c);
-            color: white;
-            font-size: 8pt;
-            padding: 0.8mm 4mm;
-            border-radius: 999px;
-            font-weight: 700;
-          }
-
-          .info-section {
-            width: 100%;
-            display: flex;
-            flex-direction: column;
-            gap: 1mm;
-            margin-top: 1.5mm;
-          }
-          .info-row {
-            display: flex;
-            justify-content: space-between;
-            font-size: 8pt;
-            padding: 1mm 0;
-            border-bottom: 0.2mm dotted #d4d4d8;
-          }
-          .info-row:last-child { border-bottom: none; }
-          .info-label { font-weight: 700; color: #555; }
-          .info-value {
-            color: #1a1a2e;
-            font-weight: 600;
-            text-align: ${isRTL ? 'left' : 'right'};
-            max-width: 60%;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            white-space: nowrap;
-          }
-
-          .card-footer {
-            background: #ffffff;
-            padding: 2mm 3mm;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            border-top: 0.3mm solid #e0e0e0;
-          }
-          .card-footer .logo { height: 8mm; width: auto; flex-shrink: 0; }
-
-          .decorative-stripe {
-            position: absolute;
-            top: 40%;
-            ${isRTL ? 'right' : 'left'}: 0;
-            width: 1mm;
-            height: 25%;
-            background: linear-gradient(to bottom, transparent, #f97316, transparent);
-          }
-
-          @media print {
-            html, body { background: white; padding: 0; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-            body { padding: 0; }
-            .print-note { display: none; }
-            .id-card { box-shadow: none; break-inside: avoid; }
-          }
-        </style>
+        <title>${isRTL ? 'بطاقات المتطوعين' : 'Volunteer ID Cards'}</title>
+        <style>${buildVolunteerCardStyles()}</style>
       </head>
       <body>
-        <div class="id-card-wrapper">
-          <div class="print-note">
-            ${isRTL ? 'حجم البطاقة 72×102 ملم — اقطع حسب الخط المتقطع' : 'Card size 72×102 mm — cut along the dashed line'}
-          </div>
-          <div class="id-card">
-            <div class="card-header">
-              <div class="card-title">${isRTL ? 'بطاقة متطوع فاب لاب الأحساء' : 'FABLAB Al-Ahsa Volunteer Card'}</div>
-              <div class="card-subtitle">${isRTL ? 'مؤسسة عبدالمنعم الراشد الإنسانية' : 'Abdulmonem Al-Rashed Foundation'}</div>
-            </div>
-            <div class="card-body">
-              <div class="user-photo">
-                ${volunteer.nationalIdPhoto
-                  ? `<img src="${volunteer.nationalIdPhoto}" alt="${volunteerName}" />`
-                  : `<span class="initials">${volunteerName.charAt(0).toUpperCase()}</span>`
-                }
-              </div>
-              <div class="user-name">${volunteerName}</div>
-              <div class="user-type-badge">${isRTL ? 'متطوع' : 'Volunteer'}</div>
-
-              <div class="info-section">
-                <div class="info-row">
-                  <span class="info-label">${isRTL ? 'رقم الهوية' : 'National ID'}</span>
-                  <span class="info-value">${volunteer.nationalId || na}</span>
-                </div>
-                <div class="info-row">
-                  <span class="info-label">${isRTL ? 'الهاتف' : 'Phone'}</span>
-                  <span class="info-value">${volunteer.phone || na}</span>
-                </div>
-                <div class="info-row">
-                  <span class="info-label">${isRTL ? 'البريد' : 'Email'}</span>
-                  <span class="info-value">${volunteer.email || na}</span>
-                </div>
-              </div>
-            </div>
-            <div class="decorative-stripe"></div>
-            <div class="card-footer">
-              <img src="/found.png" alt="Foundation" class="logo">
-              <img src="/fablab.png" alt="FABLAB" class="logo">
-            </div>
-          </div>
+        <div class="print-note">
+          ${isRTL ? 'حجم البطاقة 72×102 ملم — اقطع حسب الخط المتقطع' : 'Card size 72×102 mm — cut along the dashed line'}
         </div>
+        ${cardsHtml}
       </body>
       </html>
     `;
-
-    printWindow.document.write(idCardContent);
+    printWindow.document.write(html);
     printWindow.document.close();
     printWindow.focus();
-    setTimeout(() => { printWindow.print(); }, 300);
+    setTimeout(() => { printWindow.print(); }, 400);
   };
+
+  const chunkCards = (cards, size = 4) => {
+    const pages = [];
+    for (let i = 0; i < cards.length; i += size) pages.push(cards.slice(i, i + size));
+    return pages;
+  };
+
+  const handlePrintVolunteerIDCard = async (volunteer) => {
+    try {
+      const { data } = await api.get(`/volunteers/${volunteer.volunteerId}/card`);
+      const cardHtml = `<div class="page">${buildVolunteerCardHTML(data.volunteer, data.qrDataUrl)}</div>`;
+      openVolunteerPrintWindow(cardHtml);
+    } catch (err) {
+      console.error('Error printing volunteer card:', err);
+      toast.error(isRTL ? 'فشل توليد رمز الاستجابة السريعة' : 'Failed to generate QR');
+    }
+  };
+
+  const handlePrintAllVolunteerIDCards = async () => {
+    if (!volunteers.length) {
+      toast.warning(isRTL ? 'لا يوجد متطوعين لطباعة بطاقاتهم' : 'No volunteers to print');
+      return;
+    }
+    try {
+      toast.info(isRTL ? 'جارٍ توليد البطاقات...' : 'Generating cards...');
+      const { data } = await api.post('/volunteers/cards', {
+        volunteerIds: volunteers.map(v => v.volunteerId)
+      });
+      const cardHtmls = (data.cards || []).map(c => buildVolunteerCardHTML(c.volunteer, c.qrDataUrl));
+      const pages = chunkCards(cardHtmls, 4)
+        .map(page => `<div class="page">${page.join('')}</div>`)
+        .join('');
+      openVolunteerPrintWindow(pages);
+    } catch (err) {
+      console.error('Error printing bulk volunteer cards:', err);
+      toast.error(isRTL ? 'فشل طباعة البطاقات' : 'Failed to print cards');
+    }
+  };
+
 
   const handleExportAllVolunteers = () => {
     const headers = [
@@ -1301,6 +1474,35 @@ const VolunteerManagement = () => {
                     <line x1="23" y1="11" x2="17" y2="11"/>
                   </svg>
                   {isRTL ? 'إضافة متطوع' : 'Add Volunteer'}
+                </button>
+                {volunteers.length > 0 && (
+                  <button
+                    className="add-opportunity-btn"
+                    style={{ background: '#f97316' }}
+                    onClick={handlePrintAllVolunteerIDCards}
+                    title={isRTL ? 'طباعة بطاقات جميع المتطوعين (4 لكل A4)' : 'Print all volunteer ID cards (4 per A4)'}
+                  >
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <polyline points="6 9 6 2 18 2 18 9"/>
+                      <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/>
+                      <rect x="6" y="14" width="12" height="8"/>
+                    </svg>
+                    {isRTL ? 'طباعة جميع البطاقات' : 'Print All Cards'}
+                  </button>
+                )}
+                <button
+                  className="add-opportunity-btn"
+                  style={{ background: '#0ea5e9' }}
+                  onClick={openVolunteerAttendanceMode}
+                  title={isRTL ? 'صفحة تسجيل الحضور بالماسح' : 'Open scanner attendance page'}
+                >
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <rect x="3" y="3" width="7" height="7"/>
+                    <rect x="14" y="3" width="7" height="7"/>
+                    <rect x="14" y="14" width="7" height="7"/>
+                    <rect x="3" y="14" width="7" height="7"/>
+                  </svg>
+                  {isRTL ? 'صفحة الحضور' : 'Attendance Page'}
                 </button>
                 <button className="add-opportunity-btn" onClick={() => setShowOpportunityModal(true)}>
                   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -1391,6 +1593,18 @@ const VolunteerManagement = () => {
                         {isRTL ? 'عرض' : 'View'}
                       </button>
                       <button
+                        className="rate-volunteer-btn"
+                        onClick={() => openEditVolunteer(volunteer)}
+                        title={isRTL ? 'تعديل البيانات' : 'Edit info'}
+                        style={{ background: '#eef2ff', color: '#4338ca' }}
+                      >
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                          <path d="M12 20h9"/>
+                          <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4z"/>
+                        </svg>
+                        {isRTL ? 'تعديل' : 'Edit'}
+                      </button>
+                      <button
                         className="export-volunteer-btn"
                         onClick={() => handlePrintVolunteerIDCard(volunteer)}
                         title={isRTL ? 'طباعة البطاقة' : 'Print ID Card'}
@@ -1471,7 +1685,7 @@ const VolunteerManagement = () => {
 
         {/* Volunteer Modal */}
         {showVolunteerModal && (
-          <div className="modal-overlay" onClick={() => setShowVolunteerModal(false)}>
+          <div className="modal-overlay" onClick={closeVolunteerModal}>
             <motion.div
               className="modal-content modern-modal volunteer-modal"
               onClick={(e) => e.stopPropagation()}
@@ -1489,10 +1703,10 @@ const VolunteerManagement = () => {
                   </svg>
                 </div>
                 <div className="modal-header-text">
-                  <h2>{isRTL ? 'متطوع جديد' : 'New Volunteer'}</h2>
-                  <p>{isRTL ? 'تسجيل متطوع جديد في النظام' : 'Register a new volunteer'}</p>
+                  <h2>{editingVolunteerId ? (isRTL ? 'تعديل بيانات المتطوع' : 'Edit Volunteer') : (isRTL ? 'متطوع جديد' : 'New Volunteer')}</h2>
+                  <p>{editingVolunteerId ? (isRTL ? 'تحديث معلومات المتطوع وصورة الهوية' : 'Update volunteer info and ID photo') : (isRTL ? 'تسجيل متطوع جديد في النظام' : 'Register a new volunteer')}</p>
                 </div>
-                <button className="modal-close-modern" onClick={() => setShowVolunteerModal(false)}>
+                <button className="modal-close-modern" onClick={closeVolunteerModal}>
                   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                     <line x1="18" y1="6" x2="6" y2="18"/>
                     <line x1="6" y1="6" x2="18" y2="18"/>
@@ -1628,7 +1842,7 @@ const VolunteerManagement = () => {
                 </div>
               </div>
               <div className="modern-modal-footer">
-                <button className="btn-cancel" onClick={() => setShowVolunteerModal(false)}>
+                <button className="btn-cancel" onClick={closeVolunteerModal}>
                   {isRTL ? 'إلغاء' : 'Cancel'}
                 </button>
                 <button
@@ -1646,7 +1860,9 @@ const VolunteerManagement = () => {
                       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                         <polyline points="20 6 9 17 4 12"/>
                       </svg>
-                      {isRTL ? 'إضافة متطوع' : 'Add Volunteer'}
+                      {editingVolunteerId
+                        ? (isRTL ? 'حفظ التعديلات' : 'Save Changes')
+                        : (isRTL ? 'إضافة متطوع' : 'Add Volunteer')}
                     </>
                   )}
                 </button>
@@ -2379,6 +2595,129 @@ const VolunteerManagement = () => {
             </motion.div>
           </div>
         )}
+      {volunteerAttendanceMode && (
+        <div className="mawhba-attendance-mode" dir={isRTL ? 'rtl' : 'ltr'}>
+          <button
+            className="mawhba-am-close"
+            onClick={closeVolunteerAttendanceMode}
+            title={isRTL ? 'إغلاق' : 'Close'}
+          >×</button>
+          <button
+            className="mawhba-am-clear"
+            onClick={clearVolTodayLogs}
+            disabled={volClearingToday}
+            title={isRTL ? 'مسح سجلات اليوم' : "Clear today's logs"}
+          >
+            🗑 {isRTL ? 'مسح سجلات اليوم' : 'Clear today'}
+          </button>
+
+          <div className="mawhba-am-inner">
+            <header className="mawhba-am-header">
+              <div className="mawhba-am-eyebrow">
+                📡 {isRTL ? 'حضور المتطوعين · فاب لاب الأحساء' : 'Volunteer Attendance · FABLAB Al-Ahsa'}
+              </div>
+              <h1 className="mawhba-am-title">
+                {isRTL ? 'صفحة تسجيل الحضور' : 'Attendance Registration'}
+              </h1>
+              <p className="mawhba-am-sub">
+                {isRTL
+                  ? 'استخدم الماسح للاستعلام عن رمز البطاقة الخاص بالمتطوع'
+                  : 'Use the scanner to read the QR on each volunteer card'}
+              </p>
+            </header>
+
+            <div className="mawhba-am-info">
+              <div className="mawhba-am-info-row">
+                <span className="mawhba-am-info-icon" style={{ background: '#22c55e' }}>1</span>
+                <div>
+                  <div className="mawhba-am-info-title">{isRTL ? 'المسح الأول اليوم' : 'First scan today'}</div>
+                  <div className="mawhba-am-info-text">{isRTL ? 'يسجل دخول المتطوع مع التاريخ والوقت' : 'Records check-in with date and time'}</div>
+                </div>
+              </div>
+              <div className="mawhba-am-info-row">
+                <span className="mawhba-am-info-icon" style={{ background: '#f59e0b' }}>2</span>
+                <div>
+                  <div className="mawhba-am-info-title">{isRTL ? 'المسح الثاني اليوم' : 'Second scan today'}</div>
+                  <div className="mawhba-am-info-text">{isRTL ? 'يسجل خروج المتطوع (بعد ١٥ دقيقة على الأقل)' : 'Records check-out (at least 15 minutes later)'}</div>
+                </div>
+              </div>
+              <div className="mawhba-am-info-row">
+                <span className="mawhba-am-info-icon" style={{ background: '#64748b' }}>✓</span>
+                <div>
+                  <div className="mawhba-am-info-title">{isRTL ? 'بعد إكمال الحضور' : 'After both scans'}</div>
+                  <div className="mawhba-am-info-text">{isRTL ? 'لن يتم تسجيل مسح إضافي لنفس اليوم' : 'No further scans are recorded for the same day'}</div>
+                </div>
+              </div>
+            </div>
+
+            <div className="mawhba-am-ready">
+              <div className="mawhba-am-ready-pulse"></div>
+              <div className="mawhba-am-ready-label">{isRTL ? 'جاهز للمسح' : 'READY TO SCAN'}</div>
+              <div className="mawhba-am-ready-hint">{isRTL ? 'وجّه الماسح نحو رمز الحضور على البطاقة' : 'Point the reader at the QR on the card'}</div>
+            </div>
+
+            <div className="mawhba-am-stats">
+              <div className="mawhba-am-stat" style={{ borderColor: '#22c55e' }}>
+                <div className="mawhba-am-stat-value" style={{ color: '#16a34a' }}>{volSessionStats.checkins}</div>
+                <div className="mawhba-am-stat-label">{isRTL ? 'دخول' : 'Check-ins'}</div>
+              </div>
+              <div className="mawhba-am-stat" style={{ borderColor: '#f59e0b' }}>
+                <div className="mawhba-am-stat-value" style={{ color: '#d97706' }}>{volSessionStats.checkouts}</div>
+                <div className="mawhba-am-stat-label">{isRTL ? 'خروج' : 'Check-outs'}</div>
+              </div>
+              <div className="mawhba-am-stat" style={{ borderColor: '#ef4444' }}>
+                <div className="mawhba-am-stat-value" style={{ color: '#dc2626' }}>{volSessionStats.errors}</div>
+                <div className="mawhba-am-stat-label">{isRTL ? 'فشل' : 'Errors'}</div>
+              </div>
+            </div>
+
+            {volAttendanceList.length > 0 && (
+              <div className="mawhba-am-groups">
+                <div className="mawhba-am-recent-title">
+                  {isRTL ? 'حضور المتطوعين اليوم' : "Today's Volunteers"}
+                </div>
+                <div className="mawhba-am-group" style={{ '--group-color': '#f97316' }}>
+                  <div className="mawhba-am-group-header">
+                    <span className="mawhba-am-group-dot"></span>
+                    <span className="mawhba-am-group-name">{isRTL ? 'المتطوعون' : 'Volunteers'}</span>
+                    <span className="mawhba-am-group-count">{volAttendanceList.length}</span>
+                  </div>
+                  <div className="mawhba-am-group-body">
+                    {volAttendanceList.map(st => {
+                      const isOut = st.status === 'checked_out';
+                      return (
+                        <div key={st.attendanceId} className={`mawhba-am-student status-${st.status}`}>
+                          <span className={`mawhba-am-student-badge ${isOut ? 'is-out' : 'is-in'}`}>
+                            {isOut ? (isRTL ? 'خرج' : 'Left') : (isRTL ? 'داخل' : 'Inside')}
+                          </span>
+                          <span className="mawhba-am-student-name">{st.name}</span>
+                          <span className="mawhba-am-student-times mono">
+                            <span>{isRTL ? 'د' : 'IN'} {fmtTimeShort(st.checkInAt)}</span>
+                            {st.checkOutAt && (
+                              <span>{isRTL ? 'خ' : 'OUT'} {fmtTimeShort(st.checkOutAt)}</span>
+                            )}
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {volScanPopup && (
+            <div className={`mawhba-scan-popup-overlay kind-${volScanPopup.kind}`}>
+              <div className="mawhba-scan-popup">
+                <div className="mawhba-scan-popup-label">{volScanPopup.label}</div>
+                <div className="mawhba-scan-popup-name">{volScanPopup.name}</div>
+                {volScanPopup.time && <div className="mawhba-scan-popup-time mono">{volScanPopup.time}</div>}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
             <ReceiptModal
           open={!!receiptTarget}
           onClose={() => setReceiptTarget(null)}

@@ -38,7 +38,8 @@ const ReceiptModal = ({ open, onClose, recipient, personType = 'volunteer', onSa
     amount: '',
     purpose: '',
     receiptDate: new Date().toISOString().slice(0, 10),
-    recipientPhone: ''
+    recipientPhone: '',
+    opportunityId: ''
   });
 
   // Pre-fill from the record whenever the modal opens
@@ -50,7 +51,8 @@ const ReceiptModal = ({ open, onClose, recipient, personType = 'volunteer', onSa
       amount: '',
       purpose: '',
       receiptDate: new Date().toISOString().slice(0, 10),
-      recipientPhone: recipient?.phone || ''
+      recipientPhone: recipient?.phone || '',
+      opportunityId: ''
     });
   }, [open, recipient]);
 
@@ -61,14 +63,65 @@ const ReceiptModal = ({ open, onClose, recipient, personType = 'volunteer', onSa
   // For workers/volunteers: when the admin picks an opportunity, sum its
   // attendance days using the right rate model and auto-fill amount + purpose.
   const handlePickOpportunity = (opportunityId) => {
+    if (!opportunityId) {
+      setForm(prev => ({ ...prev, opportunityId: '' }));
+      return;
+    }
     const opp = (recipient?.opportunities || []).find(o => o.opportunityId === opportunityId);
     if (!opp) return;
     const totalCost = sumOpportunityCost(opp, personType);
     setForm(prev => ({
       ...prev,
+      opportunityId,
       amount: totalCost ? String(totalCost.toFixed(2).replace(/\.00$/, '')) : prev.amount,
       purpose: opp.title || prev.purpose
     }));
+  };
+
+  // Builds the tasks-per-day page appended to the receipt when the
+  // admin picks an opportunity that has attendanceDays with tasks
+  // logged for at least one attended day.
+  const buildTasksPageHtml = (opp, safe) => {
+    if (!opp) return '';
+    const days = Array.isArray(opp.attendanceDays) ? opp.attendanceDays.slice() : [];
+    const attended = days
+      .filter(d => d && d.attended)
+      .sort((a, b) => String(a.date).localeCompare(String(b.date)));
+    if (attended.length === 0) return '';
+    const rows = attended.map(d => {
+      const dt = new Date(d.date);
+      const dateFmt = isNaN(dt.getTime())
+        ? safe(d.date)
+        : dt.toLocaleDateString('ar-SA-u-nu-latn', { weekday: 'short', day: '2-digit', month: 'long', year: 'numeric' });
+      const hoursCell = d.hours != null ? Number(d.hours) : '';
+      return `
+        <tr>
+          <td>${dateFmt}</td>
+          <td class="hours">${hoursCell === '' ? '—' : hoursCell + ' س'}</td>
+          <td class="task">${safe(d.task || '')}</td>
+        </tr>`;
+    }).join('');
+    return `
+      <div class="page tasks">
+        <div class="tasks-content">
+          <div class="tasks-heading">
+            <div class="tasks-title">سجل المهام المنجزة</div>
+            <div class="tasks-sub">${safe(opp.title || '')}</div>
+            <div class="tasks-range">${safe(String(opp.startDate).slice(0,10))} → ${safe(String(opp.endDate).slice(0,10))}</div>
+          </div>
+          <table class="tasks-table">
+            <thead>
+              <tr><th style="width:32%">التاريخ</th><th style="width:14%">الساعات</th><th>المهمة المنجزة</th></tr>
+            </thead>
+            <tbody>${rows}</tbody>
+          </table>
+          <div class="tasks-footer">
+            <div>عدد الأيام: ${attended.length}</div>
+            <div>الإجمالي: ${attended.reduce((s, d) => s + (Number(d.hours) || 0), 0)} ساعة</div>
+          </div>
+        </div>
+      </div>
+    `;
   };
 
   const handlePrint = async () => {
@@ -308,6 +361,39 @@ const ReceiptModal = ({ open, onClose, recipient, personType = 'volunteer', onSa
   @media print {
     body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
   }
+
+  /* Tasks-per-day page */
+  .page.tasks {
+    background: #ffffff;
+    padding: 20mm 18mm;
+    box-sizing: border-box;
+  }
+  .tasks-content { max-width: 174mm; margin: 0 auto; color: #0f172a; }
+  .tasks-heading { text-align: center; margin-bottom: 14mm; }
+  .tasks-title { font-size: 24pt; font-weight: 800; color: #1e3a8a; margin-bottom: 6mm; }
+  .tasks-sub { font-size: 14pt; font-weight: 700; color: #0f172a; margin-bottom: 2mm; }
+  .tasks-range { font-size: 11pt; color: #64748b; }
+  .tasks-table {
+    width: 100%; border-collapse: collapse;
+    border: 1px solid #cbd5e1; font-size: 11pt;
+  }
+  .tasks-table thead th {
+    background: #eff6ff; color: #1e3a8a;
+    padding: 8px 10px; text-align: right;
+    border: 1px solid #cbd5e1; font-weight: 800;
+  }
+  .tasks-table tbody td {
+    padding: 8px 10px; border: 1px solid #e2e8f0;
+    vertical-align: top; text-align: right;
+  }
+  .tasks-table tbody td.hours { text-align: center; color: #16a34a; font-weight: 700; }
+  .tasks-table tbody td.task { color: #0f172a; line-height: 1.6; }
+  .tasks-table tbody tr:nth-child(odd) td { background: #f8fafc; }
+  .tasks-footer {
+    display: flex; justify-content: space-between; margin-top: 8mm;
+    font-size: 11pt; font-weight: 700; color: #1e3a8a;
+    border-top: 2px solid #1e3a8a; padding-top: 4mm;
+  }
 </style>
 </head>
 <body>
@@ -366,6 +452,7 @@ const ReceiptModal = ({ open, onClose, recipient, personType = 'volunteer', onSa
       </div>
     </div>
   </div>
+  ${buildTasksPageHtml((recipient?.opportunities || []).find(o => o.opportunityId === form.opportunityId), safe)}
   <script>
     // Wait for the background image to load before printing so it
     // doesn't print blank on first paint.

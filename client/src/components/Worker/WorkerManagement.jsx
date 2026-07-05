@@ -17,6 +17,7 @@ const WorkerManagement = () => {
   // Worker state
   const [workers, setWorkers] = useState([]);
   const [showWorkerModal, setShowWorkerModal] = useState(false);
+  const [editingWorkerId, setEditingWorkerId] = useState(null);
   const [showOpportunityModal, setShowOpportunityModal] = useState(false);
   const [showWorkerDetailModal, setShowWorkerDetailModal] = useState(false);
   const [showWorkerRatingModal, setShowWorkerRatingModal] = useState(false);
@@ -113,6 +114,24 @@ const WorkerManagement = () => {
     });
   };
 
+  const openEditWorker = (worker) => {
+    setEditingWorkerId(worker.workerId);
+    setWorkerForm({
+      name: worker.name || '',
+      nationalId: worker.nationalId || '',
+      phone: worker.phone || '',
+      email: worker.email || '',
+      nationalIdPhoto: worker.nationalIdPhoto || ''
+    });
+    setShowWorkerModal(true);
+  };
+
+  const closeWorkerModal = () => {
+    setShowWorkerModal(false);
+    setEditingWorkerId(null);
+    resetWorkerForm();
+  };
+
   const handleCreateWorker = async () => {
     if (!workerForm.name || !workerForm.nationalId || !workerForm.phone) {
       toast.error(isRTL ? 'الاسم ورقم الهوية والجوال مطلوبة' : 'Name, national ID, and phone are required');
@@ -121,17 +140,23 @@ const WorkerManagement = () => {
 
     setWorkerLoading(true);
     try {
-      await api.post('/workers', workerForm);
-      toast.success(isRTL ? 'تم إضافة العامل بنجاح' : 'Worker added successfully');
+      if (editingWorkerId) {
+        await api.put(`/workers/${editingWorkerId}`, workerForm);
+        toast.success(isRTL ? 'تم تحديث بيانات العامل' : 'Worker updated successfully');
+      } else {
+        await api.post('/workers', workerForm);
+        toast.success(isRTL ? 'تم إضافة العامل بنجاح' : 'Worker added successfully');
+      }
       setShowWorkerModal(false);
+      setEditingWorkerId(null);
       resetWorkerForm();
       fetchWorkers();
     } catch (error) {
-      console.error('Error creating worker:', error);
+      console.error('Error saving worker:', error);
       if (error.response?.status === 409) {
         toast.error(isRTL ? 'يوجد عامل بنفس رقم الهوية' : 'Worker with this national ID already exists');
       } else {
-        toast.error(isRTL ? 'خطأ في إضافة العامل' : 'Error adding worker');
+        toast.error(isRTL ? 'خطأ في حفظ العامل' : 'Error saving worker');
       }
     } finally {
       setWorkerLoading(false);
@@ -1347,6 +1372,18 @@ const WorkerManagement = () => {
                         {isRTL ? 'عرض' : 'View'}
                       </button>
                       <button
+                        className="rate-volunteer-btn"
+                        onClick={() => openEditWorker(worker)}
+                        title={isRTL ? 'تعديل البيانات' : 'Edit info'}
+                        style={{ background: '#eef2ff', color: '#4338ca' }}
+                      >
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                          <path d="M12 20h9"/>
+                          <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4z"/>
+                        </svg>
+                        {isRTL ? 'تعديل' : 'Edit'}
+                      </button>
+                      <button
                         className="export-volunteer-btn"
                         onClick={() => handlePrintWorkerIDCard(worker)}
                         title={isRTL ? 'طباعة البطاقة' : 'Print ID Card'}
@@ -1427,7 +1464,7 @@ const WorkerManagement = () => {
 
         {/* Worker Modal */}
         {showWorkerModal && (
-          <div className="modal-overlay" onClick={() => setShowWorkerModal(false)}>
+          <div className="modal-overlay" onClick={closeWorkerModal}>
             <motion.div
               className="modal-content modern-modal volunteer-modal"
               onClick={(e) => e.stopPropagation()}
@@ -1445,10 +1482,10 @@ const WorkerManagement = () => {
                   </svg>
                 </div>
                 <div className="modal-header-text">
-                  <h2>{isRTL ? 'عامل جديد' : 'New Worker'}</h2>
-                  <p>{isRTL ? 'تسجيل عامل جديد في النظام' : 'Register a new worker'}</p>
+                  <h2>{editingWorkerId ? (isRTL ? 'تعديل بيانات العامل' : 'Edit Worker') : (isRTL ? 'عامل جديد' : 'New Worker')}</h2>
+                  <p>{editingWorkerId ? (isRTL ? 'تحديث معلومات العامل وصورة الهوية' : 'Update worker info and ID photo') : (isRTL ? 'تسجيل عامل جديد في النظام' : 'Register a new worker')}</p>
                 </div>
-                <button className="modal-close-modern" onClick={() => setShowWorkerModal(false)}>
+                <button className="modal-close-modern" onClick={closeWorkerModal}>
                   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                     <line x1="18" y1="6" x2="6" y2="18"/>
                     <line x1="6" y1="6" x2="18" y2="18"/>
@@ -1584,7 +1621,7 @@ const WorkerManagement = () => {
                 </div>
               </div>
               <div className="modern-modal-footer">
-                <button className="btn-cancel" onClick={() => setShowWorkerModal(false)}>
+                <button className="btn-cancel" onClick={closeWorkerModal}>
                   {isRTL ? 'إلغاء' : 'Cancel'}
                 </button>
                 <button
@@ -1602,7 +1639,9 @@ const WorkerManagement = () => {
                       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                         <polyline points="20 6 9 17 4 12"/>
                       </svg>
-                      {isRTL ? 'إضافة عامل' : 'Add Worker'}
+                      {editingWorkerId
+                        ? (isRTL ? 'حفظ التعديلات' : 'Save Changes')
+                        : (isRTL ? 'إضافة عامل' : 'Add Worker')}
                     </>
                   )}
                 </button>
