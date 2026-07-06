@@ -37,14 +37,26 @@ const UnifiedAttendancePage = ({ open, onClose, isRTL }) => {
 
   const hydrate = useCallback(async () => {
     try {
-      const [m, v] = await Promise.allSettled([
+      const [m, v, s] = await Promise.allSettled([
         api.get('/mawhba/attendance/today'),
-        api.get('/volunteers/attendance/today')
+        api.get('/volunteers/attendance/today'),
+        api.get('/fablab-staff/attendance/today')
       ]);
       const mData = m.status === 'fulfilled' ? m.value.data : null;
       const vData = v.status === 'fulfilled' ? v.value.data : null;
+      const sData = s.status === 'fulfilled' ? s.value.data : null;
 
       const combined = [];
+      // FabLab staff first — they're the fixed team on-site
+      if (Array.isArray(sData?.staff) && sData.staff.length > 0) {
+        combined.push({
+          category: 'staff',
+          course: isRTL ? 'موظفو فاب لاب' : 'FabLab Staff',
+          color: '#7c3aed',
+          students: sData.staff
+        });
+      }
+      // Mawhba courses
       if (Array.isArray(mData?.groups)) {
         mData.groups.forEach(g => combined.push({
           category: 'mawhba',
@@ -53,6 +65,7 @@ const UnifiedAttendancePage = ({ open, onClose, isRTL }) => {
           students: g.students
         }));
       }
+      // Volunteers
       if (Array.isArray(vData?.volunteers) && vData.volunteers.length > 0) {
         combined.push({
           category: 'volunteer',
@@ -65,9 +78,10 @@ const UnifiedAttendancePage = ({ open, onClose, isRTL }) => {
 
       const mStats = mData?.stats || { checkins: 0, checkouts: 0 };
       const vStats = vData?.stats || { checkins: 0, checkouts: 0 };
+      const sStats = sData?.stats || { checkins: 0, checkouts: 0 };
       setSessionStats(prev => ({
-        checkins: (mStats.checkins || 0) + (vStats.checkins || 0),
-        checkouts: (mStats.checkouts || 0) + (vStats.checkouts || 0),
+        checkins: (mStats.checkins || 0) + (vStats.checkins || 0) + (sStats.checkins || 0),
+        checkouts: (mStats.checkouts || 0) + (vStats.checkouts || 0) + (sStats.checkouts || 0),
         errors: prev.errors
       }));
     } catch (err) {
@@ -157,6 +171,30 @@ const UnifiedAttendancePage = ({ open, onClose, isRTL }) => {
       hydrate();
       return;
     } catch (vErr) {
+      // fall through to staff
+    }
+
+    try {
+      const { data } = await api.post('/fablab-staff/attendance/scan', { code });
+      const st = data.staff || {};
+      const r = data.record || {};
+      const refTime = data.action === 'checkout' ? r.checkOutAt : r.checkInAt;
+      const { kind, label } = labelFor(data.action);
+      const payload = {
+        kind, label,
+        name: st.name || code,
+        badge: st.position || (isRTL ? 'موظف' : 'Staff'),
+        badgeType: isRTL ? 'موظف فاب لاب' : 'FabLab staff',
+        time: fmtTimeLong(refTime || new Date().toISOString()),
+        color: '#7c3aed'
+      };
+      showResult(payload);
+      if (kind === 'checkin') setSessionStats(p => ({ ...p, checkins: p.checkins + 1 }));
+      else if (kind === 'checkout') setSessionStats(p => ({ ...p, checkouts: p.checkouts + 1 }));
+      setRecentScans(prev => [payload, ...prev].slice(0, 30));
+      hydrate();
+      return;
+    } catch (sErr) {
       const payload = {
         kind: 'error',
         label: isRTL ? 'لم يتم العثور على المستخدم' : 'Not found',
@@ -197,22 +235,24 @@ const UnifiedAttendancePage = ({ open, onClose, isRTL }) => {
 
   const clearToday = async () => {
     if (!window.confirm(isRTL
-      ? 'سيتم حذف جميع سجلات الحضور لهذا اليوم (موهبة والمتطوعين). هل أنت متأكد؟'
-      : 'This will delete ALL of today\'s attendance records (Mawhba + Volunteers). Are you sure?')) return;
+      ? 'سيتم حذف جميع سجلات الحضور لهذا اليوم (موهبة والمتطوعين والموظفين). هل أنت متأكد؟'
+      : 'This will delete ALL of today\'s attendance records (Mawhba + Volunteers + Staff). Are you sure?')) return;
     setClearingToday(true);
     try {
-      const [m, v] = await Promise.allSettled([
+      const [m, v, s] = await Promise.allSettled([
         api.delete('/mawhba/attendance/today'),
-        api.delete('/volunteers/attendance/today')
+        api.delete('/volunteers/attendance/today'),
+        api.delete('/fablab-staff/attendance/today')
       ]);
       const mCount = m.status === 'fulfilled' ? (m.value.data?.count || 0) : 0;
       const vCount = v.status === 'fulfilled' ? (v.value.data?.count || 0) : 0;
+      const sCount = s.status === 'fulfilled' ? (s.value.data?.count || 0) : 0;
       setGroups([]);
       setRecentScans([]);
       setSessionStats({ checkins: 0, checkouts: 0, errors: 0 });
       toast.success(isRTL
-        ? `تم حذف ${mCount + vCount} سجل (${mCount} موهبة + ${vCount} متطوع)`
-        : `Deleted ${mCount + vCount} record(s) — ${mCount} Mawhba + ${vCount} Volunteer`);
+        ? `تم حذف ${mCount + vCount + sCount} سجل (${mCount} موهبة + ${vCount} متطوع + ${sCount} موظف)`
+        : `Deleted ${mCount + vCount + sCount} record(s) — ${mCount} Mawhba + ${vCount} Volunteer + ${sCount} Staff`);
     } catch (err) {
       console.error(err);
       toast.error(isRTL ? 'فشل الحذف' : 'Clear failed');
@@ -287,7 +327,11 @@ const UnifiedAttendancePage = ({ open, onClose, isRTL }) => {
                 <div className="mawhba-am-group-header">
                   <span className="mawhba-am-group-dot" />
                   <span className="mawhba-am-group-name">
-                    {g.category === 'volunteer' ? '🤝 ' : '📚 '}
+                    {g.category === 'volunteer'
+                      ? '🤝 '
+                      : g.category === 'staff'
+                        ? '👥 '
+                        : '📚 '}
                     {g.course || (isRTL ? 'بدون دورة' : 'No course')}
                   </span>
                   <span className="mawhba-am-group-count">{g.students.length}</span>

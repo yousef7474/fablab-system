@@ -54,12 +54,17 @@ const MawhbaStudent = require('./MawhbaStudent');
 const MawhbaCourseColor = require('./MawhbaCourseColor');
 const MawhbaAttendance = require('./MawhbaAttendance');
 const VolunteerAttendance = require('./VolunteerAttendance');
+const FablabStaff = require('./FablabStaff');
+const FablabStaffAttendance = require('./FablabStaffAttendance');
 
 MawhbaAttendance.belongsTo(MawhbaStudent, { foreignKey: 'studentId', as: 'student', constraints: false });
 MawhbaStudent.hasMany(MawhbaAttendance, { foreignKey: 'studentId', as: 'attendance', constraints: false });
 
 VolunteerAttendance.belongsTo(Volunteer, { foreignKey: 'volunteerId', as: 'volunteer', constraints: false });
 Volunteer.hasMany(VolunteerAttendance, { foreignKey: 'volunteerId', as: 'attendance', constraints: false });
+
+FablabStaffAttendance.belongsTo(FablabStaff, { foreignKey: 'staffId', as: 'staff', constraints: false });
+FablabStaff.hasMany(FablabStaffAttendance, { foreignKey: 'staffId', as: 'attendance', constraints: false });
 
 // Define relationships
 User.hasMany(Registration, { foreignKey: 'userId', as: 'registrations' });
@@ -445,5 +450,7 @@ module.exports = {
   MawhbaCourseColor,
   MawhbaAttendance,
   VolunteerAttendance,
+  FablabStaff,
+  FablabStaffAttendance,
   syncDatabase
 };
