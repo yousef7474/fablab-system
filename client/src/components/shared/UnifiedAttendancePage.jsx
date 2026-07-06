@@ -343,12 +343,30 @@ const UnifiedAttendancePage = ({ open, onClose, isRTL }) => {
       </div>
 
       {scanPopup && (
-        <div className={`mawhba-scan-popup-overlay kind-${scanPopup.kind}`}>
-          <div className="mawhba-scan-popup" style={{ '--popup-color': scanPopup.color || '#8b5cf6' }}>
-            <div className="mawhba-scan-popup-label">{scanPopup.label}</div>
-            <div className="mawhba-scan-popup-name">{scanPopup.name}</div>
-            {scanPopup.badge && <div className="mawhba-scan-popup-workshop">{scanPopup.badge}</div>}
-            {scanPopup.time && <div className="mawhba-scan-popup-time mono">{scanPopup.time}</div>}
+        <div className="mawhba-scan-popup-overlay" onClick={() => setScanPopup(null)}>
+          <div
+            className={`mawhba-scan-popup mawhba-scan-${scanPopup.kind}`}
+            style={{ '--popup-color': scanPopup.color || '#8b5cf6' }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="mawhba-scan-icon">
+              {scanPopup.kind === 'checkin' && '📥'}
+              {scanPopup.kind === 'checkout' && '📤'}
+              {scanPopup.kind === 'done' && '✓'}
+              {scanPopup.kind === 'warning' && '⏳'}
+              {scanPopup.kind === 'error' && '✕'}
+            </div>
+            <div className="mawhba-scan-label">{scanPopup.label}</div>
+            <div className="mawhba-scan-name">{scanPopup.name}</div>
+            {scanPopup.badge && (
+              <div className="mawhba-scan-course">{scanPopup.badge}</div>
+            )}
+            {scanPopup.time && (
+              <div className="mawhba-scan-datetime">
+                <span className="mawhba-scan-time">{scanPopup.time}</span>
+              </div>
+            )}
+            <div className="mawhba-scan-fadebar"><div /></div>
           </div>
         </div>
       )}
