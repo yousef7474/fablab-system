@@ -4,6 +4,7 @@ import { motion } from 'framer-motion';
 import { toast } from 'react-toastify';
 import api from '../../config/api';
 import '../Mawhba/Mawhba.css';
+import UnifiedAttendancePage from '../shared/UnifiedAttendancePage';
 import ReceiptModal from '../shared/ReceiptModal';
 import ReceiptArchiveModal from '../shared/ReceiptArchiveModal';
 import AttendanceLog from '../shared/AttendanceLog';
@@ -251,30 +252,9 @@ const VolunteerManagement = () => {
     }
   };
 
-  // USB HID barcode reader listener — only active when attendance mode is open
-  useEffect(() => {
-    if (!volunteerAttendanceMode) return undefined;
-    const onKey = (e) => {
-      const tag = (e.target && e.target.tagName) || '';
-      const editable = e.target && (e.target.isContentEditable ||
-        tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT');
-      if (editable) return;
-      const now = Date.now();
-      const gap = now - (volHwLastKeyRef.current || 0);
-      if (gap > 300) volHwBufferRef.current = '';
-      volHwLastKeyRef.current = now;
-      if (e.key === 'Enter') {
-        const code = (volHwBufferRef.current || '').trim();
-        volHwBufferRef.current = '';
-        if (code.length >= 3) { e.preventDefault(); handleVolHardwareScan(code); }
-        return;
-      }
-      if (e.key && e.key.length === 1) volHwBufferRef.current += e.key;
-    };
-    document.addEventListener('keydown', onKey);
-    return () => document.removeEventListener('keydown', onKey);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [volunteerAttendanceMode, isRTL]);
+  // The hardware scanner listener now lives inside UnifiedAttendancePage
+  // (shared by Mawhba + Volunteer). We removed the volunteer-local
+  // listener to avoid double scans.
 
   const handleCreateVolunteer = async () => {
     if (!volunteerForm.name || !volunteerForm.nationalId || !volunteerForm.phone) {
@@ -2595,128 +2575,11 @@ const VolunteerManagement = () => {
             </motion.div>
           </div>
         )}
-      {volunteerAttendanceMode && (
-        <div className="mawhba-attendance-mode" dir={isRTL ? 'rtl' : 'ltr'}>
-          <button
-            className="mawhba-am-close"
-            onClick={closeVolunteerAttendanceMode}
-            title={isRTL ? 'إغلاق' : 'Close'}
-          >×</button>
-          <button
-            className="mawhba-am-clear"
-            onClick={clearVolTodayLogs}
-            disabled={volClearingToday}
-            title={isRTL ? 'مسح سجلات اليوم' : "Clear today's logs"}
-          >
-            🗑 {isRTL ? 'مسح سجلات اليوم' : 'Clear today'}
-          </button>
-
-          <div className="mawhba-am-inner">
-            <header className="mawhba-am-header">
-              <div className="mawhba-am-eyebrow">
-                📡 {isRTL ? 'حضور المتطوعين · فاب لاب الأحساء' : 'Volunteer Attendance · FABLAB Al-Ahsa'}
-              </div>
-              <h1 className="mawhba-am-title">
-                {isRTL ? 'صفحة تسجيل الحضور' : 'Attendance Registration'}
-              </h1>
-              <p className="mawhba-am-sub">
-                {isRTL
-                  ? 'استخدم الماسح للاستعلام عن رمز البطاقة الخاص بالمتطوع'
-                  : 'Use the scanner to read the QR on each volunteer card'}
-              </p>
-            </header>
-
-            <div className="mawhba-am-info">
-              <div className="mawhba-am-info-row">
-                <span className="mawhba-am-info-icon" style={{ background: '#22c55e' }}>1</span>
-                <div>
-                  <div className="mawhba-am-info-title">{isRTL ? 'المسح الأول اليوم' : 'First scan today'}</div>
-                  <div className="mawhba-am-info-text">{isRTL ? 'يسجل دخول المتطوع مع التاريخ والوقت' : 'Records check-in with date and time'}</div>
-                </div>
-              </div>
-              <div className="mawhba-am-info-row">
-                <span className="mawhba-am-info-icon" style={{ background: '#f59e0b' }}>2</span>
-                <div>
-                  <div className="mawhba-am-info-title">{isRTL ? 'المسح الثاني اليوم' : 'Second scan today'}</div>
-                  <div className="mawhba-am-info-text">{isRTL ? 'يسجل خروج المتطوع (بعد ١٥ دقيقة على الأقل)' : 'Records check-out (at least 15 minutes later)'}</div>
-                </div>
-              </div>
-              <div className="mawhba-am-info-row">
-                <span className="mawhba-am-info-icon" style={{ background: '#64748b' }}>✓</span>
-                <div>
-                  <div className="mawhba-am-info-title">{isRTL ? 'بعد إكمال الحضور' : 'After both scans'}</div>
-                  <div className="mawhba-am-info-text">{isRTL ? 'لن يتم تسجيل مسح إضافي لنفس اليوم' : 'No further scans are recorded for the same day'}</div>
-                </div>
-              </div>
-            </div>
-
-            <div className="mawhba-am-ready">
-              <div className="mawhba-am-ready-pulse"></div>
-              <div className="mawhba-am-ready-label">{isRTL ? 'جاهز للمسح' : 'READY TO SCAN'}</div>
-              <div className="mawhba-am-ready-hint">{isRTL ? 'وجّه الماسح نحو رمز الحضور على البطاقة' : 'Point the reader at the QR on the card'}</div>
-            </div>
-
-            <div className="mawhba-am-stats">
-              <div className="mawhba-am-stat" style={{ borderColor: '#22c55e' }}>
-                <div className="mawhba-am-stat-value" style={{ color: '#16a34a' }}>{volSessionStats.checkins}</div>
-                <div className="mawhba-am-stat-label">{isRTL ? 'دخول' : 'Check-ins'}</div>
-              </div>
-              <div className="mawhba-am-stat" style={{ borderColor: '#f59e0b' }}>
-                <div className="mawhba-am-stat-value" style={{ color: '#d97706' }}>{volSessionStats.checkouts}</div>
-                <div className="mawhba-am-stat-label">{isRTL ? 'خروج' : 'Check-outs'}</div>
-              </div>
-              <div className="mawhba-am-stat" style={{ borderColor: '#ef4444' }}>
-                <div className="mawhba-am-stat-value" style={{ color: '#dc2626' }}>{volSessionStats.errors}</div>
-                <div className="mawhba-am-stat-label">{isRTL ? 'فشل' : 'Errors'}</div>
-              </div>
-            </div>
-
-            {volAttendanceList.length > 0 && (
-              <div className="mawhba-am-groups">
-                <div className="mawhba-am-recent-title">
-                  {isRTL ? 'حضور المتطوعين اليوم' : "Today's Volunteers"}
-                </div>
-                <div className="mawhba-am-group" style={{ '--group-color': '#f97316' }}>
-                  <div className="mawhba-am-group-header">
-                    <span className="mawhba-am-group-dot"></span>
-                    <span className="mawhba-am-group-name">{isRTL ? 'المتطوعون' : 'Volunteers'}</span>
-                    <span className="mawhba-am-group-count">{volAttendanceList.length}</span>
-                  </div>
-                  <div className="mawhba-am-group-body">
-                    {volAttendanceList.map(st => {
-                      const isOut = st.status === 'checked_out';
-                      return (
-                        <div key={st.attendanceId} className={`mawhba-am-student status-${st.status}`}>
-                          <span className={`mawhba-am-student-badge ${isOut ? 'is-out' : 'is-in'}`}>
-                            {isOut ? (isRTL ? 'خرج' : 'Left') : (isRTL ? 'داخل' : 'Inside')}
-                          </span>
-                          <span className="mawhba-am-student-name">{st.name}</span>
-                          <span className="mawhba-am-student-times mono">
-                            <span>{isRTL ? 'د' : 'IN'} {fmtTimeShort(st.checkInAt)}</span>
-                            {st.checkOutAt && (
-                              <span>{isRTL ? 'خ' : 'OUT'} {fmtTimeShort(st.checkOutAt)}</span>
-                            )}
-                          </span>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
-
-          {volScanPopup && (
-            <div className={`mawhba-scan-popup-overlay kind-${volScanPopup.kind}`}>
-              <div className="mawhba-scan-popup">
-                <div className="mawhba-scan-popup-label">{volScanPopup.label}</div>
-                <div className="mawhba-scan-popup-name">{volScanPopup.name}</div>
-                {volScanPopup.time && <div className="mawhba-scan-popup-time mono">{volScanPopup.time}</div>}
-              </div>
-            </div>
-          )}
-        </div>
-      )}
+      <UnifiedAttendancePage
+        open={volunteerAttendanceMode}
+        onClose={() => setVolunteerAttendanceMode(false)}
+        isRTL={isRTL}
+      />
 
             <ReceiptModal
           open={!!receiptTarget}
