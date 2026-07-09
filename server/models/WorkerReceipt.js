@@ -16,6 +16,7 @@ const WorkerReceipt = sequelize.define('WorkerReceipt', {
   nationalId:    { type: DataTypes.STRING, allowNull: true },
   amount:        { type: DataTypes.STRING, allowNull: false },
   purpose:       { type: DataTypes.TEXT,   allowNull: true },
+  note:          { type: DataTypes.TEXT,   allowNull: true },
   receiptDate:   { type: DataTypes.DATEONLY, allowNull: false },
   recipientPhone:{ type: DataTypes.STRING, allowNull: true },
   createdById:   { type: DataTypes.UUID,   allowNull: true }

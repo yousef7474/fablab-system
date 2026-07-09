@@ -115,6 +115,7 @@ const ReceiptArchiveModal = ({ open, onClose, recipient, personType = 'volunteer
         <tr><th>رقم الهوية</th><td dir="ltr" style="text-align:right">${safe(r.nationalId) || '&nbsp;'}</td></tr>
         <tr><th>المبلغ</th><td>${safe(r.amount) ? safe(r.amount) + ' ريال' : '&nbsp;'}</td></tr>
         <tr><th>وذلك عن</th><td>${safe(r.purpose) || '&nbsp;'}</td></tr>
+        <tr><th>ملاحظة</th><td>${safe(r.note) || '&nbsp;'}</td></tr>
         <tr><th>تاريخ الاستلام</th><td>${dateStr || '&nbsp;'}</td></tr>
         <tr><th>جوال المستلم</th><td dir="ltr" style="text-align:right">${safe(r.recipientPhone) || '&nbsp;'}</td></tr>
       </table>

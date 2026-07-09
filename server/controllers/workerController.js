@@ -671,7 +671,7 @@ exports.listWorkerReceipts = async (req, res) => {
 
 exports.createWorkerReceipt = async (req, res) => {
   try {
-    const { recipientName, nationalId, amount, purpose, receiptDate, recipientPhone } = req.body || {};
+    const { recipientName, nationalId, amount, purpose, note, receiptDate, recipientPhone } = req.body || {};
     if (!recipientName || !amount || !receiptDate) {
       return res.status(400).json({ message: 'recipientName, amount and receiptDate are required' });
     }
@@ -684,6 +684,7 @@ exports.createWorkerReceipt = async (req, res) => {
       nationalId: nationalId || null,
       amount,
       purpose: purpose || null,
+      note: note || null,
       receiptDate,
       recipientPhone: recipientPhone || null,
       createdById: req.admin?.adminId || null

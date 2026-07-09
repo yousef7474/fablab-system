@@ -20,6 +20,17 @@ const VolunteerManagement = () => {
   // Attendance mode state
   const [volunteerAttendanceMode, setVolunteerAttendanceMode] = useState(false);
   const [volAttendanceList, setVolAttendanceList] = useState([]);
+  // Per-volunteer attendance history modal + full CSV export
+  const [showLogModal, setShowLogModal] = useState(false);
+  const [logVolunteer, setLogVolunteer] = useState(null);
+  const [logRecords, setLogRecords] = useState([]);
+  const [logLoading, setLogLoading] = useState(false);
+  const [showExportModal, setShowExportModal] = useState(false);
+  const _today = new Date().toISOString().slice(0, 10);
+  const _monthAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+  const [exportFrom, setExportFrom] = useState(_monthAgo);
+  const [exportTo, setExportTo] = useState(_today);
+  const [exporting, setExporting] = useState(false);
   const [volSessionStats, setVolSessionStats] = useState({ checkins: 0, checkouts: 0, errors: 0 });
   const [volRecentScans, setVolRecentScans] = useState([]);
   const [volScanPopup, setVolScanPopup] = useState(null);
@@ -174,6 +185,96 @@ const VolunteerManagement = () => {
       console.error('hydrateVolAttendance failed', err);
     }
   }, []);
+
+  // ─── Per-volunteer attendance history ────────────────────────────
+  const openVolunteerLog = async (volunteer) => {
+    setLogVolunteer(volunteer);
+    setLogRecords([]);
+    setShowLogModal(true);
+    setLogLoading(true);
+    try {
+      const { data } = await api.get(`/volunteers/${volunteer.volunteerId}/attendance`);
+      setLogRecords(Array.isArray(data) ? data : []);
+    } catch (err) {
+      console.error(err);
+      toast.error(isRTL ? 'تعذر تحميل سجل الحضور' : 'Failed to load attendance history');
+    } finally {
+      setLogLoading(false);
+    }
+  };
+
+  const deleteVolAttendanceRecord = async (rec) => {
+    if (!window.confirm(isRTL ? `حذف سجل ${rec.date}؟` : `Delete record for ${rec.date}?`)) return;
+    try {
+      await api.delete(`/volunteers/attendance/${rec.attendanceId}`);
+      setLogRecords(prev => prev.filter(r => r.attendanceId !== rec.attendanceId));
+      toast.success(isRTL ? 'تم الحذف' : 'Deleted');
+    } catch (err) {
+      console.error(err);
+      toast.error(isRTL ? 'فشل الحذف' : 'Delete failed');
+    }
+  };
+
+  const clearVolCheckoutRecord = async (rec) => {
+    if (!window.confirm(
+      isRTL
+        ? `حذف تسجيل الخروج لتاريخ ${rec.date}؟ سيبقى تسجيل الدخول محفوظاً.`
+        : `Clear check-out for ${rec.date}? Check-in will remain.`
+    )) return;
+    try {
+      await api.patch(`/volunteers/attendance/${rec.attendanceId}/checkout`);
+      setLogRecords(prev => prev.map(r =>
+        r.attendanceId === rec.attendanceId ? { ...r, checkOutAt: null } : r
+      ));
+      toast.success(isRTL ? 'تم حذف تسجيل الخروج' : 'Check-out cleared');
+    } catch (err) {
+      console.error(err);
+      toast.error(err?.response?.data?.message || (isRTL ? 'فشل الحذف' : 'Clear failed'));
+    }
+  };
+
+  const downloadAllVolunteersAttendance = async () => {
+    if (!exportFrom || !exportTo) {
+      toast.error(isRTL ? 'حدد نطاق التواريخ' : 'Pick a date range');
+      return;
+    }
+    setExporting(true);
+    try {
+      const res = await api.post(
+        '/volunteers/attendance/export',
+        { from: exportFrom, to: exportTo },
+        { responseType: 'blob' }
+      );
+      const url = URL.createObjectURL(res.data);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `volunteers-attendance-${exportFrom}_to_${exportTo}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+      toast.success(isRTL ? 'تم تنزيل الملف' : 'File downloaded');
+      setShowExportModal(false);
+    } catch (err) {
+      console.error(err);
+      toast.error(isRTL ? 'فشل التصدير' : 'Export failed');
+    } finally {
+      setExporting(false);
+    }
+  };
+
+  // helper time formatters for the log modal
+  const fmtHms = (iso) => {
+    if (!iso) return '—';
+    const d = new Date(iso);
+    if (isNaN(d.getTime())) return '—';
+    const pad = (n) => String(n).padStart(2, '0');
+    return `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+  };
+  const durationMin = (rec) => {
+    if (!rec.checkInAt || !rec.checkOutAt) return null;
+    return Math.max(0, Math.round((new Date(rec.checkOutAt) - new Date(rec.checkInAt)) / 60000));
+  };
 
   const openVolunteerAttendanceMode = async () => {
     setVolunteerAttendanceMode(true);
@@ -1470,6 +1571,21 @@ const VolunteerManagement = () => {
                     {isRTL ? 'طباعة جميع البطاقات' : 'Print All Cards'}
                   </button>
                 )}
+                {volunteers.length > 0 && (
+                  <button
+                    className="add-opportunity-btn"
+                    style={{ background: '#16a34a' }}
+                    onClick={() => setShowExportModal(true)}
+                    title={isRTL ? 'تصدير سجل الحضور لجميع المتطوعين' : 'Export attendance for all volunteers'}
+                  >
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                      <polyline points="7 10 12 15 17 10"/>
+                      <line x1="12" y1="15" x2="12" y2="3"/>
+                    </svg>
+                    {isRTL ? 'تصدير الحضور' : 'Export Attendance'}
+                  </button>
+                )}
                 <button
                   className="add-opportunity-btn"
                   style={{ background: '#0ea5e9' }}
@@ -1571,6 +1687,21 @@ const VolunteerManagement = () => {
                           <circle cx="12" cy="12" r="3"/>
                         </svg>
                         {isRTL ? 'عرض' : 'View'}
+                      </button>
+                      <button
+                        className="rate-volunteer-btn"
+                        onClick={() => openVolunteerLog(volunteer)}
+                        title={isRTL ? 'سجل الحضور' : 'Attendance history'}
+                        style={{ background: '#dcfce7', color: '#166534' }}
+                      >
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                          <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+                          <line x1="16" y1="2" x2="16" y2="6"/>
+                          <line x1="8" y1="2" x2="8" y2="6"/>
+                          <line x1="3" y1="10" x2="21" y2="10"/>
+                          <path d="M8 14h.01M12 14h.01M16 14h.01M8 18h.01M12 18h.01M16 18h.01"/>
+                        </svg>
+                        {isRTL ? 'سجل الحضور' : 'History'}
                       </button>
                       <button
                         className="rate-volunteer-btn"
@@ -2580,6 +2711,150 @@ const VolunteerManagement = () => {
         onClose={() => setVolunteerAttendanceMode(false)}
         isRTL={isRTL}
       />
+
+      {/* Per-volunteer attendance history modal */}
+      {showLogModal && logVolunteer && (
+        <div className="mawhba-modal-overlay" onClick={() => setShowLogModal(false)}>
+          <div className="mawhba-modal mawhba-log-modal" onClick={(e) => e.stopPropagation()}>
+            <h3>📅 {isRTL ? `سجل حضور المتطوع — ${logVolunteer.name}` : `Attendance History — ${logVolunteer.name}`}</h3>
+
+            <div className="mawhba-log-summary">
+              <div>
+                <span>{isRTL ? 'إجمالي الأيام' : 'Total days'}</span>
+                <b>{logRecords.length}</b>
+              </div>
+              <div>
+                <span>{isRTL ? 'مكتملة' : 'Completed'}</span>
+                <b>{logRecords.filter(r => r.checkInAt && r.checkOutAt).length}</b>
+              </div>
+              <div>
+                <span>{isRTL ? 'لم يخرج بعد' : 'Still in'}</span>
+                <b>{logRecords.filter(r => r.checkInAt && !r.checkOutAt).length}</b>
+              </div>
+              <div>
+                <span>{isRTL ? 'إجمالي الوقت' : 'Total time'}</span>
+                <b>
+                  {(() => {
+                    const total = logRecords.reduce((s, r) => s + (durationMin(r) || 0), 0);
+                    return `${Math.floor(total / 60)}h ${total % 60}m`;
+                  })()}
+                </b>
+              </div>
+            </div>
+
+            <div className="mawhba-log-table-wrap">
+              {logLoading ? (
+                <div className="mawhba-empty">{isRTL ? 'جارٍ التحميل...' : 'Loading...'}</div>
+              ) : logRecords.length === 0 ? (
+                <div className="mawhba-empty">{isRTL ? 'لا يوجد سجل حضور بعد' : 'No attendance records yet'}</div>
+              ) : (
+                <table className="mawhba-log-table">
+                  <thead>
+                    <tr>
+                      <th>{isRTL ? 'التاريخ' : 'Date'}</th>
+                      <th>{isRTL ? 'الدخول' : 'Check In'}</th>
+                      <th>{isRTL ? 'الخروج' : 'Check Out'}</th>
+                      <th>{isRTL ? 'المدة' : 'Duration'}</th>
+                      <th>{isRTL ? 'الحالة' : 'Status'}</th>
+                      <th></th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {logRecords.map(r => {
+                      const dur = durationMin(r);
+                      const completed = r.checkInAt && r.checkOutAt;
+                      return (
+                        <tr key={r.attendanceId} className={completed ? 'is-completed' : 'is-partial'}>
+                          <td className="mono">{r.date}</td>
+                          <td className="mono">{fmtHms(r.checkInAt)}</td>
+                          <td className="mono">{fmtHms(r.checkOutAt)}</td>
+                          <td className="mono">{dur != null ? `${Math.floor(dur / 60)}h ${dur % 60}m` : '—'}</td>
+                          <td>
+                            <span className={`mawhba-log-pill ${completed ? 'ok' : 'partial'}`}>
+                              {completed ? (isRTL ? '✓ مكتمل' : '✓ Complete') : (isRTL ? '⏳ داخل الآن' : '⏳ Still in')}
+                            </span>
+                          </td>
+                          <td>
+                            <div className="mawhba-log-row-actions">
+                              {r.checkOutAt && (
+                                <button
+                                  className="mawhba-btn-small mawhba-btn-warn"
+                                  onClick={() => clearVolCheckoutRecord(r)}
+                                  title={isRTL ? 'حذف تسجيل الخروج فقط' : 'Clear check-out only'}
+                                >↩</button>
+                              )}
+                              <button
+                                className="mawhba-btn-small mawhba-btn-del"
+                                onClick={() => deleteVolAttendanceRecord(r)}
+                                title={isRTL ? 'حذف السجل بالكامل' : 'Delete entire record'}
+                              >×</button>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              )}
+            </div>
+
+            <div className="mawhba-modal-actions">
+              <button className="mawhba-btn-secondary" onClick={() => setShowLogModal(false)}>
+                {isRTL ? 'إغلاق' : 'Close'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Full volunteers attendance export modal */}
+      {showExportModal && (
+        <div className="mawhba-modal-overlay" onClick={() => !exporting && setShowExportModal(false)}>
+          <div className="mawhba-modal" onClick={(e) => e.stopPropagation()}>
+            <h3>📥 {isRTL ? 'تصدير سجل حضور المتطوعين' : 'Export Volunteer Attendance'}</h3>
+            <p style={{ color: '#64748b', margin: '4px 0 12px', fontSize: 13 }}>
+              {isRTL ? 'سيصدَّر سجل الحضور لجميع المتطوعين في النطاق المحدد كملف Excel.' : 'Exports attendance for all volunteers over the selected range as an Excel-friendly file.'}
+            </p>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
+              <label style={{ display: 'block' }}>
+                <span style={{ fontSize: 13, fontWeight: 600, color: '#334155' }}>{isRTL ? 'من تاريخ' : 'From'}</span>
+                <input
+                  type="date"
+                  value={exportFrom}
+                  onChange={(e) => setExportFrom(e.target.value)}
+                  style={{ width: '100%', padding: '8px 10px', border: '1.5px solid #e2e8f0', borderRadius: 8, marginTop: 4 }}
+                />
+              </label>
+              <label style={{ display: 'block' }}>
+                <span style={{ fontSize: 13, fontWeight: 600, color: '#334155' }}>{isRTL ? 'إلى تاريخ' : 'To'}</span>
+                <input
+                  type="date"
+                  value={exportTo}
+                  onChange={(e) => setExportTo(e.target.value)}
+                  style={{ width: '100%', padding: '8px 10px', border: '1.5px solid #e2e8f0', borderRadius: 8, marginTop: 4 }}
+                />
+              </label>
+            </div>
+            <div className="mawhba-modal-actions">
+              <button
+                className="mawhba-btn-secondary"
+                onClick={() => setShowExportModal(false)}
+                disabled={exporting}
+              >
+                {isRTL ? 'إلغاء' : 'Cancel'}
+              </button>
+              <button
+                className="mawhba-btn-primary"
+                onClick={downloadAllVolunteersAttendance}
+                disabled={exporting}
+                style={{ background: '#16a34a' }}
+              >
+                {exporting ? (isRTL ? 'جارٍ التصدير...' : 'Exporting...') : (isRTL ? 'تصدير' : 'Download')}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
             <ReceiptModal
           open={!!receiptTarget}

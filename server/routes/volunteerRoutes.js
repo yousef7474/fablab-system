@@ -68,6 +68,7 @@ router.delete('/attendance/today', requireManager, volunteerController.clearToda
 router.get('/:id/attendance', volunteerController.listVolunteerAttendance);
 router.patch('/attendance/:id/checkout', requireManager, volunteerController.clearCheckout);
 router.delete('/attendance/:id', requireManager, volunteerController.deleteAttendance);
+router.post('/attendance/export', volunteerController.exportAttendance);
 
 // ============== VOLUNTEER RECEIPTS ==============
 

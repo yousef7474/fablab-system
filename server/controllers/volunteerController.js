@@ -680,7 +680,7 @@ exports.listVolunteerReceipts = async (req, res) => {
 
 exports.createVolunteerReceipt = async (req, res) => {
   try {
-    const { recipientName, nationalId, amount, purpose, receiptDate, recipientPhone } = req.body || {};
+    const { recipientName, nationalId, amount, purpose, note, receiptDate, recipientPhone } = req.body || {};
     if (!recipientName || !amount || !receiptDate) {
       return res.status(400).json({ message: 'recipientName, amount and receiptDate are required' });
     }
@@ -693,6 +693,7 @@ exports.createVolunteerReceipt = async (req, res) => {
       nationalId: nationalId || null,
       amount,
       purpose: purpose || null,
+      note: note || null,
       receiptDate,
       recipientPhone: recipientPhone || null,
       createdById: req.admin?.adminId || null
@@ -920,6 +921,69 @@ exports.deleteAttendance = async (req, res) => {
     res.json({ message: 'Deleted' });
   } catch (err) {
     console.error('Volunteer deleteAttendance error:', err);
+    res.status(500).json({ message: 'Server error', error: err.message });
+  }
+};
+
+// ============== Attendance export (Excel-friendly TSV) ==============
+
+const riyadhTimeFmt = new Intl.DateTimeFormat('en-GB', {
+  timeZone: 'Asia/Riyadh',
+  hour12: false,
+  hour: '2-digit', minute: '2-digit', second: '2-digit'
+});
+const fmtTimeRiyadh = (d) => {
+  if (!d) return '';
+  const dt = new Date(d);
+  if (isNaN(dt.getTime())) return '';
+  return riyadhTimeFmt.format(dt).replace(/^24:/, '00:');
+};
+
+exports.exportAttendance = async (req, res) => {
+  try {
+    const { volunteerIds, from, to } = req.body || {};
+    const where = {};
+    if (Array.isArray(volunteerIds) && volunteerIds.length > 0) {
+      where.volunteerId = { [Op.in]: volunteerIds };
+    }
+    if (from) where.date = { ...(where.date || {}), [Op.gte]: from };
+    if (to) where.date = { ...(where.date || {}), [Op.lte]: to };
+
+    const records = await VolunteerAttendance.findAll({
+      where,
+      include: [{ model: Volunteer, as: 'volunteer', required: false }],
+      order: [['date', 'ASC'], ['checkInAt', 'ASC']]
+    });
+
+    const header = ['اسم المتطوع', 'رقم الهوية', 'رقم الجوال', 'التاريخ', 'وقت الدخول', 'وقت الخروج', 'المدة (دقيقة)'];
+    const lines = [header.join('\t')];
+    for (const r of records) {
+      const v = r.volunteer || {};
+      const minutes = r.checkInAt && r.checkOutAt
+        ? Math.max(0, Math.round((new Date(r.checkOutAt) - new Date(r.checkInAt)) / 60000))
+        : '';
+      lines.push([
+        v.name || '',
+        v.nationalId || '',
+        v.phone || '',
+        r.date || '',
+        fmtTimeRiyadh(r.checkInAt),
+        fmtTimeRiyadh(r.checkOutAt),
+        minutes
+      ].map(x => String(x ?? '').replace(/\t/g, ' ').replace(/\r?\n/g, ' ')).join('\t'));
+    }
+
+    const text = lines.join('\r\n');
+    const bom = Buffer.from([0xFF, 0xFE]);
+    const body = Buffer.from(text, 'utf16le');
+    const out = Buffer.concat([bom, body]);
+
+    const today = todayStr();
+    res.setHeader('Content-Type', 'text/csv; charset=utf-16le');
+    res.setHeader('Content-Disposition', `attachment; filename="volunteers-attendance-${today}.csv"`);
+    res.send(out);
+  } catch (err) {
+    console.error('Volunteer exportAttendance error:', err);
     res.status(500).json({ message: 'Server error', error: err.message });
   }
 };

@@ -37,6 +37,7 @@ const ReceiptModal = ({ open, onClose, recipient, personType = 'volunteer', onSa
     nationalId: '',
     amount: '',
     purpose: '',
+    note: '',
     receiptDate: new Date().toISOString().slice(0, 10),
     recipientPhone: '',
     opportunityId: ''
@@ -50,6 +51,7 @@ const ReceiptModal = ({ open, onClose, recipient, personType = 'volunteer', onSa
       nationalId: recipient?.nationalId || '',
       amount: '',
       purpose: '',
+      note: '',
       receiptDate: new Date().toISOString().slice(0, 10),
       recipientPhone: recipient?.phone || '',
       opportunityId: ''
@@ -149,6 +151,7 @@ const ReceiptModal = ({ open, onClose, recipient, personType = 'volunteer', onSa
           nationalId: form.nationalId,
           amount: form.amount,
           purpose: form.purpose,
+          note: form.note,
           receiptDate: form.receiptDate,
           recipientPhone: form.recipientPhone
         });
@@ -414,6 +417,7 @@ const ReceiptModal = ({ open, onClose, recipient, personType = 'volunteer', onSa
         <tr><th>رقم الهوية</th><td dir="ltr" style="text-align:right">${safe(form.nationalId) || '&nbsp;'}</td></tr>
         <tr><th>المبلغ</th><td class="amount-cell">${safe(form.amount) ? safe(form.amount) + ' ريال' : '&nbsp;'}</td></tr>
         <tr><th>وذلك عن</th><td>${safe(form.purpose) || '&nbsp;'}</td></tr>
+        <tr><th>ملاحظة</th><td>${safe(form.note) || '&nbsp;'}</td></tr>
         <tr><th>تاريخ الاستلام</th><td>${dateStr || '&nbsp;'}</td></tr>
         <tr><th>جوال المستلم</th><td dir="ltr" style="text-align:right">${safe(form.recipientPhone) || '&nbsp;'}</td></tr>
       </table>
@@ -568,6 +572,16 @@ const ReceiptModal = ({ open, onClose, recipient, personType = 'volunteer', onSa
               onChange={(e) => handleChange('purpose', e.target.value)}
               placeholder="سبب الصرف"
               style={{ width: '100%', padding: '0.5rem', borderRadius: 8, border: '1.5px solid #e2e8f0', fontFamily: 'inherit' }}
+            />
+          </div>
+          <div style={{ gridColumn: '1 / -1' }}>
+            <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 600, marginBottom: 4 }}>ملاحظة</label>
+            <textarea
+              value={form.note}
+              onChange={(e) => handleChange('note', e.target.value)}
+              placeholder="ملاحظة إضافية تُطبع أسفل سبب الصرف"
+              rows={2}
+              style={{ width: '100%', padding: '0.5rem', borderRadius: 8, border: '1.5px solid #e2e8f0', fontFamily: 'inherit', resize: 'vertical' }}
             />
           </div>
           <div style={{ gridColumn: '1 / -1' }}>
