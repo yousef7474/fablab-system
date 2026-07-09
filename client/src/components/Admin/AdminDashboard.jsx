@@ -7992,8 +7992,15 @@ const AdminDashboard = () => {
             {/* Mawhba Tab */}
             {activeTab === 'mawhba' && <Mawhba />}
 
-            {/* FabLab Staff Tab */}
-            {activeTab === 'fablab-staff' && <FablabStaffManagement />}
+            {/* FabLab Staff Tab — wrapped with data-page="manager" so the
+                shared Manager.css classes (.volunteers-content, .volunteer-card,
+                .modern-modal, etc.) apply, keeping it visually consistent
+                with the Volunteers and Workers tabs. */}
+            {activeTab === 'fablab-staff' && (
+              <div data-page="manager">
+                <FablabStaffManagement />
+              </div>
+            )}
 
             {/* Settings Tab */}
             {activeTab === 'settings' && (

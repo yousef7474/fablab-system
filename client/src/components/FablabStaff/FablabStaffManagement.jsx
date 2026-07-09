@@ -1,14 +1,19 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
+import { motion } from 'framer-motion';
 import { toast } from 'react-toastify';
 import api from '../../config/api';
-import '../Mawhba/Mawhba.css';
 import UnifiedAttendancePage from '../shared/UnifiedAttendancePage';
 
 const EMPTY_STAFF = {
   name: '', nationalId: '', phone: '', email: '',
   position: '', nationalIdPhoto: ''
 };
+
+// Purple accent for FabLab staff — matches the ID card + attendance category
+const PURPLE = '#7c3aed';
+const PURPLE_DARK = '#5b21b6';
+const PURPLE_GRADIENT = `linear-gradient(135deg, ${PURPLE} 0%, ${PURPLE_DARK} 100%)`;
 
 const FablabStaffManagement = () => {
   const { i18n } = useTranslation();
@@ -77,8 +82,7 @@ const FablabStaffManagement = () => {
     reader.readAsDataURL(file);
   };
 
-  const handleSave = async (e) => {
-    e?.preventDefault?.();
+  const handleSave = async () => {
     if (!form.name.trim()) { toast.error(isRTL ? 'الاسم مطلوب' : 'Name required'); return; }
     if (!form.nationalId.trim()) { toast.error(isRTL ? 'رقم الهوية مطلوب' : 'National ID required'); return; }
     setSaving(true);
@@ -130,7 +134,7 @@ const FablabStaffManagement = () => {
     else setSelected(new Set(staff.map(s => s.staffId)));
   };
 
-  // ─── ID card print ──────────────────────────────────────
+  // ─── ID card print (72×102mm, 4 per A4, purple) ─────────────────
   const buildStaffCardStyles = () => `
     @page { size: A4 portrait; margin: 10mm 8mm; }
     * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -300,7 +304,7 @@ const FablabStaffManagement = () => {
     }
   };
 
-  const handlePrintSelected = async () => {
+  const handlePrintBulk = async () => {
     const ids = selected.size > 0 ? [...selected] : staff.map(s => s.staffId);
     if (ids.length === 0) {
       toast.warning(isRTL ? 'لا يوجد موظفين' : 'No staff to print');
@@ -320,141 +324,467 @@ const FablabStaffManagement = () => {
     }
   };
 
+  const filteredStaff = staff; // server-side search already applied
+
   return (
-    <div className="mawhba-container" dir={isRTL ? 'rtl' : 'ltr'}>
-      <div className="mawhba-header">
-        <h2>👥 {isRTL ? 'موظفو فاب لاب' : 'FabLab Staff'}</h2>
-        <div className="mawhba-toolbar">
-          <input
-            className="mawhba-search"
-            placeholder={isRTL ? 'بحث بالاسم أو رقم الهوية' : 'Search by name or ID'}
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-          />
-          <button className="mawhba-btn mawhba-btn-primary" style={{ background: '#7c3aed' }} onClick={openAdd}>
-            + {isRTL ? 'إضافة موظف' : 'Add Staff'}
-          </button>
-          <button
-            className="mawhba-btn"
-            style={{ background: '#7c3aed', color: 'white' }}
-            onClick={handlePrintSelected}
-            disabled={staff.length === 0}
-            title={isRTL ? 'طباعة بطاقات (4 لكل A4)' : 'Print ID cards (4 per A4)'}
-          >
-            🖨 {selected.size > 0
-              ? (isRTL ? `طباعة ${selected.size} بطاقة` : `Print ${selected.size} card(s)`)
-              : (isRTL ? 'طباعة جميع البطاقات' : 'Print All Cards')}
-          </button>
-          <button
-            className="mawhba-btn"
-            style={{ background: '#0ea5e9', color: 'white' }}
-            onClick={() => setAttendanceMode(true)}
-          >
-            📅 {isRTL ? 'صفحة الحضور' : 'Attendance Page'}
-          </button>
+    <>
+      <div className="volunteers-content">
+        <div className="volunteers-header">
+          <h2>{isRTL ? 'موظفو فاب لاب' : 'FabLab Staff'}</h2>
+          <div className="volunteers-actions">
+            <button
+              className="add-volunteer-btn"
+              style={{ background: PURPLE_GRADIENT }}
+              onClick={openAdd}
+            >
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                <circle cx="8.5" cy="7" r="4"/>
+                <line x1="20" y1="8" x2="20" y2="14"/>
+                <line x1="23" y1="11" x2="17" y2="11"/>
+              </svg>
+              {isRTL ? 'إضافة موظف' : 'Add Staff'}
+            </button>
+            {staff.length > 0 && (
+              <button
+                className="add-opportunity-btn"
+                style={{ background: PURPLE }}
+                onClick={handlePrintBulk}
+                title={isRTL ? 'طباعة البطاقات (4 لكل A4)' : 'Print ID cards (4 per A4)'}
+              >
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <polyline points="6 9 6 2 18 2 18 9"/>
+                  <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/>
+                  <rect x="6" y="14" width="12" height="8"/>
+                </svg>
+                {selected.size > 0
+                  ? (isRTL ? `طباعة ${selected.size} بطاقة` : `Print ${selected.size} card(s)`)
+                  : (isRTL ? 'طباعة جميع البطاقات' : 'Print All Cards')}
+              </button>
+            )}
+            <button
+              className="add-opportunity-btn"
+              style={{ background: '#0ea5e9' }}
+              onClick={() => setAttendanceMode(true)}
+              title={isRTL ? 'صفحة تسجيل الحضور بالماسح' : 'Open scanner attendance page'}
+            >
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <rect x="3" y="3" width="7" height="7"/>
+                <rect x="14" y="3" width="7" height="7"/>
+                <rect x="14" y="14" width="7" height="7"/>
+                <rect x="3" y="14" width="7" height="7"/>
+              </svg>
+              {isRTL ? 'صفحة الحضور' : 'Attendance Page'}
+            </button>
+          </div>
+        </div>
+
+        {/* Search + Select-all bar */}
+        <div style={{
+          display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'center',
+          padding: '12px 20px', background: 'white',
+          border: '1px solid #e2e8f0', borderRadius: 12,
+          margin: '0 0 16px'
+        }}>
+          <div style={{ position: 'relative', flex: 1, minWidth: 240 }}>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" strokeWidth="2"
+              style={{ position: 'absolute', [isRTL ? 'right' : 'left']: 12, top: '50%', transform: 'translateY(-50%)' }}>
+              <circle cx="11" cy="11" r="8"/>
+              <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+            </svg>
+            <input
+              type="text"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder={isRTL ? 'بحث بالاسم أو رقم الهوية أو المسمى الوظيفي' : 'Search by name / national ID / position'}
+              style={{
+                width: '100%',
+                padding: isRTL ? '10px 40px 10px 12px' : '10px 12px 10px 40px',
+                border: '1.5px solid #e2e8f0', borderRadius: 10,
+                fontFamily: 'inherit', fontSize: 14
+              }}
+            />
+          </div>
+          {staff.length > 0 && (
+            <label style={{
+              display: 'flex', alignItems: 'center', gap: 8,
+              padding: '8px 14px', background: selected.size === staff.length ? '#ede9fe' : '#f8fafc',
+              border: `1.5px solid ${selected.size === staff.length ? PURPLE : '#e2e8f0'}`,
+              borderRadius: 10, cursor: 'pointer',
+              fontSize: 13, fontWeight: 600, color: selected.size === staff.length ? PURPLE_DARK : '#475569'
+            }}>
+              <input
+                type="checkbox"
+                checked={selected.size === staff.length && staff.length > 0}
+                onChange={toggleAll}
+                style={{ width: 16, height: 16, cursor: 'pointer' }}
+              />
+              {isRTL ? 'تحديد الكل' : 'Select all'}
+              {selected.size > 0 && (
+                <span style={{ background: PURPLE, color: 'white', padding: '1px 8px', borderRadius: 999, fontSize: 12 }}>
+                  {selected.size}
+                </span>
+              )}
+            </label>
+          )}
+        </div>
+
+        <div className="volunteers-grid">
+          {loading ? (
+            <div style={{ gridColumn: '1 / -1', padding: 40, textAlign: 'center', color: '#64748b' }}>
+              {isRTL ? 'جارٍ التحميل...' : 'Loading...'}
+            </div>
+          ) : filteredStaff.length === 0 ? (
+            <div style={{ gridColumn: '1 / -1', padding: 40, textAlign: 'center', color: '#64748b' }}>
+              <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#cbd5e1" strokeWidth="1.5" style={{ marginBottom: 12 }}>
+                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                <circle cx="9" cy="7" r="4"/>
+              </svg>
+              <p style={{ marginBottom: 4, fontWeight: 600, color: '#334155' }}>
+                {isRTL ? 'لا يوجد موظفين بعد' : 'No staff yet'}
+              </p>
+              <p style={{ fontSize: 13 }}>
+                {isRTL ? 'أضف أول موظف من زر "إضافة موظف" أعلاه' : 'Add the first staff member with "Add Staff" above'}
+              </p>
+            </div>
+          ) : (
+            filteredStaff.map(row => {
+              const isSelected = selected.has(row.staffId);
+              return (
+                <div
+                  key={row.staffId}
+                  className="volunteer-card"
+                  style={{
+                    border: isSelected ? `2px solid ${PURPLE}` : undefined,
+                    boxShadow: isSelected ? `0 0 0 3px rgba(124, 58, 237, 0.14)` : undefined
+                  }}
+                >
+                  {/* Select checkbox in top corner */}
+                  <div style={{
+                    position: 'absolute', top: 12, [isRTL ? 'left' : 'right']: 12,
+                    zIndex: 2
+                  }}>
+                    <input
+                      type="checkbox"
+                      checked={isSelected}
+                      onChange={() => toggleOne(row.staffId)}
+                      style={{ width: 18, height: 18, cursor: 'pointer', accentColor: PURPLE }}
+                      title={isRTL ? 'اختيار' : 'Select'}
+                    />
+                  </div>
+
+                  <div className="volunteer-header">
+                    <div
+                      className="volunteer-avatar"
+                      style={{ background: PURPLE_GRADIENT, color: 'white' }}
+                    >
+                      {row.nationalIdPhoto ? (
+                        <img
+                          src={row.nationalIdPhoto}
+                          alt={row.name}
+                          style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 'inherit' }}
+                        />
+                      ) : (
+                        row.name?.charAt(0)?.toUpperCase() || 'S'
+                      )}
+                    </div>
+                    <div className="volunteer-info">
+                      <h3>{row.name}</h3>
+                      <p style={{ color: PURPLE_DARK, fontWeight: 600 }}>
+                        {row.position || (isRTL ? 'موظف فاب لاب' : 'FabLab Staff')}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div style={{
+                    padding: '10px 14px', background: '#faf5ff',
+                    border: '1px solid #ede9fe', borderRadius: 10,
+                    margin: '12px 0', fontSize: 13, color: '#334155',
+                    display: 'flex', flexDirection: 'column', gap: 6
+                  }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10 }}>
+                      <span style={{ color: '#64748b', fontWeight: 600 }}>{isRTL ? 'رقم الهوية' : 'National ID'}</span>
+                      <span style={{ fontFamily: 'ui-monospace, Menlo, monospace' }}>{row.nationalId || '—'}</span>
+                    </div>
+                    {row.phone && (
+                      <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10 }}>
+                        <span style={{ color: '#64748b', fontWeight: 600 }}>{isRTL ? 'الهاتف' : 'Phone'}</span>
+                        <span dir="ltr" style={{ fontFamily: 'ui-monospace, Menlo, monospace' }}>{row.phone}</span>
+                      </div>
+                    )}
+                    {row.email && (
+                      <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10 }}>
+                        <span style={{ color: '#64748b', fontWeight: 600 }}>{isRTL ? 'البريد' : 'Email'}</span>
+                        <span dir="ltr" style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '65%' }}>{row.email}</span>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="volunteer-card-actions">
+                    <button
+                      className="export-volunteer-btn"
+                      onClick={() => handlePrintOne(row)}
+                      title={isRTL ? 'طباعة البطاقة' : 'Print ID card'}
+                    >
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <polyline points="6 9 6 2 18 2 18 9"/>
+                        <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/>
+                        <rect x="6" y="14" width="12" height="8"/>
+                      </svg>
+                      {isRTL ? 'بطاقة' : 'Card'}
+                    </button>
+                    <button
+                      className="rate-volunteer-btn"
+                      onClick={() => openEdit(row)}
+                      title={isRTL ? 'تعديل البيانات' : 'Edit info'}
+                      style={{ background: '#eef2ff', color: '#4338ca' }}
+                    >
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <path d="M12 20h9"/>
+                        <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4z"/>
+                      </svg>
+                      {isRTL ? 'تعديل' : 'Edit'}
+                    </button>
+                    <button
+                      className="delete-volunteer-btn"
+                      onClick={() => handleDelete(row)}
+                      title={isRTL ? 'حذف الموظف' : 'Delete staff'}
+                    >
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <polyline points="3 6 5 6 21 6"/>
+                        <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+                      </svg>
+                      {isRTL ? 'حذف' : 'Delete'}
+                    </button>
+                  </div>
+                </div>
+              );
+            })
+          )}
         </div>
       </div>
 
-      <div className="mawhba-table-wrap">
-        {loading ? (
-          <div className="mawhba-empty">{isRTL ? 'جارٍ التحميل...' : 'Loading...'}</div>
-        ) : staff.length === 0 ? (
-          <div className="mawhba-empty">{isRTL ? 'لا يوجد موظفين — أضف الأول' : 'No staff yet — add one'}</div>
-        ) : (
-          <table className="mawhba-table">
-            <thead>
-              <tr>
-                <th style={{ width: 44 }}>
-                  <input
-                    type="checkbox"
-                    checked={selected.size === staff.length && staff.length > 0}
-                    onChange={toggleAll}
-                    title={isRTL ? 'تحديد الكل' : 'Select all'}
-                  />
-                </th>
-                <th>{isRTL ? 'الاسم' : 'Name'}</th>
-                <th>{isRTL ? 'المسمى الوظيفي' : 'Position'}</th>
-                <th>{isRTL ? 'رقم الهوية' : 'National ID'}</th>
-                <th>{isRTL ? 'الهاتف' : 'Phone'}</th>
-                <th>{isRTL ? 'البريد' : 'Email'}</th>
-                <th style={{ width: 220 }}>{isRTL ? 'إجراءات' : 'Actions'}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {staff.map(row => (
-                <tr key={row.staffId}>
-                  <td>
-                    <input
-                      type="checkbox"
-                      checked={selected.has(row.staffId)}
-                      onChange={() => toggleOne(row.staffId)}
-                    />
-                  </td>
-                  <td>{row.name}</td>
-                  <td style={{ color: '#7c3aed', fontWeight: 600 }}>{row.position || '—'}</td>
-                  <td className="mono">{row.nationalId}</td>
-                  <td className="mono">{row.phone || '—'}</td>
-                  <td>{row.email || '—'}</td>
-                  <td>
-                    <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                      <button className="mawhba-btn-small mawhba-btn-card" onClick={() => handlePrintOne(row)} title={isRTL ? 'طباعة البطاقة' : 'Print card'}>🎫</button>
-                      <button className="mawhba-btn-small" style={{ background: '#eef2ff', color: '#4338ca' }} onClick={() => openEdit(row)} title={isRTL ? 'تعديل' : 'Edit'}>✎</button>
-                      <button className="mawhba-btn-small mawhba-btn-del" onClick={() => handleDelete(row)} title={isRTL ? 'حذف' : 'Delete'}>×</button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
-      </div>
-
       {showModal && (
-        <div className="mawhba-modal-overlay" onClick={closeModal}>
-          <div className="mawhba-modal" onClick={(e) => e.stopPropagation()}>
-            <h3>👥 {editingId ? (isRTL ? 'تعديل بيانات موظف' : 'Edit Staff') : (isRTL ? 'إضافة موظف' : 'Add Staff')}</h3>
-            <form onSubmit={handleSave}>
-              <div className="mawhba-form-grid">
-                <label>
-                  <span>{isRTL ? 'الاسم' : 'Name'} *</span>
-                  <input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required />
-                </label>
-                <label>
-                  <span>{isRTL ? 'رقم الهوية' : 'National ID'} *</span>
-                  <input value={form.nationalId} onChange={(e) => setForm({ ...form, nationalId: e.target.value })} required />
-                </label>
-                <label>
-                  <span>{isRTL ? 'المسمى الوظيفي' : 'Position'}</span>
-                  <input value={form.position} onChange={(e) => setForm({ ...form, position: e.target.value })} placeholder={isRTL ? 'مثال: مدرب، مدير، فني' : 'e.g. Trainer, Manager, Technician'} />
-                </label>
-                <label>
-                  <span>{isRTL ? 'الهاتف' : 'Phone'}</span>
-                  <input value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
-                </label>
-                <label style={{ gridColumn: '1 / -1' }}>
-                  <span>{isRTL ? 'البريد الإلكتروني' : 'Email'}</span>
-                  <input type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
-                </label>
-                <label style={{ gridColumn: '1 / -1' }}>
-                  <span>{isRTL ? 'صورة الهوية' : 'National ID photo'}</span>
+        <div className="modal-overlay" onClick={closeModal}>
+          <motion.div
+            className="modal-content modern-modal volunteer-modal"
+            onClick={(e) => e.stopPropagation()}
+            initial={{ opacity: 0, scale: 0.9, y: 20 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+          >
+            <div className="modern-modal-header" style={{ background: PURPLE_GRADIENT }}>
+              <div className="modal-header-icon">
+                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                  <circle cx="9" cy="7" r="4"/>
+                  <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+                  <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+                </svg>
+              </div>
+              <div className="modal-header-text">
+                <h2>
+                  {editingId
+                    ? (isRTL ? 'تعديل بيانات موظف' : 'Edit Staff')
+                    : (isRTL ? 'موظف جديد' : 'New Staff')}
+                </h2>
+                <p>
+                  {editingId
+                    ? (isRTL ? 'تحديث معلومات الموظف وصورة الهوية' : 'Update staff info and ID photo')
+                    : (isRTL ? 'تسجيل موظف جديد في النظام' : 'Register a new staff member')}
+                </p>
+              </div>
+              <button className="modal-close-modern" onClick={closeModal}>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <line x1="18" y1="6" x2="6" y2="18"/>
+                  <line x1="6" y1="6" x2="18" y2="18"/>
+                </svg>
+              </button>
+            </div>
+
+            <div className="modern-modal-body">
+              <div className="form-section">
+                <div className="section-header">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+                    <circle cx="12" cy="7" r="4"/>
+                  </svg>
+                  <span>{isRTL ? 'المعلومات الشخصية' : 'Personal Information'}</span>
+                </div>
+
+                <div className="form-group modern-input">
+                  <label>
+                    {isRTL ? 'الاسم' : 'Name'} <span className="required">*</span>
+                  </label>
+                  <div className="input-with-icon">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+                      <circle cx="12" cy="7" r="4"/>
+                    </svg>
+                    <input
+                      type="text"
+                      value={form.name}
+                      onChange={(e) => setForm(prev => ({ ...prev, name: e.target.value }))}
+                      placeholder={isRTL ? 'الاسم الكامل' : 'Full name'}
+                      className="modern-input-field"
+                    />
+                  </div>
+                </div>
+
+                <div className="form-group modern-input">
+                  <label>
+                    {isRTL ? 'رقم الهوية' : 'National ID'} <span className="required">*</span>
+                  </label>
+                  <div className="input-with-icon">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <rect x="3" y="4" width="18" height="16" rx="2"/>
+                      <line x1="7" y1="8" x2="17" y2="8"/>
+                      <line x1="7" y1="12" x2="13" y2="12"/>
+                    </svg>
+                    <input
+                      type="text"
+                      value={form.nationalId}
+                      onChange={(e) => setForm(prev => ({ ...prev, nationalId: e.target.value }))}
+                      placeholder={isRTL ? 'رقم الهوية الوطنية' : 'National ID number'}
+                      className="modern-input-field"
+                    />
+                  </div>
+                </div>
+
+                <div className="form-group modern-input">
+                  <label>{isRTL ? 'المسمى الوظيفي' : 'Position'}</label>
+                  <div className="input-with-icon">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <rect x="2" y="7" width="20" height="14" rx="2" ry="2"/>
+                      <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/>
+                    </svg>
+                    <input
+                      type="text"
+                      value={form.position}
+                      onChange={(e) => setForm(prev => ({ ...prev, position: e.target.value }))}
+                      placeholder={isRTL ? 'مثال: مدرب، مدير، فني' : 'e.g. Trainer, Manager, Technician'}
+                      className="modern-input-field"
+                    />
+                  </div>
+                </div>
+
+                <div className="form-group modern-input">
+                  <label>{isRTL ? 'رقم الجوال' : 'Phone'}</label>
+                  <div className="input-with-icon">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/>
+                    </svg>
+                    <input
+                      type="tel"
+                      value={form.phone}
+                      onChange={(e) => setForm(prev => ({ ...prev, phone: e.target.value }))}
+                      placeholder="05xxxxxxxx"
+                      className="modern-input-field"
+                      dir="ltr"
+                    />
+                  </div>
+                </div>
+
+                <div className="form-group modern-input">
+                  <label>{isRTL ? 'البريد الإلكتروني' : 'Email'}</label>
+                  <div className="input-with-icon">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
+                      <polyline points="22,6 12,13 2,6"/>
+                    </svg>
+                    <input
+                      type="email"
+                      value={form.email}
+                      onChange={(e) => setForm(prev => ({ ...prev, email: e.target.value }))}
+                      placeholder="email@example.com"
+                      className="modern-input-field"
+                      dir="ltr"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="form-section">
+                <div className="section-header">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+                    <circle cx="8.5" cy="8.5" r="1.5"/>
+                    <polyline points="21 15 16 10 5 21"/>
+                  </svg>
+                  <span>{isRTL ? 'صورة الهوية' : 'ID Photo'}</span>
+                </div>
+                <div className="photo-upload-area modern-upload">
                   {form.nationalIdPhoto ? (
-                    <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
-                      <img src={form.nationalIdPhoto} alt="ID" style={{ height: 80, borderRadius: 6, border: '1px solid #ddd' }} />
-                      <button type="button" onClick={() => setForm({ ...form, nationalIdPhoto: '' })}>× {isRTL ? 'إزالة' : 'Remove'}</button>
+                    <div className="photo-preview">
+                      <img src={form.nationalIdPhoto} alt="ID" />
+                      <button
+                        className="remove-photo-btn"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setForm(prev => ({ ...prev, nationalIdPhoto: '' }));
+                        }}
+                      >
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                          <line x1="18" y1="6" x2="6" y2="18"/>
+                          <line x1="6" y1="6" x2="18" y2="18"/>
+                        </svg>
+                      </button>
                     </div>
                   ) : (
-                    <input type="file" accept="image/*" onChange={handlePhotoUpload} />
+                    <label className="photo-upload-label">
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={handlePhotoUpload}
+                        style={{ display: 'none' }}
+                      />
+                      <div className="upload-content">
+                        <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                          <polyline points="17 8 12 3 7 8"/>
+                          <line x1="12" y1="3" x2="12" y2="15"/>
+                        </svg>
+                        <span className="upload-text">
+                          {isRTL ? 'انقر لرفع صورة الهوية' : 'Click to upload ID photo'}
+                        </span>
+                        <span className="upload-hint">
+                          {isRTL ? 'PNG, JPG حتى 5MB' : 'PNG, JPG up to 5MB'}
+                        </span>
+                      </div>
+                    </label>
                   )}
-                </label>
+                </div>
               </div>
-              <div className="mawhba-modal-actions">
-                <button type="button" className="mawhba-btn-secondary" onClick={closeModal}>{isRTL ? 'إلغاء' : 'Cancel'}</button>
-                <button type="submit" className="mawhba-btn mawhba-btn-primary" style={{ background: '#7c3aed' }} disabled={saving}>
-                  {saving ? (isRTL ? 'جارٍ الحفظ...' : 'Saving...') : (editingId ? (isRTL ? 'حفظ التعديلات' : 'Save Changes') : (isRTL ? 'إضافة' : 'Add'))}
-                </button>
-              </div>
-            </form>
-          </div>
+            </div>
+
+            <div className="modern-modal-footer">
+              <button className="btn-cancel" onClick={closeModal}>
+                {isRTL ? 'إلغاء' : 'Cancel'}
+              </button>
+              <button
+                className="btn-submit volunteer-submit"
+                style={{ background: PURPLE_GRADIENT }}
+                onClick={handleSave}
+                disabled={saving || !form.name || !form.nationalId}
+              >
+                {saving ? (
+                  <>
+                    <span className="spinner"></span>
+                    {isRTL ? 'جاري الحفظ...' : 'Saving...'}
+                  </>
+                ) : (
+                  <>
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <polyline points="20 6 9 17 4 12"/>
+                    </svg>
+                    {editingId
+                      ? (isRTL ? 'حفظ التعديلات' : 'Save Changes')
+                      : (isRTL ? 'إضافة موظف' : 'Add Staff')}
+                  </>
+                )}
+              </button>
+            </div>
+          </motion.div>
         </div>
       )}
 
@@ -463,7 +793,7 @@ const FablabStaffManagement = () => {
         onClose={() => setAttendanceMode(false)}
         isRTL={isRTL}
       />
-    </div>
+    </>
   );
 };
 
