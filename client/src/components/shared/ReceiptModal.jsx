@@ -228,12 +228,12 @@ const ReceiptModal = ({ open, onClose, recipient, personType = 'volunteer', onSa
   .receipt-table {
     width: 100%;
     border-collapse: collapse;
-    margin-bottom: 6mm;
+    margin-bottom: 4mm;
   }
   .receipt-table th, .receipt-table td {
     border: 1.5px solid #475569;
-    padding: 3.5mm 4mm;
-    font-size: 13pt;
+    padding: 2.6mm 4mm;
+    font-size: 12.5pt;
     vertical-align: middle;
   }
   .receipt-table th {
@@ -254,8 +254,8 @@ const ReceiptModal = ({ open, onClose, recipient, personType = 'volunteer', onSa
   }
   .signature-box {
     border: 1.5px solid #475569;
-    padding: 4mm;
-    margin-bottom: 6mm;
+    padding: 3.5mm;
+    margin-bottom: 4mm;
     background: rgba(255, 255, 255, 0.7);
   }
   .signature-box h4 {
@@ -272,15 +272,15 @@ const ReceiptModal = ({ open, onClose, recipient, personType = 'volunteer', onSa
   .signature-box .sig-row > div { flex: 1; }
   .signature-box .sig-line {
     border-bottom: 1px solid #1f2937;
-    height: 7mm;
-    margin-top: 2mm;
+    height: 5.5mm;
+    margin-top: 1.5mm;
   }
   .notes-box {
     border: 1.5px solid #475569;
-    padding: 4mm;
-    margin-bottom: 8mm;
+    padding: 3.5mm;
+    margin-bottom: 5mm;
     background: rgba(255, 255, 255, 0.7);
-    min-height: 22mm;
+    min-height: 12mm;
   }
   .notes-box h4 {
     margin: 0 0 3mm 0;

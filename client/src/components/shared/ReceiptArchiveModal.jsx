@@ -84,16 +84,16 @@ const ReceiptArchiveModal = ({ open, onClose, recipient, personType = 'volunteer
   }
   .idphoto-content { align-items: center; }
   .receipt-title { text-align: center; font-size: 26pt; font-weight: 800; letter-spacing: 4px; margin: 0 0 8mm 0; color: #0f172a; }
-  .receipt-table { width: 100%; border-collapse: collapse; margin-bottom: 6mm; }
-  .receipt-table th, .receipt-table td { border: 1.5px solid #475569; padding: 3.5mm 4mm; font-size: 13pt; vertical-align: middle; }
+  .receipt-table { width: 100%; border-collapse: collapse; margin-bottom: 4mm; }
+  .receipt-table th, .receipt-table td { border: 1.5px solid #475569; padding: 2.6mm 4mm; font-size: 12.5pt; vertical-align: middle; }
   .receipt-table th { background: rgba(241, 245, 249, 0.85); width: 38%; font-weight: 700; text-align: right; color: #0f172a; }
   .receipt-table td { background: rgba(255, 255, 255, 0.7); font-weight: 600; color: #111827; }
-  .signature-box, .notes-box { border: 1.5px solid #475569; padding: 4mm; margin-bottom: 6mm; background: rgba(255, 255, 255, 0.7); }
-  .signature-box h4, .notes-box h4 { margin: 0 0 3mm 0; font-size: 13pt; color: #0f172a; font-weight: 700; }
+  .signature-box, .notes-box { border: 1.5px solid #475569; padding: 3.5mm; margin-bottom: 4mm; background: rgba(255, 255, 255, 0.7); }
+  .signature-box h4, .notes-box h4 { margin: 0 0 2.5mm 0; font-size: 13pt; color: #0f172a; font-weight: 700; }
   .signature-box .sig-row { display: flex; gap: 8mm; font-size: 12pt; }
   .signature-box .sig-row > div { flex: 1; }
-  .signature-box .sig-line { border-bottom: 1px solid #1f2937; height: 7mm; margin-top: 2mm; }
-  .notes-box { min-height: 22mm; }
+  .signature-box .sig-line { border-bottom: 1px solid #1f2937; height: 5.5mm; margin-top: 1.5mm; }
+  .notes-box { min-height: 12mm; margin-bottom: 5mm; }
   .signers-row { margin-top: auto; display: flex; gap: 4mm; justify-content: space-between; padding-top: 4mm; border-top: 1.5px dashed #475569; }
   .signer { flex: 1; text-align: center; font-size: 11pt; display: flex; flex-direction: column; }
   .signer .signer-title { color: #475569; font-weight: 600; margin-bottom: 2mm; }
