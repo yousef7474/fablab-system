@@ -306,6 +306,238 @@ const TrainerAssistantManagement = () => {
     });
   };
 
+  // Open a browser print window with a completion certificate for a
+  // single chance. Structurally identical to the volunteer / intern
+  // certificate templates (same header, decor circles, ribbon, stat
+  // cards, footer) but repalletted in purple/pink to match the
+  // trainer section and using chance-specific copy (name, place, dates).
+  const handlePrintChanceCertificate = (trainer, assignment) => {
+    const printWindow = window.open('', '_blank', 'width=1200,height=900');
+    if (!printWindow) {
+      toast.error(isRTL ? 'يرجى السماح بالنوافذ المنبثقة' : 'Please allow pop-ups');
+      return;
+    }
+    const safe = (s) => String(s || '').replace(/[&<>"']/g, c =>
+      ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+    const fmtCertDate = (v) => {
+      if (!v) return '';
+      try {
+        const d = new Date(v);
+        if (isNaN(d.getTime())) return String(v).slice(0, 10);
+        const pad = (n) => String(n).padStart(2, '0');
+        return `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()}`;
+      } catch { return String(v).slice(0, 10); }
+    };
+    const startDate = fmtCertDate(assignment.startAt || assignment.chanceDate);
+    const endDate   = fmtCertDate(assignment.endAt   || assignment.chanceDate);
+    const certId = 'TRN-' + (assignment.assignmentId?.substring(0, 8).toUpperCase() || Date.now());
+
+    const printContent = `
+      <!DOCTYPE html>
+      <html dir="rtl" lang="ar">
+      <head>
+        <title>شهادة تدريب - ${safe(trainer.name)}</title>
+        <style>
+          @page { size: A4 landscape; margin: 0; }
+          * { margin: 0; padding: 0; box-sizing: border-box; }
+          html, body { width: 297mm; height: 210mm; overflow: hidden; }
+          body {
+            font-family: 'Segoe UI', Tahoma, Arial, sans-serif;
+            background: linear-gradient(135deg, #6d28d9 0%, #a855f7 50%, #ec4899 100%);
+            display: flex; align-items: center; justify-content: center;
+            padding: 10mm;
+          }
+          .certificate {
+            width: 277mm; height: 190mm;
+            background: linear-gradient(145deg, #ffffff 0%, #f8fafc 100%);
+            border-radius: 16px;
+            position: relative; overflow: hidden;
+            box-shadow: 0 30px 60px rgba(0,0,0,0.3);
+          }
+          .certificate::before {
+            content: ''; position: absolute; top: 0; left: 0; right: 0; bottom: 0;
+            border: 6px solid transparent;
+            border-image: linear-gradient(135deg, #6d28d9, #a855f7, #ec4899, #f472b6, #6d28d9) 1;
+            border-radius: 16px; pointer-events: none;
+          }
+          .decor-circle { position: absolute; border-radius: 50%; opacity: 0.1; }
+          .decor-circle.c1 { width: 200px; height: 200px; background: linear-gradient(135deg, #6d28d9, #a855f7); top: -50px; right: -50px; }
+          .decor-circle.c2 { width: 150px; height: 150px; background: linear-gradient(135deg, #ec4899, #f472b6); bottom: -30px; left: -30px; }
+          .decor-circle.c3 { width: 100px; height: 100px; background: linear-gradient(135deg, #f59e0b, #fbbf24); top: 50%; left: 20px; transform: translateY(-50%); }
+          .decor-circle.c4 { width: 80px; height: 80px; background: linear-gradient(135deg, #22d3ee, #06b6d4); bottom: 60px; right: 40px; }
+          .certificate-inner {
+            padding: 20mm 25mm; height: 100%;
+            display: flex; flex-direction: column;
+            position: relative; z-index: 1;
+          }
+          .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12mm; }
+          .logo-container { display: flex; align-items: center; gap: 15px; }
+          .logo { height: 85px; filter: drop-shadow(0 4px 8px rgba(0,0,0,0.15)); }
+          .header-center { text-align: center; flex: 1; padding: 0 20px; }
+          .org-name { font-size: 11px; color: #64748b; letter-spacing: 2px; text-transform: uppercase; margin-bottom: 5px; }
+          .cert-title {
+            font-size: 44px; font-weight: 800;
+            background: linear-gradient(135deg, #6d28d9, #a855f7);
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+            background-clip: text; margin-bottom: 4px;
+          }
+          .cert-subtitle { font-size: 16px; color: #475569; font-weight: 500; letter-spacing: 3px; }
+          .divider {
+            height: 4px;
+            background: linear-gradient(90deg, #6d28d9, #a855f7, #ec4899, #f472b6, #f59e0b);
+            border-radius: 2px; margin-bottom: 10mm;
+          }
+          .main-content { text-align: center; flex: 1; display: flex; flex-direction: column; justify-content: center; }
+          .presents-text { font-size: 14px; color: #64748b; margin-bottom: 8px; }
+          .trainer-name {
+            font-size: 42px; font-weight: 700; color: #1e293b;
+            margin-bottom: 8px; position: relative; display: inline-block;
+          }
+          .trainer-name::after {
+            content: ''; position: absolute; bottom: -4px; left: 50%;
+            transform: translateX(-50%); width: 80%; height: 4px;
+            background: linear-gradient(90deg, #6d28d9, #a855f7, #ec4899);
+            border-radius: 2px;
+          }
+          .appreciation-text { font-size: 15px; line-height: 1.8; color: #475569; max-width: 620px; margin: 15px auto; }
+          .highlight { color: #6d28d9; font-weight: 700; font-size: 17px; }
+          .stats-container { display: flex; justify-content: center; gap: 24px; margin: 12px 0; }
+          .stat-card {
+            background: linear-gradient(135deg, #6d28d9, #a855f7);
+            color: white; padding: 12px 26px; border-radius: 12px;
+            text-align: center; box-shadow: 0 8px 20px rgba(109, 40, 217, 0.3);
+            min-width: 130px;
+          }
+          .stat-card.alt { background: linear-gradient(135deg, #ec4899, #f472b6); box-shadow: 0 8px 20px rgba(236, 72, 153, 0.3); }
+          .stat-card.gold { background: linear-gradient(135deg, #f59e0b, #fbbf24); box-shadow: 0 8px 20px rgba(245, 158, 11, 0.3); }
+          .stat-value { font-size: 20px; font-weight: 700; }
+          .stat-label { font-size: 10px; opacity: 0.9; margin-top: 2px; }
+          .thank-you { font-size: 13px; color: #64748b; margin-top: 10px; font-style: italic; }
+          .footer-section { display: flex; justify-content: space-between; align-items: flex-end; margin-top: auto; padding-top: 10mm; }
+          .signature-box { text-align: center; min-width: 200px; }
+          .signature-line { width: 180px; height: 2px; background: linear-gradient(90deg, #6d28d9, #a855f7); margin: 0 auto 8px; }
+          .signature-name { font-size: 16px; font-weight: 700; color: #1e293b; }
+          .signature-role { font-size: 11px; color: #64748b; margin-top: 3px; }
+          .cert-info { text-align: left; }
+          .cert-id {
+            font-family: 'Courier New', monospace; font-size: 10px; color: #94a3b8;
+            background: linear-gradient(135deg, #f5f3ff, #ede9fe);
+            padding: 6px 14px; border-radius: 20px; display: inline-block;
+          }
+          .cert-date { font-size: 10px; color: #94a3b8; margin-top: 5px; }
+          .org-footer { text-align: center; flex: 1; }
+          .org-footer-text { font-size: 10px; color: #94a3b8; }
+          .ribbon {
+            position: absolute; top: 25px; left: -35px;
+            width: 150px; height: 30px;
+            background: linear-gradient(135deg, #ec4899, #db2777);
+            transform: rotate(-45deg);
+            display: flex; align-items: center; justify-content: center;
+            color: white; font-size: 10px; font-weight: 600;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+          }
+          @media print {
+            html, body {
+              width: 297mm; height: 210mm;
+              -webkit-print-color-adjust: exact !important;
+              print-color-adjust: exact !important;
+              color-adjust: exact !important;
+            }
+            body { padding: 0; background: linear-gradient(135deg, #6d28d9 0%, #a855f7 50%, #ec4899 100%) !important; }
+            .certificate { box-shadow: none; margin: auto; }
+            .cert-title { -webkit-text-fill-color: #6d28d9; color: #6d28d9; }
+          }
+        </style>
+      </head>
+      <body>
+        <div class="certificate">
+          <div class="decor-circle c1"></div>
+          <div class="decor-circle c2"></div>
+          <div class="decor-circle c3"></div>
+          <div class="decor-circle c4"></div>
+          <div class="ribbon">مدرب معاون</div>
+
+          <div class="certificate-inner">
+            <div class="header">
+              <div class="logo-container">
+                <img src="/found.png" alt="Foundation" class="logo" />
+              </div>
+              <div class="header-center">
+                <div class="org-name">مؤسسة عبدالمنعم الراشد الإنسانية</div>
+                <div class="cert-title">شهادة تدريب</div>
+                <div class="cert-subtitle">TRAINING CERTIFICATE</div>
+              </div>
+              <div class="logo-container">
+                <img src="/fablab.png" alt="FABLAB" class="logo" />
+              </div>
+            </div>
+
+            <div class="divider"></div>
+
+            <div class="main-content">
+              <div class="presents-text">تشهد إدارة فاب لاب الأحساء بأن</div>
+              <div class="trainer-name">${safe(trainer.name)}</div>
+
+              <div class="appreciation-text">
+                قد أسهم بصفته مدرباً معاوناً في تنفيذ الفرصة التدريبية
+                <span class="highlight">"${safe(assignment.chanceName)}"</span>
+                ${assignment.destination ? `<br/>بمقر <span class="highlight">${safe(assignment.destination)}</span>` : ''}
+                <br/>
+                ونثمّن جهوده وتفانيه في نقل المعرفة والمهارات إلى المتدربين
+              </div>
+
+              <div class="stats-container">
+                ${assignment.destination ? `
+                <div class="stat-card">
+                  <div class="stat-value">${safe(assignment.destination)}</div>
+                  <div class="stat-label">المكان</div>
+                </div>` : ''}
+                <div class="stat-card alt">
+                  <div class="stat-value">${startDate || '—'}</div>
+                  <div class="stat-label">تاريخ البداية</div>
+                </div>
+                <div class="stat-card gold">
+                  <div class="stat-value">${endDate || startDate || '—'}</div>
+                  <div class="stat-label">تاريخ النهاية</div>
+                </div>
+              </div>
+
+              <div class="thank-you">
+                شكراً لعطائك ودورك في تدريب وتأهيل شباب فاب لاب
+              </div>
+            </div>
+
+            <div class="footer-section">
+              <div class="cert-info">
+                <div class="cert-id">${certId}</div>
+                <div class="cert-date">${new Date().toLocaleDateString('ar-SA-u-ca-gregory-nu-latn', { calendar: 'gregory' })}</div>
+              </div>
+
+              <div class="org-footer">
+                <div class="org-footer-text">
+                  فاب لاب الأحساء - مختبر التصنيع الرقمي
+                  <br/>
+                  FABLAB Al-Ahsa - Digital Fabrication Laboratory
+                </div>
+              </div>
+
+              <div class="signature-box">
+                <div class="signature-line"></div>
+                <div class="signature-name">أ. زكي اللويم</div>
+                <div class="signature-role">المسؤول التنفيذي لفاب لاب الأحساء</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </body>
+      </html>
+    `;
+    printWindow.document.write(printContent);
+    printWindow.document.close();
+    printWindow.focus();
+    setTimeout(() => printWindow.print(), 300);
+  };
+
   const deleteAssignment = async (a) => {
     if (!window.confirm(isRTL ? 'حذف هذه الفرصة؟' : 'Delete this chance?')) return;
     try {
@@ -681,6 +913,14 @@ const TrainerAssistantManagement = () => {
                                 <Stars value={critAvg} onChange={null} size={16} />
                                 <span style={{ fontSize: 12, fontWeight: 800, color: '#6d28d9' }}>{critAvg || 0}</span>
                               </div>
+                              <button
+                                onClick={() => handlePrintChanceCertificate(showAssignmentsFor, a)}
+                                title={isRTL ? 'طباعة شهادة' : 'Print certificate'}
+                                style={{ padding: '6px 12px', borderRadius: 6, border: 'none', background: 'linear-gradient(135deg, #6d28d9, #ec4899)', color: 'white', cursor: 'pointer', fontWeight: 700, fontSize: 12, display: 'inline-flex', alignItems: 'center', gap: 4, fontFamily: 'inherit' }}
+                              >
+                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="8" r="7"/><polyline points="8.21 13.89 7 23 12 20 17 23 15.79 13.88"/></svg>
+                                {isRTL ? 'شهادة' : 'Cert'}
+                              </button>
                               <button onClick={() => editAssignment(a)} style={{ padding: '6px 10px', borderRadius: 6, border: '1px solid #cbd5e1', background: '#fff', color: '#334155', cursor: 'pointer', fontWeight: 700, fontSize: 12, fontFamily: 'inherit' }}>✏️</button>
                               <button onClick={() => deleteAssignment(a)} style={{ padding: '6px 10px', borderRadius: 6, border: '1px solid #fecaca', background: '#fee2e2', color: '#991b1b', cursor: 'pointer', fontWeight: 700, fontSize: 12, fontFamily: 'inherit' }}>🗑</button>
                             </div>
