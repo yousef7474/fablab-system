@@ -26,6 +26,7 @@ router.get('/:id/students', authMiddleware, educationController.getStudentsForEd
 router.get('/:id/attendance-sheet', authMiddleware, educationController.getAttendanceSheet);
 router.post('/:id/students/add', authMiddleware, educationController.addSingleStudent);
 router.put('/:id/status', authMiddleware, educationController.updateEducationStatus);
+router.delete('/:id', authMiddleware, educationController.deleteEducation);
 
 // Custom email route (auth)
 router.post('/:id/send-email', authMiddleware, educationController.sendCustomEmail);

@@ -626,6 +626,30 @@ exports.removeStudent = async (req, res) => {
   }
 };
 
+// Delete an education registration outright (admin/manager only).
+// Removes the education and its child students/attendance/ratings so
+// the row disappears from every listing.
+exports.deleteEducation = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const education = await Education.findByPk(id);
+    if (!education) {
+      return res.status(404).json({ message: 'Education not found', messageAr: 'لم يتم العثور على التسجيل' });
+    }
+
+    // Cascade manually — no FK cascade defined on these child tables.
+    await EducationAttendance.destroy({ where: { educationId: id } });
+    await EducationStudent.destroy({ where: { educationId: id } });
+    await EducationRating.destroy({ where: { educationId: id } });
+    await education.destroy();
+
+    res.json({ message: 'Education deleted', messageAr: 'تم حذف التسجيل' });
+  } catch (error) {
+    console.error('Error deleting education:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
 // Get students for education (public - for attendance page)
 exports.getStudentsForEducationPublic = async (req, res) => {
   try {

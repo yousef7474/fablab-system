@@ -5,6 +5,20 @@
   min-height: 100vh;
   background: linear-gradient(135deg, #5b21b6 0%, #6d28d9 50%, #8b5cf6 100%);
   position: relative;
+
+  /* Provide the design-system tokens that RegistrationForm.css'
+     !important input rules need — otherwise inputs on /educate
+     resolve --text-hi / --glass / --glass-border to unset and render
+     as invisible text on transparent boxes. Values chosen so inputs
+     are legible against the purple gradient. */
+  --bg-0: #f5f3ff;
+  --bg-1: #ffffff;
+  --card-bg: rgba(255, 255, 255, 0.85);
+  --text-hi: #0f172a;
+  --text-md: #334155;
+  --text-lo: #64748b;
+  --glass: rgba(255, 255, 255, 0.95);
+  --glass-border: rgba(15, 23, 42, 0.18);
   overflow: hidden;
 }
 
