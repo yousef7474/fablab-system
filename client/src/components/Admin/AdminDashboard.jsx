@@ -19,6 +19,8 @@ import WorkerManagement from '../Worker/WorkerManagement';
 import SummerFablab from '../Summer/SummerFablab';
 import Mawhba from '../Mawhba/Mawhba';
 import FablabStaffManagement from '../FablabStaff/FablabStaffManagement';
+import OvertimeManagement from '../Overtime/OvertimeManagement';
+import TrainerAssistantManagement from '../TrainerAssistant/TrainerAssistantManagement';
 
 const COLORS = ['#6366f1', '#22c55e', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4', '#ec4899'];
 
@@ -79,7 +81,7 @@ const AdminDashboard = () => {
   const printRef = useRef();
 
   // Valid tabs for URL persistence
-  const validTabs = ['dashboard', 'registrations', 'users', 'employees', 'schedule', 'analytics', 'borrowing', 'education', 'workshops', 'workspaces', 'volunteers', 'workers', 'fablab-staff', 'summer', 'mawhba', 'settings'];
+  const validTabs = ['dashboard', 'registrations', 'users', 'employees', 'schedule', 'analytics', 'borrowing', 'education', 'workshops', 'workspaces', 'volunteers', 'workers', 'fablab-staff', 'summer', 'mawhba', 'overtime', 'trainer-assistants', 'settings'];
 
   // Get initial tab from URL, localStorage, or default to 'dashboard'
   const getInitialTab = () => {
@@ -4109,6 +4111,26 @@ const AdminDashboard = () => {
     }
   };
 
+  // Permanently delete an education registration (and its students,
+  // attendance, and ratings). Uses window.confirm because the
+  // education tab has no confirm-modal wired up.
+  const handleDeleteEducation = async (educationId) => {
+    if (!window.confirm(isRTL
+      ? 'سيتم حذف هذا التسجيل نهائياً مع جميع الطلاب والحضور والتقييمات. متابعة؟'
+      : 'This will permanently delete the registration along with all students, attendance, and ratings. Continue?')) return;
+    try {
+      await api.delete(`/education/${encodeURIComponent(educationId)}`);
+      toast.success(isRTL ? 'تم حذف التسجيل' : 'Registration deleted');
+      // If we were viewing details for the deleted item, drop back to list.
+      if (selectedEducation && selectedEducation.educationId === educationId) {
+        setSelectedEducation(null);
+      }
+      fetchEducations();
+    } catch (error) {
+      toast.error(isRTL ? 'خطأ في حذف التسجيل' : 'Error deleting registration');
+    }
+  };
+
   const handleAddEducationRating = async () => {
     if (!selectedEducation) return;
     try {
@@ -4466,6 +4488,8 @@ const AdminDashboard = () => {
     { id: 'volunteers', icon: 'volunteers', labelEn: 'Volunteers', labelAr: 'المتطوعين' },
     { id: 'workers', icon: 'workers', labelEn: 'Workers', labelAr: 'العمال' },
     { id: 'fablab-staff', icon: 'fablab-staff', labelEn: 'FabLab Staff', labelAr: 'موظفو فاب لاب' },
+    { id: 'overtime', icon: 'overtime', labelEn: 'Overtime', labelAr: 'الساعات الإضافية' },
+    { id: 'trainer-assistants', icon: 'trainer-assistants', labelEn: 'Assistant Trainers', labelAr: 'مدرب معاون' },
     { id: 'summer', icon: 'summer', labelEn: 'Summer FabLab', labelAr: 'صيف فاب لاب' },
     { id: 'mawhba', icon: 'mawhba', labelEn: 'Mawhba', labelAr: 'موهبة' },
     { id: 'settings', icon: 'settings', labelEn: 'Settings', labelAr: 'الإعدادات' }
@@ -4485,6 +4509,8 @@ const AdminDashboard = () => {
       volunteers: <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>,
       workers: <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M2 20a8 8 0 0 1 16 0"/><circle cx="10" cy="8" r="4"/><path d="M16 17l2 3 4-7"/></svg>,
       'fablab-staff': <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>,
+      overtime: <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>,
+      'trainer-assistants': <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/></svg>,
       summer: <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg>,
       mawhba: <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 2l2.4 7.4H22l-6.2 4.5 2.4 7.4L12 16.8 5.8 21.3l2.4-7.4L2 9.4h7.6z"/></svg>,
       settings: <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
@@ -6597,6 +6623,44 @@ const AdminDashboard = () => {
                   <h2>{isRTL ? 'إدارة التعليم' : 'Education Management'}</h2>
                 </div>
 
+                {/* Status summary strip — quick glance at pipeline health.
+                    Counts are derived from the currently-loaded page of
+                    educations (the same set the table below is showing). */}
+                {!selectedEducation && (
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '12px', marginBottom: '20px' }}>
+                    {[
+                      { key: 'all',       labelAr: 'الكل',        labelEn: 'All',       count: educations.length, color: '#6d28d9' },
+                      { key: 'pending',   labelAr: 'قيد الانتظار', labelEn: 'Pending',   count: educations.filter(e => e.status === 'pending').length,   color: '#f59e0b' },
+                      { key: 'approved',  labelAr: 'مقبول',        labelEn: 'Approved',  count: educations.filter(e => e.status === 'approved').length,  color: '#22c55e' },
+                      { key: 'active',    labelAr: 'نشط',          labelEn: 'Active',    count: educations.filter(e => e.status === 'active').length,    color: '#3b82f6' },
+                      { key: 'completed', labelAr: 'مكتمل',        labelEn: 'Completed', count: educations.filter(e => e.status === 'completed').length, color: '#8b5cf6' },
+                      { key: 'rejected',  labelAr: 'مرفوض',        labelEn: 'Rejected',  count: educations.filter(e => e.status === 'rejected').length,  color: '#ef4444' },
+                    ].map(card => (
+                      <button
+                        key={card.key}
+                        onClick={() => setEducationFilters({ ...educationFilters, status: card.key === 'all' ? '' : card.key })}
+                        style={{
+                          background: `linear-gradient(135deg, ${card.color}12 0%, ${card.color}05 100%)`,
+                          border: `1px solid ${card.color}33`,
+                          borderRadius: '12px',
+                          padding: '14px 16px',
+                          cursor: 'pointer',
+                          textAlign: isRTL ? 'right' : 'left',
+                          fontFamily: 'inherit',
+                          transition: 'transform 0.15s ease, box-shadow 0.15s ease'
+                        }}
+                        onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = `0 6px 18px ${card.color}22`; }}
+                        onMouseLeave={e => { e.currentTarget.style.transform = ''; e.currentTarget.style.boxShadow = ''; }}
+                      >
+                        <div style={{ fontSize: '11px', color: 'var(--text-secondary, #64748b)', fontWeight: 700, letterSpacing: '0.4px', textTransform: 'uppercase', marginBottom: '6px' }}>
+                          {isRTL ? card.labelAr : card.labelEn}
+                        </div>
+                        <div style={{ fontSize: '26px', fontWeight: 800, color: card.color, lineHeight: 1 }}>{card.count}</div>
+                      </button>
+                    ))}
+                  </div>
+                )}
+
                 {/* Education Filters */}
                 <div className="filters-bar" style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', marginBottom: '20px' }}>
                   <select className="filter-select" value={educationFilters.status} onChange={(e) => setEducationFilters({ ...educationFilters, status: e.target.value })}>
@@ -6656,6 +6720,10 @@ const AdminDashboard = () => {
                               <button onClick={() => setShowRatingModal(true)} style={{ padding: '8px 16px', borderRadius: '8px', background: '#f59e0b', color: 'white', border: 'none', cursor: 'pointer', fontWeight: '600', fontSize: '13px' }}>{isRTL ? 'إضافة تقييم' : 'Add Rating'}</button>
                             </>
                           )}
+                          <button onClick={() => handleDeleteEducation(selectedEducation.educationId)} style={{ padding: '8px 16px', borderRadius: '8px', background: '#ef4444', color: 'white', border: 'none', cursor: 'pointer', fontWeight: '600', fontSize: '13px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2"/></svg>
+                            {isRTL ? 'حذف' : 'Delete'}
+                          </button>
                           <button onClick={() => handlePrintEducationDocument(selectedEducation)} style={{ padding: '8px 16px', borderRadius: '8px', background: '#5b21b6', color: 'white', border: 'none', cursor: 'pointer', fontWeight: '600', fontSize: '13px', display: 'flex', alignItems: 'center', gap: '4px' }}>
                             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
                             {isRTL ? 'طباعة' : 'Print'}
@@ -6893,9 +6961,15 @@ const AdminDashboard = () => {
                                 </span>
                               </td>
                               <td>
-                                <button onClick={() => fetchEducationDetail(edu.educationId)} style={{ padding: '6px 12px', borderRadius: '6px', background: '#6d28d9', color: 'white', border: 'none', cursor: 'pointer', fontSize: '12px', fontWeight: '600' }}>
-                                  {isRTL ? 'عرض' : 'View'}
-                                </button>
+                                <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+                                  <button onClick={() => fetchEducationDetail(edu.educationId)} style={{ padding: '6px 12px', borderRadius: '6px', background: '#6d28d9', color: 'white', border: 'none', cursor: 'pointer', fontSize: '12px', fontWeight: '600' }}>
+                                    {isRTL ? 'عرض' : 'View'}
+                                  </button>
+                                  <button onClick={() => handleDeleteEducation(edu.educationId)} title={isRTL ? 'حذف' : 'Delete'} style={{ padding: '6px 10px', borderRadius: '6px', background: '#fee2e2', color: '#991b1b', border: '1px solid #fecaca', cursor: 'pointer', fontSize: '12px', fontWeight: '700', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2"/></svg>
+                                    {isRTL ? 'حذف' : 'Delete'}
+                                  </button>
+                                </div>
                               </td>
                             </tr>
                           ))}
@@ -7999,6 +8073,18 @@ const AdminDashboard = () => {
             {activeTab === 'fablab-staff' && (
               <div data-page="manager">
                 <FablabStaffManagement />
+              </div>
+            )}
+
+            {activeTab === 'overtime' && (
+              <div data-page="manager">
+                <OvertimeManagement />
+              </div>
+            )}
+
+            {activeTab === 'trainer-assistants' && (
+              <div data-page="manager">
+                <TrainerAssistantManagement />
               </div>
             )}
 
