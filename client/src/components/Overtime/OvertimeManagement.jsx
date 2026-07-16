@@ -31,6 +31,12 @@ const OvertimeManagement = () => {
   const [editingId, setEditingId] = useState(null);
   const [form, setForm] = useState(emptyForm());
   const [search, setSearch] = useState('');
+  // Existing FabLab staff — pulled on first modal open so admin can
+  // pick a known employee instead of retyping their info. If the
+  // person isn't in the list, admin leaves picker on "new" and types
+  // the fields manually.
+  const [staffList, setStaffList] = useState([]);
+  const [selectedStaffId, setSelectedStaffId] = useState('');
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -47,17 +53,49 @@ const OvertimeManagement = () => {
 
   useEffect(() => { load(); }, [load]);
 
+  // Lazy-fetch the staff roster the first time the create modal opens.
+  useEffect(() => {
+    if (!showModal || staffList.length > 0) return;
+    api.get('/fablab-staff')
+      .then(res => setStaffList(Array.isArray(res.data) ? res.data : []))
+      .catch(() => {});
+  }, [showModal, staffList.length]);
+
+  const pickStaff = (id) => {
+    setSelectedStaffId(id);
+    if (!id) {
+      // "New employee" — clear identity fields, keep period/days/notes.
+      setForm(prev => ({
+        ...prev,
+        employeeName: '', nationalId: '', phone: '', email: '', position: ''
+      }));
+      return;
+    }
+    const s = staffList.find(x => x.staffId === id);
+    if (!s) return;
+    setForm(prev => ({
+      ...prev,
+      employeeName: s.name || '',
+      nationalId: s.nationalId || '',
+      phone: s.phone || '',
+      email: s.email || '',
+      position: s.position || ''
+    }));
+  };
+
   const totalHoursFromForm = () =>
     (form.days || []).reduce((s, d) => s + (Number(d.hours) || 0), 0);
 
   const openCreate = () => {
     setEditingId(null);
     setForm(emptyForm());
+    setSelectedStaffId('');
     setShowModal(true);
   };
 
   const openEdit = (row) => {
     setEditingId(row.overtimeId);
+    setSelectedStaffId('');
     setForm({
       employeeName: row.employeeName || '',
       nationalId: row.nationalId || '',
@@ -72,7 +110,7 @@ const OvertimeManagement = () => {
     setShowModal(true);
   };
 
-  const closeModal = () => { setShowModal(false); setEditingId(null); setForm(emptyForm()); };
+  const closeModal = () => { setShowModal(false); setEditingId(null); setForm(emptyForm()); setSelectedStaffId(''); };
 
   const setDay = (i, field, value) => {
     setForm(prev => {
@@ -363,6 +401,43 @@ const OvertimeManagement = () => {
               </div>
 
               <div className="modern-modal-body">
+                {!editingId && (
+                  <div className="form-section" style={{ background: 'linear-gradient(135deg, #faf5ff 0%, #ede9fe 100%)', border: '1px solid #ddd6fe', borderRadius: 10, padding: 14 }}>
+                    <div className="section-header">
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                      <span>{isRTL ? 'اختر من موظفي فاب لاب' : 'Pick from FabLab staff'}</span>
+                    </div>
+                    <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+                      <select
+                        value={selectedStaffId}
+                        onChange={e => pickStaff(e.target.value)}
+                        className="modern-input-field"
+                        style={{ flex: '1 1 260px', minWidth: 220 }}
+                      >
+                        <option value="">— {isRTL ? 'موظف جديد (املأ الحقول يدوياً)' : 'New employee (fill fields manually)'} —</option>
+                        {staffList.map(s => (
+                          <option key={s.staffId} value={s.staffId}>
+                            {s.name}{s.position ? ` — ${s.position}` : ''}
+                          </option>
+                        ))}
+                      </select>
+                      {selectedStaffId && (
+                        <button
+                          type="button"
+                          onClick={() => pickStaff('')}
+                          style={{ padding: '8px 14px', border: '1px solid #cbd5e1', background: '#fff', borderRadius: 8, cursor: 'pointer', fontWeight: 700, fontFamily: 'inherit', color: '#334155', fontSize: 13 }}
+                        >
+                          {isRTL ? 'مسح الاختيار' : 'Clear'}
+                        </button>
+                      )}
+                    </div>
+                    <div style={{ fontSize: 11, color: '#6d28d9', marginTop: 8, fontWeight: 600 }}>
+                      {isRTL
+                        ? 'اختر موظفاً لتعبئة اسمه وهويته وجواله وبريده تلقائياً، أو اترك الحقل واملأ البيانات يدوياً.'
+                        : 'Selecting a staff member auto-fills name, ID, phone, and email. Leave blank to enter a new person.'}
+                    </div>
+                  </div>
+                )}
                 <div className="form-section">
                   <div className="section-header">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
