@@ -12,6 +12,7 @@ router.get('/:id', controller.getTrainer);
 router.post('/', requireManager, controller.createTrainer);
 router.put('/:id', requireManager, controller.updateTrainer);
 router.delete('/:id', requireManager, controller.deleteTrainer);
+router.post('/:id/send-email', requireManager, controller.sendEmail);
 
 // Assignments (chances) — nested under trainer for create/list;
 // updates/deletes address the assignment by its own id.

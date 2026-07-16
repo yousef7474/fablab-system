@@ -5,7 +5,42 @@ import { useTranslation } from 'react-i18next';
 import api from '../../config/api';
 import '../Mawhba/Mawhba.css';
 
-// Star input — reused for trainer.performanceRating and per-assignment rating.
+// Predefined FabLab sections used as the skills picker. Admin can
+// still add "other" skills freely via a custom-tag input.
+const FABLAB_SECTIONS = [
+  'Electronics and Programming',
+  'CNC Laser',
+  'CNC Wood',
+  '3D',
+  'Robotic and AI',
+  "Kid's Club",
+  'Vinyl Cutting'
+];
+
+// Post-chance evaluation criteria, each rated 0–5. `rating` on the
+// server is the average of the filled criteria. Keep keys in sync
+// with server/controllers/trainerAssistantController.js.
+const CRITERIA = [
+  { key: 'punctuality', labelAr: 'الالتزام بالمواعيد', labelEn: 'Punctuality' },
+  { key: 'technical',   labelAr: 'الكفاءة التقنية',    labelEn: 'Technical proficiency' },
+  { key: 'delivery',    labelAr: 'جودة الشرح والتوصيل', labelEn: 'Explanation & delivery' },
+  { key: 'engagement',  labelAr: 'تفاعل المتدربين',    labelEn: 'Trainee engagement' },
+  { key: 'preparation', labelAr: 'التحضير والتنظيم',   labelEn: 'Preparation & organization' }
+];
+
+// Skills are stored on the server as TEXT for flexibility. On modern
+// rows it's a JSON-stringified array; legacy rows may hold plain
+// text, in which case we treat the whole thing as one skill.
+const parseSkills = (raw) => {
+  if (!raw) return [];
+  if (Array.isArray(raw)) return raw;
+  try {
+    const parsed = JSON.parse(raw);
+    if (Array.isArray(parsed)) return parsed.filter(Boolean);
+  } catch { /* legacy plain-text */ }
+  return String(raw).split(',').map(s => s.trim()).filter(Boolean);
+};
+
 const Stars = ({ value, onChange, size = 22 }) => {
   const v = Number(value) || 0;
   return (
@@ -27,17 +62,39 @@ const Stars = ({ value, onChange, size = 22 }) => {
 
 const emptyTrainer = () => ({
   name: '', phone: '', nationalId: '', email: '', age: '',
-  educationalDegree: '', skills: '', performanceRating: 0, notes: ''
+  educationalDegree: '', skills: [], performanceRating: 0, notes: ''
 });
-const emptyAssignment = () => ({ chanceName: '', destination: '', chanceDate: '', rating: 0, notes: '' });
+const emptyAssignment = () => ({
+  chanceName: '', destination: '',
+  startAt: '', endAt: '',
+  criteria: {}, notes: ''
+});
+const emptyEmail = () => ({ subject: '', message: '' });
 
 const contactLink = (kind, value) => {
   if (!value) return null;
   const clean = String(value).replace(/[^0-9+]/g, '');
   if (kind === 'call') return `tel:${clean}`;
   if (kind === 'whatsapp') return `https://wa.me/${clean.replace(/^\+/, '')}`;
-  if (kind === 'email') return `mailto:${value}`;
   return null;
+};
+
+const avgOfCriteria = (criteria) => {
+  const vals = Object.values(criteria || {}).map(v => Number(v)).filter(v => v > 0);
+  if (!vals.length) return 0;
+  return Math.round((vals.reduce((s, v) => s + v, 0) / vals.length) * 10) / 10;
+};
+
+// datetime-local expects "YYYY-MM-DDTHH:mm". Server returns full ISO
+// strings; we slice to that format.
+const toDtLocal = (v) => {
+  if (!v) return '';
+  try {
+    const d = new Date(v);
+    if (isNaN(d.getTime())) return '';
+    const pad = (n) => String(n).padStart(2, '0');
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  } catch { return ''; }
 };
 
 const TrainerAssistantManagement = () => {
@@ -51,10 +108,15 @@ const TrainerAssistantManagement = () => {
   const [showTrainerModal, setShowTrainerModal] = useState(false);
   const [editingTrainerId, setEditingTrainerId] = useState(null);
   const [trainerForm, setTrainerForm] = useState(emptyTrainer());
+  const [customSkill, setCustomSkill] = useState('');
 
-  const [showAssignmentsFor, setShowAssignmentsFor] = useState(null); // trainer object
+  const [showAssignmentsFor, setShowAssignmentsFor] = useState(null);
   const [assignmentForm, setAssignmentForm] = useState(emptyAssignment());
   const [editingAssignmentId, setEditingAssignmentId] = useState(null);
+
+  const [emailTarget, setEmailTarget] = useState(null);
+  const [emailForm, setEmailForm] = useState(emptyEmail());
+  const [sending, setSending] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -71,9 +133,12 @@ const TrainerAssistantManagement = () => {
 
   useEffect(() => { load(); }, [load]);
 
+  // ---------- Trainer CRUD ----------
+
   const openCreateTrainer = () => {
     setEditingTrainerId(null);
     setTrainerForm(emptyTrainer());
+    setCustomSkill('');
     setShowTrainerModal(true);
   };
   const openEditTrainer = (t) => {
@@ -81,18 +146,44 @@ const TrainerAssistantManagement = () => {
     setTrainerForm({
       name: t.name || '', phone: t.phone || '', nationalId: t.nationalId || '',
       email: t.email || '', age: t.age || '', educationalDegree: t.educationalDegree || '',
-      skills: t.skills || '', performanceRating: Number(t.performanceRating) || 0, notes: t.notes || ''
+      skills: parseSkills(t.skills),
+      performanceRating: Number(t.performanceRating) || 0,
+      notes: t.notes || ''
     });
+    setCustomSkill('');
     setShowTrainerModal(true);
   };
-  const closeTrainerModal = () => { setShowTrainerModal(false); setEditingTrainerId(null); setTrainerForm(emptyTrainer()); };
+  const closeTrainerModal = () => {
+    setShowTrainerModal(false); setEditingTrainerId(null);
+    setTrainerForm(emptyTrainer()); setCustomSkill('');
+  };
+
+  const toggleSkill = (name) => {
+    setTrainerForm(prev => {
+      const has = (prev.skills || []).includes(name);
+      const next = has
+        ? prev.skills.filter(s => s !== name)
+        : [...(prev.skills || []), name];
+      return { ...prev, skills: next };
+    });
+  };
+  const addCustomSkill = () => {
+    const s = customSkill.trim();
+    if (!s) return;
+    if ((trainerForm.skills || []).includes(s)) { setCustomSkill(''); return; }
+    setTrainerForm(prev => ({ ...prev, skills: [...(prev.skills || []), s] }));
+    setCustomSkill('');
+  };
 
   const saveTrainer = async () => {
     if (!trainerForm.name.trim()) {
       toast.error(isRTL ? 'الاسم مطلوب' : 'Name is required');
       return;
     }
-    const payload = { ...trainerForm };
+    const payload = {
+      ...trainerForm,
+      skills: JSON.stringify(trainerForm.skills || [])
+    };
     if (payload.age === '') payload.age = null;
     try {
       if (editingTrainerId) {
@@ -122,12 +213,57 @@ const TrainerAssistantManagement = () => {
     }
   };
 
+  // ---------- Email ----------
+
+  const openEmail = (t) => {
+    if (!t.email) {
+      toast.error(isRTL ? 'لا يوجد بريد إلكتروني لهذا المدرب' : 'This trainer has no email');
+      return;
+    }
+    setEmailTarget(t);
+    setEmailForm({
+      subject: (isRTL ? 'رسالة من فاب لاب' : 'Message from FABLAB'),
+      message: ''
+    });
+  };
+  const closeEmail = () => { setEmailTarget(null); setEmailForm(emptyEmail()); };
+
+  const sendEmail = async () => {
+    if (!emailTarget) return;
+    if (!emailForm.message.trim()) {
+      toast.error(isRTL ? 'الرسالة مطلوبة' : 'Message is required');
+      return;
+    }
+    setSending(true);
+    try {
+      await api.post(`/trainer-assistants/${emailTarget.trainerId}/send-email`, emailForm);
+      toast.success(isRTL ? 'تم إرسال البريد الإلكتروني' : 'Email sent');
+      closeEmail();
+    } catch (err) {
+      const messageAr = err.response?.data?.messageAr;
+      const message = err.response?.data?.message || (isRTL ? 'فشل الإرسال' : 'Send failed');
+      toast.error(isRTL && messageAr ? messageAr : message);
+    } finally {
+      setSending(false);
+    }
+  };
+
+  // ---------- Assignments (chances) ----------
+
   const openAssignments = (t) => {
     setShowAssignmentsFor(t);
     setAssignmentForm(emptyAssignment());
     setEditingAssignmentId(null);
   };
-  const closeAssignments = () => { setShowAssignmentsFor(null); setEditingAssignmentId(null); setAssignmentForm(emptyAssignment()); };
+  const closeAssignments = () => {
+    setShowAssignmentsFor(null); setEditingAssignmentId(null);
+    setAssignmentForm(emptyAssignment());
+  };
+
+  const setCrit = (key, value) => setAssignmentForm(prev => ({
+    ...prev,
+    criteria: { ...(prev.criteria || {}), [key]: value }
+  }));
 
   const saveAssignment = async () => {
     if (!showAssignmentsFor) return;
@@ -135,10 +271,11 @@ const TrainerAssistantManagement = () => {
       toast.error(isRTL ? 'اسم الفرصة مطلوب' : 'Chance name required');
       return;
     }
+    const payload = { ...assignmentForm };
+    if (!payload.startAt) payload.startAt = null;
+    if (!payload.endAt) payload.endAt = null;
+    if (payload.criteria && !Object.keys(payload.criteria).length) payload.criteria = null;
     try {
-      const payload = { ...assignmentForm };
-      if (payload.chanceDate === '') payload.chanceDate = null;
-      if (payload.rating === 0 || payload.rating === '') payload.rating = null;
       if (editingAssignmentId) {
         await api.put(`/trainer-assistants/assignments/${editingAssignmentId}`, payload);
         toast.success(isRTL ? 'تم التحديث' : 'Updated');
@@ -162,8 +299,9 @@ const TrainerAssistantManagement = () => {
     setAssignmentForm({
       chanceName: a.chanceName || '',
       destination: a.destination || '',
-      chanceDate: (a.chanceDate || '').slice(0, 10),
-      rating: Number(a.rating) || 0,
+      startAt: toDtLocal(a.startAt || (a.chanceDate ? `${a.chanceDate}T09:00` : '')),
+      endAt: toDtLocal(a.endAt || ''),
+      criteria: a.criteria || {},
       notes: a.notes || ''
     });
   };
@@ -183,20 +321,34 @@ const TrainerAssistantManagement = () => {
     }
   };
 
-  const fmtDate = (d) => {
+  // ---------- Formatting ----------
+
+  const fmtDate = (d, withTime = false) => {
     if (!d) return '';
     try {
       const dt = new Date(d);
       if (isNaN(dt.getTime())) return String(d).slice(0, 10);
-      return dt.toLocaleDateString('ar-SA-u-ca-gregory-nu-latn', { calendar: 'gregory', day: '2-digit', month: 'short', year: 'numeric' });
+      const opts = { calendar: 'gregory', day: '2-digit', month: 'short', year: 'numeric' };
+      if (withTime) { opts.hour = '2-digit'; opts.minute = '2-digit'; opts.hour12 = false; }
+      return dt.toLocaleDateString('ar-SA-u-ca-gregory-nu-latn', opts);
     } catch { return String(d).slice(0, 10); }
+  };
+
+  const fmtRange = (a) => {
+    if (a.startAt || a.endAt) {
+      if (a.startAt && a.endAt) return `${fmtDate(a.startAt, true)} → ${fmtDate(a.endAt, true)}`;
+      return fmtDate(a.startAt || a.endAt, true);
+    }
+    if (a.chanceDate) return fmtDate(a.chanceDate);
+    return '';
   };
 
   const filtered = trainers.filter(t => {
     if (!search.trim()) return true;
     const q = search.trim().toLowerCase();
-    return [t.name, t.phone, t.email, t.nationalId, t.skills, t.educationalDegree]
-      .some(f => String(f || '').toLowerCase().includes(q));
+    const skillsStr = parseSkills(t.skills).join(' ').toLowerCase();
+    return [t.name, t.phone, t.email, t.nationalId, t.educationalDegree]
+      .some(f => String(f || '').toLowerCase().includes(q)) || skillsStr.includes(q);
   });
 
   return (
@@ -229,6 +381,7 @@ const TrainerAssistantManagement = () => {
               {isRTL ? 'لم تتم إضافة أي مدرب معاون بعد' : 'No trainers added yet'}
             </div>
           ) : filtered.map(t => {
+            const skills = parseSkills(t.skills);
             const assignmentCount = Array.isArray(t.assignments) ? t.assignments.length : 0;
             return (
               <div key={t.trainerId} className="volunteer-card">
@@ -243,7 +396,13 @@ const TrainerAssistantManagement = () => {
                   {t.phone && <div>📱 <span dir="ltr">{t.phone}</span></div>}
                   {t.email && <div>✉️ <span dir="ltr">{t.email}</span></div>}
                   {t.age && <div>🎂 {t.age}</div>}
-                  {t.skills && <div style={{ marginTop: 6, background: '#faf5ff', padding: '6px 10px', borderRadius: 8, color: '#5b21b6', fontSize: 12, fontWeight: 600, lineHeight: 1.5 }}>🛠 {t.skills}</div>}
+                  {skills.length > 0 && (
+                    <div style={{ marginTop: 6, display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                      {skills.map(s => (
+                        <span key={s} style={{ background: '#faf5ff', color: '#5b21b6', padding: '3px 10px', borderRadius: 999, fontSize: 11, fontWeight: 700, border: '1px solid #e9d5ff' }}>{s}</span>
+                      ))}
+                    </div>
+                  )}
                   <div style={{ marginTop: 6 }}>🎯 {assignmentCount} {isRTL ? 'فرصة تدريبية' : 'chances'}</div>
                 </div>
                 <div style={{ display: 'flex', gap: 8, marginTop: 14, flexWrap: 'wrap' }}>
@@ -260,7 +419,7 @@ const TrainerAssistantManagement = () => {
                     </>
                   )}
                   {t.email && (
-                    <a href={contactLink('email', t.email)} title="Email" style={{ padding: '8px 10px', borderRadius: 8, border: '1px solid #bfdbfe', background: '#dbeafe', color: '#1e40af', textDecoration: 'none', fontWeight: 700, fontSize: 13 }}>✉️</a>
+                    <button onClick={() => openEmail(t)} title="Email" style={{ padding: '8px 10px', borderRadius: 8, border: '1px solid #bfdbfe', background: '#dbeafe', color: '#1e40af', cursor: 'pointer', fontWeight: 700, fontSize: 13, fontFamily: 'inherit' }}>✉️</button>
                   )}
                   <button onClick={() => openEditTrainer(t)} style={{ padding: '8px 12px', borderRadius: 8, border: '1px solid #cbd5e1', background: '#fff', color: '#334155', cursor: 'pointer', fontWeight: 700, fontSize: 13, fontFamily: 'inherit' }}>✏️</button>
                   <button onClick={() => deleteTrainer(t)} style={{ padding: '8px 12px', borderRadius: 8, border: '1px solid #fecaca', background: '#fee2e2', color: '#991b1b', cursor: 'pointer', fontWeight: 700, fontSize: 13, fontFamily: 'inherit' }}>🗑</button>
@@ -282,7 +441,7 @@ const TrainerAssistantManagement = () => {
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.92, y: 20 }}
               transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-              style={{ maxWidth: 720 }}
+              style={{ maxWidth: 760 }}
             >
               <div className="modern-modal-header" style={{ background: 'linear-gradient(135deg, #6d28d9 0%, #a855f7 100%)' }}>
                 <div className="modal-header-icon">
@@ -328,13 +487,60 @@ const TrainerAssistantManagement = () => {
                       <input className="modern-input-field" value={trainerForm.educationalDegree} onChange={e => setTrainerForm({ ...trainerForm, educationalDegree: e.target.value })} />
                     </div>
                   </div>
-                  <div className="form-group modern-input" style={{ marginTop: 10 }}>
-                    <label>{isRTL ? 'المهارات' : 'Skills'}</label>
-                    <textarea className="modern-input-field" rows={2} placeholder={isRTL ? 'مثال: البرمجة، أنظمة CNC، إلكترونيات...' : 'e.g. Programming, CNC systems, electronics...'} value={trainerForm.skills} onChange={e => setTrainerForm({ ...trainerForm, skills: e.target.value })} />
+                </div>
+
+                <div className="form-section">
+                  <div className="section-header">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                    <span>{isRTL ? 'المهارات (أقسام فاب لاب)' : 'Skills (FabLab sections)'}</span>
                   </div>
-                  <div className="form-group modern-input" style={{ marginTop: 10 }}>
-                    <label>{isRTL ? 'ملاحظات' : 'Notes'}</label>
-                    <textarea className="modern-input-field" rows={2} value={trainerForm.notes} onChange={e => setTrainerForm({ ...trainerForm, notes: e.target.value })} />
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 8 }}>
+                    {FABLAB_SECTIONS.map(sec => {
+                      const active = (trainerForm.skills || []).includes(sec);
+                      return (
+                        <label key={sec} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', borderRadius: 8, border: `1.5px solid ${active ? '#a855f7' : '#e2e8f0'}`, background: active ? '#faf5ff' : '#fff', cursor: 'pointer', fontSize: 13, fontWeight: 600, color: active ? '#5b21b6' : '#334155' }}>
+                          <input type="checkbox" checked={active} onChange={() => toggleSkill(sec)} style={{ accentColor: '#6d28d9' }} />
+                          {sec}
+                        </label>
+                      );
+                    })}
+                  </div>
+                  <div style={{ marginTop: 12 }}>
+                    <div style={{ fontSize: 12, color: '#64748b', marginBottom: 6, fontWeight: 700 }}>
+                      {isRTL ? 'مهارة أخرى غير موجودة أعلاه' : 'Other skill not listed above'}
+                    </div>
+                    <div style={{ display: 'flex', gap: 8 }}>
+                      <input
+                        value={customSkill}
+                        onChange={(e) => setCustomSkill(e.target.value)}
+                        onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addCustomSkill(); } }}
+                        placeholder={isRTL ? 'اسم المهارة ثم اضغط إضافة' : 'Skill name, then click Add'}
+                        className="modern-input-field"
+                        style={{ flex: 1 }}
+                      />
+                      <button
+                        type="button"
+                        onClick={addCustomSkill}
+                        style={{ padding: '0 18px', border: 'none', borderRadius: 8, background: 'linear-gradient(135deg, #6d28d9, #a855f7)', color: '#fff', cursor: 'pointer', fontWeight: 700, fontFamily: 'inherit', whiteSpace: 'nowrap' }}
+                      >
+                        {isRTL ? '+ إضافة' : '+ Add'}
+                      </button>
+                    </div>
+                    {(trainerForm.skills || []).filter(s => !FABLAB_SECTIONS.includes(s)).length > 0 && (
+                      <div style={{ marginTop: 10, display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                        {trainerForm.skills.filter(s => !FABLAB_SECTIONS.includes(s)).map(s => (
+                          <span key={s} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: '#f5f3ff', color: '#5b21b6', padding: '4px 10px', borderRadius: 999, fontSize: 12, fontWeight: 700, border: '1px solid #ddd6fe' }}>
+                            {s}
+                            <button
+                              type="button"
+                              onClick={() => toggleSkill(s)}
+                              style={{ background: 'none', border: 'none', color: '#7c3aed', cursor: 'pointer', padding: 0, fontSize: 14, fontWeight: 900, lineHeight: 1 }}
+                              aria-label="remove"
+                            >×</button>
+                          </span>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 </div>
 
@@ -346,6 +552,10 @@ const TrainerAssistantManagement = () => {
                   <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
                     <Stars value={trainerForm.performanceRating} onChange={v => setTrainerForm({ ...trainerForm, performanceRating: v })} size={28} />
                     <span style={{ color: '#64748b', fontSize: 13 }}>{trainerForm.performanceRating || 0} / 5</span>
+                  </div>
+                  <div className="form-group modern-input" style={{ marginTop: 10 }}>
+                    <label>{isRTL ? 'ملاحظات' : 'Notes'}</label>
+                    <textarea className="modern-input-field" rows={2} value={trainerForm.notes} onChange={e => setTrainerForm({ ...trainerForm, notes: e.target.value })} />
                   </div>
                 </div>
               </div>
@@ -371,7 +581,7 @@ const TrainerAssistantManagement = () => {
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.92, y: 20 }}
               transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-              style={{ maxWidth: 820 }}
+              style={{ maxWidth: 860 }}
             >
               <div className="modern-modal-header" style={{ background: 'linear-gradient(135deg, #6d28d9 0%, #ec4899 100%)' }}>
                 <div className="modal-header-icon">
@@ -391,7 +601,7 @@ const TrainerAssistantManagement = () => {
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
                     <span>{editingAssignmentId ? (isRTL ? 'تعديل فرصة' : 'Edit chance') : (isRTL ? 'إضافة فرصة' : 'Add chance')}</span>
                   </div>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 10 }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 10 }}>
                     <div className="form-group modern-input">
                       <label>{isRTL ? 'اسم الفرصة *' : 'Chance name *'}</label>
                       <input className="modern-input-field" value={assignmentForm.chanceName} onChange={e => setAssignmentForm({ ...assignmentForm, chanceName: e.target.value })} />
@@ -401,17 +611,35 @@ const TrainerAssistantManagement = () => {
                       <input className="modern-input-field" value={assignmentForm.destination} onChange={e => setAssignmentForm({ ...assignmentForm, destination: e.target.value })} />
                     </div>
                     <div className="form-group modern-input">
-                      <label>{isRTL ? 'التاريخ' : 'Date'}</label>
-                      <input className="modern-input-field" type="date" value={assignmentForm.chanceDate} onChange={e => setAssignmentForm({ ...assignmentForm, chanceDate: e.target.value })} />
+                      <label>{isRTL ? 'يبدأ في' : 'Starts at'}</label>
+                      <input className="modern-input-field" type="datetime-local" value={assignmentForm.startAt} onChange={e => setAssignmentForm({ ...assignmentForm, startAt: e.target.value })} />
                     </div>
                     <div className="form-group modern-input">
-                      <label>{isRTL ? 'التقييم' : 'Rating'}</label>
-                      <div style={{ padding: '4px 0' }}>
-                        <Stars value={assignmentForm.rating} onChange={v => setAssignmentForm({ ...assignmentForm, rating: v })} />
-                      </div>
+                      <label>{isRTL ? 'ينتهي في' : 'Ends at'}</label>
+                      <input className="modern-input-field" type="datetime-local" value={assignmentForm.endAt} onChange={e => setAssignmentForm({ ...assignmentForm, endAt: e.target.value })} />
                     </div>
                   </div>
-                  <div className="form-group modern-input" style={{ marginTop: 10 }}>
+
+                  <div style={{ marginTop: 14, background: 'linear-gradient(135deg, #faf5ff 0%, #fdf2f8 100%)', border: '1px solid #f5d0fe', borderRadius: 10, padding: 14 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+                      <div style={{ fontWeight: 800, color: '#6d28d9', fontSize: 14 }}>
+                        {isRTL ? 'تقييم أداء المدرب بعد الفرصة' : 'Post-chance performance evaluation'}
+                      </div>
+                      <div style={{ fontWeight: 800, color: '#6d28d9' }}>
+                        {isRTL ? 'المتوسط' : 'Avg'}: {avgOfCriteria(assignmentForm.criteria)} / 5
+                      </div>
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                      {CRITERIA.map(c => (
+                        <div key={c.key} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, padding: '6px 10px', background: '#fff', borderRadius: 8 }}>
+                          <span style={{ fontSize: 13, fontWeight: 600, color: '#334155' }}>{isRTL ? c.labelAr : c.labelEn}</span>
+                          <Stars value={assignmentForm.criteria?.[c.key]} onChange={v => setCrit(c.key, v)} size={20} />
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="form-group modern-input" style={{ marginTop: 12 }}>
                     <label>{isRTL ? 'ملاحظات' : 'Notes'}</label>
                     <textarea className="modern-input-field" rows={2} value={assignmentForm.notes} onChange={e => setAssignmentForm({ ...assignmentForm, notes: e.target.value })} />
                   </div>
@@ -436,28 +664,107 @@ const TrainerAssistantManagement = () => {
                     <div className="empty-state">{isRTL ? 'لا توجد فرص مسجلة' : 'No chances recorded'}</div>
                   ) : (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                      {showAssignmentsFor.assignments.map(a => (
-                        <div key={a.assignmentId} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 14px', background: '#faf8ff', border: '1px solid #e9d5ff', borderRadius: 10, flexWrap: 'wrap' }}>
-                          <div style={{ flex: '1 1 200px', minWidth: 0 }}>
-                            <div style={{ fontWeight: 800, color: '#0f172a', fontSize: 14 }}>{a.chanceName}</div>
-                            <div style={{ fontSize: 12, color: '#64748b', marginTop: 2 }}>
-                              {a.destination ? `📍 ${a.destination}` : ''}
-                              {a.destination && a.chanceDate ? ' • ' : ''}
-                              {a.chanceDate ? `📅 ${fmtDate(a.chanceDate)}` : ''}
+                      {showAssignmentsFor.assignments.map(a => {
+                        const critAvg = a.rating || avgOfCriteria(a.criteria);
+                        return (
+                          <div key={a.assignmentId} style={{ padding: '12px 14px', background: '#faf8ff', border: '1px solid #e9d5ff', borderRadius: 10 }}>
+                            <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 12 }}>
+                              <div style={{ flex: '1 1 220px', minWidth: 0 }}>
+                                <div style={{ fontWeight: 800, color: '#0f172a', fontSize: 14 }}>{a.chanceName}</div>
+                                <div style={{ fontSize: 12, color: '#64748b', marginTop: 2 }}>
+                                  {a.destination ? `📍 ${a.destination}` : ''}
+                                  {a.destination && fmtRange(a) ? ' • ' : ''}
+                                  {fmtRange(a) ? `📅 ${fmtRange(a)}` : ''}
+                                </div>
+                              </div>
+                              <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: '#fff', padding: '4px 10px', borderRadius: 999, border: '1px solid #e9d5ff' }}>
+                                <Stars value={critAvg} onChange={null} size={16} />
+                                <span style={{ fontSize: 12, fontWeight: 800, color: '#6d28d9' }}>{critAvg || 0}</span>
+                              </div>
+                              <button onClick={() => editAssignment(a)} style={{ padding: '6px 10px', borderRadius: 6, border: '1px solid #cbd5e1', background: '#fff', color: '#334155', cursor: 'pointer', fontWeight: 700, fontSize: 12, fontFamily: 'inherit' }}>✏️</button>
+                              <button onClick={() => deleteAssignment(a)} style={{ padding: '6px 10px', borderRadius: 6, border: '1px solid #fecaca', background: '#fee2e2', color: '#991b1b', cursor: 'pointer', fontWeight: 700, fontSize: 12, fontFamily: 'inherit' }}>🗑</button>
                             </div>
-                            {a.notes && <div style={{ fontSize: 12, color: '#475569', marginTop: 4 }}>{a.notes}</div>}
+                            {a.criteria && Object.keys(a.criteria).length > 0 && (
+                              <div style={{ marginTop: 8, display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 6, fontSize: 11 }}>
+                                {CRITERIA.map(c => {
+                                  const v = Number(a.criteria?.[c.key]) || 0;
+                                  if (!v) return null;
+                                  return (
+                                    <div key={c.key} style={{ display: 'flex', justifyContent: 'space-between', gap: 6, background: '#fff', padding: '4px 8px', borderRadius: 6, color: '#475569' }}>
+                                      <span style={{ fontWeight: 600 }}>{isRTL ? c.labelAr : c.labelEn}</span>
+                                      <span style={{ color: '#6d28d9', fontWeight: 800 }}>{v}/5</span>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            )}
+                            {a.notes && <div style={{ marginTop: 6, fontSize: 12, color: '#475569' }}>💬 {a.notes}</div>}
                           </div>
-                          <Stars value={a.rating} onChange={null} size={16} />
-                          <button onClick={() => editAssignment(a)} style={{ padding: '6px 10px', borderRadius: 6, border: '1px solid #cbd5e1', background: '#fff', color: '#334155', cursor: 'pointer', fontWeight: 700, fontSize: 12, fontFamily: 'inherit' }}>✏️</button>
-                          <button onClick={() => deleteAssignment(a)} style={{ padding: '6px 10px', borderRadius: 6, border: '1px solid #fecaca', background: '#fee2e2', color: '#991b1b', cursor: 'pointer', fontWeight: 700, fontSize: 12, fontFamily: 'inherit' }}>🗑</button>
-                        </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   )}
                 </div>
               </div>
               <div className="modern-modal-footer">
                 <button onClick={closeAssignments} style={{ padding: '10px 20px', border: '1px solid #cbd5e1', background: '#fff', borderRadius: 10, cursor: 'pointer', fontWeight: 700, fontFamily: 'inherit', color: '#334155' }}>{isRTL ? 'إغلاق' : 'Close'}</button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Email compose modal */}
+      <AnimatePresence>
+        {emailTarget && (
+          <div className="modal-overlay" onClick={closeEmail}>
+            <motion.div
+              className="modal-content modern-modal"
+              onClick={(e) => e.stopPropagation()}
+              initial={{ opacity: 0, scale: 0.92, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.92, y: 20 }}
+              transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+              style={{ maxWidth: 640 }}
+            >
+              <div className="modern-modal-header" style={{ background: 'linear-gradient(135deg, #1e40af 0%, #3b82f6 100%)' }}>
+                <div className="modal-header-icon">
+                  <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+                </div>
+                <div className="modal-header-text">
+                  <h2>{isRTL ? 'إرسال بريد إلكتروني' : 'Send email'}</h2>
+                  <p>{emailTarget.name} — <span dir="ltr">{emailTarget.email}</span></p>
+                </div>
+                <button className="modal-close-modern" onClick={closeEmail}>
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                </button>
+              </div>
+              <div className="modern-modal-body">
+                <div className="form-group modern-input">
+                  <label>{isRTL ? 'الموضوع' : 'Subject'}</label>
+                  <input className="modern-input-field" value={emailForm.subject} onChange={e => setEmailForm({ ...emailForm, subject: e.target.value })} placeholder={isRTL ? 'موضوع البريد' : 'Email subject'} />
+                </div>
+                <div className="form-group modern-input" style={{ marginTop: 12 }}>
+                  <label>{isRTL ? 'محتوى الرسالة *' : 'Message body *'}</label>
+                  <textarea
+                    className="modern-input-field"
+                    rows={9}
+                    value={emailForm.message}
+                    onChange={e => setEmailForm({ ...emailForm, message: e.target.value })}
+                    placeholder={isRTL ? 'اكتب رسالتك هنا...' : 'Write your message here...'}
+                    style={{ resize: 'vertical', minHeight: 160 }}
+                  />
+                </div>
+                <div style={{ marginTop: 8, fontSize: 12, color: '#64748b' }}>
+                  {isRTL ? 'سيتم إرسال البريد من: ' : 'Will be sent from: '}
+                  <strong>FABLAB Al-Ahsa</strong>
+                </div>
+              </div>
+              <div className="modern-modal-footer">
+                <button onClick={closeEmail} style={{ padding: '10px 20px', border: '1px solid #cbd5e1', background: '#fff', borderRadius: 10, cursor: 'pointer', fontWeight: 700, fontFamily: 'inherit', color: '#334155' }}>{isRTL ? 'إلغاء' : 'Cancel'}</button>
+                <button onClick={sendEmail} disabled={sending} style={{ padding: '10px 24px', border: 'none', background: sending ? '#94a3b8' : 'linear-gradient(135deg, #1e40af, #3b82f6)', color: 'white', borderRadius: 10, cursor: sending ? 'not-allowed' : 'pointer', fontWeight: 800, fontFamily: 'inherit' }}>
+                  {sending ? (isRTL ? 'جاري الإرسال...' : 'Sending...') : (isRTL ? '📤 إرسال' : '📤 Send')}
+                </button>
               </div>
             </motion.div>
           </div>
