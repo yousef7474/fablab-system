@@ -52,4 +52,19 @@ router.post('/ratings', requireManager, internController.createInternRating);
 // Delete intern rating (manager or admin only)
 router.delete('/ratings/:id', requireManager, internController.deleteInternRating);
 
+// ============== INTERN ID CARD (QR) ==============
+router.get('/:id/card', internController.getInternCard);
+router.post('/cards', internController.getInternCardsBulk);
+
+// ============== INTERN ATTENDANCE ==============
+// Static/action segments first so they don't collide with the
+// numeric :id routes above.
+router.post('/attendance/scan', internController.scanAttendance);
+router.get('/attendance/today', internController.todayAttendance);
+router.delete('/attendance/today', requireManager, internController.clearTodayAttendance);
+router.post('/attendance/export', internController.exportAttendance);
+router.get('/:id/attendance', internController.listInternAttendance);
+router.patch('/attendance/:id/checkout', requireManager, internController.clearCheckout);
+router.delete('/attendance/:id', requireManager, internController.deleteAttendance);
+
 module.exports = router;

@@ -176,6 +176,15 @@ const ManagerDashboard = () => {
   const [showTrainingModal, setShowTrainingModal] = useState(false);
   const [showInternDetailModal, setShowInternDetailModal] = useState(false);
   const [showInternRatingModal, setShowInternRatingModal] = useState(false);
+  // Per-intern attendance history (mirrors the volunteer flow)
+  const [showInternLogModal, setShowInternLogModal] = useState(false);
+  const [logIntern, setLogIntern] = useState(null);
+  const [internLogRecords, setInternLogRecords] = useState([]);
+  // Excel export of all-intern attendance across a date range
+  const [showInternExportModal, setShowInternExportModal] = useState(false);
+  const [internExportFrom, setInternExportFrom] = useState('');
+  const [internExportTo, setInternExportTo] = useState('');
+  const [internExporting, setInternExporting] = useState(false);
   const [selectedTraining, setSelectedTraining] = useState(null);
   const [selectedIntern, setSelectedIntern] = useState(null);
   const [internLoading, setInternLoading] = useState(false);
@@ -1423,6 +1432,273 @@ const ManagerDashboard = () => {
       console.error('Error deleting intern:', error);
       toast.error(isRTL ? 'خطأ في حذف المتدرب' : 'Error deleting intern');
     }
+  };
+
+  // ---------- Intern QR ID card + attendance ----------
+
+  // Sky-blue ID card that mirrors the volunteer 72×102mm layout so
+  // 4-up printing lines up on the same A4 grid.
+  const buildInternCardStyles = (bulk = false) => `
+    <style>
+      @page { size: A4 portrait; margin: 10mm 8mm; }
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+      html, body { font-family: 'Segoe UI', Tahoma, Arial, sans-serif; background: #f1f5f9; }
+      body { padding: 6mm 0; }
+      ${bulk ? `
+        .a4-page {
+          display: grid;
+          grid-template-columns: 72mm 72mm;
+          grid-auto-rows: 102mm;
+          column-gap: 6mm; row-gap: 6mm;
+          justify-content: center; align-content: start;
+          width: 100%;
+        }
+        .a4-page + .a4-page { page-break-before: always; }
+      ` : ''}
+      .id-card {
+        width: 72mm; height: 102mm;
+        background: linear-gradient(180deg, #ffffff 0%, #f0f9ff 100%);
+        border: 0.45mm dashed #475569;
+        overflow: hidden; position: relative;
+        display: flex; flex-direction: column;
+        color: #0f172a; box-sizing: border-box;
+        ${bulk ? '' : 'margin: 0 auto;'}
+      }
+      .card-header {
+        background: linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%);
+        padding: 2.5mm 3.5mm; text-align: center;
+      }
+      .card-title { color: white; font-size: 9pt; font-weight: 700; line-height: 1.15; }
+      .card-subtitle { color: rgba(255,255,255,0.88); font-size: 6.5pt; margin-top: 0.6mm; }
+      .card-body {
+        flex: 1; padding: 2.5mm 3mm 0;
+        display: flex; flex-direction: column; align-items: center; gap: 1.4mm;
+      }
+      .user-photo {
+        width: 22mm; height: 26mm;
+        background: linear-gradient(135deg, #bae6fd, #7dd3fc);
+        border-radius: 2mm; display: flex; align-items: center; justify-content: center;
+        color: #0284c7; font-weight: bold;
+        border: 0.6mm solid #0ea5e9;
+        overflow: hidden; flex-shrink: 0;
+      }
+      .user-photo img { width: 100%; height: 100%; object-fit: cover; }
+      .user-photo .initials { font-size: 18pt; font-weight: bold; color: #0284c7; }
+      .user-name {
+        font-size: 10.5pt; font-weight: 800; color: #0f172a;
+        text-align: center; line-height: 1.15; max-height: 10mm; overflow: hidden;
+        display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+      }
+      .user-type-badge {
+        display: inline-block;
+        background: linear-gradient(135deg, #0ea5e9, #0284c7);
+        color: white; font-size: 7.5pt; padding: 0.6mm 3.5mm;
+        border-radius: 999px; font-weight: 700;
+      }
+      .info-section { width: 100%; display: flex; flex-direction: column; gap: 0.6mm; margin-top: 1mm; }
+      .info-row {
+        display: flex; justify-content: space-between; align-items: center;
+        font-size: 7.2pt; padding: 0.6mm 0; border-bottom: 0.2mm dotted #d4d4d8;
+      }
+      .info-row:last-child { border-bottom: none; }
+      .info-label { font-weight: 700; color: #555; }
+      .info-value {
+        color: #0f172a; font-weight: 600; text-align: ${isRTL ? 'left' : 'right'};
+        max-width: 60%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+      }
+      .card-qr { display: flex; align-items: center; justify-content: center; margin-top: 1mm; }
+      .card-qr img { width: 26mm; height: 26mm; background: white; padding: 0.8mm; border-radius: 1mm; box-shadow: 0 0 0 0.3mm #0ea5e9 inset; }
+      .card-footer {
+        background: #ffffff; padding: 1.5mm 3mm;
+        display: flex; align-items: center; justify-content: space-between;
+        border-top: 0.3mm solid #e0e0e0;
+      }
+      .card-footer .logo { height: 7mm; width: auto; flex-shrink: 0; }
+      .card-footer .qr-label { font-size: 6pt; color: #0284c7; font-weight: 700; }
+      .decorative-stripe {
+        position: absolute; top: 40%; ${isRTL ? 'right' : 'left'}: 0;
+        width: 1mm; height: 25%;
+        background: linear-gradient(to bottom, transparent, #0ea5e9, transparent);
+      }
+      @media print {
+        html, body { background: white; padding: 0; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+        body { padding: 0; }
+        .id-card { box-shadow: none; break-inside: avoid; }
+      }
+    </style>
+  `;
+
+  const buildInternCardHTML = (intern, qrDataUrl, safe) => {
+    const na = isRTL ? 'غير محدد' : 'N/A';
+    const name = intern.name || na;
+    const qrImg = qrDataUrl ? `<img src="${qrDataUrl}" alt="QR" />` : '';
+    return `
+      <div class="id-card">
+        <div class="card-header">
+          <div class="card-title">${isRTL ? 'بطاقة تدريب جامعي - فاب لاب الأحساء' : 'FABLAB Al-Ahsa University Training'}</div>
+          <div class="card-subtitle">${isRTL ? 'مؤسسة عبدالمنعم الراشد الإنسانية' : 'Abdulmonem Al-Rashed Foundation'}</div>
+        </div>
+        <div class="card-body">
+          <div class="user-photo">
+            ${intern.nationalIdPhoto
+              ? `<img src="${intern.nationalIdPhoto}" alt="${safe(name)}" />`
+              : `<span class="initials">${safe(name.charAt(0).toUpperCase())}</span>`
+            }
+          </div>
+          <div class="user-name">${safe(name)}</div>
+          <div class="user-type-badge">${isRTL ? 'متدرب' : 'Trainee'}</div>
+          <div class="info-section">
+            <div class="info-row">
+              <span class="info-label">${isRTL ? 'رقم الهوية' : 'National ID'}</span>
+              <span class="info-value">${safe(intern.nationalId || na)}</span>
+            </div>
+            ${intern.university ? `
+              <div class="info-row">
+                <span class="info-label">${isRTL ? 'الجامعة' : 'University'}</span>
+                <span class="info-value">${safe(intern.university)}</span>
+              </div>` : ''}
+            <div class="info-row">
+              <span class="info-label">${isRTL ? 'الهاتف' : 'Phone'}</span>
+              <span class="info-value">${safe(intern.phone || na)}</span>
+            </div>
+          </div>
+          <div class="card-qr">${qrImg}</div>
+        </div>
+        <div class="decorative-stripe"></div>
+        <div class="card-footer">
+          <img src="/found.png" alt="Foundation" class="logo">
+          <span class="qr-label">${isRTL ? 'رمز الحضور' : 'Attendance QR'}</span>
+          <img src="/fablab.png" alt="FABLAB" class="logo">
+        </div>
+      </div>
+    `;
+  };
+
+  // Print one ID card. Fetches server-rendered QR (data URL) so
+  // clients don't need a QR library.
+  const handlePrintInternIDCard = async (intern) => {
+    try {
+      const { data } = await api.get(`/interns/${intern.internId}/card`);
+      const qr = data.qrDataUrl;
+      const it = data.intern || intern;
+      const win = window.open('', '_blank', 'width=520,height=760');
+      if (!win) { toast.error(isRTL ? 'يرجى السماح بالنوافذ المنبثقة' : 'Please allow pop-ups'); return; }
+      const safe = (s) => String(s || '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+      win.document.write(buildInternCardStyles() + buildInternCardHTML(it, qr, safe) + `<script>window.onload=()=>setTimeout(()=>window.print(),200)</script>`);
+      win.document.close();
+    } catch (err) {
+      console.error('handlePrintInternIDCard:', err);
+      toast.error(isRTL ? 'تعذر تحضير البطاقة' : 'Failed to prepare card');
+    }
+  };
+
+  // Bulk print — 4 IDs per A4 page.
+  const handlePrintAllInternIDCards = async () => {
+    if (!interns.length) {
+      toast.error(isRTL ? 'لا يوجد متدربون' : 'No interns');
+      return;
+    }
+    try {
+      const { data } = await api.post('/interns/cards', { internIds: interns.map(i => i.internId) });
+      const cards = Array.isArray(data.cards) ? data.cards : [];
+      if (!cards.length) { toast.error(isRTL ? 'لا توجد بطاقات' : 'No cards'); return; }
+      const safe = (s) => String(s || '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+      const chunks = [];
+      for (let i = 0; i < cards.length; i += 4) chunks.push(cards.slice(i, i + 4));
+      const pages = chunks.map(chunk => `
+        <div class="a4-page">
+          ${chunk.map(c => buildInternCardHTML(c.intern, c.qrDataUrl, safe)).join('')}
+        </div>
+      `).join('');
+      const win = window.open('', '_blank', 'width=900,height=1200');
+      if (!win) { toast.error(isRTL ? 'يرجى السماح بالنوافذ المنبثقة' : 'Please allow pop-ups'); return; }
+      win.document.write(buildInternCardStyles(true) + pages + `<script>window.onload=()=>setTimeout(()=>window.print(),250)</script>`);
+      win.document.close();
+    } catch (err) {
+      console.error('handlePrintAllInternIDCards:', err);
+      toast.error(isRTL ? 'خطأ في الطباعة' : 'Print failed');
+    }
+  };
+
+  // Per-intern attendance history modal
+  const openInternLog = async (intern) => {
+    setLogIntern(intern);
+    setInternLogRecords([]);
+    setShowInternLogModal(true);
+    try {
+      const { data } = await api.get(`/interns/${intern.internId}/attendance`);
+      setInternLogRecords(Array.isArray(data) ? data : []);
+    } catch (err) {
+      console.error('openInternLog:', err);
+      toast.error(isRTL ? 'خطأ في تحميل السجل' : 'Failed to load log');
+    }
+  };
+
+  const deleteInternAttendanceRecord = async (id) => {
+    if (!window.confirm(isRTL ? 'حذف هذا السجل نهائياً؟' : 'Delete this record permanently?')) return;
+    try {
+      await api.delete(`/interns/attendance/${id}`);
+      setInternLogRecords(prev => prev.filter(r => r.attendanceId !== id));
+      toast.success(isRTL ? 'تم الحذف' : 'Deleted');
+    } catch {
+      toast.error(isRTL ? 'خطأ' : 'Error');
+    }
+  };
+
+  const clearInternCheckoutRecord = async (id) => {
+    if (!window.confirm(isRTL ? 'إلغاء تسجيل الخروج فقط؟' : 'Clear check-out only?')) return;
+    try {
+      const { data } = await api.patch(`/interns/attendance/${id}/checkout`);
+      setInternLogRecords(prev => prev.map(r => r.attendanceId === id ? { ...r, checkOutAt: null } : r));
+      toast.success(isRTL ? 'تم إلغاء تسجيل الخروج' : 'Check-out cleared');
+    } catch {
+      toast.error(isRTL ? 'خطأ' : 'Error');
+    }
+  };
+
+  const downloadAllInternsAttendance = async () => {
+    setInternExporting(true);
+    try {
+      const res = await api.post('/interns/attendance/export', {
+        from: internExportFrom || undefined,
+        to: internExportTo || undefined
+      }, { responseType: 'blob' });
+      const blob = new Blob([res.data], { type: 'text/csv;charset=utf-16le' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      const today = new Date().toISOString().slice(0, 10);
+      a.download = `interns-attendance-${today}.csv`;
+      document.body.appendChild(a); a.click(); a.remove();
+      URL.revokeObjectURL(url);
+      toast.success(isRTL ? 'تم التحميل' : 'Downloaded');
+      setShowInternExportModal(false);
+    } catch (err) {
+      console.error(err);
+      toast.error(isRTL ? 'خطأ في التصدير' : 'Export failed');
+    } finally {
+      setInternExporting(false);
+    }
+  };
+
+  const fmtLogDate = (d) => {
+    if (!d) return '';
+    try {
+      const dt = new Date(d);
+      return dt.toLocaleDateString('ar-SA-u-ca-gregory-nu-latn', { calendar: 'gregory', day: '2-digit', month: 'short', year: 'numeric' });
+    } catch { return String(d).slice(0, 10); }
+  };
+  const fmtLogTime = (d) => {
+    if (!d) return '—';
+    try {
+      const dt = new Date(d);
+      const pad = (n) => String(n).padStart(2, '0');
+      return `${pad(dt.getHours())}:${pad(dt.getMinutes())}`;
+    } catch { return '—'; }
+  };
+  const durationMin = (a, b) => {
+    if (!a || !b) return null;
+    return Math.max(0, Math.round((new Date(b) - new Date(a)) / 60000));
   };
 
   const handleExportInternHistory = (intern) => {
@@ -4384,6 +4660,22 @@ const ManagerDashboard = () => {
                   </svg>
                   {isRTL ? 'تصدير الكل' : 'Export All'}
                 </button>
+                <button
+                  className="add-volunteer-btn secondary"
+                  style={{ background: 'linear-gradient(135deg, #0ea5e9, #0284c7)', color: 'white' }}
+                  onClick={handlePrintAllInternIDCards}
+                >
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+                  {isRTL ? 'طباعة بطاقات الحضور' : 'Print ID cards'}
+                </button>
+                <button
+                  className="add-volunteer-btn secondary"
+                  style={{ background: 'linear-gradient(135deg, #22c55e, #16a34a)', color: 'white' }}
+                  onClick={() => { setInternExportFrom(''); setInternExportTo(''); setShowInternExportModal(true); }}
+                >
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                  {isRTL ? 'تصدير الحضور' : 'Export attendance'}
+                </button>
               </div>
               <div className="volunteers-stats">
                 <div className="stat-item">
@@ -4462,6 +4754,22 @@ const ManagerDashboard = () => {
                         <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
                       </svg>
                       {isRTL ? 'تقييم' : 'Rate'}
+                    </button>
+                    <button
+                      onClick={(e) => { e.stopPropagation(); handlePrintInternIDCard(intern); }}
+                      title={isRTL ? 'طباعة بطاقة الحضور' : 'Print ID card'}
+                      style={{ padding: '6px 12px', borderRadius: 6, border: 'none', background: 'linear-gradient(135deg, #0ea5e9, #0284c7)', color: 'white', cursor: 'pointer', fontWeight: 700, fontSize: 12, display: 'inline-flex', alignItems: 'center', gap: 4, fontFamily: 'inherit' }}
+                    >
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+                      {isRTL ? 'بطاقة' : 'ID'}
+                    </button>
+                    <button
+                      onClick={(e) => { e.stopPropagation(); openInternLog(intern); }}
+                      title={isRTL ? 'سجل الحضور' : 'Attendance history'}
+                      style={{ padding: '6px 12px', borderRadius: 6, border: 'none', background: 'linear-gradient(135deg, #22c55e, #16a34a)', color: 'white', cursor: 'pointer', fontWeight: 700, fontSize: 12, display: 'inline-flex', alignItems: 'center', gap: 4, fontFamily: 'inherit' }}
+                    >
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+                      {isRTL ? 'الحضور' : 'History'}
                     </button>
                   </div>
                 </div>
@@ -7998,6 +8306,127 @@ const ManagerDashboard = () => {
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* Intern attendance history modal */}
+      {showInternLogModal && logIntern && (
+        <div className="modal-overlay" onClick={() => setShowInternLogModal(false)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1050 }}>
+          <div onClick={(e) => e.stopPropagation()} style={{ background: '#fff', borderRadius: 12, padding: '1.4rem', width: 'min(880px, 96vw)', maxHeight: '92vh', overflow: 'auto', fontFamily: 'inherit', direction: isRTL ? 'rtl' : 'ltr' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+              <div>
+                <h3 style={{ margin: 0, color: '#0f172a' }}>
+                  {isRTL ? 'سجل الحضور — ' : 'Attendance history — '}
+                  <span style={{ color: '#0284c7' }}>{logIntern.name}</span>
+                </h3>
+                <p style={{ margin: '4px 0 0 0', fontSize: 12, color: '#64748b' }}>
+                  {logIntern.university && `${logIntern.university}${logIntern.major ? ' — ' + logIntern.major : ''}`}
+                </p>
+              </div>
+              <button onClick={() => setShowInternLogModal(false)} style={{ background: '#f1f5f9', border: 'none', padding: '6px 14px', borderRadius: 8, cursor: 'pointer', fontWeight: 700, fontFamily: 'inherit', color: '#334155' }}>×</button>
+            </div>
+
+            {internLogRecords.length === 0 ? (
+              <div style={{ padding: '2rem', textAlign: 'center', color: '#94a3b8' }}>
+                {isRTL ? 'لا توجد سجلات حضور بعد' : 'No attendance records yet'}
+              </div>
+            ) : (
+              <>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 10, marginBottom: 14 }}>
+                  {(() => {
+                    const total = internLogRecords.length;
+                    const completed = internLogRecords.filter(r => r.checkInAt && r.checkOutAt).length;
+                    const stillIn = internLogRecords.filter(r => r.checkInAt && !r.checkOutAt).length;
+                    const totalMin = internLogRecords.reduce((s, r) => s + (durationMin(r.checkInAt, r.checkOutAt) || 0), 0);
+                    const hours = Math.floor(totalMin / 60);
+                    const mins = totalMin % 60;
+                    return [
+                      { label: isRTL ? 'الأيام' : 'Days', value: total, color: '#0ea5e9' },
+                      { label: isRTL ? 'مكتمل' : 'Completed', value: completed, color: '#22c55e' },
+                      { label: isRTL ? 'حاضر الآن' : 'Still in', value: stillIn, color: '#f59e0b' },
+                      { label: isRTL ? 'إجمالي الوقت' : 'Total time', value: `${hours}${isRTL ? 'س ' : 'h '}${mins}${isRTL ? 'د' : 'm'}`, color: '#8b5cf6' }
+                    ].map(c => (
+                      <div key={c.label} style={{ padding: 12, borderRadius: 10, background: `${c.color}12`, border: `1px solid ${c.color}30` }}>
+                        <div style={{ fontSize: 11, color: '#64748b', fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.4 }}>{c.label}</div>
+                        <div style={{ fontSize: 22, fontWeight: 800, color: c.color, marginTop: 2 }}>{c.value}</div>
+                      </div>
+                    ));
+                  })()}
+                </div>
+                <div style={{ overflowX: 'auto', border: '1px solid #e2e8f0', borderRadius: 8 }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+                    <thead style={{ background: '#f8fafc' }}>
+                      <tr style={{ textAlign: isRTL ? 'right' : 'left' }}>
+                        <th style={{ padding: 10, borderBottom: '1px solid #e2e8f0', fontWeight: 700, color: '#475569' }}>{isRTL ? 'التاريخ' : 'Date'}</th>
+                        <th style={{ padding: 10, borderBottom: '1px solid #e2e8f0', fontWeight: 700, color: '#475569', textAlign: 'center' }}>{isRTL ? 'الدخول' : 'In'}</th>
+                        <th style={{ padding: 10, borderBottom: '1px solid #e2e8f0', fontWeight: 700, color: '#475569', textAlign: 'center' }}>{isRTL ? 'الخروج' : 'Out'}</th>
+                        <th style={{ padding: 10, borderBottom: '1px solid #e2e8f0', fontWeight: 700, color: '#475569', textAlign: 'center' }}>{isRTL ? 'المدة' : 'Duration'}</th>
+                        <th style={{ padding: 10, borderBottom: '1px solid #e2e8f0', fontWeight: 700, color: '#475569', textAlign: 'center' }}>{isRTL ? 'الحالة' : 'Status'}</th>
+                        <th style={{ padding: 10, borderBottom: '1px solid #e2e8f0', fontWeight: 700, color: '#475569', textAlign: 'center' }}></th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {internLogRecords.map(r => {
+                        const mins = durationMin(r.checkInAt, r.checkOutAt);
+                        return (
+                          <tr key={r.attendanceId}>
+                            <td style={{ padding: 10, borderBottom: '1px solid #f1f5f9', color: '#0f172a' }}>{fmtLogDate(r.date)}</td>
+                            <td style={{ padding: 10, borderBottom: '1px solid #f1f5f9', textAlign: 'center', fontFamily: 'monospace', color: '#22c55e' }}>{fmtLogTime(r.checkInAt)}</td>
+                            <td style={{ padding: 10, borderBottom: '1px solid #f1f5f9', textAlign: 'center', fontFamily: 'monospace', color: r.checkOutAt ? '#f59e0b' : '#94a3b8' }}>{fmtLogTime(r.checkOutAt)}</td>
+                            <td style={{ padding: 10, borderBottom: '1px solid #f1f5f9', textAlign: 'center', color: '#475569' }}>
+                              {mins != null ? `${Math.floor(mins / 60)}${isRTL ? 'س ' : 'h '}${mins % 60}${isRTL ? 'د' : 'm'}` : '—'}
+                            </td>
+                            <td style={{ padding: 10, borderBottom: '1px solid #f1f5f9', textAlign: 'center' }}>
+                              {r.checkOutAt
+                                ? <span style={{ background: '#dcfce7', color: '#166534', padding: '3px 10px', borderRadius: 999, fontSize: 11, fontWeight: 700 }}>{isRTL ? 'مكتمل' : 'Done'}</span>
+                                : <span style={{ background: '#fef3c7', color: '#92400e', padding: '3px 10px', borderRadius: 999, fontSize: 11, fontWeight: 700 }}>{isRTL ? 'حاضر' : 'In'}</span>
+                              }
+                            </td>
+                            <td style={{ padding: 10, borderBottom: '1px solid #f1f5f9', textAlign: 'center' }}>
+                              <div style={{ display: 'inline-flex', gap: 4 }}>
+                                {r.checkOutAt && (
+                                  <button onClick={() => clearInternCheckoutRecord(r.attendanceId)} title={isRTL ? 'إلغاء الخروج' : 'Clear checkout'} style={{ padding: '4px 8px', borderRadius: 6, border: '1px solid #fde68a', background: '#fef3c7', color: '#92400e', cursor: 'pointer', fontWeight: 700, fontSize: 11, fontFamily: 'inherit' }}>↩</button>
+                                )}
+                                <button onClick={() => deleteInternAttendanceRecord(r.attendanceId)} title={isRTL ? 'حذف' : 'Delete'} style={{ padding: '4px 8px', borderRadius: 6, border: '1px solid #fecaca', background: '#fee2e2', color: '#991b1b', cursor: 'pointer', fontWeight: 700, fontSize: 11, fontFamily: 'inherit' }}>×</button>
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Bulk export attendance modal */}
+      {showInternExportModal && (
+        <div className="modal-overlay" onClick={() => setShowInternExportModal(false)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1050 }}>
+          <div onClick={(e) => e.stopPropagation()} style={{ background: '#fff', borderRadius: 12, padding: '1.5rem', width: 'min(460px, 92vw)', fontFamily: 'inherit', direction: isRTL ? 'rtl' : 'ltr' }}>
+            <h3 style={{ margin: '0 0 12px 0', color: '#0f172a' }}>{isRTL ? 'تصدير حضور المتدربين' : 'Export interns attendance'}</h3>
+            <p style={{ margin: '0 0 16px 0', color: '#64748b', fontSize: 13 }}>
+              {isRTL ? 'اترك الحقول فارغة لتصدير كل السجلات.' : 'Leave the fields empty to export all records.'}
+            </p>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+              <div>
+                <label style={{ display: 'block', fontSize: 12, color: '#475569', fontWeight: 700, marginBottom: 4 }}>{isRTL ? 'من' : 'From'}</label>
+                <input type="date" value={internExportFrom} onChange={e => setInternExportFrom(e.target.value)} style={{ width: '100%', padding: '8px 10px', border: '1px solid #cbd5e1', borderRadius: 8, fontFamily: 'inherit' }} />
+              </div>
+              <div>
+                <label style={{ display: 'block', fontSize: 12, color: '#475569', fontWeight: 700, marginBottom: 4 }}>{isRTL ? 'إلى' : 'To'}</label>
+                <input type="date" value={internExportTo} onChange={e => setInternExportTo(e.target.value)} style={{ width: '100%', padding: '8px 10px', border: '1px solid #cbd5e1', borderRadius: 8, fontFamily: 'inherit' }} />
+              </div>
+            </div>
+            <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 16 }}>
+              <button onClick={() => setShowInternExportModal(false)} style={{ padding: '9px 16px', borderRadius: 8, border: '1px solid #cbd5e1', background: '#fff', cursor: 'pointer', fontWeight: 700, fontFamily: 'inherit', color: '#334155' }}>{isRTL ? 'إلغاء' : 'Cancel'}</button>
+              <button onClick={downloadAllInternsAttendance} disabled={internExporting} style={{ padding: '9px 18px', borderRadius: 8, border: 'none', background: internExporting ? '#94a3b8' : 'linear-gradient(135deg, #22c55e, #16a34a)', color: '#fff', cursor: internExporting ? 'not-allowed' : 'pointer', fontWeight: 800, fontFamily: 'inherit' }}>
+                {internExporting ? (isRTL ? 'جاري التحميل...' : 'Downloading...') : (isRTL ? '📥 تحميل' : '📥 Download')}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

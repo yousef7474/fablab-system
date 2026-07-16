@@ -37,14 +37,16 @@ const UnifiedAttendancePage = ({ open, onClose, isRTL }) => {
 
   const hydrate = useCallback(async () => {
     try {
-      const [m, v, s] = await Promise.allSettled([
+      const [m, v, s, i] = await Promise.allSettled([
         api.get('/mawhba/attendance/today'),
         api.get('/volunteers/attendance/today'),
-        api.get('/fablab-staff/attendance/today')
+        api.get('/fablab-staff/attendance/today'),
+        api.get('/interns/attendance/today')
       ]);
       const mData = m.status === 'fulfilled' ? m.value.data : null;
       const vData = v.status === 'fulfilled' ? v.value.data : null;
       const sData = s.status === 'fulfilled' ? s.value.data : null;
+      const iData = i.status === 'fulfilled' ? i.value.data : null;
 
       const combined = [];
       // FabLab staff first — they're the fixed team on-site
@@ -74,14 +76,24 @@ const UnifiedAttendancePage = ({ open, onClose, isRTL }) => {
           students: vData.volunteers
         });
       }
+      // University Training interns
+      if (Array.isArray(iData?.trainees) && iData.trainees.length > 0) {
+        combined.push({
+          category: 'intern',
+          course: isRTL ? 'التدريب الجامعي' : 'University Training',
+          color: '#0ea5e9',
+          students: iData.trainees
+        });
+      }
       setGroups(combined);
 
       const mStats = mData?.stats || { checkins: 0, checkouts: 0 };
       const vStats = vData?.stats || { checkins: 0, checkouts: 0 };
       const sStats = sData?.stats || { checkins: 0, checkouts: 0 };
+      const iStats = iData?.stats || { checkins: 0, checkouts: 0 };
       setSessionStats(prev => ({
-        checkins: (mStats.checkins || 0) + (vStats.checkins || 0) + (sStats.checkins || 0),
-        checkouts: (mStats.checkouts || 0) + (vStats.checkouts || 0) + (sStats.checkouts || 0),
+        checkins: (mStats.checkins || 0) + (vStats.checkins || 0) + (sStats.checkins || 0) + (iStats.checkins || 0),
+        checkouts: (mStats.checkouts || 0) + (vStats.checkouts || 0) + (sStats.checkouts || 0) + (iStats.checkouts || 0),
         errors: prev.errors
       }));
     } catch (err) {
@@ -195,6 +207,30 @@ const UnifiedAttendancePage = ({ open, onClose, isRTL }) => {
       hydrate();
       return;
     } catch (sErr) {
+      // fall through to intern (University Training)
+    }
+
+    try {
+      const { data } = await api.post('/interns/attendance/scan', { code });
+      const it = data.intern || {};
+      const r = data.record || {};
+      const refTime = data.action === 'checkout' ? r.checkOutAt : r.checkInAt;
+      const { kind, label } = labelFor(data.action);
+      const payload = {
+        kind, label,
+        name: it.name || code,
+        badge: it.university || (isRTL ? 'تدريب جامعي' : 'University Training'),
+        badgeType: isRTL ? 'متدرب جامعي' : 'University trainee',
+        time: fmtTimeLong(refTime || new Date().toISOString()),
+        color: '#0ea5e9'
+      };
+      showResult(payload);
+      if (kind === 'checkin') setSessionStats(p => ({ ...p, checkins: p.checkins + 1 }));
+      else if (kind === 'checkout') setSessionStats(p => ({ ...p, checkouts: p.checkouts + 1 }));
+      setRecentScans(prev => [payload, ...prev].slice(0, 30));
+      hydrate();
+      return;
+    } catch (iErr) {
       const payload = {
         kind: 'error',
         label: isRTL ? 'لم يتم العثور على المستخدم' : 'Not found',
@@ -242,7 +278,8 @@ const UnifiedAttendancePage = ({ open, onClose, isRTL }) => {
       const [m, v, s] = await Promise.allSettled([
         api.delete('/mawhba/attendance/today'),
         api.delete('/volunteers/attendance/today'),
-        api.delete('/fablab-staff/attendance/today')
+        api.delete('/fablab-staff/attendance/today'),
+        api.delete('/interns/attendance/today')
       ]);
       const mCount = m.status === 'fulfilled' ? (m.value.data?.count || 0) : 0;
       const vCount = v.status === 'fulfilled' ? (v.value.data?.count || 0) : 0;

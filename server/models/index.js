@@ -20,6 +20,7 @@ const SummerStudent = require('./SummerStudent');
 const Intern = require('./Intern');
 const InternTraining = require('./InternTraining');
 const InternRating = require('./InternRating');
+const InternAttendance = require('./InternAttendance');
 const ManagerTodo = require('./ManagerTodo');
 const ManagerTodoHistory = require('./ManagerTodoHistory');
 const Workspace = require('./Workspace');
@@ -167,6 +168,10 @@ InternTraining.hasMany(InternRating, { foreignKey: 'trainingId', as: 'ratings' }
 
 InternRating.belongsTo(Admin, { foreignKey: 'createdById', as: 'ratedBy' });
 Admin.hasMany(InternRating, { foreignKey: 'createdById', as: 'givenInternRatings' });
+
+// Intern ↔ attendance (mirror of VolunteerAttendance relation)
+InternAttendance.belongsTo(Intern, { foreignKey: 'internId', as: 'intern', constraints: false });
+Intern.hasMany(InternAttendance, { foreignKey: 'internId', as: 'attendance', constraints: false });
 
 // Manager Todo relationships
 ManagerTodo.belongsTo(Admin, { foreignKey: 'managerId', as: 'manager' });
@@ -423,6 +428,7 @@ module.exports = {
   Intern,
   InternTraining,
   InternRating,
+  InternAttendance,
   ManagerTodo,
   ManagerTodoHistory,
   Workspace,
