@@ -9,6 +9,17 @@ import '../Mawhba/Mawhba.css';
 // for FabLab employees, archive them, and print each one on the same
 // letterhead the volunteer "سند" receipt uses (so accounting sees one
 // consistent document style).
+
+// Fixed roster of admins who can approve an overtime request. Shown
+// as "معتمد من" on the printed سند; hard-coded here rather than
+// pulled from Admin table so accounting sees an exact allowed set.
+const APPROVERS = [
+  'م. نوف البوعبيد',
+  'أ. زكي اللويم',
+  'أ. عبدالله الصفي',
+  'أ. عبدالمحسن السلطان'
+];
+
 const emptyForm = () => ({
   employeeName: '',
   nationalId: '',
@@ -17,6 +28,7 @@ const emptyForm = () => ({
   position: '',
   periodStart: '',
   periodEnd: '',
+  approvedBy: '',
   note: '',
   days: [{ date: '', hours: '', task: '' }]
 });
@@ -104,6 +116,7 @@ const OvertimeManagement = () => {
       position: row.position || '',
       periodStart: (row.periodStart || '').slice(0, 10),
       periodEnd: (row.periodEnd || '').slice(0, 10),
+      approvedBy: row.approvedBy || '',
       note: row.note || '',
       days: Array.isArray(row.days) && row.days.length ? row.days : [{ date: '', hours: '', task: '' }]
     });
@@ -212,22 +225,25 @@ const OvertimeManagement = () => {
     background-image: url('${window.location.origin}/receipt-bg.png');
     background-size: 100% 100%; background-repeat: no-repeat;
   }
-  .receipt-content { position: absolute; top: 18%; bottom: 12%; left: 14mm; right: 14mm; display: flex; flex-direction: column; }
-  .receipt-title { text-align: center; font-size: 24pt; font-weight: 800; letter-spacing: 3px; margin: 0 0 8mm 0; color: #0f172a; }
-  .receipt-table { width: 100%; border-collapse: collapse; margin-bottom: 4mm; }
-  .receipt-table th, .receipt-table td { border: 1.5px solid #475569; padding: 2.6mm 4mm; font-size: 12.5pt; vertical-align: middle; }
+  /* Content band is stretched a bit — the 10-row table + 3-name
+     signers row was drifting into the printed footer logos.
+     Bottom margin is reduced from 12% to 14%, header from 18% to 16%. */
+  .receipt-content { position: absolute; top: 16%; bottom: 14%; left: 14mm; right: 14mm; display: flex; flex-direction: column; }
+  .receipt-title { text-align: center; font-size: 22pt; font-weight: 800; letter-spacing: 3px; margin: 0 0 5mm 0; color: #0f172a; }
+  .receipt-table { width: 100%; border-collapse: collapse; margin-bottom: 3mm; }
+  .receipt-table th, .receipt-table td { border: 1.2px solid #475569; padding: 1.9mm 4mm; font-size: 11.5pt; vertical-align: middle; }
   .receipt-table th { background: rgba(241,245,249,0.85); width: 38%; font-weight: 700; text-align: right; color: #0f172a; }
   .receipt-table td { background: rgba(255,255,255,0.7); font-weight: 600; color: #111827; }
-  .signature-box { border: 1.5px solid #475569; padding: 3.5mm; margin-bottom: 4mm; background: rgba(255,255,255,0.7); }
-  .signature-box h4 { margin: 0 0 3mm 0; font-size: 13pt; color: #0f172a; font-weight: 700; }
-  .signature-box .sig-row { display: flex; gap: 8mm; font-size: 12pt; }
+  .signature-box { border: 1.2px solid #475569; padding: 2.8mm; margin-bottom: 3mm; background: rgba(255,255,255,0.7); }
+  .signature-box h4 { margin: 0 0 2mm 0; font-size: 12pt; color: #0f172a; font-weight: 700; }
+  .signature-box .sig-row { display: flex; gap: 8mm; font-size: 11pt; }
   .signature-box .sig-row > div { flex: 1; }
-  .signature-box .sig-line { border-bottom: 1px solid #1f2937; height: 5.5mm; margin-top: 1.5mm; }
-  .signers-row { margin-top: auto; display: flex; gap: 4mm; justify-content: space-between; padding-top: 4mm; border-top: 1.5px dashed #475569; }
-  .signer { flex: 1; text-align: center; font-size: 11pt; display: flex; flex-direction: column; }
-  .signer .signer-title { color: #475569; font-weight: 600; margin-bottom: 2mm; }
-  .signer .signature-space { height: 18mm; border-bottom: 1.5px solid #1f2937; margin: 0 6mm 2mm 6mm; }
-  .signer .signer-name { font-weight: 700; color: #0f172a; font-size: 12pt; }
+  .signature-box .sig-line { border-bottom: 1px solid #1f2937; height: 4.5mm; margin-top: 1mm; }
+  .signers-row { margin-top: auto; display: flex; gap: 4mm; justify-content: space-between; padding-top: 3mm; border-top: 1.5px dashed #475569; }
+  .signer { flex: 1; text-align: center; font-size: 10.5pt; display: flex; flex-direction: column; }
+  .signer .signer-title { color: #475569; font-weight: 600; margin-bottom: 1.5mm; font-size: 10pt; }
+  .signer .signature-space { height: 13mm; border-bottom: 1.5px solid #1f2937; margin: 0 4mm 1.5mm 4mm; }
+  .signer .signer-name { font-weight: 700; color: #0f172a; font-size: 11pt; }
   .page.days { background: #fff; padding: 20mm 18mm; }
   .days-content { max-width: 174mm; margin: 0 auto; color: #0f172a; }
   .days-heading { text-align: center; margin-bottom: 12mm; }
@@ -255,6 +271,7 @@ const OvertimeManagement = () => {
         <tr><th>البريد الإلكتروني</th><td dir="ltr" style="text-align:right">${safe(row.email) || '&nbsp;'}</td></tr>
         <tr><th>الفترة</th><td>${safe(rangeStr) || '&nbsp;'}</td></tr>
         <tr><th>إجمالي الساعات</th><td><strong>${Number(row.totalHours) || 0} ساعة</strong></td></tr>
+        <tr><th>معتمد من</th><td>${safe(row.approvedBy) || '&nbsp;'}</td></tr>
         <tr><th>ملاحظة</th><td>${safe(row.note) || '&nbsp;'}</td></tr>
         <tr><th>تاريخ الإصدار</th><td>${safe(dateStr) || '&nbsp;'}</td></tr>
       </table>
@@ -480,6 +497,19 @@ const OvertimeManagement = () => {
                     <div className="form-group modern-input">
                       <label>{isRTL ? 'إلى تاريخ' : 'End date'}</label>
                       <input className="modern-input-field" type="date" value={form.periodEnd} onChange={e => setForm({ ...form, periodEnd: e.target.value })} />
+                    </div>
+                    <div className="form-group modern-input">
+                      <label>{isRTL ? 'معتمد من *' : 'Approved by *'}</label>
+                      <select
+                        className="modern-input-field"
+                        value={form.approvedBy}
+                        onChange={e => setForm({ ...form, approvedBy: e.target.value })}
+                      >
+                        <option value="">— {isRTL ? 'اختر المعتمد' : 'Select approver'} —</option>
+                        {APPROVERS.map(name => (
+                          <option key={name} value={name}>{name}</option>
+                        ))}
+                      </select>
                     </div>
                   </div>
                   <div className="form-group modern-input" style={{ marginTop: 10 }}>

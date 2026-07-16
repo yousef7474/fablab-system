@@ -30,7 +30,7 @@ exports.createOvertime = async (req, res) => {
   try {
     const {
       employeeName, nationalId, phone, email, position,
-      periodStart, periodEnd, note, days
+      periodStart, periodEnd, note, days, approvedBy
     } = req.body;
 
     if (!employeeName) {
@@ -49,6 +49,7 @@ exports.createOvertime = async (req, res) => {
       position: position || null,
       periodStart: periodStart || null,
       periodEnd: periodEnd || null,
+      approvedBy: approvedBy || null,
       note: note || null,
       days: normalizedDays,
       totalHours,
