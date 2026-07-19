@@ -1134,3 +1134,703 @@ html[data-theme="dark"] .deductions {
   color: #ff8b91;
   border: 1px solid var(--ds-red-soft);
 }
+
+/* ============================================================
+   PHASE 4 — Admin Login page + Registration form steps
+
+   Two high-visibility surfaces the earlier phases missed:
+   (1) AdminLogin is the first screen anyone sees; it renders
+       BEFORE AdminDashboard's theme setter runs, so we can't
+       depend on html[data-theme="dark"] here. Instead, style
+       .admin-login-page unconditionally — the login screen is
+       always dark (there's no theme toggle on it anyway).
+   (2) The 8 registration step components use their own class
+       namespace inside .registration-page[data-theme="dark"].
+       Selectors piggyback on that theme root so light-mode
+       registration remains untouched.
+
+   Specificity note: descendant selectors like
+   ".admin-login-page .admin-login-card" beat existing
+   ".admin-login-card" rules in Admin.css. No !important needed
+   for structure — used sparingly only where a shorthand
+   background would otherwise reset a gradient.
+   ============================================================ */
+
+/* ---------- Admin Login (always dark) ---------- */
+.admin-login-page {
+  min-height: 100vh;
+  background:
+    radial-gradient(1200px 800px at 15% 10%,
+      rgba(255, 42, 53, 0.14), transparent 60%),
+    radial-gradient(1000px 700px at 90% 90%,
+      rgba(34, 211, 238, 0.08), transparent 55%),
+    radial-gradient(700px 500px at 50% 50%,
+      rgba(167, 139, 250, 0.06), transparent 60%),
+    #07080f;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  position: relative;
+  overflow: hidden;
+  color: #f2f4fa;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+}
+[dir="rtl"] .admin-login-page {
+  font-family: 'Cairo', 'Inter', sans-serif;
+}
+.admin-login-page::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(rgba(255,255,255,0.025) 1px, transparent 1px) 0 0 / 40px 40px,
+    linear-gradient(90deg, rgba(255,255,255,0.025) 1px, transparent 1px) 0 0 / 40px 40px;
+  pointer-events: none;
+  -webkit-mask-image: radial-gradient(1200px 800px at 50% 50%, black 30%, transparent 90%);
+          mask-image: radial-gradient(1200px 800px at 50% 50%, black 30%, transparent 90%);
+}
+
+.admin-login-page .admin-login-container {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  max-width: 460px;
+}
+
+.admin-login-page .admin-login-card {
+  background: rgba(20, 22, 34, 0.75);
+  backdrop-filter: blur(24px) saturate(1.2);
+  -webkit-backdrop-filter: blur(24px) saturate(1.2);
+  border: 1px solid rgba(255, 255, 255, 0.10);
+  border-radius: 24px;
+  padding: 40px 36px;
+  box-shadow:
+    0 40px 80px -20px rgba(0, 0, 0, 0.85),
+    0 0 0 1px rgba(255, 255, 255, 0.06),
+    0 0 60px -20px rgba(255, 42, 53, 0.30);
+  position: relative;
+}
+.admin-login-page .admin-login-card::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1px;
+  background: linear-gradient(180deg,
+    rgba(255, 255, 255, 0.16),
+    rgba(255, 255, 255, 0) 40%);
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+          mask-composite: exclude;
+  pointer-events: none;
+}
+
+.admin-login-page .admin-login-header {
+  text-align: center;
+  margin-bottom: 28px;
+  position: relative;
+  z-index: 1;
+}
+.admin-login-page .admin-login-logo {
+  width: 72px;
+  height: 72px;
+  margin: 0 auto 20px;
+  border-radius: 20px;
+  background: linear-gradient(135deg, var(--ds-red), #ff6b73);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow:
+    0 12px 32px -8px var(--ds-red-glow),
+    inset 0 1px 0 rgba(255, 255, 255, 0.18);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+.admin-login-page .admin-login-logo svg {
+  width: 32px;
+  height: 32px;
+}
+.admin-login-page .admin-login-header h1,
+.admin-login-page .admin-login-header h2 {
+  color: #f2f4fa;
+  font-size: 1.75rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  margin: 0 0 8px;
+}
+.admin-login-page .admin-login-header p {
+  color: #8a92a6;
+  margin: 0;
+  font-size: 0.9375rem;
+}
+
+.admin-login-page .admin-login-form { position: relative; z-index: 1; }
+.admin-login-page .admin-form-group { margin-bottom: 18px; }
+.admin-login-page .admin-form-group label {
+  color: #b8bece;
+  font-size: 0.875rem;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+.admin-login-page .admin-form-group label svg { opacity: 0.7; }
+.admin-login-page .admin-form-group input {
+  width: 100%;
+  background: rgba(255, 255, 255, 0.035);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: #f2f4fa;
+  border-radius: 12px;
+  padding: 12px 14px;
+  font-size: 15px;
+  font-family: inherit;
+  transition: border-color 140ms ease, box-shadow 140ms ease, background 140ms ease;
+}
+.admin-login-page .admin-form-group input::placeholder { color: #626a80; }
+.admin-login-page .admin-form-group input:focus {
+  border-color: rgba(255, 42, 53, 0.75);
+  box-shadow: 0 0 0 3px rgba(255, 42, 53, 0.18);
+  background: rgba(255, 255, 255, 0.06);
+  outline: none;
+}
+
+.admin-login-page .password-input-wrapper { position: relative; }
+.admin-login-page .password-toggle {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  inset-inline-end: 12px;
+  background: transparent;
+  border: none;
+  color: #8a92a6;
+  cursor: pointer;
+  padding: 4px 6px;
+  border-radius: 6px;
+  transition: color 140ms ease, background 140ms ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.admin-login-page .password-toggle:hover {
+  color: #f2f4fa;
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.admin-login-page .admin-login-btn {
+  width: 100%;
+  padding: 14px;
+  background: linear-gradient(180deg, #ff3a45, #d81b25);
+  color: #fff;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 12px;
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  cursor: pointer;
+  box-shadow:
+    0 8px 24px -6px rgba(255, 42, 53, 0.4),
+    inset 0 1px 0 rgba(255, 255, 255, 0.2);
+  transition: transform 140ms ease, box-shadow 140ms ease;
+  margin-top: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+}
+.admin-login-page .admin-login-btn:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow:
+    0 12px 32px -6px rgba(255, 42, 53, 0.5),
+    inset 0 1px 0 rgba(255, 255, 255, 0.26);
+}
+.admin-login-page .admin-login-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.admin-login-page .admin-login-footer {
+  margin-top: 24px;
+  text-align: center;
+  color: #626a80;
+  font-size: 0.875rem;
+  position: relative;
+  z-index: 1;
+}
+.admin-login-page .admin-login-footer a,
+.admin-login-page .back-link {
+  color: #22d3ee;
+  text-decoration: none;
+  transition: color 140ms ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.admin-login-page .admin-login-footer a:hover,
+.admin-login-page .back-link:hover {
+  color: #67e8f9;
+}
+
+.admin-login-page .lang-toggle {
+  position: absolute;
+  top: 20px;
+  inset-inline-end: 20px;
+  background: rgba(255, 255, 255, 0.045);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: #b8bece;
+  padding: 8px 14px;
+  border-radius: 999px;
+  cursor: pointer;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  transition: background 140ms ease, color 140ms ease, transform 140ms ease;
+  z-index: 3;
+}
+.admin-login-page .lang-toggle:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: #f2f4fa;
+  transform: translateY(-1px);
+}
+
+.admin-login-page .loading-spinner {
+  display: inline-block;
+  width: 18px;
+  height: 18px;
+  border: 2px solid rgba(255, 255, 255, 0.35);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: ds-spin 0.7s linear infinite;
+}
+@keyframes ds-spin { to { transform: rotate(360deg); } }
+
+/* ---------- Registration form steps ----------
+   All rules gated behind .registration-page[data-theme="dark"]
+   so light-mode users see the original styling. */
+
+/* Step titles + descriptions */
+.registration-page[data-theme="dark"] .step-title {
+  color: var(--text-primary);
+  letter-spacing: -0.01em;
+}
+.registration-page[data-theme="dark"] .step-description {
+  color: var(--text-tertiary);
+}
+
+/* Labels + hints */
+.registration-page[data-theme="dark"] .form-label {
+  color: var(--text-secondary);
+}
+.registration-page[data-theme="dark"] .hint {
+  color: var(--text-tertiary);
+  font-size: 0.8125rem;
+}
+.registration-page[data-theme="dark"] .required { color: var(--ds-red); }
+
+/* Form inputs — .form-input / .form-select / .form-textarea */
+.registration-page[data-theme="dark"] .form-input,
+.registration-page[data-theme="dark"] .form-select,
+.registration-page[data-theme="dark"] .form-textarea {
+  background: rgba(255, 255, 255, 0.035);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: var(--text-primary);
+  border-radius: 12px;
+  transition: border-color 140ms ease, box-shadow 140ms ease, background 140ms ease;
+}
+.registration-page[data-theme="dark"] .form-input::placeholder,
+.registration-page[data-theme="dark"] .form-textarea::placeholder {
+  color: var(--text-muted);
+}
+.registration-page[data-theme="dark"] .form-input:hover,
+.registration-page[data-theme="dark"] .form-select:hover,
+.registration-page[data-theme="dark"] .form-textarea:hover {
+  border-color: rgba(255, 255, 255, 0.14);
+  background: rgba(255, 255, 255, 0.05);
+}
+.registration-page[data-theme="dark"] .form-input:focus,
+.registration-page[data-theme="dark"] .form-select:focus,
+.registration-page[data-theme="dark"] .form-textarea:focus {
+  border-color: var(--ds-red-soft);
+  box-shadow: 0 0 0 3px rgba(255, 42, 53, 0.18);
+  background: rgba(255, 255, 255, 0.06);
+  outline: none;
+}
+
+/* Radio cards — big picker tiles */
+.registration-page[data-theme="dark"] .radio-card {
+  background: rgba(20, 22, 34, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: var(--text-primary);
+  transition: transform 140ms ease, border-color 140ms ease, box-shadow 140ms ease, background 140ms ease;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+.registration-page[data-theme="dark"] .radio-card:hover {
+  transform: translateY(-2px);
+  border-color: rgba(255, 255, 255, 0.16);
+  background: rgba(20, 22, 34, 0.75);
+  box-shadow: 0 12px 28px -12px rgba(0, 0, 0, 0.7);
+}
+.registration-page[data-theme="dark"] .radio-card.selected {
+  border-color: var(--ds-red);
+  background: linear-gradient(160deg,
+    rgba(255, 42, 53, 0.12),
+    rgba(20, 22, 34, 0.75) 60%);
+  box-shadow:
+    0 12px 28px -12px rgba(0, 0, 0, 0.7),
+    0 0 40px -8px var(--ds-red-glow);
+}
+.registration-page[data-theme="dark"] .radio-outer {
+  border-color: rgba(255, 255, 255, 0.24);
+  background: transparent;
+}
+.registration-page[data-theme="dark"] .radio-card.selected .radio-outer {
+  border-color: var(--ds-red);
+}
+.registration-page[data-theme="dark"] .radio-inner { background: var(--ds-red); }
+.registration-page[data-theme="dark"] .radio-card-title { color: var(--text-primary); }
+.registration-page[data-theme="dark"] .radio-card-description { color: var(--text-tertiary); }
+.registration-page[data-theme="dark"] .radio-card-icon {
+  color: var(--ds-red);
+  filter: drop-shadow(0 0 12px var(--ds-red-glow));
+}
+
+/* Checkbox cards */
+.registration-page[data-theme="dark"] .checkbox-card {
+  background: rgba(20, 22, 34, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: var(--text-primary);
+  transition: transform 140ms ease, border-color 140ms ease, box-shadow 140ms ease, background 140ms ease;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+.registration-page[data-theme="dark"] .checkbox-card:hover:not(.disabled) {
+  transform: translateY(-2px);
+  border-color: rgba(255, 255, 255, 0.16);
+  background: rgba(20, 22, 34, 0.75);
+  box-shadow: 0 12px 28px -12px rgba(0, 0, 0, 0.7);
+}
+.registration-page[data-theme="dark"] .checkbox-card.selected {
+  border-color: var(--ds-red);
+  background: linear-gradient(160deg,
+    rgba(255, 42, 53, 0.12),
+    rgba(20, 22, 34, 0.75) 60%);
+  box-shadow:
+    0 12px 28px -12px rgba(0, 0, 0, 0.7),
+    0 0 40px -8px var(--ds-red-glow);
+}
+.registration-page[data-theme="dark"] .checkbox-card.disabled {
+  opacity: 0.45;
+  filter: grayscale(0.6);
+}
+.registration-page[data-theme="dark"] .checkbox-card-check {
+  border: 2px solid rgba(255, 255, 255, 0.28);
+  background: transparent;
+}
+.registration-page[data-theme="dark"] .checkbox-card.selected .checkbox-card-check {
+  border-color: var(--ds-red);
+  background: var(--ds-red);
+  box-shadow: 0 0 12px var(--ds-red-glow);
+}
+.registration-page[data-theme="dark"] .checkbox-card-label { color: var(--text-primary); }
+.registration-page[data-theme="dark"] .checkbox-card-icon {
+  color: var(--ds-red);
+  filter: drop-shadow(0 0 12px var(--ds-red-glow));
+}
+
+/* Selection cards (Application Type) */
+.registration-page[data-theme="dark"] .selection-card {
+  background: rgba(20, 22, 34, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: var(--text-primary);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  transition: transform 140ms ease, border-color 140ms ease, box-shadow 140ms ease, background 140ms ease;
+}
+.registration-page[data-theme="dark"] .selection-card:hover {
+  transform: translateY(-3px);
+  border-color: rgba(255, 255, 255, 0.16);
+  background: rgba(20, 22, 34, 0.75);
+  box-shadow: 0 16px 32px -12px rgba(0, 0, 0, 0.7);
+}
+.registration-page[data-theme="dark"] .selection-card.selected {
+  border-color: var(--ds-red);
+  background: linear-gradient(160deg,
+    rgba(255, 42, 53, 0.14),
+    rgba(20, 22, 34, 0.75) 60%);
+  box-shadow:
+    0 16px 32px -12px rgba(0, 0, 0, 0.7),
+    0 0 40px -8px var(--ds-red-glow);
+}
+.registration-page[data-theme="dark"] .selection-card-title { color: var(--text-primary); }
+.registration-page[data-theme="dark"] .selection-card-description { color: var(--text-tertiary); }
+.registration-page[data-theme="dark"] .selection-card-icon {
+  color: var(--ds-red);
+  filter: drop-shadow(0 0 16px var(--ds-red-glow));
+}
+
+/* Service cards (borrow / elite / workshop routes) */
+.registration-page[data-theme="dark"] .service-card {
+  background: rgba(20, 22, 34, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: var(--text-primary);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  transition: transform 140ms ease, border-color 140ms ease, box-shadow 140ms ease, background 140ms ease;
+}
+.registration-page[data-theme="dark"] .service-card:hover {
+  transform: translateY(-3px);
+  border-color: rgba(255, 255, 255, 0.16);
+  background: rgba(20, 22, 34, 0.75);
+  box-shadow: 0 16px 32px -12px rgba(0, 0, 0, 0.7);
+}
+.registration-page[data-theme="dark"] .service-card--borrow:hover {
+  box-shadow: 0 16px 32px -12px rgba(0, 0, 0, 0.7),
+              0 0 40px -8px rgba(72, 191, 133, 0.35);
+  border-color: rgba(72, 191, 133, 0.4);
+}
+.registration-page[data-theme="dark"] .service-card--elite:hover {
+  box-shadow: 0 16px 32px -12px rgba(0, 0, 0, 0.7),
+              0 0 40px -8px rgba(250, 204, 21, 0.35);
+  border-color: rgba(250, 204, 21, 0.4);
+}
+.registration-page[data-theme="dark"] .service-card--workshop:hover {
+  box-shadow: 0 16px 32px -12px rgba(0, 0, 0, 0.7),
+              0 0 40px -8px var(--ds-cyan-glow);
+  border-color: rgba(34, 211, 238, 0.4);
+}
+.registration-page[data-theme="dark"] .service-card-title { color: var(--text-primary); }
+.registration-page[data-theme="dark"] .service-card-description { color: var(--text-tertiary); }
+.registration-page[data-theme="dark"] .service-card-arrow {
+  color: var(--text-tertiary);
+  transition: color 140ms ease, transform 140ms ease;
+}
+.registration-page[data-theme="dark"] .service-card:hover .service-card-arrow {
+  color: var(--ds-red);
+  transform: translateX(4px);
+}
+[dir="rtl"] .registration-page[data-theme="dark"] .service-card:hover .service-card-arrow {
+  transform: translateX(-4px);
+}
+.registration-page[data-theme="dark"] .service-divider {
+  background: linear-gradient(90deg,
+    transparent,
+    rgba(255, 255, 255, 0.14),
+    transparent);
+  height: 1px;
+  border: none;
+}
+.registration-page[data-theme="dark"] .service-suboption {
+  background: var(--glass);
+  border: 1px solid var(--glass-border);
+  color: var(--text-secondary);
+  transition: all 140ms ease;
+}
+.registration-page[data-theme="dark"] .service-suboption:hover {
+  background: var(--glass-strong);
+  color: var(--text-primary);
+  border-color: var(--glass-border-strong);
+}
+
+/* Booking calendar (DateTimeSelection) */
+.registration-page[data-theme="dark"] .booking-calendar-container,
+.registration-page[data-theme="dark"] .booking-calendar {
+  background: rgba(20, 22, 34, 0.6);
+  border: 1px solid var(--glass-border);
+  color: var(--text-primary);
+  backdrop-filter: blur(14px) saturate(1.15);
+  -webkit-backdrop-filter: blur(14px) saturate(1.15);
+  border-radius: var(--ds-radius);
+}
+.registration-page[data-theme="dark"] .calendar-month-title { color: var(--text-primary); }
+.registration-page[data-theme="dark"] .calendar-nav-btn {
+  background: var(--glass);
+  color: var(--text-secondary);
+  border: 1px solid var(--glass-border);
+  transition: all 140ms ease;
+}
+.registration-page[data-theme="dark"] .calendar-nav-btn:hover {
+  background: var(--glass-strong);
+  color: var(--text-primary);
+}
+.registration-page[data-theme="dark"] .calendar-weekdays,
+.registration-page[data-theme="dark"] .calendar-nav-header {
+  color: var(--text-tertiary);
+  border-bottom: 1px solid var(--border-light);
+}
+.registration-page[data-theme="dark"] .calendar-day {
+  background: transparent;
+  color: var(--text-primary);
+  border: 1px solid transparent;
+  transition: all 140ms ease;
+}
+.registration-page[data-theme="dark"] .calendar-day:not(.empty):not(.deactivated-indicator):hover {
+  background: var(--glass);
+  border-color: var(--glass-border);
+}
+.registration-page[data-theme="dark"] .calendar-day.available {
+  background: rgba(72, 191, 133, 0.10);
+  border-color: rgba(72, 191, 133, 0.28);
+}
+.registration-page[data-theme="dark"] .calendar-day.selected {
+  background: linear-gradient(180deg, #ff3a45, #d81b25);
+  color: #fff;
+  border-color: transparent;
+  box-shadow: 0 4px 14px -4px var(--ds-red-glow);
+}
+.registration-page[data-theme="dark"] .calendar-day.empty { opacity: 0.15; }
+.registration-page[data-theme="dark"] .day-number { color: inherit; }
+.registration-page[data-theme="dark"] .calendar-day.selected .day-number {
+  color: #fff;
+  font-weight: 700;
+}
+.registration-page[data-theme="dark"] .calendar-legend {
+  color: var(--text-tertiary);
+}
+.registration-page[data-theme="dark"] .legend-item { color: var(--text-tertiary); }
+.registration-page[data-theme="dark"] .legend-dot {
+  border: 1px solid rgba(255, 255, 255, 0.14);
+}
+.registration-page[data-theme="dark"] .selected-date-display {
+  background: linear-gradient(160deg,
+    rgba(255, 42, 53, 0.14),
+    rgba(20, 22, 34, 0.75) 60%);
+  border: 1px solid var(--ds-red-soft);
+  color: var(--text-primary);
+  border-radius: var(--ds-radius);
+}
+.registration-page[data-theme="dark"] .no-slots-message,
+.registration-page[data-theme="dark"] .slots-loading {
+  color: var(--text-tertiary);
+  background: var(--glass);
+  border: 1px dashed var(--glass-border-strong);
+  border-radius: var(--ds-radius-sm);
+}
+.registration-page[data-theme="dark"] .time-selected-message {
+  color: var(--ds-cyan);
+  background: rgba(34, 211, 238, 0.10);
+  border: 1px solid rgba(34, 211, 238, 0.3);
+  border-radius: var(--ds-radius-sm);
+}
+
+/* Duration selection */
+.registration-page[data-theme="dark"] .duration-selection { color: var(--text-primary); }
+.registration-page[data-theme="dark"] .duration-title { color: var(--text-secondary); }
+.registration-page[data-theme="dark"] .duration-options button,
+.registration-page[data-theme="dark"] .duration-options .duration-option {
+  background: var(--glass);
+  color: var(--text-secondary);
+  border: 1px solid var(--glass-border);
+  transition: all 140ms ease;
+}
+.registration-page[data-theme="dark"] .duration-options button:hover,
+.registration-page[data-theme="dark"] .duration-options .duration-option:hover {
+  background: var(--glass-strong);
+  color: var(--text-primary);
+}
+.registration-page[data-theme="dark"] .duration-options button.selected,
+.registration-page[data-theme="dark"] .duration-options .duration-option.selected {
+  background: linear-gradient(180deg, #ff3a45, #d81b25);
+  color: #fff;
+  border-color: transparent;
+  box-shadow: 0 4px 14px -4px var(--ds-red-glow);
+}
+
+/* Warnings + banners */
+.registration-page[data-theme="dark"] .info-banner {
+  background: rgba(34, 211, 238, 0.08);
+  border: 1px solid rgba(34, 211, 238, 0.28);
+  color: var(--text-primary);
+  border-radius: var(--ds-radius);
+}
+.registration-page[data-theme="dark"] .conflicts-warning,
+.registration-page[data-theme="dark"] .section-deactivation-warning {
+  background: rgba(251, 146, 60, 0.10);
+  border: 1px solid rgba(251, 146, 60, 0.35);
+  color: #fdba74;
+  border-radius: var(--ds-radius);
+}
+.registration-page[data-theme="dark"] .section-closed {
+  background: rgba(255, 42, 53, 0.08);
+  color: #ff8b91;
+  border: 1px solid var(--ds-red-soft);
+  border-radius: var(--ds-radius);
+}
+.registration-page[data-theme="dark"] .deactivated-indicator {
+  color: #ff8b91;
+}
+
+/* Commitment step */
+.registration-page[data-theme="dark"] .commitment-box {
+  background: rgba(20, 22, 34, 0.6);
+  border: 1px solid var(--glass-border);
+  color: var(--text-primary);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-radius: var(--ds-radius);
+}
+.registration-page[data-theme="dark"] .commitment-header {
+  color: var(--text-primary);
+  border-bottom: 1px solid var(--border-color);
+}
+.registration-page[data-theme="dark"] .commitment-text {
+  color: var(--text-secondary);
+  line-height: 1.75;
+}
+.registration-page[data-theme="dark"] .signature-input {
+  background: var(--input-bg);
+  border: 1px solid var(--border-color);
+  color: var(--text-primary);
+  border-radius: 12px;
+  transition: border-color 140ms ease, box-shadow 140ms ease;
+}
+.registration-page[data-theme="dark"] .signature-input:focus {
+  border-color: var(--ds-red-soft);
+  box-shadow: 0 0 0 3px rgba(255, 42, 53, 0.18);
+  outline: none;
+}
+
+/* Elite modal shown inside the register flow */
+.registration-page[data-theme="dark"] .elite-modal-overlay {
+  background: rgba(4, 6, 14, 0.65);
+  backdrop-filter: blur(8px) saturate(0.9);
+  -webkit-backdrop-filter: blur(8px) saturate(0.9);
+}
+.registration-page[data-theme="dark"] .elite-modal {
+  background: var(--modal-bg);
+  border: 1px solid var(--glass-border-strong);
+  color: var(--text-primary);
+  box-shadow: var(--shadow-xl);
+  backdrop-filter: blur(24px) saturate(1.2);
+  -webkit-backdrop-filter: blur(24px) saturate(1.2);
+}
+
+/* Buttons used inside steps (btn / btn-primary / btn-secondary / btn-submit) */
+.registration-page[data-theme="dark"] .form-navigation .btn,
+.registration-page[data-theme="dark"] .btn-submit {
+  transition: transform 140ms ease, box-shadow 140ms ease;
+}
+.registration-page[data-theme="dark"] .form-navigation .btn-primary,
+.registration-page[data-theme="dark"] .btn-submit {
+  background: linear-gradient(180deg, #ff3a45, #d81b25);
+  color: #fff;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  box-shadow: 0 6px 20px -6px var(--ds-red-glow),
+              inset 0 1px 0 rgba(255, 255, 255, 0.18);
+}
+.registration-page[data-theme="dark"] .form-navigation .btn-primary:hover,
+.registration-page[data-theme="dark"] .btn-submit:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 10px 28px -6px var(--ds-red-glow),
+              inset 0 1px 0 rgba(255, 255, 255, 0.24);
+}
+.registration-page[data-theme="dark"] .form-navigation .btn-secondary {
+  background: var(--glass);
+  color: var(--text-secondary);
+  border: 1px solid var(--glass-border);
+}
+.registration-page[data-theme="dark"] .form-navigation .btn-secondary:hover {
+  background: var(--glass-strong);
+  color: var(--text-primary);
+  border-color: var(--glass-border-strong);
+}
