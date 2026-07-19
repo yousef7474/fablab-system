@@ -30,8 +30,23 @@ const emptyForm = () => ({
   periodEnd: '',
   approvedBy: '',
   note: '',
-  days: [{ date: '', hours: '', task: '' }]
+  days: [{ date: '', startTime: '', endTime: '', hours: '', task: '' }]
 });
+
+// Compute the number of hours between two HH:MM strings. Handles the
+// after-midnight case by adding 24h when the end is earlier than the
+// start. Returns an empty string when either input is missing so we
+// don't overwrite a manually typed value.
+const computeHoursFromTimes = (startTime, endTime) => {
+  if (!startTime || !endTime) return '';
+  const [sh, sm] = String(startTime).split(':').map(Number);
+  const [eh, em] = String(endTime).split(':').map(Number);
+  if ([sh, sm, eh, em].some(v => Number.isNaN(v))) return '';
+  let mins = (eh * 60 + em) - (sh * 60 + sm);
+  if (mins < 0) mins += 24 * 60;
+  if (mins <= 0) return '';
+  return String(Math.round((mins / 60) * 100) / 100);
+};
 
 const OvertimeManagement = () => {
   const { i18n } = useTranslation();
@@ -129,10 +144,14 @@ const OvertimeManagement = () => {
     setForm(prev => {
       const days = [...(prev.days || [])];
       days[i] = { ...days[i], [field]: value };
+      if (field === 'startTime' || field === 'endTime') {
+        const auto = computeHoursFromTimes(days[i].startTime, days[i].endTime);
+        if (auto !== '') days[i].hours = auto;
+      }
       return { ...prev, days };
     });
   };
-  const addDay = () => setForm(prev => ({ ...prev, days: [...(prev.days || []), { date: '', hours: '', task: '' }] }));
+  const addDay = () => setForm(prev => ({ ...prev, days: [...(prev.days || []), { date: '', startTime: '', endTime: '', hours: '', task: '' }] }));
   const removeDay = (i) => setForm(prev => ({ ...prev, days: (prev.days || []).filter((_, idx) => idx !== i) }));
 
   const save = async () => {
@@ -141,8 +160,14 @@ const OvertimeManagement = () => {
       return;
     }
     const cleanDays = (form.days || [])
-      .filter(d => d.date || Number(d.hours) > 0 || (d.task || '').trim())
-      .map(d => ({ date: d.date || null, hours: Number(d.hours) || 0, task: d.task || '' }));
+      .filter(d => d.date || Number(d.hours) > 0 || (d.task || '').trim() || d.startTime || d.endTime)
+      .map(d => ({
+        date: d.date || null,
+        startTime: d.startTime || '',
+        endTime: d.endTime || '',
+        hours: Number(d.hours) || 0,
+        task: d.task || ''
+      }));
     const payload = {
       ...form,
       days: cleanDays,
@@ -202,13 +227,19 @@ const OvertimeManagement = () => {
       ? `${fmtDate(row.periodStart)} → ${fmtDate(row.periodEnd)}`
       : '';
 
-    const daysRows = (Array.isArray(row.days) ? row.days : []).map(d => `
+    const daysRows = (Array.isArray(row.days) ? row.days : []).map(d => {
+      const timeRange = (d.startTime && d.endTime)
+        ? `${safe(d.startTime)} — ${safe(d.endTime)}`
+        : '—';
+      return `
       <tr>
         <td>${safe(fmtDate(d.date))}</td>
+        <td class="time" dir="ltr">${timeRange}</td>
         <td class="hours">${d.hours > 0 ? Number(d.hours) + ' س' : '—'}</td>
         <td class="task">${safe(d.task || '')}</td>
       </tr>
-    `).join('');
+    `;
+    }).join('');
 
     const html = `<!DOCTYPE html>
 <html lang="ar" dir="rtl">
@@ -252,6 +283,7 @@ const OvertimeManagement = () => {
   .days-table { width: 100%; border-collapse: collapse; border: 1px solid #cbd5e1; font-size: 11pt; }
   .days-table thead th { background: #f5f3ff; color: #5b21b6; padding: 8px 10px; text-align: right; border: 1px solid #cbd5e1; font-weight: 800; }
   .days-table tbody td { padding: 8px 10px; border: 1px solid #e2e8f0; vertical-align: top; text-align: right; }
+  .days-table tbody td.time { text-align: center; color: #475569; font-weight: 700; letter-spacing: 0.5px; }
   .days-table tbody td.hours { text-align: center; color: #6d28d9; font-weight: 700; }
   .days-table tbody td.task { color: #0f172a; line-height: 1.6; }
   .days-table tbody tr:nth-child(odd) td { background: #faf8ff; }
@@ -292,8 +324,8 @@ const OvertimeManagement = () => {
         <div class="days-sub">${safe(row.employeeName)}${row.position ? ' — ' + safe(row.position) : ''}</div>
       </div>
       <table class="days-table">
-        <thead><tr><th style="width:34%">التاريخ</th><th style="width:14%">الساعات</th><th>وصف المهمة</th></tr></thead>
-        <tbody>${daysRows || '<tr><td colspan="3" style="text-align:center;color:#94a3b8">لا توجد أيام مسجلة</td></tr>'}</tbody>
+        <thead><tr><th style="width:24%">التاريخ</th><th style="width:18%">الوقت</th><th style="width:12%">الساعات</th><th>وصف المهمة</th></tr></thead>
+        <tbody>${daysRows || '<tr><td colspan="4" style="text-align:center;color:#94a3b8">لا توجد أيام مسجلة</td></tr>'}</tbody>
       </table>
       <div class="days-footer">
         <div>عدد الأيام: ${Array.isArray(row.days) ? row.days.length : 0}</div>
@@ -529,10 +561,20 @@ const OvertimeManagement = () => {
                     </span>
                   </div>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: '150px 105px 105px 90px 1fr 40px', gap: 8, fontSize: 12, fontWeight: 700, color: '#6d28d9', padding: '0 2px' }}>
+                      <span>{isRTL ? 'التاريخ' : 'Date'}</span>
+                      <span>{isRTL ? 'من الساعة' : 'From'}</span>
+                      <span>{isRTL ? 'إلى الساعة' : 'To'}</span>
+                      <span>{isRTL ? 'الساعات' : 'Hours'}</span>
+                      <span>{isRTL ? 'وصف المهمة' : 'Task description'}</span>
+                      <span></span>
+                    </div>
                     {(form.days || []).map((d, i) => (
-                      <div key={i} style={{ display: 'grid', gridTemplateColumns: '160px 100px 1fr 40px', gap: 8, alignItems: 'center' }}>
+                      <div key={i} style={{ display: 'grid', gridTemplateColumns: '150px 105px 105px 90px 1fr 40px', gap: 8, alignItems: 'center' }}>
                         <input className="modern-input-field" type="date" value={d.date || ''} onChange={e => setDay(i, 'date', e.target.value)} />
-                        <input className="modern-input-field" type="number" min="0" step="0.5" placeholder={isRTL ? 'ساعات' : 'hours'} value={d.hours || ''} onChange={e => setDay(i, 'hours', e.target.value)} />
+                        <input className="modern-input-field" type="time" value={d.startTime || ''} onChange={e => setDay(i, 'startTime', e.target.value)} />
+                        <input className="modern-input-field" type="time" value={d.endTime || ''} onChange={e => setDay(i, 'endTime', e.target.value)} />
+                        <input className="modern-input-field" type="number" min="0" step="0.5" placeholder={isRTL ? 'ساعات' : 'hours'} value={d.hours || ''} onChange={e => setDay(i, 'hours', e.target.value)} title={isRTL ? 'تُحسب تلقائياً من "من" و"إلى"، ويمكن التعديل يدوياً' : 'Auto-filled from From/To, can be edited manually'} />
                         <input className="modern-input-field" placeholder={isRTL ? 'وصف المهمة' : 'Task description'} value={d.task || ''} onChange={e => setDay(i, 'task', e.target.value)} />
                         <button onClick={() => removeDay(i)} style={{ padding: 6, border: '1px solid #fecaca', borderRadius: 6, background: '#fee2e2', color: '#991b1b', cursor: 'pointer', fontFamily: 'inherit' }} title={isRTL ? 'حذف' : 'Remove'}>×</button>
                       </div>
