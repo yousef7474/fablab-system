@@ -113,7 +113,7 @@ const ManagerDashboard = () => {
     }
     return true;
   });
-  const [theme, setTheme] = useState(() => localStorage.getItem('adminTheme') || 'light');
+  const [theme, setTheme] = useState(() => localStorage.getItem('adminTheme') || 'dark');
 
   // Task modal state
   const [showTaskModal, setShowTaskModal] = useState(false);

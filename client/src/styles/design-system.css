@@ -298,3 +298,345 @@ html[data-theme="dark"] ::-webkit-scrollbar-thumb:hover {
     animation-duration: 0.001ms !important;
   }
 }
+
+/* ============================================================
+   PHASE 2 — Admin panel glass polish
+
+   Admin.css hardcodes `background: white` on several components,
+   which means they don't inherit --card-bg from the design tokens.
+   These rules override those specific white backgrounds when
+   dark mode is active. Additive — light mode is untouched.
+
+   Selector pattern: html[data-theme="dark"] .X — matches how
+   Admin.css writes its dark rules, and beats the base
+   `.stat-card { background: white; }` on specificity.
+   ============================================================ */
+
+/* Atmospheric admin backdrop with a subtle grid — Linear-style */
+html[data-theme="dark"] .admin-layout {
+  background:
+    linear-gradient(rgba(255,255,255,0.02) 1px, transparent 1px) 0 0 / 40px 40px,
+    linear-gradient(90deg, rgba(255,255,255,0.02) 1px, transparent 1px) 0 0 / 40px 40px,
+    radial-gradient(1200px 800px at 15% -10%,  rgba(255, 42, 53, 0.10), transparent 60%),
+    radial-gradient(1000px 700px at 100% 20%,  rgba(34, 211, 238, 0.08), transparent 55%),
+    radial-gradient(900px 700px at 60% 110%,   rgba(167, 139, 250, 0.07), transparent 60%),
+    var(--bg-primary, #07080f);
+}
+
+/* Sidebar — glass instead of flat navy gradient */
+html[data-theme="dark"] .admin-sidebar {
+  background:
+    linear-gradient(180deg,
+      rgba(12, 14, 23, 0.88) 0%,
+      rgba(8, 10, 18, 0.88) 100%);
+  border-inline-end: 1px solid var(--glass-border);
+  backdrop-filter: blur(20px) saturate(1.2);
+  -webkit-backdrop-filter: blur(20px) saturate(1.2);
+  box-shadow: inset -1px 0 0 rgba(255, 255, 255, 0.04);
+}
+[dir="rtl"] html[data-theme="dark"] .admin-sidebar {
+  box-shadow: inset 1px 0 0 rgba(255, 255, 255, 0.04);
+}
+
+/* Sidebar logo — from stark white square to glassy tile with glow */
+html[data-theme="dark"] .sidebar-logo {
+  background: linear-gradient(160deg,
+    rgba(255, 255, 255, 0.10),
+    rgba(255, 255, 255, 0.03));
+  border: 1px solid var(--glass-border-strong);
+  box-shadow:
+    0 8px 24px -8px rgba(0, 0, 0, 0.6),
+    inset 0 1px 0 rgba(255, 255, 255, 0.14),
+    0 0 20px -4px var(--ds-red-glow);
+}
+html[data-theme="dark"] .sidebar-title {
+  background: linear-gradient(180deg, #fff, #cbd5e1);
+  -webkit-background-clip: text;
+          background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+/* Header — glass strip that floats over the atmospheric bg */
+html[data-theme="dark"] .admin-header {
+  background: rgba(12, 14, 23, 0.65);
+  backdrop-filter: blur(18px) saturate(1.2);
+  -webkit-backdrop-filter: blur(18px) saturate(1.2);
+  border-bottom: 1px solid var(--glass-border);
+  box-shadow: 0 8px 32px -12px rgba(0, 0, 0, 0.5);
+}
+
+/* Admin avatar — gradient ring */
+html[data-theme="dark"] .admin-avatar {
+  background: linear-gradient(135deg, var(--ds-red), #ff6b73);
+  color: #fff;
+  border: 2px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 4px 14px -4px var(--ds-red-glow);
+}
+
+/* Page title */
+html[data-theme="dark"] .page-title {
+  color: var(--text-primary);
+  letter-spacing: -0.01em;
+}
+
+/* Stat cards — the ::before highlight from Phase 1 kicks in;
+   now force the background off "white" and add a hover lift. */
+html[data-theme="dark"] .stat-card {
+  background: linear-gradient(160deg,
+    rgba(20, 22, 34, 0.78),
+    rgba(14, 16, 26, 0.78));
+  color: var(--text-primary);
+  border: 1px solid var(--glass-border);
+  transition: transform var(--ds-t-fast) var(--ds-ease),
+              box-shadow var(--ds-t-fast) var(--ds-ease);
+}
+html[data-theme="dark"] .stat-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-xl);
+}
+html[data-theme="dark"] .stat-value {
+  color: var(--text-primary);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+}
+html[data-theme="dark"] .stat-label {
+  color: var(--text-tertiary);
+}
+html[data-theme="dark"] .stat-icon {
+  background: var(--glass-strong);
+  border: 1px solid var(--glass-border);
+  color: var(--ds-red);
+}
+html[data-theme="dark"] .stat-card.success .stat-icon { color: #48bf85; }
+html[data-theme="dark"] .stat-card.warning .stat-icon { color: #fb923c; }
+
+/* Chart / content cards */
+html[data-theme="dark"] .chart-card,
+html[data-theme="dark"] .content-section,
+html[data-theme="dark"] .dashboard-section,
+html[data-theme="dark"] .action-card {
+  background: var(--card-bg);
+  color: var(--text-primary);
+  border: 1px solid var(--glass-border);
+  backdrop-filter: blur(14px) saturate(1.15);
+  -webkit-backdrop-filter: blur(14px) saturate(1.15);
+}
+
+/* Filters bar — the search + selects that sit above data tables */
+html[data-theme="dark"] .filters-bar {
+  background: var(--glass);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--ds-radius);
+  padding: 12px;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+html[data-theme="dark"] .filter-input,
+html[data-theme="dark"] .filter-select,
+html[data-theme="dark"] .search-box input {
+  background: var(--input-bg) !important;
+  color: var(--text-primary) !important;
+  border: 1px solid var(--border-color) !important;
+}
+html[data-theme="dark"] .filter-input:focus,
+html[data-theme="dark"] .filter-select:focus,
+html[data-theme="dark"] .search-box input:focus {
+  border-color: var(--ds-red-soft) !important;
+  box-shadow: 0 0 0 3px rgba(255, 42, 53, 0.18) !important;
+}
+html[data-theme="dark"] .filter-btn {
+  background: var(--glass-strong);
+  color: var(--text-secondary);
+  border: 1px solid var(--glass-border);
+}
+html[data-theme="dark"] .filter-btn:hover {
+  background: var(--glass);
+  color: var(--text-primary);
+  box-shadow: inset 0 0 0 1px var(--glass-border-strong);
+}
+
+/* Data tables — glass container, cool row hover */
+html[data-theme="dark"] .data-table-container,
+html[data-theme="dark"] .table-container {
+  background: var(--card-bg);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--ds-radius);
+  overflow: hidden;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+html[data-theme="dark"] .data-table {
+  background: transparent;
+  color: var(--text-primary);
+}
+html[data-theme="dark"] .data-table th {
+  background: var(--glass);
+  color: var(--text-secondary);
+  border-bottom: 1px solid var(--border-color);
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  font-size: 0.75rem;
+}
+html[data-theme="dark"] .data-table td {
+  border-bottom: 1px solid var(--border-light);
+  color: var(--text-primary);
+}
+html[data-theme="dark"] .data-table tbody tr {
+  transition: background var(--ds-t-fast) var(--ds-ease);
+}
+html[data-theme="dark"] .data-table tbody tr:hover {
+  background: var(--glass);
+}
+
+/* Modals — dark overlay with heavy blur, glass content panel */
+html[data-theme="dark"] .modal-overlay {
+  background: rgba(4, 6, 14, 0.65);
+  backdrop-filter: blur(8px) saturate(0.9);
+  -webkit-backdrop-filter: blur(8px) saturate(0.9);
+}
+html[data-theme="dark"] .modal-content,
+html[data-theme="dark"] .status-modal {
+  background: var(--modal-bg);
+  color: var(--text-primary);
+  border: 1px solid var(--glass-border-strong);
+  box-shadow: var(--shadow-xl);
+  backdrop-filter: blur(24px) saturate(1.2);
+  -webkit-backdrop-filter: blur(24px) saturate(1.2);
+}
+html[data-theme="dark"] .modal-header {
+  border-bottom: 1px solid var(--border-color);
+}
+html[data-theme="dark"] .modal-footer {
+  border-top: 1px solid var(--border-color);
+}
+html[data-theme="dark"] .modal-close,
+html[data-theme="dark"] .modal-close-modern {
+  background: var(--glass);
+  border: 1px solid var(--glass-border);
+  color: var(--text-secondary);
+  transition: all var(--ds-t-fast) var(--ds-ease);
+}
+html[data-theme="dark"] .modal-close:hover,
+html[data-theme="dark"] .modal-close-modern:hover {
+  background: rgba(255, 42, 53, 0.15);
+  color: var(--ds-red);
+  border-color: var(--ds-red-soft);
+}
+
+/* Pagination — pill controls */
+html[data-theme="dark"] .pagination-container,
+html[data-theme="dark"] .pagination-controls {
+  background: transparent;
+}
+html[data-theme="dark"] .pagination-btn {
+  background: var(--glass);
+  border: 1px solid var(--glass-border);
+  color: var(--text-secondary);
+  transition: all var(--ds-t-fast) var(--ds-ease);
+}
+html[data-theme="dark"] .pagination-btn:hover:not(:disabled) {
+  background: var(--glass-strong);
+  color: var(--text-primary);
+  border-color: var(--glass-border-strong);
+}
+html[data-theme="dark"] .pagination-btn.active {
+  background: linear-gradient(180deg, #ff3a45, #d81b25);
+  color: #fff;
+  border-color: transparent;
+  box-shadow: 0 4px 14px -4px var(--ds-red-glow);
+}
+
+/* Bulk actions bar — floating glass strip */
+html[data-theme="dark"] .bulk-actions-bar {
+  background: var(--modal-bg);
+  border: 1px solid var(--glass-border-strong);
+  color: var(--text-primary);
+  box-shadow: var(--shadow-lg), var(--shadow-glow-red);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+}
+html[data-theme="dark"] .bulk-btn.export {
+  background: linear-gradient(180deg, #22d3ee, #0891b2);
+  color: #071018;
+  border: none;
+  box-shadow: 0 4px 12px -4px var(--ds-cyan-glow);
+}
+html[data-theme="dark"] .bulk-btn.delete {
+  background: linear-gradient(180deg, #ff3a45, #d81b25);
+  color: #fff;
+  border: none;
+  box-shadow: 0 4px 12px -4px var(--ds-red-glow);
+}
+html[data-theme="dark"] .bulk-btn.deselect {
+  background: var(--glass);
+  color: var(--text-secondary);
+  border: 1px solid var(--glass-border);
+}
+
+/* Header action buttons + menu toggle */
+html[data-theme="dark"] .header-btn,
+html[data-theme="dark"] .menu-toggle {
+  background: var(--glass);
+  color: var(--text-secondary);
+  border: 1px solid var(--glass-border);
+}
+html[data-theme="dark"] .header-btn:hover,
+html[data-theme="dark"] .menu-toggle:hover {
+  background: var(--glass-strong);
+  color: var(--text-primary);
+  box-shadow: inset 0 0 0 1px var(--glass-border-strong);
+}
+
+/* Row action buttons — small icon buttons in tables */
+html[data-theme="dark"] .action-btn {
+  background: var(--glass);
+  color: var(--text-secondary);
+  border: 1px solid var(--glass-border);
+  transition: all var(--ds-t-fast) var(--ds-ease);
+}
+html[data-theme="dark"] .action-btn:hover { transform: translateY(-1px); }
+html[data-theme="dark"] .action-btn.view:hover    { color: #22d3ee; border-color: rgba(34, 211, 238, 0.5); box-shadow: 0 4px 12px -4px var(--ds-cyan-glow); }
+html[data-theme="dark"] .action-btn.edit:hover    { color: #a78bfa; border-color: rgba(167, 139, 250, 0.5); }
+html[data-theme="dark"] .action-btn.approve:hover,
+html[data-theme="dark"] .action-btn.complete:hover{ color: #48bf85; border-color: rgba(72, 191, 133, 0.5); box-shadow: 0 4px 12px -4px rgba(72, 191, 133, 0.3); }
+html[data-theme="dark"] .action-btn.reject:hover,
+html[data-theme="dark"] .action-btn.delete:hover  { color: var(--ds-red); border-color: var(--ds-red-soft); box-shadow: 0 4px 12px -4px var(--ds-red-glow); }
+html[data-theme="dark"] .action-btn.whatsapp:hover{ color: #25d366; border-color: rgba(37, 211, 102, 0.5); }
+html[data-theme="dark"] .action-btn.print:hover   { color: #fb923c; border-color: rgba(251, 146, 60, 0.5); }
+html[data-theme="dark"] .action-btn.rate:hover    { color: #facc15; border-color: rgba(250, 204, 21, 0.5); }
+
+/* Add / primary CTA buttons */
+html[data-theme="dark"] .add-btn,
+html[data-theme="dark"] .add-task-btn,
+html[data-theme="dark"] .add-workspace-btn,
+html[data-theme="dark"] .btn-submit {
+  background: linear-gradient(180deg, #ff3a45, #d81b25);
+  color: #fff;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  box-shadow: 0 6px 20px -6px var(--ds-red-glow),
+              inset 0 1px 0 rgba(255, 255, 255, 0.18);
+  transition: transform var(--ds-t-fast) var(--ds-ease),
+              box-shadow var(--ds-t-fast) var(--ds-ease);
+}
+html[data-theme="dark"] .add-btn:hover,
+html[data-theme="dark"] .add-task-btn:hover,
+html[data-theme="dark"] .add-workspace-btn:hover,
+html[data-theme="dark"] .btn-submit:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 10px 28px -6px var(--ds-red-glow),
+              inset 0 1px 0 rgba(255, 255, 255, 0.24);
+}
+
+/* Sidebar overlay (mobile drawer backdrop) */
+html[data-theme="dark"] .sidebar-overlay {
+  background: rgba(4, 6, 14, 0.6);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+}
+
+/* Focus ring — accessibility safeguard on dark bg */
+html[data-theme="dark"] :focus-visible {
+  outline: 2px solid var(--ds-red);
+  outline-offset: 2px;
+}

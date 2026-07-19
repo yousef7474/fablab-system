@@ -154,7 +154,7 @@ const AdminDashboard = () => {
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [analyticsPeriod, setAnalyticsPeriod] = useState('month');
   const [scheduleFilter, setScheduleFilter] = useState('all'); // 'all' or employee section
-  const [theme, setTheme] = useState(() => localStorage.getItem('adminTheme') || 'light');
+  const [theme, setTheme] = useState(() => localStorage.getItem('adminTheme') || 'dark');
 
   // Working hours settings
   const [workingHours, setWorkingHours] = useState({ startTime: '11:00', endTime: '19:00', workingDays: [0, 1, 2, 3, 4] });
