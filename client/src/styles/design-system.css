@@ -31,6 +31,51 @@
   --ds-radius:     14px;
   --ds-radius-lg:  20px;
   --ds-radius-xl:  28px;
+
+  /* Font families
+     - Body: proven readable at small sizes.
+     - Display: characterful for hero/heading moments.
+     - Mono: tabular numerals for data. */
+  --ds-font-body:    'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --ds-font-body-ar: 'Cairo', 'Inter', -apple-system, sans-serif;
+  --ds-font-display: 'Bricolage Grotesque', 'Inter', -apple-system, sans-serif;
+  --ds-font-mono:    'JetBrains Mono', 'ui-monospace', 'SF Mono', Menlo, Consolas, monospace;
+}
+
+/* Distinctive display font for hero + section headings (Latin).
+   Only large text picks this up — small UI text stays on Inter/Cairo
+   because Bricolage Grotesque was designed for display sizes. */
+h1, h2,
+.registration-title,
+.registration-page .step-title,
+.admin-login-header h1,
+.admin-login-header h2,
+html[data-theme="dark"] .page-title,
+.summer-header h1,
+.summer-panel-header h1,
+.mawhba-actions h1 {
+  font-family: var(--ds-font-display);
+  letter-spacing: -0.02em;
+  font-optical-sizing: auto;
+}
+
+/* Tabular numerals — always right for data. */
+.stat-value,
+.data-table td.number,
+.data-table td.table-number,
+.table-number,
+.topbar-progress-pill,
+.pagination-btn,
+.pagination-info,
+.emp-day-number,
+.emp-event-count,
+.stat-value,
+.detail-stat-value,
+html[data-theme="dark"] .stat-value,
+html[data-theme="dark"] .emp-day-number {
+  font-family: var(--ds-font-mono);
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: 'tnum' 1, 'cv01' 1;
 }
 
 /* ---------- Glassy dark surface tokens ----------
