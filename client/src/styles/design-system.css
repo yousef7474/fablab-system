@@ -1879,3 +1879,411 @@ html[data-theme="dark"] .deductions {
   color: var(--text-primary);
   border-color: var(--glass-border-strong);
 }
+
+/* ============================================================
+   PHASE 5 — Light mode polish
+
+   Mirrors the dark-mode glass language onto light surfaces so
+   users who prefer light mode don't get left behind on the
+   original flat styling. Uses translucent white/warm-neutral
+   glass instead of dark, with softer colored glows (light mode
+   can't take heavy shadow-glows without looking clownish).
+
+   Admin panel: activated via html[data-theme="light"] and also
+   under html:not([data-theme]) — the default state before the
+   theme setter fires. Register page: gated behind
+   .registration-page[data-theme="light"].
+   ============================================================ */
+
+/* ---------- Light-mode surface tokens ---------- */
+html[data-theme="light"],
+html:not([data-theme]),
+.registration-page[data-theme="light"] {
+  --ds-glass-l:         rgba(255, 255, 255, 0.7);
+  --ds-glass-l-strong:  rgba(255, 255, 255, 0.85);
+  --ds-glass-l-border:  rgba(15, 23, 42, 0.08);
+  --ds-glass-l-border-strong: rgba(15, 23, 42, 0.16);
+  --ds-card-l:          rgba(255, 255, 255, 0.75);
+  --ds-modal-l:         rgba(255, 255, 255, 0.92);
+  --ds-input-l:         rgba(255, 255, 255, 0.8);
+  --ds-header-l:        rgba(255, 255, 255, 0.72);
+  --ds-shadow-glow-red-l:  0 0 40px -12px rgba(255, 42, 53, 0.24);
+  --ds-shadow-glow-cyan-l: 0 0 40px -12px rgba(34, 211, 238, 0.24);
+}
+
+/* ---------- Admin light-mode atmospheric backdrop ---------- */
+html[data-theme="light"] body,
+html:not([data-theme]) body {
+  background:
+    radial-gradient(1200px 800px at 12% -10%,
+      rgba(255, 42, 53, 0.06), transparent 60%),
+    radial-gradient(1000px 700px at 100% 20%,
+      rgba(34, 211, 238, 0.05), transparent 55%),
+    radial-gradient(900px 700px at 60% 110%,
+      rgba(167, 139, 250, 0.04), transparent 60%),
+    #f6f7fb;
+}
+
+/* ---------- Admin sidebar / header (light glass) ---------- */
+html[data-theme="light"] .admin-sidebar,
+html:not([data-theme]) .admin-sidebar {
+  background: linear-gradient(180deg,
+    rgba(255, 255, 255, 0.85) 0%,
+    rgba(248, 250, 253, 0.85) 100%);
+  border-inline-end: 1px solid var(--ds-glass-l-border);
+  backdrop-filter: blur(20px) saturate(1.4);
+  -webkit-backdrop-filter: blur(20px) saturate(1.4);
+  color: #0f172a;
+}
+html[data-theme="light"] .admin-sidebar *,
+html:not([data-theme]) .admin-sidebar * {
+  color: inherit;
+}
+html[data-theme="light"] .sidebar-logo,
+html:not([data-theme]) .sidebar-logo {
+  background: linear-gradient(135deg, var(--ds-red), #ff6b73);
+  color: #fff;
+  border: 1px solid rgba(255, 255, 255, 0.6);
+  box-shadow: 0 8px 20px -6px rgba(255, 42, 53, 0.35),
+              inset 0 1px 0 rgba(255, 255, 255, 0.5);
+}
+html[data-theme="light"] .sidebar-title,
+html:not([data-theme]) .sidebar-title {
+  color: #0f172a;
+}
+html[data-theme="light"] .nav-item,
+html:not([data-theme]) .nav-item {
+  color: #475569;
+  transition: background 140ms ease, color 140ms ease;
+}
+html[data-theme="light"] .nav-item:hover,
+html:not([data-theme]) .nav-item:hover {
+  background: rgba(15, 23, 42, 0.04);
+  color: #0f172a;
+}
+html[data-theme="light"] .nav-item.active,
+html:not([data-theme]) .nav-item.active {
+  background: linear-gradient(90deg,
+    rgba(255, 42, 53, 0.12),
+    rgba(255, 42, 53, 0) 90%);
+  color: #b91c1c;
+  box-shadow: inset 3px 0 0 var(--ds-red);
+  font-weight: 600;
+}
+[dir="rtl"] html[data-theme="light"] .nav-item.active,
+[dir="rtl"] html:not([data-theme]) .nav-item.active {
+  box-shadow: inset -3px 0 0 var(--ds-red);
+  background: linear-gradient(270deg,
+    rgba(255, 42, 53, 0.12),
+    rgba(255, 42, 53, 0) 90%);
+}
+
+html[data-theme="light"] .admin-header,
+html:not([data-theme]) .admin-header {
+  background: var(--ds-header-l);
+  border-bottom: 1px solid var(--ds-glass-l-border);
+  backdrop-filter: blur(18px) saturate(1.4);
+  -webkit-backdrop-filter: blur(18px) saturate(1.4);
+  box-shadow: 0 4px 20px -8px rgba(15, 23, 42, 0.08);
+}
+html[data-theme="light"] .admin-avatar,
+html:not([data-theme]) .admin-avatar {
+  background: linear-gradient(135deg, var(--ds-red), #ff6b73);
+  color: #fff;
+  border: 2px solid rgba(255, 255, 255, 0.9);
+  box-shadow: 0 4px 14px -4px rgba(255, 42, 53, 0.35);
+}
+
+/* ---------- Admin stat cards (light glass) ---------- */
+html[data-theme="light"] .stat-card,
+html:not([data-theme]) .stat-card {
+  background: var(--ds-card-l);
+  border: 1px solid var(--ds-glass-l-border);
+  backdrop-filter: blur(14px) saturate(1.3);
+  -webkit-backdrop-filter: blur(14px) saturate(1.3);
+  box-shadow: 0 4px 16px -6px rgba(15, 23, 42, 0.08);
+  transition: transform 140ms ease, box-shadow 140ms ease;
+}
+html[data-theme="light"] .stat-card:hover,
+html:not([data-theme]) .stat-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 32px -8px rgba(15, 23, 42, 0.14);
+}
+html[data-theme="light"] .stat-card.primary,
+html:not([data-theme]) .stat-card.primary {
+  box-shadow: 0 4px 16px -6px rgba(15, 23, 42, 0.08),
+              var(--ds-shadow-glow-red-l);
+}
+html[data-theme="light"] .stat-icon,
+html:not([data-theme]) .stat-icon {
+  background: rgba(255, 42, 53, 0.08);
+  color: var(--ds-red);
+  border: 1px solid rgba(255, 42, 53, 0.2);
+}
+html[data-theme="light"] .stat-card.success .stat-icon,
+html:not([data-theme]) .stat-card.success .stat-icon {
+  background: rgba(72, 191, 133, 0.10);
+  color: #10b981;
+  border-color: rgba(72, 191, 133, 0.24);
+}
+html[data-theme="light"] .stat-card.warning .stat-icon,
+html:not([data-theme]) .stat-card.warning .stat-icon {
+  background: rgba(251, 146, 60, 0.10);
+  color: #f97316;
+  border-color: rgba(251, 146, 60, 0.24);
+}
+
+/* ---------- Admin content cards / chart cards (light glass) ---------- */
+html[data-theme="light"] .chart-card,
+html:not([data-theme]) .chart-card,
+html[data-theme="light"] .content-section,
+html:not([data-theme]) .content-section,
+html[data-theme="light"] .action-card,
+html:not([data-theme]) .action-card,
+html[data-theme="light"] .card,
+html:not([data-theme]) .card {
+  background: var(--ds-card-l);
+  border: 1px solid var(--ds-glass-l-border);
+  backdrop-filter: blur(14px) saturate(1.3);
+  -webkit-backdrop-filter: blur(14px) saturate(1.3);
+  box-shadow: 0 4px 20px -8px rgba(15, 23, 42, 0.08);
+}
+
+/* ---------- Admin tables (light glass) ---------- */
+html[data-theme="light"] .data-table-container,
+html:not([data-theme]) .data-table-container,
+html[data-theme="light"] .table-container,
+html:not([data-theme]) .table-container {
+  background: var(--ds-card-l);
+  border: 1px solid var(--ds-glass-l-border);
+  border-radius: var(--ds-radius);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  box-shadow: 0 4px 20px -8px rgba(15, 23, 42, 0.08);
+}
+html[data-theme="light"] .data-table th,
+html:not([data-theme]) .data-table th {
+  background: rgba(15, 23, 42, 0.03);
+  color: #64748b;
+  border-bottom: 1px solid var(--ds-glass-l-border);
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  font-size: 0.75rem;
+}
+html[data-theme="light"] .data-table tbody tr:hover,
+html:not([data-theme]) .data-table tbody tr:hover {
+  background: rgba(15, 23, 42, 0.02);
+}
+
+/* ---------- Admin modals (light) ---------- */
+html[data-theme="light"] .modal-overlay,
+html:not([data-theme]) .modal-overlay {
+  background: rgba(15, 23, 42, 0.35);
+  backdrop-filter: blur(8px) saturate(0.9);
+  -webkit-backdrop-filter: blur(8px) saturate(0.9);
+}
+html[data-theme="light"] .modal-content,
+html:not([data-theme]) .modal-content {
+  background: var(--ds-modal-l);
+  border: 1px solid var(--ds-glass-l-border);
+  box-shadow: 0 24px 48px -12px rgba(15, 23, 42, 0.24);
+  backdrop-filter: blur(24px) saturate(1.4);
+  -webkit-backdrop-filter: blur(24px) saturate(1.4);
+}
+html[data-theme="light"] .modal-close:hover,
+html:not([data-theme]) .modal-close:hover {
+  background: rgba(255, 42, 53, 0.10);
+  color: var(--ds-red);
+}
+
+/* ---------- Admin filters + inputs (light) ---------- */
+html[data-theme="light"] .filters-bar,
+html:not([data-theme]) .filters-bar {
+  background: var(--ds-glass-l);
+  border: 1px solid var(--ds-glass-l-border);
+  border-radius: var(--ds-radius);
+  padding: 12px;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+html[data-theme="light"] .filter-input:focus,
+html:not([data-theme]) .filter-input:focus,
+html[data-theme="light"] .filter-select:focus,
+html:not([data-theme]) .filter-select:focus,
+html[data-theme="light"] .search-box input:focus,
+html:not([data-theme]) .search-box input:focus {
+  border-color: var(--ds-red-soft);
+  box-shadow: 0 0 0 3px rgba(255, 42, 53, 0.16);
+  outline: none;
+}
+
+/* ---------- Admin primary buttons (light — red gradient stays) ---------- */
+html[data-theme="light"] .btn-primary,
+html:not([data-theme]) .btn-primary,
+html[data-theme="light"] .add-btn,
+html:not([data-theme]) .add-btn,
+html[data-theme="light"] .primary-btn,
+html:not([data-theme]) .primary-btn {
+  background: linear-gradient(180deg, #ff3a45, #d81b25);
+  color: #fff;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  box-shadow: 0 6px 20px -6px rgba(255, 42, 53, 0.35),
+              inset 0 1px 0 rgba(255, 255, 255, 0.24);
+}
+html[data-theme="light"] .btn-primary:hover,
+html:not([data-theme]) .btn-primary:hover,
+html[data-theme="light"] .add-btn:hover,
+html:not([data-theme]) .add-btn:hover,
+html[data-theme="light"] .primary-btn:hover,
+html:not([data-theme]) .primary-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 10px 28px -6px rgba(255, 42, 53, 0.4),
+              inset 0 1px 0 rgba(255, 255, 255, 0.3);
+}
+
+/* ---------- Admin pagination active pill (light) ---------- */
+html[data-theme="light"] .pagination-btn.active,
+html:not([data-theme]) .pagination-btn.active {
+  background: linear-gradient(180deg, #ff3a45, #d81b25);
+  color: #fff;
+  border-color: transparent;
+  box-shadow: 0 4px 14px -4px rgba(255, 42, 53, 0.35);
+}
+
+/* ---------- Feature-area volunteer cards (light) ---------- */
+html[data-theme="light"] .volunteer-card,
+html:not([data-theme]) .volunteer-card {
+  background: var(--ds-card-l);
+  border: 1px solid var(--ds-glass-l-border);
+  backdrop-filter: blur(12px) saturate(1.2);
+  -webkit-backdrop-filter: blur(12px) saturate(1.2);
+  box-shadow: 0 4px 16px -6px rgba(15, 23, 42, 0.06);
+  transition: transform 140ms ease, box-shadow 140ms ease;
+}
+html[data-theme="light"] .volunteer-card:hover,
+html:not([data-theme]) .volunteer-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 16px 32px -12px rgba(15, 23, 42, 0.15),
+              var(--ds-shadow-glow-red-l);
+}
+html[data-theme="light"] .avatar-placeholder,
+html:not([data-theme]) .avatar-placeholder {
+  background: linear-gradient(135deg, var(--ds-red), #ff6b73);
+  color: #fff;
+  border: 2px solid rgba(255, 255, 255, 0.9);
+  box-shadow: 0 4px 14px -4px rgba(255, 42, 53, 0.3);
+}
+
+/* ---------- Modern modals (Overtime + TrainerAssistant, light) ---------- */
+html[data-theme="light"] .modern-modal,
+html:not([data-theme]) .modern-modal {
+  background: var(--ds-modal-l);
+  border: 1px solid var(--ds-glass-l-border);
+  box-shadow: 0 24px 48px -12px rgba(15, 23, 42, 0.24);
+  backdrop-filter: blur(24px) saturate(1.4);
+  -webkit-backdrop-filter: blur(24px) saturate(1.4);
+}
+html[data-theme="light"] .modal-header-icon,
+html:not([data-theme]) .modal-header-icon {
+  background: linear-gradient(135deg, var(--ds-red), #ff6b73);
+  color: #fff;
+  box-shadow: 0 4px 14px -4px rgba(255, 42, 53, 0.3);
+}
+
+/* ---------- Summer, Employee, Mawhba surfaces (light) ---------- */
+html[data-theme="light"] .summer-card,
+html:not([data-theme]) .summer-card,
+html[data-theme="light"] .summer-panel,
+html:not([data-theme]) .summer-panel {
+  background: var(--ds-card-l);
+  border: 1px solid var(--ds-glass-l-border);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  box-shadow: 0 4px 16px -6px rgba(15, 23, 42, 0.06);
+}
+html[data-theme="light"] .summer-btn-primary,
+html:not([data-theme]) .summer-btn-primary,
+html[data-theme="light"] .emp-btn-primary,
+html:not([data-theme]) .emp-btn-primary,
+html[data-theme="light"] .mawhba-btn-primary,
+html:not([data-theme]) .mawhba-btn-primary {
+  background: linear-gradient(180deg, #ff3a45, #d81b25);
+  color: #fff;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  box-shadow: 0 6px 20px -6px rgba(255, 42, 53, 0.35),
+              inset 0 1px 0 rgba(255, 255, 255, 0.24);
+}
+html[data-theme="light"] .emp-calendar,
+html:not([data-theme]) .emp-calendar,
+html[data-theme="light"] .emp-calendar-grid,
+html:not([data-theme]) .emp-calendar-grid {
+  background: var(--ds-card-l);
+  border: 1px solid var(--ds-glass-l-border);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+/* ---------- Register page light-mode glass surfaces ---------- */
+.registration-page[data-theme="light"] .form-input,
+.registration-page[data-theme="light"] .form-select,
+.registration-page[data-theme="light"] .form-textarea {
+  background: var(--ds-input-l);
+  border: 1px solid var(--ds-glass-l-border-strong);
+  transition: border-color 140ms ease, box-shadow 140ms ease;
+}
+.registration-page[data-theme="light"] .form-input:focus,
+.registration-page[data-theme="light"] .form-select:focus,
+.registration-page[data-theme="light"] .form-textarea:focus {
+  border-color: var(--ds-red-soft);
+  box-shadow: 0 0 0 3px rgba(255, 42, 53, 0.14);
+  outline: none;
+}
+.registration-page[data-theme="light"] .radio-card,
+.registration-page[data-theme="light"] .checkbox-card,
+.registration-page[data-theme="light"] .selection-card,
+.registration-page[data-theme="light"] .service-card {
+  background: rgba(255, 255, 255, 0.75);
+  border: 1px solid var(--ds-glass-l-border-strong);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  transition: transform 140ms ease, border-color 140ms ease, box-shadow 140ms ease;
+}
+.registration-page[data-theme="light"] .radio-card:hover,
+.registration-page[data-theme="light"] .checkbox-card:hover:not(.disabled),
+.registration-page[data-theme="light"] .selection-card:hover,
+.registration-page[data-theme="light"] .service-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 28px -12px rgba(15, 23, 42, 0.14);
+}
+.registration-page[data-theme="light"] .radio-card.selected,
+.registration-page[data-theme="light"] .checkbox-card.selected,
+.registration-page[data-theme="light"] .selection-card.selected {
+  border-color: var(--ds-red);
+  background: linear-gradient(160deg,
+    rgba(255, 42, 53, 0.08),
+    rgba(255, 255, 255, 0.75) 60%);
+  box-shadow: 0 12px 28px -12px rgba(15, 23, 42, 0.14),
+              var(--ds-shadow-glow-red-l);
+}
+.registration-page[data-theme="light"] .booking-calendar-container,
+.registration-page[data-theme="light"] .booking-calendar {
+  background: rgba(255, 255, 255, 0.75);
+  border: 1px solid var(--ds-glass-l-border);
+  backdrop-filter: blur(12px) saturate(1.3);
+  -webkit-backdrop-filter: blur(12px) saturate(1.3);
+  border-radius: var(--ds-radius);
+}
+.registration-page[data-theme="light"] .calendar-day.selected {
+  background: linear-gradient(180deg, #ff3a45, #d81b25);
+  color: #fff;
+  box-shadow: 0 4px 14px -4px rgba(255, 42, 53, 0.35);
+}
+.registration-page[data-theme="light"] .form-navigation .btn-primary,
+.registration-page[data-theme="light"] .btn-submit {
+  background: linear-gradient(180deg, #ff3a45, #d81b25);
+  color: #fff;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  box-shadow: 0 6px 20px -6px rgba(255, 42, 53, 0.35),
+              inset 0 1px 0 rgba(255, 255, 255, 0.24);
+}
