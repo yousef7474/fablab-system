@@ -1,0 +1,300 @@
+/* ============================================================
+   FABLAB DESIGN SYSTEM
+   Shared glassy-dark tokens + perf hardening for both the
+   registration landing page and the admin panel.
+
+   Loaded once from index.css so every route picks it up.
+   Nothing in here changes DOM structure or component logic —
+   it works purely by overriding existing CSS custom properties
+   and adding a small set of utility rules + perf hints.
+   ============================================================ */
+
+/* ---------- Shared tokens (always available) ---------- */
+:root {
+  /* Neon accent — brand red as the hero, cool cyan as complement */
+  --ds-red:        #ff2a35;
+  --ds-red-soft:   rgba(255, 42, 53, 0.75);
+  --ds-red-glow:   rgba(255, 42, 53, 0.35);
+  --ds-cyan:       #22d3ee;
+  --ds-cyan-glow:  rgba(34, 211, 238, 0.28);
+  --ds-violet:     #a78bfa;
+
+  /* Motion tokens */
+  --ds-ease:       cubic-bezier(0.2, 0.9, 0.2, 1);
+  --ds-ease-out:   cubic-bezier(0.16, 1, 0.3, 1);
+  --ds-t-fast:     140ms;
+  --ds-t-med:      280ms;
+  --ds-t-slow:     520ms;
+
+  /* Radii + geometry */
+  --ds-radius-sm:  8px;
+  --ds-radius:     14px;
+  --ds-radius-lg:  20px;
+  --ds-radius-xl:  28px;
+}
+
+/* ---------- Glassy dark surface tokens ----------
+   These override the dark-theme vars that RegistrationForm.css
+   and Admin.css already read. Applied when data-theme="dark"
+   is set on either <html> (admin) or the .registration-page
+   root (register). We match both selectors. */
+
+[data-theme="dark"],
+.registration-page[data-theme="dark"] {
+  /* Deep, slightly cool base — not pure black, feels premium */
+  --bg-primary:    #07080f;
+  --bg-secondary:  #0c0e17;
+  --bg-tertiary:   #12141f;
+  --bg-hover:      #1a1d2b;
+
+  /* Glass surfaces — translucent panels over the atmospheric bg */
+  --glass:         rgba(255, 255, 255, 0.045);
+  --glass-strong:  rgba(255, 255, 255, 0.075);
+  --glass-border:  rgba(255, 255, 255, 0.09);
+  --glass-border-strong: rgba(255, 255, 255, 0.16);
+
+  /* Card + input surfaces — small alpha over the base */
+  --card-bg:       rgba(20, 22, 34, 0.72);
+  --modal-bg:      rgba(16, 18, 28, 0.86);
+  --input-bg:      rgba(255, 255, 255, 0.035);
+  --header-bg:     rgba(12, 14, 23, 0.72);
+
+  /* Sidebar — glass gradient instead of flat slate */
+  --sidebar-bg:    linear-gradient(180deg,
+                     rgba(15, 17, 28, 0.9) 0%,
+                     rgba(10, 12, 22, 0.9) 100%);
+
+  /* Text — high contrast, cool-neutral */
+  --text-primary:  #f2f4fa;
+  --text-secondary: #b8bece;
+  --text-tertiary: #8a92a6;
+  --text-muted:    #626a80;
+
+  /* Borders — subtle, cool */
+  --border-color:  rgba(255, 255, 255, 0.08);
+  --border-light:  rgba(255, 255, 255, 0.04);
+
+  /* Shadows — deeper + a hint of colored glow for depth */
+  --shadow-sm:  0 1px 3px rgba(0, 0, 0, 0.5);
+  --shadow-md:  0 8px 24px -8px rgba(0, 0, 0, 0.7);
+  --shadow-lg:  0 24px 48px -12px rgba(0, 0, 0, 0.7),
+                0 0 0 1px rgba(255, 255, 255, 0.04);
+  --shadow-xl:  0 40px 80px -20px rgba(0, 0, 0, 0.85),
+                0 0 0 1px rgba(255, 255, 255, 0.06);
+  --shadow-glow-red:  0 0 40px -8px var(--ds-red-glow);
+  --shadow-glow-cyan: 0 0 40px -8px var(--ds-cyan-glow);
+}
+
+/* Admin panel: when dark theme is active on <html>, tint the
+   overall page background so the sidebar/header glass reads
+   correctly against a dark atmospheric field. */
+html[data-theme="dark"] body {
+  background: radial-gradient(1200px 800px at 12% -10%,
+                rgba(255, 42, 53, 0.10), transparent 60%),
+              radial-gradient(1000px 700px at 100% 20%,
+                rgba(34, 211, 238, 0.08), transparent 55%),
+              radial-gradient(900px 700px at 60% 110%,
+                rgba(167, 139, 250, 0.06), transparent 60%),
+              var(--bg-primary, #07080f);
+  color: var(--text-primary, #f2f4fa);
+}
+
+/* Admin content card polish under dark theme — kicks in
+   automatically because Admin.css already references these vars. */
+html[data-theme="dark"] .admin-sidebar,
+html[data-theme="dark"] .admin-header,
+html[data-theme="dark"] .stat-card,
+html[data-theme="dark"] .card,
+html[data-theme="dark"] .modal-content,
+html[data-theme="dark"] .content-section {
+  backdrop-filter: blur(14px) saturate(1.15);
+  -webkit-backdrop-filter: blur(14px) saturate(1.15);
+  border: 1px solid var(--glass-border);
+  background-clip: padding-box;
+}
+
+/* Subtle top-highlight on glass panels for the "frosted" edge look */
+html[data-theme="dark"] .stat-card,
+html[data-theme="dark"] .card,
+html[data-theme="dark"] .modal-content {
+  position: relative;
+}
+html[data-theme="dark"] .stat-card::before,
+html[data-theme="dark"] .card::before,
+html[data-theme="dark"] .modal-content::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1px;
+  background: linear-gradient(180deg,
+              rgba(255, 255, 255, 0.14),
+              rgba(255, 255, 255, 0) 40%);
+  -webkit-mask: linear-gradient(#000 0 0) content-box,
+                linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+          mask-composite: exclude;
+  pointer-events: none;
+  opacity: 0.9;
+}
+
+/* Nav-item hover glow in admin sidebar */
+html[data-theme="dark"] .nav-item {
+  transition: background var(--ds-t-fast) var(--ds-ease),
+              color var(--ds-t-fast) var(--ds-ease),
+              box-shadow var(--ds-t-fast) var(--ds-ease);
+}
+html[data-theme="dark"] .nav-item:hover {
+  background: var(--glass-strong);
+  box-shadow: inset 0 0 0 1px var(--glass-border-strong);
+}
+html[data-theme="dark"] .nav-item.active {
+  background: linear-gradient(90deg,
+              rgba(255, 42, 53, 0.16),
+              rgba(255, 42, 53, 0) 90%);
+  box-shadow: inset 3px 0 0 var(--ds-red),
+              0 0 24px -8px var(--ds-red-glow);
+  color: #fff;
+}
+[dir="rtl"] html[data-theme="dark"] .nav-item.active {
+  box-shadow: inset -3px 0 0 var(--ds-red),
+              0 0 24px -8px var(--ds-red-glow);
+  background: linear-gradient(270deg,
+              rgba(255, 42, 53, 0.16),
+              rgba(255, 42, 53, 0) 90%);
+}
+
+/* Stat card accent — red glow on the primary tile so the eye
+   lands on the hero metric, plus a cool tint on the rest. */
+html[data-theme="dark"] .stat-card.primary {
+  box-shadow: var(--shadow-lg), var(--shadow-glow-red);
+  background: linear-gradient(160deg,
+              rgba(255, 42, 53, 0.08),
+              rgba(20, 22, 34, 0.72) 60%);
+}
+html[data-theme="dark"] .stat-card.success {
+  box-shadow: var(--shadow-lg), 0 0 40px -12px rgba(72, 191, 133, 0.28);
+}
+html[data-theme="dark"] .stat-card.warning {
+  box-shadow: var(--shadow-lg), 0 0 40px -12px rgba(251, 146, 60, 0.28);
+}
+
+/* Buttons under dark theme — soft glow on primary */
+html[data-theme="dark"] .btn-primary,
+html[data-theme="dark"] .primary-btn {
+  background: linear-gradient(180deg, #ff3a45, #d81b25);
+  box-shadow: 0 6px 20px -6px var(--ds-red-glow),
+              inset 0 1px 0 rgba(255, 255, 255, 0.18);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+html[data-theme="dark"] .btn-primary:hover,
+html[data-theme="dark"] .primary-btn:hover {
+  box-shadow: 0 8px 28px -6px var(--ds-red-glow),
+              inset 0 1px 0 rgba(255, 255, 255, 0.24);
+  transform: translateY(-1px);
+}
+
+/* Inputs under dark theme — glassy field with focus ring in red */
+html[data-theme="dark"] input[type="text"],
+html[data-theme="dark"] input[type="email"],
+html[data-theme="dark"] input[type="password"],
+html[data-theme="dark"] input[type="number"],
+html[data-theme="dark"] input[type="date"],
+html[data-theme="dark"] input[type="time"],
+html[data-theme="dark"] input[type="search"],
+html[data-theme="dark"] input[type="tel"],
+html[data-theme="dark"] select,
+html[data-theme="dark"] textarea {
+  background: var(--input-bg);
+  border: 1px solid var(--border-color);
+  color: var(--text-primary);
+  transition: border-color var(--ds-t-fast) var(--ds-ease),
+              box-shadow var(--ds-t-fast) var(--ds-ease),
+              background var(--ds-t-fast) var(--ds-ease);
+}
+html[data-theme="dark"] input:focus,
+html[data-theme="dark"] select:focus,
+html[data-theme="dark"] textarea:focus {
+  border-color: var(--ds-red-soft);
+  box-shadow: 0 0 0 3px rgba(255, 42, 53, 0.16);
+  background: var(--glass-strong);
+  outline: none;
+}
+
+/* Table polish under dark theme */
+html[data-theme="dark"] table thead th {
+  background: var(--glass);
+  color: var(--text-secondary);
+  border-bottom: 1px solid var(--border-color);
+}
+html[data-theme="dark"] table tbody tr {
+  transition: background var(--ds-t-fast) var(--ds-ease);
+}
+html[data-theme="dark"] table tbody tr:hover {
+  background: var(--glass);
+}
+
+/* ---------- Scrollbar (dark) ---------- */
+html[data-theme="dark"] ::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.02);
+}
+html[data-theme="dark"] ::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.14);
+  border-radius: 4px;
+}
+html[data-theme="dark"] ::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.22);
+}
+
+/* ============================================================
+   PERF HARDENING for the register page
+   The aurora + floating icons + stars pipe a lot of work to
+   the GPU. These rules keep the aesthetic identical while
+   sharply reducing repaint/composite cost on mid-range devices.
+   ============================================================ */
+
+/* Isolate animated background layers so they don't invalidate
+   the entire page on each frame. */
+.registration-page .aurora,
+.registration-page .stars,
+.registration-page .floating-icons {
+  contain: strict;
+}
+
+/* Hint the compositor: transform-only animations, promote to
+   their own layer, but never on more elements than needed. */
+.registration-page .aurora-blob,
+.registration-page .float-icon,
+.registration-page .stars span {
+  will-change: transform, opacity;
+  transform: translateZ(0);
+}
+
+/* backdrop-filter on 6 floating icons is expensive — the icons
+   are tiny (38px) so a softer blur reads the same visually. */
+.registration-page .float-icon {
+  backdrop-filter: blur(4px) !important;
+  -webkit-backdrop-filter: blur(4px) !important;
+}
+
+/* Kill decorative motion on small screens (major perf win on
+   mobile) and honor prefers-reduced-motion for accessibility. */
+@media (max-width: 640px) {
+  .registration-page .aurora,
+  .registration-page .stars,
+  .registration-page .floating-icons {
+    display: none !important;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .registration-page .aurora-blob,
+  .registration-page .float-icon,
+  .registration-page .stars span,
+  .registration-page .floating-orb {
+    animation: none !important;
+  }
+  * {
+    transition-duration: 0.001ms !important;
+    animation-duration: 0.001ms !important;
+  }
+}

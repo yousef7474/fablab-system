@@ -1,6 +1,11 @@
 /* Import Google Fonts */
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Cairo:wght@300;400;500;600;700;800&display=swap');
 
+/* Shared design system: glassy dark tokens + perf hardening.
+   Loaded once so both the register page and the admin panel
+   pick up the unified palette + optimizations. */
+@import './styles/design-system.css';
+
 /* CSS Variables - Color Scheme */
 :root {
   --racing-red: #EE2329;
