@@ -224,7 +224,7 @@ const OvertimeManagement = () => {
 
     const dateStr = fmtDate(row.createdAt || new Date().toISOString());
     const rangeStr = row.periodStart || row.periodEnd
-      ? `${fmtDate(row.periodStart)} → ${fmtDate(row.periodEnd)}`
+      ? `${fmtDate(row.periodStart)} ← ${fmtDate(row.periodEnd)}`
       : '';
 
     const arabicDayNames = ['الأحد', 'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'];
