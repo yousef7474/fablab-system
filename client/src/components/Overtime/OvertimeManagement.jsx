@@ -227,6 +227,13 @@ const OvertimeManagement = () => {
       ? `${fmtDate(row.periodStart)} → ${fmtDate(row.periodEnd)}`
       : '';
 
+    const arabicDayNames = ['الأحد', 'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'];
+    const dayNameAr = (dateStr) => {
+      if (!dateStr) return '';
+      const dt = new Date(dateStr);
+      return isNaN(dt.getTime()) ? '' : arabicDayNames[dt.getDay()];
+    };
+
     const daysRows = (Array.isArray(row.days) ? row.days : []).map(d => {
       const timeRange = (d.startTime && d.endTime)
         ? `${safe(d.startTime)} — ${safe(d.endTime)}`
@@ -234,6 +241,7 @@ const OvertimeManagement = () => {
       return `
       <tr>
         <td>${safe(fmtDate(d.date))}</td>
+        <td class="day-name">${safe(dayNameAr(d.date))}</td>
         <td class="time" dir="ltr">${timeRange}</td>
         <td class="hours">${d.hours > 0 ? Number(d.hours) + ' س' : '—'}</td>
         <td class="task">${safe(d.task || '')}</td>
@@ -275,16 +283,20 @@ const OvertimeManagement = () => {
   .signer .signer-title { color: #475569; font-weight: 600; margin-bottom: 1.5mm; font-size: 10pt; }
   .signer .signature-space { height: 13mm; border-bottom: 1.5px solid #1f2937; margin: 0 4mm 1.5mm 4mm; }
   .signer .signer-name { font-weight: 700; color: #0f172a; font-size: 11pt; }
-  .page.days { background: #fff; padding: 20mm 18mm; }
+  /* Days page flows so long tables paginate instead of clipping. */
+  .page.days { background: #fff; padding: 20mm 18mm; height: auto; min-height: 297mm; overflow: visible; page-break-before: always; page-break-after: auto; }
   .days-content { max-width: 174mm; margin: 0 auto; color: #0f172a; }
   .days-heading { text-align: center; margin-bottom: 12mm; }
   .days-title { font-size: 22pt; font-weight: 800; color: #6d28d9; margin-bottom: 4mm; }
   .days-sub { font-size: 13pt; font-weight: 700; color: #0f172a; }
-  .days-table { width: 100%; border-collapse: collapse; border: 1px solid #cbd5e1; font-size: 11pt; }
+  .days-table { width: 100%; border-collapse: collapse; border: 1px solid #cbd5e1; font-size: 11pt; page-break-inside: auto; }
+  .days-table thead { display: table-header-group; }
   .days-table thead th { background: #f5f3ff; color: #5b21b6; padding: 8px 10px; text-align: right; border: 1px solid #cbd5e1; font-weight: 800; }
+  .days-table tbody tr { page-break-inside: avoid; page-break-after: auto; }
   .days-table tbody td { padding: 8px 10px; border: 1px solid #e2e8f0; vertical-align: top; text-align: right; }
   .days-table tbody td.time { text-align: center; color: #475569; font-weight: 700; letter-spacing: 0.5px; }
   .days-table tbody td.hours { text-align: center; color: #6d28d9; font-weight: 700; }
+  .days-table tbody td.day-name { text-align: center; color: #5b21b6; font-weight: 700; }
   .days-table tbody td.task { color: #0f172a; line-height: 1.6; }
   .days-table tbody tr:nth-child(odd) td { background: #faf8ff; }
   .days-footer { display: flex; justify-content: space-between; margin-top: 8mm; font-size: 12pt; font-weight: 800; color: #5b21b6; border-top: 2px solid #6d28d9; padding-top: 4mm; }
@@ -324,8 +336,8 @@ const OvertimeManagement = () => {
         <div class="days-sub">${safe(row.employeeName)}${row.position ? ' — ' + safe(row.position) : ''}</div>
       </div>
       <table class="days-table">
-        <thead><tr><th style="width:24%">التاريخ</th><th style="width:18%">الوقت</th><th style="width:12%">الساعات</th><th>وصف المهمة</th></tr></thead>
-        <tbody>${daysRows || '<tr><td colspan="4" style="text-align:center;color:#94a3b8">لا توجد أيام مسجلة</td></tr>'}</tbody>
+        <thead><tr><th style="width:20%">التاريخ</th><th style="width:12%">اليوم</th><th style="width:16%">الوقت</th><th style="width:10%">الساعات</th><th>وصف المهمة</th></tr></thead>
+        <tbody>${daysRows || '<tr><td colspan="5" style="text-align:center;color:#94a3b8">لا توجد أيام مسجلة</td></tr>'}</tbody>
       </table>
       <div class="days-footer">
         <div>عدد الأيام: ${Array.isArray(row.days) ? row.days.length : 0}</div>
