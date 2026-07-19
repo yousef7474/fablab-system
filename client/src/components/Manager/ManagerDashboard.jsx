@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import { useNavigate, useLocation, useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'react-toastify';
@@ -16,7 +16,7 @@ import {
 } from 'date-fns';
 import { ar, enUS } from 'date-fns/locale';
 import api from '../../config/api';
-import { EVALUATION_CATEGORIES, TOTAL_WEIGHT, MAX_PER_CRITERION, calculateWeightedTotal, calculateBonus } from '../../config/evaluationStructure';
+import { EVALUATION_CATEGORIES, MAX_PER_CRITERION, calculateWeightedTotal, calculateBonus } from '../../config/evaluationStructure';
 import VolunteerManagement from '../Volunteer/VolunteerManagement';
 import '../Admin/Admin.css';
 import './Manager.css';
@@ -80,7 +80,6 @@ const formatTimeAMPM = (time24) => {
 
 const ManagerDashboard = () => {
   const navigate = useNavigate();
-  const location = useLocation();
   const [searchParams, setSearchParams] = useSearchParams();
   const { i18n } = useTranslation();
   const isRTL = i18n.language === 'ar';
@@ -359,6 +358,7 @@ const ManagerDashboard = () => {
       }
       setSearchParams(searchParams, { replace: true });
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeTab]);
 
   // Listen for browser back/forward navigation
@@ -368,6 +368,7 @@ const ManagerDashboard = () => {
     if (newTab !== activeTab) {
       setActiveTab(newTab);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams]);
 
   // Authentication check
@@ -835,6 +836,7 @@ const ManagerDashboard = () => {
     if (activeTab === 'education' && managerData) {
       fetchEducations();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeTab, managerData]);
 
   // Calendar helpers
@@ -1648,7 +1650,7 @@ const ManagerDashboard = () => {
   const clearInternCheckoutRecord = async (id) => {
     if (!window.confirm(isRTL ? 'إلغاء تسجيل الخروج فقط؟' : 'Clear check-out only?')) return;
     try {
-      const { data } = await api.patch(`/interns/attendance/${id}/checkout`);
+      await api.patch(`/interns/attendance/${id}/checkout`);
       setInternLogRecords(prev => prev.map(r => r.attendanceId === id ? { ...r, checkOutAt: null } : r));
       toast.success(isRTL ? 'تم إلغاء تسجيل الخروج' : 'Check-out cleared');
     } catch {
@@ -3153,15 +3155,6 @@ const ManagerDashboard = () => {
     setShowTaskModal(true);
   };
 
-  // Handle employee selection for task
-  const handleEmployeeSelect = (employeeId) => {
-    const employee = employees.find(e => e.employeeId === employeeId);
-    setTaskForm(prev => ({
-      ...prev,
-      employeeId,
-      section: employee ? employee.section : prev.section
-    }));
-  };
 
   // Logout
   const handleLogout = () => {
@@ -3994,8 +3987,6 @@ const ManagerDashboard = () => {
               {/* Days */}
               {days.map(day => {
                 const events = getEventsForDay(day);
-                const appointments = events.filter(e => e.type !== 'task');
-                const tasks = events.filter(e => e.type === 'task');
                 const hasEvents = events.length > 0;
 
                 return (
@@ -5857,7 +5848,6 @@ const ManagerDashboard = () => {
                       {employees.map(emp => {
                         const ev = evaluations.find(e => e.employeeId === emp.employeeId);
                         const total = ev ? ev.totalScore : 0;
-                        const grade = ev ? ev.grade : 0;
                         const pct = total.toFixed(1);
                         return (
                           <div key={emp.employeeId} style={{ background: 'white', borderRadius: 12, padding: '1rem 1.25rem', border: '1px solid #f1f5f9', boxShadow: '0 1px 3px rgba(0,0,0,0.04)', display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>

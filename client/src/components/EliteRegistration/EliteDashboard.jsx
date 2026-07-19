@@ -3,7 +3,6 @@ import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'react-toastify';
 import { format } from 'date-fns';
-import { ar, enUS } from 'date-fns/locale';
 import api from '../../config/api';
 import './EliteDashboard.css';
 
@@ -180,7 +179,6 @@ const EliteDashboard = () => {
       award: 'منحة',
       deduction: 'خصم',
       source: 'المصدر',
-      points: 'النقاط',
       reason: 'السبب',
       submit: 'إرسال',
       overview: 'نظرة عامة',
@@ -370,7 +368,6 @@ const EliteDashboard = () => {
       award: 'Award',
       deduction: 'Deduction',
       source: 'Source',
-      points: 'Points',
       reason: 'Reason',
       submit: 'Submit',
       overview: 'Overview',
@@ -498,6 +495,7 @@ const EliteDashboard = () => {
 
   useEffect(() => {
     fetchUsers();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const fetchUsers = async () => {
@@ -714,16 +712,6 @@ const EliteDashboard = () => {
       fetchCourseDetail(selectedCourse.courseId);
     } catch (error) {
       toast.error(isRTL ? 'خطأ في حفظ الاختبار' : 'Error saving quiz');
-    }
-  };
-
-  const handleGradeAttempt = async (attemptId, grades) => {
-    try {
-      await api.patch(`/elite/courses/${selectedCourse.courseId}/quiz/attempts/${attemptId}/grade`, { grades });
-      toast.success(isRTL ? 'تم التصحيح' : 'Graded successfully');
-      fetchCourseDetail(selectedCourse.courseId);
-    } catch (error) {
-      toast.error(isRTL ? 'خطأ في التصحيح' : 'Error grading');
     }
   };
 
@@ -1143,18 +1131,6 @@ const EliteDashboard = () => {
       case 'D': return '#ef4444';
       default: return '#6b7280';
     }
-  };
-
-  // Get category badge text
-  const getCategoryBadge = (category) => {
-    const badges = {
-      'A': { ar: 'الفئة A', en: 'Category A' },
-      'B': { ar: 'الفئة B', en: 'Category B' },
-      'C': { ar: 'الفئة C', en: 'Category C' },
-      'D': { ar: 'الفئة D', en: 'Category D' },
-      'Below D': { ar: 'أقل من D', en: 'Below D' }
-    };
-    return badges[category]?.[isRTL ? 'ar' : 'en'] || category;
   };
 
   const filteredUsers = users.filter(user => {

@@ -415,6 +415,7 @@ Costs vary based on:
         timestamp: new Date()
       }]);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen]);
 
   // Auto-scroll to bottom
@@ -432,6 +433,7 @@ Costs vary based on:
       }, 2000); // Show after 2 seconds
       return () => clearTimeout(timer);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Hide welcome when chat opens
@@ -476,7 +478,7 @@ Costs vary based on:
   const findResponse = (input) => {
     const lowerInput = input.toLowerCase();
 
-    for (const [key, faq] of Object.entries(faqData)) {
+    for (const faq of Object.values(faqData)) {
       for (const keyword of faq.keywords) {
         if (lowerInput.includes(keyword.toLowerCase())) {
           return faq.response[isRTL ? 'ar' : 'en'];

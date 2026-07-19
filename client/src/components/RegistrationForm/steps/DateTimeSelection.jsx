@@ -13,13 +13,12 @@ const formatTimeAMPM = (time24) => {
 };
 
 const DateTimeSelection = ({ formData, onChange, onNext, onBack }) => {
-  const { t, i18n } = useTranslation();
+  const { i18n } = useTranslation();
   const isRTL = i18n.language === 'ar';
 
   const [availableSlots, setAvailableSlots] = useState([]);
   const [loadingSlots, setLoadingSlots] = useState(false);
   const [selectedMonth, setSelectedMonth] = useState(new Date());
-  const [bookedDates, setBookedDates] = useState([]);
   const [sectionDeactivations, setSectionDeactivations] = useState([]);
   const [closures, setClosures] = useState([]);
   const [workingHours, setWorkingHours] = useState({ startTime: '11:00', endTime: '19:00', workingDays: [0, 1, 2, 3, 4] });

@@ -443,7 +443,7 @@ const EliteUserAccount = () => {
 
   const handleMarkLessonComplete = async (lessonId) => {
     try {
-      const { data } = await api.patch(`/elite/my-courses/${selectedCourse.courseId}/lessons/${lessonId}/complete?eliteId=${user.eliteId}`);
+      await api.patch(`/elite/my-courses/${selectedCourse.courseId}/lessons/${lessonId}/complete?eliteId=${user.eliteId}`);
       toast.success(isRTL ? 'تم إكمال الدرس' : 'Lesson completed');
       // Refresh course data
       const courseData = await api.get(`/elite/my-courses/${selectedCourse.courseId}?eliteId=${user.eliteId}`);
@@ -496,14 +496,6 @@ const EliteUserAccount = () => {
     }
   };
 
-  const handleGetQuizResult = async () => {
-    try {
-      const { data } = await api.get(`/elite/my-courses/${selectedCourse.courseId}/quiz/result?eliteId=${user.eliteId}`);
-      setQuizResult(data);
-    } catch (error) {
-      console.error('Error fetching result:', error);
-    }
-  };
 
   const isLessonComplete = (lessonId) => {
     return selectedCourse?.lessonProgress?.some(lp => lp.lessonId === lessonId && lp.completed);

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { motion } from 'framer-motion';
 
@@ -48,7 +48,6 @@ const terms = [
 const BorrowingTerms = ({ formData, onChange, onBack, onSubmit, loading }) => {
   const { i18n } = useTranslation();
   const isRTL = i18n.language === 'ar';
-  const [showAllTerms, setShowAllTerms] = useState(true);
 
   const canSubmit = formData.termsAccepted && formData.signature && formData.signature.trim().length >= 3;
 

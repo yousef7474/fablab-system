@@ -27,6 +27,7 @@ const ReturnDate = ({ formData, onChange, onNext, onBack }) => {
     if (!formData.borrowDate) {
       onChange({ borrowDate });
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const getDaysDiff = () => {

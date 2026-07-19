@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback, useRef } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { motion } from 'framer-motion';
 import { toast } from 'react-toastify';
@@ -19,6 +19,7 @@ const VolunteerManagement = () => {
   const [editingVolunteerId, setEditingVolunteerId] = useState(null);
   // Attendance mode state
   const [volunteerAttendanceMode, setVolunteerAttendanceMode] = useState(false);
+  // eslint-disable-next-line no-unused-vars
   const [volAttendanceList, setVolAttendanceList] = useState([]);
   // Per-volunteer attendance history modal + full CSV export
   const [showLogModal, setShowLogModal] = useState(false);
@@ -31,13 +32,10 @@ const VolunteerManagement = () => {
   const [exportFrom, setExportFrom] = useState(_monthAgo);
   const [exportTo, setExportTo] = useState(_today);
   const [exporting, setExporting] = useState(false);
+  // eslint-disable-next-line no-unused-vars
   const [volSessionStats, setVolSessionStats] = useState({ checkins: 0, checkouts: 0, errors: 0 });
+  // eslint-disable-next-line no-unused-vars
   const [volRecentScans, setVolRecentScans] = useState([]);
-  const [volScanPopup, setVolScanPopup] = useState(null);
-  const [volClearingToday, setVolClearingToday] = useState(false);
-  const volHwBufferRef = useRef('');
-  const volHwLastKeyRef = useRef(0);
-  const volScanPopupTimerRef = useRef(null);
   const [showOpportunityModal, setShowOpportunityModal] = useState(false);
   const [showVolunteerDetailModal, setShowVolunteerDetailModal] = useState(false);
   const [showVolunteerRatingModal, setShowVolunteerRatingModal] = useState(false);
@@ -153,13 +151,6 @@ const VolunteerManagement = () => {
   };
 
   // ─── Volunteer Attendance Mode ───────────────────────────────────
-  const fmtTimeShort = (iso) => {
-    if (!iso) return '—';
-    const d = new Date(iso);
-    if (isNaN(d.getTime())) return '—';
-    const pad = (n) => String(n).padStart(2, '0');
-    return `${pad(d.getHours())}:${pad(d.getMinutes())}`;
-  };
   const fmtTimeLong = (iso) => {
     if (!iso) return '';
     const d = new Date(iso);
@@ -282,75 +273,6 @@ const VolunteerManagement = () => {
     setVolRecentScans([]);
     setVolAttendanceList([]);
     await hydrateVolAttendance();
-  };
-
-  const closeVolunteerAttendanceMode = () => {
-    setVolunteerAttendanceMode(false);
-    setVolScanPopup(null);
-    if (volScanPopupTimerRef.current) clearTimeout(volScanPopupTimerRef.current);
-  };
-
-  const clearVolTodayLogs = async () => {
-    if (!window.confirm(isRTL
-      ? 'سيتم حذف جميع سجلات حضور المتطوعين لهذا اليوم. هل أنت متأكد؟'
-      : 'This will delete ALL of today\'s volunteer attendance records. Are you sure?')) return;
-    setVolClearingToday(true);
-    try {
-      const { data } = await api.delete('/volunteers/attendance/today');
-      setVolAttendanceList([]);
-      setVolRecentScans([]);
-      setVolSessionStats({ checkins: 0, checkouts: 0, errors: 0 });
-      toast.success(isRTL ? `تم حذف ${data.count} سجل` : `Deleted ${data.count} record(s)`);
-    } catch (err) {
-      console.error(err);
-      toast.error(isRTL ? 'فشل الحذف' : 'Clear failed');
-    } finally {
-      setVolClearingToday(false);
-    }
-  };
-
-  const showVolScanResult = useCallback((payload) => {
-    if (volScanPopupTimerRef.current) clearTimeout(volScanPopupTimerRef.current);
-    setVolScanPopup(payload);
-    volScanPopupTimerRef.current = setTimeout(() => setVolScanPopup(null), 3000);
-    try {
-      const ctx = new (window.AudioContext || window.webkitAudioContext)();
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-      osc.connect(gain); gain.connect(ctx.destination);
-      osc.frequency.value = payload.kind === 'error' ? 320 : (payload.kind === 'checkout' ? 880 : 1200);
-      gain.gain.value = 0.25;
-      osc.start(); osc.stop(ctx.currentTime + 0.13);
-    } catch {}
-  }, []);
-
-  const handleVolHardwareScan = async (code) => {
-    try {
-      const { data } = await api.post('/volunteers/attendance/scan', { code });
-      const v = data.volunteer || {};
-      const r = data.record || {};
-      const refTime = data.action === 'checkout' ? r.checkOutAt : r.checkInAt;
-      let kind = 'checkin';
-      let label = isRTL ? 'تم تسجيل الدخول' : 'Checked In';
-      if (data.action === 'checkout') { kind = 'checkout'; label = isRTL ? 'تم تسجيل الخروج' : 'Checked Out'; }
-      else if (data.action === 'already_done') { kind = 'done'; label = isRTL ? 'مكتمل اليوم' : 'Already Done Today'; }
-      else if (data.action === 'duplicate') { kind = 'warning'; label = isRTL ? 'انتظر قليلاً قبل تسجيل الخروج' : 'Wait before checking out'; }
-      const payload = {
-        kind, label,
-        name: v.name || code,
-        time: fmtTimeLong(refTime || new Date().toISOString())
-      };
-      showVolScanResult(payload);
-      if (kind === 'checkin') setVolSessionStats(p => ({ ...p, checkins: p.checkins + 1 }));
-      else if (kind === 'checkout') setVolSessionStats(p => ({ ...p, checkouts: p.checkouts + 1 }));
-      setVolRecentScans(prev => [payload, ...prev].slice(0, 30));
-      hydrateVolAttendance();
-    } catch (err) {
-      const payload = { kind: 'error', label: isRTL ? 'لم يتم العثور على المتطوع' : 'Volunteer not found', name: code, time: '' };
-      showVolScanResult(payload);
-      setVolSessionStats(p => ({ ...p, errors: p.errors + 1 }));
-      setVolRecentScans(prev => [payload, ...prev].slice(0, 30));
-    }
   };
 
   // The hardware scanner listener now lives inside UnifiedAttendancePage
@@ -569,14 +491,6 @@ const VolunteerManagement = () => {
       };
       reader.readAsDataURL(file);
     }
-  };
-
-  const calculateTotalHours = (startDate, endDate, dailyHours = 8) => {
-    if (!startDate || !endDate) return 0;
-    const start = new Date(startDate);
-    const end = new Date(endDate);
-    const days = Math.ceil((end - start) / (1000 * 60 * 60 * 24)) + 1;
-    return days * dailyHours;
   };
 
   // View volunteer details

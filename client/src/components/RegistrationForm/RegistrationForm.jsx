@@ -169,6 +169,7 @@ const RegistrationForm = () => {
         setSearchParams(searchParams, { replace: false });
       }
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeStep, registrationResult]);
 
   // Listen for browser back/forward navigation
@@ -183,6 +184,7 @@ const RegistrationForm = () => {
       // URL has no step param, go to initial step
       setActiveStep(-1);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams]);
 
   // Save form state to localStorage whenever it changes

@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback, useMemo, useRef } from 'react';
+import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'react-toastify';
 import api from '../../config/api';
@@ -41,12 +41,13 @@ const Mawhba = () => {
   // dedicated Attendance Mode page is open, so it never fights with
   // normal typing on the regular Mawhba list view.
   const [attendanceMode, setAttendanceMode] = useState(false);
-  const hwBufferRef = useRef('');
-  const hwLastKeyRef = useRef(0);
+  // eslint-disable-next-line no-unused-vars
   const [scanPopup, setScanPopup] = useState(null);
-  const scanPopupTimerRef = useRef(null);
+  // eslint-disable-next-line no-unused-vars
   const [sessionStats, setSessionStats] = useState({ checkins: 0, checkouts: 0, errors: 0 });
+  // eslint-disable-next-line no-unused-vars
   const [recentScans, setRecentScans] = useState([]); // last 5 scans, newest first
+  // eslint-disable-next-line no-unused-vars
   const [attendanceGroups, setAttendanceGroups] = useState([]); // students grouped by course
   const [showLogModal, setShowLogModal] = useState(false);
   const [logStudent, setLogStudent] = useState(null);
@@ -158,101 +159,6 @@ const Mawhba = () => {
     setAttendanceGroups([]);
     await hydrateAttendance();
   };
-  const closeAttendanceMode = () => {
-    setAttendanceMode(false);
-    setScanPopup(null);
-    if (scanPopupTimerRef.current) clearTimeout(scanPopupTimerRef.current);
-  };
-
-  const [clearingToday, setClearingToday] = useState(false);
-  const clearTodayLogs = async () => {
-    if (!window.confirm(isRTL ? 'سيتم حذف جميع سجلات الحضور لهذا اليوم. هل أنت متأكد؟' : 'This will delete ALL of today\'s attendance records. Are you sure?')) return;
-    setClearingToday(true);
-    try {
-      const { data } = await api.delete('/mawhba/attendance/today');
-      setRecentScans([]);
-      setAttendanceGroups([]);
-      setSessionStats({ checkins: 0, checkouts: 0, errors: 0 });
-      toast.success(isRTL ? `تم حذف ${data.count} سجل` : `Deleted ${data.count} record(s)`);
-    } catch (err) {
-      console.error(err);
-      toast.error(isRTL ? 'فشل الحذف' : 'Clear failed');
-    } finally {
-      setClearingToday(false);
-    }
-  };
-
-  const showScanResult = useCallback((payload) => {
-    if (scanPopupTimerRef.current) clearTimeout(scanPopupTimerRef.current);
-    setScanPopup(payload);
-    scanPopupTimerRef.current = setTimeout(() => setScanPopup(null), 3000);
-    try {
-      const ctx = new (window.AudioContext || window.webkitAudioContext)();
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-      osc.connect(gain); gain.connect(ctx.destination);
-      osc.frequency.value = payload.kind === 'error' ? 320 : (payload.kind === 'checkout' ? 880 : 1200);
-      gain.gain.value = 0.25;
-      osc.start();
-      osc.stop(ctx.currentTime + 0.13);
-    } catch {}
-  }, []);
-
-  const handleHardwareScan = async (code) => {
-    try {
-      const { data } = await api.post('/mawhba/attendance/scan', { code });
-      const s = data.student || {};
-      const r = data.record || {};
-      const color = data.color || colorMap[s.courseName] || '#8b5cf6';
-      const fmt = (iso) => {
-        if (!iso) return '';
-        const d = new Date(iso);
-        const pad = (n) => String(n).padStart(2, '0');
-        return `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
-      };
-      const fmtDate = (iso) => {
-        if (!iso) return '';
-        const d = new Date(iso);
-        const pad = (n) => String(n).padStart(2, '0');
-        return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
-      };
-      const refTime = data.action === 'checkout' ? r.checkOutAt : r.checkInAt;
-      let kind = 'checkin';
-      let label = isRTL ? 'تم تسجيل الدخول' : 'Checked In';
-      if (data.action === 'checkout') { kind = 'checkout'; label = isRTL ? 'تم تسجيل الخروج' : 'Checked Out'; }
-      else if (data.action === 'already_done') { kind = 'done'; label = isRTL ? 'مكتمل اليوم' : 'Already Done Today'; }
-      else if (data.action === 'duplicate') { kind = 'warning'; label = isRTL ? 'انتظر قليلاً قبل تسجيل الخروج' : 'Wait before checking out'; }
-      const payload = {
-        kind,
-        label,
-        name: s.nameAr || s.nameEn || code,
-        course: s.courseName || '',
-        date: fmtDate(refTime || new Date().toISOString()),
-        time: fmt(refTime || new Date().toISOString()),
-        color
-      };
-      showScanResult(payload);
-      if (kind === 'checkin') setSessionStats(p => ({ ...p, checkins: p.checkins + 1 }));
-      else if (kind === 'checkout') setSessionStats(p => ({ ...p, checkouts: p.checkouts + 1 }));
-      setRecentScans(prev => [payload, ...prev].slice(0, 30));
-      // refresh the grouped-by-course view so this student's status is reflected
-      hydrateAttendance();
-    } catch (err) {
-      const payload = {
-        kind: 'error',
-        label: isRTL ? 'لم يتم العثور على الطالب' : 'Student not found',
-        name: code,
-        course: '',
-        date: '',
-        time: '',
-        color: '#ef4444'
-      };
-      showScanResult(payload);
-      setSessionStats(p => ({ ...p, errors: p.errors + 1 }));
-      setRecentScans(prev => [payload, ...prev].slice(0, 30));
-    }
-  };
-
   const openAdd = () => {
     setEditingId(null);
     setStudentForm(EMPTY_STUDENT);
@@ -645,7 +551,7 @@ const Mawhba = () => {
       ? `${cards.length} بطاقة · ${pages.length} صفحة · حجم البطاقة: 72×102 ملم · اقطع حسب الخط المتقطع`
       : `${cards.length} card(s) · ${pages.length} page(s) · Card size: 72×102 mm · Cut along the dashed line`;
     win.document.open();
-    win.document.write(`<!DOCTYPE html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><title>${isRTL ? 'بطاقات موهبة' : 'Mawhba Cards'}</title><style>${CARD_PRINT_CSS}</style></head><body><div class="mawhba-print-page-screen-note">${note}</div>${pages.join('')}<script>window.onload=function(){setTimeout(function(){window.print()},500)}<\/script></body></html>`);
+    win.document.write(`<!DOCTYPE html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><title>${isRTL ? 'بطاقات موهبة' : 'Mawhba Cards'}</title><style>${CARD_PRINT_CSS}</style></head><body><div class="mawhba-print-page-screen-note">${note}</div>${pages.join('')}<script>window.onload=function(){setTimeout(function(){window.print()},500)}</script></body></html>`);
     win.document.close();
   };
 

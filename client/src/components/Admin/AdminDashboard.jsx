@@ -1,5 +1,5 @@
-import React, { useEffect, useState, useCallback, useRef } from 'react';
-import { useNavigate, useLocation, useSearchParams } from 'react-router-dom';
+import React, { useEffect, useState, useCallback } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'react-toastify';
@@ -74,11 +74,9 @@ const formatTimeAMPM = (time24) => {
 
 const AdminDashboard = () => {
   const navigate = useNavigate();
-  const location = useLocation();
   const [searchParams, setSearchParams] = useSearchParams();
   const { i18n } = useTranslation();
   const isRTL = i18n.language === 'ar';
-  const printRef = useRef();
 
   // Valid tabs for URL persistence
   const validTabs = ['dashboard', 'registrations', 'users', 'employees', 'schedule', 'analytics', 'borrowing', 'education', 'workshops', 'workspaces', 'volunteers', 'workers', 'fablab-staff', 'summer', 'mawhba', 'overtime', 'trainer-assistants', 'settings'];
@@ -334,6 +332,7 @@ const AdminDashboard = () => {
       }
       setSearchParams(searchParams, { replace: true });
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeTab]);
 
   // Listen for browser back/forward navigation
@@ -343,6 +342,7 @@ const AdminDashboard = () => {
     if (newTab !== activeTab) {
       setActiveTab(newTab);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams]);
 
   useEffect(() => {
@@ -359,6 +359,7 @@ const AdminDashboard = () => {
     fetchRegistrations();
     fetchWorkingHours();
     fetchOverrides();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [navigate]);
 
   const fetchAnalytics = async () => {
@@ -498,6 +499,7 @@ const AdminDashboard = () => {
       }
     }, 400);
     return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userSearch, activeTab]);
 
   const handlePageChange = (newPage) => {
@@ -777,6 +779,7 @@ const AdminDashboard = () => {
       fetchWorkspaces();
       fetchWorkspaceStats();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeTab, fetchRegistrations, analyticsPeriod, analyticsDateRange.startDate, analyticsDateRange.endDate, workspaceAuthenticated]);
 
   // Workshop functions
@@ -1216,15 +1219,6 @@ const AdminDashboard = () => {
       toast.error((isRTL ? data?.messageAr : data?.message) || (isRTL ? 'خطأ' : 'Error'));
     } finally {
       setAddingWorkshopStudent(false);
-    }
-  };
-
-  const handleSendAttendanceId = async (studentId) => {
-    try {
-      await api.post(`/workshops/students/${studentId}/send-attendance-id`);
-      toast.success(isRTL ? 'تم إرسال بطاقة الحضور' : 'Attendance ID sent');
-    } catch (error) {
-      toast.error(error.response?.data?.message || (isRTL ? 'خطأ' : 'Error'));
     }
   };
 
@@ -3046,14 +3040,6 @@ const AdminDashboard = () => {
       return labels[user.applicationType] || user.applicationType || (isRTL ? 'غير متوفر' : 'N/A');
     };
 
-    // Get sex label
-    const getSexLabelForCard = () => {
-      const sex = (user.sex || '').toLowerCase();
-      if (sex === 'male') return isRTL ? 'ذكر' : 'Male';
-      if (sex === 'female') return isRTL ? 'أنثى' : 'Female';
-      return isRTL ? 'غير محدد' : 'N/A';
-    };
-
     const na = isRTL ? 'غير محدد' : 'N/A';
 
     const idCardContent = `
@@ -4586,13 +4572,6 @@ const AdminDashboard = () => {
     'Talented': isRTL ? 'موهوب' : 'Talented',
     'Entity': isRTL ? 'جهة' : 'Entity',
     'FABLAB Visit': isRTL ? 'زيارة فاب لاب' : 'FABLAB Visit'
-  };
-
-  const sexLabels = {
-    'male': isRTL ? 'ذكر' : 'Male',
-    'female': isRTL ? 'أنثى' : 'Female',
-    'Male': isRTL ? 'ذكر' : 'Male',
-    'Female': isRTL ? 'أنثى' : 'Female'
   };
 
   const serviceLabels = {

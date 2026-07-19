@@ -16,7 +16,6 @@ const WorkshopRegistration = () => {
 
   const [step, setStep] = useState(0); // 0=personal info, 1=select workshop, 2=invoice, 3=done
   const [workshops, setWorkshops] = useState([]);
-  const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [result, setResult] = useState(null);
 

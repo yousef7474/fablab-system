@@ -36,6 +36,7 @@ const QRScanner = ({ onClose }) => {
   useEffect(() => {
     if (selectedCamera) startScanner(selectedCamera);
     return () => stopScanner();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedCamera]);
 
   const stopScanner = async () => {

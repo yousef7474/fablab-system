@@ -347,14 +347,6 @@ const WorkerManagement = () => {
     }
   };
 
-  const calculateTotalHours = (startDate, endDate, dailyHours = 8) => {
-    if (!startDate || !endDate) return 0;
-    const start = new Date(startDate);
-    const end = new Date(endDate);
-    const days = Math.ceil((end - start) / (1000 * 60 * 60 * 24)) + 1;
-    return days * dailyHours;
-  };
-
   // View worker details
   const handleViewWorker = (worker) => {
     setSelectedWorker(worker);
