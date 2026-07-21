@@ -29,7 +29,9 @@ const mawhbaRoutes = require('./routes/mawhbaRoutes');
 const fablabStaffRoutes = require('./routes/fablabStaffRoutes');
 const overtimeRoutes = require('./routes/overtimeRoutes');
 const trainerAssistantRoutes = require('./routes/trainerAssistantRoutes');
+const customerRoutes = require('./routes/customerRoutes');
 const { startBorrowingScheduler } = require('./utils/borrowingScheduler');
+const { seedInitialCustomers } = require('./utils/seedCustomers');
 const { startTaskReminderScheduler } = require('./utils/taskReminderScheduler');
 const { startEliteCourseScheduler } = require('./utils/eliteCourseScheduler');
 const { processWeeklyCredits } = require('./controllers/activityController');
@@ -66,6 +68,7 @@ app.use('/api/mawhba', mawhbaRoutes);
 app.use('/api/fablab-staff', fablabStaffRoutes);
 app.use('/api/overtime', overtimeRoutes);
 app.use('/api/trainer-assistants', trainerAssistantRoutes);
+app.use('/api/customers', customerRoutes);
 app.use('/api/elite', eliteRoutes);
 app.use('/api/settings', settingsRoutes);
 app.use('/api/settings/working-hours-overrides', workingHoursOverrideRoutes);
@@ -129,6 +132,10 @@ const startServer = async () => {
 
     // Sync database
     await syncDatabase();
+
+    // Seed initial mailing-list customers (idempotent — no-op if table
+    // already has rows). Runs after sync so the customers table exists.
+    await seedInitialCustomers();
 
     // Start schedulers
     startBorrowingScheduler();

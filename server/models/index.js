@@ -60,6 +60,7 @@ const FablabStaffAttendance = require('./FablabStaffAttendance');
 const OvertimeRequest = require('./OvertimeRequest');
 const TrainerAssistant = require('./TrainerAssistant');
 const TrainerAssignment = require('./TrainerAssignment');
+const Customer = require('./Customer');
 
 MawhbaAttendance.belongsTo(MawhbaStudent, { foreignKey: 'studentId', as: 'student', constraints: false });
 MawhbaStudent.hasMany(MawhbaAttendance, { foreignKey: 'studentId', as: 'attendance', constraints: false });
@@ -468,5 +469,6 @@ module.exports = {
   OvertimeRequest,
   TrainerAssistant,
   TrainerAssignment,
+  Customer,
   syncDatabase
 };
