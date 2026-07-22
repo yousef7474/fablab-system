@@ -217,7 +217,8 @@ const AdminDashboard = () => {
     title: '', description: '', presenter: '', assignedEmployeeId: '',
     startDate: '', endDate: '', startTime: '', endTime: '',
     totalHours: '', content: '', objectives: '', photo: '',
-    maxParticipants: '', price: '', notes: '', color: '#1a56db', minAge: '', maxAge: ''
+    maxParticipants: '', price: '', notes: '', color: '#1a56db', minAge: '', maxAge: '',
+    isPublic: true
   });
   const [workshopLoading, setWorkshopLoading] = useState(false);
   const [viewingWorkshopStudents, setViewingWorkshopStudents] = useState(() => {
@@ -1119,7 +1120,8 @@ const AdminDashboard = () => {
       totalHours: workshop.totalHours || '', content: workshop.content || '',
       objectives: workshop.objectives || '', photo: workshop.photo || '',
       maxParticipants: workshop.maxParticipants || '', price: workshop.price || '',
-      notes: workshop.notes || '', color: workshop.color || '#1a56db', minAge: workshop.minAge || '', maxAge: workshop.maxAge || ''
+      notes: workshop.notes || '', color: workshop.color || '#1a56db', minAge: workshop.minAge || '', maxAge: workshop.maxAge || '',
+      isPublic: workshop.isPublic !== false
     });
     setShowWorkshopModal(true);
   };
@@ -7620,7 +7622,7 @@ const AdminDashboard = () => {
                     </div>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
                       <h3 style={{ margin: 0 }}>{isRTL ? 'الورش التدريبية' : 'Workshops'}</h3>
-                      <button className="add-task-btn" onClick={() => { setSelectedWorkshop(null); setWorkshopForm({ title: '', description: '', presenter: '', assignedEmployeeId: '', startDate: '', endDate: '', startTime: '', endTime: '', totalHours: '', content: '', objectives: '', photo: '', maxParticipants: '', price: '', notes: '' }); setShowWorkshopModal(true); }}>
+                      <button className="add-task-btn" onClick={() => { setSelectedWorkshop(null); setWorkshopForm({ title: '', description: '', presenter: '', assignedEmployeeId: '', startDate: '', endDate: '', startTime: '', endTime: '', totalHours: '', content: '', objectives: '', photo: '', maxParticipants: '', price: '', notes: '', color: '#1a56db', minAge: '', maxAge: '', isPublic: true }); setShowWorkshopModal(true); }}>
                         + {isRTL ? 'ورشة جديدة' : 'New Workshop'}
                       </button>
                     </div>
@@ -7629,11 +7631,21 @@ const AdminDashboard = () => {
                         <div key={w.workshopId} style={{ background: 'white', borderRadius: 14, overflow: 'hidden', border: '1px solid #f1f5f9', boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}>
                           {w.photo && <div style={{ height: 150, backgroundImage: `url(${w.photo})`, backgroundSize: 'cover', backgroundPosition: 'center' }} />}
                           <div style={{ padding: '1rem' }}>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.5rem' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.5rem', gap: 6 }}>
                               <h4 style={{ margin: 0, fontSize: '1rem', fontWeight: 700 }}>{w.title}</h4>
-                              <span style={{ padding: '2px 8px', borderRadius: 6, fontSize: '0.7rem', fontWeight: 600, background: w.status === 'upcoming' ? '#dbeafe' : w.status === 'in_progress' ? '#fef3c7' : w.status === 'completed' ? '#dcfce7' : '#fee2e2', color: w.status === 'upcoming' ? '#1d4ed8' : w.status === 'in_progress' ? '#92400e' : w.status === 'completed' ? '#166534' : '#991b1b' }}>
-                                {w.status === 'upcoming' ? (isRTL ? 'قادمة' : 'Upcoming') : w.status === 'in_progress' ? (isRTL ? 'جارية' : 'In Progress') : w.status === 'completed' ? (isRTL ? 'مكتملة' : 'Completed') : (isRTL ? 'ملغاة' : 'Cancelled')}
-                              </span>
+                              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4 }}>
+                                <span style={{ padding: '2px 8px', borderRadius: 6, fontSize: '0.7rem', fontWeight: 600, background: w.status === 'upcoming' ? '#dbeafe' : w.status === 'in_progress' ? '#fef3c7' : w.status === 'completed' ? '#dcfce7' : '#fee2e2', color: w.status === 'upcoming' ? '#1d4ed8' : w.status === 'in_progress' ? '#92400e' : w.status === 'completed' ? '#166534' : '#991b1b' }}>
+                                  {w.status === 'upcoming' ? (isRTL ? 'قادمة' : 'Upcoming') : w.status === 'in_progress' ? (isRTL ? 'جارية' : 'In Progress') : w.status === 'completed' ? (isRTL ? 'مكتملة' : 'Completed') : (isRTL ? 'ملغاة' : 'Cancelled')}
+                                </span>
+                                {w.isPublic === false && (
+                                  <span title={isRTL ? 'مخفية عن الجمهور' : 'Hidden from public'} style={{ padding: '2px 8px', borderRadius: 6, fontSize: '0.65rem', fontWeight: 700, background: 'rgba(245,158,11,0.15)', color: '#92400e', border: '1px solid rgba(245,158,11,0.35)', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                                      <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/>
+                                    </svg>
+                                    {isRTL ? 'خاصة بالإدارة' : 'Admin only'}
+                                  </span>
+                                )}
+                              </div>
                             </div>
                             {w.presenter && <div style={{ fontSize: '0.82rem', color: '#3b82f6', fontWeight: 600, marginBottom: '0.4rem' }}>{w.presenter}</div>}
                             {w.assignedEmployee && <div style={{ fontSize: '0.75rem', color: '#64748b', marginBottom: '0.4rem' }}>{isRTL ? 'المسؤول:' : 'Assigned:'} {w.assignedEmployee.name}</div>}
@@ -7822,6 +7834,58 @@ const AdminDashboard = () => {
                     <div><label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 600, marginBottom: 4 }}>{isRTL ? 'الحد الأدنى للعمر' : 'Min Age'}</label><input type="number" style={{ width: '100%', padding: '0.5rem', borderRadius: 8, border: '1.5px solid #e2e8f0', fontFamily: 'inherit' }} value={workshopForm.minAge || ''} onChange={e => setWorkshopForm({...workshopForm, minAge: e.target.value})} placeholder={isRTL ? 'مثال: 12' : 'e.g. 12'} /></div>
                     <div><label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 600, marginBottom: 4 }}>{isRTL ? 'الحد الأقصى للعمر' : 'Max Age'}</label><input type="number" style={{ width: '100%', padding: '0.5rem', borderRadius: 8, border: '1.5px solid #e2e8f0', fontFamily: 'inherit' }} value={workshopForm.maxAge || ''} onChange={e => setWorkshopForm({...workshopForm, maxAge: e.target.value})} placeholder={isRTL ? 'مثال: 18' : 'e.g. 18'} /></div>
                     <div><label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 600, marginBottom: 4 }}>{isRTL ? 'لون الورشة' : 'Workshop Color'}</label><div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}><input type="color" value={workshopForm.color || '#1a56db'} onChange={e => setWorkshopForm({...workshopForm, color: e.target.value})} style={{ width: 40, height: 36, border: 'none', borderRadius: 6, cursor: 'pointer' }} /><span style={{ fontSize: '0.78rem', color: '#64748b' }}>{workshopForm.color || '#1a56db'}</span></div></div>
+                    <div style={{ gridColumn: '1/-1' }}>
+                      <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 600, marginBottom: 6 }}>
+                        {isRTL ? 'ظهور الورشة' : 'Workshop Visibility'}
+                      </label>
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
+                        <button
+                          type="button"
+                          onClick={() => setWorkshopForm({ ...workshopForm, isPublic: true })}
+                          style={{
+                            padding: '0.75rem', borderRadius: 10, cursor: 'pointer', fontFamily: 'inherit',
+                            border: workshopForm.isPublic ? '2px solid #22c55e' : '1.5px solid #e2e8f0',
+                            background: workshopForm.isPublic ? 'rgba(34,197,94,0.08)' : 'white',
+                            textAlign: 'start', display: 'flex', gap: '0.6rem', alignItems: 'flex-start'
+                          }}
+                        >
+                          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={workshopForm.isPublic ? '#16a34a' : '#94a3b8'} strokeWidth="2" style={{ flexShrink: 0, marginTop: 2 }}>
+                            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>
+                          </svg>
+                          <div>
+                            <div style={{ fontWeight: 700, fontSize: '0.88rem', color: workshopForm.isPublic ? '#166534' : '#334155' }}>
+                              {isRTL ? 'ظاهرة للجمهور' : 'Public'}
+                            </div>
+                            <div style={{ fontSize: '0.72rem', color: '#64748b', marginTop: 2 }}>
+                              {isRTL ? 'يمكن للزوار التسجيل عبر الموقع' : 'Visitors can register via the site'}
+                            </div>
+                          </div>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setWorkshopForm({ ...workshopForm, isPublic: false })}
+                          style={{
+                            padding: '0.75rem', borderRadius: 10, cursor: 'pointer', fontFamily: 'inherit',
+                            border: !workshopForm.isPublic ? '2px solid #f59e0b' : '1.5px solid #e2e8f0',
+                            background: !workshopForm.isPublic ? 'rgba(245,158,11,0.08)' : 'white',
+                            textAlign: 'start', display: 'flex', gap: '0.6rem', alignItems: 'flex-start'
+                          }}
+                        >
+                          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={!workshopForm.isPublic ? '#d97706' : '#94a3b8'} strokeWidth="2" style={{ flexShrink: 0, marginTop: 2 }}>
+                            <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/>
+                            <line x1="1" y1="1" x2="23" y2="23"/>
+                          </svg>
+                          <div>
+                            <div style={{ fontWeight: 700, fontSize: '0.88rem', color: !workshopForm.isPublic ? '#92400e' : '#334155' }}>
+                              {isRTL ? 'خاصة بالإدارة' : 'Admin only'}
+                            </div>
+                            <div style={{ fontSize: '0.72rem', color: '#64748b', marginTop: 2 }}>
+                              {isRTL ? 'مخفية عن الزوار — الإدارة تضيف الطلاب و رموز QR' : 'Hidden from visitors — admin adds students & QR codes'}
+                            </div>
+                          </div>
+                        </button>
+                      </div>
+                    </div>
                   </div>
                   <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end', marginTop: '1.5rem' }}>
                     <button onClick={() => setShowWorkshopModal(false)} style={{ padding: '0.6rem 1.5rem', borderRadius: 8, border: 'none', background: '#f1f5f9', cursor: 'pointer', fontWeight: 600, fontFamily: 'inherit' }}>{isRTL ? 'إلغاء' : 'Cancel'}</button>

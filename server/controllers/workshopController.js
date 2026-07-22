@@ -10,7 +10,7 @@ exports.createWorkshop = async (req, res) => {
       title, description, presenter, assignedEmployeeId,
       startDate, endDate, startTime, endTime, totalHours,
       content, objectives, photo, maxParticipants, price,
-      status, isActive, notes, color, minAge, maxAge
+      status, isActive, isPublic, notes, color, minAge, maxAge
     } = req.body;
 
     if (!title || !presenter || !startDate) {
@@ -26,6 +26,7 @@ exports.createWorkshop = async (req, res) => {
       content, objectives, photo, maxParticipants, price,
       status: status || 'upcoming',
       isActive: isActive !== undefined ? isActive : true,
+      isPublic: isPublic !== undefined ? !!isPublic : true,
       notes,
       color: color || '#1a56db',
       minAge: minAge || null,
@@ -150,7 +151,7 @@ exports.updateWorkshop = async (req, res) => {
       title, description, presenter, assignedEmployeeId,
       startDate, endDate, startTime, endTime, totalHours,
       content, objectives, photo, maxParticipants, price,
-      status, isActive, notes, color, minAge, maxAge
+      status, isActive, isPublic, notes, color, minAge, maxAge
     } = req.body;
 
     await workshop.update({
@@ -170,6 +171,7 @@ exports.updateWorkshop = async (req, res) => {
       price: price !== undefined ? price : workshop.price,
       status: status !== undefined ? status : workshop.status,
       isActive: isActive !== undefined ? isActive : workshop.isActive,
+      isPublic: isPublic !== undefined ? !!isPublic : workshop.isPublic,
       notes: notes !== undefined ? notes : workshop.notes,
       color: color !== undefined ? color : workshop.color,
       minAge: minAge !== undefined ? (minAge || null) : workshop.minAge,
@@ -228,6 +230,7 @@ exports.getActiveWorkshops = async (req, res) => {
     const workshops = await Workshop.findAll({
       where: {
         isActive: true,
+        isPublic: true,
         status: { [Op.notIn]: ['cancelled', 'completed'] }
       },
       attributes: [
@@ -356,6 +359,13 @@ exports.registerStudent = async (req, res) => {
 
       if (!workshop.isActive || workshop.status === 'cancelled') {
         throw { status: 400, message: 'This workshop is not accepting registrations', messageAr: 'هذه الورشة لا تقبل التسجيل حالياً' };
+      }
+
+      // Admin-only workshops are hidden from the public listing and cannot
+      // be registered for via the public form. Guarded here too so a leaked
+      // workshopId can't bypass the visibility flag.
+      if (workshop.isPublic === false) {
+        throw { status: 403, message: 'This workshop is not open for public registration', messageAr: 'هذه الورشة غير متاحة للتسجيل العام' };
       }
 
       // Duplicate check is by student national ID only. Repeated emails,

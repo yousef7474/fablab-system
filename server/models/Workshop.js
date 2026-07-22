@@ -95,6 +95,12 @@ const Workshop = sequelize.define('Workshop', {
     allowNull: true,
     comment: 'Maximum age for registration'
   },
+  isPublic: {
+    type: DataTypes.BOOLEAN,
+    defaultValue: true,
+    allowNull: false,
+    comment: 'True = shown to public in /workshop registration page; false = admin-only (admin can still add students + issue QR codes)'
+  },
   createdById: {
     type: DataTypes.UUID,
     allowNull: true,
