@@ -1473,7 +1473,7 @@ const ManagerDashboard = () => {
       .card-title { color: white; font-size: 9pt; font-weight: 700; line-height: 1.15; }
       .card-subtitle { color: rgba(255,255,255,0.88); font-size: 6.5pt; margin-top: 0.6mm; }
       .card-body {
-        flex: 1; padding: 2.5mm 3mm 0;
+        flex: 1; padding: 2.5mm 3mm 13mm;
         display: flex; flex-direction: column; align-items: center; gap: 1.4mm;
       }
       .user-photo {
@@ -1510,19 +1510,24 @@ const ManagerDashboard = () => {
       }
       .card-qr { display: flex; align-items: center; justify-content: center; margin-top: 1mm; }
       .card-qr img { width: 26mm; height: 26mm; background: white; padding: 0.8mm; border-radius: 1mm; box-shadow: 0 0 0 0.3mm #0ea5e9 inset; }
+      /* Absolute-position the footer at the bottom of the card so it
+         can never be pushed past overflow:hidden by a tall body. The
+         card-body reserves matching bottom padding so its content
+         doesn't overlap the footer band. */
       .card-footer {
-        background: #ffffff; padding: 2mm 3mm;
-        min-height: 12mm;
+        position: absolute;
+        bottom: 0; left: 0; right: 0;
+        background: #ffffff; padding: 1.5mm 3mm;
         display: flex; align-items: center; justify-content: space-between;
         gap: 2mm;
         border-top: 0.3mm solid #e0e0e0;
+        z-index: 2;
       }
       /* object-fit + explicit max-width so wide logos (fablab wordmark
-         is a wide horizontal graphic) don't overflow the 72mm-wide card
-         and get cropped by the .id-card overflow:hidden. flex: 0 1 auto
-         lets them shrink if the label is long. */
+         is a wide horizontal graphic) don't overflow the 72mm card and
+         get cropped by .id-card overflow:hidden. */
       .card-footer .logo {
-        height: 8mm;
+        height: 7mm;
         max-width: 22mm;
         width: auto;
         object-fit: contain;
