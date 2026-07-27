@@ -30,6 +30,24 @@ const daysBetween = (start, end) => {
   return Math.max(0, Math.floor((e - s) / (1000 * 60 * 60 * 24)) + 1);
 };
 
+// Working days between two dates (inclusive) excluding Friday and
+// Saturday, the standard weekend in Saudi Arabia. The cost of a
+// volunteer is billed on working days only.
+const workingDaysBetween = (start, end) => {
+  if (!start || !end) return 0;
+  const s = new Date(start);
+  const e = new Date(end);
+  if (isNaN(s.getTime()) || isNaN(e.getTime())) return 0;
+  let count = 0;
+  const cur = new Date(s);
+  while (cur <= e) {
+    const dow = cur.getDay(); // 0=Sun ... 5=Fri, 6=Sat
+    if (dow !== 5 && dow !== 6) count++;
+    cur.setDate(cur.getDate() + 1);
+  }
+  return count;
+};
+
 const fmtDate = (d) => {
   if (!d) return '';
   try {
@@ -66,7 +84,8 @@ const VolunteerContractModal = ({ open, onClose, recipient }) => {
   if (!open) return null;
 
   const totalDays = daysBetween(form.startDate, form.endDate);
-  const totalCost = totalDays * Number(form.costPerDay || 0);
+  const workingDays = workingDaysBetween(form.startDate, form.endDate);
+  const totalCost = workingDays * Number(form.costPerDay || 0);
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
 
   const handlePrint = () => {
@@ -209,6 +228,34 @@ const VolunteerContractModal = ({ open, onClose, recipient }) => {
     font-weight: 800;
     letter-spacing: 0.5px;
   }
+  .info-table td .sub-note {
+    display: block;
+    font-size: 8pt;
+    font-weight: 600;
+    color: #b91c1c;
+    margin-top: 0.5mm;
+  }
+
+  /* Formal compensation statement — bold body + red double underline
+     for legal emphasis so the payable amount reads as the contract's
+     operative clause. */
+  .entitlement {
+    margin-top: 3mm;
+    padding: 2.5mm 4mm 3mm;
+    background: rgba(255, 255, 255, 0.72);
+    font-size: 10.5pt;
+    line-height: 1.6;
+    color: #0f172a;
+    font-weight: 700;
+    text-align: justify;
+    border-bottom: 3px double #b91c1c;
+  }
+  .entitlement .entitlement-amount {
+    color: #b91c1c;
+    font-weight: 900;
+    letter-spacing: 0.5px;
+    padding: 0 1mm;
+  }
 
   .terms-box {
     border: 1px solid #475569;
@@ -340,14 +387,24 @@ const VolunteerContractModal = ({ open, onClose, recipient }) => {
           <th>تاريخ النهاية</th><td>${safe(fmtDate(form.endDate)) || '&nbsp;'}</td>
         </tr>
         <tr>
-          <th>عدد أيام التطوع</th><td>${totalDays ? totalDays + ' يوم' : '—'}</td>
-          <th>ساعات العمل اليومية</th><td>${Number(form.dailyHours) || DEFAULT_DAILY_HOURS} ساعة</td>
+          <th>إجمالي الأيام</th><td>${totalDays ? totalDays + ' يوم' : '—'}</td>
+          <th>أيام العمل الفعلية</th><td class="strong">${workingDays ? workingDays + ' يوم' : '—'}<span class="sub-note">باستثناء الجمعة والسبت</span></td>
         </tr>
         <tr>
+          <th>ساعات العمل اليومية</th><td>${Number(form.dailyHours) || DEFAULT_DAILY_HOURS} ساعة</td>
           <th>التكلفة اليومية</th><td class="strong">${Number(form.costPerDay) || 0} ريال / يوم</td>
-          <th>إجمالي التكلفة</th><td class="strong">${totalCost ? totalCost + ' ريال' : '—'}</td>
         </tr>
       </table>
+
+      <div class="entitlement">
+        يستحق الطرف الأول مبلغاً وقدره
+        <span class="entitlement-amount">${totalCost || 0} ريال</span>
+        عن كامل فترة التطوع، بواقع
+        <span class="entitlement-amount">${Number(form.costPerDay) || 0} ريال</span>
+        عن كل يوم عمل فعلي، وذلك عن
+        <span class="entitlement-amount">${workingDays || 0} يوم</span>
+        عمل (باستثناء أيام الجمعة والسبت).
+      </div>
 
       <div class="note-box">
         <span class="note-label">ملاحظة هامة:</span>${safe(form.transferNote)}
@@ -462,15 +519,22 @@ const VolunteerContractModal = ({ open, onClose, recipient }) => {
               <input type="number" min="0" value={form.dailyHours} onChange={(e) => set('dailyHours', e.target.value)} style={fieldStyle} />
             </div>
             <div>
-              <label style={labelStyle}>{isRTL ? 'الأيام (تلقائي)' : 'Days (auto)'}</label>
+              <label style={labelStyle}>{isRTL ? 'إجمالي الأيام' : 'Total days'}</label>
               <input type="text" readOnly value={totalDays || '—'}
                 style={{ ...fieldStyle, background: '#f8fafc', color: '#475569' }} />
             </div>
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 14 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10, marginBottom: 14 }}>
             <div>
               <label style={labelStyle}>{isRTL ? 'التكلفة اليومية (ريال)' : 'Cost / day (SAR)'}</label>
               <input type="number" min="0" value={form.costPerDay} onChange={(e) => set('costPerDay', e.target.value)} style={fieldStyle} />
+            </div>
+            <div>
+              <label style={labelStyle} title={isRTL ? 'باستثناء الجمعة والسبت' : 'Excludes Fri/Sat'}>
+                {isRTL ? 'أيام العمل الفعلية' : 'Working days'}
+              </label>
+              <input type="text" readOnly value={workingDays || '—'}
+                style={{ ...fieldStyle, background: '#fef2f2', color: '#991b1b', fontWeight: 800 }} />
             </div>
             <div>
               <label style={labelStyle}>{isRTL ? 'الإجمالي (تلقائي)' : 'Total (auto)'}</label>

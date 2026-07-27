@@ -1568,9 +1568,9 @@ const ManagerDashboard = () => {
         </div>
         <div class="decorative-stripe"></div>
         <div class="card-footer">
-          <img src="/found.png" alt="Foundation" class="logo">
+          <img src="${window.location.origin}/found.png" alt="Foundation" class="logo">
           <span class="qr-label">${isRTL ? 'رمز الحضور' : 'Attendance QR'}</span>
-          <img src="/fablab.png" alt="FABLAB" class="logo">
+          <img src="${window.location.origin}/fablab.png" alt="FABLAB" class="logo">
         </div>
       </div>
     `;
