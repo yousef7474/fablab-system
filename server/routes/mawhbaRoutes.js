@@ -23,4 +23,11 @@ router.post('/cards', authMiddleware, ctrl.cardsBulk);
 router.post('/students/:id/email-card', authMiddleware, ctrl.emailCard);
 router.post('/email-cards-bulk', authMiddleware, ctrl.emailCardsBulk);
 
+// Seasons — yearly Mawhba cohorts
+router.get('/seasons', authMiddleware, ctrl.listSeasons);
+router.post('/seasons', authMiddleware, ctrl.createSeason);
+router.patch('/seasons/:id/activate', authMiddleware, ctrl.activateSeason);
+router.put('/seasons/:id', authMiddleware, ctrl.updateSeason);
+router.delete('/seasons/:id', authMiddleware, ctrl.deleteSeason);
+
 module.exports = router;

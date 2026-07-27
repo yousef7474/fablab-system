@@ -25,6 +25,13 @@ const Mawhba = () => {
   const [search, setSearch] = useState('');
   const [sexFilter, setSexFilter] = useState('');
   const [courseFilter, setCourseFilter] = useState('');
+  // Seasons — yearly cohorts. `activeSeasonId` is what we actually
+  // filter by; when it's empty the server falls back to the DB-active
+  // season on its own.
+  const [seasons, setSeasons] = useState([]);
+  const [activeSeasonId, setActiveSeasonId] = useState('');
+  const [showNewSeasonModal, setShowNewSeasonModal] = useState(false);
+  const [newSeasonForm, setNewSeasonForm] = useState({ name: '', year: new Date().getFullYear() + 1 });
   const [courses, setCourses] = useState([]);
   const [selected, setSelected] = useState(new Set());
   const [printing, setPrinting] = useState(false);
@@ -78,6 +85,7 @@ const Mawhba = () => {
       if (sexFilter) params.set('sex', sexFilter);
       if (courseFilter) params.set('course', courseFilter);
       if (search.trim()) params.set('search', search.trim());
+      if (activeSeasonId) params.set('season', activeSeasonId);
       const { data } = await api.get(`/mawhba/students?${params.toString()}`);
       setStudents(Array.isArray(data) ? data : []);
     } catch (err) {
@@ -86,7 +94,57 @@ const Mawhba = () => {
     } finally {
       setLoading(false);
     }
-  }, [sexFilter, courseFilter, search, isRTL]);
+  }, [sexFilter, courseFilter, search, activeSeasonId, isRTL]);
+
+  const fetchSeasons = useCallback(async () => {
+    try {
+      const { data } = await api.get('/mawhba/seasons');
+      const list = Array.isArray(data) ? data : [];
+      setSeasons(list);
+      // Auto-select the active season on first load if the picker is empty.
+      if (!activeSeasonId) {
+        const active = list.find(s => s.isActive);
+        if (active) setActiveSeasonId(active.seasonId);
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  }, [activeSeasonId]);
+
+  const handleCreateSeason = async () => {
+    const name = (newSeasonForm.name || '').trim();
+    if (!name) {
+      toast.error(isRTL ? 'يرجى إدخال اسم الموسم' : 'Season name is required');
+      return;
+    }
+    try {
+      const { data } = await api.post('/mawhba/seasons', {
+        name,
+        year: Number(newSeasonForm.year) || null,
+        activate: true
+      });
+      toast.success(isRTL ? 'تم إنشاء الموسم وتفعيله' : 'Season created and activated');
+      setShowNewSeasonModal(false);
+      setNewSeasonForm({ name: '', year: new Date().getFullYear() + 1 });
+      await fetchSeasons();
+      setActiveSeasonId(data.seasonId);
+    } catch (err) {
+      console.error(err);
+      toast.error(isRTL ? 'خطأ في إنشاء الموسم' : 'Failed to create season');
+    }
+  };
+
+  const handleActivateSeason = async (id) => {
+    try {
+      await api.patch(`/mawhba/seasons/${id}/activate`);
+      toast.success(isRTL ? 'تم تفعيل الموسم' : 'Season activated');
+      await fetchSeasons();
+      setActiveSeasonId(id);
+    } catch (err) {
+      console.error(err);
+      toast.error(isRTL ? 'خطأ في تفعيل الموسم' : 'Failed to activate');
+    }
+  };
 
   const fetchCourses = useCallback(async () => {
     try {
@@ -111,6 +169,7 @@ const Mawhba = () => {
   useEffect(() => { fetchStudents(); }, [fetchStudents]);
   useEffect(() => { fetchCourses(); }, [fetchCourses]);
   useEffect(() => { fetchColorMap(); }, [fetchColorMap]);
+  useEffect(() => { fetchSeasons(); }, [fetchSeasons]);
 
   // Hardware scanner listening is now owned by the shared
   // UnifiedAttendancePage component mounted below. This local
@@ -755,9 +814,50 @@ const Mawhba = () => {
           <h2 className="mawhba-title">{isRTL ? 'موهبة' : 'Mawhba'}</h2>
           <p className="mawhba-sub">{isRTL ? 'إدارة الطلاب الموهوبين والتواصل معهم' : 'Manage talented students and communicate with them'}</p>
         </div>
-        <button className="mawhba-btn-primary" onClick={openAdd}>
-          + {isRTL ? 'إضافة طالب' : 'Add Student'}
-        </button>
+        <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+          {/* Season picker + new-season action. Every list operation
+              scopes to the picked season, so switching to موهبة 2026 shows
+              only that year's roster and switching to a brand-new season
+              gives an empty roster to start filling in. */}
+          <select
+            className="mawhba-select"
+            value={activeSeasonId}
+            onChange={(e) => setActiveSeasonId(e.target.value)}
+            style={{ minWidth: 180, fontWeight: 700 }}
+            title={isRTL ? 'موسم موهبة' : 'Mawhba season'}
+          >
+            {seasons.length === 0 && (
+              <option value="">{isRTL ? 'لا توجد مواسم' : 'No seasons'}</option>
+            )}
+            {seasons.map(s => (
+              <option key={s.seasonId} value={s.seasonId}>
+                {s.name}{s.isActive ? (isRTL ? ' • نشط' : ' • active') : ''}
+                {typeof s.studentCount === 'number' ? ` (${s.studentCount})` : ''}
+              </option>
+            ))}
+          </select>
+          {activeSeasonId && !seasons.find(s => s.seasonId === activeSeasonId)?.isActive && (
+            <button
+              className="mawhba-btn-primary"
+              onClick={() => handleActivateSeason(activeSeasonId)}
+              style={{ background: '#0ea5e9' }}
+              title={isRTL ? 'اجعل هذا الموسم نشطاً' : 'Make this the active season'}
+            >
+              {isRTL ? 'تفعيل' : 'Activate'}
+            </button>
+          )}
+          <button
+            className="mawhba-btn-primary"
+            onClick={() => setShowNewSeasonModal(true)}
+            style={{ background: '#16a34a' }}
+            title={isRTL ? 'إنشاء موسم جديد' : 'Create a new season'}
+          >
+            + {isRTL ? 'موسم جديد' : 'New Season'}
+          </button>
+          <button className="mawhba-btn-primary" onClick={openAdd}>
+            + {isRTL ? 'إضافة طالب' : 'Add Student'}
+          </button>
+        </div>
       </div>
 
       <div className="mawhba-toolbar">
@@ -1236,6 +1336,63 @@ const Mawhba = () => {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {showNewSeasonModal && (
+        <div className="mawhba-modal-overlay" onClick={() => setShowNewSeasonModal(false)}>
+          <div
+            className="mawhba-modal"
+            onClick={(e) => e.stopPropagation()}
+            style={{ maxWidth: 460 }}
+          >
+            <h3>{isRTL ? 'موسم موهبة جديد' : 'New Mawhba Season'}</h3>
+            <p style={{ color: '#64748b', fontSize: 13.5, margin: '4px 0 16px' }}>
+              {isRTL
+                ? 'سيبدأ الموسم الجديد بقائمة طلاب فارغة. طلاب المواسم السابقة تبقى محفوظة ويمكن الرجوع لها بتبديل الموسم.'
+                : 'The new season starts with an empty roster. Previous seasons stay intact — switch the season picker to view them.'}
+            </p>
+            <div className="mawhba-form-grid">
+              <Field label={isRTL ? 'اسم الموسم' : 'Season name'} full>
+                <input
+                  type="text"
+                  placeholder={isRTL ? 'مثال: موهبة 2027' : 'e.g. Mawhba 2027'}
+                  value={newSeasonForm.name}
+                  onChange={(e) => setNewSeasonForm(f => ({ ...f, name: e.target.value }))}
+                />
+              </Field>
+              <Field label={isRTL ? 'السنة' : 'Year'}>
+                <input
+                  type="number"
+                  min="2020"
+                  max="2100"
+                  value={newSeasonForm.year}
+                  onChange={(e) => setNewSeasonForm(f => ({ ...f, year: e.target.value }))}
+                />
+              </Field>
+            </div>
+            <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 16 }}>
+              <button
+                onClick={() => setShowNewSeasonModal(false)}
+                style={{
+                  padding: '9px 18px', borderRadius: 6, border: '1.5px solid #cbd5e1',
+                  background: '#fff', color: '#334155', fontWeight: 700, cursor: 'pointer'
+                }}
+              >
+                {isRTL ? 'إلغاء' : 'Cancel'}
+              </button>
+              <button
+                onClick={handleCreateSeason}
+                style={{
+                  padding: '9px 22px', borderRadius: 6, border: 'none',
+                  background: 'linear-gradient(90deg, #16a34a, #22c55e)',
+                  color: '#fff', fontWeight: 800, cursor: 'pointer', letterSpacing: 0.5
+                }}
+              >
+                {isRTL ? 'إنشاء وتفعيل' : 'Create & Activate'}
+              </button>
+            </div>
           </div>
         </div>
       )}

@@ -93,6 +93,25 @@ const AdminDashboard = () => {
 
   const [adminData, setAdminData] = useState(null);
   const [activeTab, setActiveTab] = useState(getInitialTab);
+  // Per-admin sidebar visibility. Stored in localStorage so each admin
+  // gets their own view without any server-side plumbing. The Settings
+  // tab is deliberately not hideable — otherwise a hidden Settings tab
+  // becomes unreachable.
+  const [hiddenTabs, setHiddenTabs] = useState(() => {
+    try {
+      const raw = localStorage.getItem('adminHiddenTabs');
+      const arr = raw ? JSON.parse(raw) : [];
+      return Array.isArray(arr) ? arr.filter(id => id !== 'settings') : [];
+    } catch { return []; }
+  });
+  const toggleTabVisibility = (id) => {
+    if (id === 'settings') return;
+    setHiddenTabs(prev => {
+      const next = prev.includes(id) ? prev.filter(t => t !== id) : [...prev, id];
+      try { localStorage.setItem('adminHiddenTabs', JSON.stringify(next)); } catch {}
+      return next;
+    });
+  };
   const [sidebarOpen, setSidebarOpen] = useState(() => {
     // Start with sidebar closed on mobile
     if (typeof window !== 'undefined') {
@@ -4656,7 +4675,7 @@ const AdminDashboard = () => {
         </div>
 
         <nav className="sidebar-nav">
-          {menuItems.map((item) => (
+          {menuItems.filter(item => !hiddenTabs.includes(item.id)).map((item) => (
             <button
               key={item.id}
               className={`nav-item ${activeTab === item.id ? 'active' : ''}`}
@@ -8750,6 +8769,68 @@ const AdminDashboard = () => {
                         </div>
                       );
                     })}
+                  </div>
+
+                  {/* Sidebar tab visibility — per-admin, localStorage-backed */}
+                  <div className="settings-card" style={{ gridColumn: '1 / -1', border: '2px solid #6366f1', background: 'rgba(99,102,241,0.03)' }}>
+                    <h3 style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#6366f1" strokeWidth="2">
+                        <rect x="3" y="3" width="7" height="7"/>
+                        <rect x="14" y="3" width="7" height="7"/>
+                        <rect x="14" y="14" width="7" height="7"/>
+                        <rect x="3" y="14" width="7" height="7"/>
+                      </svg>
+                      {isRTL ? 'إظهار / إخفاء التبويبات' : 'Tab Visibility'}
+                    </h3>
+                    <p style={{ margin: '0 0 14px 0', fontSize: '13px', color: 'var(--text-secondary, #64748b)' }}>
+                      {isRTL
+                        ? 'أخفِ التبويبات التي لا تحتاجها الآن دون حذف أي بيانات. يمكنك إعادتها في أي وقت. الإعدادات تبقى ظاهرة دائماً.'
+                        : 'Hide tabs you don\'t need right now without deleting any data. You can bring them back any time. Settings always stays visible.'}
+                    </p>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: '10px' }}>
+                      {menuItems.map(item => {
+                        const isHidden = hiddenTabs.includes(item.id);
+                        const isLocked = item.id === 'settings';
+                        return (
+                          <label
+                            key={item.id}
+                            title={isLocked ? (isRTL ? 'لا يمكن إخفاء الإعدادات' : 'Settings cannot be hidden') : ''}
+                            style={{
+                              display: 'flex', alignItems: 'center', gap: 10,
+                              padding: '10px 12px', borderRadius: 8,
+                              border: `1.5px solid ${isHidden ? '#e2e8f0' : '#6366f1'}`,
+                              background: isHidden ? '#f8fafc' : 'rgba(99,102,241,0.06)',
+                              cursor: isLocked ? 'not-allowed' : 'pointer',
+                              opacity: isLocked ? 0.55 : 1,
+                              transition: 'all 0.15s'
+                            }}
+                          >
+                            <input
+                              type="checkbox"
+                              checked={!isHidden}
+                              disabled={isLocked}
+                              onChange={() => toggleTabVisibility(item.id)}
+                              style={{ accentColor: '#6366f1', width: 18, height: 18, cursor: isLocked ? 'not-allowed' : 'pointer' }}
+                            />
+                            <span style={{ fontWeight: 700, color: isHidden ? '#94a3b8' : '#1e293b', fontSize: 14 }}>
+                              {isRTL ? item.labelAr : item.labelEn}
+                            </span>
+                          </label>
+                        );
+                      })}
+                    </div>
+                    {hiddenTabs.length > 0 && (
+                      <button
+                        onClick={() => { setHiddenTabs([]); try { localStorage.removeItem('adminHiddenTabs'); } catch {} }}
+                        style={{
+                          marginTop: 14, padding: '9px 18px', borderRadius: 8,
+                          border: '1.5px solid #6366f1', background: '#fff',
+                          color: '#6366f1', fontWeight: 700, cursor: 'pointer', fontSize: 13
+                        }}
+                      >
+                        {isRTL ? `إظهار الكل (${hiddenTabs.length} مخفية)` : `Show all (${hiddenTabs.length} hidden)`}
+                      </button>
+                    )}
                   </div>
                 </div>
               </motion.div>

@@ -54,6 +54,7 @@ const RegistrationClosure = require('./RegistrationClosure');
 const MawhbaStudent = require('./MawhbaStudent');
 const MawhbaCourseColor = require('./MawhbaCourseColor');
 const MawhbaAttendance = require('./MawhbaAttendance');
+const MawhbaSeason = require('./MawhbaSeason');
 const VolunteerAttendance = require('./VolunteerAttendance');
 const FablabStaff = require('./FablabStaff');
 const FablabStaffAttendance = require('./FablabStaffAttendance');
@@ -64,6 +65,9 @@ const Customer = require('./Customer');
 
 MawhbaAttendance.belongsTo(MawhbaStudent, { foreignKey: 'studentId', as: 'student', constraints: false });
 MawhbaStudent.hasMany(MawhbaAttendance, { foreignKey: 'studentId', as: 'attendance', constraints: false });
+
+MawhbaStudent.belongsTo(MawhbaSeason, { foreignKey: 'seasonId', as: 'season', constraints: false });
+MawhbaSeason.hasMany(MawhbaStudent, { foreignKey: 'seasonId', as: 'students', constraints: false });
 
 VolunteerAttendance.belongsTo(Volunteer, { foreignKey: 'volunteerId', as: 'volunteer', constraints: false });
 Volunteer.hasMany(VolunteerAttendance, { foreignKey: 'volunteerId', as: 'attendance', constraints: false });
@@ -400,6 +404,28 @@ const syncDatabase = async () => {
 
     // Seed default settings
     await Settings.seedDefaults();
+
+    // Ensure every Mawhba deployment has at least one season. If no
+    // seasons exist we create the first season as active and back-fill
+    // every existing student to it so nothing loses its roster context
+    // after the upgrade.
+    try {
+      const seasonCount = await MawhbaSeason.count();
+      if (seasonCount === 0) {
+        const season = await MawhbaSeason.create({
+          name: 'موهبة 2026',
+          year: 2026,
+          isActive: true
+        });
+        await MawhbaStudent.update(
+          { seasonId: season.seasonId },
+          { where: { seasonId: null } }
+        );
+        console.log('Seeded default Mawhba season 2026 and back-filled existing students.');
+      }
+    } catch (e) {
+      console.log('Mawhba season seed note:', e.message);
+    }
   } catch (error) {
     console.error('❌ Error synchronizing database:', error);
   }
@@ -463,6 +489,7 @@ module.exports = {
   MawhbaStudent,
   MawhbaCourseColor,
   MawhbaAttendance,
+  MawhbaSeason,
   VolunteerAttendance,
   FablabStaff,
   FablabStaffAttendance,

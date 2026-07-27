@@ -1,4 +1,4 @@
-const { MawhbaStudent, MawhbaCourseColor, MawhbaAttendance } = require('../models');
+const { MawhbaStudent, MawhbaCourseColor, MawhbaAttendance, MawhbaSeason } = require('../models');
 const { Op } = require('sequelize');
 const QRCode = require('qrcode');
 const { sendCustomEmail } = require('../utils/emailService');
@@ -20,8 +20,21 @@ const ALLOWED_FIELDS = [
   'nameAr', 'nameEn', 'nationalId', 'nationality', 'schoolGrade',
   'administrativeRegion', 'educationalAdministration', 'schoolName',
   'sex', 'residenceCity', 'executingEntity', 'courseName', 'courseNumber',
-  'courseAmount', 'registrationDate', 'studentPhone', 'email', 'guardianPhone'
+  'courseAmount', 'registrationDate', 'studentPhone', 'email', 'guardianPhone',
+  'seasonId'
 ];
+
+// Resolve which season's students the caller wants. Query param `season`
+// accepts a UUID (specific season), the string 'active' (server picks
+// active), or is absent (again defaults to the active season). Returns
+// null if there is no season at all — caller should return an empty
+// student list in that case so the UI stays sane.
+const resolveSeasonId = async (req) => {
+  const raw = (req.query.season || '').toString().trim();
+  if (raw && raw !== 'active') return raw;
+  const active = await MawhbaSeason.findOne({ where: { isActive: true } });
+  return active ? active.seasonId : null;
+};
 
 const pickFields = (body) => {
   const out = {};
@@ -34,7 +47,9 @@ const pickFields = (body) => {
 exports.list = async (req, res) => {
   try {
     const { sex, search, course } = req.query;
+    const seasonId = await resolveSeasonId(req);
     const where = {};
+    if (seasonId) where.seasonId = seasonId; else return res.json([]);
     if (sex && ['male', 'female'].includes(sex)) where.sex = sex;
     if (course) where.courseName = course;
     if (search) {
@@ -659,6 +674,10 @@ exports.create = async (req, res) => {
     const data = pickFields(req.body);
     if (!data.nameAr) return res.status(400).json({ message: 'Name (Arabic) is required' });
     if (!data.nationalId) return res.status(400).json({ message: 'National ID is required' });
+    if (!data.seasonId) {
+      const active = await MawhbaSeason.findOne({ where: { isActive: true } });
+      if (active) data.seasonId = active.seasonId;
+    }
     const student = await MawhbaStudent.create(data);
     res.status(201).json(student);
   } catch (err) {
@@ -1092,6 +1111,112 @@ exports.exportAttendance = async (req, res) => {
     res.send(out);
   } catch (err) {
     console.error('Mawhba exportAttendance error:', err);
+    res.status(500).json({ message: 'Server error', error: err.message });
+  }
+};
+
+// ─── SEASONS ─────────────────────────────────────────────────────────
+// A Mawhba season represents one yearly cohort (موهبة 2026, 2027, ...).
+// The active season is the one every new student is auto-attached to
+// and the one the students list defaults to when no ?season= is given.
+
+exports.listSeasons = async (req, res) => {
+  try {
+    const seasons = await MawhbaSeason.findAll({
+      order: [['year', 'DESC'], ['createdAt', 'DESC']]
+    });
+    const seasonsWithCounts = await Promise.all(
+      seasons.map(async s => {
+        const count = await MawhbaStudent.count({ where: { seasonId: s.seasonId } });
+        return { ...s.toJSON(), studentCount: count };
+      })
+    );
+    res.json(seasonsWithCounts);
+  } catch (err) {
+    console.error('Mawhba listSeasons error:', err);
+    res.status(500).json({ message: 'Server error', error: err.message });
+  }
+};
+
+exports.createSeason = async (req, res) => {
+  try {
+    const { name, year, activate } = req.body || {};
+    if (!name || !String(name).trim()) {
+      return res.status(400).json({ message: 'Season name is required' });
+    }
+    const season = await MawhbaSeason.create({
+      name: String(name).trim(),
+      year: year ? Number(year) : null,
+      isActive: !!activate
+    });
+    if (activate) {
+      // Only one season can be active at a time.
+      await MawhbaSeason.update(
+        { isActive: false },
+        { where: { seasonId: { [Op.ne]: season.seasonId } } }
+      );
+    }
+    res.status(201).json(season);
+  } catch (err) {
+    console.error('Mawhba createSeason error:', err);
+    res.status(500).json({ message: 'Server error', error: err.message });
+  }
+};
+
+exports.activateSeason = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const season = await MawhbaSeason.findByPk(id);
+    if (!season) return res.status(404).json({ message: 'Season not found' });
+    await MawhbaSeason.update({ isActive: false }, { where: {} });
+    season.isActive = true;
+    await season.save();
+    res.json(season);
+  } catch (err) {
+    console.error('Mawhba activateSeason error:', err);
+    res.status(500).json({ message: 'Server error', error: err.message });
+  }
+};
+
+exports.updateSeason = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const season = await MawhbaSeason.findByPk(id);
+    if (!season) return res.status(404).json({ message: 'Season not found' });
+    const { name, year } = req.body || {};
+    if (name !== undefined) season.name = String(name).trim();
+    if (year !== undefined) season.year = year ? Number(year) : null;
+    await season.save();
+    res.json(season);
+  } catch (err) {
+    console.error('Mawhba updateSeason error:', err);
+    res.status(500).json({ message: 'Server error', error: err.message });
+  }
+};
+
+exports.deleteSeason = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const season = await MawhbaSeason.findByPk(id);
+    if (!season) return res.status(404).json({ message: 'Season not found' });
+    const studentCount = await MawhbaStudent.count({ where: { seasonId: id } });
+    if (studentCount > 0) {
+      return res.status(400).json({
+        message: 'Cannot delete a season with students. Move or delete its students first.',
+        messageAr: 'لا يمكن حذف موسم يحتوي على طلاب. انقلهم أو احذفهم أولاً.',
+        studentCount
+      });
+    }
+    if (season.isActive) {
+      return res.status(400).json({
+        message: 'Cannot delete the active season. Activate another season first.',
+        messageAr: 'لا يمكن حذف الموسم النشط. فعّل موسماً آخر أولاً.'
+      });
+    }
+    await season.destroy();
+    res.json({ message: 'Season deleted' });
+  } catch (err) {
+    console.error('Mawhba deleteSeason error:', err);
     res.status(500).json({ message: 'Server error', error: err.message });
   }
 };

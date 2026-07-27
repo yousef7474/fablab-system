@@ -89,6 +89,10 @@ const MawhbaStudent = sequelize.define('MawhbaStudent', {
   guardianPhone: {
     type: DataTypes.STRING,
     allowNull: true
+  },
+  seasonId: {
+    type: DataTypes.UUID,
+    allowNull: true
   }
 }, {
   tableName: 'mawhba_students',
