@@ -175,8 +175,13 @@ const VolunteerContractModal = ({ open, onClose, recipient }) => {
     text-align: center;
     font-size: 10pt;
     color: #334155;
-    margin-bottom: 3mm;
+    margin-bottom: 4mm;
+    padding-bottom: 3mm;
     line-height: 1.5;
+    /* Thick, solid red line under the parties statement — the visual
+       marker separating the opening clause from the body of the
+       contract. */
+    border-bottom: 2.5mm solid #b91c1c;
   }
   .parties strong { color: #0f172a; }
   .parties .contract-date {
@@ -236,26 +241,6 @@ const VolunteerContractModal = ({ open, onClose, recipient }) => {
     margin-top: 0.5mm;
   }
 
-  /* Formal compensation statement — bold body + red double underline
-     for legal emphasis so the payable amount reads as the contract's
-     operative clause. */
-  .entitlement {
-    margin-top: 3mm;
-    padding: 2.5mm 4mm 3mm;
-    background: rgba(255, 255, 255, 0.72);
-    font-size: 10.5pt;
-    line-height: 1.6;
-    color: #0f172a;
-    font-weight: 700;
-    text-align: justify;
-    border-bottom: 3px double #b91c1c;
-  }
-  .entitlement .entitlement-amount {
-    color: #b91c1c;
-    font-weight: 900;
-    letter-spacing: 0.5px;
-    padding: 0 1mm;
-  }
 
   .terms-box {
     border: 1px solid #475569;
@@ -395,16 +380,6 @@ const VolunteerContractModal = ({ open, onClose, recipient }) => {
           <th>التكلفة اليومية</th><td class="strong">${Number(form.costPerDay) || 0} ريال / يوم</td>
         </tr>
       </table>
-
-      <div class="entitlement">
-        يستحق الطرف الأول مبلغاً وقدره
-        <span class="entitlement-amount">${totalCost || 0} ريال</span>
-        عن كامل فترة التطوع، بواقع
-        <span class="entitlement-amount">${Number(form.costPerDay) || 0} ريال</span>
-        عن كل يوم عمل فعلي، وذلك عن
-        <span class="entitlement-amount">${workingDays || 0} يوم</span>
-        عمل (باستثناء أيام الجمعة والسبت).
-      </div>
 
       <div class="note-box">
         <span class="note-label">ملاحظة هامة:</span>${safe(form.transferNote)}
