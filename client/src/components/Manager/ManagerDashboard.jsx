@@ -1477,7 +1477,7 @@ const ManagerDashboard = () => {
         display: flex; flex-direction: column; align-items: center; gap: 1.4mm;
       }
       .user-photo {
-        width: 22mm; height: 26mm;
+        width: 20mm; height: 22mm;
         background: linear-gradient(135deg, #bae6fd, #7dd3fc);
         border-radius: 2mm; display: flex; align-items: center; justify-content: center;
         color: #0284c7; font-weight: bold;
@@ -1509,7 +1509,7 @@ const ManagerDashboard = () => {
         max-width: 60%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
       }
       .card-qr { display: flex; align-items: center; justify-content: center; margin-top: 1mm; }
-      .card-qr img { width: 26mm; height: 26mm; background: white; padding: 0.8mm; border-radius: 1mm; box-shadow: 0 0 0 0.3mm #0ea5e9 inset; }
+      .card-qr img { width: 22mm; height: 22mm; background: white; padding: 0.8mm; border-radius: 1mm; box-shadow: 0 0 0 0.3mm #0ea5e9 inset; }
       /* Absolute-position the footer at the bottom of the card so it
          can never be pushed past overflow:hidden by a tall body. The
          card-body reserves matching bottom padding so its content
