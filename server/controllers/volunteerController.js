@@ -208,26 +208,33 @@ exports.deleteVolunteer = async (req, res) => {
       return res.status(404).json({ message: 'Volunteer not found' });
     }
 
-    // Check if volunteer has opportunities
-    const opportunityCount = await VolunteerOpportunity.count({ where: { volunteerId: id } });
-    if (opportunityCount > 0 && force !== 'true') {
+    // Any child record that has a FK back to Volunteer must be counted
+    // here — otherwise the destroy() at the end throws a FK violation
+    // and the user sees a bare 500.
+    const [opportunityCount, receiptCount, ratingCount, attendanceCount] = await Promise.all([
+      VolunteerOpportunity.count({ where: { volunteerId: id } }),
+      VolunteerReceipt.count({ where: { volunteerId: id } }),
+      VolunteerRating.count({ where: { volunteerId: id } }),
+      VolunteerAttendance.count({ where: { volunteerId: id } })
+    ]);
+    const childCount = opportunityCount + receiptCount + ratingCount + attendanceCount;
+
+    if (childCount > 0 && force !== 'true') {
       return res.status(400).json({
-        message: 'Cannot delete volunteer with existing opportunities. Use force=true to delete all records.',
-        messageAr: 'لا يمكن حذف متطوع لديه فرص تطوعية. استخدم الحذف القسري لحذف جميع السجلات.',
+        message: 'Cannot delete volunteer with existing records. Use force=true to delete all records.',
+        messageAr: 'لا يمكن حذف متطوع لديه سجلات. استخدم الحذف القسري لحذف جميع السجلات.',
         opportunityCount,
+        receiptCount,
+        ratingCount,
+        attendanceCount,
         requiresForce: true
       });
     }
 
-    // If force delete, delete all related records first
-    if (opportunityCount > 0 && force === 'true') {
-      // Delete ratings for this volunteer's opportunities
-      await VolunteerRating.destroy({
-        where: {
-          volunteerId: id
-        }
-      });
-      // Delete all opportunities
+    if (childCount > 0 && force === 'true') {
+      await VolunteerRating.destroy({ where: { volunteerId: id } });
+      await VolunteerReceipt.destroy({ where: { volunteerId: id } });
+      await VolunteerAttendance.destroy({ where: { volunteerId: id } });
       await VolunteerOpportunity.destroy({ where: { volunteerId: id } });
     }
 
