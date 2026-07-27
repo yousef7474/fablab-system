@@ -1530,7 +1530,7 @@ const ManagerDashboard = () => {
     </style>
   `;
 
-  const buildInternCardHTML = (intern, qrDataUrl, safe) => {
+  const buildInternCardHTML = (intern, qrDataUrl, safe, logos) => {
     const na = isRTL ? 'غير محدد' : 'N/A';
     const name = intern.name || na;
     const qrImg = qrDataUrl ? `<img src="${qrDataUrl}" alt="QR" />` : '';
@@ -1568,9 +1568,9 @@ const ManagerDashboard = () => {
         </div>
         <div class="decorative-stripe"></div>
         <div class="card-footer">
-          <img src="${window.location.origin}/found.png" alt="Foundation" class="logo">
+          <img src="${logos && logos.found ? logos.found : `${window.location.origin}/found.png`}" alt="Foundation" class="logo">
           <span class="qr-label">${isRTL ? 'رمز الحضور' : 'Attendance QR'}</span>
-          <img src="${window.location.origin}/fablab.png" alt="FABLAB" class="logo">
+          <img src="${logos && logos.fablab ? logos.fablab : `${window.location.origin}/fablab.png`}" alt="FABLAB" class="logo">
         </div>
       </div>
     `;
@@ -1578,15 +1578,41 @@ const ManagerDashboard = () => {
 
   // Print one ID card. Fetches server-rendered QR (data URL) so
   // clients don't need a QR library.
+  // Fetch the two footer logos as base64 data URLs. Data URLs sidestep
+  // any base-URL / caching issues in the print pop-up window.
+  const loadInternCardLogos = async () => {
+    const fetchAsDataUrl = async (url) => {
+      try {
+        const res = await fetch(url);
+        if (!res.ok) return '';
+        const blob = await res.blob();
+        return await new Promise((resolve) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(reader.result);
+          reader.onerror = () => resolve('');
+          reader.readAsDataURL(blob);
+        });
+      } catch { return ''; }
+    };
+    const [found, fablab] = await Promise.all([
+      fetchAsDataUrl('/found.png'),
+      fetchAsDataUrl('/fablab.png')
+    ]);
+    return { found, fablab };
+  };
+
   const handlePrintInternIDCard = async (intern) => {
     try {
-      const { data } = await api.get(`/interns/${intern.internId}/card`);
+      const [{ data }, logos] = await Promise.all([
+        api.get(`/interns/${intern.internId}/card`),
+        loadInternCardLogos()
+      ]);
       const qr = data.qrDataUrl;
       const it = data.intern || intern;
       const win = window.open('', '_blank', 'width=520,height=760');
       if (!win) { toast.error(isRTL ? 'يرجى السماح بالنوافذ المنبثقة' : 'Please allow pop-ups'); return; }
       const safe = (s) => String(s || '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-      win.document.write(buildInternCardStyles() + buildInternCardHTML(it, qr, safe) + `<script>window.onload=()=>setTimeout(()=>window.print(),200)</script>`);
+      win.document.write(buildInternCardStyles() + buildInternCardHTML(it, qr, safe, logos) + `<script>window.onload=()=>setTimeout(()=>window.print(),200)</script>`);
       win.document.close();
     } catch (err) {
       console.error('handlePrintInternIDCard:', err);
@@ -1601,7 +1627,10 @@ const ManagerDashboard = () => {
       return;
     }
     try {
-      const { data } = await api.post('/interns/cards', { internIds: interns.map(i => i.internId) });
+      const [{ data }, logos] = await Promise.all([
+        api.post('/interns/cards', { internIds: interns.map(i => i.internId) }),
+        loadInternCardLogos()
+      ]);
       const cards = Array.isArray(data.cards) ? data.cards : [];
       if (!cards.length) { toast.error(isRTL ? 'لا توجد بطاقات' : 'No cards'); return; }
       const safe = (s) => String(s || '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -1609,7 +1638,7 @@ const ManagerDashboard = () => {
       for (let i = 0; i < cards.length; i += 4) chunks.push(cards.slice(i, i + 4));
       const pages = chunks.map(chunk => `
         <div class="a4-page">
-          ${chunk.map(c => buildInternCardHTML(c.intern, c.qrDataUrl, safe)).join('')}
+          ${chunk.map(c => buildInternCardHTML(c.intern, c.qrDataUrl, safe, logos)).join('')}
         </div>
       `).join('');
       const win = window.open('', '_blank', 'width=900,height=1200');
