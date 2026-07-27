@@ -1511,12 +1511,27 @@ const ManagerDashboard = () => {
       .card-qr { display: flex; align-items: center; justify-content: center; margin-top: 1mm; }
       .card-qr img { width: 26mm; height: 26mm; background: white; padding: 0.8mm; border-radius: 1mm; box-shadow: 0 0 0 0.3mm #0ea5e9 inset; }
       .card-footer {
-        background: #ffffff; padding: 1.5mm 3mm;
+        background: #ffffff; padding: 2mm 3mm;
+        min-height: 12mm;
         display: flex; align-items: center; justify-content: space-between;
+        gap: 2mm;
         border-top: 0.3mm solid #e0e0e0;
       }
-      .card-footer .logo { height: 7mm; width: auto; flex-shrink: 0; }
-      .card-footer .qr-label { font-size: 6pt; color: #0284c7; font-weight: 700; }
+      /* object-fit + explicit max-width so wide logos (fablab wordmark
+         is a wide horizontal graphic) don't overflow the 72mm-wide card
+         and get cropped by the .id-card overflow:hidden. flex: 0 1 auto
+         lets them shrink if the label is long. */
+      .card-footer .logo {
+        height: 8mm;
+        max-width: 22mm;
+        width: auto;
+        object-fit: contain;
+        flex: 0 1 auto;
+      }
+      .card-footer .qr-label {
+        font-size: 6pt; color: #0284c7; font-weight: 700;
+        flex: 0 1 auto; text-align: center; min-width: 0;
+      }
       .decorative-stripe {
         position: absolute; top: 40%; ${isRTL ? 'right' : 'left'}: 0;
         width: 1mm; height: 25%;
