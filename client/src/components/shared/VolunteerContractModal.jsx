@@ -1,11 +1,10 @@
 import React, { useMemo, useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 
-// Volunteer contract ("عقد تطوع") printer. Uses a CSS-drawn red-themed
-// letterhead (side band + header + footer strip) instead of the blue
-// receipt-bg.png used by سند, so the theme can be red without editing
-// the shared asset. Body text stays in default dark colors — red is
-// reserved for the letterhead frame and section-title ribbons.
+// Volunteer contract ("عقد تطوع") printer. Prints on the same
+// receipt-bg.png letterhead as the سند, with a rotated red rubber-stamp
+// badge in the top corner so a printed contract is instantly
+// distinguishable from a receipt at a glance.
 const DEFAULT_COST_PER_DAY = 50;
 const DEFAULT_DAILY_HOURS = 8;
 
@@ -78,10 +77,11 @@ const VolunteerContractModal = ({ open, onClose, recipient }) => {
       .map((t, i) => `<li><span class="term-idx">${i + 1}.</span> ${safe(t)}</li>`)
       .join('');
 
-    // Layout note: the page uses a fixed CSS letterhead (red side band on
-    // the left, red header strip on top, red footer strip on the bottom).
-    // The content region is padded with 26mm top / 22mm bottom to make
-    // sure the terms block and signatures never overlap the footer strip.
+    // Layout: uses the same receipt-bg.png letterhead as سند (blue frame)
+    // and overlays a rotated red "عقد تطوع" rubber-stamp badge in the
+    // top-left corner so printed contracts are instantly recognizable
+    // vs. printed receipts. Content colors stay in the receipt's slate
+    // palette — the stamp is the only red element.
     const html = `<!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
@@ -98,137 +98,80 @@ const VolunteerContractModal = ({ open, onClose, recipient }) => {
     height: 297mm;
     overflow: hidden;
     page-break-after: always;
-    background: #ffffff;
+    background-image: url('${window.location.origin}/receipt-bg.png');
+    background-size: 100% 100%;
+    background-repeat: no-repeat;
   }
   .page:last-child { page-break-after: auto; }
 
-  /* Red left band — mirrors the blue band on the سند letterhead */
-  .band-left {
+  /* Red rubber-stamp badge — the visual marker that this is a contract,
+     not a receipt. Rotated ~-12deg so it reads as a hand-applied stamp. */
+  .contract-stamp {
     position: absolute;
-    top: 0; bottom: 0; left: 0;
-    width: 22mm;
-    background: linear-gradient(180deg, #7f1d1d 0%, #b91c1c 55%, #dc2626 100%);
+    top: 24mm;
+    left: 18mm;
+    transform: rotate(-12deg);
+    padding: 4mm 8mm;
+    border: 3px double #b91c1c;
+    color: #b91c1c;
+    font-size: 16pt;
+    font-weight: 900;
+    letter-spacing: 4px;
+    background: rgba(255, 255, 255, 0.35);
+    border-radius: 3mm;
+    text-shadow: 0 1px 0 rgba(185, 28, 28, 0.15);
+    z-index: 5;
   }
-  .band-left::after {
-    content: '';
-    position: absolute;
-    top: 0; bottom: 0; right: -3mm;
-    width: 3mm;
-    background: linear-gradient(180deg, #dc2626, #ef4444);
-    box-shadow: 2px 0 6px rgba(153, 27, 27, 0.25);
-  }
-  .band-left .band-badge {
-    position: absolute;
-    top: 50%; left: 50%;
-    transform: translate(-50%, -50%) rotate(-90deg);
-    color: rgba(255, 255, 255, 0.85);
-    font-size: 14pt;
-    font-weight: 800;
-    letter-spacing: 8px;
-    white-space: nowrap;
-  }
-
-  /* Header strip */
-  .header-strip {
-    position: absolute;
-    top: 0; right: 0;
-    left: 22mm;
-    height: 26mm;
-    padding: 5mm 12mm 4mm 8mm;
-    border-bottom: 2px solid #b91c1c;
-    background: linear-gradient(90deg, rgba(254, 226, 226, 0.35), #ffffff 60%);
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-  }
-  .header-strip .org {
-    text-align: right;
-  }
-  .header-strip .org .org-title {
-    font-size: 20pt;
-    font-weight: 800;
-    color: #7f1d1d;
+  .contract-stamp .stamp-sub {
+    display: block;
+    font-size: 8pt;
+    font-weight: 700;
     letter-spacing: 2px;
-    line-height: 1.1;
-  }
-  .header-strip .org .org-sub {
-    font-size: 10.5pt;
-    color: #64748b;
     margin-top: 1mm;
-  }
-  .header-strip .doc-tag {
-    display: inline-block;
-    padding: 2mm 6mm;
-    border: 2px solid #b91c1c;
     color: #7f1d1d;
-    font-weight: 800;
-    font-size: 13pt;
-    letter-spacing: 3px;
-    border-radius: 2mm;
-    background: rgba(255, 255, 255, 0.9);
   }
 
-  /* Footer strip */
-  .footer-strip {
-    position: absolute;
-    bottom: 0; right: 0;
-    left: 22mm;
-    height: 16mm;
-    padding: 3mm 12mm;
-    border-top: 2px solid #b91c1c;
-    background: linear-gradient(90deg, #ffffff, rgba(254, 226, 226, 0.35));
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    font-size: 9.5pt;
-    color: #64748b;
-  }
-  .footer-strip .foot-brand {
-    font-weight: 800;
-    color: #7f1d1d;
-    letter-spacing: 1px;
-  }
-  .footer-strip .foot-meta {
-    font-size: 9pt;
-  }
-
-  /* Content region — sits between header and footer, offset from the
-     red side band. Bottom padding is generous so the signatures never
-     collide with the footer strip. */
   .contract-content {
     position: absolute;
-    top: 30mm;
-    bottom: 20mm;
-    right: 12mm;
-    left: 30mm;
+    top: 18%;
+    bottom: 12%;
+    left: 14mm;
+    right: 14mm;
     display: flex;
     flex-direction: column;
   }
-
+  .contract-title {
+    text-align: center;
+    font-size: 24pt;
+    font-weight: 800;
+    letter-spacing: 4px;
+    margin: 0 0 2mm 0;
+    color: #0f172a;
+  }
   .parties {
     text-align: center;
-    font-size: 11pt;
+    font-size: 10.5pt;
     color: #334155;
     margin-bottom: 4mm;
     line-height: 1.55;
   }
-  .parties strong { color: #7f1d1d; }
+  .parties strong { color: #0f172a; }
   .parties .contract-date {
     display: inline-block;
     padding: 0.5mm 3mm;
-    background: rgba(254, 226, 226, 0.55);
+    background: rgba(241, 245, 249, 0.75);
     border-radius: 2mm;
     font-weight: 700;
-    color: #7f1d1d;
+    color: #0f172a;
   }
 
   .section-heading {
-    background: linear-gradient(90deg, #991b1b 0%, #dc2626 100%);
-    color: #ffffff;
+    background: rgba(15, 23, 42, 0.06);
+    color: #0f172a;
     padding: 1.8mm 4mm;
     font-size: 11.5pt;
     font-weight: 800;
-    border-radius: 2mm 2mm 0 0;
+    border-right: 4px solid #475569;
     margin-top: 3mm;
     letter-spacing: 1px;
   }
@@ -240,34 +183,34 @@ const VolunteerContractModal = ({ open, onClose, recipient }) => {
     margin-bottom: 0;
   }
   .info-table th, .info-table td {
-    border: 1px solid #cbd5e1;
+    border: 1px solid #475569;
     padding: 1.7mm 3mm;
     font-size: 10.5pt;
     vertical-align: middle;
   }
   .info-table th {
-    background: #f8fafc;
+    background: rgba(241, 245, 249, 0.8);
     width: 22%;
     font-weight: 700;
     text-align: right;
-    color: #1f2937;
+    color: #0f172a;
   }
   .info-table td {
-    background: #ffffff;
+    background: rgba(255, 255, 255, 0.7);
     font-weight: 600;
     color: #111827;
   }
   .info-table td.strong {
-    color: #991b1b;
+    color: #0f172a;
     font-weight: 800;
     letter-spacing: 0.5px;
   }
 
   .terms-box {
-    border: 1px solid #cbd5e1;
+    border: 1px solid #475569;
     border-top: none;
     padding: 2.5mm 4mm;
-    background: #ffffff;
+    background: rgba(255, 255, 255, 0.7);
   }
   .terms-list {
     margin: 0;
@@ -279,30 +222,30 @@ const VolunteerContractModal = ({ open, onClose, recipient }) => {
     line-height: 1.5;
     color: #1f2937;
     padding: 1mm 0;
-    border-bottom: 1px dashed rgba(148, 163, 184, 0.55);
+    border-bottom: 1px dashed rgba(71, 85, 105, 0.4);
   }
   .terms-list li:last-child { border-bottom: none; }
   .terms-list .term-idx {
-    color: #991b1b;
+    color: #0f172a;
     font-weight: 800;
     margin-left: 2mm;
   }
 
   .note-box {
-    border-right: 4px solid #dc2626;
-    background: rgba(254, 226, 226, 0.45);
+    border: 1.5px solid #475569;
+    background: rgba(255, 255, 255, 0.7);
     padding: 2.5mm 4mm;
     margin-top: 3mm;
     font-size: 10pt;
     line-height: 1.55;
     color: #1f2937;
-    border-radius: 0 2mm 2mm 0;
+    border-radius: 2mm;
   }
   .note-box .note-label {
     display: block;
     font-size: 9.5pt;
     font-weight: 800;
-    color: #991b1b;
+    color: #0f172a;
     margin-bottom: 1mm;
     letter-spacing: 1px;
   }
@@ -313,6 +256,7 @@ const VolunteerContractModal = ({ open, onClose, recipient }) => {
     gap: 6mm;
     justify-content: space-between;
     padding-top: 4mm;
+    border-top: 1.5px dashed #475569;
   }
   .signer {
     flex: 1;
@@ -328,7 +272,7 @@ const VolunteerContractModal = ({ open, onClose, recipient }) => {
     min-height: 9mm;
   }
   .signer .signature-space {
-    height: 13mm;
+    height: 14mm;
     border-bottom: 1.5px solid #1f2937;
     margin: 0 4mm 1.5mm 4mm;
   }
@@ -350,22 +294,13 @@ const VolunteerContractModal = ({ open, onClose, recipient }) => {
 </head>
 <body>
   <div class="page">
-    <div class="band-left"><div class="band-badge">FABLAB • فاب لاب</div></div>
-
-    <div class="header-strip">
-      <div class="org">
-        <div class="org-title">فاب لاب الأحساء</div>
-        <div class="org-sub">إدارة التطوع والفعاليات</div>
-      </div>
-      <div class="doc-tag">عقد تطوع</div>
-    </div>
-
-    <div class="footer-strip">
-      <div class="foot-brand">فاب لاب الأحساء</div>
-      <div class="foot-meta">نسخة رسمية — تحفظ في سجلات الإدارة</div>
+    <div class="contract-stamp">
+      عقد تطوع
+      <span class="stamp-sub">VOLUNTEER CONTRACT</span>
     </div>
 
     <div class="contract-content">
+      <div class="contract-title">عقد تطوع</div>
       <div class="parties">
         حرر هذا العقد بتاريخ <span class="contract-date">${safe(contractDate)}</span>
         بين <strong>فاب لاب الأحساء</strong> (الطرف الأول) و
@@ -436,7 +371,9 @@ const VolunteerContractModal = ({ open, onClose, recipient }) => {
     </div>
   </div>
   <script>
-    setTimeout(() => window.print(), 200);
+    const bg = new Image();
+    bg.src = '${window.location.origin}/receipt-bg.png';
+    bg.onload = bg.onerror = () => { setTimeout(() => window.print(), 250); };
   </script>
 </body>
 </html>`;
