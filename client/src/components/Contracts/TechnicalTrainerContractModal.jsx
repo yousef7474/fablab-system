@@ -1,11 +1,19 @@
 import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
+import { toast } from 'react-toastify';
+import api from '../../config/api';
 
 // Cooperation / Technical-Trainer contract ("عقد تعاوني — مدرب تقني").
 // Renders on the same receipt-bg.png letterhead used by the سند so
 // printed docs look like they came from the same office. Everything
 // the admin needs to fill lives in this modal; the print output is
 // signature-ready (only handwritten signatures + date remain).
+//
+// Archive integration: pass `initialData` + optional `contractId` to
+// open in edit mode. The Save / Save & Print buttons POST or PUT to
+// /api/contracts and invoke `onSaved(contract)` so the parent can
+// refresh its archive list. Passing no props still supports the
+// old fill-and-print-only flow (nothing persists).
 
 const DEFAULT_TERMS = [
   'الالتزام بالحضور والانصراف طوال فترة البرنامج.',
@@ -52,16 +60,80 @@ const fmtDate = (d) => {
   } catch { return String(d); }
 };
 
-const TechnicalTrainerContractModal = ({ open, onClose }) => {
+const TechnicalTrainerContractModal = ({ open, onClose, initialData, contractId, onSaved }) => {
   const { i18n } = useTranslation();
   const isRTL = i18n.language === 'ar';
   const [form, setForm] = useState(emptyForm());
+  const [saving, setSaving] = useState(false);
+  const [savedId, setSavedId] = useState(contractId || null);
 
   useEffect(() => {
-    if (open) setForm(emptyForm());
-  }, [open]);
+    if (!open) return;
+    if (initialData && typeof initialData === 'object') {
+      // Merge stored data over the empty template so any newly-added
+      // fields (added after this contract was saved) still get defaults.
+      setForm({ ...emptyForm(), ...initialData });
+    } else {
+      setForm(emptyForm());
+    }
+    setSavedId(contractId || null);
+  }, [open, initialData, contractId]);
 
   if (!open) return null;
+
+  // Human-readable title for the archive listing. Falls back if either
+  // key field is empty so the row still shows something meaningful.
+  const buildTitle = (f) => {
+    const parts = [];
+    if (f.trainerName)  parts.push(f.trainerName);
+    if (f.programName)  parts.push(f.programName);
+    return parts.join(' — ') || 'عقد بدون عنوان';
+  };
+
+  const persist = async () => {
+    setSaving(true);
+    try {
+      const payload = {
+        templateId: 'technical-trainer',
+        title: buildTitle(form),
+        data: form
+      };
+      let saved;
+      if (savedId) {
+        const res = await api.put(`/contracts/${savedId}`, {
+          title: payload.title,
+          data: payload.data
+        });
+        saved = res.data;
+      } else {
+        const res = await api.post('/contracts', payload);
+        saved = res.data;
+        setSavedId(saved.contractId);
+      }
+      onSaved?.(saved);
+      return saved;
+    } catch (err) {
+      console.error('Error saving contract:', err);
+      toast.error(isRTL ? 'تعذر حفظ العقد' : 'Failed to save contract');
+      throw err;
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleSaveOnly = async () => {
+    try {
+      await persist();
+      toast.success(isRTL ? 'تم حفظ العقد في الأرشيف' : 'Contract saved to archive');
+    } catch { /* toast already shown */ }
+  };
+
+  const handleSaveAndPrint = async () => {
+    try {
+      await persist();
+      handlePrint();
+    } catch { /* toast already shown */ }
+  };
 
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
   const setArrItem = (k, i, v) => setForm(f => {
@@ -508,8 +580,17 @@ const TechnicalTrainerContractModal = ({ open, onClose }) => {
         style={{ maxWidth: 820, maxHeight: '92vh', display: 'flex', flexDirection: 'column' }}
       >
         <div className="modal-header" style={{ borderBottom: '2px solid #0f172a', padding: '14px 22px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <h2 style={{ color: '#0f172a', margin: 0, fontSize: 18 }}>
+          <h2 style={{ color: '#0f172a', margin: 0, fontSize: 18, display: 'flex', alignItems: 'center', gap: 10 }}>
             {isRTL ? 'عقد تعاوني — مدرب تقني' : 'Cooperation Contract — Technical Trainer'}
+            {savedId && (
+              <span style={{
+                padding: '2px 10px', borderRadius: 999, fontSize: 11, fontWeight: 800,
+                background: 'rgba(34,197,94,0.12)', color: '#166534',
+                border: '1px solid rgba(34,197,94,0.35)', letterSpacing: 0.5
+              }}>
+                {isRTL ? 'مؤرشف' : 'ARCHIVED'}
+              </span>
+            )}
           </h2>
           <button onClick={onClose} style={{ background: 'none', border: 'none', fontSize: 26, cursor: 'pointer', color: '#64748b' }}>×</button>
         </div>
@@ -616,29 +697,65 @@ const TechnicalTrainerContractModal = ({ open, onClose }) => {
           </div>
         </div>
 
-        <div className="modal-footer" style={{ padding: '14px 22px', borderTop: '1px solid #e2e8f0', display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
+        <div className="modal-footer" style={{ padding: '14px 22px', borderTop: '1px solid #e2e8f0', display: 'flex', gap: 10, justifyContent: 'flex-end', flexWrap: 'wrap' }}>
           <button
             onClick={onClose}
+            disabled={saving}
             style={{
               padding: '9px 18px', borderRadius: 6, border: '1.5px solid #cbd5e1',
-              background: '#fff', color: '#334155', fontWeight: 700, cursor: 'pointer'
+              background: '#fff', color: '#334155', fontWeight: 700,
+              cursor: saving ? 'not-allowed' : 'pointer', opacity: saving ? 0.6 : 1
             }}
           >
-            {isRTL ? 'إلغاء' : 'Cancel'}
+            {isRTL ? 'إغلاق' : 'Close'}
           </button>
           <button
             onClick={handlePrint}
-            disabled={!form.trainerName || !form.programName}
+            disabled={!form.trainerName || !form.programName || saving}
+            style={{
+              padding: '9px 18px', borderRadius: 6,
+              border: '1.5px solid #0f172a', background: '#fff',
+              color: '#0f172a', fontWeight: 700,
+              cursor: (form.trainerName && form.programName && !saving) ? 'pointer' : 'not-allowed',
+              opacity: (form.trainerName && form.programName && !saving) ? 1 : 0.5
+            }}
+            title={isRTL ? 'طباعة بدون حفظ' : 'Print without saving'}
+          >
+            {isRTL ? 'طباعة فقط' : 'Print only'}
+          </button>
+          <button
+            onClick={handleSaveOnly}
+            disabled={!form.trainerName || !form.programName || saving}
+            style={{
+              padding: '9px 18px', borderRadius: 6, border: 'none',
+              background: (form.trainerName && form.programName && !saving) ? '#0ea5e9' : '#cbd5e1',
+              color: '#fff', fontWeight: 800,
+              cursor: (form.trainerName && form.programName && !saving) ? 'pointer' : 'not-allowed',
+              letterSpacing: 0.3
+            }}
+            title={isRTL ? 'حفظ في الأرشيف بدون طباعة' : 'Save to archive without printing'}
+          >
+            {saving
+              ? (isRTL ? 'جارٍ الحفظ…' : 'Saving…')
+              : (savedId
+                  ? (isRTL ? 'تحديث الأرشيف' : 'Update archive')
+                  : (isRTL ? 'حفظ في الأرشيف' : 'Save to archive'))}
+          </button>
+          <button
+            onClick={handleSaveAndPrint}
+            disabled={!form.trainerName || !form.programName || saving}
             style={{
               padding: '9px 22px', borderRadius: 6, border: 'none',
-              background: (form.trainerName && form.programName)
+              background: (form.trainerName && form.programName && !saving)
                 ? 'linear-gradient(90deg, #0f172a, #334155)' : '#cbd5e1',
               color: '#fff', fontWeight: 800,
-              cursor: (form.trainerName && form.programName) ? 'pointer' : 'not-allowed',
+              cursor: (form.trainerName && form.programName && !saving) ? 'pointer' : 'not-allowed',
               letterSpacing: 0.5
             }}
           >
-            {isRTL ? 'طباعة العقد' : 'Print Contract'}
+            {saving
+              ? (isRTL ? 'جارٍ…' : 'Working…')
+              : (isRTL ? 'حفظ وطباعة' : 'Save & Print')}
           </button>
         </div>
       </div>
