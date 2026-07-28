@@ -117,29 +117,34 @@ const TechnicalTrainerContractModal = ({ open, onClose }) => {
   }
   .page:last-child { page-break-after: auto; }
 
+  /* Content is bounded on all four sides so it never lands on the
+     letterhead's printed header or footer artwork. bottom:16% reserves
+     ~47mm above the footer decoration — enough clearance even when a
+     page's final section is a table or long list. */
   .content {
     position: absolute;
-    top: 18%;
-    bottom: 12%;
+    top: 16%;
+    bottom: 16%;
     left: 14mm;
     right: 14mm;
     display: flex;
     flex-direction: column;
+    overflow: hidden;
   }
 
   .doc-title {
     text-align: center;
-    font-size: 22pt;
+    font-size: 20pt;
     font-weight: 800;
-    letter-spacing: 4px;
+    letter-spacing: 3px;
     color: #0f172a;
-    margin: 0 0 3mm 0;
+    margin: 0 0 1.5mm 0;
   }
   .doc-sub {
     text-align: center;
-    font-size: 12pt;
+    font-size: 11pt;
     color: #475569;
-    margin: 0 0 6mm 0;
+    margin: 0 0 4mm 0;
     font-weight: 600;
     letter-spacing: 1px;
   }
@@ -147,11 +152,11 @@ const TechnicalTrainerContractModal = ({ open, onClose }) => {
   .section-heading {
     background: rgba(15, 23, 42, 0.06);
     color: #0f172a;
-    padding: 1.6mm 4mm;
-    font-size: 11.5pt;
+    padding: 1.2mm 4mm;
+    font-size: 10.5pt;
     font-weight: 800;
-    border-right: 4px solid #475569;
-    margin: 3mm 0 2mm 0;
+    border-right: 3px solid #475569;
+    margin: 2mm 0 1.5mm 0;
     letter-spacing: 1px;
   }
   .section-heading:first-of-type { margin-top: 0; }
@@ -162,8 +167,8 @@ const TechnicalTrainerContractModal = ({ open, onClose }) => {
   }
   .info-table th, .info-table td {
     border: 1px solid #475569;
-    padding: 1.7mm 3mm;
-    font-size: 10.5pt;
+    padding: 1.2mm 3mm;
+    font-size: 9.5pt;
     vertical-align: middle;
   }
   .info-table th {
@@ -180,26 +185,34 @@ const TechnicalTrainerContractModal = ({ open, onClose }) => {
   }
 
   .prose {
-    font-size: 10.5pt;
-    line-height: 1.7;
+    font-size: 9.5pt;
+    line-height: 1.55;
     color: #1f2937;
-    margin: 2mm 0 0 0;
+    margin: 1.5mm 0 0 0;
     text-align: justify;
   }
 
+  .caption {
+    text-align: center;
+    font-style: italic;
+    color: #475569;
+    font-size: 9pt;
+    margin-top: 1mm;
+  }
+
   .list {
-    margin: 2mm 0 0 0;
-    padding: 0 4mm;
+    margin: 1.5mm 0 0 0;
+    padding: 0 3mm;
     list-style: none;
   }
   .list li {
-    font-size: 10.5pt;
-    line-height: 1.55;
+    font-size: 9.5pt;
+    line-height: 1.45;
     color: #1f2937;
-    padding: 1mm 0;
-    border-bottom: 1px dashed rgba(71, 85, 105, 0.35);
+    padding: 0.8mm 0;
+    border-bottom: 1px dashed rgba(71, 85, 105, 0.3);
     position: relative;
-    padding-right: 6mm;
+    padding-right: 5mm;
   }
   .list li:last-child { border-bottom: none; }
   .list li::before {
@@ -223,11 +236,11 @@ const TechnicalTrainerContractModal = ({ open, onClose }) => {
   .amount-highlight {
     display: inline-block;
     margin-right: 3mm;
-    padding: 1.5mm 6mm;
+    padding: 1.2mm 5mm;
     background: rgba(15, 23, 42, 0.06);
     border: 1.5px solid #475569;
     border-radius: 2mm;
-    font-size: 14pt;
+    font-size: 12pt;
     font-weight: 900;
     color: #0f172a;
     letter-spacing: 1px;
@@ -236,33 +249,33 @@ const TechnicalTrainerContractModal = ({ open, onClose }) => {
   .signers-row {
     margin-top: auto;
     display: flex;
-    gap: 8mm;
+    gap: 6mm;
     justify-content: space-between;
-    padding-top: 5mm;
+    padding-top: 3mm;
     border-top: 1.5px dashed #475569;
   }
   .signer {
     flex: 1;
     text-align: center;
-    font-size: 11pt;
+    font-size: 10pt;
   }
   .signer .signer-title {
     color: #475569;
     font-weight: 700;
-    margin-bottom: 2mm;
+    margin-bottom: 1.5mm;
     letter-spacing: 1px;
   }
   .signer .line-row {
     display: flex; align-items: center; gap: 3mm;
-    margin: 2mm 0;
+    margin: 1.5mm 0;
     justify-content: center;
     font-weight: 700;
     color: #0f172a;
   }
-  .signer .line-row .label { min-width: 20mm; text-align: right; }
+  .signer .line-row .label { min-width: 18mm; text-align: right; }
   .signer .line-row .line {
     flex: 1; border-bottom: 1.5px solid #1f2937;
-    min-height: 5mm; max-width: 50mm;
+    min-height: 4mm; max-width: 48mm;
   }
   .signer .name-inline {
     padding: 0 3mm;
@@ -276,7 +289,7 @@ const TechnicalTrainerContractModal = ({ open, onClose }) => {
 </style>
 </head>
 <body>
-  <!-- Page 1: parties + subject + benefits -->
+  <!-- Page 1: title + program + date + parties -->
   <div class="page">
     <div class="content">
       <div class="doc-title">عقد تعاوني</div>
@@ -284,7 +297,7 @@ const TechnicalTrainerContractModal = ({ open, onClose }) => {
 
       <div class="section-heading">اسم البرنامج التدريبي</div>
       <table class="info-table">
-        <tr><td colspan="2" style="font-size:12pt; font-weight:800; text-align:center; color:#0f172a">
+        <tr><td colspan="2" style="font-size:11pt; font-weight:800; text-align:center; color:#0f172a">
           ${safe(form.programName) || '—'}
         </td></tr>
       </table>
@@ -306,9 +319,7 @@ const TechnicalTrainerContractModal = ({ open, onClose }) => {
           <td>${safe(form.party1Representative) || '—'}</td>
         </tr>
       </table>
-      <div class="prose" style="text-align:center; font-style:italic; color:#475569; margin-top:2mm">
-        (ويُشار إليه فيما بعد بـ"الطرف الأول")
-      </div>
+      <div class="caption">(ويُشار إليه فيما بعد بـ"الطرف الأول")</div>
 
       <div class="section-heading">الطرف الثاني</div>
       <table class="info-table">
@@ -329,10 +340,13 @@ const TechnicalTrainerContractModal = ({ open, onClose }) => {
           <td dir="ltr" style="text-align:right">${safe(form.trainerIban) || '—'}</td>
         </tr>
       </table>
-      <div class="prose" style="text-align:center; font-style:italic; color:#475569; margin-top:2mm">
-        (ويُشار إليه فيما بعد بـ"الطرف الثاني")
-      </div>
+      <div class="caption">(ويُشار إليه فيما بعد بـ"الطرف الثاني")</div>
+    </div>
+  </div>
 
+  <!-- Page 2: subject + benefits + duration -->
+  <div class="page">
+    <div class="content">
       <div class="section-heading">أولاً: موضوع العقد</div>
       <div class="prose">
         يقر الطرف الثاني بالعمل ضمن فريق التدريب، بوظيفة
@@ -342,12 +356,7 @@ const TechnicalTrainerContractModal = ({ open, onClose }) => {
 
       <div class="section-heading">المزايا</div>
       <ul class="list">${benefitsHtml}</ul>
-    </div>
-  </div>
 
-  <!-- Page 2: duration + tasks + general conditions -->
-  <div class="page">
-    <div class="content">
       <div class="section-heading">ثانيًا: مدة العقد</div>
       <table class="info-table">
         <tr>
@@ -365,41 +374,42 @@ const TechnicalTrainerContractModal = ({ open, onClose }) => {
         مخصصة لأعمال الإقفال والترتيب والتوثيق.
         وتُعد هذه الفترة غير قابلة للتمديد إلا باتفاق كتابي جديد بين الطرفين.
       </div>
+    </div>
+  </div>
 
+  <!-- Page 3: tasks + general conditions + compensation -->
+  <div class="page">
+    <div class="content">
       <div class="section-heading">ثالثًا: المهام والمسؤوليات — مهام المدرب التقني</div>
       <ol class="list numbered">${tasksHtml}</ol>
 
       <div class="section-heading">رابعًا: الشروط العامة</div>
-      <div class="prose">
-        يشترط لاستحقاق الطرف الثاني للمكافأة ما يلي:
-      </div>
+      <div class="prose">يشترط لاستحقاق الطرف الثاني للمكافأة ما يلي:</div>
       <ul class="list">${termsHtml}</ul>
-      <div class="prose" style="margin-top:2mm">
+      <div class="prose">
         وفي حال الإخلال بأي من الشروط المذكورة، للطرف الأول الحق في إلغاء أو تخفيض المكافأة.
       </div>
-    </div>
-  </div>
 
-  <!-- Page 3: compensation + entitlement + provisions + signatures -->
-  <div class="page">
-    <div class="content">
       <div class="section-heading">خامسًا: المميزات والمكافأة</div>
       <div class="prose">
         قيمة المكافأة المالية الإجمالية:
         <span class="amount-highlight">${safe(form.compensationAmount || '—')} ريال سعودي</span>
       </div>
-      <div class="prose" style="margin-top:3mm">
+      <div class="prose">
         تُصرف المكافأة المالية بعد انتهاء فترة التعاقد واستكمال المهام،
         خلال مدة لا تتجاوز <strong>(30)</strong> يوم عمل من تاريخ الانتهاء،
         وذلك وفق الإجراءات المالية والإدارية المتبعة لدى الطرف الأول.
       </div>
+    </div>
+  </div>
 
+  <!-- Page 4: entitlement + provisions + acknowledgment + signatures -->
+  <div class="page">
+    <div class="content">
       <div class="section-heading">سادسًا: شرط الاستحقاق</div>
-      <div class="prose">
-        يشترط لاستحقاق الطرف الثاني للمكافأة ما يلي:
-      </div>
+      <div class="prose">يشترط لاستحقاق الطرف الثاني للمكافأة ما يلي:</div>
       <ul class="list">${termsHtml}</ul>
-      <div class="prose" style="margin-top:2mm">
+      <div class="prose">
         وفي حال الإخلال بأي من الشروط المذكورة، للطرف الأول الحق في إلغاء أو تخفيض المكافأة.
       </div>
 
