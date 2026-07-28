@@ -28,4 +28,17 @@ router.post('/students', requireManager, students.create);
 router.put('/students/:id', requireManager, students.update);
 router.delete('/students/:id', requireManager, students.remove);
 
+// Student ID cards (single + bulk 4-up)
+router.get('/students/:id/card', students.cardData);
+router.post('/students/cards',    students.cardsBulk);
+
+// Attendance (QR-scan based, mirrors the Mawhba flow)
+router.post('/attendance/scan',        students.scanAttendance);
+router.get('/attendance/today',        students.todayAttendance);
+router.delete('/attendance/today',     students.clearTodayAttendance);
+router.get('/students/:id/attendance', students.listStudentAttendance);
+router.patch('/attendance/:id/checkout', students.clearCheckout);
+router.delete('/attendance/:id',       students.deleteAttendance);
+router.post('/attendance/export',      students.exportAttendance);
+
 module.exports = router;

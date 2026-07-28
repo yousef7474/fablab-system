@@ -1,4 +1,66 @@
-const { SummerStudent, SummerProgram, Admin } = require('../models');
+const { Op } = require('sequelize');
+const QRCode = require('qrcode');
+const {
+  SummerStudent,
+  SummerProgram,
+  SummerStudentAttendance
+} = require('../models');
+
+// FabLab section → theme color mapping (mirrors the palette used across
+// the admin panel so the Summer ID card feels consistent with the rest
+// of the system).
+const SECTION_COLORS = {
+  'Electronics and Programming': '#6366f1',
+  'CNC Laser':                   '#22c55e',
+  'CNC Wood':                    '#f59e0b',
+  '3D':                          '#ef4444',
+  'Robotic and AI':              '#8b5cf6',
+  "Kid's Club":                  '#06b6d4',
+  'Vinyl Cutting':               '#ec4899'
+};
+const DEFAULT_SECTION_COLOR = '#f97316'; // Summer FabLab orange
+
+const darken = (hex, amount = 0.55) => {
+  const m = /^#?([0-9a-f]{6})$/i.exec(hex || '');
+  if (!m) return '#0f172a';
+  const n = parseInt(m[1], 16);
+  const r = Math.max(0, Math.round(((n >> 16) & 0xff) * (1 - amount)));
+  const g = Math.max(0, Math.round(((n >> 8) & 0xff) * (1 - amount)));
+  const b = Math.max(0, Math.round((n & 0xff) * (1 - amount)));
+  return '#' + ((1 << 24) | (r << 16) | (g << 8) | b).toString(16).slice(1);
+};
+
+const colorForProgram = (program) => {
+  if (!program) return DEFAULT_SECTION_COLOR;
+  return SECTION_COLORS[program.fablabSection] || DEFAULT_SECTION_COLOR;
+};
+
+// Riyadh-local YYYY-MM-DD so the attendance day rolls over at Riyadh
+// midnight regardless of the server's TZ (matches the Mawhba flow).
+const todayStr = () => {
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Asia/Riyadh',
+    year: 'numeric', month: '2-digit', day: '2-digit'
+  }).formatToParts(new Date());
+  const y = parts.find(p => p.type === 'year').value;
+  const m = parts.find(p => p.type === 'month').value;
+  const d = parts.find(p => p.type === 'day').value;
+  return `${y}-${m}-${d}`;
+};
+
+const riyadhTimeFmt = new Intl.DateTimeFormat('en-GB', {
+  timeZone: 'Asia/Riyadh',
+  hour12: false,
+  hour: '2-digit', minute: '2-digit', second: '2-digit'
+});
+const fmtTime = (d) => {
+  if (!d) return '';
+  const dt = new Date(d);
+  if (isNaN(dt.getTime())) return '';
+  return riyadhTimeFmt.format(dt).replace(/^24:/, '00:');
+};
+
+// ─── CRUD ───────────────────────────────────────────────────────────
 
 exports.list = async (req, res) => {
   try {
@@ -7,7 +69,7 @@ exports.list = async (req, res) => {
     const students = await SummerStudent.findAll({
       where,
       include: [
-        { model: SummerProgram, as: 'program', attributes: ['programId', 'name', 'startDate', 'endDate'] }
+        { model: SummerProgram, as: 'program', attributes: ['programId', 'name', 'startDate', 'endDate', 'fablabSection'] }
       ],
       order: [['name', 'ASC']]
     });
@@ -70,5 +132,284 @@ exports.remove = async (req, res) => {
   } catch (err) {
     console.error('Error deleting summer student:', err);
     res.status(500).json({ message: 'Server error' });
+  }
+};
+
+// ─── ID CARDS ───────────────────────────────────────────────────────
+
+// Returns the raw data the client needs to render one card:
+//   { student, qrDataUrl, color, programName }
+// The client renders the card HTML so the print layout can be tweaked
+// without redeploying the server (same pattern as Mawhba).
+exports.cardData = async (req, res) => {
+  try {
+    const student = await SummerStudent.findByPk(req.params.id, {
+      include: [{ model: SummerProgram, as: 'program' }]
+    });
+    if (!student) return res.status(404).json({ message: 'Student not found' });
+    if (!student.nationalId) {
+      return res.status(400).json({
+        message: 'This student has no national ID — required for a QR-based ID card',
+        messageAr: 'هذا الطالب لا يملك رقم هوية — رقم الهوية مطلوب لطباعة بطاقة QR'
+      });
+    }
+    const qrDataUrl = await QRCode.toDataURL(student.nationalId, {
+      errorCorrectionLevel: 'M', margin: 0, width: 340,
+      color: { dark: '#0f172a', light: '#ffffff' }
+    });
+    res.json({
+      student,
+      qrDataUrl,
+      color: colorForProgram(student.program),
+      colorDark: darken(colorForProgram(student.program), 0.55),
+      programName: student.program?.name || ''
+    });
+  } catch (err) {
+    console.error('Summer cardData error:', err);
+    res.status(500).json({ message: 'Server error', detail: err.message });
+  }
+};
+
+// Bulk card data — returns an array in the same shape as cardData for
+// every requested student. Silently skips students with no nationalId
+// and reports them in `skipped`.
+exports.cardsBulk = async (req, res) => {
+  try {
+    const { studentIds } = req.body || {};
+    if (!Array.isArray(studentIds) || studentIds.length === 0) {
+      return res.status(400).json({ message: 'No students provided' });
+    }
+    const students = await SummerStudent.findAll({
+      where: { studentId: { [Op.in]: studentIds } },
+      include: [{ model: SummerProgram, as: 'program' }]
+    });
+    const result = [];
+    const skipped = [];
+    for (const s of students) {
+      if (!s.nationalId) { skipped.push({ studentId: s.studentId, name: s.name }); continue; }
+      const qrDataUrl = await QRCode.toDataURL(s.nationalId, {
+        errorCorrectionLevel: 'M', margin: 0, width: 340,
+        color: { dark: '#0f172a', light: '#ffffff' }
+      });
+      const color = colorForProgram(s.program);
+      result.push({
+        student: s,
+        qrDataUrl,
+        color,
+        colorDark: darken(color, 0.55),
+        programName: s.program?.name || ''
+      });
+    }
+    res.json({ cards: result, skipped });
+  } catch (err) {
+    console.error('Summer cardsBulk error:', err);
+    res.status(500).json({ message: 'Server error', detail: err.message });
+  }
+};
+
+// ─── ATTENDANCE ─────────────────────────────────────────────────────
+
+exports.scanAttendance = async (req, res) => {
+  try {
+    const raw = String(req.body?.code || '').trim();
+    if (!raw) return res.status(400).json({ message: 'No code provided' });
+
+    const student = await SummerStudent.findOne({
+      where: { nationalId: raw, isActive: true },
+      include: [{ model: SummerProgram, as: 'program' }]
+    });
+    if (!student) return res.status(404).json({ message: 'No Summer student matches this code', code: raw });
+
+    const date = todayStr();
+    const now = new Date();
+    let record = await SummerStudentAttendance.findOne({ where: { studentId: student.studentId, date } });
+
+    let action = null;
+    const color = colorForProgram(student.program);
+    if (!record) {
+      record = await SummerStudentAttendance.create({
+        studentId: student.studentId,
+        date,
+        checkInAt: now
+      });
+      action = 'checkin';
+    } else if (!record.checkOutAt) {
+      const since = now.getTime() - new Date(record.checkInAt).getTime();
+      if (since < 15 * 60 * 1000) {
+        return res.json({
+          action: 'duplicate', student, record, color,
+          message: 'Already checked in — please wait at least 15 minutes before checking out'
+        });
+      }
+      await record.update({ checkOutAt: now });
+      action = 'checkout';
+    } else {
+      return res.json({
+        action: 'already_done', student, record, color,
+        message: 'Already checked in and out today'
+      });
+    }
+
+    res.json({ action, student, record, color });
+  } catch (err) {
+    console.error('Summer scanAttendance error:', err);
+    res.status(500).json({ message: 'Server error', detail: err.message });
+  }
+};
+
+exports.todayAttendance = async (req, res) => {
+  try {
+    const date = todayStr();
+    const records = await SummerStudentAttendance.findAll({
+      where: { date },
+      include: [{
+        model: SummerStudent, as: 'student', required: false,
+        include: [{ model: SummerProgram, as: 'program' }]
+      }]
+    });
+
+    const events = [];
+    const byProgram = new Map();
+    for (const r of records) {
+      const s = r.student || {};
+      const prog = s.program || {};
+      const color = colorForProgram(prog);
+      const programKey = prog.name || '—';
+      const base = {
+        attendanceId: r.attendanceId,
+        studentId: r.studentId,
+        name: s.name || '',
+        course: prog.name || '',
+        color
+      };
+      if (r.checkInAt) events.push({ ...base, kind: 'checkin', at: r.checkInAt });
+      if (r.checkOutAt) events.push({ ...base, kind: 'checkout', at: r.checkOutAt });
+
+      if (!byProgram.has(programKey)) {
+        byProgram.set(programKey, { course: programKey, color, students: [] });
+      }
+      byProgram.get(programKey).students.push({
+        ...base,
+        checkInAt: r.checkInAt,
+        checkOutAt: r.checkOutAt,
+        status: r.checkOutAt ? 'checked_out' : 'checked_in'
+      });
+    }
+    events.sort((a, b) => new Date(b.at) - new Date(a.at));
+
+    const groups = [...byProgram.values()];
+    for (const g of groups) {
+      g.students.sort((a, b) => new Date(b.checkOutAt || b.checkInAt || 0) - new Date(a.checkOutAt || a.checkInAt || 0));
+    }
+    groups.sort((a, b) => String(a.course).localeCompare(String(b.course), 'ar'));
+
+    const checkins = events.filter(e => e.kind === 'checkin').length;
+    const checkouts = events.filter(e => e.kind === 'checkout').length;
+    res.json({ date, events, groups, stats: { checkins, checkouts } });
+  } catch (err) {
+    console.error('Summer todayAttendance error:', err);
+    res.status(500).json({ message: 'Server error', detail: err.message });
+  }
+};
+
+exports.clearCheckout = async (req, res) => {
+  try {
+    const rec = await SummerStudentAttendance.findByPk(req.params.id);
+    if (!rec) return res.status(404).json({ message: 'Record not found' });
+    if (!rec.checkOutAt) return res.status(400).json({ message: 'No check-out to clear' });
+    await rec.update({ checkOutAt: null });
+    res.json({ message: 'Check-out cleared', record: rec });
+  } catch (err) {
+    console.error('Summer clearCheckout error:', err);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+exports.clearTodayAttendance = async (req, res) => {
+  try {
+    const date = todayStr();
+    const count = await SummerStudentAttendance.destroy({ where: { date } });
+    res.json({ message: 'Today cleared', date, count });
+  } catch (err) {
+    console.error('Summer clearTodayAttendance error:', err);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+exports.listStudentAttendance = async (req, res) => {
+  try {
+    const records = await SummerStudentAttendance.findAll({
+      where: { studentId: req.params.id },
+      order: [['date', 'DESC'], ['checkInAt', 'DESC']]
+    });
+    res.json(records);
+  } catch (err) {
+    console.error('Summer listStudentAttendance error:', err);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+exports.deleteAttendance = async (req, res) => {
+  try {
+    const rec = await SummerStudentAttendance.findByPk(req.params.id);
+    if (!rec) return res.status(404).json({ message: 'Record not found' });
+    await rec.destroy();
+    res.json({ message: 'Deleted' });
+  } catch (err) {
+    console.error('Summer deleteAttendance error:', err);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+exports.exportAttendance = async (req, res) => {
+  try {
+    const { studentIds, from, to } = req.body || {};
+    if (!Array.isArray(studentIds) || studentIds.length === 0) {
+      return res.status(400).json({ message: 'No students selected' });
+    }
+    const where = { studentId: { [Op.in]: studentIds } };
+    if (from) where.date = { ...(where.date || {}), [Op.gte]: from };
+    if (to)   where.date = { ...(where.date || {}), [Op.lte]: to };
+
+    const records = await SummerStudentAttendance.findAll({
+      where,
+      include: [{
+        model: SummerStudent, as: 'student', required: false,
+        include: [{ model: SummerProgram, as: 'program' }]
+      }],
+      order: [['date', 'ASC'], ['checkInAt', 'ASC']]
+    });
+
+    const header = ['اسم الطالب', 'رقم الهوية', 'البرنامج', 'التاريخ', 'وقت الدخول', 'وقت الخروج', 'المدة (دقيقة)'];
+    const lines = [header.join('\t')];
+    for (const r of records) {
+      const s = r.student || {};
+      const p = s.program || {};
+      const minutes = r.checkInAt && r.checkOutAt
+        ? Math.max(0, Math.round((new Date(r.checkOutAt) - new Date(r.checkInAt)) / 60000))
+        : '';
+      lines.push([
+        s.name || '',
+        s.nationalId || '',
+        p.name || '',
+        r.date || '',
+        fmtTime(r.checkInAt),
+        fmtTime(r.checkOutAt),
+        minutes
+      ].map(v => String(v ?? '').replace(/\t/g, ' ').replace(/\r?\n/g, ' ')).join('\t'));
+    }
+
+    const text = lines.join('\r\n');
+    const bom = Buffer.from([0xFF, 0xFE]);
+    const body = Buffer.from(text, 'utf16le');
+    const out = Buffer.concat([bom, body]);
+
+    const today = todayStr();
+    res.setHeader('Content-Type', 'text/csv; charset=utf-16le');
+    res.setHeader('Content-Disposition', `attachment; filename="summer-attendance-${today}.csv"`);
+    res.send(out);
+  } catch (err) {
+    console.error('Summer exportAttendance error:', err);
+    res.status(500).json({ message: 'Server error', detail: err.message });
   }
 };

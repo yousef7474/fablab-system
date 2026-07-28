@@ -37,16 +37,18 @@ const UnifiedAttendancePage = ({ open, onClose, isRTL }) => {
 
   const hydrate = useCallback(async () => {
     try {
-      const [m, v, s, i] = await Promise.allSettled([
+      const [m, v, s, i, su] = await Promise.allSettled([
         api.get('/mawhba/attendance/today'),
         api.get('/volunteers/attendance/today'),
         api.get('/fablab-staff/attendance/today'),
-        api.get('/interns/attendance/today')
+        api.get('/interns/attendance/today'),
+        api.get('/summer/attendance/today')
       ]);
-      const mData = m.status === 'fulfilled' ? m.value.data : null;
-      const vData = v.status === 'fulfilled' ? v.value.data : null;
-      const sData = s.status === 'fulfilled' ? s.value.data : null;
-      const iData = i.status === 'fulfilled' ? i.value.data : null;
+      const mData  = m.status  === 'fulfilled' ? m.value.data  : null;
+      const vData  = v.status  === 'fulfilled' ? v.value.data  : null;
+      const sData  = s.status  === 'fulfilled' ? s.value.data  : null;
+      const iData  = i.status  === 'fulfilled' ? i.value.data  : null;
+      const suData = su.status === 'fulfilled' ? su.value.data : null;
 
       const combined = [];
       // FabLab staff first — they're the fixed team on-site
@@ -57,6 +59,15 @@ const UnifiedAttendancePage = ({ open, onClose, isRTL }) => {
           color: '#7c3aed',
           students: sData.staff
         });
+      }
+      // Summer FabLab programs (per-program grouping like Mawhba courses)
+      if (Array.isArray(suData?.groups)) {
+        suData.groups.forEach(g => combined.push({
+          category: 'summer',
+          course: g.course,
+          color: g.color,
+          students: g.students
+        }));
       }
       // Mawhba courses
       if (Array.isArray(mData?.groups)) {
@@ -87,13 +98,14 @@ const UnifiedAttendancePage = ({ open, onClose, isRTL }) => {
       }
       setGroups(combined);
 
-      const mStats = mData?.stats || { checkins: 0, checkouts: 0 };
-      const vStats = vData?.stats || { checkins: 0, checkouts: 0 };
-      const sStats = sData?.stats || { checkins: 0, checkouts: 0 };
-      const iStats = iData?.stats || { checkins: 0, checkouts: 0 };
+      const mStats  = mData?.stats  || { checkins: 0, checkouts: 0 };
+      const vStats  = vData?.stats  || { checkins: 0, checkouts: 0 };
+      const sStats  = sData?.stats  || { checkins: 0, checkouts: 0 };
+      const iStats  = iData?.stats  || { checkins: 0, checkouts: 0 };
+      const suStats = suData?.stats || { checkins: 0, checkouts: 0 };
       setSessionStats(prev => ({
-        checkins: (mStats.checkins || 0) + (vStats.checkins || 0) + (sStats.checkins || 0) + (iStats.checkins || 0),
-        checkouts: (mStats.checkouts || 0) + (vStats.checkouts || 0) + (sStats.checkouts || 0) + (iStats.checkouts || 0),
+        checkins:  (mStats.checkins  || 0) + (vStats.checkins  || 0) + (sStats.checkins  || 0) + (iStats.checkins  || 0) + (suStats.checkins  || 0),
+        checkouts: (mStats.checkouts || 0) + (vStats.checkouts || 0) + (sStats.checkouts || 0) + (iStats.checkouts || 0) + (suStats.checkouts || 0),
         errors: prev.errors
       }));
     } catch (err) {
@@ -132,7 +144,31 @@ const UnifiedAttendancePage = ({ open, onClose, isRTL }) => {
   }, [isRTL]);
 
   const handleScan = useCallback(async (code) => {
-    // Try Mawhba first
+    // Try Summer FabLab first — the busy program during summer, so
+    // matching it first minimizes latency for the on-site scanner
+    try {
+      const { data } = await api.post('/summer/attendance/scan', { code });
+      const s = data.student || {};
+      const r = data.record || {};
+      const refTime = data.action === 'checkout' ? r.checkOutAt : r.checkInAt;
+      const { kind, label } = labelFor(data.action);
+      const payload = {
+        kind, label,
+        name: s.name || code,
+        badge: s.program?.name || (isRTL ? 'صيف فاب لاب' : 'Summer FabLab'),
+        badgeType: isRTL ? 'طالب صيف فاب لاب' : 'Summer FabLab student',
+        time: fmtTimeLong(refTime || new Date().toISOString()),
+        color: data.color || '#f97316'
+      };
+      showResult(payload);
+      if (kind === 'checkin') setSessionStats(p => ({ ...p, checkins: p.checkins + 1 }));
+      else if (kind === 'checkout') setSessionStats(p => ({ ...p, checkouts: p.checkouts + 1 }));
+      setRecentScans(prev => [payload, ...prev].slice(0, 30));
+      hydrate();
+      return;
+    } catch (suErr) { /* fall through to Mawhba */ }
+
+    // Try Mawhba
     try {
       const { data } = await api.post('/mawhba/attendance/scan', { code });
       const s = data.student || {};
@@ -275,21 +311,25 @@ const UnifiedAttendancePage = ({ open, onClose, isRTL }) => {
       : 'This will delete ALL of today\'s attendance records (Mawhba + Volunteers + Staff). Are you sure?')) return;
     setClearingToday(true);
     try {
-      const [m, v, s] = await Promise.allSettled([
+      const [m, v, s, i, su] = await Promise.allSettled([
         api.delete('/mawhba/attendance/today'),
         api.delete('/volunteers/attendance/today'),
         api.delete('/fablab-staff/attendance/today'),
-        api.delete('/interns/attendance/today')
+        api.delete('/interns/attendance/today'),
+        api.delete('/summer/attendance/today')
       ]);
-      const mCount = m.status === 'fulfilled' ? (m.value.data?.count || 0) : 0;
-      const vCount = v.status === 'fulfilled' ? (v.value.data?.count || 0) : 0;
-      const sCount = s.status === 'fulfilled' ? (s.value.data?.count || 0) : 0;
+      const mCount  = m.status  === 'fulfilled' ? (m.value.data?.count  || 0) : 0;
+      const vCount  = v.status  === 'fulfilled' ? (v.value.data?.count  || 0) : 0;
+      const sCount  = s.status  === 'fulfilled' ? (s.value.data?.count  || 0) : 0;
+      const iCount  = i.status  === 'fulfilled' ? (i.value.data?.count  || 0) : 0;
+      const suCount = su.status === 'fulfilled' ? (su.value.data?.count || 0) : 0;
+      const total   = mCount + vCount + sCount + iCount + suCount;
       setGroups([]);
       setRecentScans([]);
       setSessionStats({ checkins: 0, checkouts: 0, errors: 0 });
       toast.success(isRTL
-        ? `تم حذف ${mCount + vCount + sCount} سجل (${mCount} موهبة + ${vCount} متطوع + ${sCount} موظف)`
-        : `Deleted ${mCount + vCount + sCount} record(s) — ${mCount} Mawhba + ${vCount} Volunteer + ${sCount} Staff`);
+        ? `تم حذف ${total} سجل (${mCount} موهبة + ${vCount} متطوع + ${sCount} موظف + ${iCount} جامعي + ${suCount} صيف)`
+        : `Deleted ${total} record(s) — ${mCount} Mawhba + ${vCount} Volunteer + ${sCount} Staff + ${iCount} University + ${suCount} Summer`);
     } catch (err) {
       console.error(err);
       toast.error(isRTL ? 'فشل الحذف' : 'Clear failed');

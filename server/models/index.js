@@ -63,9 +63,13 @@ const TrainerAssistant = require('./TrainerAssistant');
 const TrainerAssignment = require('./TrainerAssignment');
 const Customer = require('./Customer');
 const Contract = require('./Contract');
+const SummerStudentAttendance = require('./SummerStudentAttendance');
 
 MawhbaAttendance.belongsTo(MawhbaStudent, { foreignKey: 'studentId', as: 'student', constraints: false });
 MawhbaStudent.hasMany(MawhbaAttendance, { foreignKey: 'studentId', as: 'attendance', constraints: false });
+
+SummerStudentAttendance.belongsTo(SummerStudent, { foreignKey: 'studentId', as: 'student', constraints: false });
+SummerStudent.hasMany(SummerStudentAttendance, { foreignKey: 'studentId', as: 'attendance', constraints: false });
 
 MawhbaStudent.belongsTo(MawhbaSeason, { foreignKey: 'seasonId', as: 'season', constraints: false });
 MawhbaSeason.hasMany(MawhbaStudent, { foreignKey: 'seasonId', as: 'students', constraints: false });
@@ -499,5 +503,6 @@ module.exports = {
   TrainerAssignment,
   Customer,
   Contract,
+  SummerStudentAttendance,
   syncDatabase
 };

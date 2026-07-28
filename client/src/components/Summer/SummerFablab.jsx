@@ -3,7 +3,209 @@ import { useTranslation } from 'react-i18next';
 import { toast } from 'react-toastify';
 import api from '../../config/api';
 import AttendanceLog from '../shared/AttendanceLog';
+import UnifiedAttendancePage from '../shared/UnifiedAttendancePage';
 import './SummerFablab.css';
+
+// ID-card constants + helpers shared between single + bulk print flows.
+// The card is designed to fit at 72×102 mm so 4 fit on one A4 portrait
+// page (2×2 grid) — same physical size Mawhba uses so the ID cards
+// look consistent across programs.
+const CARD_PRINT_CSS = `
+  @page { size: A4 portrait; margin: 14mm 12mm; }
+  html, body { margin: 0; padding: 0; background: #f1f5f9; font-family: 'Segoe UI', Tahoma, Arial, sans-serif; }
+  body { padding: 18mm 0; }
+
+  .sf-print-page {
+    width: 186mm;
+    margin: 0 auto;
+    display: grid;
+    grid-template-columns: 72mm 72mm;
+    grid-template-rows: 102mm 102mm;
+    column-gap: 18mm;
+    row-gap: 14mm;
+    justify-content: center;
+    page-break-after: always;
+  }
+  .sf-print-page:last-child { page-break-after: auto; }
+
+  .sf-card {
+    width: 72mm; height: 102mm;
+    background: white;
+    box-sizing: border-box;
+    overflow: hidden;
+    color: #0f172a;
+    position: relative;
+    border: 0.45mm dashed #475569;
+  }
+  .sf-card::after {
+    content: '';
+    position: absolute; left: 0; right: 0; bottom: 0;
+    height: 1.5mm;
+    background: var(--sc, #f97316);
+  }
+  .sf-card-top {
+    background: linear-gradient(135deg, var(--sc, #f97316) 0%, var(--scd, #7c2d12) 100%);
+    padding: 2.5mm 3.5mm;
+    display: flex; justify-content: space-between; align-items: center;
+    color: white; height: 13mm;
+    box-sizing: border-box;
+  }
+  .sf-card-brand { display: flex; align-items: center; gap: 2mm; }
+  .sf-card-logo {
+    width: 8mm; height: 8mm;
+    background: white; border-radius: 1.5mm;
+    padding: 0.6mm; object-fit: contain;
+    box-sizing: border-box;
+  }
+  .sf-card-fablab { font-size: 7pt; font-weight: 800; line-height: 1.1; color: white; }
+  .sf-card-fablab-en { font-size: 5pt; letter-spacing: 0.8px; color: rgba(255,255,255,0.78); margin-top: 0.3mm; }
+  .sf-card-program-title { text-align: end; }
+  .sf-card-program-ar { font-size: 10pt; font-weight: 800; color: white; line-height: 1; }
+  .sf-card-program-en { font-size: 4.5pt; letter-spacing: 1.5px; color: rgba(255,255,255,0.75); margin-top: 0.6mm; }
+
+  .sf-card-body { padding: 3mm 4mm 0; }
+  .sf-card-name {
+    font-size: 11pt; font-weight: 800; text-align: center;
+    padding-bottom: 2mm;
+    border-bottom: 0.4mm solid var(--sc, #f97316);
+    margin-bottom: 3mm;
+    line-height: 1.2; color: #0f172a;
+    overflow: hidden; text-overflow: ellipsis;
+    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+  }
+  .sf-card-field {
+    display: flex; justify-content: space-between; align-items: baseline;
+    margin-bottom: 1.8mm; gap: 2mm;
+  }
+  .sf-card-field-label {
+    font-size: 6pt; color: var(--sc, #f97316);
+    font-weight: 800; letter-spacing: 0.4px; white-space: nowrap;
+  }
+  .sf-card-field-value {
+    font-size: 8.5pt; font-weight: 700; color: #0f172a;
+    text-align: end; word-break: break-word;
+  }
+  .sf-card-field-value.mono {
+    font-family: 'Consolas', 'Courier New', monospace;
+    letter-spacing: 0.3px;
+  }
+  .sf-card-course {
+    background: var(--sc, #f97316); color: white;
+    text-align: center;
+    padding: 1.8mm 2mm;
+    margin: 3mm 4mm 3mm;
+    border-radius: 1.5mm;
+  }
+  .sf-card-course-name { font-size: 9pt; font-weight: 800; color: white; line-height: 1.15; }
+
+  .sf-card-bottom { text-align: center; padding: 0 2mm 3mm; }
+  .sf-card-qr {
+    width: 40mm; height: 40mm; display: block; margin: 0 auto;
+    background: white; padding: 1mm;
+    border: 0.3mm solid #cbd5e1;
+    border-radius: 1.5mm;
+    box-sizing: border-box;
+  }
+  .sf-card-qr-label {
+    margin-top: 1.8mm;
+    font-size: 7pt; letter-spacing: 1.5px;
+    color: var(--scd, #0f172a);
+    font-weight: 800;
+  }
+
+  .sf-print-note {
+    max-width: 186mm; margin: 0 auto 8mm;
+    padding: 8px 14px; background: white; border-radius: 8px;
+    font-size: 12px; color: #475569;
+    text-align: center; border: 1px dashed #cbd5e1;
+  }
+  @media print {
+    body { background: white; padding: 0; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    .sf-print-page { margin: 0 auto; }
+    .sf-print-note { display: none; }
+    .sf-card { box-shadow: none; break-inside: avoid; }
+  }
+`;
+
+const renderSummerCardHtml = ({ student, qrDataUrl, color, colorDark, programName }) => {
+  const logoSrc = `${window.location.origin}/fablab.png`;
+  const safe = (s) => String(s ?? '').replace(/[&<>"']/g, c => (
+    { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]
+  ));
+  return `
+    <div class="sf-card" dir="rtl" style="--sc:${color}; --scd:${colorDark};">
+      <div class="sf-card-top">
+        <div class="sf-card-brand">
+          <img src="${logoSrc}" alt="FabLab" class="sf-card-logo" />
+          <div>
+            <div class="sf-card-fablab">فاب لاب الأحساء</div>
+            <div class="sf-card-fablab-en">FABLAB</div>
+          </div>
+        </div>
+        <div class="sf-card-program-title">
+          <div class="sf-card-program-ar">صيف فاب لاب</div>
+          <div class="sf-card-program-en">SUMMER</div>
+        </div>
+      </div>
+      <div class="sf-card-body">
+        <div class="sf-card-name">${safe(student.name || '')}</div>
+        <div class="sf-card-field">
+          <span class="sf-card-field-label">الهوية</span>
+          <span class="sf-card-field-value mono">${safe(student.nationalId || '—')}</span>
+        </div>
+        ${student.age ? `<div class="sf-card-field">
+          <span class="sf-card-field-label">العمر</span>
+          <span class="sf-card-field-value">${safe(student.age)}</span>
+        </div>` : ''}
+        ${student.phone ? `<div class="sf-card-field">
+          <span class="sf-card-field-label">الجوال</span>
+          <span class="sf-card-field-value mono">${safe(student.phone)}</span>
+        </div>` : ''}
+      </div>
+      <div class="sf-card-course">
+        <div class="sf-card-course-name">${safe(programName || '—')}</div>
+      </div>
+      <div class="sf-card-bottom">
+        <img src="${qrDataUrl}" alt="QR" class="sf-card-qr" />
+        <div class="sf-card-qr-label">رمز الحضور</div>
+      </div>
+    </div>`;
+};
+
+const openCardsPrintWindow = (cards, isRTL) => {
+  if (cards.length === 0) {
+    toast.error(isRTL ? 'لا توجد بطاقات للطباعة' : 'No cards to print');
+    return;
+  }
+  const win = window.open('', '_blank', 'width=900,height=1100');
+  if (!win) {
+    toast.error(isRTL ? 'تم منع النوافذ المنبثقة' : 'Pop-up blocked — allow pop-ups');
+    return;
+  }
+  const pages = [];
+  for (let i = 0; i < cards.length; i += 4) {
+    pages.push(`<div class="sf-print-page">${cards.slice(i, i + 4).join('')}</div>`);
+  }
+  const note = isRTL
+    ? `${cards.length} بطاقة · ${pages.length} صفحة · حجم البطاقة: 72×102 ملم · اقطع حسب الخط المتقطع`
+    : `${cards.length} card(s) · ${pages.length} page(s) · Card size: 72×102 mm · Cut along the dashed line`;
+  win.document.open();
+  win.document.write(`<!DOCTYPE html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><title>${isRTL ? 'بطاقات صيف فاب لاب' : 'Summer FabLab Cards'}</title><style>${CARD_PRINT_CSS}</style></head><body><div class="sf-print-note">${note}</div>${pages.join('')}<script>window.onload=function(){setTimeout(function(){window.print()},500)}</script></body></html>`);
+  win.document.close();
+};
+
+const durationMin = (rec) => {
+  if (!rec?.checkInAt || !rec?.checkOutAt) return null;
+  const d = (new Date(rec.checkOutAt) - new Date(rec.checkInAt)) / 60000;
+  return Math.max(0, Math.round(d));
+};
+const fmtLogTime = (iso) => {
+  if (!iso) return '—';
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return '—';
+  const pad = (n) => String(n).padStart(2, '0');
+  return `${pad(d.getHours())}:${pad(d.getMinutes())}`;
+};
 
 // Standard FabLab sections (matches Registration / SectionAvailability).
 // Teachers can additionally type a custom section via the "Other" option.
@@ -469,6 +671,156 @@ const SummerFablab = () => {
     catch (err) { console.error(err); toast.error(isRTL ? 'خطأ' : 'Error'); }
   };
 
+  // ---------- ID cards, selection, attendance ----------
+  const [selectedStudentIds, setSelectedStudentIds] = useState(() => new Set());
+  const [printingCards, setPrintingCards] = useState(false);
+  const [attendanceOpen, setAttendanceOpen] = useState(false);
+
+  // Per-student attendance log modal
+  const [logStudent, setLogStudent] = useState(null);
+  const [logRecords, setLogRecords] = useState([]);
+  const [logLoading, setLogLoading] = useState(false);
+
+  const toggleSelectStudent = (id) => {
+    setSelectedStudentIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  };
+  const toggleSelectAllFiltered = () => {
+    setSelectedStudentIds(prev => {
+      const allIds = filteredStudents.map(s => s.studentId);
+      const allSelected = allIds.every(id => prev.has(id));
+      const next = new Set(prev);
+      if (allSelected) allIds.forEach(id => next.delete(id));
+      else             allIds.forEach(id => next.add(id));
+      return next;
+    });
+  };
+
+  const printOneStudentCard = async (s) => {
+    if (!s.nationalId) {
+      return toast.error(isRTL
+        ? 'رقم الهوية مطلوب لطباعة البطاقة'
+        : 'National ID is required to print an ID card');
+    }
+    setPrintingCards(true);
+    try {
+      const { data } = await api.get(`/summer/students/${s.studentId}/card`);
+      openCardsPrintWindow([renderSummerCardHtml(data)], isRTL);
+    } catch (err) {
+      console.error(err);
+      toast.error(err.response?.data?.messageAr || err.response?.data?.message
+        || (isRTL ? 'تعذر تحضير البطاقة' : 'Failed to prepare card'));
+    } finally {
+      setPrintingCards(false);
+    }
+  };
+
+  const printSelectedStudentCards = async () => {
+    const ids = [...selectedStudentIds];
+    if (ids.length === 0) {
+      return toast.warning(isRTL ? 'اختر طالباً واحداً على الأقل' : 'Select at least one student');
+    }
+    setPrintingCards(true);
+    try {
+      const { data } = await api.post('/summer/students/cards', { studentIds: ids });
+      const cards = (data.cards || []).map(renderSummerCardHtml);
+      if (data.skipped?.length) {
+        toast.warning(isRTL
+          ? `${data.skipped.length} طالب بدون رقم هوية تم تخطيه`
+          : `${data.skipped.length} student(s) skipped (no national ID)`);
+      }
+      openCardsPrintWindow(cards, isRTL);
+    } catch (err) {
+      console.error(err);
+      toast.error(isRTL ? 'تعذر تحضير البطاقات' : 'Failed to prepare cards');
+    } finally {
+      setPrintingCards(false);
+    }
+  };
+
+  const printAllStudentCards = async () => {
+    const ids = filteredStudents.filter(s => s.nationalId).map(s => s.studentId);
+    if (ids.length === 0) {
+      return toast.warning(isRTL
+        ? 'لا يوجد طلاب بأرقام هوية لطباعتهم'
+        : 'No students with national IDs to print');
+    }
+    setPrintingCards(true);
+    try {
+      const { data } = await api.post('/summer/students/cards', { studentIds: ids });
+      const cards = (data.cards || []).map(renderSummerCardHtml);
+      openCardsPrintWindow(cards, isRTL);
+    } catch (err) {
+      console.error(err);
+      toast.error(isRTL ? 'تعذر تحضير البطاقات' : 'Failed to prepare cards');
+    } finally {
+      setPrintingCards(false);
+    }
+  };
+
+  const openAttendanceLog = async (s) => {
+    setLogStudent(s);
+    setLogRecords([]);
+    setLogLoading(true);
+    try {
+      const { data } = await api.get(`/summer/students/${s.studentId}/attendance`);
+      setLogRecords(Array.isArray(data) ? data : []);
+    } catch (err) {
+      console.error(err);
+      toast.error(isRTL ? 'تعذر تحميل سجل الحضور' : 'Failed to load attendance log');
+    } finally {
+      setLogLoading(false);
+    }
+  };
+  const closeAttendanceLog = () => { setLogStudent(null); setLogRecords([]); };
+  const deleteLogRecord = async (rec) => {
+    if (!window.confirm(isRTL ? `حذف سجل ${rec.date}؟` : `Delete record for ${rec.date}?`)) return;
+    try {
+      await api.delete(`/summer/attendance/${rec.attendanceId}`);
+      setLogRecords(prev => prev.filter(r => r.attendanceId !== rec.attendanceId));
+      toast.success(isRTL ? 'تم الحذف' : 'Deleted');
+    } catch (err) {
+      console.error(err);
+      toast.error(isRTL ? 'فشل الحذف' : 'Delete failed');
+    }
+  };
+  const clearLogCheckout = async (rec) => {
+    if (!window.confirm(isRTL
+      ? `حذف تسجيل الخروج لتاريخ ${rec.date}؟ سيبقى تسجيل الدخول محفوظاً.`
+      : `Clear check-out for ${rec.date}? Check-in will remain.`)) return;
+    try {
+      await api.patch(`/summer/attendance/${rec.attendanceId}/checkout`);
+      setLogRecords(prev => prev.map(r => r.attendanceId === rec.attendanceId
+        ? { ...r, checkOutAt: null } : r));
+      toast.success(isRTL ? 'تم حذف تسجيل الخروج' : 'Check-out cleared');
+    } catch (err) {
+      console.error(err);
+      toast.error(isRTL ? 'فشل الحذف' : 'Clear failed');
+    }
+  };
+
+  const logSummary = (() => {
+    let total = 0, completed = 0, stillIn = 0, minutes = 0;
+    for (const r of logRecords) {
+      total++;
+      if (r.checkInAt && r.checkOutAt) {
+        completed++;
+        const d = durationMin(r);
+        if (d != null) minutes += d;
+      } else if (r.checkInAt) {
+        stillIn++;
+      }
+    }
+    return {
+      total, completed, stillIn,
+      hours: Math.floor(minutes / 60),
+      minutes: minutes % 60
+    };
+  })();
+
   // ---------- Render helpers ----------
   const teacherById = (id) => teachers.find(t => t.teacherId === id);
   const programById = (id) => programs.find(p => p.programId === id);
@@ -711,6 +1063,32 @@ const SummerFablab = () => {
                   <option key={p.programId} value={p.programId}>{p.name}</option>
                 ))}
               </select>
+              <button
+                className="summer-btn-secondary"
+                onClick={() => setAttendanceOpen(true)}
+                title={isRTL ? 'فتح صفحة الحضور المخصصة (USB scanner)' : 'Open dedicated attendance page'}
+                style={{ background: '#0ea5e9', color: '#fff', borderColor: '#0ea5e9' }}
+              >
+                {'📷'} {isRTL ? 'صفحة الحضور' : 'Attendance Page'}
+              </button>
+              <button
+                className="summer-btn-secondary"
+                onClick={printSelectedStudentCards}
+                disabled={printingCards || selectedStudentIds.size === 0}
+                title={isRTL ? 'طباعة بطاقات المحددين (٤ في ورقة A4)' : 'Print selected IDs (4 per A4 page)'}
+              >
+                {'🖨'} {isRTL
+                  ? `طباعة المحددين (${selectedStudentIds.size})`
+                  : `Print selected (${selectedStudentIds.size})`}
+              </button>
+              <button
+                className="summer-btn-secondary"
+                onClick={printAllStudentCards}
+                disabled={printingCards || filteredStudents.length === 0}
+                title={isRTL ? 'طباعة كل بطاقات الطلاب (٤ في الورقة)' : 'Print all IDs (4 per A4 page)'}
+              >
+                {'🖨'} {isRTL ? 'طباعة الكل ٤ في ورقة' : 'Print all (4-up)'}
+              </button>
               <button className="summer-btn-primary" onClick={() => openCreateStudent()}>
                 + {isRTL ? 'إضافة طالب' : 'Add Student'}
               </button>
@@ -725,15 +1103,64 @@ const SummerFablab = () => {
             </p>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
+              <div style={{
+                display: 'flex', alignItems: 'center', gap: '0.5rem',
+                padding: '0.5rem 0.75rem', background: '#f8fafc',
+                borderRadius: 8, fontSize: '0.82rem', color: '#475569'
+              }}>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', cursor: 'pointer' }}>
+                  <input
+                    type="checkbox"
+                    checked={filteredStudents.length > 0 && filteredStudents.every(s => selectedStudentIds.has(s.studentId))}
+                    onChange={toggleSelectAllFiltered}
+                  />
+                  <span>{isRTL ? 'تحديد الكل المرئي' : 'Select all visible'}</span>
+                </label>
+                {selectedStudentIds.size > 0 && (
+                  <button
+                    onClick={() => setSelectedStudentIds(new Set())}
+                    style={{
+                      marginInlineStart: 'auto',
+                      padding: '0.25rem 0.75rem', borderRadius: 6,
+                      border: '1px solid #cbd5e1', background: '#fff',
+                      cursor: 'pointer', fontSize: '0.78rem', fontFamily: 'inherit'
+                    }}
+                  >
+                    {isRTL ? 'إلغاء التحديد' : 'Clear selection'}
+                  </button>
+                )}
+              </div>
+
               {filteredStudents.map(s => {
                 const prog = s.program || programById(s.programId);
                 const expanded = openStudentId === s.studentId;
+                const selected = selectedStudentIds.has(s.studentId);
                 return (
                   <div key={s.studentId} className="summer-student-row">
                     <div className="summer-student-row-head">
+                      <input
+                        type="checkbox"
+                        checked={selected}
+                        onChange={() => toggleSelectStudent(s.studentId)}
+                        title={isRTL ? 'تحديد لطباعة البطاقة' : 'Select for card print'}
+                        style={{ marginInlineEnd: '0.5rem', cursor: 'pointer' }}
+                      />
                       <div className="summer-student-row-name">
                         <strong>{s.name}</strong>
                         {s.age && <span style={{ marginInlineStart: 8, color: '#64748b', fontSize: '0.82rem' }}>{s.age} {isRTL ? 'سنة' : 'yrs'}</span>}
+                        {!s.nationalId && (
+                          <span
+                            title={isRTL ? 'رقم الهوية مطلوب للبطاقة' : 'National ID required for the ID card'}
+                            style={{
+                              marginInlineStart: 8, padding: '2px 8px', borderRadius: 999,
+                              background: 'rgba(245,158,11,0.15)', color: '#92400e',
+                              fontSize: '0.68rem', fontWeight: 700,
+                              border: '1px solid rgba(245,158,11,0.35)'
+                            }}
+                          >
+                            {isRTL ? 'بدون هوية' : 'No ID'}
+                          </span>
+                        )}
                       </div>
                       <div className="summer-student-row-meta">
                         {prog && <span className="summer-volunteer-chip">{prog.name}</span>}
@@ -742,9 +1169,24 @@ const SummerFablab = () => {
                       <div style={{ display: 'flex', gap: '0.4rem' }}>
                         <button
                           className="summer-btn-secondary"
+                          onClick={() => printOneStudentCard(s)}
+                          disabled={printingCards || !s.nationalId}
+                          title={isRTL ? 'طباعة بطاقة QR للطالب' : 'Print QR ID card'}
+                        >
+                          {'📇'} {isRTL ? 'طباعة الهوية' : 'Print ID'}
+                        </button>
+                        <button
+                          className="summer-btn-secondary"
+                          onClick={() => openAttendanceLog(s)}
+                          title={isRTL ? 'سجل حضور الطالب (QR)' : 'QR attendance log'}
+                        >
+                          {'📅'} {isRTL ? 'سجل الحضور' : 'Log'}
+                        </button>
+                        <button
+                          className="summer-btn-secondary"
                           onClick={() => setOpenStudentId(expanded ? null : s.studentId)}
                         >
-                          {expanded ? (isRTL ? 'إخفاء الحضور' : 'Hide Attendance') : (isRTL ? 'الحضور' : 'Attendance')}
+                          {expanded ? (isRTL ? 'إخفاء الأيام' : 'Hide Days') : (isRTL ? 'أيام البرنامج' : 'Program Days')}
                         </button>
                         <button className="summer-btn-secondary" onClick={() => openEditStudent(s)}>{isRTL ? 'تعديل' : 'Edit'}</button>
                         <button className="summer-btn-danger" onClick={() => deleteStudent(s.studentId)}>{isRTL ? 'حذف' : 'Delete'}</button>
@@ -777,6 +1219,134 @@ const SummerFablab = () => {
               })}
             </div>
           )}
+        </div>
+      )}
+
+      {/* Dedicated attendance page (USB HID scanner) — shared across all programs */}
+      <UnifiedAttendancePage
+        open={attendanceOpen}
+        onClose={() => setAttendanceOpen(false)}
+        isRTL={isRTL}
+      />
+
+      {/* Per-student QR attendance log modal */}
+      {logStudent && (
+        <div
+          className="summer-modal-overlay"
+          onClick={closeAttendanceLog}
+          style={{ zIndex: 1200 }}
+        >
+          <div
+            className="summer-modal"
+            onClick={(e) => e.stopPropagation()}
+            style={{ maxWidth: 720, maxHeight: '88vh', display: 'flex', flexDirection: 'column' }}
+          >
+            <h3 style={{ margin: '0 0 12px 0', display: 'flex', alignItems: 'center', gap: 8 }}>
+              {'📅'} {isRTL ? `سجل الحضور — ${logStudent.name}` : `Attendance Log — ${logStudent.name}`}
+            </h3>
+
+            <div style={{
+              display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))',
+              gap: 8, marginBottom: 12
+            }}>
+              {[
+                { label: isRTL ? 'إجمالي الأيام' : 'Total days', value: logSummary.total },
+                { label: isRTL ? 'مكتملة' : 'Completed', value: logSummary.completed },
+                { label: isRTL ? 'لم يخرج بعد' : 'Still in', value: logSummary.stillIn },
+                { label: isRTL ? 'إجمالي الوقت' : 'Total time', value: `${logSummary.hours}h ${logSummary.minutes}m` }
+              ].map((stat, i) => (
+                <div key={i} style={{
+                  background: '#f8fafc', border: '1px solid #e2e8f0',
+                  borderRadius: 8, padding: '10px 12px', textAlign: 'center'
+                }}>
+                  <div style={{ fontSize: 11, color: '#64748b', fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5 }}>{stat.label}</div>
+                  <div style={{ fontSize: 18, fontWeight: 800, color: '#0f172a', marginTop: 3 }}>{stat.value}</div>
+                </div>
+              ))}
+            </div>
+
+            <div style={{ flex: 1, overflowY: 'auto', border: '1px solid #e2e8f0', borderRadius: 8 }}>
+              {logLoading ? (
+                <div style={{ padding: 30, textAlign: 'center', color: '#64748b' }}>
+                  {isRTL ? 'جارٍ التحميل...' : 'Loading...'}
+                </div>
+              ) : logRecords.length === 0 ? (
+                <div style={{ padding: 30, textAlign: 'center', color: '#94a3b8' }}>
+                  {isRTL ? 'لا يوجد سجل حضور بعد' : 'No attendance records yet'}
+                </div>
+              ) : (
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+                  <thead>
+                    <tr style={{ background: '#f8fafc' }}>
+                      <th style={{ padding: '8px 10px', textAlign: 'start', borderBottom: '1px solid #e2e8f0' }}>{isRTL ? 'التاريخ' : 'Date'}</th>
+                      <th style={{ padding: '8px 10px', textAlign: 'start', borderBottom: '1px solid #e2e8f0' }}>{isRTL ? 'الدخول' : 'Check In'}</th>
+                      <th style={{ padding: '8px 10px', textAlign: 'start', borderBottom: '1px solid #e2e8f0' }}>{isRTL ? 'الخروج' : 'Check Out'}</th>
+                      <th style={{ padding: '8px 10px', textAlign: 'start', borderBottom: '1px solid #e2e8f0' }}>{isRTL ? 'المدة' : 'Duration'}</th>
+                      <th style={{ padding: '8px 10px', textAlign: 'start', borderBottom: '1px solid #e2e8f0' }}>{isRTL ? 'الحالة' : 'Status'}</th>
+                      <th style={{ padding: '8px 10px', borderBottom: '1px solid #e2e8f0' }}></th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {logRecords.map(r => {
+                      const dur = durationMin(r);
+                      const completed = !!(r.checkInAt && r.checkOutAt);
+                      return (
+                        <tr key={r.attendanceId} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                          <td style={{ padding: '8px 10px', fontFamily: 'Consolas, monospace' }}>{r.date}</td>
+                          <td style={{ padding: '8px 10px', fontFamily: 'Consolas, monospace' }}>{fmtLogTime(r.checkInAt)}</td>
+                          <td style={{ padding: '8px 10px', fontFamily: 'Consolas, monospace' }}>{fmtLogTime(r.checkOutAt)}</td>
+                          <td style={{ padding: '8px 10px', fontFamily: 'Consolas, monospace' }}>{dur != null ? `${Math.floor(dur / 60)}h ${dur % 60}m` : '—'}</td>
+                          <td style={{ padding: '8px 10px' }}>
+                            <span style={{
+                              display: 'inline-block', padding: '2px 10px', borderRadius: 999,
+                              fontSize: 11, fontWeight: 700,
+                              background: completed ? 'rgba(34,197,94,0.12)' : 'rgba(245,158,11,0.15)',
+                              color: completed ? '#166534' : '#92400e',
+                              border: completed ? '1px solid rgba(34,197,94,0.35)' : '1px solid rgba(245,158,11,0.35)'
+                            }}>
+                              {completed ? (isRTL ? '✓ مكتمل' : '✓ Complete') : (isRTL ? '⏳ داخل الآن' : '⏳ Still in')}
+                            </span>
+                          </td>
+                          <td style={{ padding: '8px 10px' }}>
+                            <div style={{ display: 'flex', gap: 4 }}>
+                              {r.checkOutAt && (
+                                <button
+                                  onClick={() => clearLogCheckout(r)}
+                                  title={isRTL ? 'حذف تسجيل الخروج فقط' : 'Clear check-out only'}
+                                  style={{
+                                    padding: '3px 8px', borderRadius: 5,
+                                    border: '1px solid #f59e0b', background: '#fff',
+                                    color: '#d97706', cursor: 'pointer', fontFamily: 'inherit',
+                                    fontSize: 12, fontWeight: 700
+                                  }}
+                                >↩</button>
+                              )}
+                              <button
+                                onClick={() => deleteLogRecord(r)}
+                                title={isRTL ? 'حذف السجل بالكامل' : 'Delete entire record'}
+                                style={{
+                                  padding: '3px 8px', borderRadius: 5,
+                                  border: '1px solid #ef4444', background: '#fff',
+                                  color: '#ef4444', cursor: 'pointer', fontFamily: 'inherit',
+                                  fontSize: 12, fontWeight: 700
+                                }}
+                              >×</button>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              )}
+            </div>
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 12 }}>
+              <button className="summer-btn-secondary" onClick={closeAttendanceLog}>
+                {isRTL ? 'إغلاق' : 'Close'}
+              </button>
+            </div>
+          </div>
         </div>
       )}
 
