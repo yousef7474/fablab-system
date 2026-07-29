@@ -229,8 +229,30 @@ const SUB_TABS = [
 const emptyProgramForm = {
   name: '', teacherName: '', teacherIds: [], studentCount: '',
   startDate: '', endDate: '', startTime: '', endTime: '',
-  fablabSection: '', sectionVolunteers: [], extraVolunteers: '', notes: ''
+  fablabSection: '', sectionVolunteers: [], extraVolunteers: '', notes: '',
+  color: ''
 };
+
+// Preset colors offered in the program form. Kept small and distinct so
+// programs are visually easy to tell apart on cards and printed ID cards.
+const PROGRAM_COLOR_PALETTE = [
+  '#EE2329', // fablab red
+  '#f97316', // orange
+  '#f59e0b', // amber
+  '#eab308', // yellow
+  '#22c55e', // green
+  '#10b981', // emerald
+  '#14b8a6', // teal
+  '#06b6d4', // cyan
+  '#0ea5e9', // sky
+  '#3b82f6', // blue
+  '#6366f1', // indigo
+  '#8b5cf6', // violet
+  '#a855f7', // purple
+  '#d946ef', // fuchsia
+  '#ec4899', // pink
+  '#64748b'  // slate
+];
 const emptyTeacherForm = {
   source: 'manual', // 'manual' | 'employee' — see Teacher modal
   employeeId: '',
@@ -382,7 +404,8 @@ const SummerFablab = () => {
           extraVolunteers: saved.filter(n => !known.has(n)).join(', ')
         };
       })(),
-      notes: p.notes || ''
+      notes: p.notes || '',
+      color: p.color || ''
     });
     setShowProgramForm(true);
   };
@@ -955,10 +978,33 @@ const SummerFablab = () => {
                 const teacherLabel = isRTL
                   ? (assignedNames.length > 1 ? 'المعلمون:' : 'المعلم:')
                   : (assignedNames.length > 1 ? 'Teachers:' : 'Teacher:');
+                const cardColor = /^#[0-9a-fA-F]{6}$/.test(p.color || '') ? p.color : null;
                 return (
-                  <div key={p.programId} className="summer-card">
+                  <div
+                    key={p.programId}
+                    className="summer-card"
+                    style={cardColor ? {
+                      borderTop: `4px solid ${cardColor}`,
+                      position: 'relative'
+                    } : undefined}
+                  >
                     <div className="summer-card-head">
-                      <strong className="summer-card-name">{p.name}</strong>
+                      <strong className="summer-card-name">
+                        {cardColor && (
+                          <span
+                            title={isRTL ? 'لون البرنامج' : 'Program color'}
+                            style={{
+                              display: 'inline-block', width: 10, height: 10,
+                              borderRadius: '50%',
+                              background: cardColor,
+                              marginInlineEnd: 6,
+                              verticalAlign: 'middle',
+                              boxShadow: `0 0 0 2px ${cardColor}33`
+                            }}
+                          />
+                        )}
+                        {p.name}
+                      </strong>
                       <span className="summer-card-section">{sectionLabel(p.fablabSection, isRTL)}</span>
                     </div>
                     <div className="summer-card-meta">
@@ -1523,6 +1569,77 @@ const SummerFablab = () => {
                     <option key={s.value} value={s.value}>{isRTL ? s.labelAr : s.labelEn}</option>
                   ))}
                 </select>
+              </div>
+              <div className="summer-field full">
+                <label>
+                  {isRTL ? 'لون البرنامج' : 'Program Color'}
+                  <span style={{ marginInlineStart: 8, color: '#64748b', fontWeight: 400, fontSize: '0.78rem' }}>
+                    {isRTL ? '· يُطبع على بطاقات الطلاب' : '· printed on student ID cards'}
+                  </span>
+                </label>
+                <div style={{
+                  display: 'flex', flexWrap: 'wrap', gap: 6,
+                  padding: '8px 10px',
+                  background: '#fff',
+                  border: '1.5px solid #e2e8f0',
+                  borderRadius: 8,
+                  alignItems: 'center'
+                }}>
+                  {PROGRAM_COLOR_PALETTE.map(hex => {
+                    const active = (programForm.color || '').toLowerCase() === hex.toLowerCase();
+                    return (
+                      <button
+                        key={hex}
+                        type="button"
+                        onClick={() => setProgramForm({ ...programForm, color: hex })}
+                        title={hex}
+                        style={{
+                          width: 28, height: 28, borderRadius: 8,
+                          background: hex,
+                          border: active ? '3px solid #0f172a' : '2px solid #fff',
+                          boxShadow: active
+                            ? `0 0 0 2px ${hex}, 0 2px 6px rgba(0,0,0,0.15)`
+                            : '0 0 0 1px #e2e8f0',
+                          cursor: 'pointer',
+                          transition: 'transform 0.1s',
+                          transform: active ? 'scale(1.1)' : 'scale(1)'
+                        }}
+                      />
+                    );
+                  })}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginInlineStart: 6, borderInlineStart: '1px solid #e2e8f0', paddingInlineStart: 10 }}>
+                    <label
+                      title={isRTL ? 'اختر لوناً مخصصاً' : 'Pick a custom color'}
+                      style={{ display: 'inline-flex', alignItems: 'center', gap: 4, cursor: 'pointer' }}
+                    >
+                      <input
+                        type="color"
+                        value={programForm.color || '#f97316'}
+                        onChange={(e) => setProgramForm({ ...programForm, color: e.target.value })}
+                        style={{ width: 32, height: 30, padding: 0, border: '1.5px solid #e2e8f0', borderRadius: 6, cursor: 'pointer' }}
+                      />
+                      <span style={{ fontSize: '0.75rem', color: '#64748b', fontWeight: 600 }}>
+                        {isRTL ? 'مخصص' : 'Custom'}
+                      </span>
+                    </label>
+                  </div>
+                  {programForm.color && (
+                    <button
+                      type="button"
+                      onClick={() => setProgramForm({ ...programForm, color: '' })}
+                      title={isRTL ? 'إزالة اللون (سيستخدم لون القسم)' : 'Clear (use section default)'}
+                      style={{
+                        marginInlineStart: 'auto',
+                        padding: '4px 10px', borderRadius: 6,
+                        border: '1px solid #e2e8f0', background: '#fff',
+                        color: '#64748b', cursor: 'pointer', fontSize: '0.75rem',
+                        fontWeight: 600, fontFamily: 'inherit'
+                      }}
+                    >
+                      {isRTL ? 'إزالة' : 'Clear'}
+                    </button>
+                  )}
+                </div>
               </div>
               <div className="summer-field">
                 <label>{isRTL ? 'تاريخ البداية' : 'Start Date'} *</label>

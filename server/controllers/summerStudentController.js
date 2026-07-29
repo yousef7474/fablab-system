@@ -30,8 +30,13 @@ const darken = (hex, amount = 0.55) => {
   return '#' + ((1 << 24) | (r << 16) | (g << 8) | b).toString(16).slice(1);
 };
 
+// A per-program `color` (admin-picked) beats the fablabSection default —
+// so a Kids' Club program the admin colored magenta prints magenta cards,
+// not the standard section teal.
+const isHexColor = (s) => typeof s === 'string' && /^#[0-9a-fA-F]{6}$/.test(s.trim());
 const colorForProgram = (program) => {
   if (!program) return DEFAULT_SECTION_COLOR;
+  if (isHexColor(program.color)) return program.color;
   return SECTION_COLORS[program.fablabSection] || DEFAULT_SECTION_COLOR;
 };
 

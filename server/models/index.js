@@ -417,6 +417,17 @@ const syncDatabase = async () => {
       }
     }
 
+    // Same story for the per-program color column.
+    try {
+      await sequelize.query(
+        `ALTER TABLE summer_programs ADD COLUMN IF NOT EXISTS "color" VARCHAR(20)`
+      );
+    } catch (migrationError) {
+      if (!/does not exist/i.test(migrationError.message)) {
+        console.log('summer_programs.color migration note:', migrationError.message);
+      }
+    }
+
     // Backfill: for any program that still has the legacy single
     // teacherId set but an empty teacherIds array, seed the array from
     // the single field so existing programs render correctly under the

@@ -74,6 +74,11 @@ const SummerProgram = sequelize.define('SummerProgram', {
     type: DataTypes.TEXT,
     allowNull: true
   },
+  color: {
+    type: DataTypes.STRING(20),
+    allowNull: true,
+    comment: 'Hex color (#rrggbb) — themes the program card + every enrolled student\'s ID card. Overrides the section-derived default when set.'
+  },
   isActive: {
     type: DataTypes.BOOLEAN,
     defaultValue: true

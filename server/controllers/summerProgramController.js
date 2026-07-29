@@ -1,4 +1,42 @@
-const { SummerProgram, SummerTeacher, SummerStudent, Admin } = require('../models');
+const { Op } = require('sequelize');
+const { SummerProgram, SummerTeacher, SummerStudent, Volunteer, Admin } = require('../models');
+
+// When a program is saved with a sectionVolunteers name array, we mirror
+// that selection onto the actual Volunteer records so the Summer FabLab
+// → Volunteers tab (which filters by summerProgramId) shows the same
+// people. Volunteers not in the new list but previously linked to this
+// program get unlinked. Non-existent names (free-text people who aren't
+// in the Volunteers table) are silently ignored — they still live on
+// the program's sectionVolunteers JSON column.
+const syncSectionVolunteerLinks = async (programId, names) => {
+  if (!programId) return;
+  const wanted = Array.isArray(names) ? names.map(n => String(n || '').trim()).filter(Boolean) : [];
+
+  // (1) Un-link volunteers previously in this program but no longer named
+  const currentlyLinked = await Volunteer.findAll({
+    where: { summerProgramId: programId },
+    attributes: ['volunteerId', 'name']
+  });
+  const wantedSet = new Set(wanted);
+  const toUnlink = currentlyLinked
+    .filter(v => !wantedSet.has(v.name))
+    .map(v => v.volunteerId);
+  if (toUnlink.length) {
+    await Volunteer.update(
+      { summerProgramId: null },
+      { where: { volunteerId: { [Op.in]: toUnlink } } }
+    );
+  }
+
+  // (2) Link volunteers whose names match. Names that don't match any
+  // Volunteer record are ignored (they might be free-text extras).
+  if (wanted.length) {
+    await Volunteer.update(
+      { summerProgramId: programId },
+      { where: { name: { [Op.in]: wanted } } }
+    );
+  }
+};
 
 exports.list = async (req, res) => {
   try {
@@ -21,7 +59,7 @@ exports.create = async (req, res) => {
   try {
     const {
       name, teacherName, teacherId, teacherIds, studentCount, startDate, endDate,
-      startTime, endTime, fablabSection, sectionVolunteers, notes
+      startTime, endTime, fablabSection, sectionVolunteers, notes, color
     } = req.body || {};
 
     if (!name || !startDate || !endDate) {
@@ -58,9 +96,14 @@ exports.create = async (req, res) => {
       endTime: endTime || null,
       fablabSection: fablabSection || null,
       sectionVolunteers: Array.isArray(sectionVolunteers) ? sectionVolunteers : [],
+      color: color || null,
       notes: notes || null,
       createdById: req.admin?.adminId || null
     });
+
+    // Mirror the sectionVolunteers list onto the actual Volunteer
+    // records so they appear under the Summer Volunteers tab.
+    await syncSectionVolunteerLinks(program.programId, sectionVolunteers);
 
     // Sanity re-read so the client sees whatever Postgres actually
     // stored (helpful when debugging column-missing issues).
@@ -80,7 +123,7 @@ exports.update = async (req, res) => {
     const fields = [
       'name', 'teacherName', 'teacherId', 'teacherIds', 'studentCount',
       'startDate', 'endDate', 'startTime', 'endTime',
-      'fablabSection', 'sectionVolunteers', 'notes'
+      'fablabSection', 'sectionVolunteers', 'notes', 'color'
     ];
     const patch = {};
     for (const f of fields) {
@@ -105,6 +148,14 @@ exports.update = async (req, res) => {
       program.setDataValue('teacherIds', patch.teacherIds);
       program.changed('teacherIds', true);
       await program.save({ fields: ['teacherIds'] });
+    }
+    // Same JSON dirty-tracking issue for sectionVolunteers.
+    if (patch.sectionVolunteers !== undefined) {
+      program.setDataValue('sectionVolunteers', patch.sectionVolunteers);
+      program.changed('sectionVolunteers', true);
+      await program.save({ fields: ['sectionVolunteers'] });
+      // Mirror the updated list onto the actual Volunteer records.
+      await syncSectionVolunteerLinks(program.programId, patch.sectionVolunteers);
     }
 
     // Re-read from DB so the caller sees the actually-persisted state.
