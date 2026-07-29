@@ -45,6 +45,8 @@ const VolunteerManagement = () => {
   const [contractTarget, setContractTarget] = useState(null);
   const [selectedOpportunity, setSelectedOpportunity] = useState(null);
   const [selectedVolunteer, setSelectedVolunteer] = useState(null);
+  // Multi-select for bulk ID-card printing. Set of volunteerIds.
+  const [selectedIdsForPrint, setSelectedIdsForPrint] = useState(() => new Set());
   const [volunteerLoading, setVolunteerLoading] = useState(false);
   const [volunteerRatingForm, setVolunteerRatingForm] = useState({
     volunteerId: '',
@@ -1406,6 +1408,52 @@ const VolunteerManagement = () => {
     }
   };
 
+  // Multi-select helpers for the "Print Selected" flow
+  const toggleSelectVolunteerForPrint = (id) => {
+    setSelectedIdsForPrint(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  };
+  const toggleSelectAllVolunteersForPrint = () => {
+    setSelectedIdsForPrint(prev => {
+      const ids = volunteers.map(v => v.volunteerId);
+      const allSelected = ids.length > 0 && ids.every(id => prev.has(id));
+      const next = new Set(prev);
+      if (allSelected) ids.forEach(id => next.delete(id));
+      else             ids.forEach(id => next.add(id));
+      return next;
+    });
+  };
+  const clearVolunteerPrintSelection = () => setSelectedIdsForPrint(new Set());
+
+  const handlePrintSelectedVolunteerIDCards = async () => {
+    const ids = [...selectedIdsForPrint];
+    if (ids.length === 0) {
+      toast.warning(isRTL ? 'اختر متطوعاً واحداً على الأقل' : 'Select at least one volunteer');
+      return;
+    }
+    try {
+      toast.info(isRTL ? 'جارٍ توليد البطاقات...' : 'Generating cards...');
+      const { data } = await api.post('/volunteers/cards', { volunteerIds: ids });
+      const cardHtmls = (data.cards || []).map(c => buildVolunteerCardHTML(c.volunteer, c.qrDataUrl));
+      if (cardHtmls.length === 0) {
+        toast.error(isRTL ? 'لا توجد بطاقات للطباعة' : 'No cards to print');
+        return;
+      }
+      // 4 cards per A4 portrait; any extras spill to next pages
+      // automatically via chunkCards + `.page + .page { page-break-before }`.
+      const pages = chunkCards(cardHtmls, 4)
+        .map(page => `<div class="page">${page.join('')}</div>`)
+        .join('');
+      openVolunteerPrintWindow(pages);
+    } catch (err) {
+      console.error('Error printing selected volunteer cards:', err);
+      toast.error(isRTL ? 'فشل طباعة البطاقات' : 'Failed to print cards');
+    }
+  };
+
 
   const handleExportAllVolunteers = () => {
     const headers = [
@@ -1472,6 +1520,25 @@ const VolunteerManagement = () => {
                   </svg>
                   {isRTL ? 'إضافة متطوع' : 'Add Volunteer'}
                 </button>
+                {volunteers.length > 0 && selectedIdsForPrint.size > 0 && (
+                  <button
+                    className="add-opportunity-btn"
+                    style={{ background: '#7c3aed' }}
+                    onClick={handlePrintSelectedVolunteerIDCards}
+                    title={isRTL
+                      ? `طباعة بطاقات المتطوعين المحددين (4 لكل A4)`
+                      : `Print selected volunteer ID cards (4 per A4)`}
+                  >
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <polyline points="6 9 6 2 18 2 18 9"/>
+                      <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/>
+                      <rect x="6" y="14" width="12" height="8"/>
+                    </svg>
+                    {isRTL
+                      ? `طباعة المحددين (${selectedIdsForPrint.size})`
+                      : `Print Selected (${selectedIdsForPrint.size})`}
+                  </button>
+                )}
                 {volunteers.length > 0 && (
                   <button
                     className="add-opportunity-btn"
@@ -1540,6 +1607,45 @@ const VolunteerManagement = () => {
               </div>
             </div>
 
+            {volunteers.length > 0 && (
+              <div style={{
+                display: 'flex', alignItems: 'center', gap: 12,
+                padding: '10px 14px', margin: '0 0 12px 0',
+                background: 'rgba(124, 58, 237, 0.06)',
+                border: '1px solid rgba(124, 58, 237, 0.18)',
+                borderRadius: 10, fontSize: 13, flexWrap: 'wrap'
+              }}>
+                <label style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', fontWeight: 700, color: '#4c1d95' }}>
+                  <input
+                    type="checkbox"
+                    checked={volunteers.length > 0 && volunteers.every(v => selectedIdsForPrint.has(v.volunteerId))}
+                    onChange={toggleSelectAllVolunteersForPrint}
+                    style={{ width: 16, height: 16, cursor: 'pointer' }}
+                  />
+                  <span>{isRTL ? 'تحديد الكل للطباعة' : 'Select all for print'}</span>
+                </label>
+                <span style={{ color: '#6d28d9', fontSize: 12 }}>
+                  {isRTL
+                    ? `${selectedIdsForPrint.size} محدد · اضغط "طباعة المحددين" بالأعلى`
+                    : `${selectedIdsForPrint.size} selected · click "Print Selected" above`}
+                </span>
+                {selectedIdsForPrint.size > 0 && (
+                  <button
+                    onClick={clearVolunteerPrintSelection}
+                    style={{
+                      marginInlineStart: 'auto',
+                      padding: '4px 12px', borderRadius: 6,
+                      border: '1px solid #c4b5fd', background: '#fff',
+                      color: '#6d28d9', cursor: 'pointer', fontSize: 12,
+                      fontWeight: 700, fontFamily: 'inherit'
+                    }}
+                  >
+                    {isRTL ? 'إلغاء التحديد' : 'Clear selection'}
+                  </button>
+                )}
+              </div>
+            )}
+
             <div className="volunteers-grid">
               {volunteers.length === 0 ? (
                 <div className="empty-state" style={{ gridColumn: '1 / -1' }}>
@@ -1553,7 +1659,40 @@ const VolunteerManagement = () => {
                 </div>
               ) : (
                 volunteers.map(volunteer => (
-                  <div key={volunteer.volunteerId} className="volunteer-card">
+                  <div
+                    key={volunteer.volunteerId}
+                    className="volunteer-card"
+                    style={{
+                      position: 'relative',
+                      ...(selectedIdsForPrint.has(volunteer.volunteerId)
+                        ? { outline: '2px solid #7c3aed', outlineOffset: -1 }
+                        : {})
+                    }}
+                  >
+                    <label
+                      title={isRTL ? 'تحديد لطباعة البطاقة' : 'Select for card print'}
+                      style={{
+                        position: 'absolute', top: 10, insetInlineStart: 10,
+                        display: 'inline-flex', alignItems: 'center', gap: 4,
+                        padding: '4px 8px', borderRadius: 8,
+                        background: selectedIdsForPrint.has(volunteer.volunteerId) ? '#7c3aed' : 'rgba(255,255,255,0.95)',
+                        border: '1px solid ' + (selectedIdsForPrint.has(volunteer.volunteerId) ? '#7c3aed' : '#e5e7eb'),
+                        cursor: 'pointer', zIndex: 2,
+                        color: selectedIdsForPrint.has(volunteer.volunteerId) ? '#fff' : '#475569',
+                        fontSize: 11, fontWeight: 800, letterSpacing: 0.3
+                      }}
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={selectedIdsForPrint.has(volunteer.volunteerId)}
+                        onChange={() => toggleSelectVolunteerForPrint(volunteer.volunteerId)}
+                        style={{ width: 14, height: 14, cursor: 'pointer', margin: 0 }}
+                      />
+                      {selectedIdsForPrint.has(volunteer.volunteerId)
+                        ? (isRTL ? '✓ محدد' : '✓ Selected')
+                        : (isRTL ? 'تحديد' : 'Select')}
+                    </label>
                     <div className="volunteer-header">
                       <div className="volunteer-avatar">
                         {volunteer.name?.charAt(0) || 'V'}
