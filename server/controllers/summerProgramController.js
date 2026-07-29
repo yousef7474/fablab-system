@@ -62,7 +62,10 @@ exports.create = async (req, res) => {
       createdById: req.admin?.adminId || null
     });
 
-    res.status(201).json(program);
+    // Sanity re-read so the client sees whatever Postgres actually
+    // stored (helpful when debugging column-missing issues).
+    const fresh = await SummerProgram.findByPk(program.programId);
+    res.status(201).json(fresh || program);
   } catch (err) {
     console.error('Error creating summer program:', err);
     res.status(500).json({ message: 'Server error', detail: err.message });
@@ -94,7 +97,19 @@ exports.update = async (req, res) => {
     }
 
     await program.update(patch);
-    res.json(program);
+    // Sequelize's JSON dirty-tracking sometimes misses in-place array
+    // replacements. Force-persist the array by explicitly setting it
+    // and marking the field changed, then saving. Safe no-op if the
+    // update() above already wrote it.
+    if (patch.teacherIds !== undefined) {
+      program.setDataValue('teacherIds', patch.teacherIds);
+      program.changed('teacherIds', true);
+      await program.save({ fields: ['teacherIds'] });
+    }
+
+    // Re-read from DB so the caller sees the actually-persisted state.
+    const fresh = await SummerProgram.findByPk(program.programId);
+    res.json(fresh || program);
   } catch (err) {
     console.error('Error updating summer program:', err);
     res.status(500).json({ message: 'Server error', detail: err.message });

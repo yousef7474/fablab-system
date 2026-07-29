@@ -404,6 +404,36 @@ const syncDatabase = async () => {
       }
     }
 
+    // Sequelize's sync({ alter: true }) is unreliable at adding JSON
+    // columns on Postgres, so we explicitly add SummerProgram.teacherIds
+    // if it's missing. Idempotent — safe to run on every boot.
+    try {
+      await sequelize.query(
+        `ALTER TABLE summer_programs ADD COLUMN IF NOT EXISTS "teacherIds" JSON DEFAULT '[]'::json`
+      );
+    } catch (migrationError) {
+      if (!/does not exist/i.test(migrationError.message)) {
+        console.log('summer_programs.teacherIds migration note:', migrationError.message);
+      }
+    }
+
+    // Backfill: for any program that still has the legacy single
+    // teacherId set but an empty teacherIds array, seed the array from
+    // the single field so existing programs render correctly under the
+    // new multi-teacher UI.
+    try {
+      await sequelize.query(
+        `UPDATE summer_programs
+            SET "teacherIds" = json_build_array("teacherId")
+          WHERE "teacherId" IS NOT NULL
+            AND ("teacherIds" IS NULL OR "teacherIds"::text = '[]')`
+      );
+    } catch (backfillError) {
+      if (!/does not exist/i.test(backfillError.message)) {
+        console.log('summer_programs.teacherIds backfill note:', backfillError.message);
+      }
+    }
+
     await sequelize.sync({ alter: true });
     console.log('✅ Database synchronized successfully.');
 
