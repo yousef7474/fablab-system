@@ -227,7 +227,7 @@ const SUB_TABS = [
 ];
 
 const emptyProgramForm = {
-  name: '', teacherName: '', teacherId: '', studentCount: '',
+  name: '', teacherName: '', teacherIds: [], studentCount: '',
   startDate: '', endDate: '', startTime: '', endTime: '',
   fablabSection: '', sectionVolunteers: [], extraVolunteers: '', notes: ''
 };
@@ -355,10 +355,16 @@ const SummerFablab = () => {
   };
   const openEditProgram = (p) => {
     setEditingProgramId(p.programId);
+    // teacherIds is the new multi-teacher shape. If a program was saved
+    // under the old single-teacherId schema, seed from that so nothing
+    // gets lost when reopening pre-migration records.
+    const savedTeacherIds = Array.isArray(p.teacherIds) && p.teacherIds.length
+      ? p.teacherIds
+      : (p.teacherId ? [p.teacherId] : []);
     setProgramForm({
       name: p.name || '',
       teacherName: p.teacherName || '',
-      teacherId: p.teacherId || '',
+      teacherIds: savedTeacherIds,
       studentCount: p.studentCount != null ? String(p.studentCount) : '',
       startDate: (p.startDate || '').slice(0, 10),
       endDate: (p.endDate || '').slice(0, 10),
@@ -395,7 +401,7 @@ const SummerFablab = () => {
     const allNames = [...(programForm.sectionVolunteers || []), ...extras];
     const payload = {
       ...programForm,
-      teacherId: programForm.teacherId || null,
+      teacherIds: Array.isArray(programForm.teacherIds) ? programForm.teacherIds : [],
       studentCount: programForm.studentCount === '' ? 0 : Number(programForm.studentCount),
       sectionVolunteers: allNames
     };
@@ -934,8 +940,21 @@ const SummerFablab = () => {
           ) : (
             <div className="summer-grid">
               {programs.map(p => {
-                const t = p.teacher || (p.teacherId ? teacherById(p.teacherId) : null);
+                // Resolve every assigned teacher: prefer the new
+                // teacherIds array, fall back to the legacy single
+                // teacherId, then to the free-text teacherName field
+                // for programs that were never linked to a record.
+                const assignedIds = Array.isArray(p.teacherIds) && p.teacherIds.length
+                  ? p.teacherIds
+                  : (p.teacherId ? [p.teacherId] : []);
+                const assignedNames = assignedIds
+                  .map(id => teacherById(id)?.name)
+                  .filter(Boolean);
+                if (assignedNames.length === 0 && p.teacherName) assignedNames.push(p.teacherName);
                 const studentNumActual = Array.isArray(p.students) ? p.students.length : 0;
+                const teacherLabel = isRTL
+                  ? (assignedNames.length > 1 ? 'المعلمون:' : 'المعلم:')
+                  : (assignedNames.length > 1 ? 'Teachers:' : 'Teacher:');
                 return (
                   <div key={p.programId} className="summer-card">
                     <div className="summer-card-head">
@@ -943,7 +962,14 @@ const SummerFablab = () => {
                       <span className="summer-card-section">{sectionLabel(p.fablabSection, isRTL)}</span>
                     </div>
                     <div className="summer-card-meta">
-                      <div><span>{isRTL ? 'المعلم:' : 'Teacher:'}</span> {t ? t.name : (p.teacherName || '—')}</div>
+                      <div>
+                        <span>{teacherLabel}</span>{' '}
+                        {assignedNames.length === 0
+                          ? '—'
+                          : assignedNames.map((n, i) => (
+                              <span key={i} className="summer-volunteer-chip" style={{ marginInlineEnd: 4 }}>{n}</span>
+                            ))}
+                      </div>
                       <div>
                         <span>{isRTL ? 'الفترة:' : 'Dates:'}</span> {(p.startDate || '').slice(0,10)} → {(p.endDate || '').slice(0,10)}
                       </div>
@@ -1424,27 +1450,66 @@ const SummerFablab = () => {
                 <input value={programForm.name} onChange={(e) => setProgramForm({ ...programForm, name: e.target.value })} />
               </div>
               <div className="summer-field full">
-                <label>{isRTL ? 'المعلم المسؤول' : 'Assigned Teacher'}</label>
-                <select
-                  value={programForm.teacherId}
-                  onChange={(e) => {
-                    const t = teacherById(e.target.value);
-                    setProgramForm({
-                      ...programForm,
-                      teacherId: e.target.value,
-                      teacherName: t ? t.name : programForm.teacherName
-                    });
-                  }}
-                >
-                  <option value="">— {isRTL ? 'بدون أو اكتب الاسم بالأسفل' : 'None or type name below'} —</option>
-                  {teachers.map(t => (
-                    <option key={t.teacherId} value={t.teacherId}>{t.name}{t.fablabSection ? ` — ${sectionLabel(t.fablabSection, isRTL)}` : ''}</option>
-                  ))}
-                </select>
+                <label>
+                  {isRTL ? 'المعلمون المسؤولون' : 'Assigned Teachers'}
+                  {programForm.teacherIds.length > 0 && (
+                    <span style={{ marginInlineStart: 8, color: '#0ea5e9', fontWeight: 700, fontSize: '0.78rem' }}>
+                      · {programForm.teacherIds.length} {isRTL ? 'محدد' : 'selected'}
+                    </span>
+                  )}
+                </label>
+                {teachers.length === 0 ? (
+                  <p style={{ fontSize: '0.8rem', color: '#94a3b8', margin: '0.25rem 0' }}>
+                    {isRTL
+                      ? 'لا يوجد معلمون. أضفهم من تبويب المعلمين أولاً، أو اكتب الاسم في الحقل بالأسفل.'
+                      : 'No teachers yet. Add some from the Teachers tab first, or type a name in the free-text field below.'}
+                  </p>
+                ) : (
+                  <div style={{
+                    border: '1.5px solid #e2e8f0', borderRadius: 8, padding: '0.5rem',
+                    maxHeight: 200, overflowY: 'auto', background: '#fff'
+                  }}>
+                    {teachers.map(t => {
+                      const checked = (programForm.teacherIds || []).includes(t.teacherId);
+                      return (
+                        <label key={t.teacherId} style={{
+                          display: 'flex', alignItems: 'center', gap: '0.5rem',
+                          padding: '0.3rem 0.4rem', cursor: 'pointer',
+                          fontSize: '0.86rem', borderRadius: 4,
+                          background: checked ? '#e0f2fe' : 'transparent'
+                        }}>
+                          <input
+                            type="checkbox"
+                            checked={checked}
+                            onChange={(e) => {
+                              const current = programForm.teacherIds || [];
+                              setProgramForm({
+                                ...programForm,
+                                teacherIds: e.target.checked
+                                  ? [...current, t.teacherId]
+                                  : current.filter(id => id !== t.teacherId)
+                              });
+                            }}
+                          />
+                          <span style={{ flex: 1 }}>{t.name}</span>
+                          {t.fablabSection && (
+                            <span style={{ fontSize: '0.72rem', color: '#64748b' }}>
+                              {sectionLabel(t.fablabSection, isRTL)}
+                            </span>
+                          )}
+                        </label>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
               <div className="summer-field full">
-                <label>{isRTL ? 'أو اسم المعلم (نص حر)' : 'Or Teacher Name (free text)'}</label>
-                <input value={programForm.teacherName} onChange={(e) => setProgramForm({ ...programForm, teacherName: e.target.value })} />
+                <label>{isRTL ? 'أو اسم إضافي (نص حر — لغير المسجلين)' : 'Or Extra Name (free text — for unregistered)'}</label>
+                <input
+                  value={programForm.teacherName}
+                  onChange={(e) => setProgramForm({ ...programForm, teacherName: e.target.value })}
+                  placeholder={isRTL ? 'مثال: أ. علي (مدرب مؤقت)' : 'e.g. Ali (temporary trainer)'}
+                />
               </div>
               <div className="summer-field">
                 <label>{isRTL ? 'عدد الطلاب' : 'Number of Students'}</label>

@@ -20,7 +20,7 @@ exports.list = async (req, res) => {
 exports.create = async (req, res) => {
   try {
     const {
-      name, teacherName, teacherId, studentCount, startDate, endDate,
+      name, teacherName, teacherId, teacherIds, studentCount, startDate, endDate,
       startTime, endTime, fablabSection, sectionVolunteers, notes
     } = req.body || {};
 
@@ -37,10 +37,20 @@ exports.create = async (req, res) => {
       });
     }
 
+    // Multi-teacher: accept teacherIds array (new). Fall back to the
+    // legacy single teacherId if the new field wasn't sent so old
+    // clients keep working. Keep the legacy `teacherId` column in sync
+    // with the first entry so `include: teacher` (single belongsTo)
+    // keeps rendering something sensible.
+    const teacherIdArr = Array.isArray(teacherIds)
+      ? teacherIds.filter(Boolean)
+      : (teacherId ? [teacherId] : []);
+
     const program = await SummerProgram.create({
       name,
       teacherName: teacherName || null,
-      teacherId: teacherId || null,
+      teacherId: teacherIdArr[0] || null,
+      teacherIds: teacherIdArr,
       studentCount: studentCount != null ? Number(studentCount) : 0,
       startDate,
       endDate,
@@ -65,8 +75,9 @@ exports.update = async (req, res) => {
     if (!program) return res.status(404).json({ message: 'Program not found' });
 
     const fields = [
-      'name', 'teacherName', 'teacherId', 'studentCount', 'startDate', 'endDate',
-      'startTime', 'endTime', 'fablabSection', 'sectionVolunteers', 'notes'
+      'name', 'teacherName', 'teacherId', 'teacherIds', 'studentCount',
+      'startDate', 'endDate', 'startTime', 'endTime',
+      'fablabSection', 'sectionVolunteers', 'notes'
     ];
     const patch = {};
     for (const f of fields) {
@@ -74,6 +85,13 @@ exports.update = async (req, res) => {
     }
     if (patch.fablabSection === '') patch.fablabSection = null;
     if (patch.studentCount != null) patch.studentCount = Number(patch.studentCount);
+
+    // Keep the legacy single `teacherId` column in sync with the new
+    // multi-teacher array so `include: teacher` still resolves.
+    if (patch.teacherIds !== undefined) {
+      patch.teacherIds = Array.isArray(patch.teacherIds) ? patch.teacherIds.filter(Boolean) : [];
+      patch.teacherId = patch.teacherIds[0] || null;
+    }
 
     await program.update(patch);
     res.json(program);

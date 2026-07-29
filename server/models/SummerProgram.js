@@ -23,7 +23,13 @@ const SummerProgram = sequelize.define('SummerProgram', {
   teacherId: {
     type: DataTypes.UUID,
     allowNull: true,
-    comment: 'FK to SummerTeacher when a teacher record is selected.'
+    comment: 'Legacy single teacher FK — kept in sync with teacherIds[0] for back-compat. New code should read teacherIds.'
+  },
+  teacherIds: {
+    type: DataTypes.JSON,
+    allowNull: true,
+    defaultValue: [],
+    comment: 'Multi-teacher assignment — array of SummerTeacher UUIDs. Programs can have multiple assigned teachers.'
   },
   studentCount: {
     type: DataTypes.INTEGER,
