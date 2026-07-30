@@ -428,6 +428,36 @@ const syncDatabase = async () => {
       }
     }
 
+    // One-shot backfill: link volunteers whose names appear in some
+    // program's sectionVolunteers JSON array but whose summerProgramId
+    // is still NULL. Idempotent — only touches unlinked volunteers, so
+    // it never clobbers a manual link done via the Volunteers tab.
+    // Runs every boot but is a no-op once the data is aligned.
+    try {
+      const [rows] = await sequelize.query(
+        `UPDATE volunteers v
+            SET "summerProgramId" = sub.program_id
+           FROM (
+             SELECT p."programId" AS program_id,
+                    jsonb_array_elements_text(p."sectionVolunteers"::jsonb) AS vname
+               FROM summer_programs p
+              WHERE p."isActive" = true
+                AND p."sectionVolunteers" IS NOT NULL
+                AND jsonb_typeof(p."sectionVolunteers"::jsonb) = 'array'
+           ) sub
+          WHERE v.name = sub.vname
+            AND v."summerProgramId" IS NULL
+        RETURNING v."volunteerId"`
+      );
+      if (Array.isArray(rows) && rows.length > 0) {
+        console.log(`👥 Backfilled ${rows.length} volunteer link(s) from sectionVolunteers.`);
+      }
+    } catch (backfillError) {
+      if (!/does not exist/i.test(backfillError.message)) {
+        console.log('volunteers.summerProgramId backfill note:', backfillError.message);
+      }
+    }
+
     // Backfill: for any program that still has the legacy single
     // teacherId set but an empty teacherIds array, seed the array from
     // the single field so existing programs render correctly under the
