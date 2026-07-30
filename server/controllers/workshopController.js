@@ -881,6 +881,9 @@ exports.downloadCertificatePdf = async (req, res) => {
     // measured on the printed sheet (top 5, right 2, bottom 4, left 5
     // — in cm) so the text lands inside the empty area.
     if (req.query.plain === '1' || req.query.plain === 'true') {
+      const printDate = new Date().toLocaleDateString('ar-SA-u-ca-gregory-nu-latn', {
+        year: 'numeric', month: '2-digit', day: '2-digit'
+      });
       const plainHtml = `<!DOCTYPE html><html dir="rtl" lang="ar"><head><meta charset="UTF-8"><title>شهادة - ${name}</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -893,34 +896,39 @@ exports.downloadCertificatePdf = async (req, res) => {
     color: #1e293b;
     background: #fff;
   }
-  body { line-height: 1.55; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  body { line-height: 1.45; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
 
   .wrap {
-    /* printable area = 297 - 2 - 5 = 200mm wide, 210 - 5 - 4 = 120mm tall */
-    width: 100%; height: 100%;
+    /* Printable area = 297 - 2 - 5 = 200mm wide, 210 - 5 - 4 = 120mm tall.
+       Hard-cap the height + hide overflow so nothing spills to page 2. */
+    width: 200mm; height: 120mm;
     text-align: center;
     display: flex; flex-direction: column;
-    justify-content: center;
-    gap: 3mm;
+    justify-content: space-between;
     position: relative;
+    overflow: hidden;
+    padding: 1mm 0;
   }
+
+  .top    { display: flex; flex-direction: column; gap: 1.5mm; }
+  .middle { display: flex; flex-direction: column; gap: 1mm; }
 
   /* Kicker with delicate side-flourishes */
   .kicker {
-    font-size: 12pt;
+    font-size: 10.5pt;
     font-weight: 600;
     color: #667eea;
     letter-spacing: 0.5px;
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    gap: 8mm;
+    gap: 6mm;
     margin: 0 auto;
   }
   .kicker::before, .kicker::after {
     content: '';
     display: inline-block;
-    width: 18mm; height: 1.2pt;
+    width: 14mm; height: 1pt;
     background: linear-gradient(90deg, transparent, #667eea 40%, #e02529 100%);
     border-radius: 1pt;
   }
@@ -929,17 +937,17 @@ exports.downloadCertificatePdf = async (req, res) => {
   }
 
   /* Name — the star of the certificate */
-  .name-wrap { margin: 1mm 0; }
+  .name-wrap { margin: 0; }
   .name {
     font-family: 'Aref Ruqaa', 'Amiri', 'Cairo', serif;
-    font-size: 34pt;
+    font-size: 26pt;
     font-weight: 700;
     background: linear-gradient(135deg, #e02529 0%, #b91c1c 40%, #667eea 100%);
     -webkit-background-clip: text;
     background-clip: text;
     color: transparent;
     display: inline-block;
-    padding: 0 8mm 3mm;
+    padding: 0 8mm 2mm;
     position: relative;
     line-height: 1.15;
   }
@@ -947,18 +955,18 @@ exports.downloadCertificatePdf = async (req, res) => {
     content: '';
     position: absolute;
     left: 12%; right: 12%; bottom: 0;
-    height: 1.6pt;
+    height: 1.4pt;
     background: linear-gradient(90deg, transparent, #eab308 15%, #e02529 50%, #eab308 85%, transparent);
     border-radius: 2pt;
   }
 
   /* Body paragraph */
   .body-text {
-    font-size: 12pt;
-    line-height: 1.85;
+    font-size: 10.5pt;
+    line-height: 1.55;
     color: #334155;
-    max-width: 175mm;
-    margin: 1mm auto 0;
+    max-width: 180mm;
+    margin: 0 auto;
   }
   .body-text .hl {
     font-weight: 800;
@@ -975,20 +983,19 @@ exports.downloadCertificatePdf = async (req, res) => {
   .stats {
     display: flex;
     justify-content: center;
-    gap: 6mm;
-    margin-top: 2mm;
-    flex-wrap: wrap;
+    gap: 5mm;
+    flex-wrap: nowrap;
   }
   .stat {
-    padding: 2mm 6mm;
-    border-radius: 4mm;
+    padding: 1.5mm 5mm;
+    border-radius: 3mm;
     color: #fff;
-    min-width: 32mm;
+    min-width: 28mm;
     text-align: center;
     box-shadow: 0 1pt 2pt rgba(0,0,0,0.06);
   }
-  .stat .lbl { font-size: 8.5pt; opacity: 0.92; letter-spacing: 0.3px; }
-  .stat .val { font-size: 15pt; font-weight: 800; line-height: 1.15; margin-top: 0.6mm; }
+  .stat .lbl { font-size: 8pt; opacity: 0.92; letter-spacing: 0.3px; }
+  .stat .val { font-size: 13pt; font-weight: 800; line-height: 1.15; margin-top: 0.4mm; }
   .stat.hours { background: linear-gradient(135deg, #e02529 0%, #ff6b6b 100%); }
   .stat.days  { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
   .stat.date  { background: linear-gradient(135deg, #f59e0b 0%, #eab308 100%); }
@@ -996,11 +1003,10 @@ exports.downloadCertificatePdf = async (req, res) => {
   /* Poem */
   .poem {
     font-family: 'Amiri', 'Cairo', serif;
-    font-size: 12pt;
+    font-size: 10.5pt;
     font-style: italic;
     font-weight: 700;
     color: #b45309;
-    margin-top: 3mm;
     letter-spacing: 0.3px;
   }
   .poem::before, .poem::after {
@@ -1012,15 +1018,56 @@ exports.downloadCertificatePdf = async (req, res) => {
   .poem::before { content: '❋'; }
   .poem::after  { content: '❋'; }
 
+  /* Signature + stamp row */
+  .sig-row {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    padding: 0 4mm;
+    margin-top: 1mm;
+  }
+  .signature {
+    text-align: center;
+    min-width: 65mm;
+  }
+  .sig-line {
+    height: 1pt;
+    background: linear-gradient(90deg, transparent, #334155 20%, #334155 80%, transparent);
+    margin-bottom: 1.5mm;
+    width: 55mm;
+    margin-left: auto;
+    margin-right: auto;
+  }
+  .sig-title {
+    font-size: 9pt;
+    color: #64748b;
+    font-weight: 600;
+    letter-spacing: 0.3px;
+  }
+  .sig-name {
+    font-size: 11pt;
+    color: #0f172a;
+    font-weight: 800;
+    margin-top: 0.5mm;
+  }
+
+  /* Ink stamp — SVG circular, slightly rotated for realism */
+  .stamp {
+    width: 32mm; height: 32mm;
+    transform: rotate(-8deg);
+    opacity: 0.88;
+    filter: contrast(0.95) saturate(1.1);
+  }
+  .stamp svg { width: 100%; height: 100%; display: block; }
+
   /* Footer strip */
   .foot {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    font-size: 8.5pt;
+    font-size: 8pt;
     color: #94a3b8;
-    margin-top: 4mm;
-    padding-top: 2mm;
+    padding-top: 1.5mm;
     border-top: 0.5pt solid #e2e8f0;
     letter-spacing: 0.3px;
   }
@@ -1028,7 +1075,7 @@ exports.downloadCertificatePdf = async (req, res) => {
     font-family: 'Consolas', 'Courier New', monospace;
     background: linear-gradient(135deg, #f1f5f9, #e2e8f0);
     color: #475569;
-    padding: 1mm 3mm;
+    padding: 0.8mm 2.5mm;
     border-radius: 2mm;
     font-weight: 600;
   }
@@ -1038,21 +1085,73 @@ exports.downloadCertificatePdf = async (req, res) => {
   }
 </style></head><body>
   <div class="wrap">
-    <div class="kicker">تشهد إدارة فاب لاب الأحساء بأن</div>
-    <div class="name-wrap"><span class="name">${name}</span></div>
-    <div class="body-text">
-      قد أتم بنجاح الورشة التدريبية <span class="hl">"${workshop.title}"</span>${workshop.presenter ? `<br/>التي قدمها <span class="presenter">${workshop.presenter}</span>` : ''}<br/>
-      ${workshop.objectives || 'واكتسب المعارف والمهارات المطلوبة'}
+    <div class="top">
+      <div class="kicker">تشهد إدارة فاب لاب الأحساء بأن</div>
+      <div class="name-wrap"><span class="name">${name}</span></div>
     </div>
-    <div class="stats">
-      ${workshop.totalHours ? `<div class="stat hours"><div class="lbl">ساعة تدريبية</div><div class="val">${workshop.totalHours}</div></div>` : ''}
-      ${attendedDays > 0 ? `<div class="stat days"><div class="lbl">يوم حضور</div><div class="val">${attendedDays}</div></div>` : ''}
-      ${startDateF ? `<div class="stat date"><div class="lbl">تاريخ البداية</div><div class="val">${startDateF}</div></div>` : ''}
+
+    <div class="middle">
+      <div class="body-text">
+        قد أتم بنجاح الورشة التدريبية <span class="hl">"${workshop.title}"</span>${workshop.presenter ? `<br/>التي قدمها <span class="presenter">${workshop.presenter}</span>` : ''}<br/>
+        ${workshop.objectives || 'واكتسب المعارف والمهارات المطلوبة'}
+      </div>
+      <div class="stats">
+        ${workshop.totalHours ? `<div class="stat hours"><div class="lbl">ساعة تدريبية</div><div class="val">${workshop.totalHours}</div></div>` : ''}
+        ${attendedDays > 0 ? `<div class="stat days"><div class="lbl">يوم حضور</div><div class="val">${attendedDays}</div></div>` : ''}
+        ${startDateF ? `<div class="stat date"><div class="lbl">تاريخ البداية</div><div class="val">${startDateF}</div></div>` : ''}
+      </div>
+      <div class="poem">ومن سلك طريقاً يلتمس فيه علماً سهّل الله له به طريقاً إلى الجنة</div>
     </div>
-    <div class="poem">ومن سلك طريقاً يلتمس فيه علماً سهّل الله له به طريقاً إلى الجنة</div>
+
+    <div class="sig-row">
+      <div class="signature">
+        <div class="sig-line"></div>
+        <div class="sig-title">المسؤول التنفيذي لفاب لاب الأحساء</div>
+        <div class="sig-name">أ. زكي اللويم</div>
+      </div>
+      <div class="stamp">
+        <svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <path id="arcTop" d="M 30 100 A 70 70 0 0 1 170 100" fill="none"/>
+            <path id="arcBot" d="M 34 108 A 66 66 0 0 0 166 108" fill="none"/>
+          </defs>
+          <!-- outer ring -->
+          <circle cx="100" cy="100" r="88" fill="none" stroke="#b91c1c" stroke-width="4"/>
+          <!-- inner ring -->
+          <circle cx="100" cy="100" r="72" fill="none" stroke="#b91c1c" stroke-width="1.8"/>
+          <!-- decorative dots between rings -->
+          <circle cx="100" cy="20"  r="1.8" fill="#b91c1c"/>
+          <circle cx="100" cy="180" r="1.8" fill="#b91c1c"/>
+          <circle cx="20"  cy="100" r="1.8" fill="#b91c1c"/>
+          <circle cx="180" cy="100" r="1.8" fill="#b91c1c"/>
+          <!-- Arabic label on top arc -->
+          <text font-family="'Cairo', Tahoma, Arial, sans-serif" font-size="15" font-weight="800" fill="#b91c1c" letter-spacing="1">
+            <textPath href="#arcTop" startOffset="50%" text-anchor="middle">
+              فاب لاب الأحساء
+            </textPath>
+          </text>
+          <!-- English label on bottom arc -->
+          <text font-family="'Cairo', Tahoma, Arial, sans-serif" font-size="10" font-weight="700" fill="#b91c1c" letter-spacing="2">
+            <textPath href="#arcBot" startOffset="50%" text-anchor="middle">
+              FABLAB AL-AHSA
+            </textPath>
+          </text>
+          <!-- center emblem: gear-ish star -->
+          <g transform="translate(100,105)">
+            <polygon fill="#b91c1c" opacity="0.85"
+              points="0,-22 5,-7 21,-7 8,3 13,18 0,9 -13,18 -8,3 -21,-7 -5,-7"/>
+            <circle r="4" fill="#fff"/>
+          </g>
+          <!-- small side stars between the two rings -->
+          <text x="60" y="105" font-size="10" fill="#b91c1c" text-anchor="middle" font-weight="800">★</text>
+          <text x="140" y="105" font-size="10" fill="#b91c1c" text-anchor="middle" font-weight="800">★</text>
+        </svg>
+      </div>
+    </div>
+
     <div class="foot">
       <div class="id">${certId}</div>
-      <div class="date-badge">${new Date().toLocaleDateString('ar-SA')}</div>
+      <div class="date-badge">تاريخ الإصدار: ${printDate}</div>
     </div>
   </div>
 </body></html>`;
