@@ -231,6 +231,11 @@ const AdminDashboard = () => {
 
   // Workshop states
   const [workshopsList, setWorkshopsList] = useState([]);
+  // Attendance editor modal for workshop students. `target` holds
+  // { student, workshop } so the modal knows which student to edit and
+  // which workshop's day range to render.
+  const [attendanceEditTarget, setAttendanceEditTarget] = useState(null);
+  const [attendanceEditSaving, setAttendanceEditSaving] = useState(false);
   const [showWorkshopModal, setShowWorkshopModal] = useState(false);
   const [selectedWorkshop, setSelectedWorkshop] = useState(null);
   const [workshopForm, setWorkshopForm] = useState({
@@ -1144,6 +1149,100 @@ const AdminDashboard = () => {
       isPublic: workshop.isPublic !== false
     });
     setShowWorkshopModal(true);
+  };
+
+  // Attendance editor helpers ─────────────────────────────────────
+  // Enumerate every day between workshop.startDate and workshop.endDate
+  // inclusive, as YYYY-MM-DD strings. Used to render one row per day
+  // in the attendance edit modal.
+  const workshopDaysList = (workshop) => {
+    if (!workshop?.startDate) return [];
+    const days = [];
+    const start = new Date(workshop.startDate);
+    const end = workshop.endDate ? new Date(workshop.endDate) : start;
+    if (isNaN(start.getTime()) || isNaN(end.getTime())) return [];
+    const cur = new Date(start);
+    while (cur <= end) {
+      days.push(cur.toISOString().split('T')[0]);
+      cur.setDate(cur.getDate() + 1);
+    }
+    return days;
+  };
+
+  const openAttendanceEditor = (student, workshop) => {
+    setAttendanceEditTarget({ student, workshop });
+  };
+
+  const toggleAttendanceDate = async (date) => {
+    if (!attendanceEditTarget) return;
+    const student = attendanceEditTarget.student;
+    const workshop = attendanceEditTarget.workshop;
+    const currentlyPresent = Array.isArray(student.attendanceDates)
+      && student.attendanceDates.includes(date);
+    const nextPresent = !currentlyPresent;
+
+    // Optimistic UI update in the modal itself
+    const nextDates = nextPresent
+      ? [...(student.attendanceDates || []), date]
+      : (student.attendanceDates || []).filter(d => d !== date);
+    setAttendanceEditTarget({
+      ...attendanceEditTarget,
+      student: { ...student, attendanceDates: nextDates, attended: nextDates.length > 0 }
+    });
+
+    setAttendanceEditSaving(true);
+    try {
+      await api.patch(`/workshops/students/${student.studentId}/attendance`, {
+        date, present: nextPresent
+      });
+      // Refresh the surrounding workshop list so the badge / count in
+      // the row behind the modal stays in sync.
+      try {
+        const res = await api.get(`/workshops/${workshop.workshopId}`);
+        setViewingWorkshopStudents(res.data);
+        const updated = res.data.students?.find(s => s.studentId === student.studentId);
+        if (updated) setAttendanceEditTarget(prev => prev ? { ...prev, student: updated } : prev);
+      } catch { /* ignore refresh error, modal state already updated */ }
+    } catch (err) {
+      console.error('Attendance toggle failed:', err);
+      toast.error(isRTL ? 'تعذر تحديث الحضور' : 'Failed to update attendance');
+      // Revert
+      setAttendanceEditTarget({
+        ...attendanceEditTarget,
+        student
+      });
+    } finally {
+      setAttendanceEditSaving(false);
+    }
+  };
+
+  const toggleAllAttendance = async (present) => {
+    if (!attendanceEditTarget) return;
+    const workshop = attendanceEditTarget.workshop;
+    const days = workshopDaysList(workshop);
+    if (days.length === 0) return;
+    setAttendanceEditSaving(true);
+    try {
+      // Fire the toggles sequentially so we don't race on the same row
+      for (const d of days) {
+        await api.patch(`/workshops/students/${attendanceEditTarget.student.studentId}/attendance`, {
+          date: d, present
+        });
+      }
+      // Refresh the whole workshop after the batch
+      const res = await api.get(`/workshops/${workshop.workshopId}`);
+      setViewingWorkshopStudents(res.data);
+      const updated = res.data.students?.find(s => s.studentId === attendanceEditTarget.student.studentId);
+      if (updated) setAttendanceEditTarget(prev => prev ? { ...prev, student: updated } : prev);
+      toast.success(present
+        ? (isRTL ? 'تم تعليم كل الأيام كحاضر' : 'All days marked present')
+        : (isRTL ? 'تم مسح كل أيام الحضور' : 'All attendance cleared'));
+    } catch (err) {
+      console.error('Bulk attendance toggle failed:', err);
+      toast.error(isRTL ? 'خطأ في التحديث الجماعي' : 'Bulk update failed');
+    } finally {
+      setAttendanceEditSaving(false);
+    }
   };
 
   // Workshop email functions
@@ -7773,6 +7872,7 @@ const AdminDashboard = () => {
                               e.target.value = '';
                               if (action === 'edit') { setEditingStudent(s); setEditStudentForm({ firstName: s.firstName || '', lastName: s.lastName || '', phone: s.phone || '', email: s.email || '', nationalId: s.nationalId || '', gender: s.gender || '', age: s.age || '', city: s.city || '', invoiceNumber: s.invoiceNumber || '' }); }
                               else if (action === 'printId') handlePrintStudentID(s, viewingWorkshopStudents);
+                              else if (action === 'attendance') openAttendanceEditor(s, viewingWorkshopStudents);
                               else if (action === 'printCert') handlePrintWorkshopCertificate(s, viewingWorkshopStudents);
                               else if (action === 'downloadPdf') {
                                 try { const res = await api.get(`/workshops/students/${s.studentId}/certificate-pdf`, { responseType: 'blob' }); const link = document.createElement('a'); link.href = URL.createObjectURL(new Blob([res.data], { type: 'application/pdf' })); link.download = `certificate_${s.firstName}.pdf`; link.click(); } catch(e2) { let msg = isRTL ? 'خطأ' : 'Error'; if (e2.response?.data instanceof Blob) { try { const j = JSON.parse(await e2.response.data.text()); msg = (isRTL ? j.messageAr : j.message) || msg; } catch {} } toast.error(msg); }
@@ -7804,6 +7904,7 @@ const AdminDashboard = () => {
                           >
                             <option value="" disabled>{isRTL ? '⚙ إجراءات' : '⚙ Actions'}</option>
                             <option value="edit">{isRTL ? '✏ تعديل البيانات' : '✏ Edit Info'}</option>
+                            <option value="attendance">{isRTL ? '✅ تعديل الحضور' : '✅ Edit Attendance'}</option>
                             <option value="printId">{isRTL ? '🪪 طباعة البطاقة' : '🪪 Print ID'}</option>
                             <option value="printCert">{isRTL ? '🎓 طباعة الشهادة' : '🎓 Print Cert'}</option>
                             <option value="downloadPdf">{isRTL ? '📄 تحميل PDF' : '📄 Download PDF'}</option>
@@ -8000,6 +8101,175 @@ const AdminDashboard = () => {
                 </motion.div>
               </div>
             )}
+
+            {/* Workshop Student Attendance Editor Modal */}
+            {attendanceEditTarget && (() => {
+              const student = attendanceEditTarget.student;
+              const workshop = attendanceEditTarget.workshop;
+              const days = workshopDaysList(workshop);
+              const attended = Array.isArray(student.attendanceDates) ? student.attendanceDates : [];
+              const attendedCount = attended.length;
+              const totalDays = Math.max(1, days.length);
+              const requiredForCert = Math.ceil(totalDays / 2);
+              const meetsCertReq = attendedCount >= requiredForCert;
+              const fullName = `${student.firstName || ''} ${student.lastName || ''}`.trim();
+              return (
+                <div
+                  className="modal-overlay"
+                  onClick={() => !attendanceEditSaving && setAttendanceEditTarget(null)}
+                  style={{ zIndex: 1200 }}
+                >
+                  <motion.div
+                    className="modal-content"
+                    onClick={(e) => e.stopPropagation()}
+                    initial={{ opacity: 0, scale: 0.95 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    style={{ maxWidth: 620, padding: '1.75rem', maxHeight: '88vh', display: 'flex', flexDirection: 'column' }}
+                  >
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12, marginBottom: 12 }}>
+                      <div>
+                        <h3 style={{ margin: 0, fontSize: '1.1rem', color: '#0f172a' }}>
+                          ✅ {isRTL ? 'تعديل الحضور' : 'Edit Attendance'}
+                        </h3>
+                        <div style={{ fontSize: '0.85rem', color: '#475569', marginTop: 4 }}>
+                          <strong>{fullName}</strong>
+                          <span style={{ color: '#94a3b8', margin: '0 6px' }}>·</span>
+                          <span>{workshop.title}</span>
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => !attendanceEditSaving && setAttendanceEditTarget(null)}
+                        style={{ background: 'none', border: 'none', fontSize: 24, color: '#94a3b8', cursor: 'pointer', padding: 0, lineHeight: 1 }}
+                      >×</button>
+                    </div>
+
+                    <div style={{
+                      display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8, marginBottom: 12
+                    }}>
+                      <div style={{ padding: '10px 12px', borderRadius: 8, background: '#eff6ff', border: '1px solid #bfdbfe', textAlign: 'center' }}>
+                        <div style={{ fontSize: 10, color: '#1d4ed8', fontWeight: 700, letterSpacing: 0.5 }}>{isRTL ? 'أيام الورشة' : 'Workshop days'}</div>
+                        <div style={{ fontSize: 18, fontWeight: 800, color: '#1e3a8a', marginTop: 2 }}>{totalDays}</div>
+                      </div>
+                      <div style={{ padding: '10px 12px', borderRadius: 8, background: '#f0fdf4', border: '1px solid #bbf7d0', textAlign: 'center' }}>
+                        <div style={{ fontSize: 10, color: '#166534', fontWeight: 700, letterSpacing: 0.5 }}>{isRTL ? 'حضر' : 'Attended'}</div>
+                        <div style={{ fontSize: 18, fontWeight: 800, color: '#14532d', marginTop: 2 }}>{attendedCount}</div>
+                      </div>
+                      <div style={{
+                        padding: '10px 12px', borderRadius: 8,
+                        background: meetsCertReq ? '#f0fdf4' : '#fef3c7',
+                        border: meetsCertReq ? '1px solid #bbf7d0' : '1px solid #fde68a',
+                        textAlign: 'center'
+                      }}>
+                        <div style={{ fontSize: 10, color: meetsCertReq ? '#166534' : '#92400e', fontWeight: 700, letterSpacing: 0.5 }}>
+                          {isRTL ? 'مؤهل للشهادة' : 'Cert eligible'}
+                        </div>
+                        <div style={{ fontSize: 13, fontWeight: 800, color: meetsCertReq ? '#14532d' : '#78350f', marginTop: 2 }}>
+                          {meetsCertReq
+                            ? (isRTL ? '✓ نعم' : '✓ Yes')
+                            : (isRTL ? `يحتاج ${requiredForCert}` : `Needs ${requiredForCert}`)}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div style={{ display: 'flex', gap: 6, marginBottom: 10 }}>
+                      <button
+                        onClick={() => toggleAllAttendance(true)}
+                        disabled={attendanceEditSaving || days.length === 0}
+                        style={{
+                          flex: 1, padding: '6px 12px', borderRadius: 6,
+                          border: '1px solid #22c55e', background: '#dcfce7', color: '#166534',
+                          fontWeight: 700, fontSize: 12, cursor: attendanceEditSaving ? 'not-allowed' : 'pointer',
+                          fontFamily: 'inherit'
+                        }}
+                      >
+                        ✓ {isRTL ? 'تعليم الكل حاضر' : 'Mark all present'}
+                      </button>
+                      <button
+                        onClick={() => toggleAllAttendance(false)}
+                        disabled={attendanceEditSaving || days.length === 0}
+                        style={{
+                          flex: 1, padding: '6px 12px', borderRadius: 6,
+                          border: '1px solid #ef4444', background: '#fee2e2', color: '#991b1b',
+                          fontWeight: 700, fontSize: 12, cursor: attendanceEditSaving ? 'not-allowed' : 'pointer',
+                          fontFamily: 'inherit'
+                        }}
+                      >
+                        ✗ {isRTL ? 'مسح الكل' : 'Clear all'}
+                      </button>
+                    </div>
+
+                    <div style={{
+                      overflowY: 'auto', flex: 1,
+                      border: '1px solid #e2e8f0', borderRadius: 8, padding: 6, background: '#f8fafc'
+                    }}>
+                      {days.length === 0 ? (
+                        <div style={{ padding: 20, textAlign: 'center', color: '#94a3b8', fontSize: 13 }}>
+                          {isRTL ? 'لم يتم تحديد تواريخ للورشة.' : 'Workshop has no date range set.'}
+                        </div>
+                      ) : (
+                        days.map(date => {
+                          const present = attended.includes(date);
+                          return (
+                            <label
+                              key={date}
+                              style={{
+                                display: 'flex', alignItems: 'center', gap: 10,
+                                padding: '8px 12px', borderRadius: 6,
+                                background: present ? '#dcfce7' : '#fff',
+                                border: '1px solid ' + (present ? '#86efac' : '#e2e8f0'),
+                                marginBottom: 4, cursor: 'pointer',
+                                transition: 'background 0.1s'
+                              }}
+                            >
+                              <input
+                                type="checkbox"
+                                checked={present}
+                                onChange={() => toggleAttendanceDate(date)}
+                                disabled={attendanceEditSaving}
+                                style={{ width: 18, height: 18, cursor: attendanceEditSaving ? 'not-allowed' : 'pointer' }}
+                              />
+                              <div style={{ flex: 1, fontFamily: 'Consolas, monospace', fontSize: 13, color: '#0f172a' }}>
+                                {date}
+                              </div>
+                              <span style={{
+                                padding: '2px 10px', borderRadius: 999,
+                                fontSize: 11, fontWeight: 700,
+                                background: present ? '#166534' : '#e2e8f0',
+                                color: present ? '#fff' : '#64748b'
+                              }}>
+                                {present ? (isRTL ? '✓ حاضر' : '✓ Present') : (isRTL ? 'غائب' : 'Absent')}
+                              </span>
+                            </label>
+                          );
+                        })
+                      )}
+                    </div>
+
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 12, gap: 10 }}>
+                      <div style={{ fontSize: 11, color: '#64748b' }}>
+                        {isRTL
+                          ? 'التغييرات تُحفظ تلقائياً بمجرد التحديد.'
+                          : 'Changes save automatically on toggle.'}
+                        {attendanceEditSaving && <span style={{ marginInlineStart: 8, color: '#0ea5e9', fontWeight: 700 }}>{isRTL ? '· جارٍ الحفظ...' : '· saving…'}</span>}
+                      </div>
+                      <button
+                        onClick={() => setAttendanceEditTarget(null)}
+                        disabled={attendanceEditSaving}
+                        style={{
+                          padding: '8px 18px', borderRadius: 6,
+                          border: 'none', background: 'linear-gradient(135deg, #3b82f6, #1d4ed8)',
+                          color: '#fff', fontWeight: 700, fontSize: 13,
+                          cursor: attendanceEditSaving ? 'not-allowed' : 'pointer',
+                          fontFamily: 'inherit', opacity: attendanceEditSaving ? 0.6 : 1
+                        }}
+                      >
+                        {isRTL ? 'تم' : 'Done'}
+                      </button>
+                    </div>
+                  </motion.div>
+                </div>
+              );
+            })()}
 
             {/* Workshop Email Modal */}
             {showWorkshopEmailModal && (
