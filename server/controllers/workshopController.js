@@ -882,72 +882,177 @@ exports.downloadCertificatePdf = async (req, res) => {
     // — in cm) so the text lands inside the empty area.
     if (req.query.plain === '1' || req.query.plain === 'true') {
       const plainHtml = `<!DOCTYPE html><html dir="rtl" lang="ar"><head><meta charset="UTF-8"><title>شهادة - ${name}</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Amiri:wght@700&family=Cairo:wght@400;600;700;800&family=Aref+Ruqaa:wght@700&display=swap" rel="stylesheet">
 <style>
   @page { size: A4 landscape; margin: 5cm 2cm 4cm 5cm; }
   * { margin: 0; padding: 0; box-sizing: border-box; }
   html, body {
-    font-family: 'Segoe UI', Tahoma, Arial, sans-serif;
-    color: #000;
+    font-family: 'Cairo', 'Segoe UI', Tahoma, Arial, sans-serif;
+    color: #1e293b;
     background: #fff;
   }
-  body { line-height: 1.55; }
+  body { line-height: 1.55; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+
   .wrap {
     /* printable area = 297 - 2 - 5 = 200mm wide, 210 - 5 - 4 = 120mm tall */
-    width: 100%;
-    height: 100%;
+    width: 100%; height: 100%;
     text-align: center;
-    display: flex;
-    flex-direction: column;
+    display: flex; flex-direction: column;
     justify-content: center;
-    gap: 4mm;
+    gap: 3mm;
+    position: relative;
   }
-  .kicker { font-size: 12pt; font-weight: 600; }
-  .name {
-    font-size: 28pt;
-    font-weight: 800;
-    padding-bottom: 3mm;
-    margin: 2mm auto 0;
+
+  /* Kicker with delicate side-flourishes */
+  .kicker {
+    font-size: 12pt;
+    font-weight: 600;
+    color: #667eea;
+    letter-spacing: 0.5px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8mm;
+    margin: 0 auto;
+  }
+  .kicker::before, .kicker::after {
+    content: '';
     display: inline-block;
-    border-bottom: 1.2pt solid #000;
-    min-width: 80mm;
+    width: 18mm; height: 1.2pt;
+    background: linear-gradient(90deg, transparent, #667eea 40%, #e02529 100%);
+    border-radius: 1pt;
   }
-  .body-text { font-size: 12pt; line-height: 1.7; margin-top: 2mm; }
-  .body-text .hl { font-weight: 800; }
+  .kicker::after {
+    background: linear-gradient(90deg, #e02529 0%, #667eea 60%, transparent);
+  }
+
+  /* Name — the star of the certificate */
+  .name-wrap { margin: 1mm 0; }
+  .name {
+    font-family: 'Aref Ruqaa', 'Amiri', 'Cairo', serif;
+    font-size: 34pt;
+    font-weight: 700;
+    background: linear-gradient(135deg, #e02529 0%, #b91c1c 40%, #667eea 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    display: inline-block;
+    padding: 0 8mm 3mm;
+    position: relative;
+    line-height: 1.15;
+  }
+  .name::after {
+    content: '';
+    position: absolute;
+    left: 12%; right: 12%; bottom: 0;
+    height: 1.6pt;
+    background: linear-gradient(90deg, transparent, #eab308 15%, #e02529 50%, #eab308 85%, transparent);
+    border-radius: 2pt;
+  }
+
+  /* Body paragraph */
+  .body-text {
+    font-size: 12pt;
+    line-height: 1.85;
+    color: #334155;
+    max-width: 175mm;
+    margin: 1mm auto 0;
+  }
+  .body-text .hl {
+    font-weight: 800;
+    color: #e02529;
+    background: linear-gradient(180deg, transparent 60%, rgba(224, 37, 41, 0.15) 60%);
+    padding: 0 2mm;
+  }
+  .body-text .presenter {
+    color: #667eea;
+    font-weight: 700;
+  }
+
+  /* Colorful stat pills */
   .stats {
     display: flex;
     justify-content: center;
-    gap: 12mm;
-    font-size: 11pt;
-    margin-top: 3mm;
+    gap: 6mm;
+    margin-top: 2mm;
+    flex-wrap: wrap;
   }
-  .stats .lbl { font-size: 9pt; opacity: 0.75; }
-  .stats .val { font-weight: 800; font-size: 12pt; }
-  .poem { font-style: italic; font-size: 10.5pt; margin-top: 3mm; }
+  .stat {
+    padding: 2mm 6mm;
+    border-radius: 4mm;
+    color: #fff;
+    min-width: 32mm;
+    text-align: center;
+    box-shadow: 0 1pt 2pt rgba(0,0,0,0.06);
+  }
+  .stat .lbl { font-size: 8.5pt; opacity: 0.92; letter-spacing: 0.3px; }
+  .stat .val { font-size: 15pt; font-weight: 800; line-height: 1.15; margin-top: 0.6mm; }
+  .stat.hours { background: linear-gradient(135deg, #e02529 0%, #ff6b6b 100%); }
+  .stat.days  { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
+  .stat.date  { background: linear-gradient(135deg, #f59e0b 0%, #eab308 100%); }
+
+  /* Poem */
+  .poem {
+    font-family: 'Amiri', 'Cairo', serif;
+    font-size: 12pt;
+    font-style: italic;
+    font-weight: 700;
+    color: #b45309;
+    margin-top: 3mm;
+    letter-spacing: 0.3px;
+  }
+  .poem::before, .poem::after {
+    color: #eab308;
+    font-weight: 800;
+    margin: 0 2mm;
+    opacity: 0.85;
+  }
+  .poem::before { content: '❋'; }
+  .poem::after  { content: '❋'; }
+
+  /* Footer strip */
   .foot {
     display: flex;
     justify-content: space-between;
-    font-size: 9pt;
-    margin-top: 6mm;
-    padding-top: 3mm;
-    border-top: 0.5pt dashed #666;
+    align-items: center;
+    font-size: 8.5pt;
+    color: #94a3b8;
+    margin-top: 4mm;
+    padding-top: 2mm;
+    border-top: 0.5pt solid #e2e8f0;
+    letter-spacing: 0.3px;
+  }
+  .foot .id {
+    font-family: 'Consolas', 'Courier New', monospace;
+    background: linear-gradient(135deg, #f1f5f9, #e2e8f0);
+    color: #475569;
+    padding: 1mm 3mm;
+    border-radius: 2mm;
+    font-weight: 600;
+  }
+  .foot .date-badge {
+    color: #667eea;
+    font-weight: 700;
   }
 </style></head><body>
   <div class="wrap">
     <div class="kicker">تشهد إدارة فاب لاب الأحساء بأن</div>
-    <div><span class="name">${name}</span></div>
+    <div class="name-wrap"><span class="name">${name}</span></div>
     <div class="body-text">
-      قد أتم بنجاح الورشة التدريبية <span class="hl">"${workshop.title}"</span>${workshop.presenter ? `<br/>التي قدمها <b>${workshop.presenter}</b>` : ''}<br/>
+      قد أتم بنجاح الورشة التدريبية <span class="hl">"${workshop.title}"</span>${workshop.presenter ? `<br/>التي قدمها <span class="presenter">${workshop.presenter}</span>` : ''}<br/>
       ${workshop.objectives || 'واكتسب المعارف والمهارات المطلوبة'}
     </div>
     <div class="stats">
-      ${workshop.totalHours ? `<div><div class="lbl">ساعة تدريبية</div><div class="val">${workshop.totalHours}</div></div>` : ''}
-      ${attendedDays > 0 ? `<div><div class="lbl">يوم حضور</div><div class="val">${attendedDays}</div></div>` : ''}
-      ${startDateF ? `<div><div class="lbl">تاريخ البداية</div><div class="val">${startDateF}</div></div>` : ''}
+      ${workshop.totalHours ? `<div class="stat hours"><div class="lbl">ساعة تدريبية</div><div class="val">${workshop.totalHours}</div></div>` : ''}
+      ${attendedDays > 0 ? `<div class="stat days"><div class="lbl">يوم حضور</div><div class="val">${attendedDays}</div></div>` : ''}
+      ${startDateF ? `<div class="stat date"><div class="lbl">تاريخ البداية</div><div class="val">${startDateF}</div></div>` : ''}
     </div>
-    <div class="poem">"ومن سلك طريقاً يلتمس فيه علماً سهّل الله له به طريقاً إلى الجنة"</div>
+    <div class="poem">ومن سلك طريقاً يلتمس فيه علماً سهّل الله له به طريقاً إلى الجنة</div>
     <div class="foot">
-      <div>${certId}</div>
-      <div>${new Date().toLocaleDateString('ar-SA')}</div>
+      <div class="id">${certId}</div>
+      <div class="date-badge">${new Date().toLocaleDateString('ar-SA')}</div>
     </div>
   </div>
 </body></html>`;
