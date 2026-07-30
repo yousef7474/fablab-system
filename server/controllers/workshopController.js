@@ -875,6 +875,93 @@ exports.downloadCertificatePdf = async (req, res) => {
     const startDateF = student.workshop.startDate ? student.workshop.startDate.split('-').reverse().join('/') : '';
     const workshop = student.workshop;
 
+    // "Plain" mode = content-only, meant to be printed on top of a
+    // preprinted A4 landscape shell that already has the letterhead,
+    // colorful outline, and logos. Uses the exact margins the admin
+    // measured on the printed sheet (top 5, right 2, bottom 4, left 5
+    // — in cm) so the text lands inside the empty area.
+    if (req.query.plain === '1' || req.query.plain === 'true') {
+      const plainHtml = `<!DOCTYPE html><html dir="rtl" lang="ar"><head><meta charset="UTF-8"><title>شهادة - ${name}</title>
+<style>
+  @page { size: A4 landscape; margin: 5cm 2cm 4cm 5cm; }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body {
+    font-family: 'Segoe UI', Tahoma, Arial, sans-serif;
+    color: #000;
+    background: #fff;
+  }
+  body { line-height: 1.55; }
+  .wrap {
+    /* printable area = 297 - 2 - 5 = 200mm wide, 210 - 5 - 4 = 120mm tall */
+    width: 100%;
+    height: 100%;
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 4mm;
+  }
+  .kicker { font-size: 12pt; font-weight: 600; }
+  .name {
+    font-size: 28pt;
+    font-weight: 800;
+    padding-bottom: 3mm;
+    margin: 2mm auto 0;
+    display: inline-block;
+    border-bottom: 1.2pt solid #000;
+    min-width: 80mm;
+  }
+  .body-text { font-size: 12pt; line-height: 1.7; margin-top: 2mm; }
+  .body-text .hl { font-weight: 800; }
+  .stats {
+    display: flex;
+    justify-content: center;
+    gap: 12mm;
+    font-size: 11pt;
+    margin-top: 3mm;
+  }
+  .stats .lbl { font-size: 9pt; opacity: 0.75; }
+  .stats .val { font-weight: 800; font-size: 12pt; }
+  .poem { font-style: italic; font-size: 10.5pt; margin-top: 3mm; }
+  .foot {
+    display: flex;
+    justify-content: space-between;
+    font-size: 9pt;
+    margin-top: 6mm;
+    padding-top: 3mm;
+    border-top: 0.5pt dashed #666;
+  }
+</style></head><body>
+  <div class="wrap">
+    <div class="kicker">تشهد إدارة فاب لاب الأحساء بأن</div>
+    <div><span class="name">${name}</span></div>
+    <div class="body-text">
+      قد أتم بنجاح الورشة التدريبية <span class="hl">"${workshop.title}"</span>${workshop.presenter ? `<br/>التي قدمها <b>${workshop.presenter}</b>` : ''}<br/>
+      ${workshop.objectives || 'واكتسب المعارف والمهارات المطلوبة'}
+    </div>
+    <div class="stats">
+      ${workshop.totalHours ? `<div><div class="lbl">ساعة تدريبية</div><div class="val">${workshop.totalHours}</div></div>` : ''}
+      ${attendedDays > 0 ? `<div><div class="lbl">يوم حضور</div><div class="val">${attendedDays}</div></div>` : ''}
+      ${startDateF ? `<div><div class="lbl">تاريخ البداية</div><div class="val">${startDateF}</div></div>` : ''}
+    </div>
+    <div class="poem">"ومن سلك طريقاً يلتمس فيه علماً سهّل الله له به طريقاً إلى الجنة"</div>
+    <div class="foot">
+      <div>${certId}</div>
+      <div>${new Date().toLocaleDateString('ar-SA')}</div>
+    </div>
+  </div>
+</body></html>`;
+
+      const { generatePdfFromHtml } = require('../utils/pdfGenerator');
+      const pdfBuffer = await generatePdfFromHtml(plainHtml, { landscape: true });
+      res.writeHead(200, {
+        'Content-Type': 'application/pdf',
+        'Content-Disposition': `attachment; filename="certificate_plain_${(name || 'student').replace(/\s+/g, '_')}.pdf"`,
+        'Content-Length': pdfBuffer.length
+      });
+      return res.end(pdfBuffer);
+    }
+
     const certHtml = `<!DOCTYPE html><html dir="rtl" lang="ar"><head><meta charset="UTF-8"><title>شهادة - ${name}</title>
 <style>@page{size:A4 landscape;margin:0;}*{margin:0;padding:0;box-sizing:border-box;}html,body{width:297mm;height:210mm;overflow:hidden;}
 body{font-family:'Segoe UI',Tahoma,Arial,sans-serif;background:linear-gradient(135deg,#667eea 0%,#764ba2 50%,#f093fb 100%);display:flex;align-items:center;justify-content:center;padding:10mm;}

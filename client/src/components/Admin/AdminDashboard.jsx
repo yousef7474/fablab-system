@@ -7777,6 +7777,11 @@ const AdminDashboard = () => {
                               else if (action === 'downloadPdf') {
                                 try { const res = await api.get(`/workshops/students/${s.studentId}/certificate-pdf`, { responseType: 'blob' }); const link = document.createElement('a'); link.href = URL.createObjectURL(new Blob([res.data], { type: 'application/pdf' })); link.download = `certificate_${s.firstName}.pdf`; link.click(); } catch(e2) { let msg = isRTL ? 'خطأ' : 'Error'; if (e2.response?.data instanceof Blob) { try { const j = JSON.parse(await e2.response.data.text()); msg = (isRTL ? j.messageAr : j.message) || msg; } catch {} } toast.error(msg); }
                               }
+                              else if (action === 'downloadPdfPlain') {
+                                // Content-only PDF for the admin's preprinted shell
+                                // (A4 landscape, margins T5 R2 B4 L5 cm).
+                                try { const res = await api.get(`/workshops/students/${s.studentId}/certificate-pdf?plain=1`, { responseType: 'blob' }); const link = document.createElement('a'); link.href = URL.createObjectURL(new Blob([res.data], { type: 'application/pdf' })); link.download = `certificate_plain_${s.firstName}.pdf`; link.click(); } catch(e2) { let msg = isRTL ? 'خطأ' : 'Error'; if (e2.response?.data instanceof Blob) { try { const j = JSON.parse(await e2.response.data.text()); msg = (isRTL ? j.messageAr : j.message) || msg; } catch {} } toast.error(msg); }
+                              }
                               else if (action === 'emailCert') { try { await api.post(`/workshops/students/${s.studentId}/send-certificate`); toast.success(isRTL ? 'تم إرسال الشهادة' : 'Certificate emailed'); } catch(e2) { toast.error(e2.response?.data?.messageAr || 'Error'); } }
                               else if (action === 'invoice') {
                                 setInvoiceTarget({
@@ -7802,6 +7807,7 @@ const AdminDashboard = () => {
                             <option value="printId">{isRTL ? '🪪 طباعة البطاقة' : '🪪 Print ID'}</option>
                             <option value="printCert">{isRTL ? '🎓 طباعة الشهادة' : '🎓 Print Cert'}</option>
                             <option value="downloadPdf">{isRTL ? '📄 تحميل PDF' : '📄 Download PDF'}</option>
+                            <option value="downloadPdfPlain">{isRTL ? '🖨 طباعة على قالب A4 (بدون خلفية)' : '🖨 Print on template (no design)'}</option>
                             <option value="invoice">{isRTL ? '🧾 طباعة الفاتورة' : '🧾 Print Invoice'}</option>
                             {s.email && <option value="emailCert">{isRTL ? '📧 إرسال الشهادة' : '📧 Email Cert'}</option>}
                             <option value="printAttId">{isRTL ? '🎟 بطاقة حضور' : '🎟 Att. ID'}</option>
