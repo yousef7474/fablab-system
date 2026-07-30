@@ -954,9 +954,14 @@ exports.downloadCertificatePdf = async (req, res) => {
 
       const { generatePdfFromHtml } = require('../utils/pdfGenerator');
       const pdfBuffer = await generatePdfFromHtml(plainHtml, { landscape: true });
+      // Content-Disposition header values must be ASCII. Use a fixed
+      // ASCII fallback filename plus an RFC 5987 UTF-8 filename* so
+      // browsers still save the Arabic name.
+      const asciiFallback = `certificate_plain_${(student.studentId || 'student').slice(0, 8)}.pdf`;
+      const utf8Name = encodeURIComponent(`شهادة_${name || 'الطالب'}.pdf`);
       res.writeHead(200, {
         'Content-Type': 'application/pdf',
-        'Content-Disposition': `attachment; filename="certificate_plain_${(name || 'student').replace(/\s+/g, '_')}.pdf"`,
+        'Content-Disposition': `attachment; filename="${asciiFallback}"; filename*=UTF-8''${utf8Name}`,
         'Content-Length': pdfBuffer.length
       });
       return res.end(pdfBuffer);
