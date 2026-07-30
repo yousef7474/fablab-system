@@ -23,10 +23,17 @@ require('dotenv').config({ path: path.join(__dirname, '..', '..', '.env') });
 
 const { sequelize, SummerProgram, SummerStudent } = require('../models');
 
-// If auto-match fails, hardcode a { sheetName: programName } here. The
-// programName must match a SummerProgram.name exactly.
+// Explicit sheet-name → DB program-name map for this specific roster
+// (DB names include a "برنامج" prefix, and two of them have typos —
+// "فنرة" for "فترة" and "الواقه" for "الواقع" — that we match exactly).
 const SHEET_TO_PROGRAM_OVERRIDE = {
-  // 'exact excel sheet name': 'exact SummerProgram.name in the DB'
+  'صناع المستقبل - صباحية':      'برنامج صناع المستقبل - الفترة الصباحية',
+  'صناع المستقبل - مسائية':      'برنامج صناع المستقبل - فنرة مسائية',
+  'الروبوتات الذكية صباح':       'برنامج الروبوتات الذكية - فترة صباحية',
+  'الروبوتات الذكية مساء':       'برنامج الروبوتات الذكية - فترة مسائية',
+  'معسكر روبوتات VEX IQ العالمية': 'برنامج روبوتات VEX العالمية',
+  'صناع الواقع - مسائية':        'برنامج صناع الواقع (Make it Real) - الفترة المسائية',
+  'صناع الواقع - صباحية':        'برنامج صناع الواقه (Make it Real) - الفترة الصباحية'
 };
 
 const arabicNorm = (s) => String(s || '')
