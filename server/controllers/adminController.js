@@ -806,7 +806,10 @@ exports.getAllUsers = async (req, res) => {
 // Get all employees
 exports.getAllEmployees = async (req, res) => {
   try {
+    const includeInactive = req.query.includeInactive === 'true' || req.query.includeInactive === '1';
+    const where = includeInactive ? {} : { isActive: true };
     const employees = await Employee.findAll({
+      where,
       order: [['name', 'ASC']]
     });
     res.json(employees);
