@@ -5968,29 +5968,62 @@ const AdminDashboard = () => {
                           const empSections = (Array.isArray(emp.sections) && emp.sections.length)
                             ? emp.sections
                             : (emp.section ? [emp.section] : []);
-                          // An employee is "active" against the current schedule
-                          // filter if any of their sections match.
+                          // Card is "active" when the current schedule filter
+                          // matches ANY of this employee's sections.
                           const isActiveForFilter = empSections.includes(scheduleFilter);
                           return (
                           <div
                             key={emp.employeeId}
                             className={`employee-card ${isActiveForFilter ? 'active' : ''}`}
-                            onClick={() => setScheduleFilter(empSections[0] || emp.section)}
-                            title={empSections.map(s => sectionLabels[s] || s).join(' · ')}
                           >
                             <div className="employee-card-avatar" style={{ backgroundColor: getEmployeeColor(employees, emp.employeeId) }}>
                               {emp.name?.charAt(0)?.toUpperCase()}
                             </div>
                             <span className="employee-card-name">{emp.name}</span>
-                            {empSections.length > 1 && (
-                              <span style={{
-                                display: 'inline-block', padding: '1px 6px', borderRadius: 8,
-                                fontSize: 9, fontWeight: 800, background: '#e0f2fe',
-                                color: '#0369a1', marginTop: 2, letterSpacing: 0.3
-                              }}>
-                                {empSections.length} {isRTL ? 'أقسام' : 'sections'}
-                              </span>
-                            )}
+                            {/* Each section is its own clickable chip so admin can
+                                pick "this employee's schedule for CNC Laser" vs "for
+                                3D Printing" independently. The chip highlights when
+                                its section is the active schedule filter. */}
+                            <div style={{
+                              display: 'flex', flexWrap: 'wrap', gap: 4,
+                              justifyContent: 'center', marginTop: 6, marginBottom: 4
+                            }}>
+                              {empSections.map(sec => {
+                                const color = SECTION_COLORS[sec] || '#64748b';
+                                const isFilterSection = scheduleFilter === sec;
+                                return (
+                                  <button
+                                    key={sec}
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      // Toggle: click same chip again → clear filter
+                                      setScheduleFilter(isFilterSection ? '' : sec);
+                                    }}
+                                    title={isRTL
+                                      ? `عرض جدول ${emp.name} في ${sectionLabels[sec] || sec}`
+                                      : `Show ${emp.name}'s schedule for ${sectionLabels[sec] || sec}`}
+                                    style={{
+                                      padding: '3px 8px',
+                                      borderRadius: 999,
+                                      border: isFilterSection ? `2px solid ${color}` : '1.5px solid transparent',
+                                      background: isFilterSection ? color : `${color}20`,
+                                      color: isFilterSection ? '#fff' : color,
+                                      fontSize: 10,
+                                      fontWeight: 800,
+                                      cursor: 'pointer',
+                                      fontFamily: 'inherit',
+                                      letterSpacing: 0.2,
+                                      lineHeight: 1.2,
+                                      transition: 'all 0.12s',
+                                      boxShadow: isFilterSection ? `0 2px 4px ${color}55` : 'none'
+                                    }}
+                                  >
+                                    {sectionLabels[sec] || sec}
+                                  </button>
+                                );
+                              })}
+                            </div>
                             <div className="employee-card-actions">
                               <button
                                 className="edit-btn"
@@ -9728,17 +9761,25 @@ const AdminDashboard = () => {
                 />
               </div>
               <div className="form-group">
-                <label>
-                  {isRTL ? 'الأقسام' : 'Sections'}
+                <label style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+                  <span>{isRTL ? 'الأقسام التي يعمل بها' : 'Assigned Sections'}</span>
                   {(employeeForm.sections || []).length > 0 && (
-                    <span style={{ marginInlineStart: 8, color: '#0ea5e9', fontWeight: 700, fontSize: '0.78rem' }}>
-                      · {(employeeForm.sections || []).length} {isRTL ? 'محدد' : 'selected'}
+                    <span style={{
+                      padding: '2px 10px', borderRadius: 999,
+                      fontSize: '0.72rem', fontWeight: 800,
+                      background: 'linear-gradient(135deg, #6366f1, #8b5cf6)',
+                      color: '#fff', letterSpacing: 0.5
+                    }}>
+                      {(employeeForm.sections || []).length} {isRTL ? 'محدد' : 'selected'}
                     </span>
                   )}
                 </label>
                 <div style={{
-                  border: '1.5px solid #e2e8f0', borderRadius: 8, padding: '0.5rem',
-                  maxHeight: 220, overflowY: 'auto', background: '#fff'
+                  display: 'flex', flexWrap: 'wrap', gap: 8,
+                  padding: '10px',
+                  background: 'linear-gradient(135deg, #f8fafc, #f1f5f9)',
+                  border: '1.5px solid #e2e8f0',
+                  borderRadius: 12
                 }}>
                   {[
                     { value: 'Electronics and Programming', ar: 'الإلكترونيات والبرمجة', en: 'Electronics & Programming' },
@@ -9750,35 +9791,52 @@ const AdminDashboard = () => {
                     { value: 'Vinyl Cutting',               ar: 'قطع الفينيل',            en: 'Vinyl Cutting' }
                   ].map(sec => {
                     const checked = (employeeForm.sections || []).includes(sec.value);
+                    const color = SECTION_COLORS[sec.value] || '#64748b';
                     return (
-                      <label key={sec.value} style={{
-                        display: 'flex', alignItems: 'center', gap: '0.5rem',
-                        padding: '0.3rem 0.5rem', cursor: 'pointer',
-                        fontSize: '0.86rem', borderRadius: 4,
-                        background: checked ? '#e0f2fe' : 'transparent'
-                      }}>
-                        <input
-                          type="checkbox"
-                          checked={checked}
-                          onChange={(e) => {
-                            const current = employeeForm.sections || [];
-                            setEmployeeForm({
-                              ...employeeForm,
-                              sections: e.target.checked
-                                ? [...current, sec.value]
-                                : current.filter(s => s !== sec.value)
-                            });
-                          }}
-                        />
-                        <span>{isRTL ? sec.ar : sec.en}</span>
-                      </label>
+                      <button
+                        key={sec.value}
+                        type="button"
+                        onClick={() => {
+                          const current = employeeForm.sections || [];
+                          setEmployeeForm({
+                            ...employeeForm,
+                            sections: checked
+                              ? current.filter(s => s !== sec.value)
+                              : [...current, sec.value]
+                          });
+                        }}
+                        style={{
+                          display: 'inline-flex', alignItems: 'center', gap: 6,
+                          padding: '8px 14px',
+                          borderRadius: 999,
+                          border: checked ? `2px solid ${color}` : '2px solid #e2e8f0',
+                          background: checked ? color : '#fff',
+                          color: checked ? '#fff' : '#334155',
+                          fontFamily: 'inherit',
+                          fontSize: '0.85rem',
+                          fontWeight: 700,
+                          cursor: 'pointer',
+                          transition: 'all 0.15s',
+                          boxShadow: checked ? `0 2px 6px ${color}55` : '0 1px 2px rgba(0,0,0,0.04)',
+                          transform: checked ? 'translateY(-1px)' : 'none'
+                        }}
+                      >
+                        <span style={{
+                          width: 8, height: 8, borderRadius: '50%',
+                          background: checked ? '#fff' : color,
+                          boxShadow: checked ? 'none' : `0 0 0 2px ${color}22`
+                        }} />
+                        {isRTL ? sec.ar : sec.en}
+                        {checked && <span style={{ fontSize: '0.9rem', marginInlineStart: 2 }}>✓</span>}
+                      </button>
                     );
                   })}
                 </div>
-                <div style={{ fontSize: '0.75rem', color: '#64748b', marginTop: 4 }}>
+                <div style={{ fontSize: '0.75rem', color: '#64748b', marginTop: 6, display: 'flex', alignItems: 'center', gap: 4 }}>
+                  <span style={{ color: '#0ea5e9' }}>💡</span>
                   {isRTL
-                    ? 'يمكن للموظف العمل في أكثر من قسم. إذا كان البريد موجوداً، سيتم إضافة الأقسام الجديدة لسجله.'
-                    : 'One employee can work across multiple sections. If the email exists, new sections are merged into the existing record.'}
+                    ? 'اضغط على القسم لإضافته أو إزالته. إذا كان البريد موجوداً مسبقاً، ستُضاف الأقسام الجديدة لسجل الموظف.'
+                    : 'Tap a section to add/remove. If the email exists, new sections are merged into the existing employee.'}
                 </div>
               </div>
             </div>
