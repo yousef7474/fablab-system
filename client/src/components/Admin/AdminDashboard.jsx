@@ -3833,7 +3833,7 @@ const AdminDashboard = () => {
       await api.post('/admin/employees', employeeForm);
       toast.success(isRTL ? 'تم إضافة الموظف بنجاح' : 'Employee added successfully');
       setShowEmployeeModal(false);
-      setEmployeeForm({ name: '', email: '', section: '' });
+      setEmployeeForm({ name: '', email: '', sections: [] });
       fetchEmployees();
     } catch (error) {
       toast.error(error.response?.data?.message || (isRTL ? 'خطأ في إضافة الموظف' : 'Error adding employee'));
@@ -3846,7 +3846,7 @@ const AdminDashboard = () => {
       toast.success(isRTL ? 'تم تحديث الموظف بنجاح' : 'Employee updated successfully');
       setShowEmployeeModal(false);
       setSelectedEmployee(null);
-      setEmployeeForm({ name: '', email: '', section: '' });
+      setEmployeeForm({ name: '', email: '', sections: [] });
       fetchEmployees();
     } catch (error) {
       toast.error(isRTL ? 'خطأ في تحديث الموظف' : 'Error updating employee');
@@ -5938,7 +5938,7 @@ const AdminDashboard = () => {
                           className="add-btn"
                           onClick={() => {
                             setSelectedEmployee(null);
-                            setEmployeeForm({ name: '', email: '', section: '' });
+                            setEmployeeForm({ name: '', email: '', sections: [] });
                             setShowEmployeeModal(true);
                           }}
                         >
