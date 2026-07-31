@@ -9730,9 +9730,9 @@ const AdminDashboard = () => {
               <div className="form-group">
                 <label>
                   {isRTL ? 'الأقسام' : 'Sections'}
-                  {employeeForm.sections.length > 0 && (
+                  {(employeeForm.sections || []).length > 0 && (
                     <span style={{ marginInlineStart: 8, color: '#0ea5e9', fontWeight: 700, fontSize: '0.78rem' }}>
-                      · {employeeForm.sections.length} {isRTL ? 'محدد' : 'selected'}
+                      · {(employeeForm.sections || []).length} {isRTL ? 'محدد' : 'selected'}
                     </span>
                   )}
                 </label>
@@ -9749,7 +9749,7 @@ const AdminDashboard = () => {
                     { value: "Kid's Club",                  ar: 'نادي الأطفال',          en: "Kid's Club" },
                     { value: 'Vinyl Cutting',               ar: 'قطع الفينيل',            en: 'Vinyl Cutting' }
                   ].map(sec => {
-                    const checked = employeeForm.sections.includes(sec.value);
+                    const checked = (employeeForm.sections || []).includes(sec.value);
                     return (
                       <label key={sec.value} style={{
                         display: 'flex', alignItems: 'center', gap: '0.5rem',
@@ -9790,7 +9790,7 @@ const AdminDashboard = () => {
               <button
                 className="modal-btn approve"
                 onClick={selectedEmployee ? handleUpdateEmployee : handleCreateEmployee}
-                disabled={!employeeForm.name || !employeeForm.email || employeeForm.sections.length === 0}
+                disabled={!employeeForm.name || !employeeForm.email || (employeeForm.sections || []).length === 0}
               >
                 {selectedEmployee ? (isRTL ? 'تحديث' : 'Update') : (isRTL ? 'إضافة' : 'Add')}
               </button>
