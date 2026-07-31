@@ -268,13 +268,38 @@ const SECTION_COLORS = {
 };
 const DEFAULT_PROGRAM_COLOR = '#f97316'; // Summer FabLab orange
 
+// Palette used for the auto-color fallback. Same 12 vibrant hues the
+// admin can pick from in the color picker.
+const AUTO_COLOR_POOL = [
+  '#EE2329', '#f97316', '#f59e0b', '#eab308',
+  '#22c55e', '#10b981', '#14b8a6', '#06b6d4',
+  '#0ea5e9', '#3b82f6', '#6366f1', '#8b5cf6',
+  '#a855f7', '#d946ef', '#ec4899'
+];
+
+// Deterministic hash → 0..pool.length-1. Same input always maps to the
+// same slot, so every program keeps its auto-color stable across sessions.
+const hashToIndex = (str, mod) => {
+  const s = String(str || '');
+  let h = 0;
+  for (let i = 0; i < s.length; i++) {
+    h = ((h << 5) - h) + s.charCodeAt(i);
+    h |= 0;
+  }
+  return Math.abs(h) % mod;
+};
+
 // Pick the display color for anything belonging to a program (student
-// ID card, volunteer card, etc). Program's explicit `color` wins; else
-// fall back to its section palette; else the default summer orange.
+// ID card, volunteer card, etc). Priority:
+//   1. Explicit `program.color` chosen in the color picker
+//   2. FabLab section → SECTION_COLORS map
+//   3. Hash of programId → AUTO_COLOR_POOL (guarantees a distinct,
+//      stable color per program even when nothing is configured)
 const colorForProgram = (prog) => {
   if (!prog) return DEFAULT_PROGRAM_COLOR;
   if (typeof prog.color === 'string' && /^#[0-9a-fA-F]{6}$/.test(prog.color)) return prog.color;
-  return SECTION_COLORS[prog.fablabSection] || DEFAULT_PROGRAM_COLOR;
+  if (prog.fablabSection && SECTION_COLORS[prog.fablabSection]) return SECTION_COLORS[prog.fablabSection];
+  return AUTO_COLOR_POOL[hashToIndex(prog.programId || prog.name, AUTO_COLOR_POOL.length)];
 };
 const emptyTeacherForm = {
   source: 'manual', // 'manual' | 'employee' — see Teacher modal
