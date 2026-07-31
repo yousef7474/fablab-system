@@ -42,7 +42,10 @@ exports.getAllVolunteers = async (req, res) => {
           model: SummerProgram,
           as: 'summerProgram',
           required: false,
-          attributes: ['programId', 'name', 'startDate', 'endDate']
+          // `color` + `fablabSection` are needed by the client to derive
+          // each volunteer card's theme color. Without them, the card
+          // falls back to hash-color and looks unrelated to the program.
+          attributes: ['programId', 'name', 'startDate', 'endDate', 'color', 'fablabSection']
         }
       ],
       order: [['name', 'ASC']]
