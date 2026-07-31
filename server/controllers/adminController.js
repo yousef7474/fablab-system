@@ -853,21 +853,68 @@ exports.updateEmployee = async (req, res) => {
   }
 };
 
-// Delete employee
+// Delete employee. Default = soft delete (isActive: false) so tasks,
+// ratings, evaluations, and past workshop history stay intact for
+// audit. Pass ?force=true to cascade-purge every related row and
+// hard-delete the employee. Mirrors the Volunteer delete pattern.
 exports.deleteEmployee = async (req, res) => {
   try {
     const { id } = req.params;
+    const force = req.query.force === 'true' || req.query.force === '1';
 
     const employee = await Employee.findByPk(id);
     if (!employee) {
-      return res.status(404).json({ message: 'Employee not found' });
+      return res.status(404).json({ message: 'Employee not found', messageAr: 'الموظف غير موجود' });
     }
 
-    await employee.destroy();
-    res.json({ message: 'Employee deleted successfully' });
+    if (!force) {
+      // Soft delete — preserves all related data. Employee stops
+      // appearing in the active list (getAllEmployees already filters
+      // by isActive).
+      await employee.update({ isActive: false });
+      return res.json({
+        message: 'Employee deactivated successfully',
+        messageAr: 'تم تعطيل الموظف بنجاح',
+        softDelete: true
+      });
+    }
+
+    // Hard delete — cascade every referencing table first, then destroy
+    // the employee row. Wrap in a transaction so we either wipe all
+    // dependents or nothing at all.
+    const { Task, Rating, EmployeeEvaluation, EmployeeActivity, Workshop } = require('../models');
+    const { Op } = require('sequelize');
+    const { sequelize } = require('../config/database');
+
+    await sequelize.transaction(async (t) => {
+      // Tasks: employee could be either the assignee OR the creator.
+      await Task.destroy({
+        where: { [Op.or]: [{ employeeId: id }, { createdByEmployeeId: id }] },
+        transaction: t
+      });
+      await Rating.destroy({ where: { employeeId: id }, transaction: t });
+      await EmployeeEvaluation.destroy({ where: { employeeId: id }, transaction: t });
+      await EmployeeActivity.destroy({ where: { employeeId: id }, transaction: t });
+      // Workshops the employee ran are valuable records — null the FK
+      // instead of deleting the workshop itself.
+      await Workshop.update(
+        { assignedEmployeeId: null },
+        { where: { assignedEmployeeId: id }, transaction: t }
+      );
+      await employee.destroy({ transaction: t });
+    });
+
+    res.json({
+      message: 'Employee and all related records deleted permanently',
+      messageAr: 'تم حذف الموظف وكل السجلات المرتبطة نهائياً'
+    });
   } catch (error) {
     console.error('Error deleting employee:', error);
-    res.status(500).json({ message: 'Server error' });
+    res.status(500).json({
+      message: 'Server error',
+      messageAr: 'خطأ في الخادم',
+      detail: error.message
+    });
   }
 };
 
