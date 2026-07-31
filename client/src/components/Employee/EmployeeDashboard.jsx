@@ -88,10 +88,15 @@ const EmployeeDashboard = () => {
     const saved = localStorage.getItem('employeeActiveTab');
     return saved || 'overview';
   });
+  // Theme = 'dark' | 'light'. Defaults to dark (the original launch look).
+  const [theme, setTheme] = useState(() => localStorage.getItem('employeeTheme') || 'dark');
 
   useEffect(() => {
     localStorage.setItem('employeeActiveTab', activeTab);
   }, [activeTab]);
+  useEffect(() => {
+    localStorage.setItem('employeeTheme', theme);
+  }, [theme]);
   const [profile, setProfile] = useState(null);
   const [tasks, setTasks] = useState([]);
   const [ratings, setRatings] = useState(null);
@@ -316,6 +321,8 @@ const EmployeeDashboard = () => {
     i18n.changeLanguage(i18n.language === 'ar' ? 'en' : 'ar');
   };
 
+  const toggleTheme = () => setTheme(t => t === 'dark' ? 'light' : 'dark');
+
   // Calendar helpers
   const monthStart = startOfMonth(calendarDate);
   const monthEnd = endOfMonth(calendarDate);
@@ -370,7 +377,7 @@ const EmployeeDashboard = () => {
   const ringOffset = RING_C - (RING_C * activityPct) / 100;
 
   return (
-    <div className="employee-dashboard" dir={isRTL ? 'rtl' : 'ltr'} data-page="employee">
+    <div className="employee-dashboard" dir={isRTL ? 'rtl' : 'ltr'} data-page="employee" data-theme={theme}>
       {/* Top Bar */}
       <motion.div
         className="emp-topbar"
@@ -386,6 +393,27 @@ const EmployeeDashboard = () => {
           </div>
         </div>
         <div className="emp-topbar-right">
+          <button
+            className="emp-theme-btn"
+            onClick={toggleTheme}
+            title={theme === 'dark'
+              ? (isRTL ? 'الوضع الفاتح' : 'Light mode')
+              : (isRTL ? 'الوضع الداكن' : 'Dark mode')}
+            aria-label="Toggle theme"
+          >
+            {theme === 'dark' ? (
+              /* sun icon → we're currently dark, click for light */
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <circle cx="12" cy="12" r="4"/>
+                <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/>
+              </svg>
+            ) : (
+              /* moon icon → we're currently light, click for dark */
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+              </svg>
+            )}
+          </button>
           <button className="emp-lang-btn" onClick={toggleLanguage}>
             {i18n.language === 'ar' ? 'EN' : 'ع'}
           </button>
@@ -718,13 +746,13 @@ const EmployeeDashboard = () => {
                             </select>
                             {task.status !== 'pending_review' ? (
                               <button
+                                className="emp-review-btn"
                                 onClick={() => handleUpdateTaskStatus(task.taskId, 'pending_review')}
-                                style={{ padding: '6px 10px', borderRadius: 4, border: '1px solid rgba(167,139,250,0.4)', background: 'rgba(167,139,250,0.14)', color: '#a78bfa', cursor: 'pointer', fontWeight: 700, fontSize: '0.7rem', fontFamily: 'JetBrains Mono, monospace', whiteSpace: 'nowrap', letterSpacing: 0.6 }}
                               >
                                 {isRTL ? '↑ مراجعة' : '↑ REVIEW'}
                               </button>
                             ) : (
-                              <span style={{ padding: '4px 10px', borderRadius: 3, background: 'rgba(167,139,250,0.14)', color: '#a78bfa', fontWeight: 700, fontSize: '0.65rem', whiteSpace: 'nowrap', letterSpacing: 1, textTransform: 'uppercase', border: '1px solid rgba(167,139,250,0.35)', fontFamily: 'JetBrains Mono, monospace' }}>
+                              <span className="emp-review-pill">
                                 {isRTL ? '⏳ مراجعة' : '⏳ Reviewing'}
                               </span>
                             )}
@@ -957,46 +985,39 @@ const EmployeeDashboard = () => {
                   {myEvaluations.evaluations.map((ev, evi) => (
                     <motion.div
                       key={ev.evaluationId}
+                      className="emp-eval-item"
                       initial={{ opacity: 0, y: 8 }}
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ delay: evi * 0.05 }}
-                      style={{ padding: '14px 16px', background: 'rgba(20,28,46,0.4)', border: '1px solid rgba(148,163,184,0.1)', borderRadius: 6, marginBottom: 8 }}
                     >
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8, flexWrap: 'wrap', gap: 8 }}>
+                      <div className="emp-eval-item-head">
                         <div style={{ display: 'flex', gap: 14, alignItems: 'center' }}>
-                          <span style={{ fontFamily: 'Bricolage Grotesque, sans-serif', fontSize: '1.6rem', fontWeight: 800, color: '#eef2f7', letterSpacing: '-0.02em' }}>
-                            {ev.totalScore.toFixed(1)}<span style={{ fontSize: '0.72rem', color: '#5b6577', fontFamily: 'JetBrains Mono, monospace', marginInlineStart: 4 }}>/100</span>
+                          <span className="emp-eval-score">
+                            {ev.totalScore.toFixed(1)}<span className="emp-eval-score-max">/100</span>
                           </span>
-                          <span style={{ fontSize: '0.85rem', fontWeight: 700, color: '#4ade80', fontFamily: 'JetBrains Mono, monospace' }}>
-                            {ev.totalScore.toFixed(0)}%
-                          </span>
+                          <span className="emp-eval-percent">{ev.totalScore.toFixed(0)}%</span>
                           {ev.bonusPoints > 0 && (
-                            <span style={{ fontSize: '0.72rem', fontWeight: 700, color: '#a78bfa', fontFamily: 'JetBrains Mono, monospace', padding: '2px 8px', background: 'rgba(167,139,250,0.14)', borderRadius: 3, letterSpacing: 1, textTransform: 'uppercase' }}>
-                              +{ev.bonusPoints} {isRTL ? 'إضافي' : 'bonus'}
-                            </span>
+                            <span className="emp-eval-bonus">+{ev.bonusPoints} {isRTL ? 'إضافي' : 'bonus'}</span>
                           )}
                         </div>
-                        {ev.period && (
-                          <span style={{ background: 'rgba(238,35,41,0.1)', color: '#EE2329', padding: '3px 10px', borderRadius: 3, fontSize: '0.68rem', fontWeight: 700, fontFamily: 'JetBrains Mono, monospace', letterSpacing: 1, textTransform: 'uppercase', border: '1px solid rgba(238,35,41,0.3)' }}>
-                            {ev.period}
-                          </span>
-                        )}
+                        {ev.period && <span className="emp-eval-period">{ev.period}</span>}
                       </div>
-                      <div style={{ fontSize: '0.7rem', color: '#5b6577', fontFamily: 'JetBrains Mono, monospace', letterSpacing: 0.5 }}>
+                      <div className="emp-eval-meta">
                         {ev.evaluationDate} · {isRTL ? 'بواسطة' : 'BY'}: {ev.evaluator?.fullName}
                         {ev.notes && <span> · {ev.notes}</span>}
                       </div>
-                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: 6, marginTop: 10 }}>
+                      <div className="emp-eval-cats">
                         {EVALUATION_CATEGORIES.map(cat => {
                           const catWeighted = cat.criteria.reduce((s, cr) => {
                             const raw = Math.min(parseFloat(ev.scores?.[`${cat.key}_${cr.key}`]) || 0, 50);
                             return s + (raw / 50) * cr.weight;
                           }, 0);
                           const catMaxWeight = cat.criteria.reduce((s, cr) => s + cr.weight, 0);
+                          const isPass = catWeighted >= catMaxWeight * 0.8;
                           return (
-                            <div key={cat.key} style={{ fontSize: '0.72rem', display: 'flex', justifyContent: 'space-between', padding: '5px 10px', background: 'rgba(14,20,34,0.7)', borderRadius: 3, border: '1px solid rgba(148,163,184,0.08)' }}>
-                              <span style={{ color: '#94a3b8' }}>{isRTL ? cat.nameAr : cat.nameEn}</span>
-                              <span style={{ fontWeight: 700, color: catWeighted >= catMaxWeight * 0.8 ? '#4ade80' : '#eef2f7', fontFamily: 'JetBrains Mono, monospace' }}>
+                            <div key={cat.key} className="emp-eval-cat">
+                              <span className="emp-eval-cat-name">{isRTL ? cat.nameAr : cat.nameEn}</span>
+                              <span className={`emp-eval-cat-val ${isPass ? 'pass' : ''}`}>
                                 {catWeighted.toFixed(1)}/{catMaxWeight}
                               </span>
                             </div>
@@ -1100,38 +1121,41 @@ const EmployeeDashboard = () => {
                           return (
                             <motion.div
                               key={s.studentId}
+                              className="emp-workshop-student"
                               initial={{ opacity: 0, y: 6 }}
                               animate={{ opacity: 1, y: 0 }}
                               transition={{ delay: si * 0.02 }}
-                              style={{ background: 'rgba(20,28,46,0.5)', borderRadius: 4, padding: '12px 14px', border: '1px solid rgba(148,163,184,0.08)', display: 'flex', flexDirection: 'column', gap: 10 }}
                             >
                               <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
                                 <div style={{ flex: '1 1 160px', minWidth: 0 }}>
-                                  <div style={{ fontWeight: 600, fontSize: '0.9rem', color: '#eef2f7' }}>{s.firstName} {s.lastName}</div>
-                                  <div style={{ fontSize: '0.7rem', color: '#5b6577', fontFamily: 'JetBrains Mono, monospace', letterSpacing: 0.4 }}>
+                                  <div className="emp-ws-name">{s.firstName} {s.lastName}</div>
+                                  <div className="emp-ws-contact">
                                     {s.phone}{s.email ? ` · ${s.email}` : ''}
                                   </div>
                                 </div>
-                                <span style={{ fontSize: '0.68rem', color: '#22d3ee', fontWeight: 700, background: 'rgba(34,211,238,0.12)', padding: '3px 10px', borderRadius: 3, fontFamily: 'JetBrains Mono, monospace', letterSpacing: 1, border: '1px solid rgba(34,211,238,0.3)' }}>
+                                <span className="emp-ws-days-pill">
                                   {attendedDates.length}/{workshopDays.length || '?'} {isRTL ? 'يوم' : 'DAYS'}
                                 </span>
 
                                 <div style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
-                                  {[1, 2, 3, 4, 5].map(star => (
-                                    <button
-                                      key={star}
-                                      onClick={async () => {
-                                        try {
-                                          await employeeApi.patch(`/workshops/employee/students/${s.studentId}/rate`, { performanceRating: star });
-                                          toast.success(isRTL ? 'تم التقييم' : 'Rated');
-                                          fetchMyWorkshops();
-                                        } catch (err) { toast.error(isRTL ? 'خطأ' : 'Error'); }
-                                      }}
-                                      style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '1.05rem', padding: 0, color: star <= (s.performanceRating || 0) ? '#f59e0b' : 'rgba(148,163,184,0.25)', textShadow: star <= (s.performanceRating || 0) ? '0 0 8px rgba(245,158,11,0.5)' : 'none' }}
-                                    >
-                                      ★
-                                    </button>
-                                  ))}
+                                  {[1, 2, 3, 4, 5].map(star => {
+                                    const isFilled = star <= (s.performanceRating || 0);
+                                    return (
+                                      <button
+                                        key={star}
+                                        className={`emp-ws-star ${isFilled ? 'filled' : ''}`}
+                                        onClick={async () => {
+                                          try {
+                                            await employeeApi.patch(`/workshops/employee/students/${s.studentId}/rate`, { performanceRating: star });
+                                            toast.success(isRTL ? 'تم التقييم' : 'Rated');
+                                            fetchMyWorkshops();
+                                          } catch (err) { toast.error(isRTL ? 'خطأ' : 'Error'); }
+                                        }}
+                                      >
+                                        ★
+                                      </button>
+                                    );
+                                  })}
                                 </div>
 
                                 <span className={`emp-status-badge ${s.paymentStatus === 'verified' ? 'completed' : s.paymentStatus === 'rejected' ? 'uncompleted' : 'pending'}`}>
@@ -1142,8 +1166,8 @@ const EmployeeDashboard = () => {
                               </div>
 
                               {workshopDays.length > 0 && (
-                                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, paddingTop: 8, borderTop: '1px dashed rgba(148,163,184,0.1)' }}>
-                                  <span style={{ fontSize: '0.66rem', color: '#5b6577', fontWeight: 700, alignSelf: 'center', marginInlineEnd: 4, letterSpacing: 1, textTransform: 'uppercase', fontFamily: 'JetBrains Mono, monospace' }}>
+                                <div className="emp-ws-attend-row">
+                                  <span className="emp-ws-attend-label">
                                     {isRTL ? 'الحضور:' : 'ATT:'}
                                   </span>
                                   {workshopDays.map(day => {
@@ -1153,6 +1177,7 @@ const EmployeeDashboard = () => {
                                     return (
                                       <button
                                         key={day}
+                                        className={`emp-ws-attend-day ${isPresent ? 'present' : ''}`}
                                         onClick={async () => {
                                           try {
                                             await employeeApi.patch(`/workshops/employee/students/${s.studentId}/attendance`, { date: day, present: !isPresent });
@@ -1160,18 +1185,6 @@ const EmployeeDashboard = () => {
                                           } catch (err) { toast.error(isRTL ? 'خطأ' : 'Error'); }
                                         }}
                                         title={day}
-                                        style={{
-                                          padding: '3px 9px', borderRadius: 3,
-                                          border: `1px solid ${isPresent ? 'rgba(74,222,128,0.45)' : 'rgba(148,163,184,0.15)'}`,
-                                          cursor: 'pointer', fontWeight: 700, fontSize: '0.68rem',
-                                          fontFamily: 'JetBrains Mono, monospace',
-                                          background: isPresent ? 'rgba(74,222,128,0.14)' : 'transparent',
-                                          color: isPresent ? '#4ade80' : '#5b6577',
-                                          minWidth: 44,
-                                          letterSpacing: 0.4,
-                                          transition: 'all 0.15s ease',
-                                          boxShadow: isPresent ? '0 0 8px rgba(74,222,128,0.25)' : 'none'
-                                        }}
                                       >
                                         {isPresent ? '✓ ' : ''}{label}
                                       </button>

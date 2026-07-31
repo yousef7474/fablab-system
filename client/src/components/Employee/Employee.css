@@ -190,6 +190,15 @@
   --term-panel: rgba(14, 20, 34, 0.66);
   --term-panel-solid: #0e1422;
   --term-panel-lift: rgba(20, 28, 46, 0.78);
+  --term-topbar-bg: linear-gradient(180deg, rgba(6, 8, 15, 0.85) 0%, rgba(6, 8, 15, 0.75) 100%);
+  --term-tabs-bg: linear-gradient(180deg, rgba(6, 8, 15, 0.85), rgba(6, 8, 15, 0.55));
+  --term-inline-panel: rgba(20, 28, 46, 0.4);
+  --term-inline-panel-strong: rgba(20, 28, 46, 0.5);
+  --term-modal-scrim: rgba(6, 8, 15, 0.72);
+  --term-body-glow-red: 0.09;
+  --term-body-glow-cyan: 0.05;
+  --term-scanline: 0.4;
+  --term-shadow-lift: 0 20px 50px -20px rgba(238, 35, 41, 0.35);
   --term-border: rgba(238, 35, 41, 0.14);
   --term-border-hover: rgba(238, 35, 41, 0.42);
   --term-border-strong: rgba(238, 35, 41, 0.55);
@@ -224,8 +233,8 @@
   position: relative;
   overflow-x: hidden;
   background:
-    radial-gradient(1200px 700px at 20% -10%, rgba(238, 35, 41, 0.09), transparent 60%),
-    radial-gradient(900px 600px at 100% 100%, rgba(34, 211, 238, 0.05), transparent 60%),
+    radial-gradient(1200px 700px at 20% -10%, rgba(238, 35, 41, var(--term-body-glow-red)), transparent 60%),
+    radial-gradient(900px 600px at 100% 100%, rgba(34, 211, 238, var(--term-body-glow-cyan)), transparent 60%),
     var(--term-bg);
 }
 
@@ -254,7 +263,7 @@
   pointer-events: none;
   z-index: 0;
   mix-blend-mode: screen;
-  opacity: 0.4;
+  opacity: var(--term-scanline);
 }
 
 @keyframes term-scan {
@@ -320,7 +329,7 @@
   align-items: center;
   justify-content: space-between;
   padding: 14px 26px;
-  background: linear-gradient(180deg, rgba(6, 8, 15, 0.85) 0%, rgba(6, 8, 15, 0.75) 100%);
+  background: var(--term-topbar-bg);
   backdrop-filter: blur(24px) saturate(160%);
   -webkit-backdrop-filter: blur(24px) saturate(160%);
   border-bottom: 1px solid var(--term-border);
@@ -479,7 +488,7 @@
   align-items: stretch;
   gap: 4px;
   padding: 6px 22px 0;
-  background: linear-gradient(180deg, rgba(6, 8, 15, 0.85), rgba(6, 8, 15, 0.55));
+  background: var(--term-tabs-bg);
   backdrop-filter: blur(18px);
   -webkit-backdrop-filter: blur(18px);
   border-bottom: 1px solid var(--term-divider);
@@ -674,7 +683,7 @@
 .emp-stat-card:hover {
   transform: translateY(-2px);
   border-color: var(--term-border-hover);
-  box-shadow: 0 20px 50px -20px rgba(238, 35, 41, 0.35);
+  box-shadow: var(--term-shadow-lift);
 }
 
 /* Left accent bar per stat card, colored by type */
@@ -896,7 +905,7 @@
 .emp-task-item {
   position: relative;
   padding: 12px 14px 12px 20px;
-  background: rgba(20, 28, 46, 0.5);
+  background: var(--term-inline-panel-strong);
   border: 1px solid var(--term-divider);
   border-radius: 4px;
   transition: border-color 0.18s ease, transform 0.18s ease;
@@ -1007,7 +1016,7 @@
   gap: 12px;
   align-items: center;
   padding: 10px 12px;
-  background: rgba(20, 28, 46, 0.4);
+  background: var(--term-inline-panel);
   border: 1px solid var(--term-divider);
   border-radius: 4px;
   transition: border-color 0.18s ease;
@@ -1379,7 +1388,7 @@
   align-items: center;
   justify-content: center;
   gap: 4px;
-  background: rgba(20, 28, 46, 0.4);
+  background: var(--term-inline-panel);
   border: 1px solid var(--term-divider);
   border-radius: 4px;
   cursor: pointer;
@@ -1460,7 +1469,7 @@
 .emp-event-card {
   position: relative;
   padding: 12px 14px 12px 18px;
-  background: rgba(20, 28, 46, 0.5);
+  background: var(--term-inline-panel-strong);
   border: 1px solid var(--term-divider);
   border-radius: 4px;
   margin-bottom: 8px;
@@ -1586,7 +1595,7 @@
   gap: 12px;
   align-items: center;
   padding: 10px 12px;
-  background: rgba(20, 28, 46, 0.4);
+  background: var(--term-inline-panel);
   border: 1px solid var(--term-divider);
   border-radius: 4px;
   transition: border-color 0.18s ease;
@@ -1765,7 +1774,7 @@
 .emp-modal-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(6, 8, 15, 0.72);
+  background: var(--term-modal-scrim);
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
   display: flex;
@@ -1945,4 +1954,375 @@
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
   }
+}
+
+/* ---------- Utility classes for inline-heavy sections ---------- */
+/* These replace inline styles in the Evaluations and Workshops tabs
+   so they respond to the theme toggle instead of freezing at dark. */
+.emp-eval-item {
+  padding: 14px 16px;
+  background: var(--term-inline-panel);
+  border: 1px solid var(--term-divider);
+  border-radius: 6px;
+  margin-bottom: 8px;
+}
+.emp-eval-item-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.emp-eval-score {
+  font-family: var(--font-display);
+  font-size: 1.6rem;
+  font-weight: 800;
+  color: var(--ink-primary);
+  letter-spacing: -0.02em;
+}
+.emp-eval-score-max {
+  font-size: 0.72rem;
+  color: var(--ink-muted);
+  font-family: var(--font-mono);
+  margin-inline-start: 4px;
+}
+.emp-eval-percent {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--signal-mint);
+  font-family: var(--font-mono);
+}
+.emp-eval-bonus {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--signal-violet);
+  font-family: var(--font-mono);
+  padding: 2px 8px;
+  background: var(--signal-violet-soft);
+  border-radius: 3px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  border: 1px solid rgba(167, 139, 250, 0.35);
+}
+.emp-eval-period {
+  background: var(--signal-red-soft);
+  color: var(--signal-red);
+  padding: 3px 10px;
+  border-radius: 3px;
+  font-size: 0.68rem;
+  font-weight: 700;
+  font-family: var(--font-mono);
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  border: 1px solid rgba(238, 35, 41, 0.3);
+}
+.emp-eval-meta {
+  font-size: 0.7rem;
+  color: var(--ink-muted);
+  font-family: var(--font-mono);
+  letter-spacing: 0.5px;
+}
+.emp-eval-cats {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 6px;
+  margin-top: 10px;
+}
+.emp-eval-cat {
+  font-size: 0.72rem;
+  display: flex;
+  justify-content: space-between;
+  padding: 5px 10px;
+  background: var(--term-panel-lift);
+  border-radius: 3px;
+  border: 1px solid var(--term-divider);
+}
+.emp-eval-cat-name { color: var(--ink-secondary); }
+.emp-eval-cat-val {
+  font-weight: 700;
+  color: var(--ink-primary);
+  font-family: var(--font-mono);
+}
+.emp-eval-cat-val.pass { color: var(--signal-mint); }
+
+.emp-workshop-student {
+  background: var(--term-inline-panel-strong);
+  border-radius: 4px;
+  padding: 12px 14px;
+  border: 1px solid var(--term-divider);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.emp-ws-name {
+  font-weight: 600;
+  font-size: 0.9rem;
+  color: var(--ink-primary);
+}
+.emp-ws-contact {
+  font-size: 0.7rem;
+  color: var(--ink-muted);
+  font-family: var(--font-mono);
+  letter-spacing: 0.4px;
+}
+.emp-ws-days-pill {
+  font-size: 0.68rem;
+  color: var(--signal-cyan);
+  font-weight: 700;
+  background: var(--signal-cyan-soft);
+  padding: 3px 10px;
+  border-radius: 3px;
+  font-family: var(--font-mono);
+  letter-spacing: 1px;
+  border: 1px solid rgba(34, 211, 238, 0.3);
+}
+.emp-ws-star {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 1.05rem;
+  padding: 0;
+  color: rgba(148, 163, 184, 0.25);
+  transition: color 0.15s ease, text-shadow 0.15s ease;
+}
+.emp-ws-star.filled {
+  color: var(--signal-amber);
+  text-shadow: 0 0 8px rgba(245, 158, 11, 0.5);
+}
+.emp-ws-attend-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  padding-top: 8px;
+  border-top: 1px dashed var(--term-divider);
+}
+.emp-ws-attend-label {
+  font-size: 0.66rem;
+  color: var(--ink-muted);
+  font-weight: 700;
+  align-self: center;
+  margin-inline-end: 4px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  font-family: var(--font-mono);
+}
+.emp-ws-attend-day {
+  padding: 3px 9px;
+  border-radius: 3px;
+  border: 1px solid var(--term-divider);
+  cursor: pointer;
+  font-weight: 700;
+  font-size: 0.68rem;
+  font-family: var(--font-mono);
+  background: transparent;
+  color: var(--ink-muted);
+  min-width: 44px;
+  letter-spacing: 0.4px;
+  transition: all 0.15s ease;
+}
+.emp-ws-attend-day.present {
+  background: var(--signal-mint-soft);
+  color: var(--signal-mint);
+  border-color: rgba(74, 222, 128, 0.45);
+  box-shadow: 0 0 8px rgba(74, 222, 128, 0.25);
+}
+
+.emp-review-btn {
+  padding: 6px 10px;
+  border-radius: 4px;
+  border: 1px solid rgba(167, 139, 250, 0.4);
+  background: var(--signal-violet-soft);
+  color: var(--signal-violet);
+  cursor: pointer;
+  font-weight: 700;
+  font-size: 0.7rem;
+  font-family: var(--font-mono);
+  white-space: nowrap;
+  letter-spacing: 0.6px;
+}
+.emp-review-pill {
+  padding: 4px 10px;
+  border-radius: 3px;
+  background: var(--signal-violet-soft);
+  color: var(--signal-violet);
+  font-weight: 700;
+  font-size: 0.65rem;
+  white-space: nowrap;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  border: 1px solid rgba(167, 139, 250, 0.35);
+  font-family: var(--font-mono);
+}
+
+/* ---------- Theme toggle button in topbar ---------- */
+.emp-theme-btn {
+  width: 36px;
+  height: 36px;
+  display: grid;
+  place-items: center;
+  background: transparent;
+  border: 1px solid var(--term-border);
+  color: var(--ink-secondary);
+  cursor: pointer;
+  transition: all 0.18s ease;
+  border-radius: 4px;
+}
+.emp-theme-btn:hover {
+  border-color: var(--term-border-hover);
+  color: var(--signal-red);
+  background: var(--signal-red-soft);
+  box-shadow: 0 0 18px rgba(238, 35, 41, 0.22);
+}
+.emp-theme-btn svg { transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1); }
+.emp-theme-btn:hover svg { transform: rotate(20deg); }
+
+/* =====================================================================
+   LIGHT THEME OVERRIDE
+   ---------------------------------------------------------------------
+   Same "Ops Terminal" language on a warm off-white. Panels become
+   translucent white with a subtle red-tint border; text flips to
+   near-black; glows soften; scanline dims. Every stat/status color
+   stays identical so the semantic mapping is preserved.
+   ===================================================================== */
+.employee-dashboard[data-theme="light"] {
+  --term-bg: #f4f6fb;
+  --term-panel: rgba(255, 255, 255, 0.75);
+  --term-panel-solid: #ffffff;
+  --term-panel-lift: rgba(255, 255, 255, 0.92);
+  --term-topbar-bg: linear-gradient(180deg, rgba(255, 255, 255, 0.9) 0%, rgba(255, 255, 255, 0.72) 100%);
+  --term-tabs-bg: linear-gradient(180deg, rgba(255, 255, 255, 0.86), rgba(255, 255, 255, 0.6));
+  --term-inline-panel: rgba(15, 23, 42, 0.028);
+  --term-inline-panel-strong: rgba(15, 23, 42, 0.045);
+  --term-modal-scrim: rgba(15, 23, 42, 0.35);
+  --term-body-glow-red: 0.045;
+  --term-body-glow-cyan: 0.025;
+  --term-scanline: 0.15;
+  --term-shadow-lift: 0 20px 40px -20px rgba(238, 35, 41, 0.28);
+  --term-border: rgba(238, 35, 41, 0.18);
+  --term-border-hover: rgba(238, 35, 41, 0.48);
+  --term-border-strong: rgba(238, 35, 41, 0.6);
+  --term-divider: rgba(15, 23, 42, 0.08);
+  --term-grid: rgba(238, 35, 41, 0.03);
+
+  --signal-red-soft: rgba(238, 35, 41, 0.08);
+  --signal-cyan-soft: rgba(34, 211, 238, 0.10);
+  --signal-mint-soft: rgba(74, 222, 128, 0.12);
+  --signal-amber-soft: rgba(245, 158, 11, 0.12);
+  --signal-violet-soft: rgba(167, 139, 250, 0.12);
+
+  --ink-primary: #0f172a;
+  --ink-secondary: #475569;
+  --ink-muted: #64748b;
+  --ink-dim: #94a3b8;
+}
+
+/* Softer shadow palette for light mode — dark-mode neon glows would
+   read as harsh smudges on a white surface. */
+.employee-dashboard[data-theme="light"] .emp-topbar {
+  box-shadow: 0 1px 0 rgba(15, 23, 42, 0.04), 0 12px 40px -18px rgba(15, 23, 42, 0.12);
+}
+.employee-dashboard[data-theme="light"] .loading-spinner-large {
+  box-shadow: 0 0 30px rgba(238, 35, 41, 0.15);
+}
+.employee-dashboard[data-theme="light"] .emp-brand-mark {
+  box-shadow: 0 4px 16px rgba(238, 35, 41, 0.28), inset 0 0 12px rgba(0, 0, 0, 0.15);
+}
+.employee-dashboard[data-theme="light"] .emp-tab-indicator {
+  box-shadow: 0 0 10px rgba(238, 35, 41, 0.4);
+}
+.employee-dashboard[data-theme="light"] .emp-stat-card::before {
+  box-shadow: 0 0 8px currentColor;
+}
+.employee-dashboard[data-theme="light"] .emp-modal {
+  box-shadow: 0 30px 60px rgba(15, 23, 42, 0.25), 0 0 40px rgba(238, 35, 41, 0.08);
+}
+.employee-dashboard[data-theme="light"] .emp-activity-ring svg {
+  filter: drop-shadow(0 6px 18px rgba(238, 35, 41, 0.22));
+}
+.employee-dashboard[data-theme="light"] .emp-profile-avatar {
+  box-shadow: 0 12px 30px rgba(238, 35, 41, 0.28), inset 0 0 20px rgba(0, 0, 0, 0.1);
+  animation: none; /* the pulse looks too intense on light */
+}
+
+/* Status badge tuning for readability on white */
+.employee-dashboard[data-theme="light"] .emp-status-badge.pending      { color: #b45309; }
+.employee-dashboard[data-theme="light"] .emp-status-badge.in_progress  { color: #0891b2; }
+.employee-dashboard[data-theme="light"] .emp-status-badge.completed    { color: #15803d; }
+.employee-dashboard[data-theme="light"] .emp-status-badge.cancelled    { color: #475569; }
+.employee-dashboard[data-theme="light"] .emp-status-badge.uncompleted  { color: #b91c1c; }
+.employee-dashboard[data-theme="light"] .emp-status-badge.pending_review { color: #6d28d9; }
+
+.employee-dashboard[data-theme="light"] .emp-priority-tag.high   { color: #b91c1c; }
+.employee-dashboard[data-theme="light"] .emp-priority-tag.medium { color: #b45309; }
+.employee-dashboard[data-theme="light"] .emp-priority-tag.low    { color: #0891b2; }
+
+.employee-dashboard[data-theme="light"] .emp-rating-badge.award {
+  color: #15803d;
+}
+.employee-dashboard[data-theme="light"] .emp-rating-badge.deduction {
+  color: #b91c1c;
+}
+
+.employee-dashboard[data-theme="light"] .emp-stat-card.tasks-total .emp-stat-value { color: #0891b2; }
+.employee-dashboard[data-theme="light"] .emp-stat-card.completed .emp-stat-value   { color: #15803d; }
+.employee-dashboard[data-theme="light"] .emp-stat-card.in-progress .emp-stat-value { color: #b45309; }
+.employee-dashboard[data-theme="light"] .emp-points-card.awards .emp-points-value  { color: #15803d; }
+.employee-dashboard[data-theme="light"] .emp-activity-status.passed { color: #15803d; }
+.employee-dashboard[data-theme="light"] .emp-activity-success-badge { color: #15803d; }
+.employee-dashboard[data-theme="light"] .emp-eval-percent           { color: #15803d; }
+.employee-dashboard[data-theme="light"] .emp-eval-cat-val.pass      { color: #15803d; }
+.employee-dashboard[data-theme="light"] .emp-ws-days-pill           { color: #0891b2; }
+.employee-dashboard[data-theme="light"] .emp-ws-attend-day.present  { color: #15803d; }
+
+.employee-dashboard[data-theme="light"] .emp-review-btn,
+.employee-dashboard[data-theme="light"] .emp-review-pill {
+  color: #6d28d9;
+}
+.employee-dashboard[data-theme="light"] .emp-activity-weeks-pill {
+  color: #6d28d9;
+}
+.employee-dashboard[data-theme="light"] .emp-eval-bonus {
+  color: #6d28d9;
+}
+
+/* Task item hover — the dark version uses a translateX; keep it but
+   the border color tweak reads better with the light surface. */
+.employee-dashboard[data-theme="light"] .emp-task-item:hover,
+.employee-dashboard[data-theme="light"] .emp-event-card:hover,
+.employee-dashboard[data-theme="light"] .emp-rating-item:hover,
+.employee-dashboard[data-theme="light"] .emp-rating-row:hover {
+  border-color: rgba(238, 35, 41, 0.35);
+}
+
+/* Selected calendar day — keep the red flood, but a lighter shadow */
+.employee-dashboard[data-theme="light"] .emp-calendar-day.selected {
+  box-shadow: 0 6px 18px rgba(238, 35, 41, 0.35);
+}
+.employee-dashboard[data-theme="light"] .emp-calendar-day.today {
+  box-shadow: inset 0 0 0 1px var(--signal-red), 0 0 14px rgba(238, 35, 41, 0.2);
+}
+
+/* Form inputs — the dark scheme uses --term-bg for the input surface;
+   on light that's the page bg, which looks weird. Give inputs their
+   own solid white surface. */
+.employee-dashboard[data-theme="light"] .emp-form-group input,
+.employee-dashboard[data-theme="light"] .emp-form-group textarea,
+.employee-dashboard[data-theme="light"] .emp-form-group select,
+.employee-dashboard[data-theme="light"] .emp-status-select {
+  background: #ffffff !important;
+  color: var(--ink-primary) !important;
+  border-color: rgba(15, 23, 42, 0.12) !important;
+}
+.employee-dashboard[data-theme="light"] .emp-form-group input[type="date"],
+.employee-dashboard[data-theme="light"] .emp-form-group input[type="time"] {
+  color-scheme: light;
+}
+
+/* Scrollbar */
+.employee-dashboard[data-theme="light"] *::-webkit-scrollbar-thumb {
+  background: rgba(238, 35, 41, 0.25);
+}
+.employee-dashboard[data-theme="light"] *::-webkit-scrollbar-thumb:hover {
+  background: rgba(238, 35, 41, 0.45);
 }
