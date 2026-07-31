@@ -5843,236 +5843,362 @@ const AdminDashboard = () => {
             )}
 
             {/* Schedule Tab */}
-            {activeTab === 'schedule' && (
+            {activeTab === 'schedule' && (() => {
+              // ── Metric helpers ──
+              const _todayD = new Date();
+              const _todayCount = getEventsForDay(_todayD).length;
+              const _weekEnd = new Date(_todayD.getTime() + 7 * 24 * 60 * 60 * 1000);
+              const _weekCount = getFilteredSchedule().filter(e => {
+                const d = new Date(e.date || e.appointmentDate || e.visitDate || e.startDate || e.dueDate);
+                return d >= _todayD && d <= _weekEnd;
+              }).length;
+              const _upcomingCount = getFilteredSchedule().length;
+              const _activeEmp = scheduleFilter !== 'all' && scheduleFilter !== ''
+                ? employees.find(e => (Array.isArray(e.sections) ? e.sections : [e.section]).includes(scheduleFilter))
+                : null;
+              return (
               <motion.div
                 key="schedule"
-                initial={{ opacity: 0, y: 20 }}
+                initial={{ opacity: 0, y: 12 }}
                 animate={{ opacity: 1, y: 0 }}
-
-                className="schedule-content"
+                exit={{ opacity: 0, y: -8 }}
+                transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
+                className="schedule-content schedule-v2"
               >
-                <div className="schedule-layout-new">
-                  {/* Calendar Section */}
-                  <div className="calendar-section">
-                    {scheduleFilter !== 'all' && (
-                      <div className="current-schedule-header">
-                        <h2>
-                          {employees.find(e => e.section === scheduleFilter)?.name || scheduleFilter}
-                          <span className="section-badge" style={{ backgroundColor: SECTION_COLORS[scheduleFilter] }}>
-                            {sectionLabels[scheduleFilter] || scheduleFilter}
-                          </span>
-                        </h2>
-                        <p className="schedule-email">
-                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                            <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
-                            <polyline points="22,6 12,13 2,6"/>
-                          </svg>
-                          {employees.find(e => e.section === scheduleFilter)?.email || 'No email'}
-                        </p>
-                      </div>
-                    )}
-                    <div className="calendar-header">
-                      <button
-                        className="calendar-nav"
-                        onClick={() => setSelectedDate(new Date(selectedDate.getFullYear(), selectedDate.getMonth() - 1))}
-                      >
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                          <polyline points="15 18 9 12 15 6"/>
-                        </svg>
-                      </button>
-                      <h3>
-                        {format(selectedDate, 'MMMM yyyy', { locale: isRTL ? ar : enUS })}
-                      </h3>
-                      <button
-                        className="calendar-nav"
-                        onClick={() => setSelectedDate(new Date(selectedDate.getFullYear(), selectedDate.getMonth() + 1))}
-                      >
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                          <polyline points="9 18 15 12 9 6"/>
-                        </svg>
-                      </button>
+                {/* ═══════════════════════════════════ COMMAND BAR ═══════════════════════════════════ */}
+                <motion.div
+                  className="sv2-command"
+                  initial={{ opacity: 0, y: -8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
+                >
+                  <div className="sv2-command-left">
+                    <div className="sv2-command-title">
+                      <span className="sv2-command-kicker">
+                        {isRTL ? 'مركز التحكم · الجدول' : 'MISSION CONTROL · SCHEDULE'}
+                      </span>
+                      <h2>{isRTL ? 'إدارة المواعيد والمهام' : 'Appointments & Task Operations'}</h2>
                     </div>
+                    <AnimatePresence mode="wait">
+                      {(scheduleFilter && scheduleFilter !== 'all') ? (
+                        <motion.div
+                          key={`filter-${scheduleFilter}`}
+                          className="sv2-filter-chip"
+                          style={{
+                            color: SECTION_COLORS[scheduleFilter] || 'var(--sv2-red)',
+                            borderColor: (SECTION_COLORS[scheduleFilter] || '#EE2329') + '80',
+                            background: (SECTION_COLORS[scheduleFilter] || '#EE2329') + '15'
+                          }}
+                          initial={{ opacity: 0, scale: 0.85 }}
+                          animate={{ opacity: 1, scale: 1 }}
+                          exit={{ opacity: 0, scale: 0.85 }}
+                          transition={{ type: 'spring', stiffness: 340, damping: 24 }}
+                        >
+                          <span className="sv2-filter-chip-dot" />
+                          <span>{sectionLabels[scheduleFilter] || scheduleFilter}</span>
+                          {_activeEmp && (
+                            <span className="sv2-filter-chip-name">· {_activeEmp.name}</span>
+                          )}
+                          <button
+                            className="sv2-filter-chip-close"
+                            onClick={() => setScheduleFilter('all')}
+                            title={isRTL ? 'مسح الفلتر' : 'Clear filter'}
+                          >×</button>
+                        </motion.div>
+                      ) : (
+                        <motion.div
+                          key="filter-all"
+                          className="sv2-filter-chip all"
+                          initial={{ opacity: 0, scale: 0.85 }}
+                          animate={{ opacity: 1, scale: 1 }}
+                          exit={{ opacity: 0, scale: 0.85 }}
+                          transition={{ type: 'spring', stiffness: 340, damping: 24 }}
+                        >
+                          <span className="sv2-filter-chip-dot" style={{ background: 'currentColor', color: '#94a3b8' }} />
+                          <span>{isRTL ? 'كل الأقسام' : 'All Sections'}</span>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                  </div>
+                  <div className="sv2-metrics">
+                    <motion.div className="sv2-metric today"
+                      initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: 0.12, type: 'spring', stiffness: 300, damping: 22 }}>
+                      <span className="sv2-metric-value">{_todayCount}</span>
+                      <span className="sv2-metric-label">{isRTL ? 'اليوم' : 'Today'}</span>
+                    </motion.div>
+                    <motion.div className="sv2-metric week"
+                      initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: 0.18, type: 'spring', stiffness: 300, damping: 22 }}>
+                      <span className="sv2-metric-value">{_weekCount}</span>
+                      <span className="sv2-metric-label">{isRTL ? '7 أيام' : '7 Days'}</span>
+                    </motion.div>
+                    <motion.div className="sv2-metric upcoming"
+                      initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: 0.24, type: 'spring', stiffness: 300, damping: 22 }}>
+                      <span className="sv2-metric-value">{_upcomingCount}</span>
+                      <span className="sv2-metric-label">{isRTL ? 'قادم' : 'Upcoming'}</span>
+                    </motion.div>
+                  </div>
+                </motion.div>
 
-                    <div className="calendar-grid">
-                      <div className="calendar-weekdays">
+                {/* ═══════════════════════════════════ MAIN GRID ═══════════════════════════════════ */}
+                <div className="sv2-grid">
+                  {/* ─────────── LEFT: Calendar Panel ─────────── */}
+                  <motion.div
+                    className="sv2-panel"
+                    initial={{ opacity: 0, y: 12 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.12, duration: 0.45, ease: [0.16, 1, 0.3, 1] }}
+                  >
+                    <div className="sv2-panel-head">
+                      <div className="sv2-panel-title">
+                        <span className="sv2-panel-tag">[01]</span>
+                        <h3>{isRTL ? 'التقويم' : 'Calendar Grid'}</h3>
+                      </div>
+                      <div className="sv2-cal-nav">
+                        <button
+                          className="sv2-cal-btn"
+                          onClick={() => setSelectedDate(new Date(selectedDate.getFullYear(), selectedDate.getMonth() - 1))}
+                          title={isRTL ? 'الشهر السابق' : 'Previous month'}
+                        >
+                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                            <polyline points="15 18 9 12 15 6"/>
+                          </svg>
+                        </button>
+                        <span className="sv2-cal-today">
+                          {format(selectedDate, 'MMMM yyyy', { locale: isRTL ? ar : enUS })}
+                        </span>
+                        <button
+                          className="sv2-cal-btn"
+                          onClick={() => setSelectedDate(new Date(selectedDate.getFullYear(), selectedDate.getMonth() + 1))}
+                          title={isRTL ? 'الشهر التالي' : 'Next month'}
+                        >
+                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                            <polyline points="9 18 15 12 9 6"/>
+                          </svg>
+                        </button>
+                        <button
+                          className="sv2-cal-btn"
+                          onClick={() => setSelectedDate(new Date())}
+                          title={isRTL ? 'اليوم' : 'Today'}
+                          style={{ marginInlineStart: 4 }}
+                        >
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                            <circle cx="12" cy="12" r="5"/>
+                          </svg>
+                        </button>
+                      </div>
+                    </div>
+                    <div className="sv2-panel-body">
+                      <div className="sv2-cal-weekdays">
                         {(isRTL
                           ? ['أحد', 'إثن', 'ثلا', 'أرب', 'خمي', 'جمع', 'سبت']
                           : ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
                         ).map(day => (
-                          <div key={day} className="weekday">{day}</div>
+                          <div key={day} className="sv2-cal-weekday">{day}</div>
                         ))}
                       </div>
-                      <div className="calendar-days">
+                      <motion.div
+                        className="sv2-cal-grid"
+                        key={format(selectedDate, 'yyyy-MM')}
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        transition={{ staggerChildren: 0.006 }}
+                      >
                         {Array.from({ length: startOfMonth(selectedDate).getDay() }).map((_, i) => (
-                          <div key={`empty-${i}`} className="calendar-day empty" />
+                          <div key={`empty-${i}`} className="sv2-cal-day empty" />
                         ))}
                         {getDaysInMonth(selectedDate).map((day) => {
                           const events = getEventsForDay(day);
-                          const isToday = isSameDay(day, new Date());
+                          const isTodayDay = isSameDay(day, new Date());
                           const isSelected = selectedCalendarDay && isSameDay(day, selectedCalendarDay);
+                          const eventDots = events.slice(0, 3);
+                          const extra = events.length - eventDots.length;
                           return (
-                            <div
+                            <motion.div
                               key={day.toISOString()}
-                              className={`calendar-day ${isToday ? 'today' : ''} ${events.length > 0 ? 'has-events' : ''} ${isSelected ? 'selected' : ''}`}
+                              className={`sv2-cal-day ${isTodayDay ? 'today' : ''} ${events.length > 0 ? 'has-events' : ''} ${isSelected ? 'selected' : ''}`}
                               onClick={() => events.length > 0 && setSelectedCalendarDay(day)}
                               style={{ cursor: events.length > 0 ? 'pointer' : 'default' }}
+                              whileHover={events.length > 0 ? { scale: 1.04 } : {}}
+                              whileTap={events.length > 0 ? { scale: 0.96 } : {}}
+                              initial={{ opacity: 0, y: 4 }}
+                              animate={{ opacity: 1, y: 0 }}
+                              transition={{ duration: 0.25 }}
                             >
-                              <span className="day-number">{format(day, 'd')}</span>
+                              <span className="sv2-cal-day-num">{format(day, 'd')}</span>
                               {events.length > 0 && (
-                                <span className="calendar-event-count">{events.length}</span>
+                                <div className="sv2-cal-day-dots">
+                                  {eventDots.map((ev, i) => (
+                                    <span
+                                      key={i}
+                                      className="sv2-cal-day-dot"
+                                      style={{ background: SECTION_COLORS[ev.section] || '#EE2329' }}
+                                    />
+                                  ))}
+                                  {extra > 0 && <span className="sv2-cal-day-dot more">+{extra}</span>}
+                                </div>
                               )}
-                            </div>
+                            </motion.div>
                           );
                         })}
-                      </div>
+                      </motion.div>
                     </div>
-                  </div>
+                  </motion.div>
 
-                  {/* Right Sidebar */}
-                  <div className="schedule-sidebar">
-                    {/* Employees Section */}
-                    <div className="employees-section">
-                      <div className="section-header">
-                        <h3>{isRTL ? 'الموظفين' : 'Employees'}</h3>
+                  {/* ─────────── RIGHT: Operations Stack ─────────── */}
+                  <div className="sv2-right">
+                    {/* ─── Roster Panel ─── */}
+                    <motion.div
+                      className="sv2-panel"
+                      initial={{ opacity: 0, y: 12 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: 0.18, duration: 0.45, ease: [0.16, 1, 0.3, 1] }}
+                    >
+                      <div className="sv2-panel-head">
+                        <div className="sv2-panel-title">
+                          <span className="sv2-panel-tag">[02]</span>
+                          <h3>{isRTL ? 'الموظفون' : 'Roster'}</h3>
+                        </div>
                         <button
-                          className="add-btn"
+                          className="sv2-cal-btn"
                           onClick={() => {
                             setSelectedEmployee(null);
                             setEmployeeForm({ name: '', email: '', sections: [] });
                             setShowEmployeeModal(true);
                           }}
+                          title={isRTL ? 'إضافة موظف' : 'Add employee'}
                         >
-                          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                             <line x1="12" y1="5" x2="12" y2="19"/>
                             <line x1="5" y1="12" x2="19" y2="12"/>
                           </svg>
                         </button>
                       </div>
-
-                      {/* All Schedules Button */}
-                      <button
-                        className={`all-schedules-btn ${scheduleFilter === 'all' ? 'active' : ''}`}
-                        onClick={() => setScheduleFilter('all')}
-                      >
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                          <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
-                          <line x1="16" y1="2" x2="16" y2="6"/>
-                          <line x1="8" y1="2" x2="8" y2="6"/>
-                          <line x1="3" y1="10" x2="21" y2="10"/>
-                        </svg>
-                        {isRTL ? 'جميع المواعيد' : 'All Schedules'}
-                      </button>
-
-                      <div className="employees-grid">
-                        {employees.map((emp) => {
-                          const empSections = (Array.isArray(emp.sections) && emp.sections.length)
-                            ? emp.sections
-                            : (emp.section ? [emp.section] : []);
-                          // Card is "active" when the current schedule filter
-                          // matches ANY of this employee's sections.
-                          const isActiveForFilter = empSections.includes(scheduleFilter);
-                          return (
-                          <div
-                            key={emp.employeeId}
-                            className={`employee-card ${isActiveForFilter ? 'active' : ''}`}
+                      <div className="sv2-panel-body">
+                        <div className="sv2-roster-strip">
+                          <button
+                            className={`sv2-roster-btn-all ${scheduleFilter === 'all' ? 'active' : ''}`}
+                            onClick={() => setScheduleFilter('all')}
+                            title={isRTL ? 'كل المواعيد' : 'All schedules'}
                           >
-                            <div className="employee-card-avatar" style={{ backgroundColor: getEmployeeColor(employees, emp.employeeId) }}>
-                              {emp.name?.charAt(0)?.toUpperCase()}
+                            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                              <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+                              <line x1="16" y1="2" x2="16" y2="6"/>
+                              <line x1="8" y1="2" x2="8" y2="6"/>
+                              <line x1="3" y1="10" x2="21" y2="10"/>
+                            </svg>
+                            <span className="sv2-roster-name" style={{ marginTop: 2 }}>
+                              {isRTL ? 'الكل' : 'All'}
+                            </span>
+                          </button>
+
+                          {employees.length === 0 ? (
+                            <div className="sv2-roster-empty">
+                              {isRTL ? '— لا يوجد موظفون —' : '— No employees yet —'}
                             </div>
-                            <span className="employee-card-name">{emp.name}</span>
-                            {/* Each section is its own clickable chip so admin can
-                                pick "this employee's schedule for CNC Laser" vs "for
-                                3D Printing" independently. The chip highlights when
-                                its section is the active schedule filter. */}
-                            <div style={{
-                              display: 'flex', flexWrap: 'wrap', gap: 4,
-                              justifyContent: 'center', marginTop: 6, marginBottom: 4
-                            }}>
-                              {empSections.map(sec => {
-                                const color = SECTION_COLORS[sec] || '#64748b';
-                                const isFilterSection = scheduleFilter === sec;
-                                return (
+                          ) : employees.map((emp) => {
+                            const empSections = (Array.isArray(emp.sections) && emp.sections.length)
+                              ? emp.sections
+                              : (emp.section ? [emp.section] : []);
+                            const isActiveForFilter = empSections.includes(scheduleFilter);
+                            return (
+                              <motion.div
+                                key={emp.employeeId}
+                                className={`sv2-roster-emp ${isActiveForFilter ? 'active' : ''}`}
+                                whileHover={{ y: -2 }}
+                              >
+                                <div className="sv2-roster-emp-actions">
                                   <button
-                                    key={sec}
-                                    type="button"
+                                    className="sv2-roster-emp-btn edit"
                                     onClick={(e) => {
                                       e.stopPropagation();
-                                      // Toggle: click same chip again → clear filter
-                                      setScheduleFilter(isFilterSection ? '' : sec);
+                                      setSelectedEmployee(emp);
+                                      setEmployeeForm({
+                                        name: emp.name,
+                                        email: emp.email,
+                                        sections: (Array.isArray(emp.sections) && emp.sections.length)
+                                          ? emp.sections
+                                          : (emp.section ? [emp.section] : [])
+                                      });
+                                      setShowEmployeeModal(true);
                                     }}
-                                    title={isRTL
-                                      ? `عرض جدول ${emp.name} في ${sectionLabels[sec] || sec}`
-                                      : `Show ${emp.name}'s schedule for ${sectionLabels[sec] || sec}`}
-                                    style={{
-                                      padding: '3px 8px',
-                                      borderRadius: 999,
-                                      border: isFilterSection ? `2px solid ${color}` : '1.5px solid transparent',
-                                      background: isFilterSection ? color : `${color}20`,
-                                      color: isFilterSection ? '#fff' : color,
-                                      fontSize: 10,
-                                      fontWeight: 800,
-                                      cursor: 'pointer',
-                                      fontFamily: 'inherit',
-                                      letterSpacing: 0.2,
-                                      lineHeight: 1.2,
-                                      transition: 'all 0.12s',
-                                      boxShadow: isFilterSection ? `0 2px 4px ${color}55` : 'none'
-                                    }}
+                                    title={isRTL ? 'تعديل' : 'Edit'}
                                   >
-                                    {sectionLabels[sec] || sec}
+                                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                      <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                                      <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                                    </svg>
                                   </button>
-                                );
-                              })}
-                            </div>
-                            <div className="employee-card-actions">
-                              <button
-                                className="edit-btn"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setSelectedEmployee(emp);
-                                  setEmployeeForm({
-                                    name: emp.name,
-                                    email: emp.email,
-                                    sections: (Array.isArray(emp.sections) && emp.sections.length)
-                                      ? emp.sections
-                                      : (emp.section ? [emp.section] : [])
-                                  });
-                                  setShowEmployeeModal(true);
-                                }}
-                              >
-                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                  <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
-                                  <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
-                                </svg>
-                              </button>
-                              <button
-                                className="delete-btn"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleDeleteEmployee(emp.employeeId);
-                                }}
-                              >
-                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                  <polyline points="3 6 5 6 21 6"/>
-                                  <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
-                                </svg>
-                              </button>
-                            </div>
-                          </div>
-                          );
-                        })}
-                        {employees.length === 0 && (
-                          <p className="empty-message">{isRTL ? 'لا يوجد موظفين' : 'No employees yet'}</p>
-                        )}
+                                  <button
+                                    className="sv2-roster-emp-btn del"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleDeleteEmployee(emp.employeeId);
+                                    }}
+                                    title={isRTL ? 'حذف' : 'Delete'}
+                                  >
+                                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                      <polyline points="3 6 5 6 21 6"/>
+                                      <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+                                    </svg>
+                                  </button>
+                                </div>
+                                <div className="sv2-roster-avatar" style={{ backgroundColor: getEmployeeColor(employees, emp.employeeId) }}>
+                                  {emp.name?.charAt(0)?.toUpperCase()}
+                                </div>
+                                <span className="sv2-roster-name">{emp.name}</span>
+                                <div className="sv2-roster-secs">
+                                  {empSections.map(sec => {
+                                    const color = SECTION_COLORS[sec] || '#64748b';
+                                    const isFilterSection = scheduleFilter === sec;
+                                    return (
+                                      <button
+                                        key={sec}
+                                        type="button"
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          setScheduleFilter(isFilterSection ? '' : sec);
+                                        }}
+                                        className="sv2-roster-sec-chip"
+                                        style={{
+                                          background: isFilterSection ? color : `${color}20`,
+                                          color: isFilterSection ? '#fff' : color,
+                                          borderColor: isFilterSection ? color : 'transparent',
+                                          boxShadow: isFilterSection ? `0 2px 4px ${color}55` : 'none'
+                                        }}
+                                        title={isRTL
+                                          ? `عرض جدول ${emp.name} في ${sectionLabels[sec] || sec}`
+                                          : `Show ${emp.name}'s schedule for ${sectionLabels[sec] || sec}`}
+                                      >
+                                        {sectionLabels[sec] || sec}
+                                      </button>
+                                    );
+                                  })}
+                                </div>
+                              </motion.div>
+                            );
+                          })}
+                        </div>
                       </div>
-                    </div>
+                    </motion.div>
 
-                    {/* Add Task Section */}
-                    <div className="add-task-section">
-                      <div className="section-header">
-                        <h3>{isRTL ? 'إضافة مهمة' : 'Add Task'}</h3>
+                    {/* ─── Task Injector Panel ─── */}
+                    <motion.div
+                      className="sv2-panel"
+                      initial={{ opacity: 0, y: 12 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: 0.24, duration: 0.45, ease: [0.16, 1, 0.3, 1] }}
+                    >
+                      <div className="sv2-panel-head">
+                        <div className="sv2-panel-title">
+                          <span className="sv2-panel-tag">[03]</span>
+                          <h3>{isRTL ? 'إضافة مهمة' : 'Task Injector'}</h3>
+                        </div>
                       </div>
-                      <form onSubmit={handleCreateEmployeeTask} className="employee-task-form">
+                      <div className="sv2-panel-body">
+                      <form onSubmit={handleCreateEmployeeTask} className="employee-task-form sv2-task-form">
                         <div className="form-group">
                           <label>{isRTL ? 'الموظف' : 'Employee'} *</label>
                           <select
@@ -6158,14 +6284,14 @@ const AdminDashboard = () => {
                         <div className="form-group">
                           <button
                             type="button"
-                            className={`all-day-btn ${employeeTaskForm.dueTime === '11:00' && employeeTaskForm.dueTimeEnd === '20:00' ? 'active' : ''}`}
+                            className={`all-day-btn sv2-all-day-btn ${employeeTaskForm.dueTime === '11:00' && employeeTaskForm.dueTimeEnd === '20:00' ? 'active' : ''}`}
                             onClick={() => setEmployeeTaskForm({
                               ...employeeTaskForm,
                               dueTime: '11:00',
                               dueTimeEnd: '20:00'
                             })}
                           >
-                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                               <circle cx="12" cy="12" r="10"/>
                               <polyline points="12 6 12 12 16 14"/>
                             </svg>
@@ -6217,238 +6343,249 @@ const AdminDashboard = () => {
                         </div>
 
                         {employeeTaskForm.blocksCalendar && (!employeeTaskForm.dueTime || !employeeTaskForm.dueTimeEnd) && (
-                          <p className="warning-hint">
+                          <p className="warning-hint sv2-warn-hint">
                             {isRTL ? 'يجب تحديد وقت البداية والنهاية لحجز الموعد' : 'Start and end time required to block calendar'}
                           </p>
                         )}
 
                         <button
                           type="submit"
-                          className="submit-task-btn"
+                          className="submit-task-btn sv2-submit-btn"
                           disabled={isSubmittingTask}
                         >
                           {isSubmittingTask
                             ? (isRTL ? 'جاري الإضافة...' : 'Adding...')
-                            : (isRTL ? 'إضافة المهمة' : 'Add Task')}
+                            : (isRTL ? '▸ إضافة المهمة' : '▸ Deploy Task')}
                         </button>
                       </form>
-                    </div>
-
-                    {/* Selected Day Appointments Section */}
-                    {selectedCalendarDay && (
-                      <div className="selected-day-section">
-                        <div className="selected-day-header">
-                          <h3>
-                            {format(selectedCalendarDay, isRTL ? 'dd MMMM yyyy' : 'MMMM dd, yyyy', { locale: isRTL ? ar : enUS })}
-                          </h3>
-                          <button
-                            className="close-selected-day"
-                            onClick={() => setSelectedCalendarDay(null)}
-                          >
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                              <line x1="18" y1="6" x2="6" y2="18"/>
-                              <line x1="6" y1="6" x2="18" y2="18"/>
-                            </svg>
-                          </button>
-                        </div>
-                        <div className="selected-day-appointments">
-                          {getEventsForDay(selectedCalendarDay).map((apt) => (
-                            <div key={apt.id} className={`detailed-appointment-item ${apt.type === 'task' ? 'task-item' : ''}`}>
-                              <div
-                                className="detailed-appointment-header"
-                                style={{
-                                  borderLeftColor: apt.type === 'task'
-                                    ? (apt.employeeId ? getEmployeeColor(employees, apt.employeeId) : PRIORITY_COLORS[apt.priority] || '#f59e0b')
-                                    : SECTION_COLORS[apt.section] || '#6366f1'
-                                }}
-                              >
-                                <span className="detailed-appointment-name">
-                                  {apt.type === 'task' && (
-                                    <span style={{
-                                      display: 'inline-block',
-                                      padding: '2px 6px',
-                                      borderRadius: '4px',
-                                      fontSize: '10px',
-                                      fontWeight: '600',
-                                      marginRight: '6px',
-                                      background: apt.priority === 'high' ? 'rgba(239, 68, 68, 0.15)' :
-                                                 apt.priority === 'medium' ? 'rgba(245, 158, 11, 0.15)' :
-                                                 'rgba(34, 197, 94, 0.15)',
-                                      color: PRIORITY_COLORS[apt.priority]
-                                    }}>
-                                      {isRTL ? 'مهمة' : 'TASK'}
-                                    </span>
-                                  )}
-                                  {apt.title}
-                                </span>
-                                <span className="detailed-appointment-time">
-                                  {formatTimeAMPM(apt.startTime)}{apt.endTime && ` - ${formatTimeAMPM(apt.endTime)}`}
-                                  {apt.duration && ` (${apt.duration} ${isRTL ? 'دقيقة' : 'min'})`}
-                                </span>
-                              </div>
-                              <div className="detailed-appointment-body">
-                                <div className="apt-detail-row">
-                                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                    <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
-                                    <line x1="16" y1="2" x2="16" y2="6"/>
-                                    <line x1="8" y1="2" x2="8" y2="6"/>
-                                    <line x1="3" y1="10" x2="21" y2="10"/>
-                                  </svg>
-                                  <span>{sectionLabels[apt.section] || apt.section}</span>
-                                </div>
-                                {apt.type === 'task' && apt.assignee && (
-                                  <div className="apt-detail-row">
-                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                      <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
-                                      <circle cx="12" cy="7" r="4"/>
-                                    </svg>
-                                    <span>{isRTL ? 'مسند إلى: ' : 'Assigned to: '}{apt.assignee}</span>
-                                  </div>
-                                )}
-                                {apt.type === 'task' && apt.creatorName && (
-                                  <div className="apt-detail-row">
-                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                      <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
-                                      <circle cx="8.5" cy="7" r="4"/>
-                                      <path d="M20 8v6"/>
-                                      <path d="M23 11h-6"/>
-                                    </svg>
-                                    <span style={{ color: apt.creatorRole === 'manager' ? '#9333ea' : '#64748b' }}>
-                                      {isRTL ? 'بواسطة: ' : 'Assigned by: '}{apt.creatorName}
-                                      {apt.creatorRole === 'manager' && <span style={{ fontSize: '10px', marginInlineStart: '4px', opacity: 0.7 }}>({isRTL ? 'مدير' : 'Manager'})</span>}
-                                    </span>
-                                  </div>
-                                )}
-                                {apt.type === 'task' && (
-                                  <div className="apt-detail-row task-status-row">
-                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                      <path d="M9 11l3 3L22 4"/>
-                                      <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>
-                                    </svg>
-                                    <select
-                                      className="task-status-select"
-                                      value={apt.status || 'pending'}
-                                      onChange={(e) => handleUpdateTaskStatus(apt.id, e.target.value)}
-                                      onClick={(e) => e.stopPropagation()}
-                                      style={{
-                                        padding: '4px 8px',
-                                        borderRadius: '8px',
-                                        fontSize: '11px',
-                                        fontWeight: '500',
-                                        border: 'none',
-                                        cursor: 'pointer',
-                                        background: apt.status === 'completed' ? 'rgba(34, 197, 94, 0.15)' :
-                                                   apt.status === 'in_progress' ? 'rgba(59, 130, 246, 0.15)' :
-                                                   apt.status === 'pending' ? 'rgba(245, 158, 11, 0.15)' :
-                                                   'rgba(107, 114, 128, 0.15)',
-                                        color: apt.status === 'completed' ? '#16a34a' :
-                                               apt.status === 'in_progress' ? '#2563eb' :
-                                               apt.status === 'pending' ? '#d97706' : '#6b7280'
-                                      }}
-                                    >
-                                      <option value="pending">{isRTL ? 'قيد الانتظار' : 'Pending'}</option>
-                                      <option value="in_progress">{isRTL ? 'قيد التنفيذ' : 'In Progress'}</option>
-                                      <option value="completed">{isRTL ? 'مكتمل' : 'Completed'}</option>
-                                      <option value="cancelled">{isRTL ? 'ملغى' : 'Cancelled'}</option>
-                                    </select>
-                                  </div>
-                                )}
-                                {apt.type === 'task' && apt.description && (
-                                  <div className="apt-detail-row">
-                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                      <line x1="17" y1="10" x2="3" y2="10"/>
-                                      <line x1="21" y1="6" x2="3" y2="6"/>
-                                      <line x1="21" y1="14" x2="3" y2="14"/>
-                                      <line x1="17" y1="18" x2="3" y2="18"/>
-                                    </svg>
-                                    <span>{apt.description}</span>
-                                  </div>
-                                )}
-                                {apt.phone && (
-                                  <div className="apt-detail-row">
-                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                      <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/>
-                                    </svg>
-                                    <span dir="ltr">{apt.phone}</span>
-                                  </div>
-                                )}
-                                {apt.email && (
-                                  <div className="apt-detail-row">
-                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                      <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
-                                      <polyline points="22,6 12,13 2,6"/>
-                                    </svg>
-                                    <span>{apt.email}</span>
-                                  </div>
-                                )}
-                                {apt.services && apt.services.length > 0 && (
-                                  <div className="apt-detail-row services-row">
-                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                      <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/>
-                                    </svg>
-                                    <span>{translateServices(apt.services)}</span>
-                                  </div>
-                                )}
-                                {apt.applicationType && (
-                                  <div className="apt-detail-row">
-                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                      <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
-                                      <circle cx="12" cy="7" r="4"/>
-                                    </svg>
-                                    <span>{applicationTypeLabels[apt.applicationType] || apt.applicationType}</span>
-                                  </div>
-                                )}
-                              </div>
-                            </div>
-                          ))}
-                        </div>
                       </div>
-                    )}
+                    </motion.div>
 
-                    {/* Appointments Section */}
-                    <div className="appointments-section">
-                      <h3>
-                        {scheduleFilter === 'all'
-                          ? (isRTL ? 'المواعيد القادمة' : 'Upcoming Appointments')
-                          : (isRTL ? `مواعيد ${employees.find(e => e.section === scheduleFilter)?.name || ''}` : `${employees.find(e => e.section === scheduleFilter)?.name || ''}'s Appointments`)
-                        }
-                      </h3>
-                      <div className="appointments-list">
-                        {getFilteredSchedule().slice(0, 8).map((apt) => (
-                          <div key={apt.id} className="appointment-item-detailed">
-                            <div
-                              className="appointment-color"
-                              style={{ backgroundColor: SECTION_COLORS[apt.section] || '#6366f1' }}
-                            />
-                            <div className="appointment-info">
-                              <span className="appointment-title">{apt.title}</span>
-                              <span className="appointment-datetime">
-                                {apt.date && formatDate(apt.date)} {apt.startTime && `• ${formatTimeAMPM(apt.startTime)}`}
-                                {apt.endTime && ` - ${formatTimeAMPM(apt.endTime)}`}
-                                {apt.duration && ` (${apt.duration} ${isRTL ? 'دقيقة' : 'min'})`}
-                              </span>
-                              <span className="appointment-section">{sectionLabels[apt.section] || apt.section}</span>
-                              {apt.services && apt.services.length > 0 && (
-                                <span className="appointment-services">
-                                  {translateServices(apt.services.slice(0, 2))}
-                                  {apt.services.length > 2 && ` +${apt.services.length - 2}`}
-                                </span>
-                              )}
-                              {apt.phone && (
-                                <span className="appointment-phone" dir="ltr">{apt.phone}</span>
-                              )}
+                    {/* ─── Selected Day Panel ─── */}
+                    <AnimatePresence>
+                      {selectedCalendarDay && (
+                        <motion.div
+                          key="sv2-selday"
+                          className="sv2-panel"
+                          initial={{ opacity: 0, y: -6, height: 0 }}
+                          animate={{ opacity: 1, y: 0, height: 'auto' }}
+                          exit={{ opacity: 0, y: -6, height: 0 }}
+                          transition={{ type: 'spring', stiffness: 260, damping: 26 }}
+                        >
+                          <div className="sv2-selday-head">
+                            <div className="sv2-selday-title">
+                              <span className="kicker">{isRTL ? 'اليوم المحدد' : 'Selected Day'}</span>
+                              <h3>
+                                {format(selectedCalendarDay, isRTL ? 'dd MMMM yyyy' : 'MMM dd, yyyy', { locale: isRTL ? ar : enUS })}
+                              </h3>
+                            </div>
+                            <button
+                              className="sv2-selday-close"
+                              onClick={() => setSelectedCalendarDay(null)}
+                              title={isRTL ? 'إغلاق' : 'Close'}
+                            >
+                              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                <line x1="18" y1="6" x2="6" y2="18"/>
+                                <line x1="6" y1="6" x2="18" y2="18"/>
+                              </svg>
+                            </button>
+                          </div>
+                          <div className="sv2-panel-body">
+                            <div className="sv2-feed-list">
+                              {getEventsForDay(selectedCalendarDay).length === 0 ? (
+                                <div className="sv2-empty">
+                                  {isRTL ? '— لا توجد أحداث لهذا اليوم —' : '— No events for this day —'}
+                                </div>
+                              ) : getEventsForDay(selectedCalendarDay).map((apt, i) => {
+                                const accentColor = apt.type === 'task'
+                                  ? (apt.employeeId ? getEmployeeColor(employees, apt.employeeId) : PRIORITY_COLORS[apt.priority] || '#f59e0b')
+                                  : SECTION_COLORS[apt.section] || '#EE2329';
+                                return (
+                                  <motion.div
+                                    key={apt.id}
+                                    className="sv2-feed-item detailed"
+                                    initial={{ opacity: 0, x: isRTL ? -10 : 10 }}
+                                    animate={{ opacity: 1, x: 0 }}
+                                    transition={{ delay: i * 0.03 }}
+                                  >
+                                    <div className="sv2-feed-accent" style={{ background: accentColor }} />
+                                    <div className="sv2-feed-body">
+                                      <div className="sv2-feed-head">
+                                        <span className="sv2-feed-title">
+                                          {apt.type === 'task' && (
+                                            <span className={`sv2-feed-tasktag ${apt.priority || 'medium'}`}>
+                                              {isRTL ? 'مهمة' : 'TASK'}
+                                            </span>
+                                          )}
+                                          {apt.title}
+                                        </span>
+                                        <span className="sv2-feed-time">
+                                          {formatTimeAMPM(apt.startTime)}{apt.endTime && ` — ${formatTimeAMPM(apt.endTime)}`}
+                                          {apt.duration && ` (${apt.duration}${isRTL ? 'د' : 'm'})`}
+                                        </span>
+                                      </div>
+                                      <div className="sv2-feed-meta">
+                                        {apt.section && (
+                                          <span className="sv2-chip" style={{ background: SECTION_COLORS[apt.section] || '#6366f1' }}>
+                                            {sectionLabels[apt.section] || apt.section}
+                                          </span>
+                                        )}
+                                        {apt.type === 'task' && apt.assignee && (
+                                          <span className="sv2-feed-detail-row">
+                                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+                                              <circle cx="12" cy="7" r="4"/>
+                                            </svg>
+                                            {apt.assignee}
+                                          </span>
+                                        )}
+                                        {apt.phone && (
+                                          <span className="sv2-feed-detail-row" dir="ltr">
+                                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                              <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/>
+                                            </svg>
+                                            {apt.phone}
+                                          </span>
+                                        )}
+                                        {apt.type === 'task' && (
+                                          <select
+                                            className="sv2-status-select"
+                                            value={apt.status || 'pending'}
+                                            onChange={(e) => handleUpdateTaskStatus(apt.id, e.target.value)}
+                                            onClick={(e) => e.stopPropagation()}
+                                            style={{
+                                              background: apt.status === 'completed' ? 'rgba(34, 197, 94, 0.15)' :
+                                                         apt.status === 'in_progress' ? 'rgba(59, 130, 246, 0.15)' :
+                                                         apt.status === 'pending' ? 'rgba(245, 158, 11, 0.15)' :
+                                                         'rgba(107, 114, 128, 0.15)',
+                                              color: apt.status === 'completed' ? '#16a34a' :
+                                                     apt.status === 'in_progress' ? '#2563eb' :
+                                                     apt.status === 'pending' ? '#d97706' : '#6b7280'
+                                            }}
+                                          >
+                                            <option value="pending">{isRTL ? 'قيد الانتظار' : 'Pending'}</option>
+                                            <option value="in_progress">{isRTL ? 'قيد التنفيذ' : 'In Progress'}</option>
+                                            <option value="completed">{isRTL ? 'مكتمل' : 'Completed'}</option>
+                                            <option value="cancelled">{isRTL ? 'ملغى' : 'Cancelled'}</option>
+                                          </select>
+                                        )}
+                                      </div>
+                                      {apt.type === 'task' && apt.description && (
+                                        <div className="sv2-feed-detail-row">
+                                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                            <line x1="17" y1="10" x2="3" y2="10"/>
+                                            <line x1="21" y1="6" x2="3" y2="6"/>
+                                            <line x1="21" y1="14" x2="3" y2="14"/>
+                                            <line x1="17" y1="18" x2="3" y2="18"/>
+                                          </svg>
+                                          <span>{apt.description}</span>
+                                        </div>
+                                      )}
+                                      {apt.services && apt.services.length > 0 && (
+                                        <div className="sv2-feed-detail-row">
+                                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                            <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/>
+                                          </svg>
+                                          <span>{translateServices(apt.services)}</span>
+                                        </div>
+                                      )}
+                                    </div>
+                                  </motion.div>
+                                );
+                              })}
                             </div>
                           </div>
-                        ))}
-                        {getFilteredSchedule().length === 0 && (
-                          <p className="empty-message">{isRTL ? 'لا توجد مواعيد' : 'No appointments'}</p>
-                        )}
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+
+                    {/* ─── Intel Feed (Upcoming Appointments) ─── */}
+                    <motion.div
+                      className="sv2-panel"
+                      initial={{ opacity: 0, y: 12 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: 0.3, duration: 0.45, ease: [0.16, 1, 0.3, 1] }}
+                    >
+                      <div className="sv2-panel-head">
+                        <div className="sv2-panel-title">
+                          <span className="sv2-panel-tag">[04]</span>
+                          <h3>
+                            {scheduleFilter === 'all'
+                              ? (isRTL ? 'المواعيد القادمة' : 'Intel Feed')
+                              : (isRTL ? 'المواعيد المفلترة' : 'Filtered Feed')}
+                          </h3>
+                        </div>
+                        <span className="sv2-panel-tag" style={{ color: 'var(--text-secondary)' }}>
+                          {getFilteredSchedule().length} {isRTL ? 'سجل' : 'ITEMS'}
+                        </span>
                       </div>
-                    </div>
+                      <div className="sv2-panel-body">
+                        <div className="sv2-feed-list">
+                          <AnimatePresence mode="popLayout">
+                            {getFilteredSchedule().length === 0 ? (
+                              <motion.div
+                                key="empty"
+                                className="sv2-empty"
+                                initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                              >
+                                {isRTL ? '— لا توجد مواعيد —' : '— No upcoming appointments —'}
+                              </motion.div>
+                            ) : getFilteredSchedule().slice(0, 8).map((apt, i) => (
+                              <motion.div
+                                key={apt.id}
+                                layout
+                                initial={{ opacity: 0, x: isRTL ? -8 : 8 }}
+                                animate={{ opacity: 1, x: 0 }}
+                                exit={{ opacity: 0, x: -8, transition: { duration: 0.15 } }}
+                                transition={{ delay: i * 0.03, type: 'spring', stiffness: 280, damping: 24 }}
+                                className="sv2-feed-item"
+                              >
+                                <div className="sv2-feed-accent" style={{ background: SECTION_COLORS[apt.section] || '#EE2329' }} />
+                                <div className="sv2-feed-body">
+                                  <div className="sv2-feed-head">
+                                    <span className="sv2-feed-title">{apt.title}</span>
+                                    {apt.startTime && (
+                                      <span className="sv2-feed-time">◷ {formatTimeAMPM(apt.startTime)}</span>
+                                    )}
+                                  </div>
+                                  <div className="sv2-feed-meta">
+                                    {apt.date && (
+                                      <span style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: '0.7rem', color: 'var(--text-muted, #94a3b8)' }}>
+                                        {formatDate(apt.date)}
+                                      </span>
+                                    )}
+                                    {apt.section && (
+                                      <span className="sv2-chip" style={{ background: SECTION_COLORS[apt.section] || '#6366f1' }}>
+                                        {sectionLabels[apt.section] || apt.section}
+                                      </span>
+                                    )}
+                                    {apt.services && apt.services.length > 0 && (
+                                      <span style={{ fontSize: '0.7rem', color: 'var(--text-secondary)' }}>
+                                        {translateServices(apt.services.slice(0, 2))}
+                                        {apt.services.length > 2 && ` +${apt.services.length - 2}`}
+                                      </span>
+                                    )}
+                                    {apt.phone && (
+                                      <span className="sv2-feed-detail-row" dir="ltr" style={{ fontFamily: 'JetBrains Mono, monospace' }}>
+                                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                          <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/>
+                                        </svg>
+                                        {apt.phone}
+                                      </span>
+                                    )}
+                                  </div>
+                                </div>
+                              </motion.div>
+                            ))}
+                          </AnimatePresence>
+                        </div>
+                      </div>
+                    </motion.div>
                   </div>
                 </div>
               </motion.div>
-            )}
+              );
+            })()}
 
             {/* Borrowing Tab */}
             {activeTab === 'borrowing' && (
