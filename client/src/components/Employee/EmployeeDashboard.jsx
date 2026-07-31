@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -17,6 +17,65 @@ const SECTION_COLORS = {
   'Robotic and AI': '#8b5cf6',
   "Kid's Club": '#06b6d4',
   'Vinyl Cutting': '#ec4899'
+};
+
+// ---------- Animated integer counter ----------
+// Rolls from 0 to `target` over ~800ms with an easing that decelerates
+// sharply, so numbers arrive with a satisfying "settle". Runs once per
+// target change; if target is not numeric it just returns it verbatim.
+function useCountUp(target, duration = 900) {
+  const [value, setValue] = useState(0);
+  const rafRef = useRef(null);
+  const startRef = useRef(null);
+  const fromRef = useRef(0);
+
+  useEffect(() => {
+    const numeric = Number(target);
+    if (!Number.isFinite(numeric)) {
+      setValue(target);
+      return;
+    }
+    fromRef.current = value;
+    startRef.current = null;
+    const step = (ts) => {
+      if (!startRef.current) startRef.current = ts;
+      const elapsed = ts - startRef.current;
+      const t = Math.min(1, elapsed / duration);
+      // easeOutQuint for a snappy settle
+      const eased = 1 - Math.pow(1 - t, 5);
+      const next = fromRef.current + (numeric - fromRef.current) * eased;
+      setValue(numeric % 1 === 0 ? Math.round(next) : Number(next.toFixed(1)));
+      if (t < 1) rafRef.current = requestAnimationFrame(step);
+    };
+    rafRef.current = requestAnimationFrame(step);
+    return () => { if (rafRef.current) cancelAnimationFrame(rafRef.current); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [target, duration]);
+
+  return value;
+}
+
+// Small display component that uses the count-up hook. Simpler than
+// scattering the hook everywhere.
+const CountUp = ({ value, className, prefix = '', suffix = '' }) => {
+  const n = useCountUp(value);
+  return <span className={className}>{prefix}{n}{suffix}</span>;
+};
+
+// Framer-motion orchestration presets for staggered section reveals.
+const containerVariants = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: { staggerChildren: 0.06, delayChildren: 0.08 }
+  }
+};
+const itemVariants = {
+  hidden: { opacity: 0, y: 14 },
+  visible: {
+    opacity: 1, y: 0,
+    transition: { type: 'spring', stiffness: 260, damping: 22 }
+  }
 };
 
 const EmployeeDashboard = () => {
@@ -235,7 +294,6 @@ const EmployeeDashboard = () => {
       toast.success(isRTL ? 'تم تغيير كلمة المرور بنجاح' : 'Password changed successfully');
       setShowPasswordModal(false);
       setPasswordForm({ currentPassword: '', newPassword: '', confirmPassword: '' });
-      // Update local data
       const data = JSON.parse(localStorage.getItem('employeeData'));
       data.mustChangePassword = false;
       localStorage.setItem('employeeData', JSON.stringify(data));
@@ -288,7 +346,7 @@ const EmployeeDashboard = () => {
     return (
       <div className="employee-loading">
         <div className="loading-spinner-large" />
-        <p>{isRTL ? 'جاري التحميل...' : 'Loading...'}</p>
+        <p>{isRTL ? 'جاري تهيئة الوحدة...' : 'Initializing terminal...'}</p>
       </div>
     );
   }
@@ -296,21 +354,36 @@ const EmployeeDashboard = () => {
   const filteredTasks = taskStatusFilter === 'all' ? tasks : tasks.filter(t => t.status === taskStatusFilter);
 
   const tabs = [
-    { key: 'overview', label: isRTL ? 'نظرة عامة' : 'Overview', icon: '📊' },
-    { key: 'tasks', label: isRTL ? 'المهام' : 'Tasks', icon: '📋' },
-    { key: 'schedule', label: isRTL ? 'الجدول' : 'Schedule', icon: '📅' },
-    { key: 'ratings', label: isRTL ? 'التقييمات' : 'Ratings', icon: '⭐' },
-    { key: 'workshops', label: isRTL ? 'الورش' : 'Workshops', icon: '🎓' },
-    { key: 'profile', label: isRTL ? 'الملف الشخصي' : 'Profile', icon: '👤' },
+    { key: 'overview',  label: isRTL ? 'نظرة عامة' : 'Overview',  icon: '◈' },
+    { key: 'tasks',     label: isRTL ? 'المهام' : 'Tasks',        icon: '⬢' },
+    { key: 'schedule',  label: isRTL ? 'الجدول' : 'Schedule',     icon: '◱' },
+    { key: 'ratings',   label: isRTL ? 'التقييمات' : 'Ratings',   icon: '★' },
+    { key: 'workshops', label: isRTL ? 'الورش' : 'Workshops',     icon: '⬡' },
+    { key: 'profile',   label: isRTL ? 'الملف الشخصي' : 'Profile', icon: '◉' },
   ];
+
+  // Compute the activity ring's stroke dashoffset. Ring circumference = 2πr,
+  // r = 92 → C ≈ 578. Progress% maps to dashoffset.
+  const RING_R = 92;
+  const RING_C = 2 * Math.PI * RING_R;
+  const activityPct = Math.min(100, Math.max(0, activityStats?.percentage || 0));
+  const ringOffset = RING_C - (RING_C * activityPct) / 100;
 
   return (
     <div className="employee-dashboard" dir={isRTL ? 'rtl' : 'ltr'} data-page="employee">
       {/* Top Bar */}
-      <div className="emp-topbar">
+      <motion.div
+        className="emp-topbar"
+        initial={{ y: -30, opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
+      >
         <div className="emp-topbar-left">
-          <h2 className="emp-logo">FABLAB</h2>
-          <span className="emp-badge">{isRTL ? 'بوابة الموظفين' : 'Employee Portal'}</span>
+          <div className="emp-brand-mark" aria-hidden="true" />
+          <div className="emp-brand-block">
+            <h2 className="emp-logo">FABLAB</h2>
+            <span className="emp-badge">{isRTL ? 'وحدة الموظفين · OPS' : 'EMPLOYEE OPS · TERMINAL'}</span>
+          </div>
         </div>
         <div className="emp-topbar-right">
           <button className="emp-lang-btn" onClick={toggleLanguage}>
@@ -318,604 +391,859 @@ const EmployeeDashboard = () => {
           </button>
           <div className="emp-user-info">
             <span className="emp-user-name">{employeeData?.name}</span>
-            <span className="emp-user-section">{sectionLabels[employeeData?.section] || employeeData?.section}</span>
+            <span className="emp-user-section">
+              {(Array.isArray(employeeData?.sections) && employeeData.sections.length
+                ? employeeData.sections
+                : (employeeData?.section ? [employeeData.section] : [])
+              ).map(s => sectionLabels[s] || s).join(' · ') || '—'}
+            </span>
           </div>
-          <button className="emp-logout-btn" onClick={handleLogout}>
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <button className="emp-logout-btn" onClick={handleLogout} title={isRTL ? 'خروج' : 'Logout'}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
               <polyline points="16 17 21 12 16 7"/>
               <line x1="21" y1="12" x2="9" y2="12"/>
             </svg>
           </button>
         </div>
-      </div>
+      </motion.div>
 
       {/* Tab Navigation */}
-      <div className="emp-tabs">
-        {tabs.map(tab => (
+      <motion.div
+        className="emp-tabs"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 0.4, delay: 0.15 }}
+      >
+        {tabs.map((tab, idx) => (
           <button
             key={tab.key}
             className={`emp-tab ${activeTab === tab.key ? 'active' : ''}`}
             onClick={() => setActiveTab(tab.key)}
           >
+            <span className="emp-tab-key">{String(idx + 1).padStart(2, '0')}</span>
             <span className="emp-tab-icon">{tab.icon}</span>
             <span className="emp-tab-label">{tab.label}</span>
+            {activeTab === tab.key && (
+              <motion.span
+                layoutId="emp-tab-indicator"
+                className="emp-tab-indicator"
+                transition={{ type: 'spring', stiffness: 380, damping: 30 }}
+              />
+            )}
           </button>
         ))}
-      </div>
+      </motion.div>
 
       {/* Content */}
       <div className="emp-content">
+        <AnimatePresence mode="wait">
 
-        {/* Overview Tab */}
-        {activeTab === 'overview' && profile && (
-          <div className="emp-overview">
-            {/* Stats Cards */}
-            <div className="emp-stats-grid">
-              <div className="emp-stat-card points">
-                <div className="emp-stat-icon">⭐</div>
-                <div className="emp-stat-info">
-                  <span className="emp-stat-value">{profile.netPoints}</span>
-                  <span className="emp-stat-label">{isRTL ? 'صافي النقاط' : 'Net Points'}</span>
+          {/* ═══════════════════════════════════════════════════ OVERVIEW */}
+          {activeTab === 'overview' && profile && (
+            <motion.div
+              key="overview"
+              className="emp-overview"
+              variants={containerVariants}
+              initial="hidden"
+              animate="visible"
+              exit={{ opacity: 0, y: -12 }}
+            >
+              {/* Stat cards */}
+              <motion.div variants={itemVariants}>
+                <div className="emp-headline">
+                  <span className="emp-headline-tag">[01] {isRTL ? 'حالة الوحدة' : 'Unit Status'}</span>
+                  <h2 className="emp-headline-title">{isRTL ? 'لوحة الأداء' : 'Performance Board'}</h2>
+                  <span className="emp-headline-rest" />
                 </div>
-              </div>
-              <div className="emp-stat-card tasks-total">
-                <div className="emp-stat-icon">📋</div>
-                <div className="emp-stat-info">
-                  <span className="emp-stat-value">{profile.taskStats.total}</span>
-                  <span className="emp-stat-label">{isRTL ? 'إجمالي المهام' : 'Total Tasks'}</span>
-                </div>
-              </div>
-              <div className="emp-stat-card completed">
-                <div className="emp-stat-icon">✅</div>
-                <div className="emp-stat-info">
-                  <span className="emp-stat-value">{profile.taskStats.completed}</span>
-                  <span className="emp-stat-label">{isRTL ? 'مكتملة' : 'Completed'}</span>
-                </div>
-              </div>
-              <div className="emp-stat-card in-progress">
-                <div className="emp-stat-icon">🔄</div>
-                <div className="emp-stat-info">
-                  <span className="emp-stat-value">{profile.taskStats.in_progress}</span>
-                  <span className="emp-stat-label">{isRTL ? 'قيد التنفيذ' : 'In Progress'}</span>
-                </div>
-              </div>
-            </div>
-
-            {/* Weekly Activity */}
-            {activityStats && (
-              <div className="emp-section-card">
-                <h3>
-                  {isRTL ? 'نشاط الأسبوع الحالي' : 'Current Week Activity'}
-                  {activityStats.successfulWeeks > 0 && (
-                    <span style={{ marginInlineStart: 10, fontSize: '0.78rem', fontWeight: 600, color: '#8b5cf6', background: '#f5f3ff', padding: '2px 8px', borderRadius: 6 }}>
-                      {activityStats.successfulWeeks} {isRTL ? 'أسابيع ناجحة' : 'successful weeks'}
-                    </span>
-                  )}
-                </h3>
-                <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', marginBottom: '0.75rem' }}>
-                  <div style={{ flex: 1, minWidth: 80, textAlign: 'center', padding: '0.5rem', background: activityStats.passed ? '#dcfce7' : '#fef3c7', borderRadius: 8 }}>
-                    <div style={{ fontSize: '1.2rem', fontWeight: 800, color: activityStats.passed ? '#166534' : '#92400e' }}>{activityStats.totalHours}h</div>
-                    <div style={{ fontSize: '0.7rem', color: '#64748b' }}>{isRTL ? `من ${activityStats.targetHours}h` : `of ${activityStats.targetHours}h`}</div>
-                  </div>
-                  <div style={{ flex: 1, minWidth: 80, textAlign: 'center', padding: '0.5rem', background: '#eff6ff', borderRadius: 8 }}>
-                    <div style={{ fontSize: '1.2rem', fontWeight: 800, color: '#1d4ed8' }}>{activityStats.percentage}%</div>
-                    <div style={{ fontSize: '0.7rem', color: '#64748b' }}>{isRTL ? 'النسبة' : 'Progress'}</div>
-                  </div>
-                  <div style={{ flex: 1, minWidth: 80, textAlign: 'center', padding: '0.5rem', background: '#f8fafc', borderRadius: 8 }}>
-                    <div style={{ fontSize: '1.2rem', fontWeight: 800, color: '#334155' }}>{activityStats.daysActive}</div>
-                    <div style={{ fontSize: '0.7rem', color: '#64748b' }}>{isRTL ? 'أيام نشطة' : 'Active Days'}</div>
-                  </div>
-                  {activityStats.daysRemaining > 0 && (
-                    <div style={{ flex: 1, minWidth: 80, textAlign: 'center', padding: '0.5rem', background: '#fef3c7', borderRadius: 8 }}>
-                      <div style={{ fontSize: '1.2rem', fontWeight: 800, color: '#92400e' }}>{activityStats.daysRemaining}</div>
-                      <div style={{ fontSize: '0.7rem', color: '#64748b' }}>{isRTL ? 'أيام متبقية' : 'Days Left'}</div>
+                <div className="emp-stats-grid">
+                  <div className="emp-stat-card points">
+                    <div className="emp-stat-head">
+                      <span>{isRTL ? 'صافي النقاط' : 'Net Points'}</span>
+                      <span className="emp-stat-icon">◆</span>
                     </div>
-                  )}
-                </div>
-                <div style={{ height: 6, background: '#f1f5f9', borderRadius: 3, overflow: 'hidden' }}>
-                  <div style={{ height: '100%', width: `${Math.min(activityStats.percentage, 100)}%`, background: activityStats.passed ? '#22c55e' : '#f59e0b', borderRadius: 3, transition: 'width 0.4s' }} />
-                </div>
-                <div style={{ fontSize: '0.7rem', color: '#94a3b8', marginTop: 6 }}>
-                  {isRTL ? 'الدورة:' : 'Cycle:'} {activityStats.cycleStart} → {activityStats.cycleEnd}
-                  {activityStats.lastCreditDate && <span> • {isRTL ? 'آخر نقطة:' : 'Last credit:'} {activityStats.lastCreditDate}</span>}
-                </div>
-                {activityStats.passed && <div style={{ fontSize: '0.75rem', color: '#22c55e', fontWeight: 600, marginTop: 6 }}>{isRTL ? '✓ تم تحقيق الهدف - نقطة واحدة مكتسبة - دورة جديدة تبدأ غداً' : '✓ Target reached! +1 credit. New cycle starts tomorrow'}</div>}
-              </div>
-            )}
-
-            {/* Recent Tasks */}
-            <div className="emp-section-card">
-              <h3>{isRTL ? 'المهام الأخيرة' : 'Recent Tasks'}</h3>
-              <div className="emp-task-list">
-                {tasks.slice(0, 5).map(task => (
-                  <div key={task.taskId} className={`emp-task-item priority-${task.priority}`}>
-                    <div className="emp-task-header">
-                      <span className="emp-task-title">{task.title}</span>
-                      <span className={`emp-status-badge ${task.status}`}>{statusLabels[task.status]}</span>
-                    </div>
-                    <div className="emp-task-meta">
-                      {task.section && <span className="emp-section-tag" style={{ backgroundColor: SECTION_COLORS[task.section] || '#666' }}>{sectionLabels[task.section] || task.section}</span>}
-                      <span className="emp-task-date">{task.startDate}</span>
-                    </div>
+                    <CountUp className="emp-stat-value" value={profile.netPoints} />
+                    <span className="emp-stat-label">{isRTL ? 'إجمالي التقييم' : 'Overall rating'}</span>
                   </div>
-                ))}
-                {tasks.length === 0 && <p className="emp-empty">{isRTL ? 'لا توجد مهام' : 'No tasks'}</p>}
-              </div>
-            </div>
-
-            {/* Recent Ratings */}
-            <div className="emp-section-card">
-              <h3>{isRTL ? 'آخر التقييمات' : 'Recent Ratings'}</h3>
-              <div className="emp-ratings-list">
-                {profile.recentRatings.map(r => (
-                  <div key={r.ratingId} className={`emp-rating-item ${r.type}`}>
-                    <span className={`emp-rating-badge ${r.type}`}>
-                      {r.type === 'award' ? '+' : '-'}{r.points}
-                    </span>
-                    <div className="emp-rating-info">
-                      <span className="emp-rating-criteria">{r.criteria || (isRTL ? 'تقييم عام' : 'General rating')}</span>
-                      <span className="emp-rating-date">{r.ratingDate}</span>
+                  <div className="emp-stat-card tasks-total">
+                    <div className="emp-stat-head">
+                      <span>{isRTL ? 'إجمالي المهام' : 'Total Tasks'}</span>
+                      <span className="emp-stat-icon">▤</span>
                     </div>
-                    <span className="emp-rating-by">{r.ratedBy?.fullName}</span>
+                    <CountUp className="emp-stat-value" value={profile.taskStats.total} />
+                    <span className="emp-stat-label">{isRTL ? 'كل المهام المسجلة' : 'All-time assignments'}</span>
                   </div>
-                ))}
-                {profile.recentRatings.length === 0 && <p className="emp-empty">{isRTL ? 'لا توجد تقييمات' : 'No ratings yet'}</p>}
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Tasks Tab */}
-        {activeTab === 'tasks' && (
-          <div className="emp-tasks-tab">
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-              <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 700, color: '#1e293b' }}>{isRTL ? 'المهام' : 'Tasks'}</h3>
-              <button className="emp-btn-primary" style={{ padding: '0.5rem 1rem', borderRadius: '10px', fontSize: '0.85rem' }} onClick={() => setShowCreateTaskModal(true)}>
-                + {isRTL ? 'إضافة مهمة' : 'Add Task'}
-              </button>
-            </div>
-            {/* Filter Tabs */}
-            <div className="emp-filter-tabs">
-              {[
-                { key: 'all', label: isRTL ? 'الكل' : 'All', count: tasks.length, color: '#6b7280' },
-                { key: 'in_progress', label: isRTL ? 'قيد التنفيذ' : 'In Progress', count: tasks.filter(t => t.status === 'in_progress').length, color: '#3b82f6' },
-                { key: 'pending', label: isRTL ? 'قيد الانتظار' : 'Pending', count: tasks.filter(t => t.status === 'pending').length, color: '#f59e0b' },
-                { key: 'completed', label: isRTL ? 'مكتمل' : 'Completed', count: tasks.filter(t => t.status === 'completed').length, color: '#22c55e' },
-                { key: 'uncompleted', label: isRTL ? 'غير مكتمل' : 'Uncompleted', count: tasks.filter(t => t.status === 'uncompleted').length, color: '#dc2626' },
-                { key: 'cancelled', label: isRTL ? 'ملغى' : 'Cancelled', count: tasks.filter(t => t.status === 'cancelled').length, color: '#9ca3af' },
-              ].map(tab => (
-                <button
-                  key={tab.key}
-                  className={`emp-filter-tab ${taskStatusFilter === tab.key ? 'active' : ''}`}
-                  onClick={() => setTaskStatusFilter(tab.key)}
-                >
-                  <span className="emp-filter-dot" style={{ background: tab.color }}></span>
-                  {tab.label}
-                  <span className="emp-filter-count">{tab.count}</span>
-                </button>
-              ))}
-            </div>
-
-            {/* Task Cards */}
-            <div className="emp-task-cards">
-              {filteredTasks.length === 0 ? (
-                <div className="emp-empty-state">
-                  <p>{isRTL ? 'لا توجد مهام' : 'No tasks found'}</p>
+                  <div className="emp-stat-card completed">
+                    <div className="emp-stat-head">
+                      <span>{isRTL ? 'مكتملة' : 'Completed'}</span>
+                      <span className="emp-stat-icon">✓</span>
+                    </div>
+                    <CountUp className="emp-stat-value" value={profile.taskStats.completed} />
+                    <span className="emp-stat-label">{isRTL ? 'مهام منجزة' : 'Successfully closed'}</span>
+                  </div>
+                  <div className="emp-stat-card in-progress">
+                    <div className="emp-stat-head">
+                      <span>{isRTL ? 'قيد التنفيذ' : 'Active'}</span>
+                      <span className="emp-stat-icon">◐</span>
+                    </div>
+                    <CountUp className="emp-stat-value" value={profile.taskStats.in_progress} />
+                    <span className="emp-stat-label">{isRTL ? 'مهام مفتوحة الآن' : 'Currently in flight'}</span>
+                  </div>
                 </div>
-              ) : filteredTasks.map(task => (
-                <div key={task.taskId} className={`emp-task-card priority-${task.priority} status-${task.status}`}>
-                  <div className="emp-task-card-header">
-                    <div>
-                      <h4>{task.title}</h4>
-                      {task.selfCreated
-                        ? <span className="emp-assigned-by" style={{ color: '#3b82f6' }}>{isRTL ? 'مهمة ذاتية' : 'Self-created'}</span>
-                        : task.creator && <span className="emp-assigned-by">{isRTL ? 'من المدير:' : 'Assigned by:'} {task.creator.fullName}</span>
-                      }
-                    </div>
-                    {task.selfCreated ? (
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                        <select
-                          className="emp-status-select"
-                          value={task.status}
-                          onChange={(e) => handleUpdateTaskStatus(task.taskId, e.target.value)}
-                        >
-                          <option value="pending">{isRTL ? 'قيد الانتظار' : 'Pending'}</option>
-                          <option value="in_progress">{isRTL ? 'قيد التنفيذ' : 'In Progress'}</option>
-                          <option value="completed">{isRTL ? 'مكتمل' : 'Completed'}</option>
-                          <option value="uncompleted">{isRTL ? 'غير مكتمل' : 'Uncompleted'}</option>
-                          <option value="cancelled">{isRTL ? 'ملغى' : 'Cancelled'}</option>
-                        </select>
-                        {task.status !== 'pending_review' ? (
-                          <button
-                            onClick={() => handleUpdateTaskStatus(task.taskId, 'pending_review')}
-                            style={{ padding: '0.3rem 0.6rem', borderRadius: 6, border: 'none', background: 'linear-gradient(135deg, #f59e0b, #d97706)', color: 'white', cursor: 'pointer', fontWeight: 600, fontSize: '0.7rem', fontFamily: 'inherit', whiteSpace: 'nowrap' }}
-                          >
-                            {isRTL ? '📤 إرسال للمراجعة' : '📤 Submit for Review'}
-                          </button>
-                        ) : (
-                          <span style={{ padding: '0.3rem 0.6rem', borderRadius: 6, background: '#fef3c7', color: '#92400e', fontWeight: 600, fontSize: '0.7rem', whiteSpace: 'nowrap' }}>
-                            {isRTL ? '⏳ بانتظار المراجعة' : '⏳ Under Review'}
-                          </span>
-                        )}
-                      </div>
-                    ) : (
-                      <span className={`emp-status-badge ${task.status}`}>{statusLabels[task.status]}</span>
-                    )}
-                  </div>
-                  {task.description && <p className="emp-task-desc">{task.description}</p>}
-                  <div className="emp-task-card-footer">
-                    {task.section && <span className="emp-section-tag" style={{ backgroundColor: SECTION_COLORS[task.section] || '#666' }}>{sectionLabels[task.section] || task.section}</span>}
-                    <span className={`emp-priority-tag ${task.priority}`}>{task.priority}</span>
-                    <span className="emp-task-date">{task.startDate}{task.startDate !== task.endDate ? ` → ${task.endDate}` : ''}</span>
-                    {task.dueTime && <span className="emp-task-time">{formatTimeAMPM(task.dueTime)}</span>}
-                  </div>
-                  {task.notes && <div className="emp-task-notes"><strong>{isRTL ? 'ملاحظات:' : 'Notes:'}</strong> {task.notes}</div>}
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
+              </motion.div>
 
-        {/* Schedule Tab */}
-        {activeTab === 'schedule' && (
-          <div className="emp-schedule-tab">
-            <div className="emp-calendar">
-              <div className="emp-calendar-header">
-                <button onClick={() => setCalendarDate(subMonths(calendarDate, 1))}>&lt;</button>
-                <h3>{format(calendarDate, 'MMMM yyyy', { locale: isRTL ? ar : enUS })}</h3>
-                <button onClick={() => setCalendarDate(addMonths(calendarDate, 1))}>&gt;</button>
-              </div>
-              <div className="emp-calendar-weekdays">
-                {(isRTL ? ['أحد', 'إثن', 'ثلا', 'أرب', 'خمي', 'جمع', 'سبت'] : ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']).map(d => (
-                  <div key={d} className="emp-weekday">{d}</div>
-                ))}
-              </div>
-              <div className="emp-calendar-grid">
-                {Array.from({ length: startDayOfWeek }).map((_, i) => (
-                  <div key={`empty-${i}`} className="emp-calendar-day empty" />
-                ))}
-                {daysInMonth.map(day => {
-                  const events = getEventsForDay(day);
-                  const hasEvents = events.length > 0;
-                  return (
-                    <div
-                      key={day.toISOString()}
-                      className={`emp-calendar-day ${isToday(day) ? 'today' : ''} ${hasEvents ? 'has-events' : ''} ${selectedDay && isSameDay(day, selectedDay) ? 'selected' : ''}`}
-                      onClick={() => setSelectedDay(isSameDay(day, selectedDay) ? null : day)}
-                    >
-                      <span className="emp-day-number">{format(day, 'd')}</span>
-                      {hasEvents && <span className="emp-event-count">{events.length}</span>}
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-
-            {/* Selected Day Events */}
-            {selectedDay && (
-              <motion.div className="emp-day-events" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
-                <h4>{format(selectedDay, 'EEEE, d MMMM', { locale: isRTL ? ar : enUS })}</h4>
-                {getEventsForDay(selectedDay).length === 0 ? (
-                  <p className="emp-empty">{isRTL ? 'لا توجد أحداث لهذا اليوم' : 'No events for this day'}</p>
-                ) : getEventsForDay(selectedDay).map(event => (
-                  <div key={event.id} className={`emp-event-card ${event.type === 'task' ? `priority-${event.priority}` : 'appointment'}`}>
-                    <div className="emp-event-header">
-                      <span className="emp-event-title">
-                        {event.type === 'appointment' && <span style={{ color: '#22c55e', marginRight: 6, marginLeft: 6 }}>●</span>}
-                        {event.title}
+              {/* Weekly Activity */}
+              {activityStats && (
+                <motion.div className="emp-section-card" variants={itemVariants}>
+                  <h3>
+                    {isRTL ? 'نشاط الأسبوع الحالي' : 'Weekly Cycle Activity'}
+                    {activityStats.successfulWeeks > 0 && (
+                      <span className="emp-activity-weeks-pill">
+                        {activityStats.successfulWeeks} {isRTL ? 'أسابيع ناجحة' : 'streaks'}
                       </span>
-                      {event.type === 'task' && event.selfCreated ? (
-                        <select
-                          className="emp-status-select small"
-                          value={event.status}
-                          onChange={(e) => handleUpdateTaskStatus(event.id, e.target.value)}
-                        >
-                          <option value="pending">{isRTL ? 'قيد الانتظار' : 'Pending'}</option>
-                          <option value="in_progress">{isRTL ? 'قيد التنفيذ' : 'In Progress'}</option>
-                          <option value="completed">{isRTL ? 'مكتمل' : 'Completed'}</option>
-                          <option value="uncompleted">{isRTL ? 'غير مكتمل' : 'Uncompleted'}</option>
-                          <option value="cancelled">{isRTL ? 'ملغى' : 'Cancelled'}</option>
-                        </select>
-                      ) : event.type === 'task' ? (
-                        <span className={`emp-status-badge ${event.status}`}>{statusLabels[event.status]}</span>
-                      ) : (
-                        <span className="emp-status-badge" style={{ background: '#dcfce7', color: '#166534' }}>{isRTL ? 'موعد' : 'Appointment'}</span>
+                    )}
+                  </h3>
+                  <div className="emp-activity">
+                    <div className="emp-activity-ring">
+                      <svg width="220" height="220" viewBox="0 0 220 220">
+                        <defs>
+                          <linearGradient id="emp-ring-grad" x1="0" y1="0" x2="1" y2="1">
+                            <stop offset="0%" stopColor="#EE2329" />
+                            <stop offset="100%" stopColor="#ff5a5f" />
+                          </linearGradient>
+                        </defs>
+                        <circle className="emp-activity-ring-track" cx="110" cy="110" r={RING_R} />
+                        <motion.circle
+                          className="emp-activity-ring-progress"
+                          cx="110" cy="110" r={RING_R}
+                          strokeDasharray={RING_C}
+                          initial={{ strokeDashoffset: RING_C }}
+                          animate={{ strokeDashoffset: ringOffset }}
+                          transition={{ duration: 1.4, ease: [0.16, 1, 0.3, 1] }}
+                        />
+                      </svg>
+                      <div className="emp-activity-ring-inner">
+                        <div className="emp-activity-percent">
+                          <CountUp value={activityStats.percentage} /><sup>%</sup>
+                        </div>
+                        <span className={`emp-activity-status ${activityStats.passed ? 'passed' : ''}`}>
+                          {activityStats.passed
+                            ? (isRTL ? '✓ الهدف محقق' : '✓ Target Hit')
+                            : (isRTL ? 'قيد التقدم' : 'In progress')}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="emp-activity-meta">
+                      <div className="emp-activity-row">
+                        <span className="emp-activity-row-label">{isRTL ? 'الساعات' : 'Hours'}</span>
+                        <div className="emp-activity-row-bar">
+                          <div
+                            className="emp-activity-row-bar-fill"
+                            style={{ width: `${Math.min(100, (activityStats.totalHours / activityStats.targetHours) * 100)}%` }}
+                          />
+                        </div>
+                        <span className="emp-activity-row-value">
+                          {activityStats.totalHours}h / {activityStats.targetHours}h
+                        </span>
+                      </div>
+                      <div className="emp-activity-row">
+                        <span className="emp-activity-row-label">{isRTL ? 'أيام نشطة' : 'Active days'}</span>
+                        <div className="emp-activity-row-bar">
+                          <div
+                            className="emp-activity-row-bar-fill"
+                            style={{ width: `${Math.min(100, (activityStats.daysActive / 7) * 100)}%`, background: 'linear-gradient(90deg, #22d3ee, #22d3eeaa)' }}
+                          />
+                        </div>
+                        <span className="emp-activity-row-value">{activityStats.daysActive}</span>
+                      </div>
+                      {activityStats.daysRemaining > 0 && (
+                        <div className="emp-activity-row">
+                          <span className="emp-activity-row-label">{isRTL ? 'أيام متبقية' : 'Days remaining'}</span>
+                          <div className="emp-activity-row-bar">
+                            <div
+                              className="emp-activity-row-bar-fill"
+                              style={{ width: `${Math.min(100, (activityStats.daysRemaining / 7) * 100)}%`, background: 'linear-gradient(90deg, #f59e0b, #eab308)' }}
+                            />
+                          </div>
+                          <span className="emp-activity-row-value">{activityStats.daysRemaining}</span>
+                        </div>
                       )}
                     </div>
-                    <div className="emp-event-meta">
-                      {event.startTime && <span>{formatTimeAMPM(event.startTime)}{event.endTime ? ` - ${formatTimeAMPM(event.endTime)}` : ''}</span>}
-                      {event.duration && <span>({event.duration} {isRTL ? 'د' : 'min'})</span>}
-                      {event.section && <span className="emp-section-tag" style={{ backgroundColor: SECTION_COLORS[event.section] || '#666' }}>{sectionLabels[event.section] || event.section}</span>}
-                      {event.type === 'appointment' && event.phone && <span>📞 {event.phone}</span>}
-                    </div>
-                    {event.description && <p className="emp-event-desc">{event.description}</p>}
                   </div>
-                ))}
-              </motion.div>
-            )}
-          </div>
-        )}
-
-        {/* Ratings Tab */}
-        {activeTab === 'ratings' && ratings && (
-          <div className="emp-ratings-tab">
-            {/* Points Summary */}
-            <div className="emp-points-summary">
-              <div className="emp-points-card net">
-                <span className="emp-points-value">{ratings.netPoints}</span>
-                <span className="emp-points-label">{isRTL ? 'صافي النقاط' : 'Net Points'}</span>
-              </div>
-              <div className="emp-points-card awards">
-                <span className="emp-points-value">+{ratings.totalAwards}</span>
-                <span className="emp-points-label">{isRTL ? 'نقاط مكتسبة' : 'Awards'}</span>
-              </div>
-              <div className="emp-points-card deductions">
-                <span className="emp-points-value">-{ratings.totalDeductions}</span>
-                <span className="emp-points-label">{isRTL ? 'نقاط مخصومة' : 'Deductions'}</span>
-              </div>
-            </div>
-
-            {/* Ratings History */}
-            <div className="emp-section-card">
-              <h3>{isRTL ? 'سجل التقييمات' : 'Rating History'}</h3>
-              <div className="emp-ratings-history">
-                {ratings.ratings.map(r => (
-                  <div key={r.ratingId} className={`emp-rating-row ${r.type}`}>
-                    <span className={`emp-rating-badge ${r.type}`}>
-                      {r.type === 'award' ? '+' : '-'}{r.points}
+                  <div className="emp-activity-footer">
+                    <span className="emp-activity-cycle">
+                      {isRTL ? 'الدورة' : 'Cycle'}: {activityStats.cycleStart}
+                      <span className="emp-activity-cycle-arrow">→</span>
+                      {activityStats.cycleEnd}
                     </span>
-                    <div className="emp-rating-details">
-                      <span className="emp-rating-criteria">{r.criteria || (isRTL ? 'تقييم عام' : 'General')}</span>
-                      {r.notes && <span className="emp-rating-notes">{r.notes}</span>}
-                    </div>
-                    <div className="emp-rating-meta">
-                      <span>{r.ratingDate}</span>
-                      <span className="emp-rating-by">{r.ratedBy?.fullName}</span>
-                    </div>
-                  </div>
-                ))}
-                {ratings.ratings.length === 0 && <p className="emp-empty">{isRTL ? 'لا توجد تقييمات' : 'No ratings yet'}</p>}
-              </div>
-            </div>
-
-            {/* Performance Evaluations */}
-            {myEvaluations && myEvaluations.evaluations.length > 0 && (
-              <div className="emp-section-card">
-                <h3>{isRTL ? 'التقييم الوظيفي' : 'Performance Evaluations'}</h3>
-                {myEvaluations.summary && (
-                  <div style={{ display: 'flex', gap: '1rem', marginBottom: '1rem', flexWrap: 'wrap' }}>
-                    <div style={{ background: '#eff6ff', padding: '0.75rem 1.25rem', borderRadius: 10, textAlign: 'center', flex: 1, minWidth: 100 }}>
-                      <div style={{ fontSize: '1.3rem', fontWeight: 800, color: '#3b82f6' }}>{myEvaluations.summary.avgScore}%</div>
-                      <div style={{ fontSize: '0.72rem', color: '#64748b' }}>{isRTL ? 'متوسط النسبة' : 'Avg Score'}</div>
-                    </div>
-                    <div style={{ background: '#fefce8', padding: '0.75rem 1.25rem', borderRadius: 10, textAlign: 'center', flex: 1, minWidth: 100 }}>
-                      <div style={{ fontSize: '1.3rem', fontWeight: 800, color: '#f59e0b' }}>{myEvaluations.summary.avgScore}<span style={{ fontSize: '0.78rem', color: '#94a3b8' }}>/100</span></div>
-                      <div style={{ fontSize: '0.72rem', color: '#64748b' }}>{isRTL ? 'متوسط الدرجة' : 'Avg Score'}</div>
-                    </div>
-                    {myEvaluations.summary.totalBonus > 0 && (
-                      <div style={{ background: '#f5f3ff', padding: '0.75rem 1.25rem', borderRadius: 10, textAlign: 'center', flex: 1, minWidth: 100 }}>
-                        <div style={{ fontSize: '1.3rem', fontWeight: 800, color: '#8b5cf6' }}>+{myEvaluations.summary.totalBonus}</div>
-                        <div style={{ fontSize: '0.72rem', color: '#64748b' }}>{isRTL ? 'نقاط إضافية' : 'Bonus'}</div>
-                      </div>
+                    {activityStats.passed && (
+                      <span className="emp-activity-success-badge">
+                        +1 {isRTL ? 'نقطة مكتسبة' : 'credit earned'}
+                      </span>
                     )}
                   </div>
-                )}
-                {myEvaluations.evaluations.map(ev => (
-                  <div key={ev.evaluationId} style={{ padding: '0.75rem', background: '#f8fafc', borderRadius: 10, marginBottom: '0.5rem', border: '1px solid #f1f5f9' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
-                      <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
-                        <span style={{ fontSize: '1.2rem', fontWeight: 800, color: '#3b82f6' }}>{ev.totalScore.toFixed(1)}<span style={{ fontSize: '0.78rem', color: '#94a3b8' }}>/100</span></span>
-                        <span style={{ fontSize: '0.9rem', fontWeight: 700, color: '#22c55e' }}>{ev.totalScore.toFixed(0)}%</span>
-                        {ev.bonusPoints > 0 && <span style={{ fontSize: '0.85rem', fontWeight: 700, color: '#8b5cf6' }}>+{ev.bonusPoints} {isRTL ? 'إضافي' : 'bonus'}</span>}
-                      </div>
-                      {ev.period && <span style={{ background: '#eff6ff', color: '#1d4ed8', padding: '2px 8px', borderRadius: 6, fontSize: '0.75rem', fontWeight: 600 }}>{ev.period}</span>}
-                    </div>
-                    <div style={{ fontSize: '0.78rem', color: '#94a3b8' }}>
-                      {ev.evaluationDate} • {isRTL ? 'بواسطة:' : 'By:'} {ev.evaluator?.fullName}
-                      {ev.notes && <span> • {ev.notes}</span>}
-                    </div>
-                    {/* Category breakdown */}
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: '0.4rem', marginTop: '0.5rem' }}>
-                      {EVALUATION_CATEGORIES.map(cat => {
-                        const catWeighted = cat.criteria.reduce((s, cr) => {
-                          const raw = Math.min(parseFloat(ev.scores?.[`${cat.key}_${cr.key}`]) || 0, 50);
-                          return s + (raw / 50) * cr.weight;
-                        }, 0);
-                        const catMaxWeight = cat.criteria.reduce((s, cr) => s + cr.weight, 0);
-                        return (
-                          <div key={cat.key} style={{ fontSize: '0.72rem', display: 'flex', justifyContent: 'space-between', padding: '0.2rem 0.4rem', background: 'white', borderRadius: 6 }}>
-                            <span style={{ color: '#475569' }}>{isRTL ? cat.nameAr : cat.nameEn}</span>
-                            <span style={{ fontWeight: 700, color: catWeighted >= catMaxWeight * 0.8 ? '#22c55e' : '#334155' }}>{catWeighted.toFixed(1)}/{catMaxWeight}</span>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        )}
+                </motion.div>
+              )}
 
-        {/* Workshops Tab */}
-        {activeTab === 'workshops' && (
-          <div className="emp-workshops-tab">
-            {/* Filter tabs */}
-            <div className="emp-filter-tabs" style={{ marginBottom: '1rem' }}>
-              {[
-                { key: 'active', label: isRTL ? 'النشطة' : 'Active', color: '#3b82f6', count: myWorkshops.filter(w => w.status !== 'completed' && w.status !== 'cancelled').length },
-                { key: 'completed', label: isRTL ? 'المكتملة' : 'Completed', color: '#22c55e', count: myWorkshops.filter(w => w.status === 'completed').length },
-                { key: 'all', label: isRTL ? 'الكل' : 'All', color: '#64748b', count: myWorkshops.length },
-              ].map(f => (
-                <button key={f.key} className={`emp-filter-tab ${(workshopViewFilter || 'active') === f.key ? 'active' : ''}`}
-                  onClick={() => setWorkshopViewFilter(f.key)}>
-                  <span className="emp-filter-dot" style={{ background: f.color }}></span>
-                  {f.label}
-                  <span className="emp-filter-count">{f.count}</span>
-                </button>
-              ))}
-            </div>
-            {(() => {
-              const filtered = (workshopViewFilter || 'active') === 'all' ? myWorkshops : (workshopViewFilter || 'active') === 'completed' ? myWorkshops.filter(w => w.status === 'completed') : myWorkshops.filter(w => w.status !== 'completed' && w.status !== 'cancelled');
-              return filtered.length === 0 ? (
-              <div className="emp-empty-state"><p>{isRTL ? 'لا توجد ورش' : 'No workshops'}</p></div>
-            ) : filtered.map(workshop => (
-              <div key={workshop.workshopId} className="emp-section-card" style={{ marginBottom: '1.5rem' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem' }}>
-                  <div>
-                    <h3 style={{ margin: '0 0 0.25rem', borderBottom: 'none', paddingBottom: 0 }}>{workshop.title}</h3>
-                    <div style={{ fontSize: '0.82rem', color: '#64748b' }}>
-                      {workshop.startDate}{workshop.endDate ? ` → ${workshop.endDate}` : ''} {workshop.totalHours ? `• ${workshop.totalHours}h` : ''}
-                    </div>
-                  </div>
-                  <span style={{ padding: '2px 8px', borderRadius: 6, fontSize: '0.72rem', fontWeight: 600, background: workshop.status === 'upcoming' ? '#dbeafe' : workshop.status === 'in_progress' ? '#fef3c7' : '#dcfce7', color: workshop.status === 'upcoming' ? '#1d4ed8' : workshop.status === 'in_progress' ? '#92400e' : '#166534' }}>
-                    {workshop.status === 'upcoming' ? (isRTL ? 'قادمة' : 'Upcoming') : workshop.status === 'in_progress' ? (isRTL ? 'جارية' : 'In Progress') : (isRTL ? 'مكتملة' : 'Completed')}
-                  </span>
-                </div>
-
-                <div style={{ fontSize: '0.85rem', fontWeight: 600, color: '#334155', marginBottom: '0.75rem' }}>
-                  {isRTL ? 'الطلاب المسجلين:' : 'Registered Students:'} {workshop.students?.length || 0}
-                </div>
-
-                {(workshop.students || []).length === 0 ? (
-                  <p className="emp-empty" style={{ padding: '1rem' }}>{isRTL ? 'لا يوجد طلاب' : 'No students'}</p>
-                ) : (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                    {workshop.students.map(s => {
-                      // Build workshop days array from startDate to endDate (or startDate if no endDate)
-                      const workshopDays = [];
-                      if (workshop.startDate) {
-                        const start = new Date(workshop.startDate);
-                        const end = workshop.endDate ? new Date(workshop.endDate) : new Date(workshop.startDate);
-                        const cursor = new Date(start);
-                        while (cursor <= end) {
-                          workshopDays.push(cursor.toISOString().split('T')[0]);
-                          cursor.setDate(cursor.getDate() + 1);
-                        }
-                      }
-                      const attendedDates = Array.isArray(s.attendanceDates) ? s.attendanceDates : [];
-                      return (
-                      <div key={s.studentId} style={{ background: '#f8fafc', borderRadius: 10, padding: '0.85rem 1rem', border: '1px solid #f1f5f9', display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
-                        {/* Top row: name, rating, payment */}
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
-                        <div style={{ flex: '1 1 150px', minWidth: 0 }}>
-                          <div style={{ fontWeight: 600, fontSize: '0.88rem', color: '#1e293b' }}>{s.firstName} {s.lastName}</div>
-                          <div style={{ fontSize: '0.72rem', color: '#64748b' }}>{s.phone} {s.email ? `• ${s.email}` : ''}</div>
+              {/* Recent Tasks + Ratings — side by side on large screens */}
+              <motion.div variants={itemVariants} style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 22 }}>
+                <div className="emp-section-card">
+                  <h3>{isRTL ? '⬢ آخر المهام' : '⬢ Recent Tasks'}</h3>
+                  <div className="emp-task-list">
+                    {tasks.slice(0, 5).map(task => (
+                      <div key={task.taskId} className={`emp-task-item priority-${task.priority}`}>
+                        <div className="emp-task-header">
+                          <span className="emp-task-title">{task.title}</span>
+                          <span className={`emp-status-badge ${task.status}`}>{statusLabels[task.status]}</span>
                         </div>
-                        <span style={{ fontSize: '0.72rem', color: '#64748b', fontWeight: 600, background: '#eff6ff', padding: '2px 8px', borderRadius: 5 }}>
-                          {attendedDates.length} / {workshopDays.length || '?'} {isRTL ? 'يوم' : 'days'}
-                        </span>
-
-                        {/* Performance rating */}
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
-                          {[1, 2, 3, 4, 5].map(star => (
-                            <button
-                              key={star}
-                              onClick={async () => {
-                                try {
-                                  await employeeApi.patch(`/workshops/employee/students/${s.studentId}/rate`, { performanceRating: star });
-                                  toast.success(isRTL ? 'تم التقييم' : 'Rated');
-                                  fetchMyWorkshops();
-                                } catch (err) { toast.error(isRTL ? 'خطأ' : 'Error'); }
-                              }}
-                              style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '1rem', padding: 0, color: star <= (s.performanceRating || 0) ? '#f59e0b' : '#d1d5db' }}
-                            >
-                              ★
-                            </button>
-                          ))}
-                        </div>
-
-                        {/* Payment status badge */}
-                        <span style={{ padding: '2px 6px', borderRadius: 5, fontSize: '0.68rem', fontWeight: 600, background: s.paymentStatus === 'verified' ? '#dcfce7' : s.paymentStatus === 'rejected' ? '#fee2e2' : '#fef3c7', color: s.paymentStatus === 'verified' ? '#166534' : s.paymentStatus === 'rejected' ? '#991b1b' : '#92400e' }}>
-                          {s.paymentStatus === 'verified' ? (isRTL ? 'مدفوع' : 'Paid') : s.paymentStatus === 'rejected' ? (isRTL ? 'مرفوض' : 'Rejected') : (isRTL ? 'قيد المراجعة' : 'Pending')}
-                        </span>
-                        </div>
-
-                        {/* Per-day attendance row */}
-                        {workshopDays.length > 0 && (
-                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.35rem', paddingTop: '0.5rem', borderTop: '1px dashed #e2e8f0' }}>
-                            <span style={{ fontSize: '0.7rem', color: '#64748b', fontWeight: 600, alignSelf: 'center', marginInlineEnd: '0.3rem' }}>
-                              {isRTL ? 'الحضور اليومي:' : 'Daily attendance:'}
+                        <div className="emp-task-meta">
+                          {task.section && (
+                            <span className="emp-section-tag" style={{ backgroundColor: SECTION_COLORS[task.section] || '#666' }}>
+                              {sectionLabels[task.section] || task.section}
                             </span>
-                            {workshopDays.map(day => {
-                              const isPresent = attendedDates.includes(day);
-                              const d = new Date(day);
-                              const label = `${d.getDate()}/${d.getMonth() + 1}`;
-                              return (
-                                <button
-                                  key={day}
-                                  onClick={async () => {
-                                    try {
-                                      await employeeApi.patch(`/workshops/employee/students/${s.studentId}/attendance`, { date: day, present: !isPresent });
-                                      fetchMyWorkshops();
-                                    } catch (err) { toast.error(isRTL ? 'خطأ' : 'Error'); }
-                                  }}
-                                  title={day}
-                                  style={{ padding: '0.25rem 0.55rem', borderRadius: 6, border: `1.5px solid ${isPresent ? '#22c55e' : '#e2e8f0'}`, cursor: 'pointer', fontWeight: 700, fontSize: '0.72rem', fontFamily: 'inherit', background: isPresent ? '#dcfce7' : 'white', color: isPresent ? '#166534' : '#94a3b8', minWidth: 44 }}
-                                >
-                                  {isPresent ? '✓ ' : ''}{label}
-                                </button>
-                              );
-                            })}
+                          )}
+                          <span className="emp-task-date">{task.startDate}</span>
+                        </div>
+                      </div>
+                    ))}
+                    {tasks.length === 0 && <p className="emp-empty">{isRTL ? '— لا توجد مهام —' : '— No tasks yet —'}</p>}
+                  </div>
+                </div>
+
+                <div className="emp-section-card">
+                  <h3>{isRTL ? '★ آخر التقييمات' : '★ Recent Ratings'}</h3>
+                  <div className="emp-ratings-list">
+                    {profile.recentRatings.map(r => (
+                      <div key={r.ratingId} className={`emp-rating-item ${r.type}`}>
+                        <span className={`emp-rating-badge ${r.type}`}>
+                          {r.type === 'award' ? '+' : '−'}{r.points}
+                        </span>
+                        <div className="emp-rating-info">
+                          <span className="emp-rating-criteria">{r.criteria || (isRTL ? 'تقييم عام' : 'General rating')}</span>
+                          <span className="emp-rating-date">{r.ratingDate}</span>
+                        </div>
+                        <span className="emp-rating-by">{r.ratedBy?.fullName}</span>
+                      </div>
+                    ))}
+                    {profile.recentRatings.length === 0 && <p className="emp-empty">{isRTL ? '— لا توجد تقييمات —' : '— No ratings yet —'}</p>}
+                  </div>
+                </div>
+              </motion.div>
+            </motion.div>
+          )}
+
+          {/* ═══════════════════════════════════════════════════ TASKS */}
+          {activeTab === 'tasks' && (
+            <motion.div
+              key="tasks"
+              className="emp-tasks-tab"
+              variants={containerVariants}
+              initial="hidden"
+              animate="visible"
+              exit={{ opacity: 0, y: -12 }}
+            >
+              <motion.div variants={itemVariants} className="emp-tasks-tab-head">
+                <div className="emp-headline" style={{ margin: 0 }}>
+                  <span className="emp-headline-tag">[02] {isRTL ? 'قائمة المهام' : 'Task Queue'}</span>
+                  <h2 className="emp-headline-title">{isRTL ? 'المهام' : 'Tasks'}</h2>
+                </div>
+                <button className="emp-btn-primary" style={{ padding: '9px 18px' }} onClick={() => setShowCreateTaskModal(true)}>
+                  + {isRTL ? 'مهمة جديدة' : 'New Task'}
+                </button>
+              </motion.div>
+
+              <motion.div variants={itemVariants}>
+                <div className="emp-filter-tabs">
+                  {[
+                    { key: 'all', label: isRTL ? 'الكل' : 'All', count: tasks.length, color: '#94a3b8' },
+                    { key: 'in_progress', label: isRTL ? 'قيد التنفيذ' : 'In Progress', count: tasks.filter(t => t.status === 'in_progress').length, color: '#22d3ee' },
+                    { key: 'pending', label: isRTL ? 'قيد الانتظار' : 'Pending', count: tasks.filter(t => t.status === 'pending').length, color: '#f59e0b' },
+                    { key: 'completed', label: isRTL ? 'مكتمل' : 'Completed', count: tasks.filter(t => t.status === 'completed').length, color: '#4ade80' },
+                    { key: 'uncompleted', label: isRTL ? 'غير مكتمل' : 'Uncompleted', count: tasks.filter(t => t.status === 'uncompleted').length, color: '#EE2329' },
+                    { key: 'cancelled', label: isRTL ? 'ملغى' : 'Cancelled', count: tasks.filter(t => t.status === 'cancelled').length, color: '#5b6577' },
+                  ].map(tab => (
+                    <button
+                      key={tab.key}
+                      className={`emp-filter-tab ${taskStatusFilter === tab.key ? 'active' : ''}`}
+                      onClick={() => setTaskStatusFilter(tab.key)}
+                    >
+                      <span className="emp-filter-dot" style={{ background: tab.color, color: tab.color }} />
+                      {tab.label}
+                      <span className="emp-filter-count">{tab.count}</span>
+                    </button>
+                  ))}
+                </div>
+              </motion.div>
+
+              <motion.div variants={itemVariants} className="emp-task-cards">
+                <AnimatePresence mode="popLayout">
+                  {filteredTasks.length === 0 ? (
+                    <motion.div
+                      key="empty"
+                      className="emp-empty-state"
+                      initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                    >
+                      <p>{isRTL ? '— لا توجد مهام في هذا التصنيف —' : '— No tasks in this queue —'}</p>
+                    </motion.div>
+                  ) : filteredTasks.map((task, i) => (
+                    <motion.div
+                      key={task.taskId}
+                      layout
+                      initial={{ opacity: 0, y: 12 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -8, transition: { duration: 0.15 } }}
+                      transition={{ delay: i * 0.03, type: 'spring', stiffness: 260, damping: 22 }}
+                      className={`emp-task-card priority-${task.priority} status-${task.status}`}
+                    >
+                      <div className="emp-task-card-header">
+                        <div>
+                          <h4>{task.title}</h4>
+                          {task.selfCreated
+                            ? <span className="emp-assigned-by" style={{ color: '#22d3ee' }}>{isRTL ? '◆ مهمة ذاتية' : '◆ Self-created'}</span>
+                            : task.creator && <span className="emp-assigned-by">{isRTL ? 'من المدير:' : 'ASSIGNED BY:'} {task.creator.fullName}</span>
+                          }
+                        </div>
+                        {task.selfCreated ? (
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                            <select
+                              className="emp-status-select"
+                              value={task.status}
+                              onChange={(e) => handleUpdateTaskStatus(task.taskId, e.target.value)}
+                            >
+                              <option value="pending">{isRTL ? 'قيد الانتظار' : 'Pending'}</option>
+                              <option value="in_progress">{isRTL ? 'قيد التنفيذ' : 'In Progress'}</option>
+                              <option value="completed">{isRTL ? 'مكتمل' : 'Completed'}</option>
+                              <option value="uncompleted">{isRTL ? 'غير مكتمل' : 'Uncompleted'}</option>
+                              <option value="cancelled">{isRTL ? 'ملغى' : 'Cancelled'}</option>
+                            </select>
+                            {task.status !== 'pending_review' ? (
+                              <button
+                                onClick={() => handleUpdateTaskStatus(task.taskId, 'pending_review')}
+                                style={{ padding: '6px 10px', borderRadius: 4, border: '1px solid rgba(167,139,250,0.4)', background: 'rgba(167,139,250,0.14)', color: '#a78bfa', cursor: 'pointer', fontWeight: 700, fontSize: '0.7rem', fontFamily: 'JetBrains Mono, monospace', whiteSpace: 'nowrap', letterSpacing: 0.6 }}
+                              >
+                                {isRTL ? '↑ مراجعة' : '↑ REVIEW'}
+                              </button>
+                            ) : (
+                              <span style={{ padding: '4px 10px', borderRadius: 3, background: 'rgba(167,139,250,0.14)', color: '#a78bfa', fontWeight: 700, fontSize: '0.65rem', whiteSpace: 'nowrap', letterSpacing: 1, textTransform: 'uppercase', border: '1px solid rgba(167,139,250,0.35)', fontFamily: 'JetBrains Mono, monospace' }}>
+                                {isRTL ? '⏳ مراجعة' : '⏳ Reviewing'}
+                              </span>
+                            )}
                           </div>
+                        ) : (
+                          <span className={`emp-status-badge ${task.status}`}>{statusLabels[task.status]}</span>
                         )}
                       </div>
+                      {task.description && <p className="emp-task-desc">{task.description}</p>}
+                      <div className="emp-task-card-footer">
+                        {task.section && (
+                          <span className="emp-section-tag" style={{ backgroundColor: SECTION_COLORS[task.section] || '#666' }}>
+                            {sectionLabels[task.section] || task.section}
+                          </span>
+                        )}
+                        <span className={`emp-priority-tag ${task.priority}`}>{task.priority}</span>
+                        <span className="emp-task-date">
+                          {task.startDate}{task.startDate !== task.endDate ? ` → ${task.endDate}` : ''}
+                        </span>
+                        {task.dueTime && <span className="emp-task-time">◷ {formatTimeAMPM(task.dueTime)}</span>}
+                      </div>
+                      {task.notes && (
+                        <div className="emp-task-notes">
+                          <strong>{isRTL ? 'ملاحظات:' : 'Notes:'}</strong> {task.notes}
+                        </div>
+                      )}
+                    </motion.div>
+                  ))}
+                </AnimatePresence>
+              </motion.div>
+            </motion.div>
+          )}
+
+          {/* ═══════════════════════════════════════════════════ SCHEDULE */}
+          {activeTab === 'schedule' && (
+            <motion.div
+              key="schedule"
+              className="emp-schedule-tab"
+              variants={containerVariants}
+              initial="hidden"
+              animate="visible"
+              exit={{ opacity: 0, y: -12 }}
+            >
+              <motion.div variants={itemVariants}>
+                <div className="emp-headline">
+                  <span className="emp-headline-tag">[03] {isRTL ? 'الجدول الزمني' : 'Timeline'}</span>
+                  <h2 className="emp-headline-title">{isRTL ? 'التقويم' : 'Calendar'}</h2>
+                  <span className="emp-headline-rest" />
+                </div>
+                <div className="emp-calendar">
+                  <div className="emp-calendar-header">
+                    <button onClick={() => setCalendarDate(subMonths(calendarDate, 1))}>&lt;</button>
+                    <h3>{format(calendarDate, 'MMMM yyyy', { locale: isRTL ? ar : enUS })}</h3>
+                    <button onClick={() => setCalendarDate(addMonths(calendarDate, 1))}>&gt;</button>
+                  </div>
+                  <div className="emp-calendar-weekdays">
+                    {(isRTL ? ['أحد', 'إثن', 'ثلا', 'أرب', 'خمي', 'جمع', 'سبت'] : ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']).map(d => (
+                      <div key={d} className="emp-weekday">{d}</div>
+                    ))}
+                  </div>
+                  <div className="emp-calendar-grid">
+                    {Array.from({ length: startDayOfWeek }).map((_, i) => (
+                      <div key={`empty-${i}`} className="emp-calendar-day empty" />
+                    ))}
+                    {daysInMonth.map(day => {
+                      const events = getEventsForDay(day);
+                      const hasEvents = events.length > 0;
+                      return (
+                        <motion.div
+                          key={day.toISOString()}
+                          className={`emp-calendar-day ${isToday(day) ? 'today' : ''} ${hasEvents ? 'has-events' : ''} ${selectedDay && isSameDay(day, selectedDay) ? 'selected' : ''}`}
+                          onClick={() => setSelectedDay(isSameDay(day, selectedDay) ? null : day)}
+                          whileHover={{ scale: 1.03 }}
+                          whileTap={{ scale: 0.97 }}
+                        >
+                          <span className="emp-day-number">{format(day, 'd')}</span>
+                          {hasEvents && <span className="emp-event-count">{events.length}</span>}
+                        </motion.div>
                       );
                     })}
                   </div>
+                </div>
+              </motion.div>
+
+              <AnimatePresence>
+                {selectedDay && (
+                  <motion.div
+                    className="emp-day-events"
+                    initial={{ opacity: 0, y: 16 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -12 }}
+                    transition={{ type: 'spring', stiffness: 260, damping: 22 }}
+                  >
+                    <h4>▸ {format(selectedDay, 'EEEE, d MMMM', { locale: isRTL ? ar : enUS })}</h4>
+                    {getEventsForDay(selectedDay).length === 0 ? (
+                      <p className="emp-empty">{isRTL ? '— لا توجد أحداث لهذا اليوم —' : '— No events for this day —'}</p>
+                    ) : getEventsForDay(selectedDay).map((event, i) => (
+                      <motion.div
+                        key={event.id}
+                        className={`emp-event-card ${event.type === 'task' ? `priority-${event.priority}` : 'appointment'}`}
+                        initial={{ opacity: 0, x: isRTL ? -12 : 12 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ delay: i * 0.04 }}
+                      >
+                        <div className="emp-event-header">
+                          <span className="emp-event-title">
+                            {event.type === 'appointment' && <span style={{ color: '#4ade80', marginInlineEnd: 6 }}>●</span>}
+                            {event.title}
+                          </span>
+                          {event.type === 'task' && event.selfCreated ? (
+                            <select
+                              className="emp-status-select small"
+                              value={event.status}
+                              onChange={(e) => handleUpdateTaskStatus(event.id, e.target.value)}
+                            >
+                              <option value="pending">{isRTL ? 'قيد الانتظار' : 'Pending'}</option>
+                              <option value="in_progress">{isRTL ? 'قيد التنفيذ' : 'In Progress'}</option>
+                              <option value="completed">{isRTL ? 'مكتمل' : 'Completed'}</option>
+                              <option value="uncompleted">{isRTL ? 'غير مكتمل' : 'Uncompleted'}</option>
+                              <option value="cancelled">{isRTL ? 'ملغى' : 'Cancelled'}</option>
+                            </select>
+                          ) : event.type === 'task' ? (
+                            <span className={`emp-status-badge ${event.status}`}>{statusLabels[event.status]}</span>
+                          ) : (
+                            <span className="emp-status-badge completed">
+                              {isRTL ? 'موعد' : 'Appointment'}
+                            </span>
+                          )}
+                        </div>
+                        <div className="emp-event-meta">
+                          {event.startTime && <span>◷ {formatTimeAMPM(event.startTime)}{event.endTime ? ` — ${formatTimeAMPM(event.endTime)}` : ''}</span>}
+                          {event.duration && <span>({event.duration} {isRTL ? 'د' : 'min'})</span>}
+                          {event.section && (
+                            <span className="emp-section-tag" style={{ backgroundColor: SECTION_COLORS[event.section] || '#666' }}>
+                              {sectionLabels[event.section] || event.section}
+                            </span>
+                          )}
+                          {event.type === 'appointment' && event.phone && <span>☎ {event.phone}</span>}
+                        </div>
+                        {event.description && <p className="emp-event-desc">{event.description}</p>}
+                      </motion.div>
+                    ))}
+                  </motion.div>
                 )}
-              </div>
-            ));
-            })()}
-          </div>
-        )}
+              </AnimatePresence>
+            </motion.div>
+          )}
 
-        {/* Profile Tab */}
-        {activeTab === 'profile' && profile && (
-          <div className="emp-profile-tab">
-            <div className="emp-profile-card">
-              <div className="emp-profile-avatar">
-                {employeeData?.name?.charAt(0)?.toUpperCase()}
-              </div>
-              <h2>{profile.employee.name}</h2>
-              <span className="emp-profile-section" style={{ backgroundColor: SECTION_COLORS[profile.employee.section] || '#666' }}>
-                {sectionLabels[profile.employee.section] || profile.employee.section}
-              </span>
+          {/* ═══════════════════════════════════════════════════ RATINGS */}
+          {activeTab === 'ratings' && ratings && (
+            <motion.div
+              key="ratings"
+              className="emp-ratings-tab"
+              variants={containerVariants}
+              initial="hidden"
+              animate="visible"
+              exit={{ opacity: 0, y: -12 }}
+            >
+              <motion.div variants={itemVariants}>
+                <div className="emp-headline">
+                  <span className="emp-headline-tag">[04] {isRTL ? 'التقييمات' : 'Ratings'}</span>
+                  <h2 className="emp-headline-title">{isRTL ? 'ملخص النقاط' : 'Points Summary'}</h2>
+                  <span className="emp-headline-rest" />
+                </div>
+                <div className="emp-points-summary">
+                  <div className="emp-points-card net">
+                    <CountUp className="emp-points-value" value={ratings.netPoints} />
+                    <span className="emp-points-label">{isRTL ? 'صافي النقاط' : 'Net Points'}</span>
+                  </div>
+                  <div className="emp-points-card awards">
+                    <CountUp className="emp-points-value" value={ratings.totalAwards} prefix="+" />
+                    <span className="emp-points-label">{isRTL ? 'نقاط مكتسبة' : 'Awards'}</span>
+                  </div>
+                  <div className="emp-points-card deductions">
+                    <CountUp className="emp-points-value" value={ratings.totalDeductions} prefix="−" />
+                    <span className="emp-points-label">{isRTL ? 'نقاط مخصومة' : 'Deductions'}</span>
+                  </div>
+                </div>
+              </motion.div>
 
-              <div className="emp-profile-details">
-                <div className="emp-profile-row">
-                  <span className="emp-profile-label">{isRTL ? 'البريد الإلكتروني' : 'Email'}</span>
-                  <span className="emp-profile-value">{profile.employee.email}</span>
+              <motion.div className="emp-section-card" variants={itemVariants}>
+                <h3>{isRTL ? '⌘ سجل التقييمات' : '⌘ Rating History'}</h3>
+                <div className="emp-ratings-history">
+                  {ratings.ratings.map((r, i) => (
+                    <motion.div
+                      key={r.ratingId}
+                      className={`emp-rating-row ${r.type}`}
+                      initial={{ opacity: 0, x: isRTL ? -8 : 8 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ delay: i * 0.03 }}
+                    >
+                      <span className={`emp-rating-badge ${r.type}`}>
+                        {r.type === 'award' ? '+' : '−'}{r.points}
+                      </span>
+                      <div className="emp-rating-details">
+                        <span className="emp-rating-criteria">{r.criteria || (isRTL ? 'تقييم عام' : 'General')}</span>
+                        {r.notes && <span className="emp-rating-notes">{r.notes}</span>}
+                      </div>
+                      <div className="emp-rating-meta">
+                        <span>{r.ratingDate}</span>
+                        <span className="emp-rating-by">{r.ratedBy?.fullName}</span>
+                      </div>
+                    </motion.div>
+                  ))}
+                  {ratings.ratings.length === 0 && <p className="emp-empty">{isRTL ? '— لا توجد تقييمات —' : '— No ratings yet —'}</p>}
                 </div>
-                <div className="emp-profile-row">
-                  <span className="emp-profile-label">{isRTL ? 'القسم' : 'Section'}</span>
-                  <span className="emp-profile-value">{sectionLabels[profile.employee.section] || profile.employee.section}</span>
-                </div>
-                <div className="emp-profile-row">
-                  <span className="emp-profile-label">{isRTL ? 'تاريخ الانضمام' : 'Joined'}</span>
-                  <span className="emp-profile-value">{profile.employee.createdAt ? format(parseISO(profile.employee.createdAt), 'dd/MM/yyyy') : '-'}</span>
-                </div>
-                <div className="emp-profile-row">
-                  <span className="emp-profile-label">{isRTL ? 'صافي النقاط' : 'Net Points'}</span>
-                  <span className="emp-profile-value emp-highlight">{profile.netPoints}</span>
-                </div>
-                <div className="emp-profile-row">
-                  <span className="emp-profile-label">{isRTL ? 'إجمالي المهام' : 'Total Tasks'}</span>
-                  <span className="emp-profile-value">{profile.taskStats.total}</span>
-                </div>
-              </div>
+              </motion.div>
 
-              <button className="emp-change-password-btn" onClick={() => setShowPasswordModal(true)}>
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
-                  <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
-                </svg>
-                {isRTL ? 'تغيير كلمة المرور' : 'Change Password'}
-              </button>
-            </div>
-          </div>
-        )}
+              {myEvaluations && myEvaluations.evaluations.length > 0 && (
+                <motion.div className="emp-section-card" variants={itemVariants}>
+                  <h3>{isRTL ? '◐ التقييم الوظيفي' : '◐ Performance Evaluations'}</h3>
+                  {myEvaluations.summary && (
+                    <div className="emp-points-summary" style={{ marginBottom: 16 }}>
+                      <div className="emp-points-card net">
+                        <CountUp className="emp-points-value" value={myEvaluations.summary.avgScore} suffix="%" />
+                        <span className="emp-points-label">{isRTL ? 'متوسط الأداء' : 'Avg Score'}</span>
+                      </div>
+                      <div className="emp-points-card awards">
+                        <CountUp className="emp-points-value" value={myEvaluations.summary.avgScore} />
+                        <span className="emp-points-label">/100</span>
+                      </div>
+                      {myEvaluations.summary.totalBonus > 0 && (
+                        <div className="emp-points-card">
+                          <CountUp className="emp-points-value" value={myEvaluations.summary.totalBonus} prefix="+" />
+                          <span className="emp-points-label">{isRTL ? 'نقاط إضافية' : 'Bonus'}</span>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                  {myEvaluations.evaluations.map((ev, evi) => (
+                    <motion.div
+                      key={ev.evaluationId}
+                      initial={{ opacity: 0, y: 8 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: evi * 0.05 }}
+                      style={{ padding: '14px 16px', background: 'rgba(20,28,46,0.4)', border: '1px solid rgba(148,163,184,0.1)', borderRadius: 6, marginBottom: 8 }}
+                    >
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8, flexWrap: 'wrap', gap: 8 }}>
+                        <div style={{ display: 'flex', gap: 14, alignItems: 'center' }}>
+                          <span style={{ fontFamily: 'Bricolage Grotesque, sans-serif', fontSize: '1.6rem', fontWeight: 800, color: '#eef2f7', letterSpacing: '-0.02em' }}>
+                            {ev.totalScore.toFixed(1)}<span style={{ fontSize: '0.72rem', color: '#5b6577', fontFamily: 'JetBrains Mono, monospace', marginInlineStart: 4 }}>/100</span>
+                          </span>
+                          <span style={{ fontSize: '0.85rem', fontWeight: 700, color: '#4ade80', fontFamily: 'JetBrains Mono, monospace' }}>
+                            {ev.totalScore.toFixed(0)}%
+                          </span>
+                          {ev.bonusPoints > 0 && (
+                            <span style={{ fontSize: '0.72rem', fontWeight: 700, color: '#a78bfa', fontFamily: 'JetBrains Mono, monospace', padding: '2px 8px', background: 'rgba(167,139,250,0.14)', borderRadius: 3, letterSpacing: 1, textTransform: 'uppercase' }}>
+                              +{ev.bonusPoints} {isRTL ? 'إضافي' : 'bonus'}
+                            </span>
+                          )}
+                        </div>
+                        {ev.period && (
+                          <span style={{ background: 'rgba(238,35,41,0.1)', color: '#EE2329', padding: '3px 10px', borderRadius: 3, fontSize: '0.68rem', fontWeight: 700, fontFamily: 'JetBrains Mono, monospace', letterSpacing: 1, textTransform: 'uppercase', border: '1px solid rgba(238,35,41,0.3)' }}>
+                            {ev.period}
+                          </span>
+                        )}
+                      </div>
+                      <div style={{ fontSize: '0.7rem', color: '#5b6577', fontFamily: 'JetBrains Mono, monospace', letterSpacing: 0.5 }}>
+                        {ev.evaluationDate} · {isRTL ? 'بواسطة' : 'BY'}: {ev.evaluator?.fullName}
+                        {ev.notes && <span> · {ev.notes}</span>}
+                      </div>
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: 6, marginTop: 10 }}>
+                        {EVALUATION_CATEGORIES.map(cat => {
+                          const catWeighted = cat.criteria.reduce((s, cr) => {
+                            const raw = Math.min(parseFloat(ev.scores?.[`${cat.key}_${cr.key}`]) || 0, 50);
+                            return s + (raw / 50) * cr.weight;
+                          }, 0);
+                          const catMaxWeight = cat.criteria.reduce((s, cr) => s + cr.weight, 0);
+                          return (
+                            <div key={cat.key} style={{ fontSize: '0.72rem', display: 'flex', justifyContent: 'space-between', padding: '5px 10px', background: 'rgba(14,20,34,0.7)', borderRadius: 3, border: '1px solid rgba(148,163,184,0.08)' }}>
+                              <span style={{ color: '#94a3b8' }}>{isRTL ? cat.nameAr : cat.nameEn}</span>
+                              <span style={{ fontWeight: 700, color: catWeighted >= catMaxWeight * 0.8 ? '#4ade80' : '#eef2f7', fontFamily: 'JetBrains Mono, monospace' }}>
+                                {catWeighted.toFixed(1)}/{catMaxWeight}
+                              </span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </motion.div>
+                  ))}
+                </motion.div>
+              )}
+            </motion.div>
+          )}
+
+          {/* ═══════════════════════════════════════════════════ WORKSHOPS */}
+          {activeTab === 'workshops' && (
+            <motion.div
+              key="workshops"
+              variants={containerVariants}
+              initial="hidden"
+              animate="visible"
+              exit={{ opacity: 0, y: -12 }}
+              className="emp-workshops-tab"
+            >
+              <motion.div variants={itemVariants}>
+                <div className="emp-headline">
+                  <span className="emp-headline-tag">[05] {isRTL ? 'الورش' : 'Workshops'}</span>
+                  <h2 className="emp-headline-title">{isRTL ? 'الورش التدريبية' : 'Training Workshops'}</h2>
+                  <span className="emp-headline-rest" />
+                </div>
+                <div className="emp-filter-tabs" style={{ marginBottom: 16 }}>
+                  {[
+                    { key: 'active', label: isRTL ? 'النشطة' : 'Active', color: '#22d3ee', count: myWorkshops.filter(w => w.status !== 'completed' && w.status !== 'cancelled').length },
+                    { key: 'completed', label: isRTL ? 'المكتملة' : 'Completed', color: '#4ade80', count: myWorkshops.filter(w => w.status === 'completed').length },
+                    { key: 'all', label: isRTL ? 'الكل' : 'All', color: '#94a3b8', count: myWorkshops.length },
+                  ].map(f => (
+                    <button
+                      key={f.key}
+                      className={`emp-filter-tab ${(workshopViewFilter || 'active') === f.key ? 'active' : ''}`}
+                      onClick={() => setWorkshopViewFilter(f.key)}
+                    >
+                      <span className="emp-filter-dot" style={{ background: f.color, color: f.color }} />
+                      {f.label}
+                      <span className="emp-filter-count">{f.count}</span>
+                    </button>
+                  ))}
+                </div>
+              </motion.div>
+
+              {(() => {
+                const filtered = (workshopViewFilter || 'active') === 'all'
+                  ? myWorkshops
+                  : (workshopViewFilter || 'active') === 'completed'
+                    ? myWorkshops.filter(w => w.status === 'completed')
+                    : myWorkshops.filter(w => w.status !== 'completed' && w.status !== 'cancelled');
+                return filtered.length === 0 ? (
+                  <motion.div variants={itemVariants} className="emp-empty-state">
+                    <p>{isRTL ? '— لا توجد ورش —' : '— No workshops —'}</p>
+                  </motion.div>
+                ) : filtered.map((workshop, wi) => (
+                  <motion.div
+                    key={workshop.workshopId}
+                    className="emp-section-card"
+                    variants={itemVariants}
+                    style={{ marginBottom: 20 }}
+                  >
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 14, flexWrap: 'wrap', gap: 10 }}>
+                      <div>
+                        <h3 style={{ margin: '0 0 6px', border: 'none', paddingBottom: 0, fontSize: '1.15rem' }}>{workshop.title}</h3>
+                        <div style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: '0.72rem', color: '#5b6577', letterSpacing: 0.5 }}>
+                          {workshop.startDate}{workshop.endDate ? ` → ${workshop.endDate}` : ''}
+                          {workshop.totalHours ? ` · ${workshop.totalHours}h` : ''}
+                        </div>
+                      </div>
+                      <span className={`emp-status-badge ${workshop.status === 'upcoming' ? 'in_progress' : workshop.status === 'in_progress' ? 'pending' : 'completed'}`}>
+                        {workshop.status === 'upcoming' ? (isRTL ? 'قادمة' : 'Upcoming')
+                          : workshop.status === 'in_progress' ? (isRTL ? 'جارية' : 'In Progress')
+                          : (isRTL ? 'مكتملة' : 'Completed')}
+                      </span>
+                    </div>
+
+                    <div style={{ fontSize: '0.85rem', fontWeight: 600, color: '#94a3b8', marginBottom: 12, fontFamily: 'JetBrains Mono, monospace', letterSpacing: 0.5, textTransform: 'uppercase' }}>
+                      ▸ {isRTL ? 'الطلاب المسجلون' : 'Enrolled Students'}: <span style={{ color: '#EE2329' }}>{workshop.students?.length || 0}</span>
+                    </div>
+
+                    {(workshop.students || []).length === 0 ? (
+                      <p className="emp-empty" style={{ padding: 16 }}>{isRTL ? '— لا يوجد طلاب —' : '— No students —'}</p>
+                    ) : (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                        {workshop.students.map((s, si) => {
+                          const workshopDays = [];
+                          if (workshop.startDate) {
+                            const start = new Date(workshop.startDate);
+                            const end = workshop.endDate ? new Date(workshop.endDate) : new Date(workshop.startDate);
+                            const cursor = new Date(start);
+                            while (cursor <= end) {
+                              workshopDays.push(cursor.toISOString().split('T')[0]);
+                              cursor.setDate(cursor.getDate() + 1);
+                            }
+                          }
+                          const attendedDates = Array.isArray(s.attendanceDates) ? s.attendanceDates : [];
+                          return (
+                            <motion.div
+                              key={s.studentId}
+                              initial={{ opacity: 0, y: 6 }}
+                              animate={{ opacity: 1, y: 0 }}
+                              transition={{ delay: si * 0.02 }}
+                              style={{ background: 'rgba(20,28,46,0.5)', borderRadius: 4, padding: '12px 14px', border: '1px solid rgba(148,163,184,0.08)', display: 'flex', flexDirection: 'column', gap: 10 }}
+                            >
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+                                <div style={{ flex: '1 1 160px', minWidth: 0 }}>
+                                  <div style={{ fontWeight: 600, fontSize: '0.9rem', color: '#eef2f7' }}>{s.firstName} {s.lastName}</div>
+                                  <div style={{ fontSize: '0.7rem', color: '#5b6577', fontFamily: 'JetBrains Mono, monospace', letterSpacing: 0.4 }}>
+                                    {s.phone}{s.email ? ` · ${s.email}` : ''}
+                                  </div>
+                                </div>
+                                <span style={{ fontSize: '0.68rem', color: '#22d3ee', fontWeight: 700, background: 'rgba(34,211,238,0.12)', padding: '3px 10px', borderRadius: 3, fontFamily: 'JetBrains Mono, monospace', letterSpacing: 1, border: '1px solid rgba(34,211,238,0.3)' }}>
+                                  {attendedDates.length}/{workshopDays.length || '?'} {isRTL ? 'يوم' : 'DAYS'}
+                                </span>
+
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
+                                  {[1, 2, 3, 4, 5].map(star => (
+                                    <button
+                                      key={star}
+                                      onClick={async () => {
+                                        try {
+                                          await employeeApi.patch(`/workshops/employee/students/${s.studentId}/rate`, { performanceRating: star });
+                                          toast.success(isRTL ? 'تم التقييم' : 'Rated');
+                                          fetchMyWorkshops();
+                                        } catch (err) { toast.error(isRTL ? 'خطأ' : 'Error'); }
+                                      }}
+                                      style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '1.05rem', padding: 0, color: star <= (s.performanceRating || 0) ? '#f59e0b' : 'rgba(148,163,184,0.25)', textShadow: star <= (s.performanceRating || 0) ? '0 0 8px rgba(245,158,11,0.5)' : 'none' }}
+                                    >
+                                      ★
+                                    </button>
+                                  ))}
+                                </div>
+
+                                <span className={`emp-status-badge ${s.paymentStatus === 'verified' ? 'completed' : s.paymentStatus === 'rejected' ? 'uncompleted' : 'pending'}`}>
+                                  {s.paymentStatus === 'verified' ? (isRTL ? 'مدفوع' : 'Paid')
+                                    : s.paymentStatus === 'rejected' ? (isRTL ? 'مرفوض' : 'Rejected')
+                                    : (isRTL ? 'قيد المراجعة' : 'Pending')}
+                                </span>
+                              </div>
+
+                              {workshopDays.length > 0 && (
+                                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, paddingTop: 8, borderTop: '1px dashed rgba(148,163,184,0.1)' }}>
+                                  <span style={{ fontSize: '0.66rem', color: '#5b6577', fontWeight: 700, alignSelf: 'center', marginInlineEnd: 4, letterSpacing: 1, textTransform: 'uppercase', fontFamily: 'JetBrains Mono, monospace' }}>
+                                    {isRTL ? 'الحضور:' : 'ATT:'}
+                                  </span>
+                                  {workshopDays.map(day => {
+                                    const isPresent = attendedDates.includes(day);
+                                    const d = new Date(day);
+                                    const label = `${d.getDate()}/${d.getMonth() + 1}`;
+                                    return (
+                                      <button
+                                        key={day}
+                                        onClick={async () => {
+                                          try {
+                                            await employeeApi.patch(`/workshops/employee/students/${s.studentId}/attendance`, { date: day, present: !isPresent });
+                                            fetchMyWorkshops();
+                                          } catch (err) { toast.error(isRTL ? 'خطأ' : 'Error'); }
+                                        }}
+                                        title={day}
+                                        style={{
+                                          padding: '3px 9px', borderRadius: 3,
+                                          border: `1px solid ${isPresent ? 'rgba(74,222,128,0.45)' : 'rgba(148,163,184,0.15)'}`,
+                                          cursor: 'pointer', fontWeight: 700, fontSize: '0.68rem',
+                                          fontFamily: 'JetBrains Mono, monospace',
+                                          background: isPresent ? 'rgba(74,222,128,0.14)' : 'transparent',
+                                          color: isPresent ? '#4ade80' : '#5b6577',
+                                          minWidth: 44,
+                                          letterSpacing: 0.4,
+                                          transition: 'all 0.15s ease',
+                                          boxShadow: isPresent ? '0 0 8px rgba(74,222,128,0.25)' : 'none'
+                                        }}
+                                      >
+                                        {isPresent ? '✓ ' : ''}{label}
+                                      </button>
+                                    );
+                                  })}
+                                </div>
+                              )}
+                            </motion.div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </motion.div>
+                ));
+              })()}
+            </motion.div>
+          )}
+
+          {/* ═══════════════════════════════════════════════════ PROFILE */}
+          {activeTab === 'profile' && profile && (
+            <motion.div
+              key="profile"
+              className="emp-profile-tab"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -12 }}
+              transition={{ type: 'spring', stiffness: 260, damping: 24 }}
+            >
+              <div className="emp-profile-card">
+                <div className="emp-profile-avatar">
+                  {employeeData?.name?.charAt(0)?.toUpperCase()}
+                </div>
+                <h2>{profile.employee.name}</h2>
+                <span className="emp-profile-section" style={{ backgroundColor: SECTION_COLORS[profile.employee.section] || '#666' }}>
+                  {sectionLabels[profile.employee.section] || profile.employee.section}
+                </span>
+
+                <div className="emp-profile-details">
+                  <div className="emp-profile-row">
+                    <span className="emp-profile-label">{isRTL ? 'البريد الإلكتروني' : 'Email'}</span>
+                    <span className="emp-profile-value">{profile.employee.email}</span>
+                  </div>
+                  <div className="emp-profile-row">
+                    <span className="emp-profile-label">{isRTL ? 'القسم' : 'Section'}</span>
+                    <span className="emp-profile-value">{sectionLabels[profile.employee.section] || profile.employee.section}</span>
+                  </div>
+                  <div className="emp-profile-row">
+                    <span className="emp-profile-label">{isRTL ? 'تاريخ الانضمام' : 'Joined'}</span>
+                    <span className="emp-profile-value">{profile.employee.createdAt ? format(parseISO(profile.employee.createdAt), 'dd/MM/yyyy') : '-'}</span>
+                  </div>
+                  <div className="emp-profile-row">
+                    <span className="emp-profile-label">{isRTL ? 'صافي النقاط' : 'Net Points'}</span>
+                    <CountUp className="emp-profile-value emp-highlight" value={profile.netPoints} />
+                  </div>
+                  <div className="emp-profile-row">
+                    <span className="emp-profile-label">{isRTL ? 'إجمالي المهام' : 'Total Tasks'}</span>
+                    <CountUp className="emp-profile-value" value={profile.taskStats.total} />
+                  </div>
+                </div>
+
+                <button className="emp-change-password-btn" onClick={() => setShowPasswordModal(true)}>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+                    <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+                  </svg>
+                  {isRTL ? 'تغيير كلمة المرور' : 'Change Password'}
+                </button>
+              </div>
+            </motion.div>
+          )}
+
+        </AnimatePresence>
       </div>
 
       {/* Create Task Modal */}
@@ -923,9 +1251,16 @@ const EmployeeDashboard = () => {
         {showCreateTaskModal && (
           <motion.div className="emp-modal-overlay" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
             onClick={() => setShowCreateTaskModal(false)}>
-            <motion.div className="emp-modal" style={{ maxWidth: 500 }} initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }}
-              onClick={(e) => e.stopPropagation()}>
-              <h3>{isRTL ? 'إنشاء مهمة جديدة' : 'Create New Task'}</h3>
+            <motion.div
+              className="emp-modal"
+              style={{ maxWidth: 520 }}
+              initial={{ scale: 0.92, opacity: 0, y: 20 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.92, opacity: 0, y: 20 }}
+              transition={{ type: 'spring', stiffness: 380, damping: 28 }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <h3>▸ {isRTL ? 'إنشاء مهمة جديدة' : 'Create New Task'}</h3>
               <form onSubmit={handleCreateTask}>
                 <div className="emp-form-group">
                   <label>{isRTL ? 'عنوان المهمة' : 'Task Title'} *</label>
@@ -933,10 +1268,10 @@ const EmployeeDashboard = () => {
                 </div>
                 <div className="emp-form-group">
                   <label>{isRTL ? 'الوصف' : 'Description'}</label>
-                  <textarea style={{ width: '100%', padding: '0.65rem 0.75rem', border: '1.5px solid #e2e8f0', borderRadius: 8, fontFamily: 'inherit', fontSize: '0.9rem', minHeight: 70, resize: 'vertical' }}
+                  <textarea style={{ minHeight: 70, resize: 'vertical' }}
                     value={taskForm.description} onChange={(e) => setTaskForm({ ...taskForm, description: e.target.value })} />
                 </div>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
                   <div className="emp-form-group">
                     <label>{isRTL ? 'تاريخ البداية' : 'Start Date'} *</label>
                     <input type="date" value={taskForm.dueDate} onChange={(e) => setTaskForm({ ...taskForm, dueDate: e.target.value })} required />
@@ -946,15 +1281,14 @@ const EmployeeDashboard = () => {
                     <input type="date" value={taskForm.dueDateEnd} onChange={(e) => setTaskForm({ ...taskForm, dueDateEnd: e.target.value })} />
                   </div>
                 </div>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
                   <div className="emp-form-group">
                     <label>{isRTL ? 'الوقت' : 'Time'}</label>
                     <input type="time" value={taskForm.dueTime} onChange={(e) => setTaskForm({ ...taskForm, dueTime: e.target.value })} />
                   </div>
                   <div className="emp-form-group">
                     <label>{isRTL ? 'الأولوية' : 'Priority'}</label>
-                    <select style={{ width: '100%', padding: '0.65rem 0.75rem', border: '1.5px solid #e2e8f0', borderRadius: 8, fontFamily: 'inherit' }}
-                      value={taskForm.priority} onChange={(e) => setTaskForm({ ...taskForm, priority: e.target.value })}>
+                    <select value={taskForm.priority} onChange={(e) => setTaskForm({ ...taskForm, priority: e.target.value })}>
                       <option value="low">{isRTL ? 'منخفضة' : 'Low'}</option>
                       <option value="medium">{isRTL ? 'متوسطة' : 'Medium'}</option>
                       <option value="high">{isRTL ? 'عالية' : 'High'}</option>
@@ -982,11 +1316,17 @@ const EmployeeDashboard = () => {
         {showPasswordModal && (
           <motion.div className="emp-modal-overlay" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
             onClick={() => { if (!employeeData?.mustChangePassword) setShowPasswordModal(false); }}>
-            <motion.div className="emp-modal" initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }}
-              onClick={(e) => e.stopPropagation()}>
-              <h3>{employeeData?.mustChangePassword ? (isRTL ? 'يجب تغيير كلمة المرور' : 'Password Change Required') : (isRTL ? 'تغيير كلمة المرور' : 'Change Password')}</h3>
+            <motion.div
+              className="emp-modal"
+              initial={{ scale: 0.92, opacity: 0, y: 20 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.92, opacity: 0, y: 20 }}
+              transition={{ type: 'spring', stiffness: 380, damping: 28 }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <h3>▸ {employeeData?.mustChangePassword ? (isRTL ? 'يجب تغيير كلمة المرور' : 'Password Change Required') : (isRTL ? 'تغيير كلمة المرور' : 'Change Password')}</h3>
               {employeeData?.mustChangePassword && (
-                <p className="emp-modal-note">{isRTL ? 'هذا هو تسجيل دخولك الأول. يرجى تعيين كلمة مرور جديدة.' : 'This is your first login. Please set a new password.'}</p>
+                <p className="emp-modal-note">{isRTL ? '⚠ هذا هو تسجيل دخولك الأول. يرجى تعيين كلمة مرور جديدة.' : '⚠ First login detected. Please set a new password.'}</p>
               )}
               <form onSubmit={handleChangePassword}>
                 {!employeeData?.mustChangePassword && (
