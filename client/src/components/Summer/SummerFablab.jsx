@@ -253,6 +253,29 @@ const PROGRAM_COLOR_PALETTE = [
   '#ec4899', // pink
   '#64748b'  // slate
 ];
+
+// FabLab section → theme color fallback, mirrors the palette used in
+// the admin panel + summerStudentController. Only used when a program
+// doesn't have its own explicit `color` set yet.
+const SECTION_COLORS = {
+  'Electronics and Programming': '#6366f1',
+  'CNC Laser':                   '#22c55e',
+  'CNC Wood':                    '#f59e0b',
+  '3D':                          '#ef4444',
+  'Robotic and AI':              '#8b5cf6',
+  "Kid's Club":                  '#06b6d4',
+  'Vinyl Cutting':               '#ec4899'
+};
+const DEFAULT_PROGRAM_COLOR = '#f97316'; // Summer FabLab orange
+
+// Pick the display color for anything belonging to a program (student
+// ID card, volunteer card, etc). Program's explicit `color` wins; else
+// fall back to its section palette; else the default summer orange.
+const colorForProgram = (prog) => {
+  if (!prog) return DEFAULT_PROGRAM_COLOR;
+  if (typeof prog.color === 'string' && /^#[0-9a-fA-F]{6}$/.test(prog.color)) return prog.color;
+  return SECTION_COLORS[prog.fablabSection] || DEFAULT_PROGRAM_COLOR;
+};
 const emptyTeacherForm = {
   source: 'manual', // 'manual' | 'employee' — see Teacher modal
   employeeId: '',
@@ -1151,11 +1174,48 @@ const SummerFablab = () => {
                 const awards = (v.ratings || []).filter(r => r.type === 'award').reduce((s, r) => s + (r.points || 0), 0);
                 const deductions = (v.ratings || []).filter(r => r.type === 'deduction').reduce((s, r) => s + (r.points || 0), 0);
                 const net = awards - deductions;
+                const progColor = prog ? colorForProgram(prog) : null;
                 return (
-                  <div key={v.volunteerId} className="summer-card teacher-card">
+                  <div
+                    key={v.volunteerId}
+                    className="summer-card teacher-card"
+                    style={progColor ? {
+                      borderTop: `4px solid ${progColor}`,
+                      position: 'relative',
+                      boxShadow: `0 2px 12px -6px ${progColor}66`
+                    } : undefined}
+                  >
                     <div className="summer-card-head">
-                      <strong className="summer-card-name">{v.name}</strong>
-                      {prog && <span className="summer-card-section">{prog.name}</span>}
+                      <strong className="summer-card-name">
+                        {progColor && (
+                          <span
+                            title={prog?.name}
+                            style={{
+                              display: 'inline-block',
+                              width: 10, height: 10,
+                              borderRadius: '50%',
+                              background: progColor,
+                              marginInlineEnd: 6,
+                              verticalAlign: 'middle',
+                              boxShadow: `0 0 0 2px ${progColor}33`
+                            }}
+                          />
+                        )}
+                        {v.name}
+                      </strong>
+                      {prog && (
+                        <span
+                          className="summer-card-section"
+                          style={progColor ? {
+                            background: progColor,
+                            color: '#fff',
+                            border: `1px solid ${progColor}`,
+                            boxShadow: `0 1px 3px ${progColor}55`
+                          } : undefined}
+                        >
+                          {prog.name}
+                        </span>
+                      )}
                     </div>
                     <div className="summer-card-meta">
                       {v.phone && <div><span>{isRTL ? 'الجوال:' : 'Phone:'}</span> <span dir="ltr">{v.phone}</span></div>}
