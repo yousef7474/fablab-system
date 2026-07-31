@@ -167,7 +167,7 @@ const AdminDashboard = () => {
   const [selectedEmployee, setSelectedEmployee] = useState(null);
   const [selectedUser, setSelectedUser] = useState(null);
   const [userRegistrations, setUserRegistrations] = useState([]);
-  const [employeeForm, setEmployeeForm] = useState({ name: '', email: '', section: '' });
+  const [employeeForm, setEmployeeForm] = useState({ name: '', email: '', sections: [] });
   const [isEditingUser, setIsEditingUser] = useState(false);
   const [userEditForm, setUserEditForm] = useState({});
   const [selectedDate, setSelectedDate] = useState(new Date());
@@ -5964,23 +5964,46 @@ const AdminDashboard = () => {
                       </button>
 
                       <div className="employees-grid">
-                        {employees.map((emp) => (
+                        {employees.map((emp) => {
+                          const empSections = (Array.isArray(emp.sections) && emp.sections.length)
+                            ? emp.sections
+                            : (emp.section ? [emp.section] : []);
+                          // An employee is "active" against the current schedule
+                          // filter if any of their sections match.
+                          const isActiveForFilter = empSections.includes(scheduleFilter);
+                          return (
                           <div
                             key={emp.employeeId}
-                            className={`employee-card ${scheduleFilter === emp.section ? 'active' : ''}`}
-                            onClick={() => setScheduleFilter(emp.section)}
+                            className={`employee-card ${isActiveForFilter ? 'active' : ''}`}
+                            onClick={() => setScheduleFilter(empSections[0] || emp.section)}
+                            title={empSections.map(s => sectionLabels[s] || s).join(' · ')}
                           >
                             <div className="employee-card-avatar" style={{ backgroundColor: getEmployeeColor(employees, emp.employeeId) }}>
                               {emp.name?.charAt(0)?.toUpperCase()}
                             </div>
                             <span className="employee-card-name">{emp.name}</span>
+                            {empSections.length > 1 && (
+                              <span style={{
+                                display: 'inline-block', padding: '1px 6px', borderRadius: 8,
+                                fontSize: 9, fontWeight: 800, background: '#e0f2fe',
+                                color: '#0369a1', marginTop: 2, letterSpacing: 0.3
+                              }}>
+                                {empSections.length} {isRTL ? 'أقسام' : 'sections'}
+                              </span>
+                            )}
                             <div className="employee-card-actions">
                               <button
                                 className="edit-btn"
                                 onClick={(e) => {
                                   e.stopPropagation();
                                   setSelectedEmployee(emp);
-                                  setEmployeeForm({ name: emp.name, email: emp.email, section: emp.section });
+                                  setEmployeeForm({
+                                    name: emp.name,
+                                    email: emp.email,
+                                    sections: (Array.isArray(emp.sections) && emp.sections.length)
+                                      ? emp.sections
+                                      : (emp.section ? [emp.section] : [])
+                                  });
                                   setShowEmployeeModal(true);
                                 }}
                               >
@@ -6003,7 +6026,8 @@ const AdminDashboard = () => {
                               </button>
                             </div>
                           </div>
-                        ))}
+                          );
+                        })}
                         {employees.length === 0 && (
                           <p className="empty-message">{isRTL ? 'لا يوجد موظفين' : 'No employees yet'}</p>
                         )}
@@ -6024,11 +6048,17 @@ const AdminDashboard = () => {
                             required
                           >
                             <option value="">{isRTL ? 'اختر الموظف' : 'Select Employee'}</option>
-                            {employees.map((emp) => (
-                              <option key={emp.employeeId} value={emp.employeeId}>
-                                {emp.name} - {sectionLabels[emp.section] || emp.section}
-                              </option>
-                            ))}
+                            {employees.map((emp) => {
+                              const empSecs = (Array.isArray(emp.sections) && emp.sections.length)
+                                ? emp.sections
+                                : (emp.section ? [emp.section] : []);
+                              const secLabel = empSecs.map(s => sectionLabels[s] || s).join(' · ');
+                              return (
+                                <option key={emp.employeeId} value={emp.employeeId}>
+                                  {emp.name} - {secLabel}
+                                </option>
+                              );
+                            })}
                           </select>
                         </div>
 
@@ -9698,20 +9728,58 @@ const AdminDashboard = () => {
                 />
               </div>
               <div className="form-group">
-                <label>{isRTL ? 'القسم' : 'Section'}</label>
-                <select
-                  value={employeeForm.section}
-                  onChange={(e) => setEmployeeForm({ ...employeeForm, section: e.target.value })}
-                >
-                  <option value="">{isRTL ? 'اختر القسم' : 'Select Section'}</option>
-                  <option value="Electronics and Programming">{isRTL ? 'الإلكترونيات والبرمجة' : 'Electronics & Programming'}</option>
-                  <option value="CNC Laser">{isRTL ? 'الليزر CNC' : 'CNC Laser'}</option>
-                  <option value="CNC Wood">{isRTL ? 'الخشب CNC' : 'CNC Wood'}</option>
-                  <option value="3D">{isRTL ? 'الطباعة ثلاثية الأبعاد' : '3D Printing'}</option>
-                  <option value="Robotic and AI">{isRTL ? 'الروبوتات والذكاء الاصطناعي' : 'Robotics & AI'}</option>
-                  <option value="Kid's Club">{isRTL ? 'نادي الأطفال' : "Kid's Club"}</option>
-                  <option value="Vinyl Cutting">{isRTL ? 'قطع الفينيل' : 'Vinyl Cutting'}</option>
-                </select>
+                <label>
+                  {isRTL ? 'الأقسام' : 'Sections'}
+                  {employeeForm.sections.length > 0 && (
+                    <span style={{ marginInlineStart: 8, color: '#0ea5e9', fontWeight: 700, fontSize: '0.78rem' }}>
+                      · {employeeForm.sections.length} {isRTL ? 'محدد' : 'selected'}
+                    </span>
+                  )}
+                </label>
+                <div style={{
+                  border: '1.5px solid #e2e8f0', borderRadius: 8, padding: '0.5rem',
+                  maxHeight: 220, overflowY: 'auto', background: '#fff'
+                }}>
+                  {[
+                    { value: 'Electronics and Programming', ar: 'الإلكترونيات والبرمجة', en: 'Electronics & Programming' },
+                    { value: 'CNC Laser',                   ar: 'الليزر CNC',            en: 'CNC Laser' },
+                    { value: 'CNC Wood',                    ar: 'الخشب CNC',             en: 'CNC Wood' },
+                    { value: '3D',                          ar: 'الطباعة ثلاثية الأبعاد', en: '3D Printing' },
+                    { value: 'Robotic and AI',              ar: 'الروبوتات والذكاء الاصطناعي', en: 'Robotics & AI' },
+                    { value: "Kid's Club",                  ar: 'نادي الأطفال',          en: "Kid's Club" },
+                    { value: 'Vinyl Cutting',               ar: 'قطع الفينيل',            en: 'Vinyl Cutting' }
+                  ].map(sec => {
+                    const checked = employeeForm.sections.includes(sec.value);
+                    return (
+                      <label key={sec.value} style={{
+                        display: 'flex', alignItems: 'center', gap: '0.5rem',
+                        padding: '0.3rem 0.5rem', cursor: 'pointer',
+                        fontSize: '0.86rem', borderRadius: 4,
+                        background: checked ? '#e0f2fe' : 'transparent'
+                      }}>
+                        <input
+                          type="checkbox"
+                          checked={checked}
+                          onChange={(e) => {
+                            const current = employeeForm.sections || [];
+                            setEmployeeForm({
+                              ...employeeForm,
+                              sections: e.target.checked
+                                ? [...current, sec.value]
+                                : current.filter(s => s !== sec.value)
+                            });
+                          }}
+                        />
+                        <span>{isRTL ? sec.ar : sec.en}</span>
+                      </label>
+                    );
+                  })}
+                </div>
+                <div style={{ fontSize: '0.75rem', color: '#64748b', marginTop: 4 }}>
+                  {isRTL
+                    ? 'يمكن للموظف العمل في أكثر من قسم. إذا كان البريد موجوداً، سيتم إضافة الأقسام الجديدة لسجله.'
+                    : 'One employee can work across multiple sections. If the email exists, new sections are merged into the existing record.'}
+                </div>
               </div>
             </div>
 
@@ -9722,7 +9790,7 @@ const AdminDashboard = () => {
               <button
                 className="modal-btn approve"
                 onClick={selectedEmployee ? handleUpdateEmployee : handleCreateEmployee}
-                disabled={!employeeForm.name || !employeeForm.email || !employeeForm.section}
+                disabled={!employeeForm.name || !employeeForm.email || employeeForm.sections.length === 0}
               >
                 {selectedEmployee ? (isRTL ? 'تحديث' : 'Update') : (isRTL ? 'إضافة' : 'Add')}
               </button>

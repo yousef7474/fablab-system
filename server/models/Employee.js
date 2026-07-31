@@ -31,7 +31,13 @@ const Employee = sequelize.define('Employee', {
   section: {
     type: DataTypes.STRING,
     allowNull: false,
-    comment: 'Can be predefined sections or custom sections added by manager'
+    comment: 'Legacy primary section — kept in sync with sections[0] for back-compat. New code should read the sections[] array.'
+  },
+  sections: {
+    type: DataTypes.JSON,
+    allowNull: true,
+    defaultValue: [],
+    comment: 'Every FabLab section the employee works in. One employee = one row (unique email), but they can span multiple sections.'
   },
   isCustomSection: {
     type: DataTypes.BOOLEAN,

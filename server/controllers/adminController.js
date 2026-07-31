@@ -822,18 +822,73 @@ exports.getAllEmployees = async (req, res) => {
 // Create employee
 exports.createEmployee = async (req, res) => {
   try {
-    const { name, email, section } = req.body;
+    const { name, email, section, sections } = req.body;
+
+    // Normalize incoming sections. Accept either `sections` (new
+    // multi-section) or a single `section` (legacy client).
+    const incomingSections = Array.isArray(sections) && sections.length
+      ? [...new Set(sections.filter(Boolean))]
+      : (section ? [section] : []);
+
+    if (incomingSections.length === 0) {
+      return res.status(400).json({
+        message: 'At least one section is required',
+        messageAr: 'يجب اختيار قسم واحد على الأقل'
+      });
+    }
 
     const existingEmployee = await Employee.findOne({ where: { email } });
     if (existingEmployee) {
-      return res.status(400).json({ message: 'Employee with this email already exists' });
+      // Merge instead of reject — the same person can work across
+      // multiple FabLab sections. Take the union of their existing
+      // sections and the incoming ones. If the merge doesn't add any
+      // new section, return a helpful 200-ish note so admin knows.
+      const currentSections = Array.isArray(existingEmployee.sections) && existingEmployee.sections.length
+        ? existingEmployee.sections
+        : (existingEmployee.section ? [existingEmployee.section] : []);
+      const merged = [...new Set([...currentSections, ...incomingSections])];
+      const addedCount = merged.length - currentSections.length;
+
+      if (addedCount === 0) {
+        return res.status(400).json({
+          message: `${existingEmployee.name} is already assigned to all of these sections.`,
+          messageAr: `${existingEmployee.name} مُسجَّل مسبقاً في كل هذه الأقسام.`
+        });
+      }
+
+      await existingEmployee.update({
+        sections: merged,
+        section: merged[0], // keep legacy single field in sync with first section
+        // If the employee was soft-deleted, reactivate them now that
+        // admin is explicitly re-adding them.
+        isActive: true
+      });
+      // Force-persist the JSON array (Sequelize dirty-check on JSON can miss it)
+      existingEmployee.setDataValue('sections', merged);
+      existingEmployee.changed('sections', true);
+      await existingEmployee.save({ fields: ['sections'] });
+
+      return res.json({
+        message: `Added ${addedCount} new section(s) to existing employee ${existingEmployee.name}.`,
+        messageAr: `تمت إضافة ${addedCount} قسم جديد للموظف ${existingEmployee.name}.`,
+        employee: await Employee.findByPk(existingEmployee.employeeId),
+        merged: true
+      });
     }
 
-    const employee = await Employee.create({ name, email, section });
-    res.status(201).json({ message: 'Employee created successfully', employee });
+    const employee = await Employee.create({
+      name, email,
+      section: incomingSections[0],
+      sections: incomingSections
+    });
+    res.status(201).json({
+      message: 'Employee created successfully',
+      messageAr: 'تمت إضافة الموظف بنجاح',
+      employee
+    });
   } catch (error) {
     console.error('Error creating employee:', error);
-    res.status(500).json({ message: 'Server error' });
+    res.status(500).json({ message: 'Server error', detail: error.message });
   }
 };
 
@@ -841,18 +896,44 @@ exports.createEmployee = async (req, res) => {
 exports.updateEmployee = async (req, res) => {
   try {
     const { id } = req.params;
-    const { name, email, section, isActive } = req.body;
+    const { name, email, section, sections, isActive } = req.body;
 
     const employee = await Employee.findByPk(id);
     if (!employee) {
       return res.status(404).json({ message: 'Employee not found' });
     }
 
-    await employee.update({ name, email, section, isActive });
-    res.json({ message: 'Employee updated successfully', employee });
+    const patch = {};
+    if (name !== undefined) patch.name = name;
+    if (email !== undefined) patch.email = email;
+    if (isActive !== undefined) patch.isActive = isActive;
+
+    // Prefer new multi-section shape; fall back to single section
+    // string. Always keep the legacy `section` column in sync with
+    // sections[0] so old queries that read it still work.
+    if (Array.isArray(sections)) {
+      const clean = [...new Set(sections.filter(Boolean))];
+      patch.sections = clean;
+      patch.section = clean[0] || employee.section;
+    } else if (section !== undefined) {
+      patch.section = section;
+      const current = Array.isArray(employee.sections) ? employee.sections : [];
+      patch.sections = current.includes(section) ? current : [section, ...current];
+    }
+
+    await employee.update(patch);
+    // JSON dirty-tracking workaround.
+    if (patch.sections !== undefined) {
+      employee.setDataValue('sections', patch.sections);
+      employee.changed('sections', true);
+      await employee.save({ fields: ['sections'] });
+    }
+
+    const fresh = await Employee.findByPk(id);
+    res.json({ message: 'Employee updated successfully', employee: fresh });
   } catch (error) {
     console.error('Error updating employee:', error);
-    res.status(500).json({ message: 'Server error' });
+    res.status(500).json({ message: 'Server error', detail: error.message });
   }
 };
 

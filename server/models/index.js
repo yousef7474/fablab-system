@@ -428,6 +428,34 @@ const syncDatabase = async () => {
       }
     }
 
+    // Employees can now work in multiple FabLab sections. Add the JSON
+    // array column + backfill it from the legacy single `section`.
+    try {
+      await sequelize.query(
+        `ALTER TABLE employees ADD COLUMN IF NOT EXISTS "sections" JSON DEFAULT '[]'::json`
+      );
+    } catch (migrationError) {
+      if (!/does not exist/i.test(migrationError.message)) {
+        console.log('employees.sections migration note:', migrationError.message);
+      }
+    }
+    try {
+      const [rows] = await sequelize.query(
+        `UPDATE employees
+            SET "sections" = json_build_array("section")
+          WHERE "section" IS NOT NULL
+            AND ("sections" IS NULL OR "sections"::text = '[]')
+        RETURNING "employeeId"`
+      );
+      if (Array.isArray(rows) && rows.length > 0) {
+        console.log(`👥 Backfilled sections[] on ${rows.length} employee(s).`);
+      }
+    } catch (backfillError) {
+      if (!/does not exist/i.test(backfillError.message)) {
+        console.log('employees.sections backfill note:', backfillError.message);
+      }
+    }
+
     // One-shot backfill: link volunteers whose names appear in some
     // program's sectionVolunteers JSON array but whose summerProgramId
     // is still NULL. Idempotent — only touches unlinked volunteers, so
