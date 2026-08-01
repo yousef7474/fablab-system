@@ -7764,6 +7764,40 @@
 [dir="rtl"] .opsv2 .volunteers-header h2::before { content: '● وحدة المتطوعين · OPS'; }
 [dir="rtl"] .opsv2 .workers-header h2::before    { content: '● وحدة العمال · OPS'; }
 
+/* Overtime uses the same .volunteers-header/.volunteers-actions classes
+   as the volunteer tab, so wrapping in .opsv2.opsv2-overtime picks up
+   all the same styling — we just swap the auto-injected kicker text
+   and card accent-bar hue to a violet/gold so it's visually distinct. */
+.opsv2.opsv2-overtime .volunteers-header h2::before { content: '● OVERTIME · OPS TERMINAL'; }
+[dir="rtl"] .opsv2.opsv2-overtime .volunteers-header h2::before { content: '● وحدة الساعات الإضافية · OPS'; }
+.opsv2.opsv2-overtime .volunteer-card::before {
+  background: linear-gradient(90deg, var(--op-violet), #6d28d9);
+  box-shadow: 0 0 12px rgba(139, 92, 246, 0.42);
+}
+.opsv2.opsv2-overtime .volunteer-card:hover {
+  box-shadow: 0 16px 40px -20px rgba(139, 92, 246, 0.4) !important;
+  border-color: rgba(139, 92, 246, 0.45) !important;
+}
+.opsv2.opsv2-overtime .volunteer-card::after {
+  border-color: var(--op-violet);
+}
+.opsv2.opsv2-overtime .volunteers-header {
+  border-color: rgba(139, 92, 246, 0.22);
+}
+.opsv2.opsv2-overtime .volunteers-header::before,
+.opsv2.opsv2-overtime .volunteers-header::after {
+  border-color: var(--op-violet);
+}
+.opsv2.opsv2-overtime .volunteers-header h2::before { color: var(--op-violet); }
+.opsv2.opsv2-overtime .add-volunteer-btn {
+  background: linear-gradient(135deg, var(--op-violet), #6d28d9) !important;
+  box-shadow: 0 6px 16px -6px rgba(139, 92, 246, 0.5);
+}
+.opsv2.opsv2-overtime .add-volunteer-btn:hover {
+  background: linear-gradient(135deg, #a78bfa, var(--op-violet)) !important;
+  box-shadow: 0 8px 20px -6px rgba(139, 92, 246, 0.65);
+}
+
 /* Action button row — restyle to match wsv2 aesthetic */
 .opsv2 .volunteers-actions,
 .opsv2 .workers-actions {

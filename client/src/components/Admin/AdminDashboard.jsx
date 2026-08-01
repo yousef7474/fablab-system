@@ -8912,9 +8912,16 @@ const AdminDashboard = () => {
             )}
 
             {activeTab === 'overtime' && (
-              <div data-page="manager">
+              <motion.div
+                data-page="manager"
+                className="opsv2 opsv2-overtime"
+                key="overtime-ops"
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
+              >
                 <OvertimeManagement />
-              </div>
+              </motion.div>
             )}
 
             {activeTab === 'trainer-assistants' && (
