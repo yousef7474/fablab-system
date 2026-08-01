@@ -7921,212 +7921,448 @@ const AdminDashboard = () => {
             </AnimatePresence>
 
             {/* Workshops Tab */}
-            {activeTab === 'workshops' && (
-              <div className="volunteers-section">
-                {/* Workshop List or Student View */}
+            {activeTab === 'workshops' && (() => {
+              const _activeCount = workshopsList.filter(w => w.isActive && w.status !== 'cancelled' && w.status !== 'completed').length;
+              const _completedCount = workshopsList.filter(w => w.status === 'completed').length;
+              const _totalStudents = workshopsList.reduce((sum, w) => sum + (w.studentCount || 0), 0);
+              const _wsStatusLabels = {
+                upcoming: isRTL ? 'قادمة' : 'Upcoming',
+                in_progress: isRTL ? 'جارية' : 'In Progress',
+                completed: isRTL ? 'مكتملة' : 'Completed',
+                cancelled: isRTL ? 'ملغاة' : 'Cancelled'
+              };
+              return (
+              <motion.div
+                key="workshops"
+                className="volunteers-section wsv2"
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
+              >
                 {!viewingWorkshopStudents ? (
-                  <div>
-                    <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem', flexWrap: 'wrap' }}>
-                      <button onClick={() => setShowQRScanner(true)} style={{ padding: '0.4rem 1rem', borderRadius: 8, border: 'none', cursor: 'pointer', fontWeight: 600, fontSize: '0.82rem', fontFamily: 'inherit', background: 'linear-gradient(135deg, #8b5cf6, #6d28d9)', color: 'white', display: 'flex', alignItems: 'center', gap: 6 }}>
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
-                        {isRTL ? 'مسح QR' : 'Scan QR'}
-                      </button>
-                      <button onClick={() => setWorkshopFilter('active')} style={{ padding: '0.4rem 1rem', borderRadius: 8, border: 'none', cursor: 'pointer', fontWeight: 600, fontSize: '0.82rem', fontFamily: 'inherit', background: workshopFilter === 'active' ? '#3b82f6' : '#f1f5f9', color: workshopFilter === 'active' ? 'white' : '#64748b' }}>
-                        {isRTL ? 'النشطة' : 'Active'} ({workshopsList.filter(w => w.isActive && w.status !== 'cancelled' && w.status !== 'completed').length})
-                      </button>
-                      <button onClick={() => setWorkshopFilter('completed')} style={{ padding: '0.4rem 1rem', borderRadius: 8, border: 'none', cursor: 'pointer', fontWeight: 600, fontSize: '0.82rem', fontFamily: 'inherit', background: workshopFilter === 'completed' ? '#22c55e' : '#f1f5f9', color: workshopFilter === 'completed' ? 'white' : '#64748b' }}>
-                        {isRTL ? 'المكتملة' : 'Completed'} ({workshopsList.filter(w => w.status === 'completed').length})
-                      </button>
-                      <button onClick={() => setWorkshopFilter('all')} style={{ padding: '0.4rem 1rem', borderRadius: 8, border: 'none', cursor: 'pointer', fontWeight: 600, fontSize: '0.82rem', fontFamily: 'inherit', background: workshopFilter === 'all' ? '#334155' : '#f1f5f9', color: workshopFilter === 'all' ? 'white' : '#64748b' }}>
-                        {isRTL ? 'الكل' : 'All'} ({workshopsList.length})
-                      </button>
-                    </div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-                      <h3 style={{ margin: 0 }}>{isRTL ? 'الورش التدريبية' : 'Workshops'}</h3>
-                      <button className="add-task-btn" onClick={() => { setSelectedWorkshop(null); setWorkshopForm({ title: '', description: '', presenter: '', assignedEmployeeId: '', startDate: '', endDate: '', startTime: '', endTime: '', totalHours: '', content: '', objectives: '', photo: '', maxParticipants: '', price: '', notes: '', color: '#1a56db', minAge: '', maxAge: '', isPublic: true }); setShowWorkshopModal(true); }}>
-                        + {isRTL ? 'ورشة جديدة' : 'New Workshop'}
-                      </button>
-                    </div>
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '1rem' }}>
-                      {workshopsList.filter(w => workshopFilter === 'all' ? true : workshopFilter === 'active' ? (w.isActive && w.status !== 'cancelled' && w.status !== 'completed') : w.status === 'completed').map(w => (
-                        <div key={w.workshopId} style={{ background: 'white', borderRadius: 14, overflow: 'hidden', border: '1px solid #f1f5f9', boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}>
-                          {w.photo && <div style={{ height: 150, backgroundImage: `url(${w.photo})`, backgroundSize: 'cover', backgroundPosition: 'center' }} />}
-                          <div style={{ padding: '1rem' }}>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.5rem', gap: 6 }}>
-                              <h4 style={{ margin: 0, fontSize: '1rem', fontWeight: 700 }}>{w.title}</h4>
-                              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4 }}>
-                                <span style={{ padding: '2px 8px', borderRadius: 6, fontSize: '0.7rem', fontWeight: 600, background: w.status === 'upcoming' ? '#dbeafe' : w.status === 'in_progress' ? '#fef3c7' : w.status === 'completed' ? '#dcfce7' : '#fee2e2', color: w.status === 'upcoming' ? '#1d4ed8' : w.status === 'in_progress' ? '#92400e' : w.status === 'completed' ? '#166534' : '#991b1b' }}>
-                                  {w.status === 'upcoming' ? (isRTL ? 'قادمة' : 'Upcoming') : w.status === 'in_progress' ? (isRTL ? 'جارية' : 'In Progress') : w.status === 'completed' ? (isRTL ? 'مكتملة' : 'Completed') : (isRTL ? 'ملغاة' : 'Cancelled')}
-                                </span>
-                                {w.isPublic === false && (
-                                  <span title={isRTL ? 'مخفية عن الجمهور' : 'Hidden from public'} style={{ padding: '2px 8px', borderRadius: 6, fontSize: '0.65rem', fontWeight: 700, background: 'rgba(245,158,11,0.15)', color: '#92400e', border: '1px solid rgba(245,158,11,0.35)', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-                                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                                      <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/>
+                  <>
+                    {/* ═══ COMMAND BAR ═══ */}
+                    <motion.div
+                      className="wsv2-command"
+                      initial={{ opacity: 0, y: -8 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
+                    >
+                      <div className="wsv2-command-left">
+                        <div className="wsv2-command-title">
+                          <span className="wsv2-kicker">{isRTL ? 'وحدة الورش · OPS' : 'WORKSHOP OPS · TERMINAL'}</span>
+                          <h2>{isRTL ? 'إدارة الورش التدريبية' : 'Training Workshop Operations'}</h2>
+                        </div>
+                      </div>
+                      <div className="wsv2-metrics">
+                        <motion.div className="wsv2-metric active"
+                          initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
+                          transition={{ delay: 0.12, type: 'spring', stiffness: 300, damping: 22 }}>
+                          <span className="wsv2-metric-value">{_activeCount}</span>
+                          <span className="wsv2-metric-label">{isRTL ? 'نشطة' : 'Active'}</span>
+                        </motion.div>
+                        <motion.div className="wsv2-metric completed"
+                          initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
+                          transition={{ delay: 0.18, type: 'spring', stiffness: 300, damping: 22 }}>
+                          <span className="wsv2-metric-value">{_completedCount}</span>
+                          <span className="wsv2-metric-label">{isRTL ? 'مكتملة' : 'Completed'}</span>
+                        </motion.div>
+                        <motion.div className="wsv2-metric students"
+                          initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
+                          transition={{ delay: 0.24, type: 'spring', stiffness: 300, damping: 22 }}>
+                          <span className="wsv2-metric-value">{_totalStudents}</span>
+                          <span className="wsv2-metric-label">{isRTL ? 'طالب' : 'Students'}</span>
+                        </motion.div>
+                      </div>
+                    </motion.div>
+
+                    {/* ═══ TOOLBAR ═══ */}
+                    <motion.div
+                      className="wsv2-toolbar"
+                      initial={{ opacity: 0, y: 8 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: 0.15, duration: 0.4 }}
+                    >
+                      <div className="wsv2-filters">
+                        {[
+                          { key: 'active',    label: isRTL ? 'النشطة' : 'Active',    count: _activeCount,          color: '#22d3ee' },
+                          { key: 'completed', label: isRTL ? 'المكتملة' : 'Completed', count: _completedCount,       color: '#4ade80' },
+                          { key: 'all',       label: isRTL ? 'الكل' : 'All',         count: workshopsList.length,  color: '#94a3b8' }
+                        ].map(f => (
+                          <button
+                            key={f.key}
+                            className={`wsv2-filter-btn ${workshopFilter === f.key ? 'active' : ''}`}
+                            onClick={() => setWorkshopFilter(f.key)}
+                          >
+                            <span className="wsv2-filter-dot" style={{ background: f.color, color: f.color }} />
+                            {f.label}
+                            <span className="count">{f.count}</span>
+                          </button>
+                        ))}
+                      </div>
+                      <div className="wsv2-actions">
+                        <button className="wsv2-action-btn scan" onClick={() => setShowQRScanner(true)}>
+                          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                            <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/>
+                            <rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/>
+                          </svg>
+                          {isRTL ? 'مسح QR' : 'Scan QR'}
+                        </button>
+                        <button
+                          className="wsv2-action-btn primary"
+                          onClick={() => {
+                            setSelectedWorkshop(null);
+                            setWorkshopForm({ title: '', description: '', presenter: '', assignedEmployeeId: '', startDate: '', endDate: '', startTime: '', endTime: '', totalHours: '', content: '', objectives: '', photo: '', maxParticipants: '', price: '', notes: '', color: '#1a56db', minAge: '', maxAge: '', isPublic: true });
+                            setShowWorkshopModal(true);
+                          }}
+                        >
+                          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4">
+                            <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+                          </svg>
+                          {isRTL ? 'ورشة جديدة' : 'New Workshop'}
+                        </button>
+                      </div>
+                    </motion.div>
+
+                    <motion.div
+                      className="wsv2-grid"
+                      initial="hidden"
+                      animate="visible"
+                      variants={{
+                        hidden: { opacity: 0 },
+                        visible: { opacity: 1, transition: { staggerChildren: 0.05, delayChildren: 0.2 } }
+                      }}
+                    >
+                      <AnimatePresence mode="popLayout">
+                        {workshopsList.filter(w => workshopFilter === 'all' ? true : workshopFilter === 'active' ? (w.isActive && w.status !== 'cancelled' && w.status !== 'completed') : w.status === 'completed').length === 0 ? (
+                          <motion.div key="wsempty" className="wsv2-empty"
+                            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+                            {isRTL ? '— لا توجد ورش —' : '— No workshops in this queue —'}
+                          </motion.div>
+                        ) : workshopsList.filter(w => workshopFilter === 'all' ? true : workshopFilter === 'active' ? (w.isActive && w.status !== 'cancelled' && w.status !== 'completed') : w.status === 'completed').map(w => {
+                          const wsColor = /^#[0-9a-fA-F]{6}$/.test(w.color || '') ? w.color : '#EE2329';
+                          let days = 1;
+                          if (w.startDate && w.endDate && w.endDate !== w.startDate) {
+                            days = Math.max(1, Math.ceil((new Date(w.endDate) - new Date(w.startDate)) / (1000 * 60 * 60 * 24)) + 1);
+                          }
+                          const perDay = (w.totalHours && days > 1) ? (w.totalHours / days).toFixed(1) : null;
+                          const progressPct = w.maxParticipants ? Math.min(100, ((w.studentCount || 0) / w.maxParticipants) * 100) : 0;
+                          return (
+                          <motion.div
+                            key={w.workshopId}
+                            layout
+                            className="wsv2-card"
+                            style={{ '--wsc': wsColor }}
+                            initial={{ opacity: 0, y: 14 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0, y: -6, transition: { duration: 0.15 } }}
+                            transition={{ type: 'spring', stiffness: 280, damping: 24 }}
+                            whileHover={{ y: -3 }}
+                          >
+                            <div className="wsv2-card-accent" />
+                            {w.photo && <div className="wsv2-card-photo" style={{ backgroundImage: `url(${w.photo})` }} />}
+                            <div className="wsv2-card-body">
+                              <div className="wsv2-card-head">
+                                <h4 className="wsv2-card-title">
+                                  <span className="wsv2-card-title-dot" />
+                                  {w.title}
+                                </h4>
+                                <div className="wsv2-badges">
+                                  <span className={`wsv2-status ${w.status}`}>{_wsStatusLabels[w.status] || w.status}</span>
+                                  {w.isPublic === false && (
+                                    <span className="wsv2-visibility" title={isRTL ? 'مخفية عن الجمهور' : 'Hidden from public'}>
+                                      <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                                        <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/>
+                                      </svg>
+                                      {isRTL ? 'خاصة' : 'Admin only'}
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+                              {w.presenter && (
+                                <div className="wsv2-presenter" style={{ color: wsColor }}>
+                                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+                                    <circle cx="12" cy="7" r="4"/>
+                                  </svg>
+                                  {w.presenter}
+                                </div>
+                              )}
+                              {w.assignedEmployee && (
+                                <div className="wsv2-assigned">
+                                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                    <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/>
+                                    <circle cx="9" cy="7" r="4"/>
+                                    <path d="M22 21v-2a4 4 0 0 0-3-3.87"/>
+                                  </svg>
+                                  <span>{isRTL ? 'المسؤول:' : 'Assigned:'} <strong>{w.assignedEmployee.name}</strong></span>
+                                </div>
+                              )}
+                              <div className="wsv2-meta">
+                                {w.startDate && (
+                                  <span className="wsv2-meta-item">
+                                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                      <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+                                      <line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/>
+                                      <line x1="3" y1="10" x2="21" y2="10"/>
                                     </svg>
-                                    {isRTL ? 'خاصة بالإدارة' : 'Admin only'}
+                                    {w.startDate}{w.endDate && w.endDate !== w.startDate ? ` → ${w.endDate}` : ''}
                                   </span>
                                 )}
+                                {w.totalHours && (
+                                  <span className="wsv2-meta-item">
+                                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                      <circle cx="12" cy="12" r="10"/>
+                                      <polyline points="12 6 12 12 16 14"/>
+                                    </svg>
+                                    {w.totalHours}h{perDay ? ` (${perDay}h × ${days}d)` : ''}
+                                  </span>
+                                )}
+                                <span className={`wsv2-price ${w.price ? '' : 'free'}`}>
+                                  {w.price ? `${w.price} SAR` : (isRTL ? 'مجاني' : 'Free')}
+                                </span>
+                              </div>
+                              <div className="wsv2-students-bar">
+                                <span className="wsv2-students-label">
+                                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                                    <circle cx="9" cy="7" r="4"/>
+                                  </svg>
+                                  {isRTL ? 'الطلاب' : 'Enrolled'}
+                                </span>
+                                <span className="wsv2-students-count">
+                                  {w.studentCount || 0}
+                                  {w.maxParticipants ? <span className="max">/{w.maxParticipants}</span> : null}
+                                </span>
+                                {w.maxParticipants && (
+                                  <div className="wsv2-students-progress">
+                                    <motion.div
+                                      className="wsv2-students-progress-fill"
+                                      initial={{ width: 0 }}
+                                      animate={{ width: `${progressPct}%` }}
+                                      transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
+                                    />
+                                  </div>
+                                )}
+                              </div>
+                              <div className="wsv2-card-actions">
+                                <button
+                                  className="wsv2-view-btn"
+                                  onClick={async () => {
+                                    try {
+                                      const res = await api.get(`/workshops/${w.workshopId}`);
+                                      setViewingWorkshopStudents(res.data);
+                                    } catch (e) { toast.error(isRTL ? 'خطأ' : 'Error'); }
+                                  }}
+                                >
+                                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                                    <circle cx="12" cy="12" r="3"/>
+                                  </svg>
+                                  {isRTL ? 'عرض الطلاب' : 'View Students'}
+                                </button>
+                                <button
+                                  className="wsv2-icon-btn"
+                                  onClick={() => openWorkshopEditModal(w)}
+                                  title={isRTL ? 'تعديل' : 'Edit'}
+                                >
+                                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                                    <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                                  </svg>
+                                </button>
+                                <button
+                                  className="wsv2-icon-btn del"
+                                  onClick={() => handleDeleteWorkshop(w.workshopId)}
+                                  title={isRTL ? 'حذف' : 'Delete'}
+                                >
+                                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                    <polyline points="3 6 5 6 21 6"/>
+                                    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+                                  </svg>
+                                </button>
                               </div>
                             </div>
-                            {w.presenter && <div style={{ fontSize: '0.82rem', color: '#3b82f6', fontWeight: 600, marginBottom: '0.4rem' }}>{w.presenter}</div>}
-                            {w.assignedEmployee && <div style={{ fontSize: '0.75rem', color: '#64748b', marginBottom: '0.4rem' }}>{isRTL ? 'المسؤول:' : 'Assigned:'} {w.assignedEmployee.name}</div>}
-                            <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', fontSize: '0.78rem', color: '#64748b', marginBottom: '0.5rem' }}>
-                              {w.startDate && <span>{'\uD83D\uDCC5'} {w.startDate}{w.endDate ? ` \u2192 ${w.endDate}` : ''}</span>}
-                              {w.totalHours && (() => {
-                                let days = 1;
-                                if (w.startDate && w.endDate && w.endDate !== w.startDate) {
-                                  days = Math.max(1, Math.ceil((new Date(w.endDate) - new Date(w.startDate)) / (1000*60*60*24)) + 1);
-                                }
-                                const perDay = days > 1 ? (w.totalHours / days).toFixed(1) : null;
-                                return <span>{'\u23F1'} {w.totalHours}h {perDay ? `(${perDay}h/day × ${days}d)` : ''}</span>;
-                              })()}
-                              {w.price ? <span style={{ color: '#1a56db', fontWeight: 700 }}>{w.price} SAR</span> : <span style={{ color: '#22c55e', fontWeight: 700 }}>{isRTL ? 'مجاني' : 'Free'}</span>}
-                            </div>
-                            <div style={{ fontSize: '0.78rem', color: '#64748b', marginBottom: '0.75rem' }}>
-                              {isRTL ? 'الطلاب:' : 'Students:'} <strong>{w.studentCount || 0}</strong>{w.maxParticipants ? ` / ${w.maxParticipants}` : ''}
-                            </div>
-                            <div style={{ display: 'flex', gap: '0.4rem' }}>
-                              <button onClick={async () => { try { const res = await api.get(`/workshops/${w.workshopId}`); setViewingWorkshopStudents(res.data); } catch(e) { toast.error('Error'); } }} style={{ flex: 1, padding: '0.5rem', borderRadius: 8, border: 'none', background: '#3b82f6', color: 'white', cursor: 'pointer', fontWeight: 600, fontSize: '0.78rem', fontFamily: 'inherit' }}>
-                                {isRTL ? 'عرض الطلاب' : 'View Students'}
-                              </button>
-                              <button onClick={() => openWorkshopEditModal(w)} style={{ padding: '0.5rem 0.75rem', borderRadius: 8, border: '1px solid #e2e8f0', background: 'white', cursor: 'pointer', fontFamily: 'inherit' }}>
-                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#334155" strokeWidth="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-                              </button>
-                              <button onClick={() => handleDeleteWorkshop(w.workshopId)} style={{ padding: '0.5rem 0.75rem', borderRadius: 8, border: '1px solid #e2e8f0', background: 'white', cursor: 'pointer', fontFamily: 'inherit' }}>
-                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#ef4444" strokeWidth="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
-                              </button>
-                            </div>
-                          </div>
-                        </div>
-                      ))}
-                      {workshopsList.length === 0 && <div style={{ gridColumn: '1/-1', textAlign: 'center', padding: '3rem', color: '#94a3b8' }}>{isRTL ? 'لا توجد ورش تدريبية' : 'No workshops yet'}</div>}
-                    </div>
-                  </div>
+                          </motion.div>
+                          );
+                        })}
+                      </AnimatePresence>
+                    </motion.div>
+                  </>
                 ) : (
-                  <div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1.5rem' }}>
-                      <button onClick={() => setViewingWorkshopStudents(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4 }}>
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#334155" strokeWidth="2"><path d="m15 18-6-6 6-6"/></svg>
+                  <>
+                    <motion.div
+                      className="wsv2-student-header"
+                      initial={{ opacity: 0, y: -6 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ duration: 0.35 }}
+                    >
+                      <button
+                        className="wsv2-back-btn"
+                        onClick={() => setViewingWorkshopStudents(null)}
+                        title={isRTL ? 'رجوع' : 'Back'}
+                      >
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                          <path d="m15 18-6-6 6-6"/>
+                        </svg>
                       </button>
-                      <div>
-                        <h3 style={{ margin: 0 }}>{viewingWorkshopStudents.title}</h3>
-                        <span style={{ fontSize: '0.82rem', color: '#64748b' }}>{viewingWorkshopStudents.students?.length || 0} {isRTL ? 'طالب' : 'students'}</span>
-                      </div>
-                      <div style={{ marginInlineStart: 'auto', display: 'flex', gap: '0.4rem' }}>
-                        <button onClick={async () => {
-                          try {
-                            const res = await api.get(`/workshops/${viewingWorkshopStudents.workshopId}/export-csv`, { responseType: 'blob' });
-                            const link = document.createElement('a');
-                            link.href = URL.createObjectURL(new Blob([res.data], { type: 'text/csv' }));
-                            link.download = `workshop_students.csv`;
-                            link.click();
-                          } catch(e) { toast.error('Error'); }
-                        }} style={{ padding: '0.4rem 0.8rem', borderRadius: 8, border: 'none', background: '#22c55e', color: 'white', cursor: 'pointer', fontWeight: 600, fontSize: '0.78rem', fontFamily: 'inherit' }}>
-                          📥 CSV
-                        </button>
-                        <button onClick={() => { setWorkshopAddStudentForm(emptyWorkshopStudentForm); setShowWorkshopAddStudent(true); }}
-                          style={{ padding: '0.4rem 0.8rem', borderRadius: 8, border: 'none', background: '#a78bfa', color: 'white', cursor: 'pointer', fontWeight: 600, fontSize: '0.78rem', fontFamily: 'inherit' }}>
-                          ➕ {isRTL ? 'إضافة طالب' : 'Add Student'}
-                        </button>
-                        <button onClick={() => { setWorkshopEmailTarget(null); setShowWorkshopEmailModal(true); }}
-                          style={{ padding: '0.4rem 0.8rem', borderRadius: 8, border: 'none', background: '#3b82f6', color: 'white', cursor: 'pointer', fontWeight: 600, fontSize: '0.78rem', fontFamily: 'inherit' }}>
-                          ✉ {isRTL ? 'بريد للجميع' : 'Email All'}
-                        </button>
-                      </div>
-                    </div>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                      {(viewingWorkshopStudents.students || []).map(s => (
-                        <div key={s.studentId} style={{ background: 'white', borderRadius: 10, padding: '0.85rem 1rem', border: '1px solid #f1f5f9', display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
-                          <div style={{ flex: '1 1 180px' }}>
-                            <div style={{ fontWeight: 700, fontSize: '0.9rem' }}>{s.firstName} {s.lastName}</div>
-                            <div style={{ fontSize: '0.75rem', color: '#64748b' }}>{s.phone} {s.email && `\u2022 ${s.email}`}</div>
-                          </div>
-                          <div style={{ fontSize: '0.78rem' }}>
-                            <span style={{ fontWeight: 600 }}>{isRTL ? 'فاتورة:' : 'Invoice:'}</span> {s.invoiceNumber}
-                          </div>
-                          <span style={{
-                            display: 'inline-flex', alignItems: 'center', gap: 4,
-                            padding: '3px 10px', borderRadius: 999,
-                            fontSize: '0.72rem', fontWeight: 700, fontFamily: 'inherit',
-                            background: s.paymentStatus === 'verified' ? '#dcfce7' : '#fee2e2',
-                            color: s.paymentStatus === 'verified' ? '#166534' : '#991b1b',
-                            border: `1.5px solid ${s.paymentStatus === 'verified' ? '#16a34a' : '#dc2626'}`
-                          }}>
-                            <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'currentColor' }}></span>
-                            {s.paymentStatus === 'verified' ? (isRTL ? 'مدفوع' : 'Paid') : (isRTL ? 'غير مدفوع' : 'Not Paid')}
+                      <div className="wsv2-student-header-info">
+                        <h3>{viewingWorkshopStudents.title}</h3>
+                        <div className="wsv2-student-header-meta">
+                          <span className="wsv2-student-count-pill">
+                            {viewingWorkshopStudents.students?.length || 0}
+                            <small>{isRTL ? 'طالب' : 'students'}</small>
                           </span>
-                          <select value={s.paymentStatus} onChange={e => handleVerifyPayment(s.studentId, e.target.value)}
-                            title={isRTL ? 'تغيير الحالة' : 'Change status'}
-                            style={{ padding: '0.3rem 0.5rem', borderRadius: 6, border: '1.5px solid #e2e8f0', fontSize: '0.7rem', fontWeight: 600, fontFamily: 'inherit',
-                              background: '#f8fafc', color: '#475569' }}>
-                            <option value="pending">{isRTL ? 'قيد المراجعة' : 'Pending'}</option>
-                            <option value="verified">{isRTL ? 'تم التحقق' : 'Verified'}</option>
-                            <option value="rejected">{isRTL ? 'مرفوض' : 'Rejected'}</option>
-                          </select>
-                          <span style={{ padding: '2px 8px', borderRadius: 6, fontSize: '0.72rem', fontWeight: 600, background: s.attended ? '#dcfce7' : '#f1f5f9', color: s.attended ? '#166534' : '#94a3b8' }}>
-                            {s.attended ? `\u2713 ${Array.isArray(s.attendanceDates) ? s.attendanceDates.length : 0}${isRTL ? 'ي' : 'd'}` : (isRTL ? 'لم يحضر' : 'Not attended')}
-                          </span>
-                          <select
-                            onChange={async (e) => {
-                              const action = e.target.value;
-                              e.target.value = '';
-                              if (action === 'edit') { setEditingStudent(s); setEditStudentForm({ firstName: s.firstName || '', lastName: s.lastName || '', phone: s.phone || '', email: s.email || '', nationalId: s.nationalId || '', gender: s.gender || '', age: s.age || '', city: s.city || '', invoiceNumber: s.invoiceNumber || '' }); }
-                              else if (action === 'printId') handlePrintStudentID(s, viewingWorkshopStudents);
-                              else if (action === 'attendance') openAttendanceEditor(s, viewingWorkshopStudents);
-                              else if (action === 'printCert') handlePrintWorkshopCertificate(s, viewingWorkshopStudents);
-                              else if (action === 'downloadPdf') {
-                                try { const res = await api.get(`/workshops/students/${s.studentId}/certificate-pdf`, { responseType: 'blob' }); const link = document.createElement('a'); link.href = URL.createObjectURL(new Blob([res.data], { type: 'application/pdf' })); link.download = `certificate_${s.firstName}.pdf`; link.click(); } catch(e2) { let msg = isRTL ? 'خطأ' : 'Error'; if (e2.response?.data instanceof Blob) { try { const j = JSON.parse(await e2.response.data.text()); msg = (isRTL ? j.messageAr : j.message) || msg; } catch {} } toast.error(msg); }
-                              }
-                              else if (action === 'downloadPdfPlain') {
-                                // Content-only PDF for the admin's preprinted shell
-                                // (A4 landscape, margins T5 R2 B4 L5 cm).
-                                try { const res = await api.get(`/workshops/students/${s.studentId}/certificate-pdf?plain=1`, { responseType: 'blob' }); const link = document.createElement('a'); link.href = URL.createObjectURL(new Blob([res.data], { type: 'application/pdf' })); link.download = `certificate_plain_${s.firstName}.pdf`; link.click(); } catch(e2) { let msg = isRTL ? 'خطأ' : 'Error'; if (e2.response?.data instanceof Blob) { try { const j = JSON.parse(await e2.response.data.text()); msg = (isRTL ? j.messageAr : j.message) || msg; } catch {} } toast.error(msg); }
-                              }
-                              else if (action === 'emailCert') { try { await api.post(`/workshops/students/${s.studentId}/send-certificate`); toast.success(isRTL ? 'تم إرسال الشهادة' : 'Certificate emailed'); } catch(e2) { toast.error(e2.response?.data?.messageAr || 'Error'); } }
-                              else if (action === 'invoice') {
-                                setInvoiceTarget({
-                                  studentId: s.studentId,
-                                  firstName: s.firstName || '',
-                                  lastName: s.lastName || '',
-                                  price: Number(viewingWorkshopStudents?.price || 0),
-                                });
-                                setInvoiceForm({ discount: '', discountType: 'amount', approver: '', customApprover: '' });
-                                setShowInvoiceModal(true);
-                              }
-                              else if (action === 'printAttId') handlePrintAttendanceId(s.studentId);
-                              else if (action === 'emailAttId') { try { await api.post(`/workshops/students/${s.studentId}/send-attendance-id`); toast.success(isRTL ? 'تم إرسال بطاقة الحضور' : 'Attendance ID sent'); } catch(e2) { toast.error('Error'); } }
-                              else if (action === 'emailCustom') { setWorkshopEmailTarget({ studentId: s.studentId, email: s.email }); setShowWorkshopEmailModal(true); }
-                              else if (action === 'whatsapp') { window.open(`https://wa.me/${(s.phone||'').replace(/[^0-9]/g, '')}?text=${encodeURIComponent(`مرحباً ${s.firstName}،\n\nهذه رسالة من فاب لاب الأحساء بخصوص الورشة: ${viewingWorkshopStudents.title}`)}`, '_blank'); }
-                              else if (action === 'delete') { if (!window.confirm(isRTL ? 'حذف هذا الطالب؟' : 'Delete?')) return; try { await api.delete(`/workshops/students/${s.studentId}`); toast.success(isRTL ? 'تم الحذف' : 'Deleted'); const res = await api.get(`/workshops/${viewingWorkshopStudents.workshopId}`); setViewingWorkshopStudents(res.data); fetchWorkshops(); } catch(e2) { toast.error('Error'); } }
-                            }}
-                            value=""
-                            style={{ padding: '0.35rem 0.5rem', borderRadius: 6, border: '1.5px solid #e2e8f0', background: 'white', fontSize: '0.75rem', fontWeight: 600, fontFamily: 'inherit', cursor: 'pointer', color: '#334155', minWidth: 90 }}
-                          >
-                            <option value="" disabled>{isRTL ? '⚙ إجراءات' : '⚙ Actions'}</option>
-                            <option value="edit">{isRTL ? '✏ تعديل البيانات' : '✏ Edit Info'}</option>
-                            <option value="attendance">{isRTL ? '✅ تعديل الحضور' : '✅ Edit Attendance'}</option>
-                            <option value="printId">{isRTL ? '🪪 طباعة البطاقة' : '🪪 Print ID'}</option>
-                            <option value="printCert">{isRTL ? '🎓 طباعة الشهادة' : '🎓 Print Cert'}</option>
-                            <option value="downloadPdf">{isRTL ? '📄 تحميل PDF' : '📄 Download PDF'}</option>
-                            <option value="downloadPdfPlain">{isRTL ? '🖨 طباعة على قالب A4 (بدون خلفية)' : '🖨 Print on template (no design)'}</option>
-                            <option value="invoice">{isRTL ? '🧾 طباعة الفاتورة' : '🧾 Print Invoice'}</option>
-                            {s.email && <option value="emailCert">{isRTL ? '📧 إرسال الشهادة' : '📧 Email Cert'}</option>}
-                            <option value="printAttId">{isRTL ? '🎟 بطاقة حضور' : '🎟 Att. ID'}</option>
-                            {s.email && <option value="emailAttId">{isRTL ? '📨 إرسال بطاقة الحضور' : '📨 Send Att. ID'}</option>}
-                            {s.email && <option value="emailCustom">{isRTL ? '✉ بريد مخصص' : '✉ Custom Email'}</option>}
-                            {s.phone && <option value="whatsapp">{isRTL ? '💬 واتساب' : '💬 WhatsApp'}</option>}
-                            <option value="delete" style={{ color: '#dc2626' }}>{isRTL ? '🗑 حذف' : '🗑 Delete'}</option>
-                          </select>
+                          {viewingWorkshopStudents.startDate && (
+                            <span> · {viewingWorkshopStudents.startDate}{viewingWorkshopStudents.endDate && viewingWorkshopStudents.endDate !== viewingWorkshopStudents.startDate ? ` → ${viewingWorkshopStudents.endDate}` : ''}</span>
+                          )}
                         </div>
-                      ))}
-                      {(!viewingWorkshopStudents.students || viewingWorkshopStudents.students.length === 0) && (
-                        <div style={{ textAlign: 'center', padding: '2rem', color: '#94a3b8' }}>{isRTL ? 'لا يوجد طلاب مسجلين' : 'No students registered'}</div>
-                      )}
+                      </div>
+                      <div className="wsv2-actions" style={{ marginInlineStart: 'auto' }}>
+                        <button
+                          className="wsv2-action-btn success"
+                          onClick={async () => {
+                            try {
+                              const res = await api.get(`/workshops/${viewingWorkshopStudents.workshopId}/export-csv`, { responseType: 'blob' });
+                              const link = document.createElement('a');
+                              link.href = URL.createObjectURL(new Blob([res.data], { type: 'text/csv' }));
+                              link.download = `workshop_students.csv`;
+                              link.click();
+                            } catch (e) { toast.error('Error'); }
+                          }}
+                        >
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                            <polyline points="7 10 12 15 17 10"/>
+                            <line x1="12" y1="15" x2="12" y2="3"/>
+                          </svg>
+                          CSV
+                        </button>
+                        <button
+                          className="wsv2-action-btn scan"
+                          onClick={() => { setWorkshopAddStudentForm(emptyWorkshopStudentForm); setShowWorkshopAddStudent(true); }}
+                        >
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4">
+                            <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+                          </svg>
+                          {isRTL ? 'إضافة طالب' : 'Add Student'}
+                        </button>
+                        <button
+                          className="wsv2-action-btn info"
+                          onClick={() => { setWorkshopEmailTarget(null); setShowWorkshopEmailModal(true); }}
+                        >
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                            <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
+                            <polyline points="22,6 12,13 2,6"/>
+                          </svg>
+                          {isRTL ? 'بريد للجميع' : 'Email All'}
+                        </button>
+                      </div>
+                    </motion.div>
+                    <div className="wsv2-student-list">
+                      <AnimatePresence mode="popLayout">
+                        {(viewingWorkshopStudents.students || []).length === 0 ? (
+                          <motion.div key="stempty" className="wsv2-empty"
+                            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+                            {isRTL ? '— لا يوجد طلاب مسجلين —' : '— No students registered —'}
+                          </motion.div>
+                        ) : (viewingWorkshopStudents.students || []).map((s, si) => (
+                          <motion.div
+                            key={s.studentId}
+                            layout
+                            className="wsv2-student-row"
+                            initial={{ opacity: 0, y: 6 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0, y: -4, transition: { duration: 0.12 } }}
+                            transition={{ delay: si * 0.02, type: 'spring', stiffness: 300, damping: 22 }}
+                          >
+                            <div className="wsv2-student-row-avatar">
+                              {(s.firstName || '').charAt(0).toUpperCase()}
+                            </div>
+                            <div className="wsv2-student-row-info">
+                              <span className="wsv2-student-row-name">{s.firstName} {s.lastName}</span>
+                              <span className="wsv2-student-row-contact">
+                                {s.phone}{s.email && ` · ${s.email}`}
+                              </span>
+                            </div>
+                            <div className="wsv2-student-row-right">
+                              <span className="wsv2-invoice-chip">
+                                {isRTL ? 'فاتورة' : 'INV'} <strong>{s.invoiceNumber}</strong>
+                              </span>
+                              <span className={`wsv2-pay-status ${s.paymentStatus === 'verified' ? 'paid' : s.paymentStatus === 'rejected' ? 'rejected' : 'pending'}`}>
+                                {s.paymentStatus === 'verified' ? (isRTL ? 'مدفوع' : 'Paid')
+                                  : s.paymentStatus === 'rejected' ? (isRTL ? 'مرفوض' : 'Rejected')
+                                  : (isRTL ? 'قيد المراجعة' : 'Pending')}
+                              </span>
+                              <select
+                                className="wsv2-pay-select"
+                                value={s.paymentStatus}
+                                onChange={e => handleVerifyPayment(s.studentId, e.target.value)}
+                                title={isRTL ? 'تغيير الحالة' : 'Change status'}
+                              >
+                                <option value="pending">{isRTL ? 'قيد المراجعة' : 'Pending'}</option>
+                                <option value="verified">{isRTL ? 'تم التحقق' : 'Verified'}</option>
+                                <option value="rejected">{isRTL ? 'مرفوض' : 'Rejected'}</option>
+                              </select>
+                              <span className={`wsv2-attend-pill ${s.attended ? 'present' : 'absent'}`}>
+                                {s.attended
+                                  ? `✓ ${Array.isArray(s.attendanceDates) ? s.attendanceDates.length : 0}${isRTL ? 'ي' : 'd'}`
+                                  : (isRTL ? 'لم يحضر' : 'Absent')}
+                              </span>
+                              <select
+                                className="wsv2-actions-select"
+                                onChange={async (e) => {
+                                  const action = e.target.value;
+                                  e.target.value = '';
+                                  if (action === 'edit') { setEditingStudent(s); setEditStudentForm({ firstName: s.firstName || '', lastName: s.lastName || '', phone: s.phone || '', email: s.email || '', nationalId: s.nationalId || '', gender: s.gender || '', age: s.age || '', city: s.city || '', invoiceNumber: s.invoiceNumber || '' }); }
+                                  else if (action === 'printId') handlePrintStudentID(s, viewingWorkshopStudents);
+                                  else if (action === 'attendance') openAttendanceEditor(s, viewingWorkshopStudents);
+                                  else if (action === 'printCert') handlePrintWorkshopCertificate(s, viewingWorkshopStudents);
+                                  else if (action === 'downloadPdf') {
+                                    try { const res = await api.get(`/workshops/students/${s.studentId}/certificate-pdf`, { responseType: 'blob' }); const link = document.createElement('a'); link.href = URL.createObjectURL(new Blob([res.data], { type: 'application/pdf' })); link.download = `certificate_${s.firstName}.pdf`; link.click(); } catch(e2) { let msg = isRTL ? 'خطأ' : 'Error'; if (e2.response?.data instanceof Blob) { try { const j = JSON.parse(await e2.response.data.text()); msg = (isRTL ? j.messageAr : j.message) || msg; } catch {} } toast.error(msg); }
+                                  }
+                                  else if (action === 'downloadPdfPlain') {
+                                    try { const res = await api.get(`/workshops/students/${s.studentId}/certificate-pdf?plain=1`, { responseType: 'blob' }); const link = document.createElement('a'); link.href = URL.createObjectURL(new Blob([res.data], { type: 'application/pdf' })); link.download = `certificate_plain_${s.firstName}.pdf`; link.click(); } catch(e2) { let msg = isRTL ? 'خطأ' : 'Error'; if (e2.response?.data instanceof Blob) { try { const j = JSON.parse(await e2.response.data.text()); msg = (isRTL ? j.messageAr : j.message) || msg; } catch {} } toast.error(msg); }
+                                  }
+                                  else if (action === 'emailCert') { try { await api.post(`/workshops/students/${s.studentId}/send-certificate`); toast.success(isRTL ? 'تم إرسال الشهادة' : 'Certificate emailed'); } catch(e2) { toast.error(e2.response?.data?.messageAr || 'Error'); } }
+                                  else if (action === 'invoice') {
+                                    setInvoiceTarget({ studentId: s.studentId, firstName: s.firstName || '', lastName: s.lastName || '', price: Number(viewingWorkshopStudents?.price || 0) });
+                                    setInvoiceForm({ discount: '', discountType: 'amount', approver: '', customApprover: '' });
+                                    setShowInvoiceModal(true);
+                                  }
+                                  else if (action === 'printAttId') handlePrintAttendanceId(s.studentId);
+                                  else if (action === 'emailAttId') { try { await api.post(`/workshops/students/${s.studentId}/send-attendance-id`); toast.success(isRTL ? 'تم إرسال بطاقة الحضور' : 'Attendance ID sent'); } catch(e2) { toast.error('Error'); } }
+                                  else if (action === 'emailCustom') { setWorkshopEmailTarget({ studentId: s.studentId, email: s.email }); setShowWorkshopEmailModal(true); }
+                                  else if (action === 'whatsapp') { window.open(`https://wa.me/${(s.phone||'').replace(/[^0-9]/g, '')}?text=${encodeURIComponent(`مرحباً ${s.firstName}،\n\nهذه رسالة من فاب لاب الأحساء بخصوص الورشة: ${viewingWorkshopStudents.title}`)}`, '_blank'); }
+                                  else if (action === 'delete') { if (!window.confirm(isRTL ? 'حذف هذا الطالب؟' : 'Delete?')) return; try { await api.delete(`/workshops/students/${s.studentId}`); toast.success(isRTL ? 'تم الحذف' : 'Deleted'); const res = await api.get(`/workshops/${viewingWorkshopStudents.workshopId}`); setViewingWorkshopStudents(res.data); fetchWorkshops(); } catch(e2) { toast.error('Error'); } }
+                                }}
+                                value=""
+                              >
+                                <option value="" disabled>{isRTL ? '⚙ إجراءات' : '⚙ Actions'}</option>
+                                <option value="edit">{isRTL ? '✏ تعديل البيانات' : '✏ Edit Info'}</option>
+                                <option value="attendance">{isRTL ? '✅ تعديل الحضور' : '✅ Edit Attendance'}</option>
+                                <option value="printId">{isRTL ? '📇 طباعة البطاقة' : '📇 Print ID'}</option>
+                                <option value="printCert">{isRTL ? '🎓 طباعة الشهادة' : '🎓 Print Cert'}</option>
+                                <option value="downloadPdf">{isRTL ? '📄 تحميل PDF' : '📄 Download PDF'}</option>
+                                <option value="downloadPdfPlain">{isRTL ? '🖨 طباعة على قالب A4' : '🖨 Print on template'}</option>
+                                <option value="invoice">{isRTL ? '🧾 طباعة الفاتورة' : '🧾 Print Invoice'}</option>
+                                {s.email && <option value="emailCert">{isRTL ? '📧 إرسال الشهادة' : '📧 Email Cert'}</option>}
+                                <option value="printAttId">{isRTL ? '🎟 بطاقة حضور' : '🎟 Att. ID'}</option>
+                                {s.email && <option value="emailAttId">{isRTL ? '📨 إرسال بطاقة الحضور' : '📨 Send Att. ID'}</option>}
+                                {s.email && <option value="emailCustom">{isRTL ? '✉ بريد مخصص' : '✉ Custom Email'}</option>}
+                                {s.phone && <option value="whatsapp">{isRTL ? '💬 واتساب' : '💬 WhatsApp'}</option>}
+                                <option value="delete" style={{ color: '#dc2626' }}>{isRTL ? '🗑 حذف' : '🗑 Delete'}</option>
+                              </select>
+                            </div>
+                          </motion.div>
+                        ))}
+                      </AnimatePresence>
                     </div>
-                  </div>
+                  </>
                 )}
-              </div>
-            )}
+              </motion.div>
+              );
+            })()}
 
             {/* Workshop Create/Edit Modal */}
             {showWorkshopModal && (
