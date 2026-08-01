@@ -104,6 +104,20 @@ const EmployeeDashboard = () => {
   const [myEvaluations, setMyEvaluations] = useState(null);
   const [myWorkshops, setMyWorkshops] = useState([]);
   const [workshopViewFilter, setWorkshopViewFilter] = useState('active');
+  // Attendance UX state — per-workshop mode toggle (rollcall|matrix) +
+  // search text. Keyed by workshopId so switching modes on one workshop
+  // doesn't affect others. Also tracks in-flight PATCH keys to disable
+  // toggles during a network roundtrip.
+  const [attMode, setAttMode] = useState({});           // { [workshopId]: 'rollcall' | 'matrix' }
+  const [attSearch, setAttSearch] = useState({});       // { [workshopId]: string }
+  const [attBusy, setAttBusy] = useState(() => new Set()); // Set of `${studentId}:${date}` in flight
+
+  // Today's date as YYYY-MM-DD (local); used to highlight the "today"
+  // day + drive the Roll Call toggles.
+  const _todayISO = React.useMemo(() => {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  }, []);
   const [activityStats, setActivityStats] = useState(null);
   const [loading, setLoading] = useState(true);
   const [taskStatusFilter, setTaskStatusFilter] = useState('all');
@@ -209,6 +223,92 @@ const EmployeeDashboard = () => {
       console.error('Error fetching workshops:', error);
     }
   }, []);
+
+  // Optimistic toggle: flips the student's attendance for one date
+  // locally first (instant UI), then fires the PATCH; rolls back on
+  // failure. Marks the `studentId:date` pair as busy while in flight
+  // to prevent double-tap races.
+  const toggleAttendance = useCallback(async (workshopId, studentId, date, wantPresent) => {
+    const key = `${studentId}:${date}`;
+    setAttBusy(prev => {
+      if (prev.has(key)) return prev;
+      const next = new Set(prev);
+      next.add(key);
+      return next;
+    });
+    const applyPatch = (present) => {
+      setMyWorkshops(prev => prev.map(w => {
+        if (w.workshopId !== workshopId) return w;
+        return {
+          ...w,
+          students: (w.students || []).map(s => {
+            if (s.studentId !== studentId) return s;
+            const dates = Array.isArray(s.attendanceDates) ? [...s.attendanceDates] : [];
+            const has = dates.includes(date);
+            let next;
+            if (present && !has) next = [...dates, date].sort();
+            else if (!present && has) next = dates.filter(d => d !== date);
+            else next = dates;
+            return { ...s, attendanceDates: next, attended: next.length > 0 };
+          })
+        };
+      }));
+    };
+    // optimistic
+    applyPatch(wantPresent);
+    try {
+      await employeeApi.patch(`/workshops/employee/students/${studentId}/attendance`, {
+        date, present: wantPresent
+      });
+    } catch (err) {
+      // roll back on failure
+      applyPatch(!wantPresent);
+      toast.error(isRTL ? 'تعذر التحديث' : 'Update failed');
+    } finally {
+      setAttBusy(prev => {
+        const next = new Set(prev);
+        next.delete(key);
+        return next;
+      });
+    }
+  }, [isRTL]);
+
+  // Mark or clear TODAY for every student in a workshop in one shot.
+  // Fires one PATCH per student that actually changes, using the same
+  // optimistic pattern.
+  const bulkToggleToday = useCallback(async (workshop, wantPresent) => {
+    if (!workshop?.students?.length) return;
+    const workshopDays = [];
+    if (workshop.startDate) {
+      const start = new Date(workshop.startDate);
+      const end = workshop.endDate ? new Date(workshop.endDate) : new Date(workshop.startDate);
+      const cursor = new Date(start);
+      while (cursor <= end) {
+        workshopDays.push(cursor.toISOString().split('T')[0]);
+        cursor.setDate(cursor.getDate() + 1);
+      }
+    }
+    if (!workshopDays.includes(_todayISO)) {
+      toast.warn(isRTL ? 'اليوم ليس ضمن أيام الورشة' : 'Today is not a workshop day');
+      return;
+    }
+    const targets = workshop.students.filter(s => {
+      const has = Array.isArray(s.attendanceDates) && s.attendanceDates.includes(_todayISO);
+      return wantPresent ? !has : has;
+    });
+    if (targets.length === 0) {
+      toast.info(isRTL ? 'لا يوجد تغييرات' : 'Nothing to update');
+      return;
+    }
+    // Kick off all toggles in parallel — toggleAttendance handles
+    // busy state + rollback per row.
+    await Promise.all(targets.map(s =>
+      toggleAttendance(workshop.workshopId, s.studentId, _todayISO, wantPresent)
+    ));
+    toast.success(wantPresent
+      ? (isRTL ? `تم تعليم ${targets.length} طالب حاضر` : `Marked ${targets.length} present`)
+      : (isRTL ? `تم مسح ${targets.length} تسجيل` : `Cleared ${targets.length} check-ins`));
+  }, [_todayISO, toggleAttendance, isRTL]);
 
   const fetchActivityStats = useCallback(async () => {
     try {
@@ -1102,101 +1202,244 @@ const EmployeeDashboard = () => {
                       ▸ {isRTL ? 'الطلاب المسجلون' : 'Enrolled Students'}: <span style={{ color: '#EE2329' }}>{workshop.students?.length || 0}</span>
                     </div>
 
-                    {(workshop.students || []).length === 0 ? (
-                      <p className="emp-empty" style={{ padding: 16 }}>{isRTL ? '— لا يوجد طلاب —' : '— No students —'}</p>
-                    ) : (
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                        {workshop.students.map((s, si) => {
-                          const workshopDays = [];
-                          if (workshop.startDate) {
-                            const start = new Date(workshop.startDate);
-                            const end = workshop.endDate ? new Date(workshop.endDate) : new Date(workshop.startDate);
-                            const cursor = new Date(start);
-                            while (cursor <= end) {
-                              workshopDays.push(cursor.toISOString().split('T')[0]);
-                              cursor.setDate(cursor.getDate() + 1);
-                            }
-                          }
-                          const attendedDates = Array.isArray(s.attendanceDates) ? s.attendanceDates : [];
-                          return (
-                            <motion.div
-                              key={s.studentId}
-                              className="emp-workshop-student"
-                              initial={{ opacity: 0, y: 6 }}
-                              animate={{ opacity: 1, y: 0 }}
-                              transition={{ delay: si * 0.02 }}
-                            >
-                              <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
-                                <div style={{ flex: '1 1 160px', minWidth: 0 }}>
-                                  <div className="emp-ws-name">{s.firstName} {s.lastName}</div>
-                                  <div className="emp-ws-contact">
-                                    {s.phone}{s.email ? ` · ${s.email}` : ''}
-                                  </div>
-                                </div>
-                                <span className="emp-ws-days-pill">
-                                  {attendedDates.length}/{workshopDays.length || '?'} {isRTL ? 'يوم' : 'DAYS'}
-                                </span>
+                    {(() => {
+                      // Compute the workshop day range once (used by both
+                      // Roll Call and Matrix modes)
+                      const workshopDays = [];
+                      if (workshop.startDate) {
+                        const start = new Date(workshop.startDate);
+                        const end = workshop.endDate ? new Date(workshop.endDate) : new Date(workshop.startDate);
+                        const cursor = new Date(start);
+                        while (cursor <= end) {
+                          workshopDays.push(cursor.toISOString().split('T')[0]);
+                          cursor.setDate(cursor.getDate() + 1);
+                        }
+                      }
+                      const todayInRange = workshopDays.includes(_todayISO);
+                      const mode = attMode[workshop.workshopId] || 'rollcall';
+                      const searchQ = (attSearch[workshop.workshopId] || '').trim().toLowerCase();
+                      const students = (workshop.students || []).filter(s => {
+                        if (!searchQ) return true;
+                        return `${s.firstName || ''} ${s.lastName || ''}`.toLowerCase().includes(searchQ)
+                          || (s.phone || '').includes(searchQ)
+                          || (s.nationalId || '').includes(searchQ);
+                      });
+                      const presentToday = students.filter(s =>
+                        Array.isArray(s.attendanceDates) && s.attendanceDates.includes(_todayISO)
+                      ).length;
+                      const pctToday = students.length > 0 ? (presentToday / students.length) * 100 : 0;
 
-                                <div style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
-                                  {[1, 2, 3, 4, 5].map(star => {
-                                    const isFilled = star <= (s.performanceRating || 0);
-                                    return (
-                                      <button
-                                        key={star}
-                                        className={`emp-ws-star ${isFilled ? 'filled' : ''}`}
-                                        onClick={async () => {
-                                          try {
-                                            await employeeApi.patch(`/workshops/employee/students/${s.studentId}/rate`, { performanceRating: star });
-                                            toast.success(isRTL ? 'تم التقييم' : 'Rated');
-                                            fetchMyWorkshops();
-                                          } catch (err) { toast.error(isRTL ? 'خطأ' : 'Error'); }
-                                        }}
-                                      >
-                                        ★
-                                      </button>
-                                    );
-                                  })}
-                                </div>
+                      if ((workshop.students || []).length === 0) {
+                        return <p className="emp-empty" style={{ padding: 16 }}>{isRTL ? '— لا يوجد طلاب —' : '— No students —'}</p>;
+                      }
 
-                                <span className={`emp-status-badge ${s.paymentStatus === 'verified' ? 'completed' : s.paymentStatus === 'rejected' ? 'uncompleted' : 'pending'}`}>
-                                  {s.paymentStatus === 'verified' ? (isRTL ? 'مدفوع' : 'Paid')
-                                    : s.paymentStatus === 'rejected' ? (isRTL ? 'مرفوض' : 'Rejected')
-                                    : (isRTL ? 'قيد المراجعة' : 'Pending')}
-                                </span>
-                              </div>
-
-                              {workshopDays.length > 0 && (
-                                <div className="emp-ws-attend-row">
-                                  <span className="emp-ws-attend-label">
-                                    {isRTL ? 'الحضور:' : 'ATT:'}
+                      return (
+                        <>
+                          {/* ── Mode header ── */}
+                          {workshopDays.length > 0 && (
+                            <div className="emp-att-header">
+                              <span className={`emp-att-date ${todayInRange ? '' : 'out-of-range'}`}>
+                                {todayInRange
+                                  ? (isRTL ? `اليوم · ${_todayISO}` : `TODAY · ${_todayISO}`)
+                                  : (isRTL ? 'خارج فترة الورشة' : 'OUT OF WORKSHOP RANGE')}
+                              </span>
+                              {todayInRange && mode === 'rollcall' && (
+                                <>
+                                  <span className="emp-att-count">
+                                    <span className="n">{presentToday}</span>
+                                    <span className="slash">/</span>
+                                    <span className="total">{students.length}</span>
                                   </span>
-                                  {workshopDays.map(day => {
-                                    const isPresent = attendedDates.includes(day);
-                                    const d = new Date(day);
-                                    const label = `${d.getDate()}/${d.getMonth() + 1}`;
-                                    return (
+                                  <div className="emp-att-progress">
+                                    <div className="emp-att-progress-fill" style={{ width: `${pctToday}%` }} />
+                                  </div>
+                                  <div className="emp-att-bulk">
+                                    <button className="mark-all" onClick={() => bulkToggleToday(workshop, true)}>
+                                      ✓ {isRTL ? 'الكل حاضر' : 'Mark All'}
+                                    </button>
+                                    <button className="clear-all" onClick={() => bulkToggleToday(workshop, false)}>
+                                      × {isRTL ? 'مسح' : 'Clear'}
+                                    </button>
+                                  </div>
+                                </>
+                              )}
+                              {students.length > 4 && (
+                                <input
+                                  type="text"
+                                  className="emp-att-search"
+                                  placeholder={isRTL ? 'بحث بالاسم أو الهوية...' : 'Search name or ID...'}
+                                  value={attSearch[workshop.workshopId] || ''}
+                                  onChange={e => setAttSearch(prev => ({ ...prev, [workshop.workshopId]: e.target.value }))}
+                                />
+                              )}
+                              <div className="emp-att-mode-toggle">
+                                <button
+                                  className={mode === 'rollcall' ? 'active' : ''}
+                                  onClick={() => setAttMode(prev => ({ ...prev, [workshop.workshopId]: 'rollcall' }))}
+                                >
+                                  {isRTL ? 'اليوم' : 'Today'}
+                                </button>
+                                <button
+                                  className={mode === 'matrix' ? 'active' : ''}
+                                  onClick={() => setAttMode(prev => ({ ...prev, [workshop.workshopId]: 'matrix' }))}
+                                >
+                                  {isRTL ? 'المصفوفة' : 'Matrix'}
+                                </button>
+                              </div>
+                            </div>
+                          )}
+
+                          {/* ── ROLL CALL mode: big toggle per student for TODAY ── */}
+                          {mode === 'rollcall' && (
+                            <div className="emp-att-rollcall">
+                              {students.length === 0 ? (
+                                <div className="emp-att-empty">{isRTL ? '— لا نتائج —' : '— No matches —'}</div>
+                              ) : students.map((s, si) => {
+                                const attendedDates = Array.isArray(s.attendanceDates) ? s.attendanceDates : [];
+                                const isPresent = todayInRange && attendedDates.includes(_todayISO);
+                                const busyKey = `${s.studentId}:${_todayISO}`;
+                                const isBusy = attBusy.has(busyKey);
+                                return (
+                                  <motion.div
+                                    key={s.studentId}
+                                    className={`emp-att-row ${isPresent ? 'present' : ''}`}
+                                    initial={{ opacity: 0, y: 4 }}
+                                    animate={{ opacity: 1, y: 0 }}
+                                    transition={{ delay: Math.min(si * 0.015, 0.2) }}
+                                    layout
+                                  >
+                                    <div className="emp-att-row-info">
+                                      <span className="emp-att-row-name">{s.firstName} {s.lastName}</span>
+                                      <span className="emp-att-row-meta">
+                                        <span className="ratio">{attendedDates.length}/{workshopDays.length}</span>
+                                        <span>·</span>
+                                        <span className="stars">
+                                          {[1, 2, 3, 4, 5].map(star => (
+                                            <button
+                                              key={star}
+                                              className={`star ${star <= (s.performanceRating || 0) ? 'filled' : ''}`}
+                                              onClick={async () => {
+                                                try {
+                                                  await employeeApi.patch(`/workshops/employee/students/${s.studentId}/rate`, { performanceRating: star });
+                                                  fetchMyWorkshops();
+                                                } catch (err) { toast.error(isRTL ? 'خطأ' : 'Error'); }
+                                              }}
+                                            >★</button>
+                                          ))}
+                                        </span>
+                                        <span>·</span>
+                                        <span>{s.paymentStatus === 'verified' ? (isRTL ? '💰 مدفوع' : '💰 Paid')
+                                          : s.paymentStatus === 'rejected' ? (isRTL ? '⚠ مرفوض' : '⚠ Rejected')
+                                          : (isRTL ? '⏳ قيد المراجعة' : '⏳ Pending')}</span>
+                                      </span>
+                                    </div>
+                                    {todayInRange ? (
                                       <button
-                                        key={day}
-                                        className={`emp-ws-attend-day ${isPresent ? 'present' : ''}`}
-                                        onClick={async () => {
-                                          try {
-                                            await employeeApi.patch(`/workshops/employee/students/${s.studentId}/attendance`, { date: day, present: !isPresent });
-                                            fetchMyWorkshops();
-                                          } catch (err) { toast.error(isRTL ? 'خطأ' : 'Error'); }
-                                        }}
-                                        title={day}
+                                        className={`emp-att-toggle ${isPresent ? 'present' : ''} ${isBusy ? 'busy' : ''}`}
+                                        onClick={() => !isBusy && toggleAttendance(workshop.workshopId, s.studentId, _todayISO, !isPresent)}
+                                        disabled={isBusy}
                                       >
-                                        {isPresent ? '✓ ' : ''}{label}
+                                        <span className="icon">{isPresent ? '✓' : '○'}</span>
+                                        {isPresent
+                                          ? (isRTL ? 'حاضر' : 'PRESENT')
+                                          : (isRTL ? 'تعليم حاضر' : 'MARK PRESENT')}
                                       </button>
+                                    ) : (
+                                      <span className="emp-status-badge cancelled">
+                                        {isRTL ? 'غير متاح اليوم' : 'N/A today'}
+                                      </span>
+                                    )}
+                                  </motion.div>
+                                );
+                              })}
+                            </div>
+                          )}
+
+                          {/* ── MATRIX mode: student × day grid ── */}
+                          {mode === 'matrix' && (
+                            <div className="emp-att-matrix-wrap">
+                              <table className="emp-att-matrix">
+                                <thead>
+                                  <tr>
+                                    <th>{isRTL ? 'الطالب' : 'Student'}</th>
+                                    {workshopDays.map((day, i) => {
+                                      const d = new Date(day);
+                                      const isToday = day === _todayISO;
+                                      return (
+                                        <th key={day} className={isToday ? 'today' : ''} title={day}>
+                                          <span className="day-num">D{i + 1}</span>
+                                          <span className="day">{d.getDate()}/{d.getMonth() + 1}</span>
+                                        </th>
+                                      );
+                                    })}
+                                    <th>{isRTL ? 'المجموع' : 'Total'}</th>
+                                  </tr>
+                                </thead>
+                                <tbody>
+                                  {students.length === 0 ? (
+                                    <tr>
+                                      <td colSpan={workshopDays.length + 2} className="emp-att-empty">
+                                        {isRTL ? '— لا نتائج —' : '— No matches —'}
+                                      </td>
+                                    </tr>
+                                  ) : students.map(s => {
+                                    const attendedDates = Array.isArray(s.attendanceDates) ? s.attendanceDates : [];
+                                    return (
+                                      <tr key={s.studentId}>
+                                        <td>
+                                          <div className="student-name">{s.firstName} {s.lastName}</div>
+                                          <div className={`student-ratio ${attendedDates.length === workshopDays.length ? 'full' : ''}`}>
+                                            {attendedDates.length}/{workshopDays.length} {isRTL ? 'يوم' : 'days'}
+                                          </div>
+                                        </td>
+                                        {workshopDays.map(day => {
+                                          const isPresent = attendedDates.includes(day);
+                                          const isToday = day === _todayISO;
+                                          const busyKey = `${s.studentId}:${day}`;
+                                          const isBusy = attBusy.has(busyKey);
+                                          return (
+                                            <td
+                                              key={day}
+                                              className={`emp-att-cell ${isPresent ? 'present' : ''} ${isToday ? 'today' : ''}`}
+                                              onClick={() => !isBusy && toggleAttendance(workshop.workshopId, s.studentId, day, !isPresent)}
+                                              style={{ cursor: isBusy ? 'wait' : 'pointer', opacity: isBusy ? 0.5 : 1 }}
+                                              title={`${day} — ${isPresent ? (isRTL ? 'حاضر' : 'present') : (isRTL ? 'غائب' : 'absent')}`}
+                                            >
+                                              {isPresent ? '✓' : ''}
+                                            </td>
+                                          );
+                                        })}
+                                        <td style={{ color: 'var(--signal-cyan)', fontWeight: 800 }}>
+                                          {attendedDates.length}
+                                        </td>
+                                      </tr>
                                     );
                                   })}
-                                </div>
-                              )}
-                            </motion.div>
-                          );
-                        })}
-                      </div>
-                    )}
+                                </tbody>
+                                {students.length > 0 && (
+                                  <tfoot>
+                                    <tr>
+                                      <td>{isRTL ? 'الإجمالي' : 'Column Total'}</td>
+                                      {workshopDays.map(day => {
+                                        const total = students.filter(s =>
+                                          Array.isArray(s.attendanceDates) && s.attendanceDates.includes(day)
+                                        ).length;
+                                        return (
+                                          <td key={day} className={day === _todayISO ? 'today' : ''}>
+                                            {total}
+                                          </td>
+                                        );
+                                      })}
+                                      <td>·</td>
+                                    </tr>
+                                  </tfoot>
+                                )}
+                              </table>
+                            </div>
+                          )}
+                        </>
+                      );
+                    })()}
                   </motion.div>
                 ));
               })()}
