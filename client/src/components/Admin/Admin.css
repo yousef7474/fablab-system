@@ -7542,3 +7542,615 @@
   .wsv2-student-row-right { grid-column: 1 / -1; }
   .wsv2-card-photo { height: 100px; }
 }
+
+/* =====================================================================
+   OPS TERMINAL — SHARED SCOPE (.opsv2)
+   ---------------------------------------------------------------------
+   Applies the same futuristic language established for schedule +
+   workshops to the Volunteers, Workers, and Analytics tabs. Overrides
+   the pre-existing class styles under the .opsv2 scope so we don't
+   have to rewrite every card / button / header in JSX.
+   ===================================================================== */
+.opsv2 {
+  --op-red: #EE2329;
+  --op-red-glow: #ff5a5f;
+  --op-red-soft: rgba(238, 35, 41, 0.08);
+  --op-red-border: rgba(238, 35, 41, 0.18);
+  --op-red-border-strong: rgba(238, 35, 41, 0.45);
+  --op-cyan: #22d3ee;
+  --op-mint: #4ade80;
+  --op-amber: #f59e0b;
+  --op-violet: #a78bfa;
+  --op-font-display: 'Bricolage Grotesque', 'Cairo', system-ui, sans-serif;
+  --op-font-mono: 'JetBrains Mono', 'Consolas', 'SF Mono', ui-monospace, monospace;
+}
+
+/* ---------- OPS Command Bar (used by Analytics + can be wrapped around
+   Volunteers / Workers via extra JSX. Same visual language as
+   .wsv2-command, but a shorter class prefix for reuse.) ---------- */
+.opsv2 .op-command {
+  position: relative;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 20px;
+  align-items: center;
+  padding: 18px 22px;
+  background: var(--card-bg);
+  border: 1px solid var(--op-red-border);
+  border-radius: 12px;
+  margin-bottom: 18px;
+  overflow: hidden;
+}
+.opsv2 .op-command::before,
+.opsv2 .op-command::after {
+  content: '';
+  position: absolute;
+  width: 12px;
+  height: 12px;
+  border: 1px solid var(--op-red);
+  pointer-events: none;
+  opacity: 0.55;
+}
+.opsv2 .op-command::before { top: -1px; inset-inline-start: -1px; border-inline-end: none; border-bottom: none; }
+.opsv2 .op-command::after  { bottom: -1px; inset-inline-end: -1px; border-inline-start: none; border-top: none; }
+
+.opsv2 .op-kicker {
+  font-family: var(--op-font-mono);
+  font-size: 0.62rem;
+  letter-spacing: 3px;
+  color: var(--op-red);
+  text-transform: uppercase;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.opsv2 .op-kicker::before {
+  content: '';
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: var(--op-red);
+  box-shadow: 0 0 8px var(--op-red);
+  animation: sv2-blink 2s ease-in-out infinite;
+}
+.opsv2 .op-title {
+  font-family: var(--op-font-display);
+  font-size: 1.5rem;
+  font-weight: 800;
+  color: var(--text-primary);
+  margin: 4px 0 0;
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+}
+
+.opsv2 .op-metrics {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.opsv2 .op-metric {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 10px 16px;
+  min-width: 82px;
+  background: var(--card-bg-secondary, rgba(148, 163, 184, 0.05));
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+  text-align: center;
+  transition: transform 0.2s ease, border-color 0.2s ease;
+}
+.opsv2 .op-metric:hover {
+  transform: translateY(-2px);
+  border-color: var(--op-red-border-strong);
+}
+.opsv2 .op-metric .val {
+  font-family: var(--op-font-display);
+  font-size: 1.55rem;
+  font-weight: 800;
+  color: var(--text-primary);
+  line-height: 1;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+}
+.opsv2 .op-metric.red .val    { color: var(--op-red); }
+.opsv2 .op-metric.cyan .val   { color: var(--op-cyan); }
+.opsv2 .op-metric.mint .val   { color: var(--op-mint); }
+.opsv2 .op-metric.amber .val  { color: var(--op-amber); }
+.opsv2 .op-metric.violet .val { color: var(--op-violet); }
+.opsv2 .op-metric .lbl {
+  font-family: var(--op-font-mono);
+  font-size: 0.58rem;
+  letter-spacing: 1.5px;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  font-weight: 700;
+  margin-top: 2px;
+}
+
+/* Reusable OPS-style panel wrapper */
+.opsv2 .op-panel {
+  position: relative;
+  background: var(--card-bg);
+  border: 1px solid var(--op-red-border);
+  border-radius: 12px;
+  padding: 18px 20px;
+  transition: border-color 0.2s ease;
+}
+.opsv2 .op-panel:hover { border-color: var(--op-red-border-strong); }
+.opsv2 .op-panel::before,
+.opsv2 .op-panel::after {
+  content: '';
+  position: absolute;
+  width: 10px;
+  height: 10px;
+  border: 1px solid var(--op-red);
+  pointer-events: none;
+  opacity: 0.5;
+}
+.opsv2 .op-panel::before { top: -1px; inset-inline-start: -1px; border-inline-end: none; border-bottom: none; }
+.opsv2 .op-panel::after  { bottom: -1px; inset-inline-end: -1px; border-inline-start: none; border-top: none; }
+.opsv2 .op-panel:hover::before,
+.opsv2 .op-panel:hover::after { opacity: 1; }
+
+/* ---------------------------------------------------------------------
+   VOLUNTEERS + WORKERS overrides
+   --------------------------------------------------------------------- */
+
+/* Header (title + primary actions) */
+.opsv2 .volunteers-content,
+.opsv2 .workers-content { padding: 0; }
+
+.opsv2 .volunteers-header,
+.opsv2 .workers-header {
+  position: relative;
+  padding: 18px 22px;
+  background: var(--card-bg);
+  border: 1px solid var(--op-red-border);
+  border-radius: 12px;
+  margin-bottom: 18px;
+  overflow: hidden;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+.opsv2 .volunteers-header::before,
+.opsv2 .workers-header::before,
+.opsv2 .volunteers-header::after,
+.opsv2 .workers-header::after {
+  content: '';
+  position: absolute;
+  width: 12px;
+  height: 12px;
+  border: 1px solid var(--op-red);
+  pointer-events: none;
+  opacity: 0.55;
+}
+.opsv2 .volunteers-header::before,
+.opsv2 .workers-header::before { top: -1px; inset-inline-start: -1px; border-inline-end: none; border-bottom: none; }
+.opsv2 .volunteers-header::after,
+.opsv2 .workers-header::after { bottom: -1px; inset-inline-end: -1px; border-inline-start: none; border-top: none; }
+
+.opsv2 .volunteers-header h2,
+.opsv2 .workers-header h2 {
+  font-family: var(--op-font-display);
+  font-size: 1.5rem;
+  font-weight: 800;
+  color: var(--text-primary);
+  margin: 0;
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+  position: relative;
+  padding-top: 22px;
+}
+/* Auto-inject the "OPS TERMINAL" kicker above the h2 without JSX changes */
+.opsv2 .volunteers-header h2::before,
+.opsv2 .workers-header h2::before {
+  content: '● VOLUNTEER OPS · TERMINAL';
+  position: absolute;
+  top: 0;
+  inset-inline-start: 0;
+  font-family: var(--op-font-mono);
+  font-size: 0.62rem;
+  letter-spacing: 3px;
+  color: var(--op-red);
+  text-transform: uppercase;
+  font-weight: 700;
+}
+.opsv2 .workers-header h2::before { content: '● WORKER OPS · TERMINAL'; }
+[dir="rtl"] .opsv2 .volunteers-header h2::before { content: '● وحدة المتطوعين · OPS'; }
+[dir="rtl"] .opsv2 .workers-header h2::before    { content: '● وحدة العمال · OPS'; }
+
+/* Action button row — restyle to match wsv2 aesthetic */
+.opsv2 .volunteers-actions,
+.opsv2 .workers-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.opsv2 .volunteers-actions button,
+.opsv2 .workers-actions button {
+  padding: 9px 15px !important;
+  border-radius: 8px !important;
+  font-family: 'Cairo', var(--op-font-display) !important;
+  font-size: 0.82rem !important;
+  font-weight: 700 !important;
+  border: 1px solid var(--border-color) !important;
+  background: var(--card-bg-secondary, rgba(148, 163, 184, 0.04)) !important;
+  color: var(--text-primary) !important;
+  cursor: pointer;
+  transition: all 0.18s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.opsv2 .volunteers-actions button:hover,
+.opsv2 .workers-actions button:hover {
+  border-color: var(--op-red-border-strong) !important;
+  background: var(--op-red-soft) !important;
+  transform: translateY(-1px);
+}
+.opsv2 .add-volunteer-btn,
+.opsv2 .add-worker-btn {
+  border: none !important;
+  background: linear-gradient(135deg, var(--op-red), #c91d22) !important;
+  color: #fff !important;
+  box-shadow: 0 6px 16px -6px rgba(238, 35, 41, 0.5);
+}
+.opsv2 .add-volunteer-btn:hover,
+.opsv2 .add-worker-btn:hover {
+  background: linear-gradient(135deg, var(--op-red-glow), var(--op-red)) !important;
+  box-shadow: 0 8px 20px -6px rgba(238, 35, 41, 0.65);
+}
+
+/* Grid */
+.opsv2 .volunteers-grid,
+.opsv2 .workers-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 16px;
+}
+
+/* Volunteer / worker cards */
+.opsv2 .volunteer-card,
+.opsv2 .worker-card {
+  position: relative !important;
+  background: var(--card-bg) !important;
+  border: 1px solid var(--border-color) !important;
+  border-radius: 12px !important;
+  padding: 20px !important;
+  overflow: hidden;
+  transition: transform 0.24s ease, border-color 0.24s ease, box-shadow 0.24s ease !important;
+}
+.opsv2 .volunteer-card:hover,
+.opsv2 .worker-card:hover {
+  transform: translateY(-3px) !important;
+  border-color: var(--op-red-border-strong) !important;
+  box-shadow: 0 16px 40px -20px rgba(238, 35, 41, 0.35) !important;
+}
+.opsv2 .volunteer-card::before,
+.opsv2 .worker-card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, var(--op-red), var(--op-red-glow));
+  box-shadow: 0 0 12px rgba(238, 35, 41, 0.4);
+  z-index: 1;
+}
+/* Corner brackets on hover — match wsv2 pattern */
+.opsv2 .volunteer-card,
+.opsv2 .worker-card {
+  isolation: isolate;
+}
+.opsv2 .volunteer-card::after,
+.opsv2 .worker-card::after {
+  content: '';
+  position: absolute;
+  bottom: -1px; inset-inline-end: -1px;
+  width: 10px; height: 10px;
+  border: 1px solid var(--op-red);
+  border-inline-start: none; border-top: none;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+  z-index: 2;
+}
+.opsv2 .volunteer-card:hover::after,
+.opsv2 .worker-card:hover::after { opacity: 0.8; }
+
+.opsv2 .volunteer-avatar,
+.opsv2 .worker-avatar {
+  background: linear-gradient(135deg, var(--op-red), #c91d22) !important;
+  color: #fff !important;
+  font-family: var(--op-font-display) !important;
+  font-weight: 800 !important;
+  box-shadow: 0 6px 14px -4px rgba(238, 35, 41, 0.55) !important;
+}
+
+.opsv2 .volunteer-info h3,
+.opsv2 .worker-info h3 {
+  font-family: var(--op-font-display) !important;
+  font-weight: 800 !important;
+  letter-spacing: -0.01em !important;
+}
+
+.opsv2 .volunteer-stats,
+.opsv2 .worker-stats {
+  border-top: 1px dashed var(--border-color) !important;
+  border-bottom: 1px dashed var(--border-color) !important;
+  padding: 12px 0 !important;
+}
+.opsv2 .volunteer-stats .stat-value,
+.opsv2 .worker-stats .stat-value {
+  font-family: var(--op-font-display) !important;
+  font-weight: 800 !important;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+}
+.opsv2 .volunteer-stats .stat-label,
+.opsv2 .worker-stats .stat-label {
+  font-family: var(--op-font-mono) !important;
+  font-size: 0.6rem !important;
+  letter-spacing: 1.2px !important;
+  text-transform: uppercase !important;
+  color: var(--text-secondary) !important;
+  font-weight: 700 !important;
+}
+
+/* ---------------------------------------------------------------------
+   ANALYTICS overrides
+   --------------------------------------------------------------------- */
+
+/* Wrap header + date range + period selector */
+.opsv2 .analytics-header {
+  position: relative;
+  padding: 16px 20px;
+  background: var(--card-bg);
+  border: 1px solid var(--op-red-border);
+  border-radius: 12px;
+  margin-bottom: 18px;
+  overflow: hidden;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+.opsv2 .analytics-header::before,
+.opsv2 .analytics-header::after {
+  content: '';
+  position: absolute;
+  width: 12px;
+  height: 12px;
+  border: 1px solid var(--op-red);
+  pointer-events: none;
+  opacity: 0.55;
+}
+.opsv2 .analytics-header::before { top: -1px; inset-inline-start: -1px; border-inline-end: none; border-bottom: none; }
+.opsv2 .analytics-header::after  { bottom: -1px; inset-inline-end: -1px; border-inline-start: none; border-top: none; }
+
+.opsv2 .analytics-content > h2 {
+  font-family: var(--op-font-display);
+  font-size: 1.5rem;
+  font-weight: 800;
+  color: var(--text-primary);
+  letter-spacing: -0.02em;
+}
+
+.opsv2 .date-range-selector {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.opsv2 .date-input-group {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.opsv2 .date-input-group label {
+  font-family: var(--op-font-mono);
+  font-size: 0.62rem;
+  letter-spacing: 1.5px;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  font-weight: 700;
+}
+.opsv2 .date-input {
+  padding: 7px 10px !important;
+  border: 1px solid var(--border-color) !important;
+  border-radius: 6px !important;
+  background: var(--card-bg-secondary, rgba(148, 163, 184, 0.04)) !important;
+  color: var(--text-primary) !important;
+  font-family: var(--op-font-mono) !important;
+  font-size: 0.78rem !important;
+}
+.opsv2 .date-input:focus {
+  outline: none;
+  border-color: var(--op-red) !important;
+  box-shadow: 0 0 0 3px rgba(238, 35, 41, 0.15);
+}
+.opsv2 .filter-btn {
+  padding: 7px 14px !important;
+  border-radius: 6px !important;
+  border: 1px solid var(--op-red-border-strong) !important;
+  background: var(--op-red-soft) !important;
+  color: var(--op-red) !important;
+  font-family: 'Cairo', var(--op-font-display) !important;
+  font-weight: 700 !important;
+  font-size: 0.78rem !important;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+.opsv2 .filter-btn:hover {
+  background: var(--op-red) !important;
+  color: #fff !important;
+  box-shadow: 0 0 12px rgba(238, 35, 41, 0.4);
+}
+.opsv2 .period-selector {
+  display: flex;
+  gap: 4px;
+  padding: 4px;
+  background: var(--card-bg-secondary, rgba(148, 163, 184, 0.04));
+  border-radius: 8px;
+  border: 1px solid var(--border-color);
+}
+.opsv2 .period-btn {
+  padding: 6px 12px !important;
+  border: none !important;
+  border-radius: 5px !important;
+  background: transparent !important;
+  color: var(--text-secondary) !important;
+  font-family: 'Cairo', var(--op-font-display) !important;
+  font-size: 0.75rem !important;
+  font-weight: 700 !important;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+.opsv2 .period-btn:hover { color: var(--text-primary) !important; }
+.opsv2 .period-btn.active {
+  background: var(--op-red-soft) !important;
+  color: var(--op-red) !important;
+  box-shadow: inset 0 0 0 1px var(--op-red-border-strong);
+}
+
+/* Analytics stat cards + chart panels */
+.opsv2 .analytics-stats-grid,
+.opsv2 .stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 14px;
+  margin-bottom: 20px;
+}
+.opsv2 .stat-card,
+.opsv2 .analytics-stat-card {
+  position: relative !important;
+  padding: 20px !important;
+  background: var(--card-bg) !important;
+  border: 1px solid var(--border-color) !important;
+  border-radius: 12px !important;
+  transition: transform 0.24s ease, border-color 0.24s ease !important;
+  overflow: hidden;
+}
+.opsv2 .stat-card::before,
+.opsv2 .analytics-stat-card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, var(--op-red), var(--op-red-glow));
+  box-shadow: 0 0 10px rgba(238, 35, 41, 0.4);
+}
+.opsv2 .stat-card:hover,
+.opsv2 .analytics-stat-card:hover {
+  transform: translateY(-2px) !important;
+  border-color: var(--op-red-border-strong) !important;
+  box-shadow: 0 14px 30px -14px rgba(238, 35, 41, 0.3);
+}
+.opsv2 .stat-card .stat-value,
+.opsv2 .analytics-stat-card .stat-value {
+  font-family: var(--op-font-display) !important;
+  font-size: 1.9rem !important;
+  font-weight: 800 !important;
+  letter-spacing: -0.02em !important;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-primary) !important;
+}
+.opsv2 .stat-card .stat-label,
+.opsv2 .analytics-stat-card .stat-label {
+  font-family: var(--op-font-mono) !important;
+  font-size: 0.62rem !important;
+  letter-spacing: 1.5px !important;
+  text-transform: uppercase !important;
+  color: var(--text-secondary) !important;
+  font-weight: 700 !important;
+  margin-top: 4px !important;
+}
+
+/* Chart / analytics section cards */
+.opsv2 .chart-card,
+.opsv2 .analytics-chart-card,
+.opsv2 .section-analytics-card,
+.opsv2 .top-users-card,
+.opsv2 .content-card {
+  position: relative !important;
+  background: var(--card-bg) !important;
+  border: 1px solid var(--op-red-border) !important;
+  border-radius: 12px !important;
+  padding: 20px 22px !important;
+  margin-bottom: 16px !important;
+  transition: border-color 0.2s ease !important;
+  overflow: hidden;
+}
+.opsv2 .chart-card::before,
+.opsv2 .analytics-chart-card::before,
+.opsv2 .section-analytics-card::before,
+.opsv2 .top-users-card::before,
+.opsv2 .content-card::before {
+  content: '';
+  position: absolute;
+  top: -1px; inset-inline-start: -1px;
+  width: 10px; height: 10px;
+  border: 1px solid var(--op-red);
+  border-inline-end: none; border-bottom: none;
+  opacity: 0.55;
+  pointer-events: none;
+  transition: opacity 0.2s ease;
+}
+.opsv2 .chart-card::after,
+.opsv2 .analytics-chart-card::after,
+.opsv2 .section-analytics-card::after,
+.opsv2 .top-users-card::after,
+.opsv2 .content-card::after {
+  content: '';
+  position: absolute;
+  bottom: -1px; inset-inline-end: -1px;
+  width: 10px; height: 10px;
+  border: 1px solid var(--op-red);
+  border-inline-start: none; border-top: none;
+  opacity: 0.55;
+  pointer-events: none;
+  transition: opacity 0.2s ease;
+}
+.opsv2 .chart-card:hover,
+.opsv2 .analytics-chart-card:hover,
+.opsv2 .section-analytics-card:hover,
+.opsv2 .top-users-card:hover,
+.opsv2 .content-card:hover {
+  border-color: var(--op-red-border-strong) !important;
+}
+.opsv2 .chart-card:hover::before,
+.opsv2 .chart-card:hover::after,
+.opsv2 .analytics-chart-card:hover::before,
+.opsv2 .analytics-chart-card:hover::after,
+.opsv2 .section-analytics-card:hover::before,
+.opsv2 .section-analytics-card:hover::after,
+.opsv2 .top-users-card:hover::before,
+.opsv2 .top-users-card:hover::after,
+.opsv2 .content-card:hover::before,
+.opsv2 .content-card:hover::after { opacity: 1; }
+
+.opsv2 .chart-card h3,
+.opsv2 .analytics-chart-card h3,
+.opsv2 .section-analytics-card h3,
+.opsv2 .top-users-card h3,
+.opsv2 .content-card h3 {
+  font-family: var(--op-font-display) !important;
+  font-weight: 800 !important;
+  letter-spacing: -0.01em !important;
+  padding-bottom: 12px !important;
+  border-bottom: 1px dashed var(--border-color) !important;
+  margin-bottom: 14px !important;
+  color: var(--text-primary) !important;
+}
+
+/* Any numeric readout inside analytics gets mono treatment */
+.opsv2 .analytics-content [class*="stat-value"],
+.opsv2 .analytics-content [class*="count"],
+.opsv2 .analytics-content .recharts-text {
+  font-variant-numeric: tabular-nums;
+}

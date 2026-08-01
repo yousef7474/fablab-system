@@ -5658,8 +5658,49 @@ const AdminDashboard = () => {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
 
-                className="analytics-content"
+                className="analytics-content opsv2"
               >
+                <motion.div
+                  className="op-command"
+                  initial={{ opacity: 0, y: -6 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
+                >
+                  <div>
+                    <span className="op-kicker">{isRTL ? 'مركز التحليلات · OPS' : 'ANALYTICS · TERMINAL'}</span>
+                    <h2 className="op-title">{isRTL ? 'التحليلات والإحصائيات' : 'Analytics & Insights'}</h2>
+                  </div>
+                  <div className="op-metrics">
+                    {analyticsData && (
+                      <>
+                        <motion.div className="op-metric red"
+                          initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
+                          transition={{ delay: 0.12, type: 'spring', stiffness: 300, damping: 22 }}>
+                          <span className="val">{analyticsData?.totalRegistrations ?? stats.totalRegistrations ?? 0}</span>
+                          <span className="lbl">{isRTL ? 'التسجيلات' : 'Registrations'}</span>
+                        </motion.div>
+                        <motion.div className="op-metric mint"
+                          initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
+                          transition={{ delay: 0.18, type: 'spring', stiffness: 300, damping: 22 }}>
+                          <span className="val">{analyticsData?.approvedCount ?? stats.approvedRegistrations ?? 0}</span>
+                          <span className="lbl">{isRTL ? 'موافق' : 'Approved'}</span>
+                        </motion.div>
+                        <motion.div className="op-metric amber"
+                          initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
+                          transition={{ delay: 0.24, type: 'spring', stiffness: 300, damping: 22 }}>
+                          <span className="val">{analyticsData?.pendingCount ?? stats.pendingRegistrations ?? 0}</span>
+                          <span className="lbl">{isRTL ? 'قيد المراجعة' : 'Pending'}</span>
+                        </motion.div>
+                        <motion.div className="op-metric cyan"
+                          initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
+                          transition={{ delay: 0.30, type: 'spring', stiffness: 300, damping: 22 }}>
+                          <span className="val">{analyticsData?.totalUsers ?? stats.totalUsers ?? 0}</span>
+                          <span className="lbl">{isRTL ? 'المستخدمون' : 'Users'}</span>
+                        </motion.div>
+                      </>
+                    )}
+                  </div>
+                </motion.div>
                 <div className="analytics-header">
                   <div className="date-range-selector">
                     <div className="date-input-group">
@@ -8828,16 +8869,30 @@ const AdminDashboard = () => {
                 attribute. Without the wrapper, none of those rules apply and
                 the modals render unstyled. Same reason for the Workers tab. */}
             {activeTab === 'volunteers' && (
-              <div data-page="manager">
+              <motion.div
+                data-page="manager"
+                className="opsv2"
+                key="volunteers-ops"
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
+              >
                 <VolunteerManagement />
-              </div>
+              </motion.div>
             )}
 
             {/* Workers Tab */}
             {activeTab === 'workers' && (
-              <div data-page="manager">
+              <motion.div
+                data-page="manager"
+                className="opsv2"
+                key="workers-ops"
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
+              >
                 <WorkerManagement />
-              </div>
+              </motion.div>
             )}
 
             {/* Summer FabLab Tab */}
