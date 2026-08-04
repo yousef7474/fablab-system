@@ -42,6 +42,28 @@ const Volunteer = sequelize.define('Volunteer', {
   summerProgramId: {
     type: DataTypes.UUID,
     allowNull: true
+  },
+  // Google Drive folder URL that the volunteer uploads their content
+  // into. Rendered on the public share page as an "Open Folder" button
+  // so an external reviewer can jump straight into their submissions.
+  driveUrl: {
+    type: DataTypes.TEXT,
+    allowNull: true
+  },
+  // Per-volunteer opaque token used in the public URL
+  // (/public/volunteer/:token). Populated by the model default so any
+  // volunteer created before the admin flips the toggle already has a
+  // rotatable link ready to hand out.
+  shareToken: {
+    type: DataTypes.UUID,
+    defaultValue: DataTypes.UUIDV4,
+    allowNull: false,
+    unique: true
+  },
+  shareEnabled: {
+    type: DataTypes.BOOLEAN,
+    defaultValue: false,
+    allowNull: false
   }
 }, {
   tableName: 'volunteers',

@@ -486,6 +486,35 @@ const syncDatabase = async () => {
       }
     }
 
+    // Public share fields on volunteers. Sequelize's sync({ alter: true })
+    // won't add a UNIQUE UUID column reliably, so we add the columns
+    // ourselves and backfill shareToken for any existing rows before
+    // enforcing NOT NULL / UNIQUE.
+    try {
+      await sequelize.query(
+        `ALTER TABLE volunteers ADD COLUMN IF NOT EXISTS "driveUrl" TEXT`
+      );
+      await sequelize.query(
+        `ALTER TABLE volunteers ADD COLUMN IF NOT EXISTS "shareEnabled" BOOLEAN DEFAULT false`
+      );
+      await sequelize.query(
+        `ALTER TABLE volunteers ADD COLUMN IF NOT EXISTS "shareToken" UUID`
+      );
+      await sequelize.query(
+        `UPDATE volunteers SET "shareToken" = gen_random_uuid() WHERE "shareToken" IS NULL`
+      );
+      // Best-effort — index/constraint may already exist from a prior boot.
+      try {
+        await sequelize.query(
+          `CREATE UNIQUE INDEX IF NOT EXISTS volunteers_share_token_uniq ON volunteers ("shareToken")`
+        );
+      } catch (_) { /* ignore duplicate-index race */ }
+    } catch (migrationError) {
+      if (!/does not exist/i.test(migrationError.message)) {
+        console.log('volunteers.share fields migration note:', migrationError.message);
+      }
+    }
+
     // Backfill: for any program that still has the legacy single
     // teacherId set but an empty teacherIds array, seed the array from
     // the single field so existing programs render correctly under the

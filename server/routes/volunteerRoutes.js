@@ -70,6 +70,13 @@ router.patch('/attendance/:id/checkout', requireManager, volunteerController.cle
 router.delete('/attendance/:id', requireManager, volunteerController.deleteAttendance);
 router.post('/attendance/export', volunteerController.exportAttendance);
 
+// ============== VOLUNTEER PUBLIC SHARE (admin side) ==============
+
+router.get('/share/master-token', volunteerController.getMasterShareToken);
+router.post('/share/master-token/rotate', requireManager, volunteerController.rotateMasterShareToken);
+router.patch('/:id/share', requireManager, volunteerController.updateVolunteerShare);
+router.post('/:id/share/rotate', requireManager, volunteerController.rotateVolunteerShareToken);
+
 // ============== VOLUNTEER RECEIPTS ==============
 
 router.get('/:id/receipts', volunteerController.listVolunteerReceipts);

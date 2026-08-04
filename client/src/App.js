@@ -24,6 +24,8 @@ const ManagerDashboard = lazy(() => import('./components/Manager/ManagerDashboar
 const EmployeeLogin = lazy(() => import('./components/Employee/EmployeeLogin'));
 const EmployeeDashboard = lazy(() => import('./components/Employee/EmployeeDashboard'));
 const WorkshopRegistration = lazy(() => import('./components/WorkshopRegistration/WorkshopRegistration'));
+const PublicVolunteerReport = lazy(() => import('./components/Public/PublicVolunteerReport'));
+const PublicAttendanceReport = lazy(() => import('./components/Public/PublicAttendanceReport'));
 
 const RouteFallback = () => (
   <div style={{
@@ -47,7 +49,7 @@ const RouteFallback = () => (
 // Wrapper to conditionally show LanguageSelector (hide on admin/manager/elite pages)
 const ConditionalLanguageSelector = () => {
   const location = useLocation();
-  if (location.pathname === '/admin/login' || location.pathname.startsWith('/manager') || location.pathname.startsWith('/elite') || location.pathname.startsWith('/employee') || location.pathname.startsWith('/workshop')) return null;
+  if (location.pathname === '/admin/login' || location.pathname.startsWith('/manager') || location.pathname.startsWith('/elite') || location.pathname.startsWith('/employee') || location.pathname.startsWith('/workshop') || location.pathname.startsWith('/public/')) return null;
   return <LanguageSelector />;
 };
 
@@ -73,6 +75,9 @@ const AppContent = () => {
           <Route path="/workshop" element={<WorkshopRegistration />} />
           <Route path="/employee/login" element={<EmployeeLogin />} />
           <Route path="/employee/dashboard" element={<EmployeeDashboard />} />
+          {/* Public no-login volunteer report pages (token-gated) */}
+          <Route path="/public/volunteer/:token" element={<PublicVolunteerReport />} />
+          <Route path="/public/report/:token" element={<PublicAttendanceReport />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </Suspense>

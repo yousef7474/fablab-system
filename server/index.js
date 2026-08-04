@@ -31,6 +31,7 @@ const overtimeRoutes = require('./routes/overtimeRoutes');
 const trainerAssistantRoutes = require('./routes/trainerAssistantRoutes');
 const customerRoutes = require('./routes/customerRoutes');
 const contractRoutes = require('./routes/contractRoutes');
+const publicRoutes = require('./routes/publicRoutes');
 const { startBorrowingScheduler } = require('./utils/borrowingScheduler');
 const { seedInitialCustomers } = require('./utils/seedCustomers');
 const { startTaskReminderScheduler } = require('./utils/taskReminderScheduler');
@@ -80,6 +81,9 @@ app.use('/api/employee', employeeRoutes);
 app.use('/api/evaluations', evaluationRoutes);
 app.use('/api/workshops', workshopMgmtRoutes);
 app.use('/api/user-history', userHistoryRoutes);
+// Public, no-auth endpoints for external volunteer report share links.
+// Anything under /api/public/* is unauthenticated — protect the tokens.
+app.use('/api/public', publicRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {

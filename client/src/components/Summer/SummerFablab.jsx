@@ -4,6 +4,8 @@ import { toast } from 'react-toastify';
 import api from '../../config/api';
 import AttendanceLog from '../shared/AttendanceLog';
 import UnifiedAttendancePage from '../shared/UnifiedAttendancePage';
+import VolunteerShareControls from '../shared/VolunteerShareControls';
+import MasterShareBar from '../shared/MasterShareBar';
 import './SummerFablab.css';
 
 // ID-card constants + helpers shared between single + bulk print flows.
@@ -1186,6 +1188,8 @@ const SummerFablab = () => {
             {isRTL ? 'هؤلاء المتطوعون يظهرون أيضاً في تبويب المتطوعين الرئيسي مع نفس سجل التقييمات والفرص.' : 'These volunteers also appear in the main Volunteers tab with the same ratings and opportunity history.'}
           </p>
 
+          <MasterShareBar isRTL={isRTL} />
+
           {loading.volunteers ? (
             <p style={{ color: '#64748b' }}>{isRTL ? 'جاري التحميل...' : 'Loading...'}</p>
           ) : summerVolunteers.length === 0 ? (
@@ -1259,6 +1263,11 @@ const SummerFablab = () => {
                       <button className="summer-btn-rate" onClick={() => openRateSummerVolunteer(v)}>★ {isRTL ? 'تقييم' : 'Rate'}</button>
                       <button className="summer-btn-danger" onClick={() => deleteSummerVolunteer(v.volunteerId)}>{isRTL ? 'حذف' : 'Delete'}</button>
                     </div>
+                    <VolunteerShareControls
+                      volunteer={v}
+                      isRTL={isRTL}
+                      onUpdated={(id, patch) => setAllVolunteers(prev => prev.map(x => x.volunteerId === id ? { ...x, ...patch } : x))}
+                    />
                   </div>
                 );
               })}

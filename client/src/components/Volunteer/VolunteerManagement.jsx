@@ -9,6 +9,8 @@ import ReceiptModal from '../shared/ReceiptModal';
 import ReceiptArchiveModal from '../shared/ReceiptArchiveModal';
 import VolunteerContractModal from '../shared/VolunteerContractModal';
 import AttendanceLog from '../shared/AttendanceLog';
+import VolunteerShareControls from '../shared/VolunteerShareControls';
+import MasterShareBar from '../shared/MasterShareBar';
 
 const VolunteerManagement = () => {
   const { i18n } = useTranslation();
@@ -1455,6 +1457,14 @@ const VolunteerManagement = () => {
   };
 
 
+  // Local patch of a volunteer row after the share controls save,
+  // so the toggle/copy button stays in sync without a full refetch.
+  const handleShareUpdated = (volunteerId, patch) => {
+    setVolunteers(prev => prev.map(v =>
+      v.volunteerId === volunteerId ? { ...v, ...patch } : v
+    ));
+  };
+
   const handleExportAllVolunteers = () => {
     const headers = [
       'Volunteer Name', 'National ID', 'Phone', 'Email',
@@ -1645,6 +1655,8 @@ const VolunteerManagement = () => {
                 )}
               </div>
             )}
+
+            <MasterShareBar isRTL={isRTL} />
 
             <div className="volunteers-grid">
               {volunteers.length === 0 ? (
@@ -1861,6 +1873,11 @@ const VolunteerManagement = () => {
                         {isRTL ? 'حذف' : 'Delete'}
                       </button>
                     </div>
+                    <VolunteerShareControls
+                      volunteer={volunteer}
+                      isRTL={isRTL}
+                      onUpdated={handleShareUpdated}
+                    />
                   </div>
                 ))
               )}

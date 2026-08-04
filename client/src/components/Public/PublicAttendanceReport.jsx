@@ -1,0 +1,282 @@
+import React, { useEffect, useMemo, useState } from 'react';
+import { useParams } from 'react-router-dom';
+import axios from 'axios';
+import './Public.css';
+
+const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
+
+const AR_DAYS = ['الأحد', 'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'];
+
+const todayISO = () => {
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Asia/Riyadh',
+    year: 'numeric', month: '2-digit', day: '2-digit'
+  }).formatToParts(new Date());
+  const y = parts.find(p => p.type === 'year').value;
+  const m = parts.find(p => p.type === 'month').value;
+  const d = parts.find(p => p.type === 'day').value;
+  return `${y}-${m}-${d}`;
+};
+
+const fmtTime = (iso) => {
+  if (!iso) return '';
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return '';
+  return new Intl.DateTimeFormat('en-GB', {
+    timeZone: 'Asia/Riyadh',
+    hour: '2-digit', minute: '2-digit', hour12: false
+  }).format(d);
+};
+
+const fmtDuration = (minutes) => {
+  if (minutes === null || minutes === undefined || minutes < 0) return '—';
+  const h = Math.floor(minutes / 60);
+  const m = minutes % 60;
+  if (h === 0) return `${m}د`;
+  if (m === 0) return `${h}س`;
+  return `${h}س ${m}د`;
+};
+
+const dayOfWeekAr = (isoDate) => {
+  const d = new Date(isoDate + 'T00:00:00');
+  return AR_DAYS[d.getDay()];
+};
+
+const PublicAttendanceReport = () => {
+  const { token } = useParams();
+  const [state, setState] = useState({ loading: true, error: null, data: null });
+  const [search, setSearch] = useState('');
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const { data } = await axios.get(`${API_URL}/public/attendance-report/${token}`);
+        if (!cancelled) setState({ loading: false, error: null, data });
+      } catch (err) {
+        if (!cancelled) {
+          const status = err.response?.status;
+          setState({
+            loading: false,
+            error: status === 404
+              ? 'الرابط غير صالح أو تم إبطاله.'
+              : 'تعذر تحميل التقرير. يرجى المحاولة لاحقاً.',
+            data: null
+          });
+        }
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [token]);
+
+  useEffect(() => {
+    document.title = 'تقرير المتطوعين المجمّع | FABLAB SAHSA';
+  }, []);
+
+  const filtered = useMemo(() => {
+    if (!state.data) return [];
+    const q = search.trim().toLowerCase();
+    if (!q) return state.data.volunteers;
+    return state.data.volunteers.filter(v =>
+      (v.name || '').toLowerCase().includes(q) ||
+      (v.nationalId || '').includes(q) ||
+      (v.phone || '').includes(q) ||
+      (v.summerProgram?.name || '').toLowerCase().includes(q)
+    );
+  }, [state.data, search]);
+
+  const totals = useMemo(() => {
+    if (!state.data) return null;
+    const volunteers = state.data.volunteers;
+    const totalMinutes = volunteers.reduce((s, v) => s + (v.totalMinutes || 0), 0);
+    const totalRecords = volunteers.reduce((s, v) => s + (v.attendance?.length || 0), 0);
+    const today = todayISO();
+    const activeToday = volunteers.filter(v =>
+      (v.attendance || []).some(r => r.date === today && r.checkInAt)
+    ).length;
+    return {
+      volunteerCount: volunteers.length,
+      totalHours: (totalMinutes / 60).toFixed(1),
+      totalRecords,
+      activeToday
+    };
+  }, [state.data]);
+
+  if (state.loading) {
+    return (
+      <div className="pub-shell">
+        <div className="pub-center"><div className="pub-loader" /></div>
+      </div>
+    );
+  }
+
+  if (state.error) {
+    return (
+      <div className="pub-shell">
+        <div className="pub-center">
+          <div className="pub-error">
+            <h2>الرابط غير متاح</h2>
+            <p>{state.error}</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  const today = todayISO();
+
+  return (
+    <div className="pub-shell">
+      <div className="pub-wrap">
+        <div className="pub-brand">
+          <div className="pub-brand-mark">FL</div>
+          <div className="pub-brand-text">
+            <b>FABLAB SAHSA</b>
+            <span>Master Volunteer Report</span>
+          </div>
+        </div>
+
+        <div className="pub-header">
+          <div className="pub-header-top">
+            <div>
+              <div className="pub-kicker">Consolidated Report / تقرير مجمّع</div>
+              <h1 className="pub-title">سجل المتطوعين</h1>
+              <div className="pub-subtitle">
+                جميع المتطوعين المفعّل لهم المشاركة، مع بياناتهم وسجل حضورهم اليومي.
+              </div>
+            </div>
+            <span className="pub-badge">
+              <span className="pub-badge-dot" />
+              مباشر
+            </span>
+          </div>
+        </div>
+
+        {totals && (
+          <div className="pub-stats">
+            <div className="pub-stat brand">
+              <div className="pub-stat-label">Volunteers</div>
+              <div className="pub-stat-value">{totals.volunteerCount}</div>
+            </div>
+            <div className="pub-stat cyan">
+              <div className="pub-stat-label">Total Hours</div>
+              <div className="pub-stat-value">{totals.totalHours}</div>
+            </div>
+            <div className="pub-stat amber">
+              <div className="pub-stat-label">Total Records</div>
+              <div className="pub-stat-value">{totals.totalRecords}</div>
+            </div>
+            <div className="pub-stat mint">
+              <div className="pub-stat-label">Active Today</div>
+              <div className="pub-stat-value">{totals.activeToday}</div>
+            </div>
+          </div>
+        )}
+
+        <input
+          type="text"
+          className="pub-search"
+          placeholder="بحث بالاسم أو رقم الهوية أو رقم الجوال…"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+        />
+
+        {filtered.length === 0 ? (
+          <div className="pub-panel" style={{ textAlign: 'center' }}>
+            <div className="pub-cell-empty">لا توجد نتائج مطابقة.</div>
+          </div>
+        ) : (
+          filtered.map(v => {
+            const programColor = v.summerProgram?.color || null;
+            const style = programColor ? { '--program-color': programColor } : {};
+            return (
+              <div className="pub-vcard" key={v.volunteerId} style={style}>
+                <div className="pub-vcard-head">
+                  <div>
+                    <div className="pub-vcard-name">
+                      <span className="pub-vcard-dot" />
+                      {v.name}
+                      {v.summerProgram && (
+                        <span
+                          className="pub-program-chip"
+                          style={programColor ? { borderColor: programColor + '55', color: programColor } : {}}
+                        >
+                          {v.summerProgram.name}
+                        </span>
+                      )}
+                    </div>
+                    <div className="pub-vcard-meta">
+                      <span>Nat.ID: <b>{v.nationalId}</b></span>
+                      <span>Phone: <b>{v.phone}</b></span>
+                      <span>Days: <b>{v.totalDays}</b></span>
+                      <span>Hours: <b>{(v.totalMinutes / 60).toFixed(1)}</b></span>
+                    </div>
+                  </div>
+                  <div className="pub-vcard-actions">
+                    {v.driveUrl && (
+                      <a
+                        href={v.driveUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="pub-btn drive"
+                      >
+                        📁 Google Drive
+                      </a>
+                    )}
+                    <a
+                      href={`/public/volunteer/${v.shareToken}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="pub-btn brand"
+                    >
+                      عرض التقرير الفردي ↗
+                    </a>
+                  </div>
+                </div>
+
+                {v.attendance && v.attendance.length > 0 && (
+                  <div className="pub-vcard-atttable">
+                    <div className="pub-table-wrap">
+                      <table className="pub-table">
+                        <thead>
+                          <tr>
+                            <th>اليوم</th>
+                            <th>التاريخ</th>
+                            <th>وقت الدخول</th>
+                            <th>وقت الخروج</th>
+                            <th>المدة</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {v.attendance.map(r => (
+                            <tr key={r.date}>
+                              <td>
+                                {r.date === today && <span className="pub-today-mark">اليوم</span>}
+                                {dayOfWeekAr(r.date)}
+                              </td>
+                              <td className="pub-num">{r.date}</td>
+                              <td className="pub-time">{fmtTime(r.checkInAt) || '—'}</td>
+                              <td className="pub-time">{fmtTime(r.checkOutAt) || <span className="pub-cell-empty">جارٍ الآن</span>}</td>
+                              <td className="pub-num">{fmtDuration(r.minutes)}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                )}
+              </div>
+            );
+          })
+        )}
+
+        <div className="pub-footer">
+          <span>© {new Date().getFullYear()} FABLAB SAHSA</span>
+          <span>تم التحديث: {state.data?.generatedAt ? new Date(state.data.generatedAt).toLocaleString('ar-SA') : '—'}</span>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default PublicAttendanceReport;

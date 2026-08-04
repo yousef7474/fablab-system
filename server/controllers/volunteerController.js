@@ -1,5 +1,6 @@
-const { Volunteer, VolunteerOpportunity, VolunteerRating, VolunteerReceipt, VolunteerAttendance, SummerProgram, Admin } = require('../models');
+const { Volunteer, VolunteerOpportunity, VolunteerRating, VolunteerReceipt, VolunteerAttendance, SummerProgram, Admin, Settings } = require('../models');
 const { Op } = require('sequelize');
+const crypto = require('crypto');
 const QRCode = require('qrcode');
 
 // ============== VOLUNTEER PROFILE MANAGEMENT ==============
@@ -995,6 +996,234 @@ exports.exportAttendance = async (req, res) => {
   } catch (err) {
     console.error('Volunteer exportAttendance error:', err);
     res.status(500).json({ message: 'Server error', error: err.message });
+  }
+};
+
+// ============== VOLUNTEER PUBLIC SHARE (admin side) ==============
+
+// PATCH /volunteers/:id/share — body { shareEnabled?, driveUrl? }
+exports.updateVolunteerShare = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { shareEnabled, driveUrl } = req.body || {};
+
+    const volunteer = await Volunteer.findByPk(id);
+    if (!volunteer) return res.status(404).json({ message: 'Volunteer not found' });
+
+    const patch = {};
+    if (shareEnabled !== undefined) patch.shareEnabled = !!shareEnabled;
+    if (driveUrl !== undefined) {
+      const trimmed = String(driveUrl || '').trim();
+      patch.driveUrl = trimmed || null;
+    }
+
+    if (Object.keys(patch).length === 0) {
+      return res.status(400).json({ message: 'Nothing to update' });
+    }
+
+    // Lazy-mint a share token if the row was created before the
+    // migration and somehow slipped through without one.
+    if (!volunteer.shareToken) {
+      patch.shareToken = crypto.randomUUID();
+    }
+
+    await volunteer.update(patch);
+    res.json({
+      volunteerId: volunteer.volunteerId,
+      shareEnabled: volunteer.shareEnabled,
+      driveUrl: volunteer.driveUrl,
+      shareToken: volunteer.shareToken
+    });
+  } catch (err) {
+    console.error('Volunteer updateVolunteerShare error:', err);
+    res.status(500).json({ message: 'Server error', error: err.message });
+  }
+};
+
+// POST /volunteers/:id/share/rotate — invalidates the old link
+exports.rotateVolunteerShareToken = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const volunteer = await Volunteer.findByPk(id);
+    if (!volunteer) return res.status(404).json({ message: 'Volunteer not found' });
+
+    const newToken = crypto.randomUUID();
+    await volunteer.update({ shareToken: newToken });
+    res.json({ volunteerId: volunteer.volunteerId, shareToken: newToken });
+  } catch (err) {
+    console.error('Volunteer rotateVolunteerShareToken error:', err);
+    res.status(500).json({ message: 'Server error', error: err.message });
+  }
+};
+
+// GET /volunteers/share/master-token — fetches (or creates) the single
+// master token used for the combined attendance report link.
+exports.getMasterShareToken = async (req, res) => {
+  try {
+    const KEY = 'volunteer_master_share_token';
+    let row = await Settings.findOne({ where: { key: KEY } });
+    if (!row) {
+      row = await Settings.create({ key: KEY, value: crypto.randomUUID() });
+    }
+    res.json({ masterToken: row.value });
+  } catch (err) {
+    console.error('Volunteer getMasterShareToken error:', err);
+    res.status(500).json({ message: 'Server error', error: err.message });
+  }
+};
+
+// POST /volunteers/share/master-token/rotate — rotates the master token
+exports.rotateMasterShareToken = async (req, res) => {
+  try {
+    const KEY = 'volunteer_master_share_token';
+    const newToken = crypto.randomUUID();
+    const [row] = await Settings.findOrCreate({
+      where: { key: KEY },
+      defaults: { value: newToken }
+    });
+    if (row.value !== newToken) {
+      await row.update({ value: newToken });
+    }
+    res.json({ masterToken: newToken });
+  } catch (err) {
+    console.error('Volunteer rotateMasterShareToken error:', err);
+    res.status(500).json({ message: 'Server error', error: err.message });
+  }
+};
+
+// ============== VOLUNTEER PUBLIC SHARE (no-auth side) ==============
+
+const _UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+const _shapeAttendance = (record) => {
+  const inAt = record.checkInAt ? new Date(record.checkInAt) : null;
+  const outAt = record.checkOutAt ? new Date(record.checkOutAt) : null;
+  const minutes = inAt && outAt ? Math.max(0, Math.round((outAt - inAt) / 60000)) : null;
+  return {
+    date: record.date,
+    checkInAt: record.checkInAt || null,
+    checkOutAt: record.checkOutAt || null,
+    minutes
+  };
+};
+
+// GET /public/volunteer/:token — full profile + attendance for one
+// volunteer. NO AUTH.
+exports.publicGetVolunteerByToken = async (req, res) => {
+  try {
+    const { token } = req.params;
+    if (!token || !_UUID_RE.test(token)) {
+      return res.status(404).json({ message: 'Not found' });
+    }
+
+    const volunteer = await Volunteer.findOne({
+      where: { shareToken: token },
+      include: [
+        {
+          model: SummerProgram,
+          as: 'summerProgram',
+          required: false,
+          attributes: ['programId', 'name', 'color', 'fablabSection']
+        }
+      ]
+    });
+    if (!volunteer || !volunteer.shareEnabled) {
+      return res.status(404).json({ message: 'Not found or sharing disabled' });
+    }
+
+    const attendance = await VolunteerAttendance.findAll({
+      where: { volunteerId: volunteer.volunteerId },
+      order: [['date', 'DESC'], ['checkInAt', 'DESC']]
+    });
+
+    res.json({
+      volunteer: {
+        volunteerId: volunteer.volunteerId,
+        name: volunteer.name,
+        nationalId: volunteer.nationalId,
+        phone: volunteer.phone,
+        email: volunteer.email,
+        driveUrl: volunteer.driveUrl,
+        summerProgram: volunteer.summerProgram
+          ? {
+              programId: volunteer.summerProgram.programId,
+              name: volunteer.summerProgram.name,
+              color: volunteer.summerProgram.color,
+              fablabSection: volunteer.summerProgram.fablabSection
+            }
+          : null
+      },
+      attendance: attendance.map(_shapeAttendance)
+    });
+  } catch (err) {
+    console.error('publicGetVolunteerByToken error:', err);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+// GET /public/attendance-report/:masterToken — every share-enabled
+// volunteer + their full attendance. NO AUTH.
+exports.publicGetMasterReport = async (req, res) => {
+  try {
+    const { masterToken } = req.params;
+    if (!masterToken || !_UUID_RE.test(masterToken)) {
+      return res.status(404).json({ message: 'Not found' });
+    }
+
+    const setting = await Settings.findOne({ where: { key: 'volunteer_master_share_token' } });
+    if (!setting || setting.value !== masterToken) {
+      return res.status(404).json({ message: 'Not found' });
+    }
+
+    const volunteers = await Volunteer.findAll({
+      where: { shareEnabled: true },
+      include: [
+        {
+          model: VolunteerAttendance,
+          as: 'attendance',
+          required: false
+        },
+        {
+          model: SummerProgram,
+          as: 'summerProgram',
+          required: false,
+          attributes: ['programId', 'name', 'color', 'fablabSection']
+        }
+      ],
+      order: [['name', 'ASC']]
+    });
+
+    const shaped = volunteers.map(v => {
+      const att = (v.attendance || [])
+        .slice()
+        .sort((a, b) => (a.date < b.date ? 1 : -1))
+        .map(_shapeAttendance);
+      const totalMinutes = att.reduce((s, r) => s + (r.minutes || 0), 0);
+      return {
+        volunteerId: v.volunteerId,
+        shareToken: v.shareToken,
+        name: v.name,
+        nationalId: v.nationalId,
+        phone: v.phone,
+        driveUrl: v.driveUrl,
+        summerProgram: v.summerProgram
+          ? {
+              programId: v.summerProgram.programId,
+              name: v.summerProgram.name,
+              color: v.summerProgram.color,
+              fablabSection: v.summerProgram.fablabSection
+            }
+          : null,
+        totalDays: att.filter(r => r.checkInAt).length,
+        totalMinutes,
+        attendance: att
+      };
+    });
+
+    res.json({ generatedAt: new Date().toISOString(), volunteers: shaped });
+  } catch (err) {
+    console.error('publicGetMasterReport error:', err);
+    res.status(500).json({ message: 'Server error' });
   }
 };
 
