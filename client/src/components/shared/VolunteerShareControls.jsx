@@ -19,13 +19,44 @@ const _toDateInput = (v) => {
   try { return new Date(v).toISOString().slice(0, 10); } catch { return ''; }
 };
 
+// Normalize a Saudi phone number to WhatsApp's international format
+// (966XXXXXXXXX). Accepts local (05XXXXXXXX), international with plus
+// (+966XXXXXXXXX) and 00-prefixed forms. Returns null if we can't be
+// confident it's a valid Saudi mobile.
+const _normalizeSaudiPhone = (raw) => {
+  let digits = String(raw || '').replace(/\D/g, '');
+  if (!digits) return null;
+  if (digits.startsWith('00966')) digits = digits.slice(5);
+  else if (digits.startsWith('966')) digits = digits.slice(3);
+  else if (digits.startsWith('0')) digits = digits.slice(1);
+  if (digits.length !== 9 || !digits.startsWith('5')) return null;
+  return `966${digits}`;
+};
+
+const _buildVolunteerMessage = (volunteer) => {
+  const first = String(volunteer.name || '').split(/\s+/)[0] || volunteer.name || '';
+  return (
+`مرحباً ${first} 👋
+
+هذا رابط مجلد Google Drive الخاص بك في فاب لاب الأحساء لرفع محتوى تطوعك:
+
+${volunteer.driveUrl}
+
+شكراً لتطوعك معنا 🙌`
+  );
+};
+
 const VolunteerShareControls = ({ volunteer, isRTL, onUpdated }) => {
   const [saving, setSaving] = useState(false);
   const [driveInput, setDriveInput] = useState(volunteer.driveUrl || '');
   const [showDrive, setShowDrive] = useState(false);
   const [showPeriod, setShowPeriod] = useState(false);
+  const [showSend, setShowSend] = useState(false);
+  const [messageInput, setMessageInput] = useState('');
   const [fromInput, setFromInput] = useState(_toDateInput(volunteer.shareFromDate));
   const [toInput, setToInput] = useState(_toDateInput(volunteer.shareToDate));
+
+  const whatsappPhone = _normalizeSaudiPhone(volunteer.phone);
 
   const shareEnabled = !!volunteer.shareEnabled;
   const shareToken = volunteer.shareToken;
@@ -187,6 +218,24 @@ const VolunteerShareControls = ({ volunteer, isRTL, onUpdated }) => {
             ? (isRTL ? 'تعديل الفترة' : 'Edit Period')
             : (isRTL ? 'تحديد الفترة' : 'Set Period')}
         </button>
+
+        {volunteer.driveUrl && (
+          <button
+            type="button"
+            className="vshare-btn vshare-send-btn"
+            onClick={() => {
+              setShowSend(v => !v);
+              setMessageInput(_buildVolunteerMessage(volunteer));
+            }}
+            title={isRTL ? 'إرسال رابط Drive إلى المتطوع' : 'Send Drive link to volunteer'}
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M22 2L11 13"/>
+              <path d="M22 2l-7 20-4-9-9-4z"/>
+            </svg>
+            {isRTL ? 'إرسال للمتطوع' : 'Send to volunteer'}
+          </button>
+        )}
       </div>
 
       {(effectiveFrom || effectiveTo) && !showPeriod && (
@@ -301,6 +350,91 @@ const VolunteerShareControls = ({ volunteer, isRTL, onUpdated }) => {
               {isRTL ? 'إزالة' : 'Remove'}
             </button>
           )}
+        </div>
+      )}
+
+      {showSend && (
+        <div className="vshare-send-panel">
+          <div className="vshare-send-target">
+            <span className="vshare-send-label">
+              {isRTL ? 'إلى' : 'To'}
+            </span>
+            <span dir="ltr" className="vshare-send-phone">
+              {whatsappPhone ? `+${whatsappPhone}` : (volunteer.phone || '—')}
+            </span>
+            {!whatsappPhone && (
+              <span className="vshare-send-warn">
+                {isRTL
+                  ? '⚠ رقم الجوال غير قابل للاستخدام مع واتساب — استخدم النسخ'
+                  : '⚠ Phone unusable for WhatsApp — use Copy instead'}
+              </span>
+            )}
+          </div>
+          <textarea
+            value={messageInput}
+            onChange={(e) => setMessageInput(e.target.value)}
+            className="vshare-send-textarea"
+            rows={7}
+            dir="rtl"
+          />
+          <div className="vshare-send-actions">
+            <a
+              href={whatsappPhone
+                ? `https://wa.me/${whatsappPhone}?text=${encodeURIComponent(messageInput)}`
+                : undefined}
+              target="_blank"
+              rel="noopener noreferrer"
+              className={`vshare-btn vshare-btn-wa ${!whatsappPhone ? 'is-disabled' : ''}`}
+              onClick={(e) => { if (!whatsappPhone) e.preventDefault(); }}
+              title={isRTL ? 'فتح واتساب مع الرسالة جاهزة' : 'Open WhatsApp with the message ready'}
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.263.489 1.694.626.712.226 1.36.194 1.872.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
+              </svg>
+              {isRTL ? 'إرسال عبر واتساب' : 'Send via WhatsApp'}
+            </a>
+            <button
+              type="button"
+              className="vshare-btn"
+              onClick={async () => {
+                try {
+                  await navigator.clipboard.writeText(messageInput);
+                  toast.success(isRTL ? 'تم نسخ الرسالة' : 'Message copied');
+                } catch {
+                  window.prompt(isRTL ? 'انسخ الرسالة:' : 'Copy the message:', messageInput);
+                }
+              }}
+              title={isRTL ? 'نسخ الرسالة كاملة' : 'Copy the full message'}
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <rect x="9" y="9" width="13" height="13" rx="2"/>
+                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+              </svg>
+              {isRTL ? 'نسخ الرسالة' : 'Copy message'}
+            </button>
+            <button
+              type="button"
+              className="vshare-btn ghost"
+              onClick={async () => {
+                try {
+                  await navigator.clipboard.writeText(volunteer.driveUrl);
+                  toast.success(isRTL ? 'تم نسخ رابط Drive' : 'Drive link copied');
+                } catch {
+                  window.prompt(isRTL ? 'انسخ الرابط:' : 'Copy the link:', volunteer.driveUrl);
+                }
+              }}
+              title={isRTL ? 'نسخ رابط Drive فقط' : 'Copy just the Drive URL'}
+            >
+              {isRTL ? 'نسخ الرابط فقط' : 'Copy URL only'}
+            </button>
+            <button
+              type="button"
+              className="vshare-btn ghost"
+              onClick={() => setShowSend(false)}
+            >
+              {isRTL ? 'إغلاق' : 'Close'}
+            </button>
+          </div>
         </div>
       )}
 

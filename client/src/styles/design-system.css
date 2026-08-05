@@ -2539,3 +2539,80 @@ html:not([data-theme]) .emp-calendar-grid {
 .vshare-period-actions {
   display: flex; gap: 6px; flex-wrap: wrap;
 }
+
+/* Volunteer share — "Send to volunteer" button + panel */
+.vshare-send-btn {
+  background: #16a34a !important;
+  border-color: #16a34a !important;
+  color: #fff !important;
+}
+.vshare-send-btn:hover:not(:disabled) {
+  background: #15803d !important;
+  border-color: #15803d !important;
+}
+.vshare-send-panel {
+  display: flex; flex-direction: column; gap: 10px;
+  padding: 12px;
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--card-bg, rgba(20,22,34,0.72)) 90%, #22c55e 4%);
+  border: 1px solid color-mix(in srgb, var(--border-color, rgba(255,255,255,0.14)) 100%, #22c55e 20%);
+}
+.vshare-send-target {
+  display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+  font-size: 12px;
+}
+.vshare-send-label {
+  color: var(--text-secondary, #64748b);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  font-size: 10px;
+}
+.vshare-send-phone {
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  font-weight: 700;
+  color: var(--text-primary, #f2f4fa);
+}
+.vshare-send-warn {
+  color: #f59e0b;
+  font-size: 11px;
+  font-weight: 600;
+}
+.vshare-send-textarea {
+  width: 100%;
+  padding: 10px 12px;
+  border-radius: 8px;
+  border: 1px solid var(--border-color, rgba(255,255,255,0.14));
+  background: var(--card-bg, rgba(255,255,255,0.03));
+  color: var(--text-primary, #f2f4fa);
+  font-family: 'Cairo', 'Inter', sans-serif;
+  font-size: 13px;
+  line-height: 1.6;
+  resize: vertical;
+  min-height: 120px;
+}
+.vshare-send-textarea:focus {
+  outline: none;
+  border-color: rgba(34, 197, 94, 0.55);
+}
+.vshare-send-actions {
+  display: flex; gap: 6px; flex-wrap: wrap;
+}
+.vshare-btn-wa {
+  background: #25D366 !important;
+  border-color: #25D366 !important;
+  color: #fff !important;
+  text-decoration: none;
+}
+.vshare-btn-wa:hover:not(.is-disabled) {
+  background: #1ea855 !important;
+  border-color: #1ea855 !important;
+}
+.vshare-btn-wa.is-disabled {
+  background: color-mix(in srgb, #25D366 40%, transparent) !important;
+  border-color: transparent !important;
+  cursor: not-allowed;
+  pointer-events: none;
+  opacity: 0.5;
+}
