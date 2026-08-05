@@ -3,7 +3,12 @@ import { useParams } from 'react-router-dom';
 import axios from 'axios';
 import './Public.css';
 
-const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
+// Match the app-wide api.js logic — relative `/api` in production so the
+// public page works when served from https://fablabsahsa.com, dev-only
+// localhost fallback otherwise.
+const API_URL = process.env.NODE_ENV === 'production'
+  ? '/api'
+  : (process.env.REACT_APP_API_URL || 'http://localhost:5000/api');
 
 const AR_DAYS = ['الأحد', 'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'];
 
@@ -131,15 +136,15 @@ const PublicAttendanceReport = () => {
         <div className="pub-brand">
           <div className="pub-brand-mark">FL</div>
           <div className="pub-brand-text">
-            <b>FABLAB SAHSA</b>
-            <span>Master Volunteer Report</span>
+            <b>فاب لاب الأحساء</b>
+            <span>تقرير المتطوعين المجمّع</span>
           </div>
         </div>
 
         <div className="pub-header">
           <div className="pub-header-top">
             <div>
-              <div className="pub-kicker">Consolidated Report / تقرير مجمّع</div>
+              <div className="pub-kicker">تقرير مجمّع</div>
               <h1 className="pub-title">سجل المتطوعين</h1>
               <div className="pub-subtitle">
                 جميع المتطوعين المفعّل لهم المشاركة، مع بياناتهم وسجل حضورهم اليومي.
@@ -155,19 +160,19 @@ const PublicAttendanceReport = () => {
         {totals && (
           <div className="pub-stats">
             <div className="pub-stat brand">
-              <div className="pub-stat-label">Volunteers</div>
+              <div className="pub-stat-label">عدد المتطوعين</div>
               <div className="pub-stat-value">{totals.volunteerCount}</div>
             </div>
             <div className="pub-stat cyan">
-              <div className="pub-stat-label">Total Hours</div>
+              <div className="pub-stat-label">إجمالي الساعات</div>
               <div className="pub-stat-value">{totals.totalHours}</div>
             </div>
             <div className="pub-stat amber">
-              <div className="pub-stat-label">Total Records</div>
+              <div className="pub-stat-label">إجمالي السجلات</div>
               <div className="pub-stat-value">{totals.totalRecords}</div>
             </div>
             <div className="pub-stat mint">
-              <div className="pub-stat-label">Active Today</div>
+              <div className="pub-stat-label">نشط اليوم</div>
               <div className="pub-stat-value">{totals.activeToday}</div>
             </div>
           </div>
@@ -206,10 +211,10 @@ const PublicAttendanceReport = () => {
                       )}
                     </div>
                     <div className="pub-vcard-meta">
-                      <span>Nat.ID: <b>{v.nationalId}</b></span>
-                      <span>Phone: <b>{v.phone}</b></span>
-                      <span>Days: <b>{v.totalDays}</b></span>
-                      <span>Hours: <b>{(v.totalMinutes / 60).toFixed(1)}</b></span>
+                      <span>الهوية: <b>{v.nationalId}</b></span>
+                      <span>الجوال: <b>{v.phone}</b></span>
+                      <span>الأيام: <b>{v.totalDays}</b></span>
+                      <span>الساعات: <b>{(v.totalMinutes / 60).toFixed(1)}</b></span>
                     </div>
                   </div>
                   <div className="pub-vcard-actions">
@@ -220,7 +225,7 @@ const PublicAttendanceReport = () => {
                         rel="noopener noreferrer"
                         className="pub-btn drive"
                       >
-                        📁 Google Drive
+                        فتح مجلد Drive
                       </a>
                     )}
                     <a
@@ -229,7 +234,7 @@ const PublicAttendanceReport = () => {
                       rel="noopener noreferrer"
                       className="pub-btn brand"
                     >
-                      عرض التقرير الفردي ↗
+                      عرض التقرير الفردي
                     </a>
                   </div>
                 </div>
@@ -271,8 +276,8 @@ const PublicAttendanceReport = () => {
         )}
 
         <div className="pub-footer">
-          <span>© {new Date().getFullYear()} FABLAB SAHSA</span>
-          <span>تم التحديث: {state.data?.generatedAt ? new Date(state.data.generatedAt).toLocaleString('ar-SA') : '—'}</span>
+          <span>© {new Date().getFullYear()} فاب لاب الأحساء</span>
+          <span>آخر تحديث: {state.data?.generatedAt ? new Date(state.data.generatedAt).toLocaleString('ar-SA') : '—'}</span>
         </div>
       </div>
     </div>

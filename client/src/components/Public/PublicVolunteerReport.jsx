@@ -3,7 +3,12 @@ import { useParams } from 'react-router-dom';
 import axios from 'axios';
 import './Public.css';
 
-const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
+// Match the app-wide api.js logic — relative `/api` in production so the
+// public page works when served from https://fablabsahsa.com, dev-only
+// localhost fallback otherwise.
+const API_URL = process.env.NODE_ENV === 'production'
+  ? '/api'
+  : (process.env.REACT_APP_API_URL || 'http://localhost:5000/api');
 
 // Arabic day-of-week names (Sunday-indexed to match server working days)
 const AR_DAYS = ['الأحد', 'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'];
@@ -129,15 +134,15 @@ const PublicVolunteerReport = () => {
         <div className="pub-brand">
           <div className="pub-brand-mark">FL</div>
           <div className="pub-brand-text">
-            <b>FABLAB SAHSA</b>
-            <span>Volunteer Report</span>
+            <b>فاب لاب الأحساء</b>
+            <span>تقرير متطوع</span>
           </div>
         </div>
 
         <div className="pub-header">
           <div className="pub-header-top">
             <div>
-              <div className="pub-kicker">Volunteer / تقرير متطوع</div>
+              <div className="pub-kicker">تقرير متطوع</div>
               <h1 className="pub-title">{v.name}</h1>
               {v.summerProgram && (
                 <div className="pub-subtitle">
@@ -158,20 +163,20 @@ const PublicVolunteerReport = () => {
 
           <div className="pub-info-grid">
             <div className="pub-info">
-              <div className="pub-info-label">Full Name</div>
+              <div className="pub-info-label">الاسم الكامل</div>
               <div className="pub-info-value text">{v.name}</div>
             </div>
             <div className="pub-info">
-              <div className="pub-info-label">National ID</div>
+              <div className="pub-info-label">رقم الهوية</div>
               <div className="pub-info-value">{v.nationalId}</div>
             </div>
             <div className="pub-info">
-              <div className="pub-info-label">Phone</div>
+              <div className="pub-info-label">رقم الجوال</div>
               <div className="pub-info-value">{v.phone}</div>
             </div>
             {v.email && (
               <div className="pub-info">
-                <div className="pub-info-label">Email</div>
+                <div className="pub-info-label">البريد الإلكتروني</div>
                 <div className="pub-info-value">{v.email}</div>
               </div>
             )}
@@ -204,20 +209,20 @@ const PublicVolunteerReport = () => {
         {stats && (
           <div className="pub-stats">
             <div className="pub-stat brand">
-              <div className="pub-stat-label">Total Days</div>
+              <div className="pub-stat-label">إجمالي الأيام</div>
               <div className="pub-stat-value">{stats.totalDays}</div>
             </div>
             <div className="pub-stat cyan">
-              <div className="pub-stat-label">Total Hours</div>
+              <div className="pub-stat-label">إجمالي الساعات</div>
               <div className="pub-stat-value">{stats.totalHours}</div>
             </div>
             <div className="pub-stat amber">
-              <div className="pub-stat-label">Open Sessions</div>
+              <div className="pub-stat-label">جلسات مفتوحة</div>
               <div className="pub-stat-value">{stats.openDays}</div>
             </div>
             <div className="pub-stat mint">
-              <div className="pub-stat-label">Last Visit</div>
-              <div className="pub-stat-value" style={{ fontSize: 16, marginTop: 12 }}>
+              <div className="pub-stat-label">آخر زيارة</div>
+              <div className="pub-stat-value" style={{ fontSize: 15, marginTop: 10 }}>
                 {stats.lastVisit ? fmtDate(stats.lastVisit) : '—'}
               </div>
             </div>
@@ -227,11 +232,11 @@ const PublicVolunteerReport = () => {
         <div className="pub-panel">
           <div className="pub-panel-title">
             <h3>سجل الحضور</h3>
-            <span className="pub-panel-hint">{att.length} record{att.length === 1 ? '' : 's'}</span>
+            <span className="pub-panel-hint">{att.length} {att.length === 1 ? 'سجل' : 'سجلات'}</span>
           </div>
 
           {att.length === 0 ? (
-            <div className="pub-cell-empty" style={{ padding: '32px', textAlign: 'center' }}>
+            <div className="pub-cell-empty" style={{ padding: '24px', textAlign: 'center' }}>
               لا توجد سجلات حضور بعد.
             </div>
           ) : (
@@ -266,7 +271,7 @@ const PublicVolunteerReport = () => {
         </div>
 
         <div className="pub-footer">
-          <span>© {new Date().getFullYear()} FABLAB SAHSA</span>
+          <span>© {new Date().getFullYear()} فاب لاب الأحساء</span>
           <span>fablabsahsa.com</span>
         </div>
       </div>
