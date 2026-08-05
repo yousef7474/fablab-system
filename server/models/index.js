@@ -501,6 +501,12 @@ const syncDatabase = async () => {
         `ALTER TABLE volunteers ADD COLUMN IF NOT EXISTS "shareToken" UUID`
       );
       await sequelize.query(
+        `ALTER TABLE volunteers ADD COLUMN IF NOT EXISTS "shareFromDate" DATE`
+      );
+      await sequelize.query(
+        `ALTER TABLE volunteers ADD COLUMN IF NOT EXISTS "shareToDate" DATE`
+      );
+      await sequelize.query(
         `UPDATE volunteers SET "shareToken" = gen_random_uuid() WHERE "shareToken" IS NULL`
       );
       // Best-effort — index/constraint may already exist from a prior boot.

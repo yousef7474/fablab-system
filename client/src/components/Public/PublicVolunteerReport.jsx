@@ -129,6 +129,7 @@ const PublicVolunteerReport = () => {
 
   const v = state.data.volunteer;
   const att = state.data.attendance || [];
+  const range = state.data.shareRange || {};
   const today = todayISO();
 
   return (
@@ -155,6 +156,15 @@ const PublicVolunteerReport = () => {
                   >
                     {v.summerProgram.name}
                   </span>
+                </div>
+              )}
+              {(range.from || range.to) && (
+                <div className="pub-period-line">
+                  <span className="pub-period-icon">📅</span>
+                  {'الفترة: '}
+                  <b dir="ltr">{range.from || '…'}</b>
+                  <span> → </span>
+                  <b dir="ltr">{range.to || '…'}</b>
                 </div>
               )}
             </div>
@@ -241,7 +251,7 @@ const PublicVolunteerReport = () => {
                 <button
                   type="button"
                   className="pub-btn brand"
-                  onClick={() => exportVolunteerReport(v, att)}
+                  onClick={() => exportVolunteerReport(v, att, range)}
                   title="تحميل ملف Excel يحتوي على جميع البيانات"
                 >
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">

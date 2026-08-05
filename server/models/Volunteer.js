@@ -64,6 +64,20 @@ const Volunteer = sequelize.define('Volunteer', {
     type: DataTypes.BOOLEAN,
     defaultValue: false,
     allowNull: false
+  },
+  // Optional attendance window shown on the public share page. If left
+  // NULL, the page falls back to the linked summer program's start/end
+  // dates; if there's no program either, all attendance is shown.
+  // Admin sets these when the volunteer was already in the system and
+  // only a subset of their history (e.g. a specific program run) should
+  // be visible to the external reviewer.
+  shareFromDate: {
+    type: DataTypes.DATEONLY,
+    allowNull: true
+  },
+  shareToDate: {
+    type: DataTypes.DATEONLY,
+    allowNull: true
   }
 }, {
   tableName: 'volunteers',

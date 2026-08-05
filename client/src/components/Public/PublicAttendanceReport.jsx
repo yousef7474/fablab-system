@@ -233,6 +233,13 @@ const PublicAttendanceReport = () => {
                       <span>الجوال: <b>{v.phone}</b></span>
                       <span>الأيام: <b>{v.totalDays}</b></span>
                       <span>الساعات: <b>{(v.totalMinutes / 60).toFixed(1)}</b></span>
+                      {(v.shareRange?.from || v.shareRange?.to) && (
+                        <span>
+                          الفترة: <b dir="ltr">{v.shareRange.from || '…'}</b>
+                          <span> → </span>
+                          <b dir="ltr">{v.shareRange.to || '…'}</b>
+                        </span>
+                      )}
                     </div>
                   </div>
                   <div className="pub-vcard-actions">
@@ -249,7 +256,7 @@ const PublicAttendanceReport = () => {
                     <button
                       type="button"
                       className="pub-btn"
-                      onClick={() => exportVolunteerReport(v, v.attendance || [])}
+                      onClick={() => exportVolunteerReport(v, v.attendance || [], v.shareRange)}
                       title="تحميل ملف Excel لهذا المتطوع"
                     >
                       تحميل Excel

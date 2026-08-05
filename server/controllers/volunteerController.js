@@ -1001,11 +1001,12 @@ exports.exportAttendance = async (req, res) => {
 
 // ============== VOLUNTEER PUBLIC SHARE (admin side) ==============
 
-// PATCH /volunteers/:id/share — body { shareEnabled?, driveUrl? }
+// PATCH /volunteers/:id/share — body { shareEnabled?, driveUrl?,
+// shareFromDate?, shareToDate? }. Nulls / empty strings clear the field.
 exports.updateVolunteerShare = async (req, res) => {
   try {
     const { id } = req.params;
-    const { shareEnabled, driveUrl } = req.body || {};
+    const { shareEnabled, driveUrl, shareFromDate, shareToDate } = req.body || {};
 
     const volunteer = await Volunteer.findByPk(id);
     if (!volunteer) return res.status(404).json({ message: 'Volunteer not found' });
@@ -1015,6 +1016,12 @@ exports.updateVolunteerShare = async (req, res) => {
     if (driveUrl !== undefined) {
       const trimmed = String(driveUrl || '').trim();
       patch.driveUrl = trimmed || null;
+    }
+    if (shareFromDate !== undefined) {
+      patch.shareFromDate = shareFromDate ? String(shareFromDate) : null;
+    }
+    if (shareToDate !== undefined) {
+      patch.shareToDate = shareToDate ? String(shareToDate) : null;
     }
 
     if (Object.keys(patch).length === 0) {
@@ -1032,7 +1039,9 @@ exports.updateVolunteerShare = async (req, res) => {
       volunteerId: volunteer.volunteerId,
       shareEnabled: volunteer.shareEnabled,
       driveUrl: volunteer.driveUrl,
-      shareToken: volunteer.shareToken
+      shareToken: volunteer.shareToken,
+      shareFromDate: volunteer.shareFromDate,
+      shareToDate: volunteer.shareToDate
     });
   } catch (err) {
     console.error('Volunteer updateVolunteerShare error:', err);
@@ -1095,6 +1104,25 @@ exports.rotateMasterShareToken = async (req, res) => {
 
 const _UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
+// Normalize a DATEONLY (which sequelize may return as a Date or a
+// 'YYYY-MM-DD' string depending on driver) to a plain 'YYYY-MM-DD'.
+const _isoDate = (v) => {
+  if (!v) return null;
+  if (typeof v === 'string') return v.slice(0, 10);
+  if (v instanceof Date && !isNaN(v.getTime())) return v.toISOString().slice(0, 10);
+  return null;
+};
+
+// Resolve the effective attendance window for a volunteer's public share.
+// Priority: explicit shareFromDate/shareToDate → linked summer program's
+// startDate/endDate → unbounded (return nulls).
+const _resolveShareRange = (volunteer) => {
+  const prog = volunteer.summerProgram;
+  const from = _isoDate(volunteer.shareFromDate) || _isoDate(prog?.startDate);
+  const to = _isoDate(volunteer.shareToDate) || _isoDate(prog?.endDate);
+  return { from, to };
+};
+
 const _shapeAttendance = (record) => {
   const inAt = record.checkInAt ? new Date(record.checkInAt) : null;
   const outAt = record.checkOutAt ? new Date(record.checkOutAt) : null;
@@ -1123,7 +1151,7 @@ exports.publicGetVolunteerByToken = async (req, res) => {
           model: SummerProgram,
           as: 'summerProgram',
           required: false,
-          attributes: ['programId', 'name', 'color', 'fablabSection']
+          attributes: ['programId', 'name', 'color', 'fablabSection', 'startDate', 'endDate']
         }
       ]
     });
@@ -1131,8 +1159,17 @@ exports.publicGetVolunteerByToken = async (req, res) => {
       return res.status(404).json({ message: 'Not found or sharing disabled' });
     }
 
+    // Effective attendance window: explicit override → linked program's
+    // dates → unbounded. Applied as a WHERE on the attendance query so
+    // the reviewer only sees hours from the relevant volunteering period.
+    const range = _resolveShareRange(volunteer);
+    const attWhere = { volunteerId: volunteer.volunteerId };
+    if (range.from && range.to) attWhere.date = { [Op.between]: [range.from, range.to] };
+    else if (range.from) attWhere.date = { [Op.gte]: range.from };
+    else if (range.to) attWhere.date = { [Op.lte]: range.to };
+
     const attendance = await VolunteerAttendance.findAll({
-      where: { volunteerId: volunteer.volunteerId },
+      where: attWhere,
       order: [['date', 'DESC'], ['checkInAt', 'DESC']]
     });
 
@@ -1149,10 +1186,13 @@ exports.publicGetVolunteerByToken = async (req, res) => {
               programId: volunteer.summerProgram.programId,
               name: volunteer.summerProgram.name,
               color: volunteer.summerProgram.color,
-              fablabSection: volunteer.summerProgram.fablabSection
+              fablabSection: volunteer.summerProgram.fablabSection,
+              startDate: _isoDate(volunteer.summerProgram.startDate),
+              endDate: _isoDate(volunteer.summerProgram.endDate)
             }
           : null
       },
+      shareRange: range,
       attendance: attendance.map(_shapeAttendance)
     });
   } catch (err) {
@@ -1187,14 +1227,24 @@ exports.publicGetMasterReport = async (req, res) => {
           model: SummerProgram,
           as: 'summerProgram',
           required: false,
-          attributes: ['programId', 'name', 'color', 'fablabSection']
+          attributes: ['programId', 'name', 'color', 'fablabSection', 'startDate', 'endDate']
         }
       ],
       order: [['name', 'ASC']]
     });
 
     const shaped = volunteers.map(v => {
+      const range = _resolveShareRange(v);
+      const inRange = (isoDate) => {
+        if (!isoDate) return false;
+        const d = _isoDate(isoDate);
+        if (range.from && d < range.from) return false;
+        if (range.to && d > range.to) return false;
+        return true;
+      };
+
       const att = (v.attendance || [])
+        .filter(r => inRange(r.date))
         .slice()
         .sort((a, b) => (a.date < b.date ? 1 : -1))
         .map(_shapeAttendance);
@@ -1211,9 +1261,12 @@ exports.publicGetMasterReport = async (req, res) => {
               programId: v.summerProgram.programId,
               name: v.summerProgram.name,
               color: v.summerProgram.color,
-              fablabSection: v.summerProgram.fablabSection
+              fablabSection: v.summerProgram.fablabSection,
+              startDate: _isoDate(v.summerProgram.startDate),
+              endDate: _isoDate(v.summerProgram.endDate)
             }
           : null,
+        shareRange: range,
         totalDays: att.filter(r => r.checkInAt).length,
         totalMinutes,
         attendance: att

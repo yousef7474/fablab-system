@@ -52,7 +52,7 @@ const downloadTsv = (text, filename) => {
  * Export a single volunteer's profile + attendance history.
  * Two "sections" in one file: header key-values, then attendance table.
  */
-export const exportVolunteerReport = (volunteer, attendance) => {
+export const exportVolunteerReport = (volunteer, attendance, range) => {
   const lines = [];
 
   // --- Info block ---
@@ -63,6 +63,9 @@ export const exportVolunteerReport = (volunteer, attendance) => {
   if (volunteer.email) lines.push(['البريد الإلكتروني', cell(volunteer.email)].join('\t'));
   if (volunteer.summerProgram?.name) {
     lines.push(['البرنامج', cell(volunteer.summerProgram.name)].join('\t'));
+  }
+  if (range && (range.from || range.to)) {
+    lines.push(['الفترة', `${range.from || '…'} → ${range.to || '…'}`].join('\t'));
   }
   if (volunteer.driveUrl) {
     lines.push(['مجلد Google Drive', cell(volunteer.driveUrl)].join('\t'));
@@ -110,6 +113,8 @@ export const exportMasterReport = (volunteers) => {
     'رقم الهوية',
     'رقم الجوال',
     'البرنامج',
+    'الفترة من',
+    'الفترة إلى',
     'مجلد Drive',
     'التاريخ',
     'اليوم',
@@ -121,10 +126,13 @@ export const exportMasterReport = (volunteers) => {
 
   for (const v of volunteers) {
     const att = v.attendance || [];
+    const from = v.shareRange?.from || '';
+    const to = v.shareRange?.to || '';
     if (att.length === 0) {
       lines.push([
         cell(v.name), cell(v.nationalId), cell(v.phone),
-        cell(v.summerProgram?.name || ''), cell(v.driveUrl || ''),
+        cell(v.summerProgram?.name || ''), from, to,
+        cell(v.driveUrl || ''),
         '', '', '', '', '', ''
       ].join('\t'));
       continue;
@@ -135,6 +143,7 @@ export const exportMasterReport = (volunteers) => {
         cell(v.nationalId),
         cell(v.phone),
         cell(v.summerProgram?.name || ''),
+        from, to,
         cell(v.driveUrl || ''),
         cell(r.date),
         dayOfWeek(r.date),

@@ -83,6 +83,24 @@
 }
 .pub-subtitle { color: var(--pub-muted); margin-top: 8px; font-size: 14px; }
 
+.pub-period-line {
+  display: inline-flex; align-items: center; gap: 6px; flex-wrap: wrap;
+  margin-top: 10px;
+  padding: 6px 12px;
+  border-radius: 8px;
+  background: var(--pub-brand-soft);
+  border: 1px solid #fecaca;
+  color: #b91c1c;
+  font-size: 13px;
+  font-weight: 600;
+}
+.pub-period-line b {
+  color: inherit;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+.pub-period-icon { font-size: 14px; }
+
 .pub-badge {
   display: inline-flex; align-items: center; gap: 6px;
   padding: 6px 12px;

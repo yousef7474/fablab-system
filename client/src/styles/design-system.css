@@ -2475,3 +2475,67 @@ html:not([data-theme]) .emp-calendar-grid {
 }
 .mshare-btn:disabled { opacity: 0.4; cursor: not-allowed; }
 .mshare-btn.ghost { background: transparent; }
+
+/* Volunteer share — period range controls */
+.vshare-period-chip {
+  display: inline-flex; align-items: center; gap: 4px; flex-wrap: wrap;
+  padding: 6px 10px;
+  border-radius: 8px;
+  background: rgba(59, 130, 246, 0.08);
+  border: 1px dashed rgba(59, 130, 246, 0.3);
+  color: #1d4ed8;
+  font-size: 11px;
+  font-weight: 600;
+}
+.vshare-period-chip b {
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  color: inherit;
+  font-weight: 700;
+}
+.vshare-period-icon { font-size: 12px; }
+.vshare-period-source {
+  color: var(--text-secondary, #64748b);
+  font-weight: 500;
+}
+.vshare-period-edit {
+  display: flex; flex-direction: column; gap: 8px;
+  padding-top: 4px;
+}
+.vshare-period-row {
+  display: flex; gap: 10px; flex-wrap: wrap;
+}
+.vshare-period-row label {
+  display: flex; flex-direction: column; gap: 4px;
+  font-size: 11px; font-weight: 700;
+  color: var(--text-secondary, #64748b);
+}
+.vshare-date-input {
+  padding: 6px 10px;
+  border-radius: 8px;
+  border: 1px solid var(--border-color, rgba(255,255,255,0.14));
+  background: var(--card-bg, rgba(255,255,255,0.03));
+  color: var(--text-primary, #f2f4fa);
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  font-size: 12px;
+  min-width: 140px;
+}
+.vshare-date-input:focus {
+  outline: none;
+  border-color: rgba(238, 35, 41, 0.55);
+}
+.vshare-period-hint {
+  display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+  font-size: 11px;
+  color: var(--text-secondary, #64748b);
+}
+.vshare-period-hint b {
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  color: var(--text-primary, #f2f4fa);
+}
+.vshare-period-fill {
+  padding: 3px 8px !important;
+  font-size: 10px !important;
+}
+.vshare-period-actions {
+  display: flex; gap: 6px; flex-wrap: wrap;
+}
