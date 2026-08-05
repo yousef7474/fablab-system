@@ -2,6 +2,7 @@ import React, { useEffect, useState, useMemo } from 'react';
 import { useParams } from 'react-router-dom';
 import axios from 'axios';
 import './Public.css';
+import { exportVolunteerReport } from './excelExport';
 
 // Match the app-wide api.js logic — relative `/api` in production so the
 // public page works when served from https://fablabsahsa.com, dev-only
@@ -232,7 +233,24 @@ const PublicVolunteerReport = () => {
         <div className="pub-panel">
           <div className="pub-panel-title">
             <h3>سجل الحضور</h3>
-            <span className="pub-panel-hint">{att.length} {att.length === 1 ? 'سجل' : 'سجلات'}</span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+              <span className="pub-panel-hint">{att.length} {att.length === 1 ? 'سجل' : 'سجلات'}</span>
+              {att.length > 0 && (
+                <button
+                  type="button"
+                  className="pub-btn brand"
+                  onClick={() => exportVolunteerReport(v, att)}
+                  title="تحميل ملف Excel يحتوي على جميع البيانات"
+                >
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                    <polyline points="7 10 12 15 17 10" />
+                    <line x1="12" y1="15" x2="12" y2="3" />
+                  </svg>
+                  تحميل Excel
+                </button>
+              )}
+            </div>
           </div>
 
           {att.length === 0 ? (

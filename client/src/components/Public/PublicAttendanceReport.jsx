@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import axios from 'axios';
 import './Public.css';
+import { exportMasterReport, exportVolunteerReport } from './excelExport';
 
 // Match the app-wide api.js logic — relative `/api` in production so the
 // public page works when served from https://fablabsahsa.com, dev-only
@@ -150,10 +151,27 @@ const PublicAttendanceReport = () => {
                 جميع المتطوعين المفعّل لهم المشاركة، مع بياناتهم وسجل حضورهم اليومي.
               </div>
             </div>
-            <span className="pub-badge">
-              <span className="pub-badge-dot" />
-              مباشر
-            </span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+              <span className="pub-badge">
+                <span className="pub-badge-dot" />
+                مباشر
+              </span>
+              {state.data?.volunteers?.length > 0 && (
+                <button
+                  type="button"
+                  className="pub-btn brand"
+                  onClick={() => exportMasterReport(state.data.volunteers)}
+                  title="تحميل جميع البيانات في ملف Excel واحد"
+                >
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                    <polyline points="7 10 12 15 17 10" />
+                    <line x1="12" y1="15" x2="12" y2="3" />
+                  </svg>
+                  تحميل Excel للجميع
+                </button>
+              )}
+            </div>
           </div>
         </div>
 
@@ -228,6 +246,14 @@ const PublicAttendanceReport = () => {
                         فتح مجلد Drive
                       </a>
                     )}
+                    <button
+                      type="button"
+                      className="pub-btn"
+                      onClick={() => exportVolunteerReport(v, v.attendance || [])}
+                      title="تحميل ملف Excel لهذا المتطوع"
+                    >
+                      تحميل Excel
+                    </button>
                     <a
                       href={`/public/volunteer/${v.shareToken}`}
                       target="_blank"
