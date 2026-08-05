@@ -909,14 +909,53 @@ exports.listVolunteerAttendance = async (req, res) => {
   }
 };
 
-// PATCH /volunteers/attendance/:id/checkout — clears only checkOutAt
+// PATCH /volunteers/attendance/:id/checkout
+// - body empty (or { checkOutAt: null/'' }) → clears the check-out
+// - body { checkOutAt: 'HH:MM' | 'HH:MM:SS' } → combines with the
+//   record's date in Riyadh time (+03:00) and stores as a full timestamp
+// - body { checkOutAt: '<ISO>' } → uses the timestamp as-is
+//
+// Used both by the "clear" button and the "sign check-out for a day
+// the volunteer forgot" admin flow.
 exports.clearCheckout = async (req, res) => {
   try {
     const rec = await VolunteerAttendance.findByPk(req.params.id);
     if (!rec) return res.status(404).json({ message: 'Record not found' });
-    if (!rec.checkOutAt) return res.status(400).json({ message: 'No check-out to clear' });
-    await rec.update({ checkOutAt: null });
-    res.json({ message: 'Check-out cleared', record: rec });
+
+    const raw = req.body?.checkOutAt;
+    const hasValue = raw !== undefined && raw !== null && String(raw).trim() !== '';
+
+    if (!hasValue) {
+      if (!rec.checkOutAt) return res.status(400).json({ message: 'No check-out to clear' });
+      await rec.update({ checkOutAt: null });
+      return res.json({ message: 'Check-out cleared', record: rec });
+    }
+
+    const str = String(raw).trim();
+    let newTime;
+    if (/^\d{2}:\d{2}(:\d{2})?$/.test(str)) {
+      // HH:MM(:SS) — anchor to the record's date, Riyadh timezone
+      const timeStr = str.length === 5 ? `${str}:00` : str;
+      newTime = new Date(`${rec.date}T${timeStr}+03:00`);
+    } else {
+      newTime = new Date(str);
+    }
+    if (isNaN(newTime.getTime())) {
+      return res.status(400).json({
+        message: 'Invalid time format',
+        messageAr: 'صيغة الوقت غير صالحة'
+      });
+    }
+
+    if (rec.checkInAt && newTime < new Date(rec.checkInAt)) {
+      return res.status(400).json({
+        message: 'Check-out cannot be before check-in',
+        messageAr: 'وقت الخروج يجب أن يكون بعد وقت الدخول'
+      });
+    }
+
+    await rec.update({ checkOutAt: newTime });
+    res.json({ message: 'Check-out saved', record: rec });
   } catch (err) {
     console.error('Volunteer clearCheckout error:', err);
     res.status(500).json({ message: 'Server error', error: err.message });

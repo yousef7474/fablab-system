@@ -212,6 +212,57 @@ const VolunteerManagement = () => {
     }
   };
 
+  // Inline editor state for the log-modal "manually enter check-out"
+  // flow — used when a volunteer forgot to check out on a past day.
+  const [editingCheckoutId, setEditingCheckoutId] = useState(null);
+  const [editingCheckoutValue, setEditingCheckoutValue] = useState('');
+  const [savingCheckout, setSavingCheckout] = useState(false);
+
+  const beginEditCheckout = (rec) => {
+    setEditingCheckoutId(rec.attendanceId);
+    // Pre-fill with existing time if editing, else default to something
+    // sensible (check-in + 1 hour, or 18:00 if there's no check-in).
+    if (rec.checkOutAt) {
+      const d = new Date(rec.checkOutAt);
+      setEditingCheckoutValue(`${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`);
+    } else if (rec.checkInAt) {
+      const d = new Date(new Date(rec.checkInAt).getTime() + 60 * 60 * 1000);
+      setEditingCheckoutValue(`${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`);
+    } else {
+      setEditingCheckoutValue('18:00');
+    }
+  };
+
+  const cancelEditCheckout = () => {
+    setEditingCheckoutId(null);
+    setEditingCheckoutValue('');
+  };
+
+  const saveCheckoutTime = async (rec) => {
+    if (!editingCheckoutValue) {
+      return toast.error(isRTL ? 'أدخل وقت الخروج' : 'Enter a check-out time');
+    }
+    setSavingCheckout(true);
+    try {
+      const { data } = await api.patch(
+        `/volunteers/attendance/${rec.attendanceId}/checkout`,
+        { checkOutAt: editingCheckoutValue }
+      );
+      const updated = data?.record || { ...rec, checkOutAt: new Date().toISOString() };
+      setLogRecords(prev => prev.map(r =>
+        r.attendanceId === rec.attendanceId ? { ...r, checkOutAt: updated.checkOutAt } : r
+      ));
+      toast.success(isRTL ? 'تم تسجيل وقت الخروج' : 'Check-out saved');
+      cancelEditCheckout();
+    } catch (err) {
+      console.error(err);
+      const msg = err?.response?.data?.messageAr || err?.response?.data?.message;
+      toast.error(msg || (isRTL ? 'فشل حفظ وقت الخروج' : 'Failed to save check-out'));
+    } finally {
+      setSavingCheckout(false);
+    }
+  };
+
   const clearVolCheckoutRecord = async (rec) => {
     if (!window.confirm(
       isRTL
@@ -2853,11 +2904,47 @@ const VolunteerManagement = () => {
                     {logRecords.map(r => {
                       const dur = durationMin(r);
                       const completed = r.checkInAt && r.checkOutAt;
+                      const isEditing = editingCheckoutId === r.attendanceId;
                       return (
                         <tr key={r.attendanceId} className={completed ? 'is-completed' : 'is-partial'}>
                           <td className="mono">{r.date}</td>
                           <td className="mono">{fmtHms(r.checkInAt)}</td>
-                          <td className="mono">{fmtHms(r.checkOutAt)}</td>
+                          <td className="mono">
+                            {isEditing ? (
+                              <div style={{ display: 'flex', gap: 4, alignItems: 'center', justifyContent: 'center' }}>
+                                <input
+                                  type="time"
+                                  value={editingCheckoutValue}
+                                  onChange={(e) => setEditingCheckoutValue(e.target.value)}
+                                  autoFocus
+                                  step="60"
+                                  onKeyDown={(e) => {
+                                    if (e.key === 'Enter') saveCheckoutTime(r);
+                                    if (e.key === 'Escape') cancelEditCheckout();
+                                  }}
+                                  style={{
+                                    padding: '4px 6px', borderRadius: 6,
+                                    border: '1.5px solid #16a34a',
+                                    fontFamily: 'inherit', fontSize: '0.85rem',
+                                    width: 100
+                                  }}
+                                />
+                                <button
+                                  onClick={() => saveCheckoutTime(r)}
+                                  disabled={savingCheckout}
+                                  className="mawhba-btn-small"
+                                  style={{ background: '#16a34a', color: '#fff', borderColor: '#16a34a' }}
+                                  title={isRTL ? 'حفظ' : 'Save'}
+                                >{savingCheckout ? '…' : '✓'}</button>
+                                <button
+                                  onClick={cancelEditCheckout}
+                                  disabled={savingCheckout}
+                                  className="mawhba-btn-small"
+                                  title={isRTL ? 'إلغاء' : 'Cancel'}
+                                >×</button>
+                              </div>
+                            ) : fmtHms(r.checkOutAt)}
+                          </td>
                           <td className="mono">{dur != null ? `${Math.floor(dur / 60)}h ${dur % 60}m` : '—'}</td>
                           <td>
                             <span className={`mawhba-log-pill ${completed ? 'ok' : 'partial'}`}>
@@ -2866,18 +2953,34 @@ const VolunteerManagement = () => {
                           </td>
                           <td>
                             <div className="mawhba-log-row-actions">
-                              {r.checkOutAt && (
+                              {!isEditing && r.checkInAt && (
+                                <button
+                                  className="mawhba-btn-small"
+                                  onClick={() => beginEditCheckout(r)}
+                                  title={r.checkOutAt
+                                    ? (isRTL ? 'تعديل وقت الخروج' : 'Edit check-out time')
+                                    : (isRTL ? 'إضافة وقت الخروج يدوياً' : 'Manually add check-out time')}
+                                  style={{
+                                    background: r.checkOutAt ? '#eef2ff' : '#dcfce7',
+                                    color: r.checkOutAt ? '#4338ca' : '#166534',
+                                    borderColor: r.checkOutAt ? '#c7d2fe' : '#86efac'
+                                  }}
+                                >✎</button>
+                              )}
+                              {r.checkOutAt && !isEditing && (
                                 <button
                                   className="mawhba-btn-small mawhba-btn-warn"
                                   onClick={() => clearVolCheckoutRecord(r)}
                                   title={isRTL ? 'حذف تسجيل الخروج فقط' : 'Clear check-out only'}
                                 >↩</button>
                               )}
-                              <button
-                                className="mawhba-btn-small mawhba-btn-del"
-                                onClick={() => deleteVolAttendanceRecord(r)}
-                                title={isRTL ? 'حذف السجل بالكامل' : 'Delete entire record'}
-                              >×</button>
+                              {!isEditing && (
+                                <button
+                                  className="mawhba-btn-small mawhba-btn-del"
+                                  onClick={() => deleteVolAttendanceRecord(r)}
+                                  title={isRTL ? 'حذف السجل بالكامل' : 'Delete entire record'}
+                                >×</button>
+                              )}
                             </div>
                           </td>
                         </tr>
