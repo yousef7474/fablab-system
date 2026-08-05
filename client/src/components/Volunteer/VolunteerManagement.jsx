@@ -2921,6 +2921,135 @@ const VolunteerManagement = () => {
           <div className="mawhba-modal mawhba-log-modal" onClick={(e) => e.stopPropagation()}>
             <h3>📅 {isRTL ? `سجل حضور المتطوع — ${logVolunteer.name}` : `Attendance History — ${logVolunteer.name}`}</h3>
 
+            {/* Volunteer profile block — mirrors the public share page so
+                the admin sees the same identifying info + program +
+                period + Drive link that the external reviewer sees. */}
+            {(() => {
+              const prog = logVolunteer.summerProgram;
+              const progColor = prog?.color || null;
+              const isoDate = (v) => v ? String(v).slice(0, 10) : '';
+              const effFrom = isoDate(logVolunteer.shareFromDate) || isoDate(prog?.startDate);
+              const effTo = isoDate(logVolunteer.shareToDate) || isoDate(prog?.endDate);
+              const publicUrl = logVolunteer.shareEnabled && logVolunteer.shareToken
+                ? `${window.location.origin}/public/volunteer/${logVolunteer.shareToken}`
+                : null;
+              return (
+                <div style={{
+                  background: '#f8fafc',
+                  border: '1px solid #e2e8f0',
+                  borderRadius: 10,
+                  padding: '12px 14px',
+                  margin: '8px 0 12px',
+                  fontSize: 13
+                }}>
+                  {/* Row 1 — name + program chip + public link */}
+                  <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 10, marginBottom: 10 }}>
+                    <strong style={{ fontSize: 15, color: '#0f172a' }}>{logVolunteer.name}</strong>
+                    {prog && (
+                      <span style={{
+                        padding: '3px 10px', borderRadius: 999,
+                        fontSize: 11, fontWeight: 700,
+                        background: progColor ? progColor + '18' : '#e2e8f0',
+                        color: progColor || '#475569',
+                        border: `1px solid ${progColor ? progColor + '55' : '#cbd5e1'}`
+                      }}>
+                        {prog.name}
+                      </span>
+                    )}
+                    {publicUrl && (
+                      <a
+                        href={publicUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        style={{
+                          marginInlineStart: 'auto',
+                          padding: '4px 10px', borderRadius: 6,
+                          background: '#EE2329', color: '#fff',
+                          fontSize: 11, fontWeight: 700,
+                          textDecoration: 'none'
+                        }}
+                        title={isRTL ? 'فتح التقرير العام كما يراه المراجع' : 'Open the public report'}
+                      >
+                        {isRTL ? '↗ التقرير العام' : '↗ Public report'}
+                      </a>
+                    )}
+                  </div>
+
+                  {/* Row 2 — identity grid */}
+                  <div style={{
+                    display: 'grid',
+                    gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))',
+                    gap: 10
+                  }}>
+                    <div>
+                      <div style={{ fontSize: 10, color: '#64748b', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+                        {isRTL ? 'رقم الهوية' : 'National ID'}
+                      </div>
+                      <div style={{ fontFamily: 'JetBrains Mono, ui-monospace, monospace', color: '#0f172a', marginTop: 2 }} dir="ltr">
+                        {logVolunteer.nationalId || '—'}
+                      </div>
+                    </div>
+                    <div>
+                      <div style={{ fontSize: 10, color: '#64748b', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+                        {isRTL ? 'الجوال' : 'Phone'}
+                      </div>
+                      <div style={{ fontFamily: 'JetBrains Mono, ui-monospace, monospace', color: '#0f172a', marginTop: 2 }} dir="ltr">
+                        {logVolunteer.phone || '—'}
+                      </div>
+                    </div>
+                    {logVolunteer.email && (
+                      <div>
+                        <div style={{ fontSize: 10, color: '#64748b', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+                          {isRTL ? 'البريد' : 'Email'}
+                        </div>
+                        <div style={{ fontFamily: 'JetBrains Mono, ui-monospace, monospace', color: '#0f172a', marginTop: 2, wordBreak: 'break-all' }} dir="ltr">
+                          {logVolunteer.email}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Row 3 — period + drive URL */}
+                  {(effFrom || effTo || logVolunteer.driveUrl) && (
+                    <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginTop: 10 }}>
+                      {(effFrom || effTo) && (
+                        <span style={{
+                          display: 'inline-flex', alignItems: 'center', gap: 6,
+                          padding: '4px 10px', borderRadius: 6,
+                          background: '#fef2f2', color: '#b91c1c',
+                          border: '1px solid #fecaca',
+                          fontSize: 12, fontWeight: 600
+                        }}>
+                          <span>📅</span>
+                          {isRTL ? 'الفترة:' : 'Period:'}
+                          <b dir="ltr">{effFrom || '…'}</b>
+                          →
+                          <b dir="ltr">{effTo || '…'}</b>
+                        </span>
+                      )}
+                      {logVolunteer.driveUrl && (
+                        <a
+                          href={logVolunteer.driveUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          style={{
+                            display: 'inline-flex', alignItems: 'center', gap: 6,
+                            padding: '4px 10px', borderRadius: 6,
+                            background: '#eff6ff', color: '#1d4ed8',
+                            border: '1px solid #bfdbfe',
+                            fontSize: 12, fontWeight: 700,
+                            textDecoration: 'none'
+                          }}
+                        >
+                          📁 {isRTL ? 'فتح مجلد Drive' : 'Open Drive folder'}
+                        </a>
+                      )}
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
+
             <div className="mawhba-log-summary">
               <div>
                 <span>{isRTL ? 'إجمالي الأيام' : 'Total days'}</span>
