@@ -33,16 +33,21 @@ const _normalizeSaudiPhone = (raw) => {
   return `966${digits}`;
 };
 
+// Plain-text template with no emoji. Some WhatsApp clients garble
+// supplementary-plane emoji (👋 🙌) when opened via a wa.me deep link,
+// showing them as U+FFFD replacement chars in the received message.
+// The admin can still add emojis manually via WhatsApp's own picker
+// after opening the link — the textarea is editable.
 const _buildVolunteerMessage = (volunteer) => {
   const first = String(volunteer.name || '').split(/\s+/)[0] || volunteer.name || '';
   return (
-`مرحباً ${first} 👋
+`مرحباً ${first}،
 
 هذا رابط مجلد Google Drive الخاص بك في فاب لاب الأحساء لرفع محتوى تطوعك:
 
 ${volunteer.driveUrl}
 
-شكراً لتطوعك معنا 🙌`
+شكراً لتطوعك معنا.`
   );
 };
 
