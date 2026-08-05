@@ -47,6 +47,8 @@ const _buildVolunteerMessage = (volunteer) => {
 
 ${volunteer.driveUrl}
 
+ملاحظة: يمكنك رفع الصور والملفات بسهولة عبر تطبيق Google Drive على هاتفك.
+
 شكراً لتطوعك معنا.`
   );
 };
