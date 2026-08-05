@@ -32,7 +32,7 @@ exports.getAllVolunteers = async (req, res) => {
         {
           model: VolunteerOpportunity,
           as: 'opportunities',
-          attributes: ['opportunityId', 'title', 'description', 'startDate', 'endDate', 'totalHours', 'hoursAdjustment', 'attendanceDays', 'rating', 'status']
+          attributes: ['opportunityId', 'title', 'description', 'startDate', 'endDate', 'totalHours', 'hoursAdjustment', 'attendanceDays', 'dailyStartTime', 'dailyEndTime', 'rating', 'status']
         },
         {
           model: VolunteerRating,
@@ -299,6 +299,8 @@ exports.createOpportunity = async (req, res) => {
       startDate,
       endDate,
       dailyHours,
+      dailyStartTime,
+      dailyEndTime,
       rating,
       ratingCriteria,
       ratingNotes
@@ -334,6 +336,8 @@ exports.createOpportunity = async (req, res) => {
       startDate,
       endDate,
       dailyHours: hours,
+      dailyStartTime: dailyStartTime || null,
+      dailyEndTime: dailyEndTime || null,
       totalHours,
       rating: rating || 0,
       ratingCriteria: ratingCriteria || null,
@@ -368,6 +372,8 @@ exports.updateOpportunity = async (req, res) => {
       startDate,
       endDate,
       dailyHours,
+      dailyStartTime,
+      dailyEndTime,
       attendanceDays,
       rating,
       ratingCriteria,
@@ -399,6 +405,8 @@ exports.updateOpportunity = async (req, res) => {
       startDate: newStartDate,
       endDate: newEndDate,
       dailyHours: newDailyHours,
+      dailyStartTime: dailyStartTime !== undefined ? (dailyStartTime || null) : opportunity.dailyStartTime,
+      dailyEndTime: dailyEndTime !== undefined ? (dailyEndTime || null) : opportunity.dailyEndTime,
       totalHours,
       attendanceDays: attendanceDays !== undefined ? attendanceDays : opportunity.attendanceDays,
       rating: rating !== undefined ? rating : opportunity.rating,
@@ -785,6 +793,109 @@ exports.getVolunteerCardsBulk = async (req, res) => {
   }
 };
 
+// ============== ATTENDANCE AUTO-MARK HELPERS ==============
+
+// Parse 'HH:MM' → minutes-from-midnight (integer). Null if malformed.
+const _hhmmToMin = (str) => {
+  if (!str || typeof str !== 'string') return null;
+  const m = /^(\d{1,2}):(\d{2})$/.exec(str.trim());
+  if (!m) return null;
+  const h = parseInt(m[1], 10);
+  const min = parseInt(m[2], 10);
+  if (h < 0 || h > 23 || min < 0 || min > 59) return null;
+  return h * 60 + min;
+};
+
+// Given a stored timestamp and the record's date (YYYY-MM-DD), return
+// the Riyadh-local minute-of-day. This lets us compare against a chance
+// window that's expressed in the same local terms without pulling in a
+// date library.
+const _tsToRiyadhMinOfDay = (iso) => {
+  if (!iso) return null;
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return null;
+  const parts = new Intl.DateTimeFormat('en-GB', {
+    timeZone: 'Asia/Riyadh', hour12: false,
+    hour: '2-digit', minute: '2-digit'
+  }).formatToParts(d);
+  const h = parseInt(parts.find(p => p.type === 'hour').value, 10);
+  const m = parseInt(parts.find(p => p.type === 'minute').value, 10);
+  return h * 60 + m;
+};
+
+// For a volunteer's freshly-completed check-in/check-out on `date`,
+// find every active opportunity whose date-range covers today AND has
+// both dailyStartTime/dailyEndTime set. If the visit window overlaps
+// the chance window, upsert an attendanceDays entry with the actual
+// overlap hours. Manual entries (existing `attended: true` for today)
+// are never overwritten.
+//
+// Returns: [{ opportunityId, title, hours }, ...] describing what was
+// auto-marked, so the client can show a toast.
+const _autoMarkOpportunitiesForCheckout = async (volunteerId, date, checkInAt, checkOutAt) => {
+  const visitFrom = _tsToRiyadhMinOfDay(checkInAt);
+  const visitTo = _tsToRiyadhMinOfDay(checkOutAt);
+  if (visitFrom == null || visitTo == null || visitTo <= visitFrom) return [];
+
+  // Fetch candidate opportunities in a single query.
+  const opps = await VolunteerOpportunity.findAll({
+    where: {
+      volunteerId,
+      status: 'active',
+      startDate: { [Op.lte]: date },
+      endDate: { [Op.gte]: date },
+      dailyStartTime: { [Op.ne]: null },
+      dailyEndTime: { [Op.ne]: null }
+    }
+  });
+
+  const marked = [];
+  for (const opp of opps) {
+    const chanceFrom = _hhmmToMin(opp.dailyStartTime);
+    const chanceTo = _hhmmToMin(opp.dailyEndTime);
+    if (chanceFrom == null || chanceTo == null || chanceTo <= chanceFrom) continue;
+
+    const overlapStart = Math.max(visitFrom, chanceFrom);
+    const overlapEnd = Math.min(visitTo, chanceTo);
+    const overlapMin = overlapEnd - overlapStart;
+    if (overlapMin <= 0) continue;
+
+    // Read existing attendanceDays and check for a same-day entry.
+    const existing = Array.isArray(opp.attendanceDays) ? [...opp.attendanceDays] : [];
+    const sameDayIdx = existing.findIndex(d => _isoDate(d?.date) === date);
+    if (sameDayIdx !== -1 && existing[sameDayIdx].attended) {
+      // Never overwrite a manual "attended" mark.
+      continue;
+    }
+
+    const overlapHours = Math.round((overlapMin / 60) * 100) / 100; // 2-decimal
+    const entry = {
+      date,
+      attended: true,
+      hours: overlapHours,
+      task: 'حضور تلقائي بالمسح'
+    };
+    if (sameDayIdx === -1) {
+      existing.push(entry);
+    } else {
+      existing[sameDayIdx] = { ...existing[sameDayIdx], ...entry };
+    }
+
+    // Sequelize JSON dirty-tracking workaround.
+    opp.setDataValue('attendanceDays', existing);
+    opp.changed('attendanceDays', true);
+    await opp.save({ fields: ['attendanceDays'] });
+
+    marked.push({
+      opportunityId: opp.opportunityId,
+      title: opp.title,
+      hours: overlapHours
+    });
+  }
+
+  return marked;
+};
+
 // ============== VOLUNTEER ATTENDANCE ==============
 
 // POST /volunteers/attendance/scan — body { code } — accepts nationalId scan
@@ -833,7 +944,21 @@ exports.scanAttendance = async (req, res) => {
       });
     }
 
-    res.json({ action, volunteer, record });
+    // On check-out, auto-mark attendance in any of the volunteer's
+    // active opportunities whose daily time window overlaps their
+    // visit today.
+    let autoMarked = [];
+    if (action === 'checkout') {
+      try {
+        autoMarked = await _autoMarkOpportunitiesForCheckout(
+          volunteer.volunteerId, record.date, record.checkInAt, record.checkOutAt
+        );
+      } catch (autoErr) {
+        console.error('auto-mark opportunities error:', autoErr);
+      }
+    }
+
+    res.json({ action, volunteer, record, autoMarked });
   } catch (err) {
     console.error('Volunteer scanAttendance error:', err);
     res.status(500).json({ message: 'Server error', error: err.message });

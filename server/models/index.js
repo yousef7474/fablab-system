@@ -486,6 +486,22 @@ const syncDatabase = async () => {
       }
     }
 
+    // Volunteer opportunities gain an optional daily time window so
+    // the QR check-out can auto-mark attendance across a volunteer's
+    // multiple chances on the same day.
+    try {
+      await sequelize.query(
+        `ALTER TABLE volunteer_opportunities ADD COLUMN IF NOT EXISTS "dailyStartTime" VARCHAR(5)`
+      );
+      await sequelize.query(
+        `ALTER TABLE volunteer_opportunities ADD COLUMN IF NOT EXISTS "dailyEndTime" VARCHAR(5)`
+      );
+    } catch (migrationError) {
+      if (!/does not exist/i.test(migrationError.message)) {
+        console.log('volunteer_opportunities.dailyTime migration note:', migrationError.message);
+      }
+    }
+
     // Public share fields on volunteers. Sequelize's sync({ alter: true })
     // won't add a UNIQUE UUID column reliably, so we add the columns
     // ourselves and backfill shareToken for any existing rows before

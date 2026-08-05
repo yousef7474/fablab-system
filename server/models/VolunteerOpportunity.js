@@ -33,6 +33,19 @@ const VolunteerOpportunity = sequelize.define('VolunteerOpportunity', {
     defaultValue: 8,
     comment: 'Hours worked per day'
   },
+  // Optional daily time window (HH:MM, 24h) for the chance. When both
+  // are set, the QR check-out auto-marks the volunteer present in this
+  // chance if their [checkInAt, checkOutAt] overlaps the window, with
+  // hours = actual overlap duration. Old chances without times remain
+  // fully manual — no change in behaviour.
+  dailyStartTime: {
+    type: DataTypes.STRING(5),
+    allowNull: true
+  },
+  dailyEndTime: {
+    type: DataTypes.STRING(5),
+    allowNull: true
+  },
   totalHours: {
     type: DataTypes.FLOAT,
     allowNull: true,

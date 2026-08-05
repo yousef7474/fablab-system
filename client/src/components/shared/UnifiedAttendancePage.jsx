@@ -214,7 +214,23 @@ const UnifiedAttendancePage = ({ open, onClose, isRTL }) => {
       };
       showResult(payload);
       if (kind === 'checkin') setSessionStats(p => ({ ...p, checkins: p.checkins + 1 }));
-      else if (kind === 'checkout') setSessionStats(p => ({ ...p, checkouts: p.checkouts + 1 }));
+      else if (kind === 'checkout') {
+        setSessionStats(p => ({ ...p, checkouts: p.checkouts + 1 }));
+        // If the server auto-marked any opportunities based on the
+        // visit's time overlap with their daily windows, surface the
+        // list as a toast so the door operator sees what happened.
+        if (Array.isArray(data.autoMarked) && data.autoMarked.length > 0) {
+          const list = data.autoMarked
+            .map(m => `${m.title} (${m.hours}h)`)
+            .join('، ');
+          toast.success(
+            isRTL
+              ? `تم تسجيل حضور تلقائي في: ${list}`
+              : `Auto-marked in: ${list}`,
+            { autoClose: 6000 }
+          );
+        }
+      }
       setRecentScans(prev => [payload, ...prev].slice(0, 30));
       hydrate();
       return;

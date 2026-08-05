@@ -75,6 +75,8 @@ const VolunteerManagement = () => {
     startDate: '',
     endDate: '',
     dailyHours: 8,
+    dailyStartTime: '',
+    dailyEndTime: '',
     rating: 0,
     ratingCriteria: '',
     ratingNotes: ''
@@ -132,6 +134,8 @@ const VolunteerManagement = () => {
       startDate: '',
       endDate: '',
       dailyHours: 8,
+      dailyStartTime: '',
+      dailyEndTime: '',
       rating: 0,
       ratingCriteria: '',
       ratingNotes: ''
@@ -1788,7 +1792,28 @@ const VolunteerManagement = () => {
                         </strong>
                         {volunteer.opportunities.slice(0, 2).map(opp => (
                           <div key={opp.opportunityId} className="opportunity-item">
-                            <span className="opportunity-title">{opp.title}</span>
+                            <span className="opportunity-title">
+                              {opp.title}
+                              {opp.dailyStartTime && opp.dailyEndTime && (
+                                <span
+                                  style={{
+                                    marginInlineStart: 6,
+                                    fontSize: 10,
+                                    fontWeight: 700,
+                                    color: '#0369a1',
+                                    background: '#e0f2fe',
+                                    border: '1px solid #7dd3fc',
+                                    padding: '1px 6px',
+                                    borderRadius: 6,
+                                    fontFamily: 'JetBrains Mono, ui-monospace, monospace'
+                                  }}
+                                  title={isRTL ? 'وقت يومي للتسجيل التلقائي' : 'Daily window for auto-marking'}
+                                  dir="ltr"
+                                >
+                                  {opp.dailyStartTime}–{opp.dailyEndTime}
+                                </span>
+                              )}
+                            </span>
                             <span className="opportunity-hours">{opp.totalHours}h</span>
                           </div>
                         ))}
@@ -2300,6 +2325,43 @@ const VolunteerManagement = () => {
                   {/* Daily hours are no longer asked upfront — hours are
                       logged per day in the volunteer profile after the
                       opportunity is created. */}
+
+                  {/* Optional daily time window. When both are set, the
+                      QR check-out auto-marks the volunteer present in
+                      this chance if their check-in/out overlaps this
+                      window — enabling one volunteer × multiple chances
+                      per day off a single scan. Left blank → chance
+                      stays fully manual (old behaviour). */}
+                  <div style={{ marginTop: 14, display: 'grid', gridTemplateColumns: '1fr auto 1fr', gap: 10, alignItems: 'center' }}>
+                    <div className="period-box start">
+                      <span className="period-label">
+                        {isRTL ? 'وقت البداية (اختياري)' : 'Start Time (optional)'}
+                      </span>
+                      <input
+                        type="time"
+                        value={opportunityForm.dailyStartTime}
+                        onChange={(e) => setOpportunityForm(prev => ({ ...prev, dailyStartTime: e.target.value }))}
+                        className="modern-input-field"
+                      />
+                    </div>
+                    <div style={{ color: '#94a3b8', fontWeight: 700 }}>→</div>
+                    <div className="period-box end">
+                      <span className="period-label">
+                        {isRTL ? 'وقت النهاية (اختياري)' : 'End Time (optional)'}
+                      </span>
+                      <input
+                        type="time"
+                        value={opportunityForm.dailyEndTime}
+                        onChange={(e) => setOpportunityForm(prev => ({ ...prev, dailyEndTime: e.target.value }))}
+                        className="modern-input-field"
+                      />
+                    </div>
+                  </div>
+                  <p style={{ fontSize: '0.78rem', color: '#64748b', margin: '8px 0 0' }}>
+                    {isRTL
+                      ? 'إذا حُدد الوقت اليومي، سيتم تسجيل حضور المتطوع تلقائياً في هذه الفرصة عند مسح QR الخروج إذا تداخل وقت زيارته مع هذه الفترة.'
+                      : 'When both times are set, QR check-out auto-marks the volunteer present in this chance if their visit overlaps the window.'}
+                  </p>
                 </div>
 
                 <div className="info-note-modern">
