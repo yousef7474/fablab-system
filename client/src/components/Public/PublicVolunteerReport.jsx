@@ -42,13 +42,15 @@ const fmtDate = (isoDate) => {
   }).format(new Date(isoDate + 'T00:00:00'));
 };
 
+// Duration in H:MM clock form (e.g. 2:30 → 2 hours 30 min). Matches the
+// check-in / check-out columns visually and avoids bidi weirdness that
+// happens when mixing Arabic letters (س / د) with digits inside RTL
+// table cells.
 const fmtDuration = (minutes) => {
   if (minutes === null || minutes === undefined || minutes < 0) return '—';
   const h = Math.floor(minutes / 60);
   const m = minutes % 60;
-  if (h === 0) return `${m}د`;
-  if (m === 0) return `${h}س`;
-  return `${h}س ${m}د`;
+  return `${h}:${String(m).padStart(2, '0')}`;
 };
 
 const dayOfWeekAr = (isoDate) => {
@@ -266,7 +268,7 @@ const PublicVolunteerReport = () => {
                     <th>التاريخ</th>
                     <th>وقت الدخول</th>
                     <th>وقت الخروج</th>
-                    <th>المدة</th>
+                    <th>المدة (س:د)</th>
                   </tr>
                 </thead>
                 <tbody>

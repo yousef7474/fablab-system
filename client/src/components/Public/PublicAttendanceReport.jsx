@@ -34,13 +34,13 @@ const fmtTime = (iso) => {
   }).format(d);
 };
 
+// Duration in H:MM clock form. Matches the check-in / check-out columns
+// visually and avoids bidi mess when mixing Arabic letters with digits.
 const fmtDuration = (minutes) => {
   if (minutes === null || minutes === undefined || minutes < 0) return '—';
   const h = Math.floor(minutes / 60);
   const m = minutes % 60;
-  if (h === 0) return `${m}د`;
-  if (m === 0) return `${h}س`;
-  return `${h}س ${m}د`;
+  return `${h}:${String(m).padStart(2, '0')}`;
 };
 
 const dayOfWeekAr = (isoDate) => {
@@ -275,7 +275,7 @@ const PublicAttendanceReport = () => {
                             <th>التاريخ</th>
                             <th>وقت الدخول</th>
                             <th>وقت الخروج</th>
-                            <th>المدة</th>
+                            <th>المدة (س:د)</th>
                           </tr>
                         </thead>
                         <tbody>
