@@ -245,7 +245,169 @@ const TrainerAssistantManagement = () => {
     }
   };
 
-  // Print QR ID card in a new window — landscape credit-card sized.
+  // Volunteer-style ID card — 72×102mm, orange header/gradient, photo
+  // (or initial), type badge, info rows, QR, dual-logo footer. Same
+  // shape and CSS keys as VolunteerManagement.buildVolunteerCardHTML
+  // so the visual identity across scannable IDs stays consistent.
+  const buildTrainerCardStyles = () => `
+    @page { size: A4 portrait; margin: 10mm 8mm; }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body { font-family: 'Segoe UI', Tahoma, Arial, sans-serif; background: #f1f5f9; }
+    body { padding: 6mm 0; }
+    .print-note {
+      font-size: 12px; color: #475569; background: white;
+      border: 1px dashed #cbd5e1; border-radius: 8px;
+      padding: 8px 14px; margin: 0 auto 8mm; text-align: center; max-width: 120mm;
+    }
+    .page {
+      display: grid;
+      grid-template-columns: 72mm 72mm;
+      grid-auto-rows: 102mm;
+      column-gap: 6mm; row-gap: 6mm;
+      justify-content: center; align-content: start;
+      width: 100%;
+    }
+    .page + .page { page-break-before: always; }
+    .id-card {
+      width: 72mm; height: 102mm;
+      background: linear-gradient(180deg, #ffffff 0%, #fff7ed 100%);
+      border: 0.45mm dashed #475569;
+      overflow: hidden; position: relative;
+      display: flex; flex-direction: column;
+      color: #1a1a2e; box-sizing: border-box;
+    }
+    .card-header {
+      background: linear-gradient(135deg, #f97316 0%, #ea580c 100%);
+      padding: 2.5mm 3.5mm; text-align: center;
+    }
+    .card-title { color: white; font-size: 9pt; font-weight: 700; line-height: 1.15; }
+    .card-subtitle { color: rgba(255,255,255,0.88); font-size: 6.5pt; margin-top: 0.6mm; }
+    .card-body {
+      flex: 1; padding: 2.5mm 3mm 0;
+      display: flex; flex-direction: column; align-items: center; gap: 1.4mm;
+    }
+    .user-photo {
+      width: 22mm; height: 26mm;
+      background: linear-gradient(135deg, #fed7aa, #fdba74);
+      border-radius: 2mm; display: flex; align-items: center; justify-content: center;
+      color: #ea580c; font-weight: bold;
+      border: 0.6mm solid #f97316;
+      overflow: hidden; flex-shrink: 0;
+    }
+    .user-photo .initials { font-size: 18pt; font-weight: bold; color: #ea580c; }
+    .user-name {
+      font-size: 10.5pt; font-weight: 800; color: #1a1a2e;
+      text-align: center; line-height: 1.15; max-height: 10mm; overflow: hidden;
+      display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+    }
+    .user-type-badge {
+      display: inline-block;
+      background: linear-gradient(135deg, #f97316, #ea580c);
+      color: white; font-size: 7.5pt; padding: 0.6mm 3.5mm;
+      border-radius: 999px; font-weight: 700;
+    }
+    .info-section { width: 100%; display: flex; flex-direction: column; gap: 0.6mm; margin-top: 1mm; }
+    .info-row {
+      display: flex; justify-content: space-between; align-items: center;
+      font-size: 7.2pt; padding: 0.6mm 0; border-bottom: 0.2mm dotted #d4d4d8;
+    }
+    .info-row:last-child { border-bottom: none; }
+    .info-label { font-weight: 700; color: #555; }
+    .info-value {
+      color: #1a1a2e; font-weight: 600; text-align: ${isRTL ? 'left' : 'right'};
+      max-width: 60%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    }
+    .card-qr { display: flex; align-items: center; justify-content: center; margin-top: 1mm; }
+    .card-qr img {
+      width: 26mm; height: 26mm; background: white; padding: 0.8mm;
+      border-radius: 1mm; box-shadow: 0 0 0 0.3mm #f97316 inset;
+    }
+    .card-footer {
+      background: #ffffff; padding: 1.5mm 3mm;
+      display: flex; align-items: center; justify-content: space-between;
+      border-top: 0.3mm solid #e0e0e0;
+    }
+    .card-footer .logo { height: 7mm; width: auto; flex-shrink: 0; }
+    .card-footer .qr-label { font-size: 6pt; color: #ea580c; font-weight: 700; }
+    .decorative-stripe {
+      position: absolute; top: 40%; ${isRTL ? 'right' : 'left'}: 0;
+      width: 1mm; height: 25%;
+      background: linear-gradient(to bottom, transparent, #f97316, transparent);
+    }
+    @media print {
+      html, body { background: white; padding: 0; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+      body { padding: 0; }
+      .print-note { display: none; }
+      .id-card { box-shadow: none; break-inside: avoid; }
+    }
+  `;
+
+  const buildTrainerCardHTML = (trainer, qrDataUrl) => {
+    const na = isRTL ? 'غير محدد' : 'N/A';
+    const name = trainer.name || na;
+    const qrImg = qrDataUrl ? `<img src="${qrDataUrl}" alt="QR" />` : '';
+    return `
+      <div class="id-card">
+        <div class="card-header">
+          <div class="card-title">${isRTL ? 'بطاقة مدرب معاون فاب لاب الأحساء' : 'FABLAB Al-Ahsa Assistant Trainer Card'}</div>
+          <div class="card-subtitle">${isRTL ? 'مؤسسة عبدالمنعم الراشد الإنسانية' : 'Abdulmonem Al-Rashed Foundation'}</div>
+        </div>
+        <div class="card-body">
+          <div class="user-photo">
+            <span class="initials">${name.charAt(0).toUpperCase()}</span>
+          </div>
+          <div class="user-name">${name}</div>
+          <div class="user-type-badge">${isRTL ? 'مدرب معاون' : 'Assistant Trainer'}</div>
+          <div class="info-section">
+            <div class="info-row">
+              <span class="info-label">${isRTL ? 'رقم الهوية' : 'National ID'}</span>
+              <span class="info-value">${trainer.nationalId || na}</span>
+            </div>
+            <div class="info-row">
+              <span class="info-label">${isRTL ? 'الهاتف' : 'Phone'}</span>
+              <span class="info-value">${trainer.phone || na}</span>
+            </div>
+          </div>
+          <div class="card-qr">${qrImg}</div>
+        </div>
+        <div class="decorative-stripe"></div>
+        <div class="card-footer">
+          <img src="/found.png" alt="Foundation" class="logo">
+          <span class="qr-label">${isRTL ? 'رمز الحضور' : 'Attendance QR'}</span>
+          <img src="/fablab.png" alt="FABLAB" class="logo">
+        </div>
+      </div>
+    `;
+  };
+
+  const openTrainerPrintWindow = (cardsHtml) => {
+    const win = window.open('', '_blank');
+    if (!win) {
+      toast.error(isRTL ? 'فشل فتح نافذة الطباعة' : 'Popup blocked');
+      return;
+    }
+    const html = `
+      <!DOCTYPE html>
+      <html dir="${isRTL ? 'rtl' : 'ltr'}" lang="${isRTL ? 'ar' : 'en'}">
+      <head>
+        <meta charset="UTF-8">
+        <title>${isRTL ? 'بطاقات المدربين المعاونين' : 'Assistant Trainer ID Cards'}</title>
+        <style>${buildTrainerCardStyles()}</style>
+      </head>
+      <body>
+        <div class="print-note">
+          ${isRTL ? 'حجم البطاقة 72×102 ملم — اقطع حسب الخط المتقطع' : 'Card size 72×102 mm — cut along the dashed line'}
+        </div>
+        ${cardsHtml}
+      </body>
+      </html>
+    `;
+    win.document.write(html);
+    win.document.close();
+    win.focus();
+    setTimeout(() => { win.print(); }, 400);
+  };
+
   const printTrainerCard = async (t) => {
     if (!t.nationalId) {
       return toast.error(isRTL ? 'يجب إضافة رقم الهوية أولاً لتوليد QR' : 'Add national ID first');
@@ -254,36 +416,11 @@ const TrainerAssistantManagement = () => {
       const { data } = await api.get(`/trainer-assistants/${t.trainerId}/card`);
       const qrDataUrl = data?.qrDataUrl;
       if (!qrDataUrl) throw new Error('No QR');
-      const win = window.open('', '_blank', 'width=700,height=520');
-      if (!win) return toast.error(isRTL ? 'فشل فتح النافذة' : 'Popup blocked');
-      win.document.write(`<!doctype html><html dir="rtl"><head><meta charset="utf-8"><title>${t.name} — بطاقة الحضور</title>
-<style>
-  @page { size: A6 landscape; margin: 6mm; }
-  * { box-sizing: border-box; }
-  body { margin: 0; font-family: 'Segoe UI', Tahoma, Arial, sans-serif; background: #f1f5f9; padding: 20px; }
-  .card { width: 340px; padding: 18px; margin: 0 auto; border-radius: 14px; background: linear-gradient(135deg, #065f46, #10b981); color: #fff; box-shadow: 0 8px 24px rgba(0,0,0,0.15); }
-  .brand { font-size: 12px; letter-spacing: 1px; text-transform: uppercase; opacity: 0.85; }
-  .role { font-size: 11px; margin-top: 3px; opacity: 0.9; }
-  h1 { margin: 10px 0 4px; font-size: 22px; }
-  .subtitle { font-size: 13px; opacity: 0.9; margin: 0 0 10px; direction: ltr; }
-  .qr-wrap { background: #fff; padding: 10px; border-radius: 10px; display: grid; place-items: center; margin: 8px 0; }
-  .qr-wrap img { width: 200px; height: 200px; display: block; }
-  .hint { font-size: 11px; text-align: center; opacity: 0.9; margin-top: 4px; }
-  .actions { text-align: center; margin-top: 14px; }
-  button { padding: 8px 18px; border-radius: 8px; border: 0; background: #065f46; color: #fff; font-weight: 700; cursor: pointer; }
-  @media print { .actions, body { background: #fff; padding: 0; } .actions { display: none; } .card { box-shadow: none; } }
-</style></head><body>
-<div class="card">
-  <div class="brand">FABLAB SAHSA</div>
-  <div class="role">مدرب معاون / Assistant Trainer</div>
-  <h1>${t.name}</h1>
-  <p class="subtitle">${t.nationalId}</p>
-  <div class="qr-wrap"><img src="${qrDataUrl}" alt="QR"/></div>
-  <div class="hint">امسح الباركود عند الدخول والخروج</div>
-</div>
-<div class="actions"><button onclick="window.print()">طباعة / Print</button></div>
-</body></html>`);
-      win.document.close();
+      // Wrap in the same .page grid as volunteer cards so the 72×102mm
+      // sizing + margins line up if user prints. A single card is fine
+      // in the grid — it just sits top-left.
+      const cardHtml = `<div class="page">${buildTrainerCardHTML(t, qrDataUrl)}</div>`;
+      openTrainerPrintWindow(cardHtml);
     } catch (err) {
       console.error(err);
       toast.error(isRTL ? 'فشل توليد البطاقة' : 'Failed to generate card');
