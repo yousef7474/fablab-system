@@ -224,10 +224,33 @@ const VolunteerManagement = () => {
 
   // Manual-add attendance state — for days the volunteer never scanned
   // at all. The panel toggles from an "add manual record" button at
-  // the top of the log modal.
+  // the top of the log modal. `opportunityId` isn't stored on the
+  // attendance row (the QR log is chance-agnostic — chances are
+  // derived from date + time overlap), but picking a chance here
+  // auto-fills the times so admin doesn't have to remember them.
   const [showAddManual, setShowAddManual] = useState(false);
-  const [manualForm, setManualForm] = useState({ date: '', checkInAt: '', checkOutAt: '' });
+  const [manualForm, setManualForm] = useState({
+    opportunityId: '', date: '', checkInAt: '', checkOutAt: ''
+  });
   const [savingManual, setSavingManual] = useState(false);
+
+  const pickManualOpportunity = (opportunityId) => {
+    if (!opportunityId) {
+      setManualForm(f => ({ ...f, opportunityId: '' }));
+      return;
+    }
+    const opp = (logVolunteer?.opportunities || []).find(o => o.opportunityId === opportunityId);
+    if (!opp) return;
+    setManualForm(f => ({
+      opportunityId,
+      // If today falls inside the chance, keep it; else snap to the chance's start.
+      date: (f.date && f.date >= opp.startDate && f.date <= opp.endDate)
+        ? f.date
+        : opp.startDate,
+      checkInAt: opp.dailyStartTime || f.checkInAt || '',
+      checkOutAt: opp.dailyEndTime || f.checkOutAt || ''
+    }));
+  };
 
   const submitManualAttendance = async () => {
     if (!logVolunteer) return;
@@ -252,7 +275,7 @@ const VolunteerManagement = () => {
         return next;
       });
       toast.success(isRTL ? 'تمت إضافة السجل يدوياً' : 'Manual record added');
-      setManualForm({ date: '', checkInAt: '', checkOutAt: '' });
+      setManualForm({ opportunityId: '', date: '', checkInAt: '', checkOutAt: '' });
       setShowAddManual(false);
     } catch (err) {
       console.error(err);
@@ -3099,7 +3122,7 @@ const VolunteerManagement = () => {
                 <button
                   onClick={() => {
                     const today = new Date().toISOString().slice(0, 10);
-                    setManualForm({ date: today, checkInAt: '', checkOutAt: '' });
+                    setManualForm({ opportunityId: '', date: today, checkInAt: '', checkOutAt: '' });
                     setShowAddManual(true);
                   }}
                   className="mawhba-btn-secondary"
@@ -3107,66 +3130,101 @@ const VolunteerManagement = () => {
                 >
                   + {isRTL ? 'إضافة سجل يدوي' : 'Add manual record'}
                 </button>
-              ) : (
-                <div style={{
-                  display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'end',
-                  padding: 10, borderRadius: 8,
-                  background: '#f0fdf4', border: '1.5px solid #86efac'
-                }}>
-                  <label style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 12 }}>
-                    <span style={{ fontWeight: 700, color: '#166534' }}>
-                      {isRTL ? 'التاريخ' : 'Date'}
-                    </span>
-                    <input
-                      type="date"
-                      value={manualForm.date}
-                      onChange={(e) => setManualForm(f => ({ ...f, date: e.target.value }))}
-                      style={{ padding: '6px 8px', borderRadius: 6, border: '1px solid #86efac' }}
-                    />
-                  </label>
-                  <label style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 12 }}>
-                    <span style={{ fontWeight: 700, color: '#166534' }}>
-                      {isRTL ? 'وقت الدخول' : 'Check-in'}
-                    </span>
-                    <input
-                      type="time"
-                      value={manualForm.checkInAt}
-                      onChange={(e) => setManualForm(f => ({ ...f, checkInAt: e.target.value }))}
-                      style={{ padding: '6px 8px', borderRadius: 6, border: '1px solid #86efac', width: 110 }}
-                    />
-                  </label>
-                  <label style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 12 }}>
-                    <span style={{ fontWeight: 700, color: '#166534' }}>
-                      {isRTL ? 'وقت الخروج' : 'Check-out'}
-                    </span>
-                    <input
-                      type="time"
-                      value={manualForm.checkOutAt}
-                      onChange={(e) => setManualForm(f => ({ ...f, checkOutAt: e.target.value }))}
-                      style={{ padding: '6px 8px', borderRadius: 6, border: '1px solid #86efac', width: 110 }}
-                    />
-                  </label>
-                  <button
-                    onClick={submitManualAttendance}
-                    disabled={savingManual}
-                    className="mawhba-btn-primary"
-                    style={{ background: '#16a34a', color: '#fff', borderColor: '#16a34a' }}
-                  >
-                    {savingManual ? '…' : (isRTL ? 'حفظ' : 'Save')}
-                  </button>
-                  <button
-                    onClick={() => setShowAddManual(false)}
-                    disabled={savingManual}
-                    className="mawhba-btn-secondary"
-                  >
-                    {isRTL ? 'إلغاء' : 'Cancel'}
-                  </button>
-                </div>
-              )}
+              ) : (() => {
+                const opps = logVolunteer?.opportunities || [];
+                const pickedOpp = opps.find(o => o.opportunityId === manualForm.opportunityId);
+                return (
+                  <div style={{
+                    display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'end',
+                    padding: 10, borderRadius: 8,
+                    background: '#f0fdf4', border: '1.5px solid #86efac',
+                    width: '100%'
+                  }}>
+                    <label style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 12, minWidth: 200, flex: '1 1 220px' }}>
+                      <span style={{ fontWeight: 700, color: '#166534' }}>
+                        {isRTL ? 'الفرصة التطوعية' : 'Volunteer chance'}
+                      </span>
+                      <select
+                        value={manualForm.opportunityId}
+                        onChange={(e) => pickManualOpportunity(e.target.value)}
+                        style={{ padding: '6px 8px', borderRadius: 6, border: '1px solid #86efac', fontFamily: 'inherit' }}
+                      >
+                        <option value="">
+                          {isRTL ? '— بدون فرصة محددة —' : '— No specific chance —'}
+                        </option>
+                        {opps.map(o => (
+                          <option key={o.opportunityId} value={o.opportunityId}>
+                            {o.title}
+                            {o.dailyStartTime && o.dailyEndTime
+                              ? ` (${o.dailyStartTime}–${o.dailyEndTime})`
+                              : ''}
+                          </option>
+                        ))}
+                      </select>
+                      {pickedOpp && (
+                        <span style={{ fontSize: 10, color: '#166534', fontWeight: 500 }}>
+                          {isRTL ? 'مدى الفرصة: ' : 'Range: '}
+                          <b dir="ltr">{pickedOpp.startDate}</b> → <b dir="ltr">{pickedOpp.endDate}</b>
+                        </span>
+                      )}
+                    </label>
+                    <label style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 12 }}>
+                      <span style={{ fontWeight: 700, color: '#166534' }}>
+                        {isRTL ? 'التاريخ' : 'Date'}
+                      </span>
+                      <input
+                        type="date"
+                        value={manualForm.date}
+                        min={pickedOpp?.startDate || undefined}
+                        max={pickedOpp?.endDate || undefined}
+                        onChange={(e) => setManualForm(f => ({ ...f, date: e.target.value }))}
+                        style={{ padding: '6px 8px', borderRadius: 6, border: '1px solid #86efac' }}
+                      />
+                    </label>
+                    <label style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 12 }}>
+                      <span style={{ fontWeight: 700, color: '#166534' }}>
+                        {isRTL ? 'وقت الدخول' : 'Check-in'}
+                      </span>
+                      <input
+                        type="time"
+                        value={manualForm.checkInAt}
+                        onChange={(e) => setManualForm(f => ({ ...f, checkInAt: e.target.value }))}
+                        style={{ padding: '6px 8px', borderRadius: 6, border: '1px solid #86efac', width: 110 }}
+                      />
+                    </label>
+                    <label style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 12 }}>
+                      <span style={{ fontWeight: 700, color: '#166534' }}>
+                        {isRTL ? 'وقت الخروج' : 'Check-out'}
+                      </span>
+                      <input
+                        type="time"
+                        value={manualForm.checkOutAt}
+                        onChange={(e) => setManualForm(f => ({ ...f, checkOutAt: e.target.value }))}
+                        style={{ padding: '6px 8px', borderRadius: 6, border: '1px solid #86efac', width: 110 }}
+                      />
+                    </label>
+                    <button
+                      onClick={submitManualAttendance}
+                      disabled={savingManual}
+                      className="mawhba-btn-primary"
+                      style={{ background: '#16a34a', color: '#fff', borderColor: '#16a34a' }}
+                    >
+                      {savingManual ? '…' : (isRTL ? 'حفظ' : 'Save')}
+                    </button>
+                    <button
+                      onClick={() => setShowAddManual(false)}
+                      disabled={savingManual}
+                      className="mawhba-btn-secondary"
+                    >
+                      {isRTL ? 'إلغاء' : 'Cancel'}
+                    </button>
+                  </div>
+                );
+              })()}
               <span style={{ fontSize: 12, color: '#64748b' }}>
                 {isRTL
-                  ? 'لتسجيل يوم لم يمسح فيه المتطوع الباركود. سيظهر في السجل مباشرةً.'
-                  : 'For days the volunteer never scanned. Appears in the log immediately.'}
+                  ? 'لتسجيل يوم لم يمسح فيه المتطوع الباركود. اختيار الفرصة يعبّئ الأوقات تلقائياً؛ يمكنك تركه فارغاً لسجل عام.'
+                  : 'For days the volunteer never scanned. Picking a chance auto-fills the times; leave blank for a general record.'}
               </span>
             </div>
 
