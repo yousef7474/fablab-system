@@ -1,4 +1,6 @@
-const { TrainerAssistant, TrainerAssignment } = require('../models');
+const { TrainerAssistant, TrainerAssignment, TrainerAssistantAttendance } = require('../models');
+const { Op } = require('sequelize');
+const QRCode = require('qrcode');
 const sgMail = require('@sendgrid/mail');
 
 if (process.env.SENDGRID_API_KEY) {
@@ -206,5 +208,299 @@ exports.deleteAssignment = async (req, res) => {
   } catch (err) {
     console.error('deleteAssignment:', err);
     res.status(500).json({ message: 'Server error' });
+  }
+};
+
+// ============== TRAINER ATTENDANCE ==============
+// Mirrors the volunteer attendance flow — QR log is the single
+// source of truth, admin can manually add / edit rows.
+
+const _todayStr = () => {
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Asia/Riyadh',
+    year: 'numeric', month: '2-digit', day: '2-digit'
+  }).formatToParts(new Date());
+  const y = parts.find(p => p.type === 'year').value;
+  const m = parts.find(p => p.type === 'month').value;
+  const d = parts.find(p => p.type === 'day').value;
+  return `${y}-${m}-${d}`;
+};
+
+const _makeQrDataUrl = async (payload) => {
+  return QRCode.toDataURL(String(payload), {
+    errorCorrectionLevel: 'M',
+    margin: 1,
+    scale: 8,
+    color: { dark: '#000000', light: '#FFFFFF' }
+  });
+};
+
+// POST /trainer-assistants/attendance/scan — body { code } — matches
+// against nationalId. Same 15-min re-scan guard as volunteers.
+exports.scanAttendance = async (req, res) => {
+  try {
+    const raw = String(req.body?.code || '').trim();
+    if (!raw) return res.status(400).json({ message: 'No code provided' });
+
+    const trainer = await TrainerAssistant.findOne({ where: { nationalId: raw } });
+    if (!trainer) {
+      return res.status(404).json({ message: 'No trainer matches this code', code: raw });
+    }
+
+    const date = _todayStr();
+    const now = new Date();
+    let record = await TrainerAssistantAttendance.findOne({
+      where: { trainerId: trainer.trainerId, date }
+    });
+
+    let action = null;
+    if (!record) {
+      record = await TrainerAssistantAttendance.create({
+        trainerId: trainer.trainerId,
+        date,
+        checkInAt: now
+      });
+      action = 'checkin';
+    } else if (!record.checkOutAt) {
+      const since = now.getTime() - new Date(record.checkInAt).getTime();
+      if (since < 15 * 60 * 1000) {
+        return res.json({
+          action: 'duplicate',
+          trainer,
+          record,
+          message: 'Already checked in — please wait at least 15 minutes before checking out'
+        });
+      }
+      await record.update({ checkOutAt: now });
+      action = 'checkout';
+    } else {
+      return res.json({
+        action: 'already_done',
+        trainer,
+        record,
+        message: 'Already checked in and out today'
+      });
+    }
+
+    res.json({ action, trainer, record });
+  } catch (err) {
+    console.error('Trainer scanAttendance error:', err);
+    res.status(500).json({ message: 'Server error', error: err.message });
+  }
+};
+
+// GET /trainer-assistants/attendance/today
+exports.todayAttendance = async (req, res) => {
+  try {
+    const date = _todayStr();
+    const records = await TrainerAssistantAttendance.findAll({
+      where: { date },
+      include: [{ model: TrainerAssistant, as: 'trainer', required: false }]
+    });
+    const events = [];
+    const list = [];
+    for (const r of records) {
+      const t = r.trainer || {};
+      const base = {
+        attendanceId: r.attendanceId,
+        trainerId: r.trainerId,
+        name: t.name || '',
+        phone: t.phone || ''
+      };
+      if (r.checkInAt) events.push({ ...base, kind: 'checkin', at: r.checkInAt });
+      if (r.checkOutAt) events.push({ ...base, kind: 'checkout', at: r.checkOutAt });
+      list.push({
+        ...base,
+        checkInAt: r.checkInAt,
+        checkOutAt: r.checkOutAt,
+        status: r.checkOutAt ? 'checked_out' : 'checked_in'
+      });
+    }
+    events.sort((a, b) => new Date(b.at) - new Date(a.at));
+    list.sort((a, b) => new Date(b.checkOutAt || b.checkInAt || 0) - new Date(a.checkOutAt || a.checkInAt || 0));
+    const checkins = events.filter(e => e.kind === 'checkin').length;
+    const checkouts = events.filter(e => e.kind === 'checkout').length;
+    res.json({ date, events, trainers: list, stats: { checkins, checkouts } });
+  } catch (err) {
+    console.error('Trainer todayAttendance error:', err);
+    res.status(500).json({ message: 'Server error', error: err.message });
+  }
+};
+
+// GET /trainer-assistants/:id/attendance
+exports.listAttendance = async (req, res) => {
+  try {
+    const records = await TrainerAssistantAttendance.findAll({
+      where: { trainerId: req.params.id },
+      order: [['date', 'DESC'], ['checkInAt', 'DESC']]
+    });
+    res.json(records);
+  } catch (err) {
+    console.error('Trainer listAttendance error:', err);
+    res.status(500).json({ message: 'Server error', error: err.message });
+  }
+};
+
+// POST /trainer-assistants/attendance — manual add. Body: { trainerId,
+// date, checkInAt?, checkOutAt? }. HH:MM anchored to date in Riyadh.
+exports.createManualAttendance = async (req, res) => {
+  try {
+    const { trainerId, date, checkInAt, checkOutAt } = req.body || {};
+    if (!trainerId || !date) {
+      return res.status(400).json({
+        message: 'trainerId and date are required',
+        messageAr: 'المدرب والتاريخ مطلوبان'
+      });
+    }
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(String(date))) {
+      return res.status(400).json({ message: 'Invalid date format' });
+    }
+    const trainer = await TrainerAssistant.findByPk(trainerId);
+    if (!trainer) return res.status(404).json({ message: 'Trainer not found' });
+
+    const existing = await TrainerAssistantAttendance.findOne({
+      where: { trainerId, date }
+    });
+    if (existing) {
+      return res.status(409).json({
+        message: 'Attendance for this date already exists — edit it instead',
+        messageAr: 'يوجد سجل حضور لهذا التاريخ — عدّله بدلاً من إنشاء جديد',
+        record: existing
+      });
+    }
+
+    const parseTime = (raw) => {
+      if (raw == null || raw === '') return null;
+      const str = String(raw).trim();
+      let t;
+      if (/^\d{2}:\d{2}(:\d{2})?$/.test(str)) {
+        const timeStr = str.length === 5 ? `${str}:00` : str;
+        t = new Date(`${date}T${timeStr}+03:00`);
+      } else {
+        t = new Date(str);
+      }
+      return isNaN(t.getTime()) ? undefined : t;
+    };
+
+    const inAt = parseTime(checkInAt);
+    const outAt = parseTime(checkOutAt);
+    if (inAt === undefined || outAt === undefined) {
+      return res.status(400).json({ message: 'Invalid time format', messageAr: 'صيغة الوقت غير صالحة' });
+    }
+    if (!inAt && !outAt) {
+      return res.status(400).json({
+        message: 'At least one of checkInAt / checkOutAt is required',
+        messageAr: 'يجب إدخال وقت الدخول أو الخروج على الأقل'
+      });
+    }
+    if (inAt && outAt && outAt < inAt) {
+      return res.status(400).json({
+        message: 'Check-out cannot be before check-in',
+        messageAr: 'وقت الخروج يجب أن يكون بعد وقت الدخول'
+      });
+    }
+
+    const record = await TrainerAssistantAttendance.create({
+      trainerId, date, checkInAt: inAt || null, checkOutAt: outAt || null
+    });
+    res.status(201).json({ message: 'Manual attendance created', record });
+  } catch (err) {
+    console.error('Trainer createManualAttendance error:', err);
+    res.status(500).json({ message: 'Server error', error: err.message });
+  }
+};
+
+// PATCH /trainer-assistants/attendance/:id/checkout — same body shape
+// as the volunteer variant: empty → clear, { checkOutAt: 'HH:MM' | ISO } → set.
+exports.setOrClearCheckout = async (req, res) => {
+  try {
+    const rec = await TrainerAssistantAttendance.findByPk(req.params.id);
+    if (!rec) return res.status(404).json({ message: 'Record not found' });
+
+    const raw = req.body?.checkOutAt;
+    const hasValue = raw !== undefined && raw !== null && String(raw).trim() !== '';
+
+    if (!hasValue) {
+      if (!rec.checkOutAt) return res.status(400).json({ message: 'No check-out to clear' });
+      await rec.update({ checkOutAt: null });
+      return res.json({ message: 'Check-out cleared', record: rec });
+    }
+
+    const str = String(raw).trim();
+    let newTime;
+    if (/^\d{2}:\d{2}(:\d{2})?$/.test(str)) {
+      const timeStr = str.length === 5 ? `${str}:00` : str;
+      newTime = new Date(`${rec.date}T${timeStr}+03:00`);
+    } else {
+      newTime = new Date(str);
+    }
+    if (isNaN(newTime.getTime())) {
+      return res.status(400).json({ message: 'Invalid time format', messageAr: 'صيغة الوقت غير صالحة' });
+    }
+    if (rec.checkInAt && newTime < new Date(rec.checkInAt)) {
+      return res.status(400).json({
+        message: 'Check-out cannot be before check-in',
+        messageAr: 'وقت الخروج يجب أن يكون بعد وقت الدخول'
+      });
+    }
+    await rec.update({ checkOutAt: newTime });
+    res.json({ message: 'Check-out saved', record: rec });
+  } catch (err) {
+    console.error('Trainer setOrClearCheckout error:', err);
+    res.status(500).json({ message: 'Server error', error: err.message });
+  }
+};
+
+// DELETE /trainer-assistants/attendance/:id
+exports.deleteAttendance = async (req, res) => {
+  try {
+    const rec = await TrainerAssistantAttendance.findByPk(req.params.id);
+    if (!rec) return res.status(404).json({ message: 'Record not found' });
+    await rec.destroy();
+    res.json({ message: 'Deleted' });
+  } catch (err) {
+    console.error('Trainer deleteAttendance error:', err);
+    res.status(500).json({ message: 'Server error', error: err.message });
+  }
+};
+
+// GET /trainer-assistants/:id/card — { trainer, qrDataUrl }
+exports.getTrainerCard = async (req, res) => {
+  try {
+    const trainer = await TrainerAssistant.findByPk(req.params.id);
+    if (!trainer) return res.status(404).json({ message: 'Trainer not found' });
+    if (!trainer.nationalId) {
+      return res.status(400).json({
+        message: 'Trainer has no nationalId — cannot generate QR',
+        messageAr: 'لا يوجد رقم هوية للمدرب — لا يمكن توليد QR'
+      });
+    }
+    const qrDataUrl = await _makeQrDataUrl(trainer.nationalId);
+    res.json({ trainer, qrDataUrl });
+  } catch (err) {
+    console.error('Trainer getTrainerCard error:', err);
+    res.status(500).json({ message: 'Server error', error: err.message });
+  }
+};
+
+// POST /trainer-assistants/cards — body { trainerIds }
+exports.getTrainerCardsBulk = async (req, res) => {
+  try {
+    const { trainerIds } = req.body || {};
+    if (!Array.isArray(trainerIds) || trainerIds.length === 0) {
+      return res.status(400).json({ message: 'trainerIds array required' });
+    }
+    const trainers = await TrainerAssistant.findAll({
+      where: { trainerId: { [Op.in]: trainerIds } }
+    });
+    const cards = [];
+    for (const t of trainers) {
+      if (!t.nationalId) continue;
+      cards.push({ trainer: t, qrDataUrl: await _makeQrDataUrl(t.nationalId) });
+    }
+    res.json({ cards });
+  } catch (err) {
+    console.error('Trainer getTrainerCardsBulk error:', err);
+    res.status(500).json({ message: 'Server error', error: err.message });
   }
 };

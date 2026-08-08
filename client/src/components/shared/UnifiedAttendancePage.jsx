@@ -283,6 +283,30 @@ const UnifiedAttendancePage = ({ open, onClose, isRTL }) => {
       hydrate();
       return;
     } catch (iErr) {
+      // fall through to trainer-assistant
+    }
+
+    try {
+      const { data } = await api.post('/trainer-assistants/attendance/scan', { code });
+      const tr = data.trainer || {};
+      const r = data.record || {};
+      const refTime = data.action === 'checkout' ? r.checkOutAt : r.checkInAt;
+      const { kind, label } = labelFor(data.action);
+      const payload = {
+        kind, label,
+        name: tr.name || code,
+        badge: isRTL ? 'مدرب معاون' : 'Assistant Trainer',
+        badgeType: isRTL ? 'مدرب معاون' : 'Assistant Trainer',
+        time: fmtTimeLong(refTime || new Date().toISOString()),
+        color: '#059669'
+      };
+      showResult(payload);
+      if (kind === 'checkin') setSessionStats(p => ({ ...p, checkins: p.checkins + 1 }));
+      else if (kind === 'checkout') setSessionStats(p => ({ ...p, checkouts: p.checkouts + 1 }));
+      setRecentScans(prev => [payload, ...prev].slice(0, 30));
+      hydrate();
+      return;
+    } catch (trErr) {
       const payload = {
         kind: 'error',
         label: isRTL ? 'لم يتم العثور على المستخدم' : 'Not found',

@@ -118,6 +118,178 @@ const TrainerAssistantManagement = () => {
   const [emailForm, setEmailForm] = useState(emptyEmail());
   const [sending, setSending] = useState(false);
 
+  // Attendance history modal — mirrors the volunteer log flow. Loads
+  // TrainerAssistantAttendance rows for the picked trainer and lets
+  // admin add / edit check-out / delete rows.
+  const [attTrainer, setAttTrainer] = useState(null);
+  const [attRecords, setAttRecords] = useState([]);
+  const [attLoading, setAttLoading] = useState(false);
+  const [editingCheckoutId, setEditingCheckoutId] = useState(null);
+  const [editingCheckoutValue, setEditingCheckoutValue] = useState('');
+  const [savingCheckout, setSavingCheckout] = useState(false);
+  const [showAddManual, setShowAddManual] = useState(false);
+  const [manualForm, setManualForm] = useState({ date: '', checkInAt: '', checkOutAt: '' });
+  const [savingManual, setSavingManual] = useState(false);
+
+  const openAttendance = async (t) => {
+    setAttTrainer(t);
+    setAttRecords([]);
+    setAttLoading(true);
+    setShowAddManual(false);
+    try {
+      const { data } = await api.get(`/trainer-assistants/${t.trainerId}/attendance`);
+      setAttRecords(Array.isArray(data) ? data : []);
+    } catch (err) {
+      console.error(err);
+      toast.error(isRTL ? 'تعذر تحميل سجل الحضور' : 'Failed to load attendance');
+    } finally {
+      setAttLoading(false);
+    }
+  };
+
+  const fmtHms = (iso) => {
+    if (!iso) return '—';
+    const d = new Date(iso);
+    if (isNaN(d.getTime())) return '—';
+    const pad = (n) => String(n).padStart(2, '0');
+    return `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+  };
+  const durationMin = (rec) => {
+    if (!rec.checkInAt || !rec.checkOutAt) return null;
+    return Math.max(0, Math.round((new Date(rec.checkOutAt) - new Date(rec.checkInAt)) / 60000));
+  };
+
+  const beginEditCheckout = (rec) => {
+    setEditingCheckoutId(rec.attendanceId);
+    if (rec.checkOutAt) {
+      const d = new Date(rec.checkOutAt);
+      setEditingCheckoutValue(`${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`);
+    } else if (rec.checkInAt) {
+      const d = new Date(new Date(rec.checkInAt).getTime() + 60 * 60 * 1000);
+      setEditingCheckoutValue(`${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`);
+    } else {
+      setEditingCheckoutValue('18:00');
+    }
+  };
+  const cancelEditCheckout = () => { setEditingCheckoutId(null); setEditingCheckoutValue(''); };
+  const saveCheckoutTime = async (rec) => {
+    if (!editingCheckoutValue) return toast.error(isRTL ? 'أدخل وقت الخروج' : 'Enter time');
+    setSavingCheckout(true);
+    try {
+      const { data } = await api.patch(
+        `/trainer-assistants/attendance/${rec.attendanceId}/checkout`,
+        { checkOutAt: editingCheckoutValue }
+      );
+      setAttRecords(prev => prev.map(r =>
+        r.attendanceId === rec.attendanceId ? { ...r, checkOutAt: data?.record?.checkOutAt || null } : r
+      ));
+      toast.success(isRTL ? 'تم الحفظ' : 'Saved');
+      cancelEditCheckout();
+    } catch (err) {
+      const msg = err?.response?.data?.messageAr || err?.response?.data?.message;
+      toast.error(msg || (isRTL ? 'فشل الحفظ' : 'Save failed'));
+    } finally {
+      setSavingCheckout(false);
+    }
+  };
+  const clearCheckoutRow = async (rec) => {
+    if (!window.confirm(isRTL ? `حذف تسجيل الخروج لتاريخ ${rec.date}؟` : `Clear check-out for ${rec.date}?`)) return;
+    try {
+      await api.patch(`/trainer-assistants/attendance/${rec.attendanceId}/checkout`);
+      setAttRecords(prev => prev.map(r =>
+        r.attendanceId === rec.attendanceId ? { ...r, checkOutAt: null } : r
+      ));
+      toast.success(isRTL ? 'تم حذف تسجيل الخروج' : 'Cleared');
+    } catch (err) {
+      const msg = err?.response?.data?.messageAr || err?.response?.data?.message;
+      toast.error(msg || (isRTL ? 'فشل الحذف' : 'Clear failed'));
+    }
+  };
+  const deleteAttendanceRow = async (rec) => {
+    if (!window.confirm(isRTL ? `حذف سجل ${rec.date}؟` : `Delete record for ${rec.date}?`)) return;
+    try {
+      await api.delete(`/trainer-assistants/attendance/${rec.attendanceId}`);
+      setAttRecords(prev => prev.filter(r => r.attendanceId !== rec.attendanceId));
+      toast.success(isRTL ? 'تم الحذف' : 'Deleted');
+    } catch {
+      toast.error(isRTL ? 'فشل الحذف' : 'Delete failed');
+    }
+  };
+  const submitManualAttendance = async () => {
+    if (!attTrainer) return;
+    if (!manualForm.date) return toast.error(isRTL ? 'أدخل التاريخ' : 'Enter date');
+    if (!manualForm.checkInAt && !manualForm.checkOutAt) {
+      return toast.error(isRTL ? 'أدخل وقت الدخول أو الخروج على الأقل' : 'Enter at least check-in or check-out');
+    }
+    setSavingManual(true);
+    try {
+      const { data } = await api.post('/trainer-assistants/attendance', {
+        trainerId: attTrainer.trainerId,
+        date: manualForm.date,
+        checkInAt: manualForm.checkInAt || undefined,
+        checkOutAt: manualForm.checkOutAt || undefined
+      });
+      setAttRecords(prev => {
+        const next = [data.record, ...prev];
+        next.sort((a, b) => (a.date < b.date ? 1 : -1));
+        return next;
+      });
+      toast.success(isRTL ? 'تمت الإضافة' : 'Added');
+      setManualForm({ date: '', checkInAt: '', checkOutAt: '' });
+      setShowAddManual(false);
+    } catch (err) {
+      const msg = err?.response?.data?.messageAr || err?.response?.data?.message;
+      toast.error(msg || (isRTL ? 'فشل الإضافة' : 'Add failed'));
+    } finally {
+      setSavingManual(false);
+    }
+  };
+
+  // Print QR ID card in a new window — landscape credit-card sized.
+  const printTrainerCard = async (t) => {
+    if (!t.nationalId) {
+      return toast.error(isRTL ? 'يجب إضافة رقم الهوية أولاً لتوليد QR' : 'Add national ID first');
+    }
+    try {
+      const { data } = await api.get(`/trainer-assistants/${t.trainerId}/card`);
+      const qrDataUrl = data?.qrDataUrl;
+      if (!qrDataUrl) throw new Error('No QR');
+      const win = window.open('', '_blank', 'width=700,height=520');
+      if (!win) return toast.error(isRTL ? 'فشل فتح النافذة' : 'Popup blocked');
+      win.document.write(`<!doctype html><html dir="rtl"><head><meta charset="utf-8"><title>${t.name} — بطاقة الحضور</title>
+<style>
+  @page { size: A6 landscape; margin: 6mm; }
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: 'Segoe UI', Tahoma, Arial, sans-serif; background: #f1f5f9; padding: 20px; }
+  .card { width: 340px; padding: 18px; margin: 0 auto; border-radius: 14px; background: linear-gradient(135deg, #065f46, #10b981); color: #fff; box-shadow: 0 8px 24px rgba(0,0,0,0.15); }
+  .brand { font-size: 12px; letter-spacing: 1px; text-transform: uppercase; opacity: 0.85; }
+  .role { font-size: 11px; margin-top: 3px; opacity: 0.9; }
+  h1 { margin: 10px 0 4px; font-size: 22px; }
+  .subtitle { font-size: 13px; opacity: 0.9; margin: 0 0 10px; direction: ltr; }
+  .qr-wrap { background: #fff; padding: 10px; border-radius: 10px; display: grid; place-items: center; margin: 8px 0; }
+  .qr-wrap img { width: 200px; height: 200px; display: block; }
+  .hint { font-size: 11px; text-align: center; opacity: 0.9; margin-top: 4px; }
+  .actions { text-align: center; margin-top: 14px; }
+  button { padding: 8px 18px; border-radius: 8px; border: 0; background: #065f46; color: #fff; font-weight: 700; cursor: pointer; }
+  @media print { .actions, body { background: #fff; padding: 0; } .actions { display: none; } .card { box-shadow: none; } }
+</style></head><body>
+<div class="card">
+  <div class="brand">FABLAB SAHSA</div>
+  <div class="role">مدرب معاون / Assistant Trainer</div>
+  <h1>${t.name}</h1>
+  <p class="subtitle">${t.nationalId}</p>
+  <div class="qr-wrap"><img src="${qrDataUrl}" alt="QR"/></div>
+  <div class="hint">امسح الباركود عند الدخول والخروج</div>
+</div>
+<div class="actions"><button onclick="window.print()">طباعة / Print</button></div>
+</body></html>`);
+      win.document.close();
+    } catch (err) {
+      console.error(err);
+      toast.error(isRTL ? 'فشل توليد البطاقة' : 'Failed to generate card');
+    }
+  };
+
   const load = useCallback(async () => {
     setLoading(true);
     try {
@@ -653,12 +825,176 @@ const TrainerAssistantManagement = () => {
                   {t.email && (
                     <button onClick={() => openEmail(t)} title="Email" style={{ padding: '8px 10px', borderRadius: 8, border: '1px solid #bfdbfe', background: '#dbeafe', color: '#1e40af', cursor: 'pointer', fontWeight: 700, fontSize: 13, fontFamily: 'inherit' }}>✉️</button>
                   )}
+                  <button
+                    onClick={() => openAttendance(t)}
+                    title={isRTL ? 'سجل الحضور' : 'Attendance history'}
+                    style={{ padding: '8px 12px', borderRadius: 8, border: '1px solid #86efac', background: '#dcfce7', color: '#166534', cursor: 'pointer', fontWeight: 700, fontSize: 13, fontFamily: 'inherit' }}
+                  >📅</button>
+                  <button
+                    onClick={() => printTrainerCard(t)}
+                    title={isRTL ? 'طباعة بطاقة QR' : 'Print QR card'}
+                    disabled={!t.nationalId}
+                    style={{ padding: '8px 12px', borderRadius: 8, border: '1px solid #7dd3fc', background: t.nationalId ? '#e0f2fe' : '#f1f5f9', color: t.nationalId ? '#0369a1' : '#94a3b8', cursor: t.nationalId ? 'pointer' : 'not-allowed', fontWeight: 700, fontSize: 13, fontFamily: 'inherit' }}
+                  >🪪</button>
                   <button onClick={() => openEditTrainer(t)} style={{ padding: '8px 12px', borderRadius: 8, border: '1px solid #cbd5e1', background: '#fff', color: '#334155', cursor: 'pointer', fontWeight: 700, fontSize: 13, fontFamily: 'inherit' }}>✏️</button>
                   <button onClick={() => deleteTrainer(t)} style={{ padding: '8px 12px', borderRadius: 8, border: '1px solid #fecaca', background: '#fee2e2', color: '#991b1b', cursor: 'pointer', fontWeight: 700, fontSize: 13, fontFamily: 'inherit' }}>🗑</button>
                 </div>
               </div>
             );
           })}
+        </div>
+      )}
+
+      {/* Attendance history modal */}
+      {attTrainer && (
+        <div className="modal-overlay" onClick={() => setAttTrainer(null)}>
+          <div
+            className="modal-content"
+            onClick={(e) => e.stopPropagation()}
+            style={{ maxWidth: 900, background: '#fff', borderRadius: 14, padding: 20, maxHeight: '90vh', overflow: 'auto' }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginBottom: 12 }}>
+              <h2 style={{ margin: 0, fontSize: 20, color: '#065f46' }}>
+                📅 {isRTL ? `سجل حضور — ${attTrainer.name}` : `Attendance — ${attTrainer.name}`}
+              </h2>
+              <button
+                onClick={() => setAttTrainer(null)}
+                style={{ background: 'none', border: 'none', fontSize: 22, color: '#94a3b8', cursor: 'pointer' }}
+              >×</button>
+            </div>
+
+            {/* Summary tiles */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 10, margin: '10px 0 12px' }}>
+              <div style={{ padding: 10, borderRadius: 8, background: '#f0fdf4', border: '1px solid #bbf7d0' }}>
+                <div style={{ fontSize: 11, color: '#166534', fontWeight: 700 }}>{isRTL ? 'إجمالي الأيام' : 'Total days'}</div>
+                <div style={{ fontSize: 20, fontWeight: 800, color: '#065f46' }}>{attRecords.length}</div>
+              </div>
+              <div style={{ padding: 10, borderRadius: 8, background: '#f0fdf4', border: '1px solid #bbf7d0' }}>
+                <div style={{ fontSize: 11, color: '#166534', fontWeight: 700 }}>{isRTL ? 'مكتملة' : 'Completed'}</div>
+                <div style={{ fontSize: 20, fontWeight: 800, color: '#065f46' }}>{attRecords.filter(r => r.checkInAt && r.checkOutAt).length}</div>
+              </div>
+              <div style={{ padding: 10, borderRadius: 8, background: '#fffbeb', border: '1px solid #fde68a' }}>
+                <div style={{ fontSize: 11, color: '#92400e', fontWeight: 700 }}>{isRTL ? 'لم يخرج بعد' : 'Still in'}</div>
+                <div style={{ fontSize: 20, fontWeight: 800, color: '#78350f' }}>{attRecords.filter(r => r.checkInAt && !r.checkOutAt).length}</div>
+              </div>
+              <div style={{ padding: 10, borderRadius: 8, background: '#eff6ff', border: '1px solid #bfdbfe' }}>
+                <div style={{ fontSize: 11, color: '#1e40af', fontWeight: 700 }}>{isRTL ? 'إجمالي الوقت' : 'Total time'}</div>
+                <div style={{ fontSize: 20, fontWeight: 800, color: '#1e3a8a' }}>
+                  {(() => {
+                    const total = attRecords.reduce((s, r) => s + (durationMin(r) || 0), 0);
+                    return `${Math.floor(total / 60)}h ${total % 60}m`;
+                  })()}
+                </div>
+              </div>
+            </div>
+
+            {/* Manual add */}
+            <div style={{ margin: '0 0 12px', display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+              {!showAddManual ? (
+                <button
+                  onClick={() => {
+                    const today = new Date().toISOString().slice(0, 10);
+                    setManualForm({ date: today, checkInAt: '', checkOutAt: '' });
+                    setShowAddManual(true);
+                  }}
+                  style={{ padding: '8px 14px', borderRadius: 8, border: 'none', background: '#16a34a', color: '#fff', cursor: 'pointer', fontWeight: 700 }}
+                >
+                  + {isRTL ? 'إضافة سجل يدوي' : 'Add manual record'}
+                </button>
+              ) : (
+                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'end', padding: 10, borderRadius: 8, background: '#f0fdf4', border: '1.5px solid #86efac', width: '100%' }}>
+                  <label style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 12 }}>
+                    <span style={{ fontWeight: 700, color: '#166534' }}>{isRTL ? 'التاريخ' : 'Date'}</span>
+                    <input type="date" value={manualForm.date} onChange={(e) => setManualForm(f => ({ ...f, date: e.target.value }))} style={{ padding: '6px 8px', borderRadius: 6, border: '1px solid #86efac' }} />
+                  </label>
+                  <label style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 12 }}>
+                    <span style={{ fontWeight: 700, color: '#166534' }}>{isRTL ? 'وقت الدخول' : 'Check-in'}</span>
+                    <input type="time" value={manualForm.checkInAt} onChange={(e) => setManualForm(f => ({ ...f, checkInAt: e.target.value }))} style={{ padding: '6px 8px', borderRadius: 6, border: '1px solid #86efac', width: 110 }} />
+                  </label>
+                  <label style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 12 }}>
+                    <span style={{ fontWeight: 700, color: '#166534' }}>{isRTL ? 'وقت الخروج' : 'Check-out'}</span>
+                    <input type="time" value={manualForm.checkOutAt} onChange={(e) => setManualForm(f => ({ ...f, checkOutAt: e.target.value }))} style={{ padding: '6px 8px', borderRadius: 6, border: '1px solid #86efac', width: 110 }} />
+                  </label>
+                  <button onClick={submitManualAttendance} disabled={savingManual} style={{ padding: '8px 14px', borderRadius: 8, border: 'none', background: '#16a34a', color: '#fff', cursor: 'pointer', fontWeight: 700 }}>
+                    {savingManual ? '…' : (isRTL ? 'حفظ' : 'Save')}
+                  </button>
+                  <button onClick={() => setShowAddManual(false)} disabled={savingManual} style={{ padding: '8px 14px', borderRadius: 8, border: '1px solid #cbd5e1', background: '#fff', color: '#334155', cursor: 'pointer', fontWeight: 700 }}>
+                    {isRTL ? 'إلغاء' : 'Cancel'}
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {/* Table */}
+            {attLoading ? (
+              <div style={{ padding: 20, textAlign: 'center', color: '#64748b' }}>{isRTL ? 'جارٍ التحميل...' : 'Loading...'}</div>
+            ) : attRecords.length === 0 ? (
+              <div style={{ padding: 20, textAlign: 'center', color: '#64748b' }}>{isRTL ? 'لا يوجد سجل حضور بعد' : 'No records yet'}</div>
+            ) : (
+              <div style={{ overflow: 'auto', border: '1px solid #e2e8f0', borderRadius: 8 }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+                  <thead>
+                    <tr style={{ background: '#f8fafc' }}>
+                      <th style={{ padding: 10, textAlign: 'right', borderBottom: '1px solid #e2e8f0', color: '#64748b', fontWeight: 700 }}>{isRTL ? 'التاريخ' : 'Date'}</th>
+                      <th style={{ padding: 10, textAlign: 'right', borderBottom: '1px solid #e2e8f0', color: '#64748b', fontWeight: 700 }}>{isRTL ? 'الدخول' : 'Check-in'}</th>
+                      <th style={{ padding: 10, textAlign: 'right', borderBottom: '1px solid #e2e8f0', color: '#64748b', fontWeight: 700 }}>{isRTL ? 'الخروج' : 'Check-out'}</th>
+                      <th style={{ padding: 10, textAlign: 'right', borderBottom: '1px solid #e2e8f0', color: '#64748b', fontWeight: 700 }}>{isRTL ? 'المدة' : 'Duration'}</th>
+                      <th style={{ padding: 10, textAlign: 'right', borderBottom: '1px solid #e2e8f0', color: '#64748b', fontWeight: 700 }}></th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {attRecords.map(r => {
+                      const dur = durationMin(r);
+                      const completed = r.checkInAt && r.checkOutAt;
+                      const isEditing = editingCheckoutId === r.attendanceId;
+                      return (
+                        <tr key={r.attendanceId}>
+                          <td style={{ padding: 10, borderBottom: '1px solid #f1f5f9', fontFamily: 'JetBrains Mono, monospace' }}>{r.date}</td>
+                          <td style={{ padding: 10, borderBottom: '1px solid #f1f5f9', fontFamily: 'JetBrains Mono, monospace' }}>{fmtHms(r.checkInAt)}</td>
+                          <td style={{ padding: 10, borderBottom: '1px solid #f1f5f9', fontFamily: 'JetBrains Mono, monospace' }}>
+                            {isEditing ? (
+                              <span style={{ display: 'inline-flex', gap: 4, alignItems: 'center' }}>
+                                <input
+                                  type="time"
+                                  value={editingCheckoutValue}
+                                  onChange={(e) => setEditingCheckoutValue(e.target.value)}
+                                  autoFocus
+                                  onKeyDown={(e) => { if (e.key === 'Enter') saveCheckoutTime(r); if (e.key === 'Escape') cancelEditCheckout(); }}
+                                  style={{ padding: 4, borderRadius: 4, border: '1.5px solid #16a34a', width: 100 }}
+                                />
+                                <button onClick={() => saveCheckoutTime(r)} disabled={savingCheckout} style={{ padding: '2px 8px', borderRadius: 4, border: 'none', background: '#16a34a', color: '#fff', cursor: 'pointer' }}>{savingCheckout ? '…' : '✓'}</button>
+                                <button onClick={cancelEditCheckout} disabled={savingCheckout} style={{ padding: '2px 8px', borderRadius: 4, border: '1px solid #cbd5e1', background: '#fff', cursor: 'pointer' }}>×</button>
+                              </span>
+                            ) : fmtHms(r.checkOutAt)}
+                          </td>
+                          <td style={{ padding: 10, borderBottom: '1px solid #f1f5f9', fontFamily: 'JetBrains Mono, monospace' }}>
+                            {dur != null ? `${Math.floor(dur / 60)}h ${dur % 60}m` : '—'}
+                          </td>
+                          <td style={{ padding: 10, borderBottom: '1px solid #f1f5f9' }}>
+                            <span style={{ display: 'inline-flex', gap: 4 }}>
+                              {!isEditing && r.checkInAt && (
+                                <button
+                                  onClick={() => beginEditCheckout(r)}
+                                  title={r.checkOutAt ? (isRTL ? 'تعديل الخروج' : 'Edit check-out') : (isRTL ? 'إضافة وقت الخروج' : 'Add check-out')}
+                                  style={{ padding: '4px 8px', borderRadius: 4, border: '1px solid ' + (r.checkOutAt ? '#c7d2fe' : '#86efac'), background: r.checkOutAt ? '#eef2ff' : '#dcfce7', color: r.checkOutAt ? '#4338ca' : '#166534', cursor: 'pointer' }}
+                                >✎</button>
+                              )}
+                              {r.checkOutAt && !isEditing && (
+                                <button onClick={() => clearCheckoutRow(r)} title={isRTL ? 'حذف تسجيل الخروج' : 'Clear check-out'} style={{ padding: '4px 8px', borderRadius: 4, border: '1px solid #fde68a', background: '#fef3c7', color: '#92400e', cursor: 'pointer' }}>↩</button>
+                              )}
+                              {!isEditing && (
+                                <button onClick={() => deleteAttendanceRow(r)} title={isRTL ? 'حذف السجل' : 'Delete'} style={{ padding: '4px 8px', borderRadius: 4, border: '1px solid #fecaca', background: '#fee2e2', color: '#991b1b', cursor: 'pointer' }}>×</button>
+                              )}
+                            </span>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
         </div>
       )}
 

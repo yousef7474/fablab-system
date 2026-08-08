@@ -61,6 +61,7 @@ const FablabStaffAttendance = require('./FablabStaffAttendance');
 const OvertimeRequest = require('./OvertimeRequest');
 const TrainerAssistant = require('./TrainerAssistant');
 const TrainerAssignment = require('./TrainerAssignment');
+const TrainerAssistantAttendance = require('./TrainerAssistantAttendance');
 const Customer = require('./Customer');
 const Contract = require('./Contract');
 const SummerStudentAttendance = require('./SummerStudentAttendance');
@@ -76,6 +77,9 @@ MawhbaSeason.hasMany(MawhbaStudent, { foreignKey: 'seasonId', as: 'students', co
 
 VolunteerAttendance.belongsTo(Volunteer, { foreignKey: 'volunteerId', as: 'volunteer', constraints: false });
 Volunteer.hasMany(VolunteerAttendance, { foreignKey: 'volunteerId', as: 'attendance', constraints: false });
+
+TrainerAssistantAttendance.belongsTo(TrainerAssistant, { foreignKey: 'trainerId', as: 'trainer', constraints: false });
+TrainerAssistant.hasMany(TrainerAssistantAttendance, { foreignKey: 'trainerId', as: 'attendance', constraints: false });
 
 FablabStaffAttendance.belongsTo(FablabStaff, { foreignKey: 'staffId', as: 'staff', constraints: false });
 FablabStaff.hasMany(FablabStaffAttendance, { foreignKey: 'staffId', as: 'attendance', constraints: false });
@@ -651,6 +655,7 @@ module.exports = {
   OvertimeRequest,
   TrainerAssistant,
   TrainerAssignment,
+  TrainerAssistantAttendance,
   Customer,
   Contract,
   SummerStudentAttendance,
