@@ -270,14 +270,14 @@ const TrainerAssistantManagement = () => {
     .page + .page { page-break-before: always; }
     .id-card {
       width: 72mm; height: 102mm;
-      background: linear-gradient(180deg, #ffffff 0%, #fff7ed 100%);
+      background: linear-gradient(180deg, #ffffff 0%, #ecfdf5 100%);
       border: 0.45mm dashed #475569;
       overflow: hidden; position: relative;
       display: flex; flex-direction: column;
       color: #1a1a2e; box-sizing: border-box;
     }
     .card-header {
-      background: linear-gradient(135deg, #f97316 0%, #ea580c 100%);
+      background: linear-gradient(135deg, #059669 0%, #047857 100%);
       padding: 2.5mm 3.5mm; text-align: center;
     }
     .card-title { color: white; font-size: 9pt; font-weight: 700; line-height: 1.15; }
@@ -288,13 +288,13 @@ const TrainerAssistantManagement = () => {
     }
     .user-photo {
       width: 22mm; height: 26mm;
-      background: linear-gradient(135deg, #fed7aa, #fdba74);
+      background: linear-gradient(135deg, #a7f3d0, #6ee7b7);
       border-radius: 2mm; display: flex; align-items: center; justify-content: center;
-      color: #ea580c; font-weight: bold;
-      border: 0.6mm solid #f97316;
+      color: #047857; font-weight: bold;
+      border: 0.6mm solid #059669;
       overflow: hidden; flex-shrink: 0;
     }
-    .user-photo .initials { font-size: 18pt; font-weight: bold; color: #ea580c; }
+    .user-photo .initials { font-size: 18pt; font-weight: bold; color: #047857; }
     .user-name {
       font-size: 10.5pt; font-weight: 800; color: #1a1a2e;
       text-align: center; line-height: 1.15; max-height: 10mm; overflow: hidden;
@@ -302,7 +302,7 @@ const TrainerAssistantManagement = () => {
     }
     .user-type-badge {
       display: inline-block;
-      background: linear-gradient(135deg, #f97316, #ea580c);
+      background: linear-gradient(135deg, #059669, #047857);
       color: white; font-size: 7.5pt; padding: 0.6mm 3.5mm;
       border-radius: 999px; font-weight: 700;
     }
@@ -320,7 +320,7 @@ const TrainerAssistantManagement = () => {
     .card-qr { display: flex; align-items: center; justify-content: center; margin-top: 1mm; }
     .card-qr img {
       width: 26mm; height: 26mm; background: white; padding: 0.8mm;
-      border-radius: 1mm; box-shadow: 0 0 0 0.3mm #f97316 inset;
+      border-radius: 1mm; box-shadow: 0 0 0 0.3mm #059669 inset;
     }
     .card-footer {
       background: #ffffff; padding: 1.5mm 3mm;
@@ -328,11 +328,11 @@ const TrainerAssistantManagement = () => {
       border-top: 0.3mm solid #e0e0e0;
     }
     .card-footer .logo { height: 7mm; width: auto; flex-shrink: 0; }
-    .card-footer .qr-label { font-size: 6pt; color: #ea580c; font-weight: 700; }
+    .card-footer .qr-label { font-size: 6pt; color: #047857; font-weight: 700; }
     .decorative-stripe {
       position: absolute; top: 40%; ${isRTL ? 'right' : 'left'}: 0;
       width: 1mm; height: 25%;
-      background: linear-gradient(to bottom, transparent, #f97316, transparent);
+      background: linear-gradient(to bottom, transparent, #059669, transparent);
     }
     @media print {
       html, body { background: white; padding: 0; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
