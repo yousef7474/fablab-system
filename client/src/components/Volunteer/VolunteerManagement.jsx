@@ -243,20 +243,37 @@ const VolunteerManagement = () => {
     return parseInt(parts.find(p => p.type === 'hour').value, 10) * 60
          + parseInt(parts.find(p => p.type === 'minute').value, 10);
   };
+  // Normalize DATEONLY values that Sequelize sometimes returns as
+  // strings and sometimes as Date objects, so we can compare them
+  // consistently with plain string < / > without hitting NaN coercion
+  // that silently kills the filter.
+  const _isoDate = (v) => {
+    if (!v) return null;
+    if (typeof v === 'string') return v.slice(0, 10);
+    try { return new Date(v).toISOString().slice(0, 10); } catch { return null; }
+  };
   const filteredLogRecords = React.useMemo(() => {
     if (logChanceFilter === 'all') return logRecords;
     const opp = (logVolunteer?.opportunities || []).find(o => o.opportunityId === logChanceFilter);
     if (!opp) return logRecords;
+    const oppStart = _isoDate(opp.startDate);
+    const oppEnd = _isoDate(opp.endDate);
     const chFrom = _hhmmToMin(opp.dailyStartTime);
     const chTo = _hhmmToMin(opp.dailyEndTime);
     const timeWindowed = chFrom != null && chTo != null && chTo > chFrom;
     return logRecords.filter(r => {
-      if (opp.startDate && r.date < opp.startDate) return false;
-      if (opp.endDate && r.date > opp.endDate) return false;
+      const rDate = _isoDate(r.date);
+      if (!rDate) return false;
+      if (oppStart && rDate < oppStart) return false;
+      if (oppEnd && rDate > oppEnd) return false;
+      // Chance has no daily window → date range is the whole rule.
       if (!timeWindowed) return true;
+      // Partial records (missing check-in or check-out) stay visible
+      // so admin can complete / fix them from within this filter.
+      if (!r.checkInAt || !r.checkOutAt) return true;
       const inMin = _tsToRiyadhMin(r.checkInAt);
       const outMin = _tsToRiyadhMin(r.checkOutAt);
-      if (inMin == null || outMin == null || outMin <= inMin) return false;
+      if (inMin == null || outMin == null || outMin <= inMin) return true;
       return Math.min(outMin, chTo) - Math.max(inMin, chFrom) > 0;
     });
   }, [logChanceFilter, logRecords, logVolunteer]);
