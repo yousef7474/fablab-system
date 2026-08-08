@@ -711,12 +711,12 @@ const FablabStaffManagement = () => {
                     <circle cx="8.5" cy="8.5" r="1.5"/>
                     <polyline points="21 15 16 10 5 21"/>
                   </svg>
-                  <span>{isRTL ? 'صورة الهوية' : 'ID Photo'}</span>
+                  <span>{isRTL ? 'الصورة الشخصية' : 'Profile Photo'}</span>
                 </div>
                 <div className="photo-upload-area modern-upload">
                   {form.nationalIdPhoto ? (
                     <div className="photo-preview">
-                      <img src={form.nationalIdPhoto} alt="ID" />
+                      <img src={form.nationalIdPhoto} alt="profile" />
                       <button
                         className="remove-photo-btn"
                         onClick={(e) => {
@@ -745,7 +745,7 @@ const FablabStaffManagement = () => {
                           <line x1="12" y1="3" x2="12" y2="15"/>
                         </svg>
                         <span className="upload-text">
-                          {isRTL ? 'انقر لرفع صورة الهوية' : 'Click to upload ID photo'}
+                          {isRTL ? 'انقر لرفع الصورة الشخصية' : 'Click to upload profile photo'}
                         </span>
                         <span className="upload-hint">
                           {isRTL ? 'PNG, JPG حتى 5MB' : 'PNG, JPG up to 5MB'}

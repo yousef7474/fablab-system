@@ -47,9 +47,26 @@ exports.getTrainer = async (req, res) => {
   }
 };
 
+// Explicit whitelist of columns we accept from the client — nothing
+// silently dropped. If nationalIdPhoto arrives here but the DB column
+// hasn't been added yet, the update will throw a Postgres error the
+// admin can see, instead of appearing to succeed with no persistence.
+const _trainerAllowedFields = [
+  'name', 'phone', 'nationalId', 'email', 'age',
+  'educationalDegree', 'skills', 'performanceRating',
+  'notes', 'isActive', 'nationalIdPhoto'
+];
+const _pickTrainerFields = (body = {}) => {
+  const out = {};
+  for (const k of _trainerAllowedFields) {
+    if (body[k] !== undefined) out[k] = body[k];
+  }
+  return out;
+};
+
 exports.createTrainer = async (req, res) => {
   try {
-    const trainer = await TrainerAssistant.create(req.body);
+    const trainer = await TrainerAssistant.create(_pickTrainerFields(req.body));
     res.status(201).json(trainer);
   } catch (err) {
     console.error('createTrainer:', err);
@@ -64,7 +81,7 @@ exports.updateTrainer = async (req, res) => {
   try {
     const trainer = await TrainerAssistant.findByPk(req.params.id);
     if (!trainer) return res.status(404).json({ message: 'Not found' });
-    await trainer.update(req.body);
+    await trainer.update(_pickTrainerFields(req.body));
     res.json(trainer);
   } catch (err) {
     console.error('updateTrainer:', err);
