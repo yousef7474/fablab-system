@@ -191,6 +191,7 @@ const VolunteerManagement = () => {
   const openVolunteerLog = async (volunteer) => {
     setLogVolunteer(volunteer);
     setLogRecords([]);
+    setLogChanceFilter('all');
     setShowLogModal(true);
     setLogLoading(true);
     try {
@@ -221,6 +222,44 @@ const VolunteerManagement = () => {
   const [editingCheckoutId, setEditingCheckoutId] = useState(null);
   const [editingCheckoutValue, setEditingCheckoutValue] = useState('');
   const [savingCheckout, setSavingCheckout] = useState(false);
+
+  // Chance filter for the log modal — mirrors the public profile's
+  // opportunity filter. Narrows the visible rows (and derived stats)
+  // to a single chance's date range + daily time window, so admin
+  // can review + edit that chance's history in isolation.
+  const [logChanceFilter, setLogChanceFilter] = useState('all');
+  const _hhmmToMin = (s) => {
+    if (!s || typeof s !== 'string') return null;
+    const m = /^(\d{1,2}):(\d{2})$/.exec(s.trim());
+    return m ? parseInt(m[1], 10) * 60 + parseInt(m[2], 10) : null;
+  };
+  const _tsToRiyadhMin = (iso) => {
+    if (!iso) return null;
+    const d = new Date(iso);
+    if (isNaN(d.getTime())) return null;
+    const parts = new Intl.DateTimeFormat('en-GB', {
+      timeZone: 'Asia/Riyadh', hour12: false, hour: '2-digit', minute: '2-digit'
+    }).formatToParts(d);
+    return parseInt(parts.find(p => p.type === 'hour').value, 10) * 60
+         + parseInt(parts.find(p => p.type === 'minute').value, 10);
+  };
+  const filteredLogRecords = React.useMemo(() => {
+    if (logChanceFilter === 'all') return logRecords;
+    const opp = (logVolunteer?.opportunities || []).find(o => o.opportunityId === logChanceFilter);
+    if (!opp) return logRecords;
+    const chFrom = _hhmmToMin(opp.dailyStartTime);
+    const chTo = _hhmmToMin(opp.dailyEndTime);
+    const timeWindowed = chFrom != null && chTo != null && chTo > chFrom;
+    return logRecords.filter(r => {
+      if (opp.startDate && r.date < opp.startDate) return false;
+      if (opp.endDate && r.date > opp.endDate) return false;
+      if (!timeWindowed) return true;
+      const inMin = _tsToRiyadhMin(r.checkInAt);
+      const outMin = _tsToRiyadhMin(r.checkOutAt);
+      if (inMin == null || outMin == null || outMin <= inMin) return false;
+      return Math.min(outMin, chTo) - Math.max(inMin, chFrom) > 0;
+    });
+  }, [logChanceFilter, logRecords, logVolunteer]);
 
   // Manual-add attendance state — for days the volunteer never scanned
   // at all. The panel toggles from an "add manual record" button at
@@ -3114,6 +3153,61 @@ const VolunteerManagement = () => {
               );
             })()}
 
+            {/* Chance filter — narrows the log to a single opportunity
+                so admin can view / edit / delete the days that belong
+                to that chance in isolation. All actions (pencil, ↩, ×)
+                still operate on the underlying VolunteerAttendance row. */}
+            {logVolunteer?.opportunities?.length > 0 && (
+              <div style={{
+                display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap',
+                padding: '10px 12px', margin: '0 0 10px',
+                background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: 8
+              }}>
+                <label style={{ fontSize: 12, fontWeight: 700, color: '#1e40af' }}>
+                  {isRTL ? 'عرض حسب الفرصة:' : 'Filter by chance:'}
+                </label>
+                <select
+                  value={logChanceFilter}
+                  onChange={(e) => setLogChanceFilter(e.target.value)}
+                  style={{
+                    flex: '1 1 240px', padding: '6px 10px',
+                    borderRadius: 6, border: '1px solid #93c5fd',
+                    fontFamily: 'inherit', fontSize: 13
+                  }}
+                >
+                  <option value="all">
+                    {isRTL
+                      ? `الكل (${logRecords.length})`
+                      : `All (${logRecords.length})`}
+                  </option>
+                  {logVolunteer.opportunities.map(o => (
+                    <option key={o.opportunityId} value={o.opportunityId}>
+                      {o.title}
+                      {o.dailyStartTime && o.dailyEndTime
+                        ? ` — ${o.dailyStartTime}–${o.dailyEndTime}`
+                        : ''}
+                    </option>
+                  ))}
+                </select>
+                {logChanceFilter !== 'all' && (
+                  <button
+                    onClick={() => setLogChanceFilter('all')}
+                    className="mawhba-btn-secondary"
+                    style={{ padding: '4px 10px', fontSize: 12 }}
+                  >
+                    {isRTL ? 'إظهار الكل' : 'Show all'}
+                  </button>
+                )}
+                {logChanceFilter !== 'all' && (
+                  <span style={{ fontSize: 12, color: '#1e40af', fontWeight: 600 }}>
+                    {isRTL
+                      ? `المعروض: ${filteredLogRecords.length}`
+                      : `Shown: ${filteredLogRecords.length}`}
+                  </span>
+                )}
+              </div>
+            )}
+
             {/* Manual add — for past days the volunteer never scanned.
                 Deliberately near the top so admin sees it before
                 scrolling through the rows. */}
@@ -3231,21 +3325,21 @@ const VolunteerManagement = () => {
             <div className="mawhba-log-summary">
               <div>
                 <span>{isRTL ? 'إجمالي الأيام' : 'Total days'}</span>
-                <b>{logRecords.length}</b>
+                <b>{filteredLogRecords.length}</b>
               </div>
               <div>
                 <span>{isRTL ? 'مكتملة' : 'Completed'}</span>
-                <b>{logRecords.filter(r => r.checkInAt && r.checkOutAt).length}</b>
+                <b>{filteredLogRecords.filter(r => r.checkInAt && r.checkOutAt).length}</b>
               </div>
               <div>
                 <span>{isRTL ? 'لم يخرج بعد' : 'Still in'}</span>
-                <b>{logRecords.filter(r => r.checkInAt && !r.checkOutAt).length}</b>
+                <b>{filteredLogRecords.filter(r => r.checkInAt && !r.checkOutAt).length}</b>
               </div>
               <div>
                 <span>{isRTL ? 'إجمالي الوقت' : 'Total time'}</span>
                 <b>
                   {(() => {
-                    const total = logRecords.reduce((s, r) => s + (durationMin(r) || 0), 0);
+                    const total = filteredLogRecords.reduce((s, r) => s + (durationMin(r) || 0), 0);
                     return `${Math.floor(total / 60)}h ${total % 60}m`;
                   })()}
                 </b>
@@ -3255,8 +3349,12 @@ const VolunteerManagement = () => {
             <div className="mawhba-log-table-wrap">
               {logLoading ? (
                 <div className="mawhba-empty">{isRTL ? 'جارٍ التحميل...' : 'Loading...'}</div>
-              ) : logRecords.length === 0 ? (
-                <div className="mawhba-empty">{isRTL ? 'لا يوجد سجل حضور بعد' : 'No attendance records yet'}</div>
+              ) : filteredLogRecords.length === 0 ? (
+                <div className="mawhba-empty">
+                  {logRecords.length === 0
+                    ? (isRTL ? 'لا يوجد سجل حضور بعد' : 'No attendance records yet')
+                    : (isRTL ? 'لا يوجد سجل ضمن هذه الفرصة' : 'No records inside this chance')}
+                </div>
               ) : (
                 <table className="mawhba-log-table">
                   <thead>
@@ -3270,7 +3368,7 @@ const VolunteerManagement = () => {
                     </tr>
                   </thead>
                   <tbody>
-                    {logRecords.map(r => {
+                    {filteredLogRecords.map(r => {
                       const dur = durationMin(r);
                       const completed = r.checkInAt && r.checkOutAt;
                       const isEditing = editingCheckoutId === r.attendanceId;
