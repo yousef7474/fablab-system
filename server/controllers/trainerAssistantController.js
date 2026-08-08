@@ -327,6 +327,19 @@ exports.todayAttendance = async (req, res) => {
   }
 };
 
+// DELETE /trainer-assistants/attendance/today — used by the shared
+// clear-today button on the attendance page.
+exports.clearTodayAttendance = async (req, res) => {
+  try {
+    const date = _todayStr();
+    const count = await TrainerAssistantAttendance.destroy({ where: { date } });
+    res.json({ message: 'Today cleared', date, count });
+  } catch (err) {
+    console.error('Trainer clearTodayAttendance error:', err);
+    res.status(500).json({ message: 'Server error', error: err.message });
+  }
+};
+
 // GET /trainer-assistants/:id/attendance
 exports.listAttendance = async (req, res) => {
   try {

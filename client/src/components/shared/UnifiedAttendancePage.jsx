@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { toast } from 'react-toastify';
 import api from '../../config/api';
 import '../Mawhba/Mawhba.css';
+import './AttendanceStation.css';
 
 // One attendance page for both Mawhba students and Volunteers.
 // The USB HID barcode reader listener runs while this component is
@@ -15,9 +16,17 @@ const UnifiedAttendancePage = ({ open, onClose, isRTL }) => {
   const [recentScans, setRecentScans] = useState([]);
   const [scanPopup, setScanPopup] = useState(null);
   const [clearingToday, setClearingToday] = useState(false);
+  const [now, setNow] = useState(new Date());
   const hwBufferRef = useRef('');
   const hwLastKeyRef = useRef(0);
   const scanPopupTimerRef = useRef(null);
+
+  // Live clock refreshed once per second while the station is open.
+  useEffect(() => {
+    if (!open) return;
+    const id = setInterval(() => setNow(new Date()), 1000);
+    return () => clearInterval(id);
+  }, [open]);
 
   const fmtTime = useCallback((iso) => {
     if (!iso) return '—';
@@ -37,18 +46,20 @@ const UnifiedAttendancePage = ({ open, onClose, isRTL }) => {
 
   const hydrate = useCallback(async () => {
     try {
-      const [m, v, s, i, su] = await Promise.allSettled([
+      const [m, v, s, i, su, tr] = await Promise.allSettled([
         api.get('/mawhba/attendance/today'),
         api.get('/volunteers/attendance/today'),
         api.get('/fablab-staff/attendance/today'),
         api.get('/interns/attendance/today'),
-        api.get('/summer/attendance/today')
+        api.get('/summer/attendance/today'),
+        api.get('/trainer-assistants/attendance/today')
       ]);
       const mData  = m.status  === 'fulfilled' ? m.value.data  : null;
       const vData  = v.status  === 'fulfilled' ? v.value.data  : null;
       const sData  = s.status  === 'fulfilled' ? s.value.data  : null;
       const iData  = i.status  === 'fulfilled' ? i.value.data  : null;
       const suData = su.status === 'fulfilled' ? su.value.data : null;
+      const trData = tr.status === 'fulfilled' ? tr.value.data : null;
 
       const combined = [];
       // FabLab staff first — they're the fixed team on-site
@@ -58,6 +69,15 @@ const UnifiedAttendancePage = ({ open, onClose, isRTL }) => {
           course: isRTL ? 'موظفو فاب لاب' : 'FabLab Staff',
           color: '#7c3aed',
           students: sData.staff
+        });
+      }
+      // Assistant Trainers (مدرب معاون)
+      if (Array.isArray(trData?.trainers) && trData.trainers.length > 0) {
+        combined.push({
+          category: 'trainer',
+          course: isRTL ? 'المدربون المعاونون' : 'Assistant Trainers',
+          color: '#059669',
+          students: trData.trainers
         });
       }
       // Summer FabLab programs (per-program grouping like Mawhba courses)
@@ -103,9 +123,10 @@ const UnifiedAttendancePage = ({ open, onClose, isRTL }) => {
       const sStats  = sData?.stats  || { checkins: 0, checkouts: 0 };
       const iStats  = iData?.stats  || { checkins: 0, checkouts: 0 };
       const suStats = suData?.stats || { checkins: 0, checkouts: 0 };
+      const trStats = trData?.stats || { checkins: 0, checkouts: 0 };
       setSessionStats(prev => ({
-        checkins:  (mStats.checkins  || 0) + (vStats.checkins  || 0) + (sStats.checkins  || 0) + (iStats.checkins  || 0) + (suStats.checkins  || 0),
-        checkouts: (mStats.checkouts || 0) + (vStats.checkouts || 0) + (sStats.checkouts || 0) + (iStats.checkouts || 0) + (suStats.checkouts || 0),
+        checkins:  (mStats.checkins  || 0) + (vStats.checkins  || 0) + (sStats.checkins  || 0) + (iStats.checkins  || 0) + (suStats.checkins  || 0) + (trStats.checkins  || 0),
+        checkouts: (mStats.checkouts || 0) + (vStats.checkouts || 0) + (sStats.checkouts || 0) + (iStats.checkouts || 0) + (suStats.checkouts || 0) + (trStats.checkouts || 0),
         errors: prev.errors
       }));
     } catch (err) {
@@ -347,29 +368,31 @@ const UnifiedAttendancePage = ({ open, onClose, isRTL }) => {
 
   const clearToday = async () => {
     if (!window.confirm(isRTL
-      ? 'سيتم حذف جميع سجلات الحضور لهذا اليوم (موهبة والمتطوعين والموظفين). هل أنت متأكد؟'
-      : 'This will delete ALL of today\'s attendance records (Mawhba + Volunteers + Staff). Are you sure?')) return;
+      ? 'سيتم حذف جميع سجلات الحضور لهذا اليوم لكل الأقسام. هل أنت متأكد؟'
+      : 'This will delete ALL of today\'s attendance records across all sections. Are you sure?')) return;
     setClearingToday(true);
     try {
-      const [m, v, s, i, su] = await Promise.allSettled([
+      const [m, v, s, i, su, tr] = await Promise.allSettled([
         api.delete('/mawhba/attendance/today'),
         api.delete('/volunteers/attendance/today'),
         api.delete('/fablab-staff/attendance/today'),
         api.delete('/interns/attendance/today'),
-        api.delete('/summer/attendance/today')
+        api.delete('/summer/attendance/today'),
+        api.delete('/trainer-assistants/attendance/today')
       ]);
       const mCount  = m.status  === 'fulfilled' ? (m.value.data?.count  || 0) : 0;
       const vCount  = v.status  === 'fulfilled' ? (v.value.data?.count  || 0) : 0;
       const sCount  = s.status  === 'fulfilled' ? (s.value.data?.count  || 0) : 0;
       const iCount  = i.status  === 'fulfilled' ? (i.value.data?.count  || 0) : 0;
       const suCount = su.status === 'fulfilled' ? (su.value.data?.count || 0) : 0;
-      const total   = mCount + vCount + sCount + iCount + suCount;
+      const trCount = tr.status === 'fulfilled' ? (tr.value.data?.count || 0) : 0;
+      const total   = mCount + vCount + sCount + iCount + suCount + trCount;
       setGroups([]);
       setRecentScans([]);
       setSessionStats({ checkins: 0, checkouts: 0, errors: 0 });
       toast.success(isRTL
-        ? `تم حذف ${total} سجل (${mCount} موهبة + ${vCount} متطوع + ${sCount} موظف + ${iCount} جامعي + ${suCount} صيف)`
-        : `Deleted ${total} record(s) — ${mCount} Mawhba + ${vCount} Volunteer + ${sCount} Staff + ${iCount} University + ${suCount} Summer`);
+        ? `تم حذف ${total} سجل`
+        : `Deleted ${total} record(s)`);
     } catch (err) {
       console.error(err);
       toast.error(isRTL ? 'فشل الحذف' : 'Clear failed');
@@ -380,95 +403,159 @@ const UnifiedAttendancePage = ({ open, onClose, isRTL }) => {
 
   if (!open) return null;
 
+  const clockTime = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}:${String(now.getSeconds()).padStart(2, '0')}`;
+  const clockDate = new Intl.DateTimeFormat(isRTL ? 'ar-SA-u-ca-gregory' : 'en-GB', {
+    weekday: 'long', day: 'numeric', month: 'long'
+  }).format(now);
+
+  const categoryIcon = (cat) => ({
+    volunteer: '🤝',
+    staff: '👥',
+    trainer: '🎓',
+    intern: '🎒',
+    summer: '☀️',
+    mawhba: '📚'
+  })[cat] || '👤';
+
+  const scanIcon = (kind) => ({
+    checkin: '📥', checkout: '📤', error: '⚠', warning: '⏱', done: '✓'
+  })[kind] || '✓';
+
   return (
-    <div className="mawhba-attendance-mode" dir={isRTL ? 'rtl' : 'ltr'}>
-      <button className="mawhba-am-close" onClick={onClose} title={isRTL ? 'إغلاق' : 'Close'}>×</button>
-      <button
-        className="mawhba-am-clear"
-        onClick={clearToday}
-        disabled={clearingToday}
-        title={isRTL ? 'مسح سجلات اليوم' : "Clear today's logs"}
-      >
-        🗑 {isRTL ? 'مسح سجلات اليوم' : 'Clear today'}
-      </button>
-
-      <div className="mawhba-am-inner">
-        <header className="mawhba-am-header">
-          <div className="mawhba-am-eyebrow">
-            📡 {isRTL ? 'الحضور الموحّد · فاب لاب الأحساء' : 'Unified Attendance · FABLAB Al-Ahsa'}
-          </div>
-          <h1 className="mawhba-am-title">
-            {isRTL ? 'صفحة تسجيل الحضور' : 'Attendance Registration'}
-          </h1>
-          <p className="mawhba-am-sub">
-            {isRTL
-              ? 'يقبل الماسح بطاقات طلاب موهبة والمتطوعين — يميّز النظام النوع تلقائياً'
-              : 'The scanner accepts both Mawhba students and volunteer cards — the type is detected automatically'}
-          </p>
-        </header>
-
-        <div className="mawhba-am-ready">
-          <div className="mawhba-am-ready-pulse"></div>
-          <div className="mawhba-am-ready-label">{isRTL ? 'جاهز للمسح' : 'READY TO SCAN'}</div>
-          <div className="mawhba-am-ready-hint">
-            {isRTL ? 'وجّه الماسح نحو رمز الحضور على البطاقة' : 'Point the reader at the QR on the card'}
-          </div>
-        </div>
-
-        <div className="mawhba-am-stats">
-          <div className="mawhba-am-stat" style={{ borderColor: '#22c55e' }}>
-            <div className="mawhba-am-stat-value" style={{ color: '#16a34a' }}>{sessionStats.checkins}</div>
-            <div className="mawhba-am-stat-label">{isRTL ? 'دخول' : 'Check-ins'}</div>
-          </div>
-          <div className="mawhba-am-stat" style={{ borderColor: '#f59e0b' }}>
-            <div className="mawhba-am-stat-value" style={{ color: '#d97706' }}>{sessionStats.checkouts}</div>
-            <div className="mawhba-am-stat-label">{isRTL ? 'خروج' : 'Check-outs'}</div>
-          </div>
-          <div className="mawhba-am-stat" style={{ borderColor: '#ef4444' }}>
-            <div className="mawhba-am-stat-value" style={{ color: '#dc2626' }}>{sessionStats.errors}</div>
-            <div className="mawhba-am-stat-label">{isRTL ? 'فشل' : 'Errors'}</div>
-          </div>
-        </div>
-
-        {groups.length > 0 && (
-          <div className="mawhba-am-groups">
-            <div className="mawhba-am-recent-title">
-              {isRTL ? 'حضور اليوم' : "Today's Attendance"}
+    <div className="as-shell" dir={isRTL ? 'rtl' : 'ltr'}>
+      <div className="as-wrap">
+        {/* Top bar */}
+        <div className="as-topbar">
+          <div className="as-brand">
+            <div className="as-brand-mark">FL</div>
+            <div className="as-brand-text">
+              <b>{isRTL ? 'فاب لاب الأحساء' : 'FABLAB Al-Ahsa'}</b>
+              <span>{isRTL ? 'محطة الحضور الموحّدة' : 'Unified Attendance Station'}</span>
             </div>
+          </div>
+          <div className="as-clock">
+            {clockTime}
+            <span className="as-clock-date">{clockDate}</span>
+          </div>
+          <div className="as-topbar-actions">
+            <button
+              className="as-btn as-btn-danger"
+              onClick={clearToday}
+              disabled={clearingToday}
+              title={isRTL ? 'مسح سجلات اليوم' : "Clear today's logs"}
+            >
+              🗑 {isRTL ? 'مسح سجلات اليوم' : 'Clear today'}
+            </button>
+            <button className="as-btn as-btn-close" onClick={onClose}>
+              ✕
+            </button>
+          </div>
+        </div>
+
+        {/* Hero: READY panel + stats */}
+        <div className="as-hero">
+          <div className="as-ready">
+            <div className="as-ready-kicker">
+              {isRTL ? '● متصل · جاهز للاستقبال' : '● ONLINE · READY'}
+            </div>
+            <div className="as-ready-pulse" />
+            <div className="as-ready-label">
+              {isRTL ? 'جاهز للمسح' : 'READY TO SCAN'}
+            </div>
+            <div className="as-ready-hint">
+              {isRTL
+                ? 'وجّه الماسح نحو رمز QR على أي بطاقة — متطوع، موظف، مدرب، متدرب أو طالب. سيتم تصنيف المسح تلقائياً.'
+                : 'Point the scanner at any QR badge — volunteer, staff, trainer, intern or student. The scan will be categorized automatically.'}
+            </div>
+          </div>
+          <div className="as-stats">
+            <div className="as-stat checkin">
+              <span className="as-stat-label">{isRTL ? 'حالات دخول' : 'Check-ins'}</span>
+              <span className="as-stat-value">{sessionStats.checkins}</span>
+            </div>
+            <div className="as-stat checkout">
+              <span className="as-stat-label">{isRTL ? 'حالات خروج' : 'Check-outs'}</span>
+              <span className="as-stat-value">{sessionStats.checkouts}</span>
+            </div>
+            <div className="as-stat error">
+              <span className="as-stat-label">{isRTL ? 'فشل التعرف' : 'Not found'}</span>
+              <span className="as-stat-value">{sessionStats.errors}</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Recent scans */}
+        {recentScans.length > 0 && (
+          <div className="as-recent">
+            <h3 className="as-section-title">
+              {isRTL ? 'آخر المسحات' : 'Recent Scans'}
+            </h3>
+            <div className="as-recent-grid">
+              {recentScans.slice(0, 8).map((sc, i) => (
+                <div
+                  key={i}
+                  className="as-recent-card"
+                  style={{ '--recent-color': sc.color }}
+                >
+                  <div className="as-recent-top">
+                    <span>{scanIcon(sc.kind)}</span>
+                    <span>
+                      {sc.kind === 'checkin' && (isRTL ? 'دخول' : 'CHECK-IN')}
+                      {sc.kind === 'checkout' && (isRTL ? 'خروج' : 'CHECK-OUT')}
+                      {sc.kind === 'error' && (isRTL ? 'غير موجود' : 'NOT FOUND')}
+                      {sc.kind === 'warning' && (isRTL ? 'تنبيه' : 'WAIT')}
+                      {sc.kind === 'done' && (isRTL ? 'تم' : 'DONE')}
+                    </span>
+                  </div>
+                  <div className="as-recent-name">{sc.name}</div>
+                  <div className="as-recent-meta">
+                    <span>{sc.badge || '—'}</span>
+                    <span className="as-recent-time">{sc.time || '—'}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Today's attendance grouped by category */}
+        <h3 className="as-section-title" style={{ marginTop: 8 }}>
+          {isRTL ? 'حضور اليوم' : "Today's Attendance"}
+        </h3>
+        {groups.length === 0 ? (
+          <div className="as-empty">
+            {isRTL ? 'لا توجد سجلات حضور بعد اليوم.' : 'No attendance records yet today.'}
+          </div>
+        ) : (
+          <div className="as-groups">
             {groups.map(g => (
               <div
                 key={`${g.category}-${g.course}`}
-                className="mawhba-am-group"
+                className="as-group"
                 style={{ '--group-color': g.color }}
               >
-                <div className="mawhba-am-group-header">
-                  <span className="mawhba-am-group-dot" />
-                  <span className="mawhba-am-group-name">
-                    {g.category === 'volunteer'
-                      ? '🤝 '
-                      : g.category === 'staff'
-                        ? '👥 '
-                        : '📚 '}
-                    {g.course || (isRTL ? 'بدون دورة' : 'No course')}
-                  </span>
-                  <span className="mawhba-am-group-count">{g.students.length}</span>
+                <div className="as-group-header">
+                  <div className="as-group-left">
+                    <span className="as-group-dot" />
+                    <span className="as-group-name">
+                      {categoryIcon(g.category)} {g.course || (isRTL ? 'بدون قسم' : 'Uncategorized')}
+                    </span>
+                  </div>
+                  <span className="as-group-count">{g.students.length}</span>
                 </div>
-                <div className="mawhba-am-group-body">
+                <div className="as-group-body">
                   {g.students.map(st => {
                     const isOut = st.status === 'checked_out';
                     return (
-                      <div
-                        key={`${g.category}-${st.attendanceId}`}
-                        className={`mawhba-am-student status-${st.status}`}
-                      >
-                        <span className={`mawhba-am-student-badge ${isOut ? 'is-out' : 'is-in'}`}>
-                          {isOut ? (isRTL ? 'خرج' : 'Left') : (isRTL ? 'داخل' : 'Inside')}
+                      <div key={`${g.category}-${st.attendanceId}`} className="as-row">
+                        <span className={`as-row-badge ${isOut ? 'is-out' : 'is-in'}`}>
+                          {isOut ? (isRTL ? 'خرج' : 'Out') : (isRTL ? 'داخل' : 'In')}
                         </span>
-                        <span className="mawhba-am-student-name">{st.name}</span>
-                        <span className="mawhba-am-student-times mono">
-                          <span>{isRTL ? 'د' : 'IN'} {fmtTime(st.checkInAt)}</span>
+                        <span className="as-row-name">{st.name}</span>
+                        <span className="as-row-times">
+                          <span>{isRTL ? 'د' : 'IN'} <b>{fmtTime(st.checkInAt)}</b></span>
                           {st.checkOutAt && (
-                            <span>{isRTL ? 'خ' : 'OUT'} {fmtTime(st.checkOutAt)}</span>
+                            <span>{isRTL ? 'خ' : 'OUT'} <b>{fmtTime(st.checkOutAt)}</b></span>
                           )}
                         </span>
                       </div>
@@ -479,55 +566,22 @@ const UnifiedAttendancePage = ({ open, onClose, isRTL }) => {
             ))}
           </div>
         )}
-
-        {recentScans.length > 0 && (
-          <div className="mawhba-am-recent">
-            <div className="mawhba-am-recent-title">{isRTL ? 'آخر المسحات' : 'Recent Scans'}</div>
-            <div className="mawhba-am-recent-list">
-              {recentScans.slice(0, 6).map((sc, i) => (
-                <div
-                  key={i}
-                  className={`mawhba-am-recent-item kind-${sc.kind}`}
-                  style={{ '--popup-color': sc.color }}
-                >
-                  <span className="mawhba-am-recent-icon">
-                    {sc.kind === 'checkin' ? '📥' : sc.kind === 'checkout' ? '📤' : sc.kind === 'error' ? '⚠' : sc.kind === 'warning' ? '⏱' : '✓'}
-                  </span>
-                  <span className="mawhba-am-recent-name">{sc.name}</span>
-                  {sc.badge && <span className="mawhba-am-recent-course">{sc.badge}</span>}
-                  <span className="mawhba-am-recent-time mono">{sc.time || '—'}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
       </div>
 
+      {/* Full-screen scan popup */}
       {scanPopup && (
-        <div className="mawhba-scan-popup-overlay" onClick={() => setScanPopup(null)}>
+        <div className="as-popup-overlay" onClick={() => setScanPopup(null)}>
           <div
-            className={`mawhba-scan-popup mawhba-scan-${scanPopup.kind}`}
-            style={{ '--popup-color': scanPopup.color || '#8b5cf6' }}
+            className="as-popup"
+            style={{ '--popup-color': scanPopup.color || '#4ade80' }}
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="mawhba-scan-icon">
-              {scanPopup.kind === 'checkin' && '📥'}
-              {scanPopup.kind === 'checkout' && '📤'}
-              {scanPopup.kind === 'done' && '✓'}
-              {scanPopup.kind === 'warning' && '⏳'}
-              {scanPopup.kind === 'error' && '✕'}
-            </div>
-            <div className="mawhba-scan-label">{scanPopup.label}</div>
-            <div className="mawhba-scan-name">{scanPopup.name}</div>
-            {scanPopup.badge && (
-              <div className="mawhba-scan-course">{scanPopup.badge}</div>
-            )}
-            {scanPopup.time && (
-              <div className="mawhba-scan-datetime">
-                <span className="mawhba-scan-time">{scanPopup.time}</span>
-              </div>
-            )}
-            <div className="mawhba-scan-fadebar"><div /></div>
+            <div className="as-popup-icon">{scanIcon(scanPopup.kind)}</div>
+            <div className="as-popup-label">{scanPopup.label}</div>
+            <div className="as-popup-name">{scanPopup.name}</div>
+            {scanPopup.badge && <div className="as-popup-badge">{scanPopup.badge}</div>}
+            {scanPopup.time && <div className="as-popup-time">{scanPopup.time}</div>}
+            <div className="as-popup-fadebar"><div /></div>
           </div>
         </div>
       )}

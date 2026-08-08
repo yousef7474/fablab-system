@@ -490,6 +490,19 @@ const syncDatabase = async () => {
       }
     }
 
+    // Trainer assistants get an optional profile photo (base64 data
+    // URL) so their printed ID card can show a face like volunteers +
+    // FablabStaff already do.
+    try {
+      await sequelize.query(
+        `ALTER TABLE trainer_assistants ADD COLUMN IF NOT EXISTS "nationalIdPhoto" TEXT`
+      );
+    } catch (migrationError) {
+      if (!/does not exist/i.test(migrationError.message)) {
+        console.log('trainer_assistants.nationalIdPhoto migration note:', migrationError.message);
+      }
+    }
+
     // Volunteer opportunities gain an optional daily time window so
     // the QR check-out can auto-mark attendance across a volunteer's
     // multiple chances on the same day.

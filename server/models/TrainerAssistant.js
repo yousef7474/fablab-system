@@ -19,7 +19,12 @@ const TrainerAssistant = sequelize.define('TrainerAssistant', {
   skills:            { type: DataTypes.TEXT, allowNull: true },
   performanceRating: { type: DataTypes.FLOAT, allowNull: true },  // 0–5, admin's overall read
   notes:             { type: DataTypes.TEXT, allowNull: true },
-  isActive:          { type: DataTypes.BOOLEAN, defaultValue: true }
+  isActive:          { type: DataTypes.BOOLEAN, defaultValue: true },
+  // Profile photo (base64 data URL) — rendered on the printed ID card
+  // and shown next to the trainer's name in the admin list. Same field
+  // name used by Volunteer + FablabStaff so all three types share the
+  // same shape.
+  nationalIdPhoto:   { type: DataTypes.TEXT, allowNull: true }
 }, {
   tableName: 'trainer_assistants',
   timestamps: true,

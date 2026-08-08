@@ -13,6 +13,7 @@ router.get('/', controller.listTrainers);
 // they don't collide with the parameterised routes below.
 router.post('/attendance/scan', controller.scanAttendance);
 router.get('/attendance/today', controller.todayAttendance);
+router.delete('/attendance/today', requireManager, controller.clearTodayAttendance);
 router.post('/attendance', requireManager, controller.createManualAttendance);
 router.patch('/attendance/:id/checkout', requireManager, controller.setOrClearCheckout);
 router.delete('/attendance/:id', requireManager, controller.deleteAttendance);
