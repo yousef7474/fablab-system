@@ -1316,6 +1316,19 @@ exports.publicGetVolunteerByToken = async (req, res) => {
           as: 'summerProgram',
           required: false,
           attributes: ['programId', 'name', 'color', 'fablabSection', 'startDate', 'endDate']
+        },
+        {
+          model: VolunteerOpportunity,
+          as: 'opportunities',
+          required: false,
+          where: { status: { [Op.ne]: 'cancelled' } },
+          attributes: [
+            'opportunityId', 'title', 'description',
+            'startDate', 'endDate',
+            'dailyStartTime', 'dailyEndTime',
+            'dailyHours', 'totalHours', 'hoursAdjustment',
+            'attendanceDays', 'status'
+          ]
         }
       ]
     });
@@ -1337,6 +1350,45 @@ exports.publicGetVolunteerByToken = async (req, res) => {
       order: [['date', 'DESC'], ['checkInAt', 'DESC']]
     });
 
+    // Shape opportunities: keep only those that overlap the effective
+    // period (so a reviewer looking at a specific chance's period
+    // isn't distracted by chances from other months) and expose the
+    // per-day attendance marks (auto or manual) so the client can
+    // render a per-chance breakdown.
+    const opps = (volunteer.opportunities || [])
+      .filter(o => {
+        const os = _isoDate(o.startDate);
+        const oe = _isoDate(o.endDate);
+        if (range.from && oe && oe < range.from) return false;
+        if (range.to && os && os > range.to) return false;
+        return true;
+      })
+      .map(o => ({
+        opportunityId: o.opportunityId,
+        title: o.title,
+        description: o.description,
+        startDate: _isoDate(o.startDate),
+        endDate: _isoDate(o.endDate),
+        dailyStartTime: o.dailyStartTime,
+        dailyEndTime: o.dailyEndTime,
+        dailyHours: o.dailyHours,
+        totalHours: o.totalHours,
+        hoursAdjustment: o.hoursAdjustment,
+        status: o.status,
+        // attendanceDays is a JSON array of { date, attended, hours, task }
+        // Filter to entries within the effective period so the reviewer
+        // only sees the days that belong on this share.
+        attendanceDays: Array.isArray(o.attendanceDays)
+          ? o.attendanceDays.filter(d => {
+              const dd = _isoDate(d?.date);
+              if (!dd) return false;
+              if (range.from && dd < range.from) return false;
+              if (range.to && dd > range.to) return false;
+              return true;
+            })
+          : []
+      }));
+
     res.json({
       volunteer: {
         volunteerId: volunteer.volunteerId,
@@ -1357,6 +1409,7 @@ exports.publicGetVolunteerByToken = async (req, res) => {
           : null
       },
       shareRange: range,
+      opportunities: opps,
       attendance: attendance.map(_shapeAttendance)
     });
   } catch (err) {
@@ -1392,6 +1445,17 @@ exports.publicGetMasterReport = async (req, res) => {
           as: 'summerProgram',
           required: false,
           attributes: ['programId', 'name', 'color', 'fablabSection', 'startDate', 'endDate']
+        },
+        {
+          model: VolunteerOpportunity,
+          as: 'opportunities',
+          required: false,
+          where: { status: { [Op.ne]: 'cancelled' } },
+          attributes: [
+            'opportunityId', 'title', 'startDate', 'endDate',
+            'dailyStartTime', 'dailyEndTime',
+            'totalHours', 'hoursAdjustment', 'attendanceDays', 'status'
+          ]
         }
       ],
       order: [['name', 'ASC']]
@@ -1413,6 +1477,30 @@ exports.publicGetMasterReport = async (req, res) => {
         .sort((a, b) => (a.date < b.date ? 1 : -1))
         .map(_shapeAttendance);
       const totalMinutes = att.reduce((s, r) => s + (r.minutes || 0), 0);
+
+      const opps = (v.opportunities || [])
+        .filter(o => {
+          const os = _isoDate(o.startDate);
+          const oe = _isoDate(o.endDate);
+          if (range.from && oe && oe < range.from) return false;
+          if (range.to && os && os > range.to) return false;
+          return true;
+        })
+        .map(o => ({
+          opportunityId: o.opportunityId,
+          title: o.title,
+          startDate: _isoDate(o.startDate),
+          endDate: _isoDate(o.endDate),
+          dailyStartTime: o.dailyStartTime,
+          dailyEndTime: o.dailyEndTime,
+          totalHours: o.totalHours,
+          hoursAdjustment: o.hoursAdjustment,
+          status: o.status,
+          attendanceDays: Array.isArray(o.attendanceDays)
+            ? o.attendanceDays.filter(d => inRange(d?.date))
+            : []
+        }));
+
       return {
         volunteerId: v.volunteerId,
         shareToken: v.shareToken,
@@ -1433,6 +1521,7 @@ exports.publicGetMasterReport = async (req, res) => {
         shareRange: range,
         totalDays: att.filter(r => r.checkInAt).length,
         totalMinutes,
+        opportunities: opps,
         attendance: att
       };
     });

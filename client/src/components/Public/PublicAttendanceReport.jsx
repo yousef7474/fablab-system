@@ -241,6 +241,29 @@ const PublicAttendanceReport = () => {
                         </span>
                       )}
                     </div>
+                    {v.opportunities && v.opportunities.length > 0 && (
+                      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 6 }}>
+                        <span style={{ fontSize: 12, color: 'var(--pub-muted)', fontWeight: 600 }}>
+                          الفرص:
+                        </span>
+                        {v.opportunities.map(o => (
+                          <span
+                            key={o.opportunityId}
+                            className="pub-program-chip"
+                            title={o.dailyStartTime && o.dailyEndTime
+                              ? `${o.dailyStartTime}–${o.dailyEndTime}`
+                              : undefined}
+                          >
+                            {o.title}
+                            {o.dailyStartTime && o.dailyEndTime && (
+                              <span dir="ltr" style={{ marginInlineStart: 6, opacity: 0.7 }}>
+                                {o.dailyStartTime}–{o.dailyEndTime}
+                              </span>
+                            )}
+                          </span>
+                        ))}
+                      </div>
+                    )}
                   </div>
                   <div className="pub-vcard-actions">
                     {v.driveUrl && (

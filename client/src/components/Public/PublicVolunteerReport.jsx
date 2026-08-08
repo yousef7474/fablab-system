@@ -58,9 +58,28 @@ const dayOfWeekAr = (isoDate) => {
   return AR_DAYS[d.getDay()];
 };
 
+// Time-of-day (HH:MM) → minutes for opportunity-window overlap checks.
+const hhmmToMin = (str) => {
+  if (!str || typeof str !== 'string') return null;
+  const m = /^(\d{1,2}):(\d{2})$/.exec(str.trim());
+  if (!m) return null;
+  return parseInt(m[1], 10) * 60 + parseInt(m[2], 10);
+};
+const tsToRiyadhMin = (iso) => {
+  if (!iso) return null;
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return null;
+  const parts = new Intl.DateTimeFormat('en-GB', {
+    timeZone: 'Asia/Riyadh', hour12: false, hour: '2-digit', minute: '2-digit'
+  }).formatToParts(d);
+  return parseInt(parts.find(p => p.type === 'hour').value, 10) * 60
+       + parseInt(parts.find(p => p.type === 'minute').value, 10);
+};
+
 const PublicVolunteerReport = () => {
   const { token } = useParams();
   const [state, setState] = useState({ loading: true, error: null, data: null });
+  const [oppFilter, setOppFilter] = useState('all'); // 'all' | opportunityId
 
   useEffect(() => {
     let cancelled = false;
@@ -84,9 +103,44 @@ const PublicVolunteerReport = () => {
     return () => { cancelled = true; };
   }, [token]);
 
+  // All opportunities from the server, then the currently-selected one
+  // (or null for "all"). Used everywhere below to focus the page on a
+  // single chance when the reviewer picks one from the filter.
+  const allOpps = state.data?.opportunities || [];
+  const selectedOpp = useMemo(
+    () => allOpps.find(o => o.opportunityId === oppFilter) || null,
+    [allOpps, oppFilter]
+  );
+
+  // Attendance rows to show. When a specific opportunity is picked we
+  // narrow the raw QR log to rows that fall inside the chance's date
+  // range AND overlap its daily time window (if one is set).
+  const filteredAtt = useMemo(() => {
+    const raw = state.data?.attendance || [];
+    if (!selectedOpp) return raw;
+    const chFrom = hhmmToMin(selectedOpp.dailyStartTime);
+    const chTo = hhmmToMin(selectedOpp.dailyEndTime);
+    const timeWindowed = chFrom != null && chTo != null && chTo > chFrom;
+    return raw.filter(r => {
+      if (selectedOpp.startDate && r.date < selectedOpp.startDate) return false;
+      if (selectedOpp.endDate && r.date > selectedOpp.endDate) return false;
+      if (!timeWindowed) return true;
+      const inMin = tsToRiyadhMin(r.checkInAt);
+      const outMin = tsToRiyadhMin(r.checkOutAt);
+      if (inMin == null || outMin == null || outMin <= inMin) return false;
+      return Math.min(outMin, chTo) - Math.max(inMin, chFrom) > 0;
+    });
+  }, [state.data, selectedOpp]);
+
+  // Opportunities section list — full list, or just the picked one.
+  const shownOpps = useMemo(
+    () => (selectedOpp ? [selectedOpp] : allOpps),
+    [allOpps, selectedOpp]
+  );
+
   const stats = useMemo(() => {
     if (!state.data) return null;
-    const att = state.data.attendance || [];
+    const att = filteredAtt;
     const totalDays = att.filter(a => a.checkInAt).length;
     const totalMinutes = att.reduce((s, r) => s + (r.minutes || 0), 0);
     const openDays = att.filter(a => a.checkInAt && !a.checkOutAt).length;
@@ -96,7 +150,7 @@ const PublicVolunteerReport = () => {
       openDays,
       lastVisit: att[0]?.date || null
     };
-  }, [state.data]);
+  }, [state.data, filteredAtt]);
 
   useEffect(() => {
     if (state.data?.volunteer?.name) {
@@ -128,7 +182,7 @@ const PublicVolunteerReport = () => {
   }
 
   const v = state.data.volunteer;
-  const att = state.data.attendance || [];
+  const att = filteredAtt;
   const range = state.data.shareRange || {};
   const today = todayISO();
 
@@ -219,6 +273,38 @@ const PublicVolunteerReport = () => {
           )}
         </div>
 
+        {/* Opportunity filter — only shown when the volunteer has any */}
+        {allOpps.length > 0 && (
+          <div className="pub-opp-filter">
+            <label htmlFor="pub-opp-filter-select">عرض حسب الفرصة التطوعية:</label>
+            <select
+              id="pub-opp-filter-select"
+              value={oppFilter}
+              onChange={(e) => setOppFilter(e.target.value)}
+            >
+              <option value="all">جميع الفرص ({allOpps.length})</option>
+              {allOpps.map(o => (
+                <option key={o.opportunityId} value={o.opportunityId}>
+                  {o.title}
+                  {o.dailyStartTime && o.dailyEndTime
+                    ? ` — ${o.dailyStartTime}–${o.dailyEndTime}`
+                    : ''}
+                </option>
+              ))}
+            </select>
+            {selectedOpp && (
+              <button
+                type="button"
+                className="pub-btn"
+                onClick={() => setOppFilter('all')}
+                style={{ padding: '6px 12px', fontSize: 12 }}
+              >
+                إظهار الكل
+              </button>
+            )}
+          </div>
+        )}
+
         {stats && (
           <div className="pub-stats">
             <div className="pub-stat brand">
@@ -242,9 +328,86 @@ const PublicVolunteerReport = () => {
           </div>
         )}
 
+        {shownOpps.length > 0 && (
+          <div className="pub-panel">
+            <div className="pub-panel-title">
+              <h3>{selectedOpp ? 'الفرصة التطوعية' : 'الفرص التطوعية'}</h3>
+              <span className="pub-panel-hint">
+                {selectedOpp ? '1 من ' + allOpps.length : shownOpps.length + ' فرصة'}
+              </span>
+            </div>
+            <div className="pub-opp-list">
+              {shownOpps.map(o => {
+                const days = (o.attendanceDays || []).filter(d => d.attended);
+                const attendedHours = days.reduce((s, d) => s + (d.hours || 0), 0);
+                const totalWithAdj = (o.totalHours || 0) + (o.hoursAdjustment || 0);
+                return (
+                  <div key={o.opportunityId} className="pub-opp-card">
+                    <div className="pub-opp-head">
+                      <div className="pub-opp-title">{o.title}</div>
+                      <span className={`pub-opp-status pub-opp-status-${o.status}`}>
+                        {o.status === 'completed' ? 'مكتملة' : o.status === 'active' ? 'نشطة' : o.status}
+                      </span>
+                    </div>
+                    <div className="pub-opp-meta">
+                      <span>
+                        من <b dir="ltr">{o.startDate}</b> إلى <b dir="ltr">{o.endDate}</b>
+                      </span>
+                      {o.dailyStartTime && o.dailyEndTime && (
+                        <span className="pub-opp-window">
+                          الوقت اليومي: <b dir="ltr">{o.dailyStartTime}–{o.dailyEndTime}</b>
+                        </span>
+                      )}
+                      <span>
+                        عدد الأيام: <b>{days.length}</b>
+                      </span>
+                      <span>
+                        الساعات المسجّلة: <b>{attendedHours.toFixed(2)}</b>
+                        {totalWithAdj > 0 && (
+                          <span className="pub-cell-empty"> / {totalWithAdj}</span>
+                        )}
+                      </span>
+                    </div>
+                    {days.length > 0 && (
+                      <details className="pub-opp-details">
+                        <summary>عرض تفاصيل الأيام ({days.length})</summary>
+                        <div className="pub-table-wrap" style={{ marginTop: 8 }}>
+                          <table className="pub-table">
+                            <thead>
+                              <tr>
+                                <th>اليوم</th>
+                                <th>التاريخ</th>
+                                <th>الساعات</th>
+                                <th>ملاحظة</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {days
+                                .slice()
+                                .sort((a, b) => (a.date < b.date ? 1 : -1))
+                                .map(d => (
+                                  <tr key={d.date}>
+                                    <td>{dayOfWeekAr(d.date)}</td>
+                                    <td className="pub-num">{d.date}</td>
+                                    <td className="pub-num">{(d.hours || 0).toFixed(2)}</td>
+                                    <td>{d.task || <span className="pub-cell-empty">—</span>}</td>
+                                  </tr>
+                                ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      </details>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
         <div className="pub-panel">
           <div className="pub-panel-title">
-            <h3>سجل الحضور</h3>
+            <h3>سجل الحضور {selectedOpp && `(المُطابق للفرصة: ${selectedOpp.title})`}</h3>
             <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
               <span className="pub-panel-hint">{att.length} {att.length === 1 ? 'سجل' : 'سجلات'}</span>
               {att.length > 0 && (

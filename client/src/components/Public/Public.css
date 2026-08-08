@@ -407,6 +407,92 @@
   .pub-header, .pub-panel, .pub-vcard { padding: 16px; }
 }
 
+/* --- Opportunity filter + cards --------------------------------- */
+.pub-opp-filter {
+  display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: var(--pub-surface);
+  border: 1px solid var(--pub-line);
+  margin-bottom: 16px;
+}
+.pub-opp-filter label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--pub-text-soft);
+}
+.pub-opp-filter select {
+  flex: 1 1 260px;
+  min-width: 220px;
+  padding: 9px 12px;
+  border-radius: 8px;
+  border: 1px solid var(--pub-line-strong);
+  background: var(--pub-surface);
+  color: var(--pub-text);
+  font-family: 'Cairo', sans-serif;
+  font-size: 14px;
+}
+.pub-opp-filter select:focus {
+  outline: none;
+  border-color: var(--pub-brand);
+  box-shadow: 0 0 0 3px var(--pub-brand-soft);
+}
+
+.pub-opp-list {
+  display: flex; flex-direction: column; gap: 10px;
+}
+.pub-opp-card {
+  padding: 14px 16px;
+  border-radius: 10px;
+  border: 1px solid var(--pub-line);
+  background: var(--pub-surface-alt);
+}
+.pub-opp-head {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 10px; flex-wrap: wrap;
+  margin-bottom: 8px;
+}
+.pub-opp-title {
+  font-weight: 700; font-size: 15px;
+  color: var(--pub-text);
+}
+.pub-opp-status {
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 11px; font-weight: 700;
+  border: 1px solid transparent;
+}
+.pub-opp-status-active {
+  background: #ecfdf5; color: var(--pub-mint); border-color: #a7f3d0;
+}
+.pub-opp-status-completed {
+  background: #eff6ff; color: var(--pub-blue); border-color: #bfdbfe;
+}
+.pub-opp-meta {
+  display: flex; gap: 14px; flex-wrap: wrap;
+  font-size: 13px;
+  color: var(--pub-text-soft);
+}
+.pub-opp-meta b {
+  color: var(--pub-text);
+  font-variant-numeric: tabular-nums;
+}
+.pub-opp-window b {
+  color: var(--pub-brand);
+}
+.pub-opp-details {
+  margin-top: 10px;
+}
+.pub-opp-details summary {
+  cursor: pointer;
+  font-size: 13px; font-weight: 600;
+  color: var(--pub-brand);
+  padding: 4px 0;
+  user-select: none;
+}
+.pub-opp-details summary::-webkit-details-marker { display: none; }
+.pub-opp-details[open] summary { margin-bottom: 4px; }
+
 /* Print — clean paper output for reviewers who print the report */
 @media print {
   .pub-shell { background: #fff; padding: 0; }
