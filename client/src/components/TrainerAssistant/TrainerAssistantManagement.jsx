@@ -63,7 +63,8 @@ const Stars = ({ value, onChange, size = 22 }) => {
 const emptyTrainer = () => ({
   name: '', phone: '', nationalId: '', email: '', age: '',
   educationalDegree: '', skills: [], performanceRating: 0, notes: '',
-  nationalIdPhoto: ''
+  nationalIdPhoto: '',
+  profilePhoto: ''
 });
 const emptyAssignment = () => ({
   chanceName: '', destination: '',
@@ -356,8 +357,8 @@ const TrainerAssistantManagement = () => {
         </div>
         <div class="card-body">
           <div class="user-photo">
-            ${trainer.nationalIdPhoto
-              ? `<img src="${trainer.nationalIdPhoto}" alt="${name}" />`
+            ${(trainer.profilePhoto || trainer.nationalIdPhoto)
+              ? `<img src="${trainer.profilePhoto || trainer.nationalIdPhoto}" alt="${name}" />`
               : `<span class="initials">${name.charAt(0).toUpperCase()}</span>`
             }
           </div>
@@ -463,7 +464,8 @@ const TrainerAssistantManagement = () => {
       skills: parseSkills(t.skills),
       performanceRating: Number(t.performanceRating) || 0,
       notes: t.notes || '',
-      nationalIdPhoto: t.nationalIdPhoto || ''
+      nationalIdPhoto: t.nationalIdPhoto || '',
+      profilePhoto: t.profilePhoto || ''
     });
     setCustomSkill('');
     setShowTrainerModal(true);
@@ -1199,74 +1201,77 @@ const TrainerAssistantManagement = () => {
                     </div>
                   </div>
 
-                  {/* Profile photo — appears on the printed ID card */}
-                  <div style={{ marginTop: 12, display: 'flex', gap: 12, alignItems: 'flex-start', flexWrap: 'wrap' }}>
-                    <div style={{
-                      width: 92, height: 108,
-                      borderRadius: 10,
-                      border: `2px dashed ${trainerForm.nationalIdPhoto ? '#059669' : '#cbd5e1'}`,
-                      background: trainerForm.nationalIdPhoto ? '#ecfdf5' : '#f8fafc',
-                      display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      overflow: 'hidden', flexShrink: 0
-                    }}>
-                      {trainerForm.nationalIdPhoto ? (
-                        <img
-                          src={trainerForm.nationalIdPhoto}
-                          alt="profile"
-                          style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                        />
-                      ) : (
-                        <span style={{ fontSize: 32, color: '#94a3b8' }}>👤</span>
-                      )}
-                    </div>
-                    <div style={{ flex: 1, minWidth: 220 }}>
-                      <div style={{ fontSize: 13, fontWeight: 700, color: '#334155', marginBottom: 6 }}>
-                        {isRTL ? 'الصورة الشخصية' : 'Profile photo'}
-                      </div>
-                      <div style={{ fontSize: 12, color: '#64748b', marginBottom: 8 }}>
-                        {isRTL ? 'تُطبع على بطاقة QR الخاصة بالمدرب.' : 'Printed on the trainer\'s QR ID card.'}
-                      </div>
-                      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                        <label style={{
-                          padding: '8px 14px', borderRadius: 8, cursor: 'pointer',
-                          background: '#059669', color: '#fff', fontWeight: 700, fontSize: 13
-                        }}>
-                          {trainerForm.nationalIdPhoto
-                            ? (isRTL ? 'تغيير' : 'Change')
-                            : (isRTL ? 'رفع صورة' : 'Upload')}
-                          <input
-                            type="file"
-                            accept="image/*"
-                            style={{ display: 'none' }}
-                            onChange={(e) => {
-                              const file = e.target.files?.[0];
-                              if (!file) return;
-                              if (file.size > 3 * 1024 * 1024) {
-                                toast.error(isRTL ? 'الحد الأقصى 3MB' : 'Max 3MB');
-                                return;
-                              }
-                              const reader = new FileReader();
-                              reader.onload = () => setTrainerForm(prev => ({ ...prev, nationalIdPhoto: reader.result }));
-                              reader.readAsDataURL(file);
-                              e.target.value = '';
-                            }}
-                          />
-                        </label>
-                        {trainerForm.nationalIdPhoto && (
-                          <button
-                            type="button"
-                            onClick={() => setTrainerForm(prev => ({ ...prev, nationalIdPhoto: '' }))}
-                            style={{
-                              padding: '8px 14px', borderRadius: 8, border: '1px solid #fecaca',
-                              background: '#fee2e2', color: '#991b1b', cursor: 'pointer',
-                              fontWeight: 700, fontSize: 13, fontFamily: 'inherit'
-                            }}
-                          >
-                            {isRTL ? 'إزالة' : 'Remove'}
-                          </button>
-                        )}
-                      </div>
-                    </div>
+                  {/* Two separate uploads: portrait (used on QR card) +
+                      national-ID scan (kept for records). */}
+                  <div style={{ marginTop: 12, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+                    {[
+                      { key: 'profilePhoto', title: isRTL ? 'الصورة الشخصية' : 'Profile Photo',       hint: isRTL ? 'تُطبع على بطاقة QR الخاصة بالمدرب.' : 'Prints on the QR ID card.' },
+                      { key: 'nationalIdPhoto', title: isRTL ? 'صورة الهوية' : 'ID Photo',            hint: isRTL ? 'نسخة من الهوية للسجلات فقط.' : 'ID scan for records only.' }
+                    ].map(({ key, title, hint }) => {
+                      const has = !!trainerForm[key];
+                      const isPortrait = key === 'profilePhoto';
+                      const accent = isPortrait ? '#059669' : '#0369a1';
+                      const tint = isPortrait ? '#ecfdf5' : '#eff6ff';
+                      return (
+                        <div key={key} style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
+                          <div style={{
+                            width: 84, height: 100, borderRadius: 10,
+                            border: `2px dashed ${has ? accent : '#cbd5e1'}`,
+                            background: has ? tint : '#f8fafc',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            overflow: 'hidden', flexShrink: 0
+                          }}>
+                            {has ? (
+                              <img src={trainerForm[key]} alt={key} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                            ) : (
+                              <span style={{ fontSize: 30, color: '#94a3b8' }}>{isPortrait ? '👤' : '🪪'}</span>
+                            )}
+                          </div>
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{ fontSize: 13, fontWeight: 700, color: '#334155', marginBottom: 4 }}>{title}</div>
+                            <div style={{ fontSize: 11, color: '#64748b', marginBottom: 6 }}>{hint}</div>
+                            <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
+                              <label style={{
+                                padding: '6px 12px', borderRadius: 8, cursor: 'pointer',
+                                background: accent, color: '#fff', fontWeight: 700, fontSize: 12
+                              }}>
+                                {has ? (isRTL ? 'تغيير' : 'Change') : (isRTL ? 'رفع' : 'Upload')}
+                                <input
+                                  type="file"
+                                  accept="image/*"
+                                  style={{ display: 'none' }}
+                                  onChange={(e) => {
+                                    const file = e.target.files?.[0];
+                                    if (!file) return;
+                                    if (file.size > 3 * 1024 * 1024) {
+                                      toast.error(isRTL ? 'الحد الأقصى 3MB' : 'Max 3MB');
+                                      return;
+                                    }
+                                    const reader = new FileReader();
+                                    reader.onload = () => setTrainerForm(prev => ({ ...prev, [key]: reader.result }));
+                                    reader.readAsDataURL(file);
+                                    e.target.value = '';
+                                  }}
+                                />
+                              </label>
+                              {has && (
+                                <button
+                                  type="button"
+                                  onClick={() => setTrainerForm(prev => ({ ...prev, [key]: '' }))}
+                                  style={{
+                                    padding: '6px 10px', borderRadius: 8, border: '1px solid #fecaca',
+                                    background: '#fee2e2', color: '#991b1b', cursor: 'pointer',
+                                    fontWeight: 700, fontSize: 12, fontFamily: 'inherit'
+                                  }}
+                                >
+                                  {isRTL ? 'إزالة' : 'Remove'}
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
 

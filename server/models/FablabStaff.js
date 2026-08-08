@@ -35,7 +35,15 @@ const FablabStaff = sequelize.define('FablabStaff', {
   nationalIdPhoto: {
     type: DataTypes.TEXT,
     allowNull: true,
-    comment: 'Base64 encoded image'
+    comment: 'Base64 encoded national ID scan'
+  },
+  // Separate personal-portrait upload used for the printed QR ID card
+  // and admin views. Cards prefer this; fall back to nationalIdPhoto
+  // for backwards compatibility with staff added before this field.
+  profilePhoto: {
+    type: DataTypes.TEXT,
+    allowNull: true,
+    comment: 'Base64 profile photo — printed on the QR ID card'
   },
   isActive: {
     type: DataTypes.BOOLEAN,

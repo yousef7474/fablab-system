@@ -64,7 +64,8 @@ const VolunteerManagement = () => {
     nationalId: '',
     phone: '',
     email: '',
-    nationalIdPhoto: ''
+    nationalIdPhoto: '',
+    profilePhoto: ''
   });
   const [opportunityForm, setOpportunityForm] = useState({
     volunteerId: '',
@@ -120,7 +121,8 @@ const VolunteerManagement = () => {
       nationalId: '',
       phone: '',
       email: '',
-      nationalIdPhoto: ''
+      nationalIdPhoto: '',
+      profilePhoto: ''
     });
   };
 
@@ -149,7 +151,8 @@ const VolunteerManagement = () => {
       nationalId: volunteer.nationalId || '',
       phone: volunteer.phone || '',
       email: volunteer.email || '',
-      nationalIdPhoto: volunteer.nationalIdPhoto || ''
+      nationalIdPhoto: volunteer.nationalIdPhoto || '',
+      profilePhoto: volunteer.profilePhoto || ''
     });
     setShowVolunteerModal(true);
   };
@@ -1507,6 +1510,9 @@ const VolunteerManagement = () => {
     const na = isRTL ? 'غير محدد' : 'N/A';
     const volunteerName = volunteer.name || (isRTL ? 'غير متوفر' : 'N/A');
     const qrImg = qrDataUrl ? `<img src="${qrDataUrl}" alt="QR" />` : '';
+    // Prefer the dedicated profile photo; fall back to nationalIdPhoto
+    // for volunteers who existed before the profilePhoto field shipped.
+    const photoSrc = volunteer.profilePhoto || volunteer.nationalIdPhoto;
     return `
       <div class="id-card">
         <div class="card-header">
@@ -1515,8 +1521,8 @@ const VolunteerManagement = () => {
         </div>
         <div class="card-body">
           <div class="user-photo">
-            ${volunteer.nationalIdPhoto
-              ? `<img src="${volunteer.nationalIdPhoto}" alt="${volunteerName}" />`
+            ${photoSrc
+              ? `<img src="${photoSrc}" alt="${volunteerName}" />`
               : `<span class="initials">${volunteerName.charAt(0).toUpperCase()}</span>`
             }
           </div>
@@ -2132,6 +2138,86 @@ const VolunteerManagement = () => {
                 </button>
               </div>
               <div className="modern-modal-body">
+                {/* Profile photo — separate from ID scan. Printed on the
+                    QR ID card. Placed FIRST so it's the first thing
+                    the admin sees on the form. */}
+                <div className="form-section">
+                  <div className="section-header">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <circle cx="12" cy="8" r="5"/>
+                      <path d="M20 21v-2a7 7 0 0 0-14 0v2"/>
+                    </svg>
+                    <span>{isRTL ? 'الصورة الشخصية' : 'Profile Photo'}</span>
+                  </div>
+                  <div style={{ display: 'flex', gap: 14, alignItems: 'flex-start', flexWrap: 'wrap' }}>
+                    <div style={{
+                      width: 100, height: 118,
+                      borderRadius: 10,
+                      border: `2px dashed ${volunteerForm.profilePhoto ? '#ea580c' : '#cbd5e1'}`,
+                      background: volunteerForm.profilePhoto ? '#fff7ed' : '#f8fafc',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      overflow: 'hidden', flexShrink: 0
+                    }}>
+                      {volunteerForm.profilePhoto ? (
+                        <img
+                          src={volunteerForm.profilePhoto}
+                          alt="profile"
+                          style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                        />
+                      ) : (
+                        <span style={{ fontSize: 36, color: '#94a3b8' }}>👤</span>
+                      )}
+                    </div>
+                    <div style={{ flex: 1, minWidth: 220 }}>
+                      <div style={{ fontSize: 13, color: '#64748b', marginBottom: 10 }}>
+                        {isRTL
+                          ? 'تُطبع هذه الصورة على بطاقة QR الخاصة بالمتطوع. إن تُركت فارغة، تُستخدم صورة الهوية.'
+                          : 'This photo prints on the volunteer\'s QR ID card. Falls back to ID photo if empty.'}
+                      </div>
+                      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                        <label style={{
+                          padding: '9px 16px', borderRadius: 8, cursor: 'pointer',
+                          background: '#ea580c', color: '#fff', fontWeight: 700, fontSize: 13
+                        }}>
+                          {volunteerForm.profilePhoto
+                            ? (isRTL ? 'تغيير الصورة' : 'Change Photo')
+                            : (isRTL ? 'رفع صورة شخصية' : 'Upload Profile Photo')}
+                          <input
+                            type="file"
+                            accept="image/*"
+                            style={{ display: 'none' }}
+                            onChange={(e) => {
+                              const file = e.target.files?.[0];
+                              if (!file) return;
+                              if (file.size > 3 * 1024 * 1024) {
+                                toast.error(isRTL ? 'الحد الأقصى 3MB' : 'Max 3MB');
+                                return;
+                              }
+                              const reader = new FileReader();
+                              reader.onload = () => setVolunteerForm(prev => ({ ...prev, profilePhoto: reader.result }));
+                              reader.readAsDataURL(file);
+                              e.target.value = '';
+                            }}
+                          />
+                        </label>
+                        {volunteerForm.profilePhoto && (
+                          <button
+                            type="button"
+                            onClick={() => setVolunteerForm(prev => ({ ...prev, profilePhoto: '' }))}
+                            style={{
+                              padding: '9px 16px', borderRadius: 8, border: '1px solid #fecaca',
+                              background: '#fee2e2', color: '#991b1b', cursor: 'pointer',
+                              fontWeight: 700, fontSize: 13, fontFamily: 'inherit'
+                            }}
+                          >
+                            {isRTL ? 'إزالة' : 'Remove'}
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
                 <div className="form-section">
                   <div className="section-header">
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -2218,12 +2304,12 @@ const VolunteerManagement = () => {
                       <circle cx="8.5" cy="8.5" r="1.5"/>
                       <polyline points="21 15 16 10 5 21"/>
                     </svg>
-                    <span>{isRTL ? 'الصورة الشخصية' : 'Profile Photo'}</span>
+                    <span>{isRTL ? 'صورة الهوية' : 'ID Photo'}</span>
                   </div>
                   <div className="photo-upload-area modern-upload">
                     {volunteerForm.nationalIdPhoto ? (
                       <div className="photo-preview">
-                        <img src={volunteerForm.nationalIdPhoto} alt="profile" />
+                        <img src={volunteerForm.nationalIdPhoto} alt="ID" />
                         <button
                           className="remove-photo-btn"
                           onClick={(e) => {
@@ -2251,7 +2337,7 @@ const VolunteerManagement = () => {
                             <polyline points="17 8 12 3 7 8"/>
                             <line x1="12" y1="3" x2="12" y2="15"/>
                           </svg>
-                          <span className="upload-text">{isRTL ? 'انقر لرفع الصورة الشخصية' : 'Click to upload profile photo'}</span>
+                          <span className="upload-text">{isRTL ? 'انقر لرفع صورة الهوية' : 'Click to upload ID photo'}</span>
                           <span className="upload-hint">{isRTL ? 'PNG, JPG حتى 5MB' : 'PNG, JPG up to 5MB'}</span>
                         </div>
                       </label>

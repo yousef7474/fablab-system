@@ -20,11 +20,12 @@ const TrainerAssistant = sequelize.define('TrainerAssistant', {
   performanceRating: { type: DataTypes.FLOAT, allowNull: true },  // 0–5, admin's overall read
   notes:             { type: DataTypes.TEXT, allowNull: true },
   isActive:          { type: DataTypes.BOOLEAN, defaultValue: true },
-  // Profile photo (base64 data URL) — rendered on the printed ID card
-  // and shown next to the trainer's name in the admin list. Same field
-  // name used by Volunteer + FablabStaff so all three types share the
-  // same shape.
-  nationalIdPhoto:   { type: DataTypes.TEXT, allowNull: true }
+  // National ID scan (kept separate from the portrait so admins can
+  // store both if they want).
+  nationalIdPhoto:   { type: DataTypes.TEXT, allowNull: true },
+  // Personal portrait — printed on the QR ID card, falls back to
+  // nationalIdPhoto when empty.
+  profilePhoto:      { type: DataTypes.TEXT, allowNull: true }
 }, {
   tableName: 'trainer_assistants',
   timestamps: true,

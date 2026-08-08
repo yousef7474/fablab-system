@@ -123,7 +123,7 @@ exports.getVolunteerById = async (req, res) => {
  */
 exports.createVolunteer = async (req, res) => {
   try {
-    const { name, nationalId, phone, email, nationalIdPhoto, summerProgramId } = req.body;
+    const { name, nationalId, phone, email, nationalIdPhoto, profilePhoto, summerProgramId } = req.body;
 
     if (!name || !nationalId || !phone) {
       return res.status(400).json({
@@ -148,6 +148,7 @@ exports.createVolunteer = async (req, res) => {
       phone,
       email: email || null,
       nationalIdPhoto: nationalIdPhoto || null,
+      profilePhoto: profilePhoto || null,
       summerProgramId: summerProgramId || null
     });
 
@@ -164,7 +165,7 @@ exports.createVolunteer = async (req, res) => {
 exports.updateVolunteer = async (req, res) => {
   try {
     const { id } = req.params;
-    const { name, nationalId, phone, email, nationalIdPhoto, isActive, summerProgramId } = req.body;
+    const { name, nationalId, phone, email, nationalIdPhoto, profilePhoto, isActive, summerProgramId } = req.body;
 
     const volunteer = await Volunteer.findByPk(id);
     if (!volunteer) {
@@ -188,6 +189,7 @@ exports.updateVolunteer = async (req, res) => {
       phone: phone !== undefined ? phone : volunteer.phone,
       email: email !== undefined ? email : volunteer.email,
       nationalIdPhoto: nationalIdPhoto !== undefined ? nationalIdPhoto : volunteer.nationalIdPhoto,
+      profilePhoto: profilePhoto !== undefined ? profilePhoto : volunteer.profilePhoto,
       isActive: isActive !== undefined ? isActive : volunteer.isActive,
       summerProgramId: summerProgramId !== undefined ? (summerProgramId || null) : volunteer.summerProgramId
     });

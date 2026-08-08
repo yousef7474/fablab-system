@@ -54,7 +54,7 @@ exports.getTrainer = async (req, res) => {
 const _trainerAllowedFields = [
   'name', 'phone', 'nationalId', 'email', 'age',
   'educationalDegree', 'skills', 'performanceRating',
-  'notes', 'isActive', 'nationalIdPhoto'
+  'notes', 'isActive', 'nationalIdPhoto', 'profilePhoto'
 ];
 const _pickTrainerFields = (body = {}) => {
   const out = {};

@@ -52,7 +52,7 @@ exports.getStaffById = async (req, res) => {
 
 exports.createStaff = async (req, res) => {
   try {
-    const { name, nationalId, phone, email, position, nationalIdPhoto } = req.body || {};
+    const { name, nationalId, phone, email, position, nationalIdPhoto, profilePhoto } = req.body || {};
     if (!name || !nationalId) {
       return res.status(400).json({ message: 'Name and national ID are required' });
     }
@@ -60,7 +60,9 @@ exports.createStaff = async (req, res) => {
     if (existing) return res.status(409).json({ message: 'Staff with this national ID already exists' });
     const row = await FablabStaff.create({
       name, nationalId, phone: phone || null, email: email || null,
-      position: position || null, nationalIdPhoto: nationalIdPhoto || null
+      position: position || null,
+      nationalIdPhoto: nationalIdPhoto || null,
+      profilePhoto: profilePhoto || null
     });
     res.status(201).json(row);
   } catch (err) {
@@ -73,7 +75,7 @@ exports.updateStaff = async (req, res) => {
   try {
     const row = await FablabStaff.findByPk(req.params.id);
     if (!row) return res.status(404).json({ message: 'Staff not found' });
-    const { name, nationalId, phone, email, position, nationalIdPhoto, isActive } = req.body || {};
+    const { name, nationalId, phone, email, position, nationalIdPhoto, profilePhoto, isActive } = req.body || {};
     if (nationalId && nationalId !== row.nationalId) {
       const dup = await FablabStaff.findOne({ where: { nationalId, staffId: { [Op.ne]: row.staffId } } });
       if (dup) return res.status(409).json({ message: 'Staff with this national ID already exists' });
@@ -85,6 +87,7 @@ exports.updateStaff = async (req, res) => {
       email: email ?? row.email,
       position: position ?? row.position,
       nationalIdPhoto: nationalIdPhoto ?? row.nationalIdPhoto,
+      profilePhoto: profilePhoto ?? row.profilePhoto,
       isActive: isActive ?? row.isActive
     });
     res.json(row);

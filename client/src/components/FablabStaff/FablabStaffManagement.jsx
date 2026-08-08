@@ -7,7 +7,7 @@ import UnifiedAttendancePage from '../shared/UnifiedAttendancePage';
 
 const EMPTY_STAFF = {
   name: '', nationalId: '', phone: '', email: '',
-  position: '', nationalIdPhoto: ''
+  position: '', nationalIdPhoto: '', profilePhoto: ''
 };
 
 // Purple accent for FabLab staff — matches the ID card + attendance category
@@ -59,7 +59,9 @@ const FablabStaffManagement = () => {
     setForm({
       name: row.name || '', nationalId: row.nationalId || '',
       phone: row.phone || '', email: row.email || '',
-      position: row.position || '', nationalIdPhoto: row.nationalIdPhoto || ''
+      position: row.position || '',
+      nationalIdPhoto: row.nationalIdPhoto || '',
+      profilePhoto: row.profilePhoto || ''
     });
     setShowModal(true);
   };
@@ -243,8 +245,8 @@ const FablabStaffManagement = () => {
         </div>
         <div class="card-body">
           <div class="user-photo">
-            ${row.nationalIdPhoto
-              ? `<img src="${row.nationalIdPhoto}" alt="${nm}" />`
+            ${(row.profilePhoto || row.nationalIdPhoto)
+              ? `<img src="${row.profilePhoto || row.nationalIdPhoto}" alt="${nm}" />`
               : `<span class="initials">${nm.charAt(0).toUpperCase()}</span>`}
           </div>
           <div class="user-name">${nm}</div>
@@ -603,6 +605,79 @@ const FablabStaffManagement = () => {
             </div>
 
             <div className="modern-modal-body">
+              {/* Profile photo — separate from ID scan, printed on QR card */}
+              <div className="form-section">
+                <div className="section-header">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <circle cx="12" cy="8" r="5"/>
+                    <path d="M20 21v-2a7 7 0 0 0-14 0v2"/>
+                  </svg>
+                  <span>{isRTL ? 'الصورة الشخصية' : 'Profile Photo'}</span>
+                </div>
+                <div style={{ display: 'flex', gap: 14, alignItems: 'flex-start', flexWrap: 'wrap' }}>
+                  <div style={{
+                    width: 100, height: 118, borderRadius: 10,
+                    border: `2px dashed ${form.profilePhoto ? PURPLE : '#cbd5e1'}`,
+                    background: form.profilePhoto ? '#f5f3ff' : '#f8fafc',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    overflow: 'hidden', flexShrink: 0
+                  }}>
+                    {form.profilePhoto ? (
+                      <img src={form.profilePhoto} alt="profile" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                    ) : (
+                      <span style={{ fontSize: 36, color: '#94a3b8' }}>👤</span>
+                    )}
+                  </div>
+                  <div style={{ flex: 1, minWidth: 220 }}>
+                    <div style={{ fontSize: 13, color: '#64748b', marginBottom: 10 }}>
+                      {isRTL
+                        ? 'تُطبع هذه الصورة على بطاقة QR الخاصة بالموظف. إن تُركت فارغة، تُستخدم صورة الهوية.'
+                        : 'This photo prints on the staff QR ID card. Falls back to ID photo if empty.'}
+                    </div>
+                    <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                      <label style={{
+                        padding: '9px 16px', borderRadius: 8, cursor: 'pointer',
+                        background: PURPLE, color: '#fff', fontWeight: 700, fontSize: 13
+                      }}>
+                        {form.profilePhoto
+                          ? (isRTL ? 'تغيير الصورة' : 'Change Photo')
+                          : (isRTL ? 'رفع صورة شخصية' : 'Upload Profile Photo')}
+                        <input
+                          type="file"
+                          accept="image/*"
+                          style={{ display: 'none' }}
+                          onChange={(e) => {
+                            const file = e.target.files?.[0];
+                            if (!file) return;
+                            if (file.size > 3 * 1024 * 1024) {
+                              toast.error(isRTL ? 'الحد الأقصى 3MB' : 'Max 3MB');
+                              return;
+                            }
+                            const reader = new FileReader();
+                            reader.onload = () => setForm(prev => ({ ...prev, profilePhoto: reader.result }));
+                            reader.readAsDataURL(file);
+                            e.target.value = '';
+                          }}
+                        />
+                      </label>
+                      {form.profilePhoto && (
+                        <button
+                          type="button"
+                          onClick={() => setForm(prev => ({ ...prev, profilePhoto: '' }))}
+                          style={{
+                            padding: '9px 16px', borderRadius: 8, border: '1px solid #fecaca',
+                            background: '#fee2e2', color: '#991b1b', cursor: 'pointer',
+                            fontWeight: 700, fontSize: 13, fontFamily: 'inherit'
+                          }}
+                        >
+                          {isRTL ? 'إزالة' : 'Remove'}
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
               <div className="form-section">
                 <div className="section-header">
                   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -711,12 +786,12 @@ const FablabStaffManagement = () => {
                     <circle cx="8.5" cy="8.5" r="1.5"/>
                     <polyline points="21 15 16 10 5 21"/>
                   </svg>
-                  <span>{isRTL ? 'الصورة الشخصية' : 'Profile Photo'}</span>
+                  <span>{isRTL ? 'صورة الهوية' : 'ID Photo'}</span>
                 </div>
                 <div className="photo-upload-area modern-upload">
                   {form.nationalIdPhoto ? (
                     <div className="photo-preview">
-                      <img src={form.nationalIdPhoto} alt="profile" />
+                      <img src={form.nationalIdPhoto} alt="ID" />
                       <button
                         className="remove-photo-btn"
                         onClick={(e) => {
@@ -745,7 +820,7 @@ const FablabStaffManagement = () => {
                           <line x1="12" y1="3" x2="12" y2="15"/>
                         </svg>
                         <span className="upload-text">
-                          {isRTL ? 'انقر لرفع الصورة الشخصية' : 'Click to upload profile photo'}
+                          {isRTL ? 'انقر لرفع صورة الهوية' : 'Click to upload ID photo'}
                         </span>
                         <span className="upload-hint">
                           {isRTL ? 'PNG, JPG حتى 5MB' : 'PNG, JPG up to 5MB'}

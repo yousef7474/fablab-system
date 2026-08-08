@@ -30,7 +30,15 @@ const Volunteer = sequelize.define('Volunteer', {
   nationalIdPhoto: {
     type: DataTypes.TEXT,
     allowNull: true,
-    comment: 'Base64 encoded image or file path'
+    comment: 'Base64 encoded national ID scan'
+  },
+  // Separate personal-portrait upload used for the printed QR ID card
+  // and admin card views. When empty, cards fall back to nationalIdPhoto
+  // (backwards compat with older records that only have the ID scan).
+  profilePhoto: {
+    type: DataTypes.TEXT,
+    allowNull: true,
+    comment: 'Base64 profile photo — printed on the QR ID card'
   },
   isActive: {
     type: DataTypes.BOOLEAN,

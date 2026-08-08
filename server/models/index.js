@@ -490,16 +490,26 @@ const syncDatabase = async () => {
       }
     }
 
-    // Trainer assistants get an optional profile photo (base64 data
-    // URL) so their printed ID card can show a face like volunteers +
-    // FablabStaff already do.
+    // Profile photo + national-ID photo columns for the three types
+    // that carry a printable QR ID card. Adds both fields on every
+    // boot so an admin can upload the ID scan and the portrait
+    // separately.
     try {
       await sequelize.query(
         `ALTER TABLE trainer_assistants ADD COLUMN IF NOT EXISTS "nationalIdPhoto" TEXT`
       );
+      await sequelize.query(
+        `ALTER TABLE trainer_assistants ADD COLUMN IF NOT EXISTS "profilePhoto" TEXT`
+      );
+      await sequelize.query(
+        `ALTER TABLE volunteers ADD COLUMN IF NOT EXISTS "profilePhoto" TEXT`
+      );
+      await sequelize.query(
+        `ALTER TABLE fablab_staff ADD COLUMN IF NOT EXISTS "profilePhoto" TEXT`
+      );
     } catch (migrationError) {
       if (!/does not exist/i.test(migrationError.message)) {
-        console.log('trainer_assistants.nationalIdPhoto migration note:', migrationError.message);
+        console.log('profilePhoto columns migration note:', migrationError.message);
       }
     }
 
