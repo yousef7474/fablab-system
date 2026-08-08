@@ -66,6 +66,7 @@ router.post('/attendance/scan', volunteerController.scanAttendance);
 router.get('/attendance/today', volunteerController.todayAttendance);
 router.delete('/attendance/today', requireManager, volunteerController.clearTodayAttendance);
 router.get('/:id/attendance', volunteerController.listVolunteerAttendance);
+router.post('/attendance', requireManager, volunteerController.createManualAttendance);
 router.patch('/attendance/:id/checkout', requireManager, volunteerController.clearCheckout);
 router.delete('/attendance/:id', requireManager, volunteerController.deleteAttendance);
 router.post('/attendance/export', volunteerController.exportAttendance);

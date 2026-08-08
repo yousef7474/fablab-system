@@ -1034,6 +1034,85 @@ exports.listVolunteerAttendance = async (req, res) => {
   }
 };
 
+// POST /volunteers/attendance — admin-created attendance row for a
+// past date the volunteer didn't scan. Body: { volunteerId, date,
+// checkInAt?, checkOutAt? } where the times are 'HH:MM' anchored to
+// the date in Riyadh (+03:00) or full ISO. If a row for (volunteerId,
+// date) already exists, this returns 409 to force the admin to edit
+// the existing one via the ✎ button instead of silently overwriting.
+exports.createManualAttendance = async (req, res) => {
+  try {
+    const { volunteerId, date, checkInAt, checkOutAt } = req.body || {};
+    if (!volunteerId || !date) {
+      return res.status(400).json({
+        message: 'volunteerId and date are required',
+        messageAr: 'المتطوع والتاريخ مطلوبان'
+      });
+    }
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(String(date))) {
+      return res.status(400).json({ message: 'Invalid date format' });
+    }
+    const volunteer = await Volunteer.findByPk(volunteerId);
+    if (!volunteer) return res.status(404).json({ message: 'Volunteer not found' });
+
+    const existing = await VolunteerAttendance.findOne({
+      where: { volunteerId, date }
+    });
+    if (existing) {
+      return res.status(409).json({
+        message: 'Attendance for this date already exists — edit it instead',
+        messageAr: 'يوجد سجل حضور لهذا التاريخ — عدّله بدلاً من إنشاء جديد',
+        record: existing
+      });
+    }
+
+    const parseTime = (raw) => {
+      if (raw == null || raw === '') return null;
+      const str = String(raw).trim();
+      let t;
+      if (/^\d{2}:\d{2}(:\d{2})?$/.test(str)) {
+        const timeStr = str.length === 5 ? `${str}:00` : str;
+        t = new Date(`${date}T${timeStr}+03:00`);
+      } else {
+        t = new Date(str);
+      }
+      return isNaN(t.getTime()) ? undefined : t;
+    };
+
+    const inAt = parseTime(checkInAt);
+    const outAt = parseTime(checkOutAt);
+    if (inAt === undefined || outAt === undefined) {
+      return res.status(400).json({
+        message: 'Invalid time format',
+        messageAr: 'صيغة الوقت غير صالحة'
+      });
+    }
+    if (!inAt && !outAt) {
+      return res.status(400).json({
+        message: 'At least one of checkInAt / checkOutAt is required',
+        messageAr: 'يجب إدخال وقت الدخول أو الخروج على الأقل'
+      });
+    }
+    if (inAt && outAt && outAt < inAt) {
+      return res.status(400).json({
+        message: 'Check-out cannot be before check-in',
+        messageAr: 'وقت الخروج يجب أن يكون بعد وقت الدخول'
+      });
+    }
+
+    const record = await VolunteerAttendance.create({
+      volunteerId,
+      date,
+      checkInAt: inAt || null,
+      checkOutAt: outAt || null
+    });
+    res.status(201).json({ message: 'Manual attendance created', record });
+  } catch (err) {
+    console.error('createManualAttendance error:', err);
+    res.status(500).json({ message: 'Server error', error: err.message });
+  }
+};
+
 // PATCH /volunteers/attendance/:id/checkout
 // - body empty (or { checkOutAt: null/'' }) → clears the check-out
 // - body { checkOutAt: 'HH:MM' | 'HH:MM:SS' } → combines with the
@@ -1287,6 +1366,61 @@ const _resolveShareRange = (volunteer) => {
   return { from, to };
 };
 
+// Derive one opportunity's per-day attendance from the shared
+// VolunteerAttendance QR log — the single source of truth. Each
+// eligible day yields { date, attended:true, hours, checkInAt,
+// checkOutAt, source:'qr' } so the UI can show the raw scan times
+// alongside the computed hours.
+//
+// Overlap rules:
+//   - If the opportunity has both dailyStartTime/dailyEndTime AND the
+//     attendance row has check-in + check-out, hours = clamped overlap
+//   - Otherwise (no time window OR incomplete scan), the whole day
+//     counts and hours = duration between check-in/out (0 if still-in)
+const _shapeOpportunityDays = (opp, attendanceRows) => {
+  const start = _isoDate(opp.startDate);
+  const end = _isoDate(opp.endDate);
+  const chFrom = _hhmmToMin(opp.dailyStartTime);
+  const chTo = _hhmmToMin(opp.dailyEndTime);
+  const timeWindowed = chFrom != null && chTo != null && chTo > chFrom;
+
+  const days = [];
+  for (const rec of (attendanceRows || [])) {
+    const d = _isoDate(rec.date);
+    if (!d) continue;
+    if (start && d < start) continue;
+    if (end && d > end) continue;
+
+    let overlapMin;
+    if (timeWindowed && rec.checkInAt && rec.checkOutAt) {
+      const inMin = _tsToRiyadhMinOfDay(rec.checkInAt);
+      const outMin = _tsToRiyadhMinOfDay(rec.checkOutAt);
+      if (inMin == null || outMin == null || outMin <= inMin) continue;
+      overlapMin = Math.min(outMin, chTo) - Math.max(inMin, chFrom);
+      if (overlapMin <= 0) continue;
+    } else if (rec.checkInAt) {
+      // No window OR incomplete record — count the day at full duration
+      const inMin = _tsToRiyadhMinOfDay(rec.checkInAt);
+      const outMin = rec.checkOutAt ? _tsToRiyadhMinOfDay(rec.checkOutAt) : null;
+      overlapMin = outMin != null && outMin > inMin ? outMin - inMin : 0;
+    } else {
+      continue;
+    }
+
+    days.push({
+      date: d,
+      attended: true,
+      hours: Math.round((overlapMin / 60) * 100) / 100,
+      checkInAt: rec.checkInAt || null,
+      checkOutAt: rec.checkOutAt || null,
+      source: 'qr'
+    });
+  }
+  // Newest first for display consistency with attendance table.
+  days.sort((a, b) => (a.date < b.date ? 1 : -1));
+  return days;
+};
+
 const _shapeAttendance = (record) => {
   const inAt = record.checkInAt ? new Date(record.checkInAt) : null;
   const outAt = record.checkOutAt ? new Date(record.checkOutAt) : null;
@@ -1351,10 +1485,9 @@ exports.publicGetVolunteerByToken = async (req, res) => {
     });
 
     // Shape opportunities: keep only those that overlap the effective
-    // period (so a reviewer looking at a specific chance's period
-    // isn't distracted by chances from other months) and expose the
-    // per-day attendance marks (auto or manual) so the client can
-    // render a per-chance breakdown.
+    // period, and derive attendanceDays dynamically from the QR log
+    // (VolunteerAttendance) so admin QR scans + manual edits are the
+    // ONE source of truth — no more parallel attendanceDays JSON drift.
     const opps = (volunteer.opportunities || [])
       .filter(o => {
         const os = _isoDate(o.startDate);
@@ -1375,18 +1508,7 @@ exports.publicGetVolunteerByToken = async (req, res) => {
         totalHours: o.totalHours,
         hoursAdjustment: o.hoursAdjustment,
         status: o.status,
-        // attendanceDays is a JSON array of { date, attended, hours, task }
-        // Filter to entries within the effective period so the reviewer
-        // only sees the days that belong on this share.
-        attendanceDays: Array.isArray(o.attendanceDays)
-          ? o.attendanceDays.filter(d => {
-              const dd = _isoDate(d?.date);
-              if (!dd) return false;
-              if (range.from && dd < range.from) return false;
-              if (range.to && dd > range.to) return false;
-              return true;
-            })
-          : []
+        attendanceDays: _shapeOpportunityDays(o, attendance)
       }));
 
     res.json({
@@ -1478,6 +1600,13 @@ exports.publicGetMasterReport = async (req, res) => {
         .map(_shapeAttendance);
       const totalMinutes = att.reduce((s, r) => s + (r.minutes || 0), 0);
 
+      // Fresh (unshaped) attendance rows scoped to this volunteer,
+      // filtered by effective range — reused by _shapeOpportunityDays
+      // so each chance's days are computed from the same QR source
+      // instead of the legacy attendanceDays JSON.
+      const rangedRawAtt = (v.attendance || [])
+        .filter(r => inRange(r.date));
+
       const opps = (v.opportunities || [])
         .filter(o => {
           const os = _isoDate(o.startDate);
@@ -1496,9 +1625,7 @@ exports.publicGetMasterReport = async (req, res) => {
           totalHours: o.totalHours,
           hoursAdjustment: o.hoursAdjustment,
           status: o.status,
-          attendanceDays: Array.isArray(o.attendanceDays)
-            ? o.attendanceDays.filter(d => inRange(d?.date))
-            : []
+          attendanceDays: _shapeOpportunityDays(o, rangedRawAtt)
         }));
 
       return {

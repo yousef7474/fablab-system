@@ -222,6 +222,47 @@ const VolunteerManagement = () => {
   const [editingCheckoutValue, setEditingCheckoutValue] = useState('');
   const [savingCheckout, setSavingCheckout] = useState(false);
 
+  // Manual-add attendance state — for days the volunteer never scanned
+  // at all. The panel toggles from an "add manual record" button at
+  // the top of the log modal.
+  const [showAddManual, setShowAddManual] = useState(false);
+  const [manualForm, setManualForm] = useState({ date: '', checkInAt: '', checkOutAt: '' });
+  const [savingManual, setSavingManual] = useState(false);
+
+  const submitManualAttendance = async () => {
+    if (!logVolunteer) return;
+    if (!manualForm.date) {
+      return toast.error(isRTL ? 'أدخل التاريخ' : 'Enter a date');
+    }
+    if (!manualForm.checkInAt && !manualForm.checkOutAt) {
+      return toast.error(isRTL ? 'أدخل وقت الدخول أو الخروج على الأقل' : 'Enter at least check-in or check-out');
+    }
+    setSavingManual(true);
+    try {
+      const { data } = await api.post('/volunteers/attendance', {
+        volunteerId: logVolunteer.volunteerId,
+        date: manualForm.date,
+        checkInAt: manualForm.checkInAt || undefined,
+        checkOutAt: manualForm.checkOutAt || undefined
+      });
+      // Insert into logRecords keeping the DESC-by-date ordering.
+      setLogRecords(prev => {
+        const next = [data.record, ...prev];
+        next.sort((a, b) => (a.date < b.date ? 1 : -1));
+        return next;
+      });
+      toast.success(isRTL ? 'تمت إضافة السجل يدوياً' : 'Manual record added');
+      setManualForm({ date: '', checkInAt: '', checkOutAt: '' });
+      setShowAddManual(false);
+    } catch (err) {
+      console.error(err);
+      const msg = err?.response?.data?.messageAr || err?.response?.data?.message;
+      toast.error(msg || (isRTL ? 'فشل الإضافة' : 'Add failed'));
+    } finally {
+      setSavingManual(false);
+    }
+  };
+
   const beginEditCheckout = (rec) => {
     setEditingCheckoutId(rec.attendanceId);
     // Pre-fill with existing time if editing, else default to something
@@ -3049,6 +3090,85 @@ const VolunteerManagement = () => {
                 </div>
               );
             })()}
+
+            {/* Manual add — for past days the volunteer never scanned.
+                Deliberately near the top so admin sees it before
+                scrolling through the rows. */}
+            <div style={{ margin: '0 0 12px', display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+              {!showAddManual ? (
+                <button
+                  onClick={() => {
+                    const today = new Date().toISOString().slice(0, 10);
+                    setManualForm({ date: today, checkInAt: '', checkOutAt: '' });
+                    setShowAddManual(true);
+                  }}
+                  className="mawhba-btn-secondary"
+                  style={{ background: '#16a34a', color: '#fff', borderColor: '#16a34a' }}
+                >
+                  + {isRTL ? 'إضافة سجل يدوي' : 'Add manual record'}
+                </button>
+              ) : (
+                <div style={{
+                  display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'end',
+                  padding: 10, borderRadius: 8,
+                  background: '#f0fdf4', border: '1.5px solid #86efac'
+                }}>
+                  <label style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 12 }}>
+                    <span style={{ fontWeight: 700, color: '#166534' }}>
+                      {isRTL ? 'التاريخ' : 'Date'}
+                    </span>
+                    <input
+                      type="date"
+                      value={manualForm.date}
+                      onChange={(e) => setManualForm(f => ({ ...f, date: e.target.value }))}
+                      style={{ padding: '6px 8px', borderRadius: 6, border: '1px solid #86efac' }}
+                    />
+                  </label>
+                  <label style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 12 }}>
+                    <span style={{ fontWeight: 700, color: '#166534' }}>
+                      {isRTL ? 'وقت الدخول' : 'Check-in'}
+                    </span>
+                    <input
+                      type="time"
+                      value={manualForm.checkInAt}
+                      onChange={(e) => setManualForm(f => ({ ...f, checkInAt: e.target.value }))}
+                      style={{ padding: '6px 8px', borderRadius: 6, border: '1px solid #86efac', width: 110 }}
+                    />
+                  </label>
+                  <label style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 12 }}>
+                    <span style={{ fontWeight: 700, color: '#166534' }}>
+                      {isRTL ? 'وقت الخروج' : 'Check-out'}
+                    </span>
+                    <input
+                      type="time"
+                      value={manualForm.checkOutAt}
+                      onChange={(e) => setManualForm(f => ({ ...f, checkOutAt: e.target.value }))}
+                      style={{ padding: '6px 8px', borderRadius: 6, border: '1px solid #86efac', width: 110 }}
+                    />
+                  </label>
+                  <button
+                    onClick={submitManualAttendance}
+                    disabled={savingManual}
+                    className="mawhba-btn-primary"
+                    style={{ background: '#16a34a', color: '#fff', borderColor: '#16a34a' }}
+                  >
+                    {savingManual ? '…' : (isRTL ? 'حفظ' : 'Save')}
+                  </button>
+                  <button
+                    onClick={() => setShowAddManual(false)}
+                    disabled={savingManual}
+                    className="mawhba-btn-secondary"
+                  >
+                    {isRTL ? 'إلغاء' : 'Cancel'}
+                  </button>
+                </div>
+              )}
+              <span style={{ fontSize: 12, color: '#64748b' }}>
+                {isRTL
+                  ? 'لتسجيل يوم لم يمسح فيه المتطوع الباركود. سيظهر في السجل مباشرةً.'
+                  : 'For days the volunteer never scanned. Appears in the log immediately.'}
+              </span>
+            </div>
 
             <div className="mawhba-log-summary">
               <div>
