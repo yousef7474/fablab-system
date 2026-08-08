@@ -252,14 +252,19 @@ const VolunteerManagement = () => {
     if (typeof v === 'string') return v.slice(0, 10);
     try { return new Date(v).toISOString().slice(0, 10); } catch { return null; }
   };
+  // The picked opportunity (or null for "all"), used both by the row
+  // filter and the per-row chance-overlap duration display.
+  const logChanceOpp = React.useMemo(() => {
+    if (logChanceFilter === 'all') return null;
+    return (logVolunteer?.opportunities || []).find(o => o.opportunityId === logChanceFilter) || null;
+  }, [logChanceFilter, logVolunteer]);
+
   const filteredLogRecords = React.useMemo(() => {
-    if (logChanceFilter === 'all') return logRecords;
-    const opp = (logVolunteer?.opportunities || []).find(o => o.opportunityId === logChanceFilter);
-    if (!opp) return logRecords;
-    const oppStart = _isoDate(opp.startDate);
-    const oppEnd = _isoDate(opp.endDate);
-    const chFrom = _hhmmToMin(opp.dailyStartTime);
-    const chTo = _hhmmToMin(opp.dailyEndTime);
+    if (!logChanceOpp) return logRecords;
+    const oppStart = _isoDate(logChanceOpp.startDate);
+    const oppEnd = _isoDate(logChanceOpp.endDate);
+    const chFrom = _hhmmToMin(logChanceOpp.dailyStartTime);
+    const chTo = _hhmmToMin(logChanceOpp.dailyEndTime);
     const timeWindowed = chFrom != null && chTo != null && chTo > chFrom;
     return logRecords.filter(r => {
       const rDate = _isoDate(r.date);
@@ -276,7 +281,23 @@ const VolunteerManagement = () => {
       if (inMin == null || outMin == null || outMin <= inMin) return true;
       return Math.min(outMin, chTo) - Math.max(inMin, chFrom) > 0;
     });
-  }, [logChanceFilter, logRecords, logVolunteer]);
+  }, [logChanceOpp, logRecords]);
+
+  // How much of a specific attendance row falls inside the currently-
+  // selected chance's daily time window. Null if no chance is picked
+  // or the chance has no window (in which case the raw row duration
+  // is the right thing to show).
+  const chanceRelativeMin = (rec) => {
+    if (!logChanceOpp) return null;
+    const chFrom = _hhmmToMin(logChanceOpp.dailyStartTime);
+    const chTo = _hhmmToMin(logChanceOpp.dailyEndTime);
+    if (chFrom == null || chTo == null || chTo <= chFrom) return null;
+    if (!rec.checkInAt || !rec.checkOutAt) return null;
+    const inMin = _tsToRiyadhMin(rec.checkInAt);
+    const outMin = _tsToRiyadhMin(rec.checkOutAt);
+    if (inMin == null || outMin == null || outMin <= inMin) return null;
+    return Math.max(0, Math.min(outMin, chTo) - Math.max(inMin, chFrom));
+  };
 
   // Manual-add attendance state — for days the volunteer never scanned
   // at all. The panel toggles from an "add manual record" button at
@@ -3353,10 +3374,17 @@ const VolunteerManagement = () => {
                 <b>{filteredLogRecords.filter(r => r.checkInAt && !r.checkOutAt).length}</b>
               </div>
               <div>
-                <span>{isRTL ? 'إجمالي الوقت' : 'Total time'}</span>
+                <span>
+                  {logChanceOpp
+                    ? (isRTL ? 'الساعات ضمن الفرصة' : 'Hours within chance')
+                    : (isRTL ? 'إجمالي الوقت' : 'Total time')}
+                </span>
                 <b>
                   {(() => {
-                    const total = filteredLogRecords.reduce((s, r) => s + (durationMin(r) || 0), 0);
+                    const total = filteredLogRecords.reduce((s, r) => {
+                      const chMin = chanceRelativeMin(r);
+                      return s + (chMin != null ? chMin : (durationMin(r) || 0));
+                    }, 0);
                     return `${Math.floor(total / 60)}h ${total % 60}m`;
                   })()}
                 </b>
@@ -3387,6 +3415,7 @@ const VolunteerManagement = () => {
                   <tbody>
                     {filteredLogRecords.map(r => {
                       const dur = durationMin(r);
+                      const chMin = chanceRelativeMin(r);
                       const completed = r.checkInAt && r.checkOutAt;
                       const isEditing = editingCheckoutId === r.attendanceId;
                       return (
@@ -3429,7 +3458,20 @@ const VolunteerManagement = () => {
                               </div>
                             ) : fmtHms(r.checkOutAt)}
                           </td>
-                          <td className="mono">{dur != null ? `${Math.floor(dur / 60)}h ${dur % 60}m` : '—'}</td>
+                          <td className="mono">
+                            {chMin != null ? (
+                              <>
+                                <span style={{ color: '#16a34a', fontWeight: 700 }}>
+                                  {`${Math.floor(chMin / 60)}h ${chMin % 60}m`}
+                                </span>
+                                {dur != null && dur !== chMin && (
+                                  <span style={{ color: '#94a3b8', fontSize: '0.85em', marginInlineStart: 4 }}>
+                                    / {`${Math.floor(dur / 60)}h ${dur % 60}m`}
+                                  </span>
+                                )}
+                              </>
+                            ) : (dur != null ? `${Math.floor(dur / 60)}h ${dur % 60}m` : '—')}
+                          </td>
                           <td>
                             <span className={`mawhba-log-pill ${completed ? 'ok' : 'partial'}`}>
                               {completed ? (isRTL ? '✓ مكتمل' : '✓ Complete') : (isRTL ? '⏳ داخل الآن' : '⏳ Still in')}
