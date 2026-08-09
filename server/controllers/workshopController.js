@@ -917,7 +917,27 @@ const _resolveWorkshopStudentByCode = async (code) => {
   return s || null;
 };
 
+// Read the check-in / check-out for a given date from the scans
+// array. Handles the legacy shape (`scannedAt`) by treating it as a
+// check-in with no check-out.
+const _dayScanEntry = (scans, date) => {
+  const idx = (scans || []).findIndex(s => s?.date === date);
+  if (idx === -1) return { idx: -1, entry: null };
+  const raw = scans[idx];
+  const entry = {
+    date,
+    checkInAt: raw.checkInAt || raw.scannedAt || null,
+    checkOutAt: raw.checkOutAt || null
+  };
+  return { idx, entry };
+};
+
 // POST /workshops/students/attendance/scan — body { code }
+// Same check-in → check-out lifecycle as volunteers/staff:
+//   - No entry for today → check-in
+//   - Entry with check-in but no check-out (and 15+ min elapsed) → check-out
+//   - Entry with check-out already → already_done
+//   - Repeat scan within 15 min of check-in → duplicate (soft warning)
 exports.scanWorkshopAttendance = async (req, res) => {
   try {
     const student = await _resolveWorkshopStudentByCode(req.body?.code);
@@ -927,42 +947,61 @@ exports.scanWorkshopAttendance = async (req, res) => {
     const now = new Date();
     const dates = Array.isArray(student.attendanceDates) ? [...student.attendanceDates] : [];
     const scans = Array.isArray(student.attendanceScans) ? [...student.attendanceScans] : [];
+    const { idx: scanIdx, entry: existing } = _dayScanEntry(scans, date);
 
-    const already = dates.includes(date);
-    const scanIdx = scans.findIndex(s => s?.date === date);
     let action;
-    if (already) {
-      action = 'already_done';
-      // Back-fill a scan timestamp if the date was appended via an
-      // older code path (e.g. the print-card side-effect) that didn't
-      // record a time. Without this, the attendance board would keep
-      // showing "—" for the check-in time forever.
-      if (scanIdx === -1) {
-        scans.push({ date, scannedAt: now.toISOString() });
-        student.setDataValue('attendanceScans', scans);
-        student.changed('attendanceScans', true);
-        await student.save({ fields: ['attendanceScans'] });
-      }
-    } else {
-      dates.push(date);
-      scans.push({ date, scannedAt: now.toISOString() });
-      // JSON dirty-tracking workaround so both arrays flush
+    let dirty = false;
+
+    if (!existing) {
+      // First scan of the day → check-in
+      scans.push({ date, checkInAt: now.toISOString(), checkOutAt: null });
+      if (!dates.includes(date)) dates.push(date);
       student.setDataValue('attendanceDates', dates);
       student.setDataValue('attendanceScans', scans);
       student.changed('attendanceDates', true);
       student.changed('attendanceScans', true);
       student.attended = true;
-      // First scan also marks payment as verified (matches the
-      // existing print-card side-effect)
       if (student.paymentStatus !== 'verified') student.paymentStatus = 'verified';
-      await student.save();
+      dirty = true;
       action = 'checkin';
+    } else if (!existing.checkOutAt) {
+      // Enforce a 15-minute cooldown so a repeat scan right after
+      // check-in doesn't accidentally close the day.
+      const since = now.getTime() - new Date(existing.checkInAt).getTime();
+      if (since < 15 * 60 * 1000) {
+        return res.json({
+          action: 'duplicate',
+          student: {
+            studentId: student.studentId,
+            name: `${student.firstName || ''} ${student.lastName || ''}`.trim(),
+            phone: student.phone
+          },
+          workshop: student.workshop
+            ? { workshopId: student.workshop.workshopId, title: student.workshop.title, color: student.workshop.color }
+            : null,
+          record: { date, checkInAt: existing.checkInAt, checkOutAt: null },
+          message: 'Just checked in — wait 15 minutes before checking out'
+        });
+      }
+      // Check-out — normalize the entry in place (upgrades legacy
+      // `scannedAt` shape at the same time).
+      scans[scanIdx] = {
+        date,
+        checkInAt: existing.checkInAt,
+        checkOutAt: now.toISOString()
+      };
+      student.setDataValue('attendanceScans', scans);
+      student.changed('attendanceScans', true);
+      dirty = true;
+      action = 'checkout';
+    } else {
+      // Already checked in AND out
+      action = 'already_done';
     }
 
-    // Existing scan record for today (if any) so the client can show
-    // the actual time
-    const todayScan = scans.find(s => s?.date === date);
+    if (dirty) await student.save();
 
+    const finalEntry = _dayScanEntry(scans, date).entry;
     res.json({
       action,
       student: {
@@ -979,8 +1018,8 @@ exports.scanWorkshopAttendance = async (req, res) => {
         : null,
       record: {
         date,
-        checkInAt: todayScan?.scannedAt || now.toISOString(),
-        checkOutAt: null
+        checkInAt: finalEntry?.checkInAt || now.toISOString(),
+        checkOutAt: finalEntry?.checkOutAt || null
       }
     });
   } catch (err) {
@@ -1006,6 +1045,8 @@ exports.workshopAttendanceToday = async (req, res) => {
 
     // Group by workshop
     const groupMap = new Map();
+    let totalCheckins = 0;
+    let totalCheckouts = 0;
     for (const s of todayStudents) {
       const w = s.workshop;
       const key = w?.workshopId || 'unassigned';
@@ -1018,20 +1059,23 @@ exports.workshopAttendanceToday = async (req, res) => {
         });
       }
       const scans = Array.isArray(s.attendanceScans) ? s.attendanceScans : [];
-      const todayScan = scans.find(x => x?.date === date);
+      const raw = scans.find(x => x?.date === date) || {};
+      const checkInAt = raw.checkInAt || raw.scannedAt || null;
+      const checkOutAt = raw.checkOutAt || null;
+      if (checkInAt) totalCheckins++;
+      if (checkOutAt) totalCheckouts++;
       groupMap.get(key).students.push({
         attendanceId: s.studentId,   // reuse shape of other today endpoints
         studentId: s.studentId,
         name: `${s.firstName || ''} ${s.lastName || ''}`.trim(),
         phone: s.phone || '',
-        checkInAt: todayScan?.scannedAt || null,
-        checkOutAt: null,
-        status: 'checked_in'
+        checkInAt,
+        checkOutAt,
+        status: checkOutAt ? 'checked_out' : 'checked_in'
       });
     }
     const groups = Array.from(groupMap.values());
-    const totalCheckins = todayStudents.length;
-    res.json({ date, groups, stats: { checkins: totalCheckins, checkouts: 0 } });
+    res.json({ date, groups, stats: { checkins: totalCheckins, checkouts: totalCheckouts } });
   } catch (err) {
     console.error('workshopAttendanceToday error:', err);
     res.status(500).json({ message: 'Server error', error: err.message });

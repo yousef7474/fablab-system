@@ -419,15 +419,17 @@ const UnifiedAttendancePage = ({ open, onClose, isRTL }) => {
       // fall through to workshop
     }
 
-    // Workshop-student scan — QR encodes a JSON payload; the server
-    // accepts that, a raw UUID, or a national ID. Same shape as the
-    // other categories after the response.
+    // Workshop-student scan — same check-in → check-out lifecycle as
+    // the volunteer/staff scans. First scan checks in, second (after
+    // the 15-minute cooldown) checks out.
     try {
       const { data } = await api.post('/workshops/students/attendance/scan', { code });
       const st = data.student || {};
       const w = data.workshop || {};
       const r = data.record || {};
-      const refTime = r.checkInAt || new Date().toISOString();
+      const refTime = data.action === 'checkout'
+        ? (r.checkOutAt || new Date().toISOString())
+        : (r.checkInAt || new Date().toISOString());
       const { kind, label } = labelFor(data.action);
       const payload = {
         kind, label,
@@ -439,6 +441,7 @@ const UnifiedAttendancePage = ({ open, onClose, isRTL }) => {
       };
       showResult(payload);
       if (kind === 'checkin') setSessionStats(p => ({ ...p, checkins: p.checkins + 1 }));
+      else if (kind === 'checkout') setSessionStats(p => ({ ...p, checkouts: p.checkouts + 1 }));
       setRecentScans(prev => [payload, ...prev].slice(0, 30));
       hydrate();
       return;
