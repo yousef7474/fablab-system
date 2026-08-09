@@ -802,15 +802,10 @@ const generateAttendanceIdHtml = (student, workshop) => {
   const name = `${student.firstName || ''} ${student.lastName || ''}`.trim() || 'Student';
   const initial = (name.charAt(0) || 'S').toUpperCase();
   const code = `WS-${(student.studentId || '').substring(0, 8).toUpperCase()}`;
-  // Same QR payload as before so scanners keep working
-  const qrData = JSON.stringify({
-    studentId: student.studentId,
-    name,
-    workshopId: workshop.workshopId,
-    workshop: workshop.title,
-    phone: student.phone,
-    color
-  });
+  // Encode just the studentId UUID — cheap USB HID scanners drop
+  // curly braces / quotes on Arabic keyboard layouts, so JSON
+  // payloads become unreadable. UUIDs survive every layout.
+  const qrData = student.studentId || '';
   const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(qrData)}`;
 
   // Colored tint values used for the light-body wash + the photo

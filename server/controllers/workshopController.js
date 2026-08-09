@@ -858,37 +858,50 @@ const _todayStrRiyadh = () => {
   return `${y}-${m}-${d}`;
 };
 
-// The workshop QR encodes a JSON payload; try to parse it and pull
-// studentId. Fall back to treating the raw code as a studentId
-// (UUID) or a national ID.
+// The workshop QR encodes just a studentId UUID for reliability
+// across USB HID scanners + non-English keyboard layouts. Older
+// cards printed with a JSON payload still work via the JSON branch,
+// and if a scanner mangled either format we scan the raw text for
+// any UUID substring as a last resort. Also falls back to a national
+// ID match if the code isn't a UUID at all.
+const _UUID_ANYWHERE_RE = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i;
+
 const _resolveWorkshopStudentByCode = async (code) => {
   const raw = String(code || '').trim();
   if (!raw) return null;
 
-  // Try JSON payload
-  if (raw.startsWith('{') && raw.endsWith('}')) {
+  const include = [{ model: Workshop, as: 'workshop' }];
+
+  // 1) Try JSON payload (legacy cards)
+  if (raw.startsWith('{')) {
     try {
       const payload = JSON.parse(raw);
       if (payload?.studentId) {
-        const s = await WorkshopStudent.findByPk(payload.studentId, {
-          include: [{ model: Workshop, as: 'workshop' }]
-        });
+        const s = await WorkshopStudent.findByPk(payload.studentId, { include });
         if (s) return s;
       }
     } catch { /* fall through */ }
   }
-  // Raw UUID
+
+  // 2) Raw UUID (new cards)
   const uuidRe = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
   if (uuidRe.test(raw)) {
-    const s = await WorkshopStudent.findByPk(raw, {
-      include: [{ model: Workshop, as: 'workshop' }]
-    });
+    const s = await WorkshopStudent.findByPk(raw, { include });
     if (s) return s;
   }
-  // National ID fallback
+
+  // 3) UUID anywhere in the string — for scanners that dropped
+  //    surrounding JSON braces / quotes but kept the ID intact
+  const m = raw.match(_UUID_ANYWHERE_RE);
+  if (m) {
+    const s = await WorkshopStudent.findByPk(m[0], { include });
+    if (s) return s;
+  }
+
+  // 4) National ID fallback
   const s = await WorkshopStudent.findOne({
     where: { nationalId: raw },
-    include: [{ model: Workshop, as: 'workshop' }]
+    include
   });
   return s || null;
 };

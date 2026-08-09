@@ -1355,14 +1355,12 @@ const AdminDashboard = () => {
     const color = workshop?.color || '#1a56db';
     const name = `${student.firstName || ''} ${student.lastName || ''}`.trim() || 'Student';
     const initial = (name.charAt(0) || 'S').toUpperCase();
-    const qrPayload = JSON.stringify({
-      studentId: student.studentId,
-      name,
-      workshopId: workshop?.workshopId,
-      workshop: workshop?.title,
-      phone: student.phone,
-      color
-    });
+    // Encode just the studentId UUID. Cheap USB HID scanners can
+    // mangle JSON payloads (curly braces / quotes / colons drop on
+    // non-English keyboard layouts). UUIDs use only [0-9a-f-] which
+    // survive every keyboard mapping. The server's scan endpoint
+    // still accepts old JSON-encoded cards via its JSON branch.
+    const qrPayload = student.studentId || '';
     const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(qrPayload)}`;
     return `<div class="id-card" style="
       background: linear-gradient(180deg, #ffffff 0%, ${color}10 100%);
