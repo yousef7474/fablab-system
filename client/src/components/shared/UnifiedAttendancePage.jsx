@@ -38,9 +38,49 @@ const UnifiedAttendancePage = ({ open, onClose, isRTL }) => {
   const [scanPopup, setScanPopup] = useState(null);
   const [clearingToday, setClearingToday] = useState(false);
   const [now, setNow] = useState(new Date());
+  const [showExport, setShowExport] = useState(false);
+  const [exportFrom, setExportFrom] = useState(() => {
+    const d = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+    return d.toISOString().slice(0, 10);
+  });
+  const [exportTo, setExportTo] = useState(() => new Date().toISOString().slice(0, 10));
+  const [exporting, setExporting] = useState(false);
   const hwBufferRef = useRef('');
   const hwLastKeyRef = useRef(0);
   const scanPopupTimerRef = useRef(null);
+
+  const downloadReport = async () => {
+    if (!exportFrom || !exportTo) {
+      toast.error(isRTL ? 'حدد نطاق التواريخ' : 'Pick a date range');
+      return;
+    }
+    if (exportFrom > exportTo) {
+      toast.error(isRTL ? '"من" يجب أن يكون قبل "إلى"' : '"From" must be before "To"');
+      return;
+    }
+    setExporting(true);
+    try {
+      const res = await api.get('/attendance/report', {
+        params: { from: exportFrom, to: exportTo },
+        responseType: 'blob'
+      });
+      const url = URL.createObjectURL(res.data);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `attendance-report_${exportFrom}_to_${exportTo}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+      toast.success(isRTL ? 'تم تنزيل الملف' : 'File downloaded');
+      setShowExport(false);
+    } catch (err) {
+      console.error(err);
+      toast.error(isRTL ? 'فشل التصدير' : 'Export failed');
+    } finally {
+      setExporting(false);
+    }
+  };
 
   // Keep the URL hash in sync with the visible state.
   useEffect(() => {
@@ -572,6 +612,13 @@ const UnifiedAttendancePage = ({ open, onClose, isRTL }) => {
           <div className="as-topbar-actions">
             <button
               className="as-btn"
+              onClick={() => setShowExport(true)}
+              title={isRTL ? 'تنزيل السجل كملف Excel' : 'Download report as Excel'}
+            >
+              📥 <span style={{ marginInlineStart: 4 }}>{isRTL ? 'تنزيل السجل' : 'Download'}</span>
+            </button>
+            <button
+              className="as-btn"
               onClick={() => setTheme(t => (t === 'dark' ? 'light' : 'dark'))}
               title={theme === 'dark'
                 ? (isRTL ? 'الوضع الفاتح' : 'Switch to light')
@@ -714,6 +761,107 @@ const UnifiedAttendancePage = ({ open, onClose, isRTL }) => {
       </div>
 
       {/* Full-screen scan popup */}
+      {/* Range-based export modal */}
+      {showExport && (
+        <div className="as-popup-overlay" onClick={() => !exporting && setShowExport(false)}>
+          <div
+            className="as-popup"
+            style={{ '--popup-color': '#2563eb', minWidth: 380, maxWidth: 460, padding: 28 }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div style={{ fontSize: 44, marginBottom: 4 }}>📥</div>
+            <div className="as-popup-label" style={{ color: '#2563eb' }}>
+              {isRTL ? 'تنزيل سجل الحضور' : 'Download Attendance Report'}
+            </div>
+            <div style={{ color: 'var(--as-text-soft)', fontSize: 13, marginBottom: 20, lineHeight: 1.6 }}>
+              {isRTL
+                ? 'يتم تصدير جميع سجلات الحضور خلال الفترة المحددة (متطوعون · موظفون · مدربون · طلاب ورش · صيف · موهبة · تدريب جامعي) كملف Excel.'
+                : 'Exports every attendance record within the range (volunteers, staff, trainers, workshop students, summer, mawhba, university interns) as one Excel file.'}
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 20 }}>
+              <label style={{ display: 'block', textAlign: isRTL ? 'right' : 'left' }}>
+                <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--as-text-soft)', marginBottom: 4 }}>
+                  {isRTL ? 'من تاريخ' : 'From'}
+                </div>
+                <input
+                  type="date"
+                  value={exportFrom}
+                  max={exportTo || undefined}
+                  onChange={(e) => setExportFrom(e.target.value)}
+                  style={{
+                    width: '100%', padding: '10px 12px',
+                    borderRadius: 8, border: '1.5px solid var(--as-line-strong)',
+                    background: 'var(--as-surface)', color: 'var(--as-text)',
+                    fontFamily: 'inherit', fontSize: 14
+                  }}
+                />
+              </label>
+              <label style={{ display: 'block', textAlign: isRTL ? 'right' : 'left' }}>
+                <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--as-text-soft)', marginBottom: 4 }}>
+                  {isRTL ? 'إلى تاريخ' : 'To'}
+                </div>
+                <input
+                  type="date"
+                  value={exportTo}
+                  min={exportFrom || undefined}
+                  onChange={(e) => setExportTo(e.target.value)}
+                  style={{
+                    width: '100%', padding: '10px 12px',
+                    borderRadius: 8, border: '1.5px solid var(--as-line-strong)',
+                    background: 'var(--as-surface)', color: 'var(--as-text)',
+                    fontFamily: 'inherit', fontSize: 14
+                  }}
+                />
+              </label>
+            </div>
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+              {[
+                { label: isRTL ? 'اليوم' : 'Today', days: 0 },
+                { label: isRTL ? 'آخر ٧ أيام' : 'Last 7 days', days: 7 },
+                { label: isRTL ? 'آخر ٣٠ يوم' : 'Last 30 days', days: 30 },
+                { label: isRTL ? 'آخر ٩٠ يوم' : 'Last 90 days', days: 90 }
+              ].map(p => (
+                <button
+                  key={p.label}
+                  onClick={() => {
+                    const t = new Date();
+                    const f = new Date(t.getTime() - p.days * 24 * 60 * 60 * 1000);
+                    setExportTo(t.toISOString().slice(0, 10));
+                    setExportFrom(f.toISOString().slice(0, 10));
+                  }}
+                  style={{
+                    padding: '5px 10px', borderRadius: 6,
+                    border: '1px solid var(--as-line)',
+                    background: 'transparent', color: 'var(--as-text-soft)',
+                    cursor: 'pointer', fontSize: 11, fontFamily: 'inherit', fontWeight: 700
+                  }}
+                >{p.label}</button>
+              ))}
+            </div>
+            <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 20 }}>
+              <button
+                className="as-btn"
+                onClick={() => setShowExport(false)}
+                disabled={exporting}
+              >
+                {isRTL ? 'إلغاء' : 'Cancel'}
+              </button>
+              <button
+                className="as-btn"
+                onClick={downloadReport}
+                disabled={exporting}
+                style={{
+                  background: '#2563eb', color: '#fff',
+                  borderColor: '#2563eb'
+                }}
+              >
+                {exporting ? '…' : (isRTL ? '📥 تنزيل' : '📥 Download')}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {scanPopup && (
         <div className="as-popup-overlay" onClick={() => setScanPopup(null)}>
           <div

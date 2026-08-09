@@ -32,6 +32,7 @@ const trainerAssistantRoutes = require('./routes/trainerAssistantRoutes');
 const customerRoutes = require('./routes/customerRoutes');
 const contractRoutes = require('./routes/contractRoutes');
 const publicRoutes = require('./routes/publicRoutes');
+const attendanceReportRoutes = require('./routes/attendanceReportRoutes');
 const { startBorrowingScheduler } = require('./utils/borrowingScheduler');
 const { seedInitialCustomers } = require('./utils/seedCustomers');
 const { startTaskReminderScheduler } = require('./utils/taskReminderScheduler');
@@ -84,6 +85,10 @@ app.use('/api/user-history', userHistoryRoutes);
 // Public, no-auth endpoints for external volunteer report share links.
 // Anything under /api/public/* is unauthenticated — protect the tokens.
 app.use('/api/public', publicRoutes);
+// Unified attendance export — aggregates every attendance source
+// (volunteers, staff, trainers, interns, mawhba, summer, workshops)
+// for a date range and streams as an Excel-friendly TSV.
+app.use('/api/attendance', attendanceReportRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {
