@@ -1364,9 +1364,6 @@ const AdminDashboard = () => {
       color
     });
     const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(qrPayload)}`;
-    const dateStr = workshop?.startDate
-      ? `${workshop.startDate}${workshop.endDate && workshop.endDate !== workshop.startDate ? ' → ' + workshop.endDate : ''}`
-      : '';
     return `<div class="id-card" style="
       background: linear-gradient(180deg, #ffffff 0%, ${color}10 100%);
     ">
@@ -1381,9 +1378,8 @@ const AdminDashboard = () => {
         <div class="user-name">${name}</div>
         <div class="user-type-badge" style="background: linear-gradient(135deg, ${color}, ${color});">${workshop?.title || (isRTL ? 'ورشة تدريبية' : 'Workshop')}</div>
         <div class="info-section">
+          ${student.nationalId ? `<div class="info-row"><span class="info-label">${isRTL ? 'رقم الهوية' : 'National ID'}</span><span class="info-value" dir="ltr">${student.nationalId}</span></div>` : ''}
           ${student.phone ? `<div class="info-row"><span class="info-label">${isRTL ? 'الهاتف' : 'Phone'}</span><span class="info-value" dir="ltr">${student.phone}</span></div>` : ''}
-          ${dateStr ? `<div class="info-row"><span class="info-label">${isRTL ? 'التاريخ' : 'Date'}</span><span class="info-value" dir="ltr">${dateStr}</span></div>` : ''}
-          ${workshop?.presenter ? `<div class="info-row"><span class="info-label">${isRTL ? 'المقدم' : 'Presenter'}</span><span class="info-value">${workshop.presenter}</span></div>` : ''}
         </div>
         <div class="card-qr"><img src="${qrUrl}" alt="QR" style="box-shadow: 0 0 0 0.3mm ${color} inset;" /></div>
       </div>
@@ -1465,12 +1461,26 @@ const AdminDashboard = () => {
       width: 26mm; height: 26mm; background: white; padding: 0.8mm; border-radius: 1mm;
     }
     .card-footer {
-      background: #ffffff; padding: 1.5mm 3mm;
+      background: #ffffff; padding: 1mm 2mm;
       display: flex; align-items: center; justify-content: space-between;
+      gap: 1mm;
       border-top: 0.3mm solid #e0e0e0;
+      /* footer stays glued to the card bottom edge inside the border */
+      overflow: hidden;
     }
-    .card-footer .logo { height: 7mm; width: auto; flex-shrink: 0; }
-    .card-footer .qr-label { font-size: 6pt; font-weight: 700; }
+    .card-footer .logo {
+      max-height: 6mm;
+      max-width: 22mm;
+      width: auto; height: auto;
+      object-fit: contain;
+      flex-shrink: 0;
+    }
+    .card-footer .qr-label {
+      font-size: 5.5pt; font-weight: 700;
+      white-space: nowrap;
+      overflow: hidden; text-overflow: ellipsis;
+      min-width: 0; flex: 0 1 auto;
+    }
     .decorative-stripe {
       position: absolute; top: 40%; ${isRTL ? 'right' : 'left'}: 0;
       width: 1mm; height: 25%;
