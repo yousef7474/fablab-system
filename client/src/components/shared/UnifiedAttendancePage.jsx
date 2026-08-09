@@ -15,6 +15,7 @@ import './AttendanceStation.css';
 // though the parent's `open` state has just been reset to false. This
 // is what makes F5 not close the kiosk.
 const HASH = '#attendance';
+const THEME_KEY = 'attendance-theme';
 
 const UnifiedAttendancePage = ({ open, onClose, isRTL }) => {
   // The station renders whenever either the parent asks (open prop)
@@ -22,6 +23,13 @@ const UnifiedAttendancePage = ({ open, onClose, isRTL }) => {
   const [selfOpen, setSelfOpen] = useState(() =>
     typeof window !== 'undefined' && window.location.hash === HASH
   );
+  // 'light' | 'dark' — persisted so the operator's pick sticks across
+  // refreshes and days. Popup card lives outside .as-shell so we also
+  // mirror the theme onto <body> via a data-attribute (see effect).
+  const [theme, setTheme] = useState(() => {
+    if (typeof window === 'undefined') return 'light';
+    return localStorage.getItem(THEME_KEY) === 'dark' ? 'dark' : 'light';
+  });
   const isOpen = open || selfOpen;
 
   const [groups, setGroups] = useState([]);
@@ -50,6 +58,24 @@ const UnifiedAttendancePage = ({ open, onClose, isRTL }) => {
   useEffect(() => {
     if (open) setSelfOpen(true);
   }, [open]);
+
+  // Persist theme + mirror it to <body> so the scan popup (which is
+  // rendered inside .as-shell but has fixed positioning that spans
+  // the whole viewport) can inherit the right palette regardless.
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    localStorage.setItem(THEME_KEY, theme);
+    if (isOpen) {
+      document.body.setAttribute('data-attendance-theme', theme);
+    } else {
+      document.body.removeAttribute('data-attendance-theme');
+    }
+    return () => {
+      if (typeof document !== 'undefined') {
+        document.body.removeAttribute('data-attendance-theme');
+      }
+    };
+  }, [theme, isOpen]);
 
   // Live clock refreshed once per second while the station is open.
   useEffect(() => {
@@ -481,7 +507,7 @@ const UnifiedAttendancePage = ({ open, onClose, isRTL }) => {
   })[kind] || '✓';
 
   return (
-    <div className="as-shell" dir={isRTL ? 'rtl' : 'ltr'}>
+    <div className="as-shell" data-theme={theme} dir={isRTL ? 'rtl' : 'ltr'}>
       <div className="as-wrap">
         {/* Top bar */}
         <div className="as-topbar">
@@ -497,6 +523,18 @@ const UnifiedAttendancePage = ({ open, onClose, isRTL }) => {
             <span className="as-clock-date">{clockDate}</span>
           </div>
           <div className="as-topbar-actions">
+            <button
+              className="as-btn"
+              onClick={() => setTheme(t => (t === 'dark' ? 'light' : 'dark'))}
+              title={theme === 'dark'
+                ? (isRTL ? 'الوضع الفاتح' : 'Switch to light')
+                : (isRTL ? 'الوضع الداكن' : 'Switch to dark')}
+            >
+              {theme === 'dark' ? '☀️' : '🌙'}
+              <span style={{ marginInlineStart: 4 }}>
+                {theme === 'dark' ? (isRTL ? 'فاتح' : 'Light') : (isRTL ? 'داكن' : 'Dark')}
+              </span>
+            </button>
             <button
               className="as-btn as-btn-danger"
               onClick={clearToday}

@@ -499,3 +499,84 @@
   .as-stat-value { font-size: 32px; }
   .as-groups { grid-template-columns: 1fr; }
 }
+
+/* =====================================================================
+ * DARK THEME — activated by data-theme="dark" on .as-shell.
+ * Overrides the palette + the couple of gradients that had literal
+ * light colors baked in.
+ * ===================================================================== */
+.as-shell[data-theme="dark"] {
+  --as-bg: #0a0e1a;
+  --as-surface: #141828;
+  --as-surface-alt: #1a2033;
+  --as-line: rgba(255, 255, 255, 0.08);
+  --as-line-strong: rgba(255, 255, 255, 0.18);
+  --as-text: #f2f4fa;
+  --as-text-soft: #a3adc2;
+  --as-muted: #6b7590;
+  --as-brand-soft: rgba(238, 35, 41, 0.15);
+  --as-mint-soft: rgba(74, 222, 128, 0.14);
+  --as-amber-soft: rgba(245, 158, 11, 0.14);
+  --as-red-soft: rgba(239, 68, 68, 0.14);
+
+  background:
+    radial-gradient(1200px 700px at 100% -20%, rgba(238, 35, 41, 0.10), transparent 60%),
+    radial-gradient(1200px 700px at -10% 110%, rgba(34, 211, 238, 0.08), transparent 60%),
+    var(--as-bg);
+}
+
+.as-shell[data-theme="dark"] .as-clock,
+.as-shell[data-theme="dark"] .as-btn,
+.as-shell[data-theme="dark"] .as-stat,
+.as-shell[data-theme="dark"] .as-recent-card,
+.as-shell[data-theme="dark"] .as-group,
+.as-shell[data-theme="dark"] .as-empty {
+  box-shadow: none;
+}
+
+/* Popup card + scrim adapt for dark surface */
+.as-shell[data-theme="dark"] ~ .as-popup-overlay,
+[data-theme="dark"] .as-popup-overlay {
+  background: rgba(0, 0, 0, 0.65);
+}
+
+/* Group header — the gradient was mixed against white; swap for a
+   near-black so the tint reads correctly on the dark surface. */
+.as-shell[data-theme="dark"] .as-group-header {
+  background: linear-gradient(90deg,
+    color-mix(in srgb, var(--group-color) 18%, transparent),
+    color-mix(in srgb, var(--group-color) 4%, transparent));
+}
+.as-shell[data-theme="dark"] .as-group-count {
+  background: color-mix(in srgb, var(--group-color) 20%, transparent);
+  border-color: color-mix(in srgb, var(--group-color) 40%, transparent);
+}
+
+/* Row alternates + borders in dark */
+.as-shell[data-theme="dark"] .as-row:hover { background: rgba(255, 255, 255, 0.03); }
+.as-shell[data-theme="dark"] .as-row-badge.is-out {
+  background: rgba(107, 117, 144, 0.14);
+  border-color: rgba(107, 117, 144, 0.35);
+}
+
+/* Kicker chip on dark reads better with a translucent green wash */
+.as-shell[data-theme="dark"] .as-ready-kicker {
+  background: rgba(74, 222, 128, 0.08);
+  border-color: rgba(74, 222, 128, 0.25);
+  color: #4ade80;
+}
+
+/* Popup card is independently mounted (portal-like via z-index) so
+   scope it via a matching data-theme on `body` set by the JSX. */
+body[data-attendance-theme="dark"] .as-popup {
+  background: linear-gradient(180deg, rgba(20, 25, 40, 0.98), rgba(12, 16, 28, 0.98));
+  color: #f2f4fa;
+}
+body[data-attendance-theme="dark"] .as-popup-name { color: #f2f4fa; }
+body[data-attendance-theme="dark"] .as-popup-time {
+  background: rgba(255, 255, 255, 0.04);
+  border-color: rgba(255, 255, 255, 0.12);
+  color: #f2f4fa;
+}
+body[data-attendance-theme="dark"] .as-popup-fadebar { background: rgba(255, 255, 255, 0.06); }
+body[data-attendance-theme="dark"] .as-popup-overlay { background: rgba(0, 0, 0, 0.65); }
