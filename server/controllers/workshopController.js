@@ -824,15 +824,26 @@ exports.getAttendanceIdHtml = async (req, res) => {
     // QR scan side-effect: auto-mark payment as verified + add today's attendance
     const today = new Date().toISOString().split('T')[0];
     const dates = Array.isArray(student.attendanceDates) ? [...student.attendanceDates] : [];
+    const scans = Array.isArray(student.attendanceScans) ? [...student.attendanceScans] : [];
     let updated = false;
     if (!dates.includes(today)) { dates.push(today); updated = true; }
+    // Record a scan timestamp alongside the date so the attendance
+    // board renders an actual time. Matches what the door-scan
+    // endpoint does. Back-fills for older records too.
+    const hasTodayScan = scans.some(s => s?.date === today);
+    if (!hasTodayScan) {
+      scans.push({ date: today, scannedAt: new Date().toISOString() });
+      updated = true;
+    }
     const willMarkPaid = student.paymentStatus !== 'verified';
     if (updated || willMarkPaid) {
-      await student.update({
-        attendanceDates: dates,
-        attended: dates.length > 0,
-        paymentStatus: 'verified'
-      });
+      student.setDataValue('attendanceDates', dates);
+      student.setDataValue('attendanceScans', scans);
+      student.changed('attendanceDates', true);
+      student.changed('attendanceScans', true);
+      student.attended = dates.length > 0;
+      student.paymentStatus = 'verified';
+      await student.save();
     }
 
     const html = generateAttendanceIdHtml(student, student.workshop);
@@ -918,9 +929,20 @@ exports.scanWorkshopAttendance = async (req, res) => {
     const scans = Array.isArray(student.attendanceScans) ? [...student.attendanceScans] : [];
 
     const already = dates.includes(date);
+    const scanIdx = scans.findIndex(s => s?.date === date);
     let action;
     if (already) {
       action = 'already_done';
+      // Back-fill a scan timestamp if the date was appended via an
+      // older code path (e.g. the print-card side-effect) that didn't
+      // record a time. Without this, the attendance board would keep
+      // showing "—" for the check-in time forever.
+      if (scanIdx === -1) {
+        scans.push({ date, scannedAt: now.toISOString() });
+        student.setDataValue('attendanceScans', scans);
+        student.changed('attendanceScans', true);
+        await student.save({ fields: ['attendanceScans'] });
+      }
     } else {
       dates.push(date);
       scans.push({ date, scannedAt: now.toISOString() });
