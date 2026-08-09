@@ -1345,17 +1345,184 @@ const AdminDashboard = () => {
     }
   };
 
+  // Print the workshop attendance ID with the SAME physical card layout
+  // as the volunteer ID (72×102mm portrait, dashed cut-line, colored
+  // header/footer, dual FABLAB + foundation logos, decorative side
+  // stripe). Every colored accent uses the workshop's own color so
+  // multiple workshops are visually distinguishable. Still hits the
+  // server endpoint so the payment-verified + attendance-appended
+  // side-effects fire (same behaviour as before), but we build the
+  // print HTML client-side to reuse the volunteer print styles and
+  // load the /fablab.png + /found.png assets that live in the client.
   const handlePrintAttendanceId = async (studentId) => {
     try {
       const res = await api.get(`/workshops/students/${studentId}/attendance-id`);
+      const student = res.data.student || {};
+      const workshop = res.data.workshop || {};
+      const color = workshop.color || '#1a56db';
+      const name = `${student.firstName || ''} ${student.lastName || ''}`.trim() || 'Student';
+      const initial = (name.charAt(0) || 'S').toUpperCase();
+      const codeStr = `WS-${(student.studentId || '').substring(0, 8).toUpperCase()}`;
+      const qrPayload = JSON.stringify({
+        studentId: student.studentId,
+        name,
+        workshopId: workshop.workshopId,
+        workshop: workshop.title,
+        phone: student.phone,
+        color
+      });
+      const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(qrPayload)}`;
+      const dateStr = workshop.startDate
+        ? `${workshop.startDate}${workshop.endDate && workshop.endDate !== workshop.startDate ? ' → ' + workshop.endDate : ''}`
+        : '';
+
       const printWindow = window.open('', '_blank');
-      const color = res.data.workshop?.color || '#1a56db';
-      printWindow.document.write(`<!DOCTYPE html><html dir="rtl"><head><title>بطاقة حضور</title>
-        <style>@page{size:auto;margin:10mm;}body{display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0;background:#f0f0f0;font-family:Arial,sans-serif;}
-        @media print{body{background:none;}}</style></head><body>${res.data.html}
-        <button onclick="window.print()" style="position:fixed;bottom:20px;right:20px;padding:12px 28px;background:${color};color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;">طباعة</button>
-      </body></html>`);
+      const html = `<!DOCTYPE html><html dir="${isRTL ? 'rtl' : 'ltr'}" lang="${isRTL ? 'ar' : 'en'}">
+<head><meta charset="UTF-8"><title>${isRTL ? 'بطاقة حضور ورشة' : 'Workshop Attendance ID'}</title>
+<style>
+  @page { size: A4 portrait; margin: 10mm 8mm; }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { font-family: 'Segoe UI', Tahoma, Arial, sans-serif; background: #f1f5f9; }
+  body { padding: 6mm 0; }
+
+  .print-note {
+    font-size: 12px; color: #475569; background: white;
+    border: 1px dashed #cbd5e1; border-radius: 8px;
+    padding: 8px 14px; margin: 0 auto 8mm; text-align: center; max-width: 120mm;
+  }
+  .page {
+    display: grid;
+    grid-template-columns: 72mm 72mm;
+    grid-auto-rows: 102mm;
+    column-gap: 6mm; row-gap: 6mm;
+    justify-content: center; align-content: start;
+    width: 100%;
+  }
+  .id-card {
+    width: 72mm; height: 102mm;
+    background: linear-gradient(180deg, #ffffff 0%, ${color}10 100%);
+    border: 0.45mm dashed #475569;
+    overflow: hidden; position: relative;
+    display: flex; flex-direction: column;
+    color: #1a1a2e; box-sizing: border-box;
+  }
+  .card-header {
+    background: linear-gradient(135deg, ${color} 0%, ${color} 100%);
+    padding: 2.5mm 3.5mm; text-align: center;
+  }
+  .card-title { color: white; font-size: 9pt; font-weight: 700; line-height: 1.15; }
+  .card-subtitle { color: rgba(255,255,255,0.88); font-size: 6.5pt; margin-top: 0.6mm; }
+
+  .card-body {
+    flex: 1; padding: 2.5mm 3mm 0;
+    display: flex; flex-direction: column; align-items: center; gap: 1.4mm;
+  }
+  .user-photo {
+    width: 22mm; height: 26mm;
+    background: linear-gradient(135deg, ${color}22, ${color}11);
+    border-radius: 2mm; display: flex; align-items: center; justify-content: center;
+    color: ${color}; font-weight: bold;
+    border: 0.6mm solid ${color};
+    overflow: hidden; flex-shrink: 0;
+  }
+  .user-photo .initials { font-size: 18pt; font-weight: bold; color: ${color}; }
+
+  .user-name {
+    font-size: 10.5pt; font-weight: 800; color: #1a1a2e;
+    text-align: center; line-height: 1.15; max-height: 10mm; overflow: hidden;
+    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+  }
+  .user-type-badge {
+    display: inline-block;
+    background: linear-gradient(135deg, ${color}, ${color});
+    color: white; font-size: 7.5pt; padding: 0.6mm 3.5mm;
+    border-radius: 999px; font-weight: 700;
+    max-width: 60mm; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+
+  .info-section { width: 100%; display: flex; flex-direction: column; gap: 0.6mm; margin-top: 1mm; }
+  .info-row {
+    display: flex; justify-content: space-between; align-items: center;
+    font-size: 7.2pt; padding: 0.6mm 0; border-bottom: 0.2mm dotted #d4d4d8;
+  }
+  .info-row:last-child { border-bottom: none; }
+  .info-label { font-weight: 700; color: #555; }
+  .info-value {
+    color: #1a1a2e; font-weight: 600; text-align: ${isRTL ? 'left' : 'right'};
+    max-width: 60%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+
+  .card-qr { display: flex; align-items: center; justify-content: center; margin-top: 1mm; }
+  .card-qr img {
+    width: 26mm; height: 26mm; background: white; padding: 0.8mm;
+    border-radius: 1mm; box-shadow: 0 0 0 0.3mm ${color} inset;
+  }
+
+  .card-footer {
+    background: #ffffff; padding: 1.5mm 3mm;
+    display: flex; align-items: center; justify-content: space-between;
+    border-top: 0.3mm solid #e0e0e0;
+  }
+  .card-footer .logo { height: 7mm; width: auto; flex-shrink: 0; }
+  .card-footer .qr-label { font-size: 6pt; color: ${color}; font-weight: 700; }
+
+  .decorative-stripe {
+    position: absolute; top: 40%; ${isRTL ? 'right' : 'left'}: 0;
+    width: 1mm; height: 25%;
+    background: linear-gradient(to bottom, transparent, ${color}, transparent);
+  }
+
+  .print-btn {
+    position: fixed; bottom: 20px; ${isRTL ? 'left' : 'right'}: 20px;
+    padding: 12px 28px; background: ${color}; color: #fff; border: none;
+    border-radius: 10px; font-size: 14px; font-weight: 700; cursor: pointer;
+    box-shadow: 0 4px 14px ${color}55;
+  }
+
+  @media print {
+    html, body { background: white; padding: 0; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    body { padding: 0; }
+    .print-note, .print-btn { display: none; }
+    .id-card { box-shadow: none; break-inside: avoid; }
+  }
+</style>
+</head>
+<body>
+  <div class="print-note">
+    ${isRTL ? 'حجم البطاقة 72×102 ملم — اقطع حسب الخط المتقطع' : 'Card size 72×102 mm — cut along the dashed line'}
+  </div>
+  <div class="page">
+    <div class="id-card">
+      <div class="card-header">
+        <div class="card-title">${isRTL ? 'بطاقة حضور فاب لاب الأحساء' : 'FABLAB Al-Ahsa Attendance Card'}</div>
+        <div class="card-subtitle">${isRTL ? 'مؤسسة عبدالمنعم الراشد الإنسانية' : 'Abdulmonem Al-Rashed Foundation'}</div>
+      </div>
+      <div class="card-body">
+        <div class="user-photo">
+          <span class="initials">${initial}</span>
+        </div>
+        <div class="user-name">${name}</div>
+        <div class="user-type-badge">${workshop.title || (isRTL ? 'ورشة تدريبية' : 'Workshop')}</div>
+        <div class="info-section">
+          ${student.phone ? `<div class="info-row"><span class="info-label">${isRTL ? 'الهاتف' : 'Phone'}</span><span class="info-value" dir="ltr">${student.phone}</span></div>` : ''}
+          ${dateStr ? `<div class="info-row"><span class="info-label">${isRTL ? 'التاريخ' : 'Date'}</span><span class="info-value" dir="ltr">${dateStr}</span></div>` : ''}
+          ${workshop.presenter ? `<div class="info-row"><span class="info-label">${isRTL ? 'المقدم' : 'Presenter'}</span><span class="info-value">${workshop.presenter}</span></div>` : ''}
+        </div>
+        <div class="card-qr"><img src="${qrUrl}" alt="QR" /></div>
+      </div>
+      <div class="decorative-stripe"></div>
+      <div class="card-footer">
+        <img src="/found.png" alt="Foundation" class="logo">
+        <span class="qr-label">${isRTL ? 'رمز الحضور' : 'Attendance QR'}</span>
+        <img src="/fablab.png" alt="FABLAB" class="logo">
+      </div>
+    </div>
+  </div>
+  <button class="print-btn" onclick="window.print()">${isRTL ? 'طباعة' : 'Print'}</button>
+</body></html>`;
+      printWindow.document.write(html);
       printWindow.document.close();
+      printWindow.focus();
     } catch (error) {
       toast.error(isRTL ? 'خطأ' : 'Error');
     }
