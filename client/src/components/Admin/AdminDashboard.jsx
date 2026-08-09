@@ -8573,27 +8573,35 @@ const AdminDashboard = () => {
                             animate={{ opacity: 1, y: 0 }}
                             exit={{ opacity: 0, y: -4, transition: { duration: 0.12 } }}
                             transition={{ delay: si * 0.02, type: 'spring', stiffness: 300, damping: 22 }}
-                            style={picked ? { outline: '2px solid #7c3aed', outlineOffset: -1, borderRadius: 8 } : undefined}
+                            style={picked ? { outline: '2px solid #7c3aed', outlineOffset: -1 } : undefined}
                           >
+                            {/* Print-select checkbox — absolutely positioned so it doesn't
+                                break the row's fixed 3-column grid. */}
                             <label
                               onClick={(e) => e.stopPropagation()}
                               title={isRTL ? 'تحديد للطباعة' : 'Select for print'}
                               style={{
+                                position: 'absolute', top: 6,
+                                insetInlineStart: 6,
                                 display: 'inline-flex', alignItems: 'center',
-                                padding: '4px 8px', borderRadius: 6,
+                                width: 18, height: 18, borderRadius: 4,
                                 background: picked ? '#7c3aed' : '#fff',
-                                border: `1.5px solid ${picked ? '#7c3aed' : '#e2e8f0'}`,
-                                color: picked ? '#fff' : '#475569',
-                                cursor: 'pointer', fontSize: 11, fontWeight: 800,
-                                marginInlineEnd: 8
+                                border: `1.5px solid ${picked ? '#7c3aed' : '#cbd5e1'}`,
+                                cursor: 'pointer',
+                                zIndex: 2
                               }}
                             >
                               <input
                                 type="checkbox"
                                 checked={picked}
                                 onChange={() => toggleWorkshopStudentSelect(s.studentId)}
-                                style={{ width: 14, height: 14, cursor: 'pointer', margin: 0 }}
+                                style={{ width: 14, height: 14, cursor: 'pointer', margin: 0, opacity: 0, position: 'absolute', inset: 0 }}
                               />
+                              {picked && (
+                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" style={{ margin: 'auto' }}>
+                                  <polyline points="20 6 9 17 4 12"/>
+                                </svg>
+                              )}
                             </label>
                             <div className="wsv2-student-row-avatar">
                               {(s.firstName || '').charAt(0).toUpperCase()}
