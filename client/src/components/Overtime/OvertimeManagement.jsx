@@ -65,6 +65,11 @@ const OvertimeManagement = () => {
   // the fields manually.
   const [staffList, setStaffList] = useState([]);
   const [selectedStaffId, setSelectedStaffId] = useState('');
+  // Auto-overtime rows for the currently-picked staff, so admin can
+  // import them into the days grid instead of retyping.
+  const [autoOvertime, setAutoOvertime] = useState([]);
+  const [autoLoading, setAutoLoading] = useState(false);
+  const [pickedAutoIds, setPickedAutoIds] = useState(new Set());
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -91,6 +96,8 @@ const OvertimeManagement = () => {
 
   const pickStaff = (id) => {
     setSelectedStaffId(id);
+    setPickedAutoIds(new Set());
+    setAutoOvertime([]);
     if (!id) {
       // "New employee" — clear identity fields, keep period/days/notes.
       setForm(prev => ({
@@ -109,7 +116,68 @@ const OvertimeManagement = () => {
       email: s.email || '',
       position: s.position || ''
     }));
+    // Fetch this employee's recorded overtime so admin can import.
+    setAutoLoading(true);
+    api.get(`/fablab-staff/${id}/overtime`)
+      .then(res => setAutoOvertime(Array.isArray(res.data?.rows) ? res.data.rows : []))
+      .catch(() => setAutoOvertime([]))
+      .finally(() => setAutoLoading(false));
   };
+
+  // Merge selected auto-overtime rows into the manual days grid.
+  // Skips rows already present (matched by date). Fills date +
+  // startTime + endTime + auto-computed hours; task is left blank
+  // for the admin to describe.
+  const importAutoPicked = () => {
+    if (pickedAutoIds.size === 0) return;
+    const picked = autoOvertime.filter(r => pickedAutoIds.has(r.attendanceId));
+    const iso = (v) => v ? String(v).slice(0, 10) : '';
+    const fmtHMLocal = (iso2) => {
+      if (!iso2) return '';
+      const d = new Date(iso2);
+      if (isNaN(d.getTime())) return '';
+      const pad = (n) => String(n).padStart(2, '0');
+      return `${pad(d.getHours())}:${pad(d.getMinutes())}`;
+    };
+    setForm(prev => {
+      const existing = prev.days || [];
+      const existingDates = new Set(existing.map(d => iso(d.date)));
+      const additions = picked
+        .filter(r => !existingDates.has(iso(r.date)))
+        .map(r => ({
+          date: iso(r.date),
+          startTime: fmtHMLocal(r.checkInAt),
+          endTime: fmtHMLocal(r.checkOutAt),
+          hours: (r.overtimeMinutes / 60).toFixed(2),
+          task: r.reason || ''
+        }));
+      // If the only existing day is the seed-empty row, drop it
+      const filteredExisting = existing.filter(d => d.date || d.hours || d.task || d.startTime || d.endTime);
+      const nextDays = [...filteredExisting, ...additions];
+      // Also auto-fill period start/end if empty
+      const dates = nextDays.map(d => d.date).filter(Boolean).sort();
+      return {
+        ...prev,
+        days: nextDays.length ? nextDays : [{ date: '', hours: '', task: '' }],
+        periodStart: prev.periodStart || (dates[0] || ''),
+        periodEnd: prev.periodEnd || (dates[dates.length - 1] || '')
+      };
+    });
+    toast.success(isRTL
+      ? `تم استيراد ${picked.length} يوم`
+      : `Imported ${picked.length} day(s)`);
+    setPickedAutoIds(new Set());
+  };
+
+  const toggleAutoPick = (attId) => {
+    setPickedAutoIds(prev => {
+      const next = new Set(prev);
+      if (next.has(attId)) next.delete(attId); else next.add(attId);
+      return next;
+    });
+  };
+  const pickAllAuto = () => setPickedAutoIds(new Set(autoOvertime.map(r => r.attendanceId)));
+  const clearAutoPick = () => setPickedAutoIds(new Set());
 
   const totalHoursFromForm = () =>
     (form.days || []).reduce((s, d) => s + (Number(d.hours) || 0), 0);
@@ -566,6 +634,112 @@ const OvertimeManagement = () => {
                     <textarea className="modern-input-field" rows={2} value={form.note} onChange={e => setForm({ ...form, note: e.target.value })} />
                   </div>
                 </div>
+
+                {/* Auto-overtime importer — only shown when a staff
+                    member from the FabLab roster is picked. Lets admin
+                    pull the recorded overtime days straight into the
+                    manual days grid instead of retyping. */}
+                {selectedStaffId && (
+                  <div className="form-section" style={{
+                    background: 'linear-gradient(135deg, #ecfdf5 0%, #eff6ff 100%)',
+                    border: '1px solid #a7f3d0',
+                    borderRadius: 10, padding: 14, marginBottom: 12
+                  }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap', marginBottom: 10 }}>
+                      <div>
+                        <div style={{ fontWeight: 800, color: '#065f46', fontSize: 14 }}>
+                          ⏱ {isRTL ? 'الساعات الإضافية المسجّلة تلقائياً' : 'Auto-recorded overtime'}
+                        </div>
+                        <div style={{ fontSize: 12, color: '#047857', marginTop: 2 }}>
+                          {isRTL
+                            ? 'اختر الأيام لإضافتها للسند — الوقت والساعات ستُملأ تلقائياً.'
+                            : 'Pick days to add to the sanad — time and hours are filled in automatically.'}
+                        </div>
+                      </div>
+                      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                        {autoOvertime.length > 0 && (
+                          <>
+                            <button
+                              type="button"
+                              onClick={pickAllAuto}
+                              style={{ padding: '6px 12px', borderRadius: 8, border: '1px solid #a7f3d0', background: '#fff', color: '#065f46', cursor: 'pointer', fontFamily: 'inherit', fontSize: 12, fontWeight: 700 }}
+                            >{isRTL ? 'تحديد الكل' : 'Select all'}</button>
+                            <button
+                              type="button"
+                              onClick={clearAutoPick}
+                              disabled={pickedAutoIds.size === 0}
+                              style={{ padding: '6px 12px', borderRadius: 8, border: '1px solid #cbd5e1', background: '#fff', color: pickedAutoIds.size ? '#334155' : '#94a3b8', cursor: pickedAutoIds.size ? 'pointer' : 'not-allowed', fontFamily: 'inherit', fontSize: 12, fontWeight: 700 }}
+                            >{isRTL ? 'إلغاء' : 'Clear'}</button>
+                            <button
+                              type="button"
+                              onClick={importAutoPicked}
+                              disabled={pickedAutoIds.size === 0}
+                              style={{ padding: '6px 14px', borderRadius: 8, border: 'none', background: pickedAutoIds.size ? '#059669' : '#e2e8f0', color: pickedAutoIds.size ? '#fff' : '#94a3b8', cursor: pickedAutoIds.size ? 'pointer' : 'not-allowed', fontFamily: 'inherit', fontSize: 12, fontWeight: 800 }}
+                            >
+                              ⤵ {isRTL
+                                ? `استيراد المحدد (${pickedAutoIds.size})`
+                                : `Import selected (${pickedAutoIds.size})`}
+                            </button>
+                          </>
+                        )}
+                      </div>
+                    </div>
+
+                    {autoLoading ? (
+                      <div style={{ padding: 12, color: '#047857', fontSize: 13 }}>{isRTL ? 'جارٍ التحميل...' : 'Loading...'}</div>
+                    ) : autoOvertime.length === 0 ? (
+                      <div style={{ padding: 12, color: '#64748b', fontSize: 13, textAlign: 'center' }}>
+                        {isRTL ? 'لا توجد ساعات إضافية مسجّلة لهذا الموظف بعد.' : 'No recorded overtime for this employee yet.'}
+                      </div>
+                    ) : (
+                      <div style={{ maxHeight: 200, overflow: 'auto', border: '1px solid #a7f3d0', borderRadius: 8, background: '#fff' }}>
+                        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
+                          <thead>
+                            <tr style={{ background: '#ecfdf5' }}>
+                              <th style={{ padding: 6, width: 30 }}></th>
+                              <th style={{ padding: 6, textAlign: 'right', color: '#065f46' }}>{isRTL ? 'التاريخ' : 'Date'}</th>
+                              <th style={{ padding: 6, textAlign: 'center', color: '#065f46' }}>{isRTL ? 'الدخول' : 'In'}</th>
+                              <th style={{ padding: 6, textAlign: 'center', color: '#065f46' }}>{isRTL ? 'الخروج' : 'Out'}</th>
+                              <th style={{ padding: 6, textAlign: 'center', color: '#065f46' }}>{isRTL ? 'الإضافية' : 'OT'}</th>
+                              <th style={{ padding: 6, textAlign: 'right', color: '#065f46' }}>{isRTL ? 'السبب' : 'Reason'}</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {autoOvertime.map(r => {
+                              const picked = pickedAutoIds.has(r.attendanceId);
+                              const otMin = r.overtimeMinutes;
+                              const fmt = (iso2) => {
+                                if (!iso2) return '—';
+                                const d = new Date(iso2);
+                                if (isNaN(d.getTime())) return '—';
+                                const pad = (n) => String(n).padStart(2, '0');
+                                return `${pad(d.getHours())}:${pad(d.getMinutes())}`;
+                              };
+                              return (
+                                <tr
+                                  key={r.attendanceId}
+                                  onClick={() => toggleAutoPick(r.attendanceId)}
+                                  style={{ cursor: 'pointer', background: picked ? '#dcfce7' : 'transparent' }}
+                                >
+                                  <td style={{ padding: 6, textAlign: 'center' }}>
+                                    <input type="checkbox" checked={picked} readOnly style={{ accentColor: '#059669' }} />
+                                  </td>
+                                  <td style={{ padding: 6, fontFamily: 'JetBrains Mono, monospace' }}>{String(r.date).slice(0, 10)}</td>
+                                  <td style={{ padding: 6, textAlign: 'center', fontFamily: 'JetBrains Mono, monospace' }} dir="ltr">{fmt(r.checkInAt)}</td>
+                                  <td style={{ padding: 6, textAlign: 'center', fontFamily: 'JetBrains Mono, monospace' }} dir="ltr">{fmt(r.checkOutAt)}</td>
+                                  <td style={{ padding: 6, textAlign: 'center', fontFamily: 'JetBrains Mono, monospace', color: '#b91c1c', fontWeight: 700 }} dir="ltr">
+                                    {Math.floor(otMin / 60)}:{String(otMin % 60).padStart(2, '0')}
+                                  </td>
+                                  <td style={{ padding: 6, fontSize: 11, color: '#64748b' }}>{r.reason || '—'}</td>
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+                  </div>
+                )}
 
                 <div className="form-section">
                   <div className="section-header" style={{ justifyContent: 'space-between', display: 'flex' }}>

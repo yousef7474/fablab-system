@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'react-toastify';
 import api from '../../config/api';
@@ -27,100 +27,6 @@ const fmtTime = (iso) => {
 };
 const monthAgo = () => new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
 const today = () => new Date().toISOString().slice(0, 10);
-
-// Print an overtime archive as a "سند" for a specific employee — one
-// tabular summary in a new window styled for A4 portrait.
-const printSanad = ({ staff, rows, totals, from, to, isRTL }) => {
-  const w = window.open('', '_blank');
-  if (!w) return;
-  const rowsHtml = rows.map(r => `
-    <tr>
-      <td>${r.date}</td>
-      <td dir="ltr">${fmtTime(r.checkInAt)}</td>
-      <td dir="ltr">${fmtTime(r.checkOutAt)}</td>
-      <td dir="ltr">${fmtHM(r.durationMinutes)}</td>
-      <td dir="ltr" style="color:#b91c1c;font-weight:700">${fmtHM(r.overtimeMinutes)}</td>
-      <td>${r.reason || '—'}</td>
-      <td>${r.approvedBy || '—'}</td>
-    </tr>
-  `).join('');
-
-  w.document.write(`<!doctype html><html dir="rtl"><head><meta charset="utf-8"><title>سند ساعات إضافية - ${staff.name}</title>
-<style>
-  @page { size: A4 portrait; margin: 12mm 14mm; }
-  * { box-sizing: border-box; }
-  body { font-family: 'Segoe UI', Tahoma, Arial, sans-serif; color: #0f172a; background: #fff; margin: 0; padding: 12mm; }
-  .head { display: flex; justify-content: space-between; align-items: center; border-bottom: 3px solid #7c3aed; padding-bottom: 12px; margin-bottom: 20px; }
-  .brand { font-size: 22px; font-weight: 800; color: #7c3aed; letter-spacing: -0.02em; }
-  .brand-sub { font-size: 12px; color: #64748b; margin-top: 2px; }
-  .title { text-align: center; margin: 16px 0 8px; font-size: 20px; font-weight: 800; color: #0f172a; }
-  .info { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin: 16px 0 22px; }
-  .info div { padding: 10px 12px; border: 1px solid #e2e8f0; border-radius: 8px; background: #f8fafc; }
-  .info b { display: block; font-size: 10px; color: #64748b; font-weight: 700; letter-spacing: 0.06em; margin-bottom: 4px; text-transform: uppercase; }
-  .info span { font-size: 14px; color: #0f172a; font-weight: 700; }
-  table { width: 100%; border-collapse: collapse; font-size: 12px; }
-  thead th { background: #ede9fe; color: #5b21b6; padding: 8px 6px; text-align: right; font-weight: 700; border-bottom: 2px solid #7c3aed; }
-  tbody td { padding: 8px 6px; border-bottom: 1px solid #e2e8f0; text-align: right; }
-  tbody tr:nth-child(even) { background: #faf5ff; }
-  .totals { margin-top: 18px; padding: 12px 16px; background: #7c3aed; color: #fff; border-radius: 8px; display: flex; justify-content: space-between; font-weight: 700; }
-  .footer { margin-top: 30px; display: grid; grid-template-columns: 1fr 1fr; gap: 30px; font-size: 12px; color: #475569; }
-  .footer .box { padding: 24px 12px 12px; border-top: 1.5px solid #cbd5e1; text-align: center; }
-  .footer .box b { display: block; margin-bottom: 40px; color: #64748b; font-size: 11px; }
-  .actions { text-align: center; margin-top: 20px; }
-  button { padding: 10px 24px; border-radius: 8px; border: 0; background: #7c3aed; color: #fff; font-weight: 700; cursor: pointer; font-size: 14px; }
-  @media print { .actions { display: none; } body { padding: 0; } }
-</style></head><body>
-<div class="head">
-  <div>
-    <div class="brand">FABLAB الأحساء</div>
-    <div class="brand-sub">مؤسسة عبدالمنعم الراشد الإنسانية</div>
-  </div>
-  <div style="text-align:left">
-    <div style="font-size:11px;color:#64748b">تاريخ الطباعة</div>
-    <div style="font-weight:700" dir="ltr">${new Date().toISOString().slice(0, 10)}</div>
-  </div>
-</div>
-
-<div class="title">سند ساعات إضافية</div>
-
-<div class="info">
-  <div><b>الموظف</b><span>${staff.name}</span></div>
-  <div><b>الوظيفة</b><span>${staff.position || '—'}</span></div>
-  <div><b>رقم الهوية</b><span dir="ltr">${staff.nationalId || '—'}</span></div>
-  <div><b>الفترة من</b><span dir="ltr">${from}</span></div>
-  <div><b>إلى</b><span dir="ltr">${to}</span></div>
-  <div><b>عدد الأيام</b><span>${totals.count}</span></div>
-</div>
-
-<table>
-  <thead>
-    <tr>
-      <th>التاريخ</th>
-      <th>وقت الدخول</th>
-      <th>وقت الخروج</th>
-      <th>المدة</th>
-      <th>الساعات الإضافية</th>
-      <th>السبب</th>
-      <th>معتمد من</th>
-    </tr>
-  </thead>
-  <tbody>${rowsHtml || `<tr><td colspan="7" style="text-align:center;padding:20px;color:#94a3b8">لا توجد ساعات إضافية في هذه الفترة</td></tr>`}</tbody>
-</table>
-
-<div class="totals">
-  <span>إجمالي الساعات الإضافية</span>
-  <span dir="ltr">${fmtHM(totals.overtimeMin)}</span>
-</div>
-
-<div class="footer">
-  <div class="box"><b>توقيع الموظف</b></div>
-  <div class="box"><b>توقيع المعتمد</b></div>
-</div>
-
-<div class="actions"><button onclick="window.print()">طباعة السند</button></div>
-</body></html>`);
-  w.document.close();
-};
 
 const AutoStaffOvertime = () => {
   const { i18n } = useTranslation();
@@ -199,37 +105,6 @@ const AutoStaffOvertime = () => {
     }
   };
 
-  const handlePrintSanad = async (staffId) => {
-    try {
-      const params = new URLSearchParams();
-      if (from) params.set('from', from);
-      if (to) params.set('to', to);
-      const { data } = await api.get(`/fablab-staff/${staffId}/overtime?${params.toString()}`);
-      printSanad({
-        staff: data.staff,
-        rows: data.rows || [],
-        totals: data.totals || { count: 0, overtimeMin: 0 },
-        from, to, isRTL
-      });
-    } catch (err) {
-      console.error(err);
-      toast.error(isRTL ? 'فشل توليد السند' : 'Failed to build sanad');
-    }
-  };
-
-  // Group by staffId so the "Print سند" button appears once per person
-  const byStaff = useMemo(() => {
-    const map = new Map();
-    rows.forEach(r => {
-      const key = r.staffId;
-      if (!map.has(key)) map.set(key, { staff: r.staff, count: 0, overtimeMin: 0 });
-      const s = map.get(key);
-      s.count += 1;
-      s.overtimeMin += r.overtimeMinutes;
-    });
-    return Array.from(map.values());
-  }, [rows]);
-
   return (
     <div style={{
       padding: 18, borderRadius: 12,
@@ -245,8 +120,8 @@ const AutoStaffOvertime = () => {
           </div>
           <div style={{ fontSize: 12, color: '#64748b' }}>
             {isRTL
-              ? 'يُحسب تلقائياً من مسح البطاقة — أي وقت أكثر من ٩ ساعات يُعدّ ساعات إضافية.'
-              : 'Computed automatically from QR scans — anything above 9 hours counts as overtime.'}
+              ? 'يُحسب تلقائياً من مسح البطاقة — الدوام الرسمي ٩ ساعات + سماح ٣٠ دقيقة؛ أي وقت بعد ذلك يُعدّ ساعات إضافية.'
+              : 'Computed from QR scans — 9-hour official day + 30-min grace; anything past that counts as overtime.'}
           </div>
         </div>
       </div>
@@ -281,25 +156,20 @@ const AutoStaffOvertime = () => {
         </div>
       </div>
 
-      {/* Per-employee print bar */}
-      {byStaff.length > 0 && (
-        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 12 }}>
-          {byStaff.map(s => (
-            <button
-              key={s.staff.staffId}
-              onClick={() => handlePrintSanad(s.staff.staffId)}
-              title={isRTL ? `طباعة سند ${s.staff.name}` : `Print sanad for ${s.staff.name}`}
-              style={{
-                padding: '6px 12px', borderRadius: 8, border: '1px solid #c4b5fd',
-                background: '#fff', color: '#5b21b6', cursor: 'pointer',
-                fontFamily: 'inherit', fontSize: 12, fontWeight: 700
-              }}
-            >
-              🖨 {s.staff.name} · <span dir="ltr" style={{ fontFamily: 'JetBrains Mono, monospace' }}>{fmtHM(s.overtimeMin)}</span>
-            </button>
-          ))}
-        </div>
-      )}
+      {/* Hint that Sanad printing lives in the manual form below */}
+      <div style={{
+        display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap',
+        padding: '8px 12px', margin: '0 0 12px',
+        background: '#eff6ff', border: '1px dashed #bfdbfe', borderRadius: 8,
+        fontSize: 12, color: '#1e40af'
+      }}>
+        <span>💡</span>
+        <span>
+          {isRTL
+            ? 'لطباعة سند: افتح "طلب جديد" في الأسفل، اختر الموظف، ثم استورد أيامه من قائمة الساعات الإضافية.'
+            : 'To print Sanad: open "New Request" below, pick the employee, then import their days from the auto-overtime list.'}
+        </span>
+      </div>
 
       {/* Table */}
       <div style={{ overflow: 'auto', borderRadius: 10, border: '1px solid #ddd6fe', background: '#fff' }}>
@@ -308,9 +178,9 @@ const AutoStaffOvertime = () => {
             <tr style={{ background: '#ede9fe' }}>
               <th style={{ padding: 10, textAlign: 'right', color: '#5b21b6', fontWeight: 700 }}>{isRTL ? 'الموظف' : 'Employee'}</th>
               <th style={{ padding: 10, textAlign: 'right', color: '#5b21b6', fontWeight: 700 }}>{isRTL ? 'التاريخ' : 'Date'}</th>
-              <th style={{ padding: 10, textAlign: 'right', color: '#5b21b6', fontWeight: 700 }}>{isRTL ? 'الدخول' : 'In'}</th>
-              <th style={{ padding: 10, textAlign: 'right', color: '#5b21b6', fontWeight: 700 }}>{isRTL ? 'الخروج' : 'Out'}</th>
-              <th style={{ padding: 10, textAlign: 'right', color: '#5b21b6', fontWeight: 700 }}>{isRTL ? 'الإضافية' : 'Overtime'}</th>
+              <th style={{ padding: 10, textAlign: 'center', color: '#5b21b6', fontWeight: 700 }}>{isRTL ? 'الدخول' : 'In'}</th>
+              <th style={{ padding: 10, textAlign: 'center', color: '#5b21b6', fontWeight: 700 }}>{isRTL ? 'الخروج' : 'Out'}</th>
+              <th style={{ padding: 10, textAlign: 'center', color: '#5b21b6', fontWeight: 700 }}>{isRTL ? 'الإضافية' : 'Overtime'}</th>
               <th style={{ padding: 10, textAlign: 'right', color: '#5b21b6', fontWeight: 700, minWidth: 180 }}>{isRTL ? 'السبب' : 'Reason'}</th>
               <th style={{ padding: 10, textAlign: 'right', color: '#5b21b6', fontWeight: 700, minWidth: 160 }}>{isRTL ? 'معتمد من' : 'Approved by'}</th>
               <th style={{ padding: 10 }}></th>
@@ -329,9 +199,9 @@ const AutoStaffOvertime = () => {
                 <tr key={r.attendanceId} style={{ borderTop: '1px solid #f1f5f9' }}>
                   <td style={{ padding: 10, fontWeight: 600 }}>{r.staff?.name || '—'}</td>
                   <td style={{ padding: 10, fontFamily: 'JetBrains Mono, monospace' }}>{r.date}</td>
-                  <td style={{ padding: 10, fontFamily: 'JetBrains Mono, monospace' }} dir="ltr">{fmtTime(r.checkInAt)}</td>
-                  <td style={{ padding: 10, fontFamily: 'JetBrains Mono, monospace' }} dir="ltr">{fmtTime(r.checkOutAt)}</td>
-                  <td style={{ padding: 10, fontFamily: 'JetBrains Mono, monospace', color: '#b91c1c', fontWeight: 700 }} dir="ltr">
+                  <td style={{ padding: 10, fontFamily: 'JetBrains Mono, monospace', textAlign: 'center' }} dir="ltr">{fmtTime(r.checkInAt)}</td>
+                  <td style={{ padding: 10, fontFamily: 'JetBrains Mono, monospace', textAlign: 'center' }} dir="ltr">{fmtTime(r.checkOutAt)}</td>
+                  <td style={{ padding: 10, fontFamily: 'JetBrains Mono, monospace', color: '#b91c1c', fontWeight: 700, textAlign: 'center' }} dir="ltr">
                     {fmtHM(r.overtimeMinutes)}
                   </td>
                   <td style={{ padding: 6 }}>

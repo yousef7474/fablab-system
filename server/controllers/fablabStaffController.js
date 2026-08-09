@@ -297,6 +297,10 @@ exports.deleteAttendance = async (req, res) => {
 // eligible row with `reason` and `approvedBy`.
 
 const OFFICIAL_HOURS = 9;
+// Grace window above the 9-hour day that is NOT counted as overtime.
+// Anything between 9h and 9h+30m stays "official hours"; only what
+// exceeds 9h 30m is billed as overtime.
+const OVERTIME_GRACE_MIN = 30;
 
 const shapeOvertimeRow = (att) => {
   if (!att.checkInAt || !att.checkOutAt) return null;
@@ -304,7 +308,8 @@ const shapeOvertimeRow = (att) => {
   const outMs = new Date(att.checkOutAt).getTime();
   if (!(outMs > inMs)) return null;
   const durationMin = Math.round((outMs - inMs) / 60000);
-  const overtimeMin = Math.max(0, durationMin - OFFICIAL_HOURS * 60);
+  const threshold = OFFICIAL_HOURS * 60 + OVERTIME_GRACE_MIN;
+  const overtimeMin = Math.max(0, durationMin - threshold);
   return {
     attendanceId: att.attendanceId,
     staffId: att.staffId,
@@ -357,7 +362,7 @@ exports.listOvertime = async (req, res) => {
       return acc;
     }, { count: 0, overtimeMin: 0 });
 
-    res.json({ officialHours: OFFICIAL_HOURS, rows, totals });
+    res.json({ officialHours: OFFICIAL_HOURS, graceMinutes: OVERTIME_GRACE_MIN, rows, totals });
   } catch (err) {
     console.error('Staff listOvertime error:', err);
     res.status(500).json({ message: 'Server error', error: err.message });
@@ -393,7 +398,7 @@ exports.listStaffOvertime = async (req, res) => {
       return acc;
     }, { count: 0, overtimeMin: 0 });
 
-    res.json({ officialHours: OFFICIAL_HOURS, staff, rows, totals });
+    res.json({ officialHours: OFFICIAL_HOURS, graceMinutes: OVERTIME_GRACE_MIN, staff, rows, totals });
   } catch (err) {
     console.error('Staff listStaffOvertime error:', err);
     res.status(500).json({ message: 'Server error', error: err.message });
