@@ -252,6 +252,9 @@ const AdminDashboard = () => {
   });
   const [editingStudent, setEditingStudent] = useState(null);
   const [editStudentForm, setEditStudentForm] = useState({});
+  // Multi-select of workshop student IDs for bulk attendance-ID print.
+  // Cleared whenever the admin backs out of a workshop's student list.
+  const [selectedWorkshopStudentIds, setSelectedWorkshopStudentIds] = useState(() => new Set());
   const emptyWorkshopStudentForm = { firstName: '', lastName: '', phone: '', email: '', nationalId: '', gender: '', age: '', city: '', invoiceNumber: '', notes: '' };
   const [showWorkshopAddStudent, setShowWorkshopAddStudent] = useState(false);
   const [workshopAddStudentForm, setWorkshopAddStudentForm] = useState(emptyWorkshopStudentForm);
@@ -1345,188 +1348,219 @@ const AdminDashboard = () => {
     }
   };
 
-  // Print the workshop attendance ID with the SAME physical card layout
-  // as the volunteer ID (72×102mm portrait, dashed cut-line, colored
-  // header/footer, dual FABLAB + foundation logos, decorative side
-  // stripe). Every colored accent uses the workshop's own color so
-  // multiple workshops are visually distinguishable. Still hits the
-  // server endpoint so the payment-verified + attendance-appended
-  // side-effects fire (same behaviour as before), but we build the
-  // print HTML client-side to reuse the volunteer print styles and
-  // load the /fablab.png + /found.png assets that live in the client.
-  const handlePrintAttendanceId = async (studentId) => {
-    try {
-      const res = await api.get(`/workshops/students/${studentId}/attendance-id`);
-      const student = res.data.student || {};
-      const workshop = res.data.workshop || {};
-      const color = workshop.color || '#1a56db';
-      const name = `${student.firstName || ''} ${student.lastName || ''}`.trim() || 'Student';
-      const initial = (name.charAt(0) || 'S').toUpperCase();
-      const codeStr = `WS-${(student.studentId || '').substring(0, 8).toUpperCase()}`;
-      const qrPayload = JSON.stringify({
-        studentId: student.studentId,
-        name,
-        workshopId: workshop.workshopId,
-        workshop: workshop.title,
-        phone: student.phone,
-        color
-      });
-      const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(qrPayload)}`;
-      const dateStr = workshop.startDate
-        ? `${workshop.startDate}${workshop.endDate && workshop.endDate !== workshop.startDate ? ' → ' + workshop.endDate : ''}`
-        : '';
+  // Build one workshop attendance-ID card HTML matching the volunteer
+  // card layout. Colored by the workshop's own color. Used by both
+  // the single-print and 4-per-A4 bulk-print flows.
+  const buildWorkshopAttendanceCard = (student, workshop) => {
+    const color = workshop?.color || '#1a56db';
+    const name = `${student.firstName || ''} ${student.lastName || ''}`.trim() || 'Student';
+    const initial = (name.charAt(0) || 'S').toUpperCase();
+    const qrPayload = JSON.stringify({
+      studentId: student.studentId,
+      name,
+      workshopId: workshop?.workshopId,
+      workshop: workshop?.title,
+      phone: student.phone,
+      color
+    });
+    const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(qrPayload)}`;
+    const dateStr = workshop?.startDate
+      ? `${workshop.startDate}${workshop.endDate && workshop.endDate !== workshop.startDate ? ' → ' + workshop.endDate : ''}`
+      : '';
+    return `<div class="id-card" style="
+      background: linear-gradient(180deg, #ffffff 0%, ${color}10 100%);
+    ">
+      <div class="card-header" style="background: linear-gradient(135deg, ${color} 0%, ${color} 100%);">
+        <div class="card-title">${isRTL ? 'بطاقة حضور فاب لاب الأحساء' : 'FABLAB Al-Ahsa Attendance Card'}</div>
+        <div class="card-subtitle">${isRTL ? 'مؤسسة عبدالمنعم الراشد الإنسانية' : 'Abdulmonem Al-Rashed Foundation'}</div>
+      </div>
+      <div class="card-body">
+        <div class="user-photo" style="background: linear-gradient(135deg, ${color}22, ${color}11); border: 0.6mm solid ${color};">
+          <span class="initials" style="color: ${color};">${initial}</span>
+        </div>
+        <div class="user-name">${name}</div>
+        <div class="user-type-badge" style="background: linear-gradient(135deg, ${color}, ${color});">${workshop?.title || (isRTL ? 'ورشة تدريبية' : 'Workshop')}</div>
+        <div class="info-section">
+          ${student.phone ? `<div class="info-row"><span class="info-label">${isRTL ? 'الهاتف' : 'Phone'}</span><span class="info-value" dir="ltr">${student.phone}</span></div>` : ''}
+          ${dateStr ? `<div class="info-row"><span class="info-label">${isRTL ? 'التاريخ' : 'Date'}</span><span class="info-value" dir="ltr">${dateStr}</span></div>` : ''}
+          ${workshop?.presenter ? `<div class="info-row"><span class="info-label">${isRTL ? 'المقدم' : 'Presenter'}</span><span class="info-value">${workshop.presenter}</span></div>` : ''}
+        </div>
+        <div class="card-qr"><img src="${qrUrl}" alt="QR" style="box-shadow: 0 0 0 0.3mm ${color} inset;" /></div>
+      </div>
+      <div class="decorative-stripe" style="background: linear-gradient(to bottom, transparent, ${color}, transparent);"></div>
+      <div class="card-footer">
+        <img src="/found.png" alt="Foundation" class="logo">
+        <span class="qr-label" style="color: ${color};">${isRTL ? 'رمز الحضور' : 'Attendance QR'}</span>
+        <img src="/fablab.png" alt="FABLAB" class="logo">
+      </div>
+    </div>`;
+  };
 
-      const printWindow = window.open('', '_blank');
-      const html = `<!DOCTYPE html><html dir="${isRTL ? 'rtl' : 'ltr'}" lang="${isRTL ? 'ar' : 'en'}">
-<head><meta charset="UTF-8"><title>${isRTL ? 'بطاقة حضور ورشة' : 'Workshop Attendance ID'}</title>
-<style>
-  @page { size: A4 portrait; margin: 10mm 8mm; }
-  * { margin: 0; padding: 0; box-sizing: border-box; }
-  html, body { font-family: 'Segoe UI', Tahoma, Arial, sans-serif; background: #f1f5f9; }
-  body { padding: 6mm 0; }
+  // Static styles shared by every workshop-attendance-ID print window.
+  // Card-specific color tint values are inlined in the card HTML.
+  const workshopAttendanceCardStyles = (accentColor) => `
+    @page { size: A4 portrait; margin: 10mm 8mm; }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body { font-family: 'Segoe UI', Tahoma, Arial, sans-serif; background: #f1f5f9; }
+    body { padding: 6mm 0; }
+    .print-note {
+      font-size: 12px; color: #475569; background: white;
+      border: 1px dashed #cbd5e1; border-radius: 8px;
+      padding: 8px 14px; margin: 0 auto 8mm; text-align: center; max-width: 120mm;
+    }
+    .page {
+      display: grid;
+      grid-template-columns: 72mm 72mm;
+      grid-auto-rows: 102mm;
+      column-gap: 6mm; row-gap: 6mm;
+      justify-content: center; align-content: start;
+      width: 100%;
+    }
+    .page + .page { page-break-before: always; }
+    .id-card {
+      width: 72mm; height: 102mm;
+      border: 0.45mm dashed #475569;
+      overflow: hidden; position: relative;
+      display: flex; flex-direction: column;
+      color: #1a1a2e; box-sizing: border-box;
+    }
+    .card-header { padding: 2.5mm 3.5mm; text-align: center; }
+    .card-title { color: white; font-size: 9pt; font-weight: 700; line-height: 1.15; }
+    .card-subtitle { color: rgba(255,255,255,0.88); font-size: 6.5pt; margin-top: 0.6mm; }
+    .card-body {
+      flex: 1; padding: 2.5mm 3mm 0;
+      display: flex; flex-direction: column; align-items: center; gap: 1.4mm;
+    }
+    .user-photo {
+      width: 22mm; height: 26mm;
+      border-radius: 2mm; display: flex; align-items: center; justify-content: center;
+      font-weight: bold;
+      overflow: hidden; flex-shrink: 0;
+    }
+    .user-photo .initials { font-size: 18pt; font-weight: bold; }
+    .user-name {
+      font-size: 10.5pt; font-weight: 800; color: #1a1a2e;
+      text-align: center; line-height: 1.15; max-height: 10mm; overflow: hidden;
+      display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+    }
+    .user-type-badge {
+      display: inline-block;
+      color: white; font-size: 7.5pt; padding: 0.6mm 3.5mm;
+      border-radius: 999px; font-weight: 700;
+      max-width: 60mm; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    }
+    .info-section { width: 100%; display: flex; flex-direction: column; gap: 0.6mm; margin-top: 1mm; }
+    .info-row {
+      display: flex; justify-content: space-between; align-items: center;
+      font-size: 7.2pt; padding: 0.6mm 0; border-bottom: 0.2mm dotted #d4d4d8;
+    }
+    .info-row:last-child { border-bottom: none; }
+    .info-label { font-weight: 700; color: #555; }
+    .info-value {
+      color: #1a1a2e; font-weight: 600; text-align: ${isRTL ? 'left' : 'right'};
+      max-width: 60%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    }
+    .card-qr { display: flex; align-items: center; justify-content: center; margin-top: 1mm; }
+    .card-qr img {
+      width: 26mm; height: 26mm; background: white; padding: 0.8mm; border-radius: 1mm;
+    }
+    .card-footer {
+      background: #ffffff; padding: 1.5mm 3mm;
+      display: flex; align-items: center; justify-content: space-between;
+      border-top: 0.3mm solid #e0e0e0;
+    }
+    .card-footer .logo { height: 7mm; width: auto; flex-shrink: 0; }
+    .card-footer .qr-label { font-size: 6pt; font-weight: 700; }
+    .decorative-stripe {
+      position: absolute; top: 40%; ${isRTL ? 'right' : 'left'}: 0;
+      width: 1mm; height: 25%;
+    }
+    .print-btn {
+      position: fixed; bottom: 20px; ${isRTL ? 'left' : 'right'}: 20px;
+      padding: 12px 28px; background: ${accentColor}; color: #fff; border: none;
+      border-radius: 10px; font-size: 14px; font-weight: 700; cursor: pointer;
+      box-shadow: 0 4px 14px ${accentColor}55;
+    }
+    @media print {
+      html, body { background: white; padding: 0; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+      body { padding: 0; }
+      .print-note, .print-btn { display: none; }
+      .id-card { box-shadow: none; break-inside: avoid; }
+    }
+  `;
 
-  .print-note {
-    font-size: 12px; color: #475569; background: white;
-    border: 1px dashed #cbd5e1; border-radius: 8px;
-    padding: 8px 14px; margin: 0 auto 8mm; text-align: center; max-width: 120mm;
-  }
-  .page {
-    display: grid;
-    grid-template-columns: 72mm 72mm;
-    grid-auto-rows: 102mm;
-    column-gap: 6mm; row-gap: 6mm;
-    justify-content: center; align-content: start;
-    width: 100%;
-  }
-  .id-card {
-    width: 72mm; height: 102mm;
-    background: linear-gradient(180deg, #ffffff 0%, ${color}10 100%);
-    border: 0.45mm dashed #475569;
-    overflow: hidden; position: relative;
-    display: flex; flex-direction: column;
-    color: #1a1a2e; box-sizing: border-box;
-  }
-  .card-header {
-    background: linear-gradient(135deg, ${color} 0%, ${color} 100%);
-    padding: 2.5mm 3.5mm; text-align: center;
-  }
-  .card-title { color: white; font-size: 9pt; font-weight: 700; line-height: 1.15; }
-  .card-subtitle { color: rgba(255,255,255,0.88); font-size: 6.5pt; margin-top: 0.6mm; }
+  // Chunk an array of card-HTMLs into 4-per-A4 pages
+  const chunkWorkshopCards = (cards, per = 4) => {
+    const pages = [];
+    for (let i = 0; i < cards.length; i += per) pages.push(cards.slice(i, i + per));
+    return pages;
+  };
 
-  .card-body {
-    flex: 1; padding: 2.5mm 3mm 0;
-    display: flex; flex-direction: column; align-items: center; gap: 1.4mm;
-  }
-  .user-photo {
-    width: 22mm; height: 26mm;
-    background: linear-gradient(135deg, ${color}22, ${color}11);
-    border-radius: 2mm; display: flex; align-items: center; justify-content: center;
-    color: ${color}; font-weight: bold;
-    border: 0.6mm solid ${color};
-    overflow: hidden; flex-shrink: 0;
-  }
-  .user-photo .initials { font-size: 18pt; font-weight: bold; color: ${color}; }
-
-  .user-name {
-    font-size: 10.5pt; font-weight: 800; color: #1a1a2e;
-    text-align: center; line-height: 1.15; max-height: 10mm; overflow: hidden;
-    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
-  }
-  .user-type-badge {
-    display: inline-block;
-    background: linear-gradient(135deg, ${color}, ${color});
-    color: white; font-size: 7.5pt; padding: 0.6mm 3.5mm;
-    border-radius: 999px; font-weight: 700;
-    max-width: 60mm; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-  }
-
-  .info-section { width: 100%; display: flex; flex-direction: column; gap: 0.6mm; margin-top: 1mm; }
-  .info-row {
-    display: flex; justify-content: space-between; align-items: center;
-    font-size: 7.2pt; padding: 0.6mm 0; border-bottom: 0.2mm dotted #d4d4d8;
-  }
-  .info-row:last-child { border-bottom: none; }
-  .info-label { font-weight: 700; color: #555; }
-  .info-value {
-    color: #1a1a2e; font-weight: 600; text-align: ${isRTL ? 'left' : 'right'};
-    max-width: 60%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-  }
-
-  .card-qr { display: flex; align-items: center; justify-content: center; margin-top: 1mm; }
-  .card-qr img {
-    width: 26mm; height: 26mm; background: white; padding: 0.8mm;
-    border-radius: 1mm; box-shadow: 0 0 0 0.3mm ${color} inset;
-  }
-
-  .card-footer {
-    background: #ffffff; padding: 1.5mm 3mm;
-    display: flex; align-items: center; justify-content: space-between;
-    border-top: 0.3mm solid #e0e0e0;
-  }
-  .card-footer .logo { height: 7mm; width: auto; flex-shrink: 0; }
-  .card-footer .qr-label { font-size: 6pt; color: ${color}; font-weight: 700; }
-
-  .decorative-stripe {
-    position: absolute; top: 40%; ${isRTL ? 'right' : 'left'}: 0;
-    width: 1mm; height: 25%;
-    background: linear-gradient(to bottom, transparent, ${color}, transparent);
-  }
-
-  .print-btn {
-    position: fixed; bottom: 20px; ${isRTL ? 'left' : 'right'}: 20px;
-    padding: 12px 28px; background: ${color}; color: #fff; border: none;
-    border-radius: 10px; font-size: 14px; font-weight: 700; cursor: pointer;
-    box-shadow: 0 4px 14px ${color}55;
-  }
-
-  @media print {
-    html, body { background: white; padding: 0; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-    body { padding: 0; }
-    .print-note, .print-btn { display: none; }
-    .id-card { box-shadow: none; break-inside: avoid; }
-  }
-</style>
+  const openWorkshopCardsPrintWindow = (cardsHtml, accentColor) => {
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) return toast.error(isRTL ? 'فشل فتح نافذة الطباعة' : 'Popup blocked');
+    printWindow.document.write(`<!DOCTYPE html><html dir="${isRTL ? 'rtl' : 'ltr'}" lang="${isRTL ? 'ar' : 'en'}">
+<head><meta charset="UTF-8"><title>${isRTL ? 'بطاقات حضور طلاب' : 'Workshop Student Attendance IDs'}</title>
+<style>${workshopAttendanceCardStyles(accentColor)}</style>
 </head>
 <body>
   <div class="print-note">
     ${isRTL ? 'حجم البطاقة 72×102 ملم — اقطع حسب الخط المتقطع' : 'Card size 72×102 mm — cut along the dashed line'}
   </div>
-  <div class="page">
-    <div class="id-card">
-      <div class="card-header">
-        <div class="card-title">${isRTL ? 'بطاقة حضور فاب لاب الأحساء' : 'FABLAB Al-Ahsa Attendance Card'}</div>
-        <div class="card-subtitle">${isRTL ? 'مؤسسة عبدالمنعم الراشد الإنسانية' : 'Abdulmonem Al-Rashed Foundation'}</div>
-      </div>
-      <div class="card-body">
-        <div class="user-photo">
-          <span class="initials">${initial}</span>
-        </div>
-        <div class="user-name">${name}</div>
-        <div class="user-type-badge">${workshop.title || (isRTL ? 'ورشة تدريبية' : 'Workshop')}</div>
-        <div class="info-section">
-          ${student.phone ? `<div class="info-row"><span class="info-label">${isRTL ? 'الهاتف' : 'Phone'}</span><span class="info-value" dir="ltr">${student.phone}</span></div>` : ''}
-          ${dateStr ? `<div class="info-row"><span class="info-label">${isRTL ? 'التاريخ' : 'Date'}</span><span class="info-value" dir="ltr">${dateStr}</span></div>` : ''}
-          ${workshop.presenter ? `<div class="info-row"><span class="info-label">${isRTL ? 'المقدم' : 'Presenter'}</span><span class="info-value">${workshop.presenter}</span></div>` : ''}
-        </div>
-        <div class="card-qr"><img src="${qrUrl}" alt="QR" /></div>
-      </div>
-      <div class="decorative-stripe"></div>
-      <div class="card-footer">
-        <img src="/found.png" alt="Foundation" class="logo">
-        <span class="qr-label">${isRTL ? 'رمز الحضور' : 'Attendance QR'}</span>
-        <img src="/fablab.png" alt="FABLAB" class="logo">
-      </div>
-    </div>
-  </div>
+  ${cardsHtml}
   <button class="print-btn" onclick="window.print()">${isRTL ? 'طباعة' : 'Print'}</button>
-</body></html>`;
-      printWindow.document.write(html);
-      printWindow.document.close();
-      printWindow.focus();
+</body></html>`);
+    printWindow.document.close();
+    printWindow.focus();
+  };
+
+  // Print a single student — still hits the server so the payment-
+  // verified + today's attendance side-effects fire.
+  const handlePrintAttendanceId = async (studentId) => {
+    try {
+      const res = await api.get(`/workshops/students/${studentId}/attendance-id`);
+      const student = res.data.student || {};
+      const workshop = res.data.workshop || {};
+      const cardHtml = `<div class="page">${buildWorkshopAttendanceCard(student, workshop)}</div>`;
+      openWorkshopCardsPrintWindow(cardHtml, workshop.color || '#1a56db');
     } catch (error) {
       toast.error(isRTL ? 'خطأ' : 'Error');
     }
   };
+
+  // Bulk-print every selected student in the current workshop, 4 per
+  // A4. Uses the client-side student data (no per-student side-effect
+  // hit — bulk printing shouldn't mass-mark everyone as attended).
+  const handlePrintSelectedWorkshopIds = () => {
+    if (!viewingWorkshopStudents) return;
+    const workshop = viewingWorkshopStudents;
+    const chosen = (workshop.students || []).filter(s => selectedWorkshopStudentIds.has(s.studentId));
+    if (chosen.length === 0) {
+      return toast.error(isRTL ? 'لم يتم اختيار أي طالب' : 'No students selected');
+    }
+    const cards = chosen.map(s => buildWorkshopAttendanceCard(s, workshop));
+    const pages = chunkWorkshopCards(cards, 4)
+      .map(page => `<div class="page">${page.join('')}</div>`)
+      .join('');
+    openWorkshopCardsPrintWindow(pages, workshop.color || '#1a56db');
+  };
+
+  const toggleWorkshopStudentSelect = (studentId) => {
+    setSelectedWorkshopStudentIds(prev => {
+      const n = new Set(prev);
+      if (n.has(studentId)) n.delete(studentId); else n.add(studentId);
+      return n;
+    });
+  };
+  const toggleAllWorkshopStudentSelect = () => {
+    if (!viewingWorkshopStudents) return;
+    const all = (viewingWorkshopStudents.students || []).map(s => s.studentId);
+    setSelectedWorkshopStudentIds(prev => {
+      const allSelected = all.length > 0 && all.every(id => prev.has(id));
+      return allSelected ? new Set() : new Set(all);
+    });
+  };
+  const clearWorkshopStudentSelect = () => setSelectedWorkshopStudentIds(new Set());
 
   // Workspace functions
   const fetchWorkspaces = async () => {
@@ -8410,7 +8444,7 @@ const AdminDashboard = () => {
                     >
                       <button
                         className="wsv2-back-btn"
-                        onClick={() => setViewingWorkshopStudents(null)}
+                        onClick={() => { setViewingWorkshopStudents(null); clearWorkshopStudentSelect(); }}
                         title={isRTL ? 'رجوع' : 'Back'}
                       >
                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -8468,6 +8502,47 @@ const AdminDashboard = () => {
                           </svg>
                           {isRTL ? 'بريد للجميع' : 'Email All'}
                         </button>
+                        {/* Bulk print controls — visible only when the workshop has at least one student */}
+                        {(viewingWorkshopStudents.students || []).length > 0 && (
+                          <>
+                            <button
+                              className="wsv2-action-btn"
+                              onClick={toggleAllWorkshopStudentSelect}
+                              style={{ background: '#7c3aed', color: '#fff', border: 'none' }}
+                              title={isRTL ? 'تحديد الكل / إلغاء' : 'Select all / clear'}
+                            >
+                              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4">
+                                <polyline points="20 6 9 17 4 12"/>
+                              </svg>
+                              {(viewingWorkshopStudents.students || []).every(s => selectedWorkshopStudentIds.has(s.studentId))
+                                ? (isRTL ? 'إلغاء التحديد' : 'Clear all')
+                                : (isRTL ? 'تحديد الكل' : 'Select all')}
+                            </button>
+                            <button
+                              className="wsv2-action-btn"
+                              onClick={handlePrintSelectedWorkshopIds}
+                              disabled={selectedWorkshopStudentIds.size === 0}
+                              style={{
+                                background: selectedWorkshopStudentIds.size === 0 ? '#e2e8f0' : '#059669',
+                                color: selectedWorkshopStudentIds.size === 0 ? '#94a3b8' : '#fff',
+                                border: 'none',
+                                cursor: selectedWorkshopStudentIds.size === 0 ? 'not-allowed' : 'pointer'
+                              }}
+                              title={isRTL
+                                ? 'طباعة بطاقات الحضور المحددة (٤ في كل A4)'
+                                : 'Print selected attendance IDs (4 per A4)'}
+                            >
+                              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                <polyline points="6 9 6 2 18 2 18 9"/>
+                                <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/>
+                                <rect x="6" y="14" width="12" height="8"/>
+                              </svg>
+                              {isRTL
+                                ? `طباعة البطاقات (${selectedWorkshopStudentIds.size})`
+                                : `Print IDs (${selectedWorkshopStudentIds.size})`}
+                            </button>
+                          </>
+                        )}
                       </div>
                     </motion.div>
                     <div className="wsv2-student-list">
@@ -8477,7 +8552,9 @@ const AdminDashboard = () => {
                             initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
                             {isRTL ? '— لا يوجد طلاب مسجلين —' : '— No students registered —'}
                           </motion.div>
-                        ) : (viewingWorkshopStudents.students || []).map((s, si) => (
+                        ) : (viewingWorkshopStudents.students || []).map((s, si) => {
+                          const picked = selectedWorkshopStudentIds.has(s.studentId);
+                          return (
                           <motion.div
                             key={s.studentId}
                             layout
@@ -8486,7 +8563,28 @@ const AdminDashboard = () => {
                             animate={{ opacity: 1, y: 0 }}
                             exit={{ opacity: 0, y: -4, transition: { duration: 0.12 } }}
                             transition={{ delay: si * 0.02, type: 'spring', stiffness: 300, damping: 22 }}
+                            style={picked ? { outline: '2px solid #7c3aed', outlineOffset: -1, borderRadius: 8 } : undefined}
                           >
+                            <label
+                              onClick={(e) => e.stopPropagation()}
+                              title={isRTL ? 'تحديد للطباعة' : 'Select for print'}
+                              style={{
+                                display: 'inline-flex', alignItems: 'center',
+                                padding: '4px 8px', borderRadius: 6,
+                                background: picked ? '#7c3aed' : '#fff',
+                                border: `1.5px solid ${picked ? '#7c3aed' : '#e2e8f0'}`,
+                                color: picked ? '#fff' : '#475569',
+                                cursor: 'pointer', fontSize: 11, fontWeight: 800,
+                                marginInlineEnd: 8
+                              }}
+                            >
+                              <input
+                                type="checkbox"
+                                checked={picked}
+                                onChange={() => toggleWorkshopStudentSelect(s.studentId)}
+                                style={{ width: 14, height: 14, cursor: 'pointer', margin: 0 }}
+                              />
+                            </label>
                             <div className="wsv2-student-row-avatar">
                               {(s.firstName || '').charAt(0).toUpperCase()}
                             </div>
@@ -8565,7 +8663,8 @@ const AdminDashboard = () => {
                               </select>
                             </div>
                           </motion.div>
-                        ))}
+                          );
+                        })}
                       </AnimatePresence>
                     </div>
                   </>
