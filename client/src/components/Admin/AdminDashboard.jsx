@@ -8385,13 +8385,12 @@ const AdminDashboard = () => {
                                 <option value="" disabled>{isRTL ? '⚙ إجراءات' : '⚙ Actions'}</option>
                                 <option value="edit">{isRTL ? '✏ تعديل البيانات' : '✏ Edit Info'}</option>
                                 <option value="attendance">{isRTL ? '✅ تعديل الحضور' : '✅ Edit Attendance'}</option>
-                                <option value="printId">{isRTL ? '📇 طباعة البطاقة' : '📇 Print ID'}</option>
+                                <option value="printAttId">{isRTL ? '🎟 طباعة بطاقة الحضور' : '🎟 Print Attendance ID'}</option>
                                 <option value="printCert">{isRTL ? '🎓 طباعة الشهادة' : '🎓 Print Cert'}</option>
                                 <option value="downloadPdf">{isRTL ? '📄 تحميل PDF' : '📄 Download PDF'}</option>
                                 <option value="downloadPdfPlain">{isRTL ? '🖨 طباعة على قالب A4' : '🖨 Print on template'}</option>
                                 <option value="invoice">{isRTL ? '🧾 طباعة الفاتورة' : '🧾 Print Invoice'}</option>
                                 {s.email && <option value="emailCert">{isRTL ? '📧 إرسال الشهادة' : '📧 Email Cert'}</option>}
-                                <option value="printAttId">{isRTL ? '🎟 بطاقة حضور' : '🎟 Att. ID'}</option>
                                 {s.email && <option value="emailAttId">{isRTL ? '📨 إرسال بطاقة الحضور' : '📨 Send Att. ID'}</option>}
                                 {s.email && <option value="emailCustom">{isRTL ? '✉ بريد مخصص' : '✉ Custom Email'}</option>}
                                 {s.phone && <option value="whatsapp">{isRTL ? '💬 واتساب' : '💬 WhatsApp'}</option>}

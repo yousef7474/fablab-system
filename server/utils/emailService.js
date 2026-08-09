@@ -790,36 +790,101 @@ ${workshop.objectives ? `<p style="margin:10px 0 0;padding:8px;background:#eff6f
 };
 
 // Generate attendance ID HTML (reusable for email and print)
+// Generate a workshop-attendance ID card that matches the volunteer
+// ID style — 72×102mm portrait, dashed cut-line border, colored
+// header with title + foundation subtitle, photo/initials frame,
+// student name, workshop-title badge, dotted info rows, QR block,
+// footer with foundation + FABLAB logos, side decorative stripe.
+// Every colored accent uses the workshop's chosen color so admin
+// can distinguish cards at a glance.
 const generateAttendanceIdHtml = (student, workshop) => {
   const color = workshop.color || '#1a56db';
-  const name = `${student.firstName || ''} ${student.lastName || ''}`.trim();
+  const name = `${student.firstName || ''} ${student.lastName || ''}`.trim() || 'Student';
+  const initial = (name.charAt(0) || 'S').toUpperCase();
   const code = `WS-${(student.studentId || '').substring(0, 8).toUpperCase()}`;
-  const qrData = JSON.stringify({ studentId: student.studentId, name, workshopId: workshop.workshopId, workshop: workshop.title, phone: student.phone, color: workshop.color || '#1a56db' });
-  const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(qrData)}`;
+  // Same QR payload as before so scanners keep working
+  const qrData = JSON.stringify({
+    studentId: student.studentId,
+    name,
+    workshopId: workshop.workshopId,
+    workshop: workshop.title,
+    phone: student.phone,
+    color
+  });
+  const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(qrData)}`;
 
-  return `<div style="width:280px;margin:0 auto;border:3px solid ${color};border-radius:16px;overflow:hidden;font-family:Arial,sans-serif;">
-<div style="background:${color};padding:14px;text-align:center;">
-<p style="color:rgba(255,255,255,0.85);margin:0;font-size:10px;">مؤسسة عبدالمنعم الراشد الإنسانية</p>
-<h3 style="color:#fff;margin:4px 0 0;font-size:15px;">فاب لاب الأحساء</h3>
-</div>
-<div style="padding:16px;text-align:center;background:#fff;">
-<p style="margin:0 0 4px;font-size:10px;color:${color};font-weight:700;letter-spacing:1px;">بطاقة حضور ورشة تدريبية</p>
-<p style="margin:0 0 4px;font-size:9px;color:#94a3b8;">WORKSHOP ATTENDANCE ID</p>
-<div style="margin:10px auto;padding:10px;background:${color}10;border-radius:10px;display:inline-block;">
-<img src="${qrUrl}" alt="QR" style="width:130px;height:130px;" />
-</div>
-<h2 style="margin:8px 0 4px;font-size:18px;color:#1e293b;">${name}</h2>
-<div style="display:inline-block;background:${color};color:#fff;padding:4px 14px;border-radius:8px;font-size:11px;font-weight:700;margin-bottom:10px;">${workshop.title}</div>
-<table style="width:100%;font-size:11px;border-collapse:collapse;text-align:right;margin-top:8px;">
-${student.phone ? `<tr><td style="padding:4px 0;color:#64748b;">الهاتف</td><td style="padding:4px 0;color:#1e293b;font-weight:600;" dir="ltr">${student.phone}</td></tr>` : ''}
-${workshop.startDate ? `<tr><td style="padding:4px 0;color:#64748b;">التاريخ</td><td style="padding:4px 0;color:#1e293b;font-weight:600;">${workshop.startDate}${workshop.endDate && workshop.endDate !== workshop.startDate ? ' → ' + workshop.endDate : ''}</td></tr>` : ''}
-${workshop.presenter ? `<tr><td style="padding:4px 0;color:#64748b;">المقدم</td><td style="padding:4px 0;color:#1e293b;font-weight:600;">${workshop.presenter}</td></tr>` : ''}
-</table>
-</div>
-<div style="background:${color};padding:8px;text-align:center;">
-<p style="color:rgba(255,255,255,0.7);margin:0;font-size:9px;font-family:monospace;">${code}</p>
-</div>
-</div>`;
+  // Colored tint values used for the light-body wash + the photo
+  // frame — computed inline so the card can be embedded in an email
+  // without any external stylesheet.
+  const tintLight = `${color}10`;   // ~6% alpha
+  const tintMed   = `${color}22`;   // ~13% alpha
+
+  return `<div style="
+    width:280px;margin:0 auto;position:relative;overflow:hidden;
+    border:2px dashed #475569;border-radius:16px;
+    background:linear-gradient(180deg,#ffffff 0%, ${tintLight} 100%);
+    font-family:'Segoe UI',Tahoma,Arial,sans-serif;
+    box-sizing:border-box;
+  ">
+    <div style="background:linear-gradient(135deg,${color} 0%, ${color} 100%);padding:12px 14px;text-align:center;">
+      <div style="color:#fff;font-size:13px;font-weight:800;line-height:1.2;">بطاقة حضور فاب لاب الأحساء</div>
+      <div style="color:rgba(255,255,255,0.85);font-size:9.5px;margin-top:2px;">مؤسسة عبدالمنعم الراشد الإنسانية</div>
+    </div>
+
+    <div style="padding:12px 12px 4px;text-align:center;">
+      <div style="
+        width:72px;height:88px;margin:0 auto;
+        background:linear-gradient(135deg,${tintMed},${tintLight});
+        border:2px solid ${color};
+        border-radius:8px;
+        display:flex;align-items:center;justify-content:center;
+        overflow:hidden;
+      ">
+        <span style="font-size:34px;font-weight:800;color:${color};line-height:1;">${initial}</span>
+      </div>
+
+      <div style="margin-top:8px;font-size:15px;font-weight:800;color:#1a1a2e;line-height:1.2;">${name}</div>
+
+      <div style="
+        display:inline-block;margin-top:6px;padding:3px 12px;
+        background:${color};color:#fff;
+        border-radius:999px;font-size:10.5px;font-weight:700;
+      ">${workshop.title || 'ورشة تدريبية'}</div>
+
+      <table style="width:100%;font-size:10.5px;border-collapse:collapse;text-align:right;margin-top:10px;">
+        ${student.phone ? `<tr>
+          <td style="padding:3px 2px;color:#666;font-weight:700;border-bottom:1px dotted #d4d4d8;">الهاتف</td>
+          <td style="padding:3px 2px;color:#1a1a2e;font-weight:600;text-align:left;direction:ltr;border-bottom:1px dotted #d4d4d8;">${student.phone}</td>
+        </tr>` : ''}
+        ${workshop.startDate ? `<tr>
+          <td style="padding:3px 2px;color:#666;font-weight:700;border-bottom:1px dotted #d4d4d8;">التاريخ</td>
+          <td style="padding:3px 2px;color:#1a1a2e;font-weight:600;text-align:left;direction:ltr;border-bottom:1px dotted #d4d4d8;">${workshop.startDate}${workshop.endDate && workshop.endDate !== workshop.startDate ? ' → ' + workshop.endDate : ''}</td>
+        </tr>` : ''}
+        ${workshop.presenter ? `<tr>
+          <td style="padding:3px 2px;color:#666;font-weight:700;">المقدم</td>
+          <td style="padding:3px 2px;color:#1a1a2e;font-weight:600;text-align:right;">${workshop.presenter}</td>
+        </tr>` : ''}
+      </table>
+
+      <div style="margin:10px auto 0;padding:4px;background:#fff;border-radius:6px;display:inline-block;box-shadow:0 0 0 1.5px ${color} inset;">
+        <img src="${qrUrl}" alt="QR" style="width:110px;height:110px;display:block;" />
+      </div>
+    </div>
+
+    <div style="
+      background:#ffffff;padding:6px 12px;
+      display:flex;align-items:center;justify-content:space-between;
+      border-top:1px solid #e5e7eb;
+    ">
+      <span style="font-size:9px;color:${color};font-weight:700;font-family:monospace;">${code}</span>
+      <span style="font-size:9px;color:${color};font-weight:700;">رمز الحضور</span>
+    </div>
+
+    <div style="
+      position:absolute;top:35%;left:0;width:3px;height:30%;
+      background:linear-gradient(to bottom,transparent,${color},transparent);
+    "></div>
+  </div>`;
 };
 
 // Send attendance ID email to a student
