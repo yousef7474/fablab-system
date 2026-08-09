@@ -23,6 +23,12 @@ router.get('/attendance/today', ctrl.todayAttendance);
 router.delete('/attendance/today', requireManager, ctrl.clearTodayAttendance);
 router.get('/:id/attendance', ctrl.listStaffAttendance);
 router.patch('/attendance/:id/checkout', requireManager, ctrl.clearCheckout);
+router.patch('/attendance/:id/annotate', requireManager, ctrl.annotateAttendance);
 router.delete('/attendance/:id', requireManager, ctrl.deleteAttendance);
+
+// Overtime (auto-derived) — path order matters: overtime overview
+// BEFORE the parameterized :id/overtime.
+router.get('/overtime', ctrl.listOvertime);
+router.get('/:id/overtime', ctrl.listStaffOvertime);
 
 module.exports = router;

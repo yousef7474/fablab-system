@@ -290,4 +290,143 @@ exports.deleteAttendance = async (req, res) => {
   }
 };
 
+// ============== OVERTIME (auto-derived from attendance) ==============
+// Official working day is 9 hours. Anything above is overtime.
+// Nothing is stored — overtime minutes are computed on read from the
+// existing checkInAt / checkOutAt timestamps. Admin annotates each
+// eligible row with `reason` and `approvedBy`.
+
+const OFFICIAL_HOURS = 9;
+
+const shapeOvertimeRow = (att) => {
+  if (!att.checkInAt || !att.checkOutAt) return null;
+  const inMs = new Date(att.checkInAt).getTime();
+  const outMs = new Date(att.checkOutAt).getTime();
+  if (!(outMs > inMs)) return null;
+  const durationMin = Math.round((outMs - inMs) / 60000);
+  const overtimeMin = Math.max(0, durationMin - OFFICIAL_HOURS * 60);
+  return {
+    attendanceId: att.attendanceId,
+    staffId: att.staffId,
+    staff: att.staff
+      ? {
+          staffId: att.staff.staffId,
+          name: att.staff.name,
+          position: att.staff.position,
+          nationalId: att.staff.nationalId
+        }
+      : null,
+    date: att.date,
+    checkInAt: att.checkInAt,
+    checkOutAt: att.checkOutAt,
+    durationMinutes: durationMin,
+    overtimeMinutes: overtimeMin,
+    reason: att.reason || null,
+    approvedBy: att.approvedBy || null
+  };
+};
+
+// GET /fablab-staff/overtime?from=&to=&staffId=&onlyWithOvertime=true
+// Returns all attendance rows shaped as overtime-eligible. When
+// onlyWithOvertime is not 'false', filters out rows with 0 overtime
+// so the admin sees only actionable rows.
+exports.listOvertime = async (req, res) => {
+  try {
+    const { from, to, staffId, onlyWithOvertime } = req.query;
+    const where = {};
+    if (staffId) where.staffId = staffId;
+    if (from && to) where.date = { [Op.between]: [from, to] };
+    else if (from) where.date = { [Op.gte]: from };
+    else if (to) where.date = { [Op.lte]: to };
+
+    const records = await FablabStaffAttendance.findAll({
+      where,
+      include: [{ model: FablabStaff, as: 'staff', required: false }],
+      order: [['date', 'DESC'], ['checkInAt', 'DESC']]
+    });
+
+    const showAll = String(onlyWithOvertime) === 'false';
+    const rows = records
+      .map(shapeOvertimeRow)
+      .filter(r => r && (showAll || r.overtimeMinutes > 0));
+
+    // Totals — handy for the header stats.
+    const totals = rows.reduce((acc, r) => {
+      acc.count += 1;
+      acc.overtimeMin += r.overtimeMinutes;
+      return acc;
+    }, { count: 0, overtimeMin: 0 });
+
+    res.json({ officialHours: OFFICIAL_HOURS, rows, totals });
+  } catch (err) {
+    console.error('Staff listOvertime error:', err);
+    res.status(500).json({ message: 'Server error', error: err.message });
+  }
+};
+
+// GET /fablab-staff/:id/overtime — one employee's overtime archive.
+// Same shape as listOvertime but scoped to one staff. Used by the
+// Sanad print flow.
+exports.listStaffOvertime = async (req, res) => {
+  try {
+    const { from, to } = req.query;
+    const where = { staffId: req.params.id };
+    if (from && to) where.date = { [Op.between]: [from, to] };
+    else if (from) where.date = { [Op.gte]: from };
+    else if (to) where.date = { [Op.lte]: to };
+
+    const staff = await FablabStaff.findByPk(req.params.id);
+    if (!staff) return res.status(404).json({ message: 'Staff not found' });
+
+    const records = await FablabStaffAttendance.findAll({
+      where,
+      order: [['date', 'DESC'], ['checkInAt', 'DESC']]
+    });
+
+    const rows = records
+      .map(r => shapeOvertimeRow({ ...r.toJSON(), staff }))
+      .filter(r => r && r.overtimeMinutes > 0);
+
+    const totals = rows.reduce((acc, r) => {
+      acc.count += 1;
+      acc.overtimeMin += r.overtimeMinutes;
+      return acc;
+    }, { count: 0, overtimeMin: 0 });
+
+    res.json({ officialHours: OFFICIAL_HOURS, staff, rows, totals });
+  } catch (err) {
+    console.error('Staff listStaffOvertime error:', err);
+    res.status(500).json({ message: 'Server error', error: err.message });
+  }
+};
+
+// PATCH /fablab-staff/attendance/:id/annotate — body { reason?, approvedBy? }
+// Sets the two admin-facing fields on an existing attendance row.
+// Only these two fields — everything else (times) is untouched.
+exports.annotateAttendance = async (req, res) => {
+  try {
+    const rec = await FablabStaffAttendance.findByPk(req.params.id);
+    if (!rec) return res.status(404).json({ message: 'Record not found' });
+
+    const patch = {};
+    if (req.body?.reason !== undefined) {
+      const trimmed = String(req.body.reason || '').trim();
+      patch.reason = trimmed || null;
+    }
+    if (req.body?.approvedBy !== undefined) {
+      const trimmed = String(req.body.approvedBy || '').trim();
+      patch.approvedBy = trimmed || null;
+    }
+    if (Object.keys(patch).length === 0) {
+      return res.status(400).json({ message: 'Nothing to update' });
+    }
+
+    await rec.update(patch);
+    res.json({ message: 'Annotation saved', record: rec });
+  } catch (err) {
+    console.error('Staff annotateAttendance error:', err);
+    res.status(500).json({ message: 'Server error', error: err.message });
+  }
+};
+
 module.exports = exports;

@@ -22,6 +22,18 @@ const FablabStaffAttendance = sequelize.define('FablabStaffAttendance', {
   checkOutAt: {
     type: DataTypes.DATE,
     allowNull: true
+  },
+  // Overtime annotation — filled by admin after the day is scanned.
+  // The overtime hours themselves are derived from checkInAt/checkOutAt
+  // (anything > 9h is overtime), so we don't store them; we only store
+  // the two admin-facing fields the auto-computed row carries.
+  reason: {
+    type: DataTypes.TEXT,
+    allowNull: true
+  },
+  approvedBy: {
+    type: DataTypes.STRING,
+    allowNull: true
   }
 }, {
   tableName: 'fablab_staff_attendance',

@@ -507,6 +507,15 @@ const syncDatabase = async () => {
       await sequelize.query(
         `ALTER TABLE fablab_staff ADD COLUMN IF NOT EXISTS "profilePhoto" TEXT`
       );
+      // FabLab staff attendance gets overtime annotation fields —
+      // reason (why they stayed late) + approvedBy (which manager
+      // signed off). Both are set later via the overtime admin UI.
+      await sequelize.query(
+        `ALTER TABLE fablab_staff_attendance ADD COLUMN IF NOT EXISTS "reason" TEXT`
+      );
+      await sequelize.query(
+        `ALTER TABLE fablab_staff_attendance ADD COLUMN IF NOT EXISTS "approvedBy" VARCHAR(255)`
+      );
     } catch (migrationError) {
       if (!/does not exist/i.test(migrationError.message)) {
         console.log('profilePhoto columns migration note:', migrationError.message);

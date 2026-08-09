@@ -4,6 +4,7 @@ import { toast } from 'react-toastify';
 import { useTranslation } from 'react-i18next';
 import api from '../../config/api';
 import '../Mawhba/Mawhba.css';
+import AutoStaffOvertime from './AutoStaffOvertime';
 
 // Overtime (ساعات إضافية) — track admin-submitted overtime requests
 // for FabLab employees, archive them, and print each one on the same
@@ -364,8 +365,12 @@ const OvertimeManagement = () => {
 
   return (
     <div className="volunteers-content">
+      {/* Auto-computed overtime from staff QR scans — sits above the
+          manual overtime-request list. */}
+      <AutoStaffOvertime />
+
       <div className="volunteers-header">
-        <h2>{isRTL ? 'الساعات الإضافية' : 'Overtime'}</h2>
+        <h2>{isRTL ? 'الساعات الإضافية اليدوية' : 'Manual Overtime Requests'}</h2>
         <div className="volunteers-actions">
           <button className="add-volunteer-btn" onClick={openCreate}>
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
