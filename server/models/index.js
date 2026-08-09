@@ -545,6 +545,11 @@ const syncDatabase = async () => {
           `CREATE UNIQUE INDEX IF NOT EXISTS overtime_approval_token_uniq ON overtime_requests ("approvalToken")`
         );
       } catch (_) { /* index may already exist */ }
+      // Workshop student per-scan timestamps so the unified attendance
+      // board can render the actual scan time next to each student.
+      await sequelize.query(
+        `ALTER TABLE workshop_students ADD COLUMN IF NOT EXISTS "attendanceScans" JSONB DEFAULT '[]'::jsonb`
+      );
     } catch (migrationError) {
       if (!/does not exist/i.test(migrationError.message)) {
         console.log('profilePhoto columns migration note:', migrationError.message);

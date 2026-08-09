@@ -64,6 +64,15 @@ const WorkshopStudent = sequelize.define('WorkshopStudent', {
     defaultValue: [],
     comment: 'Array of date strings the student attended, e.g. ["2026-04-14","2026-04-15"]'
   },
+  // Per-scan timestamps so the unified attendance board can show the
+  // actual "when" for each day, not just the date. Shape:
+  // [{ date: 'YYYY-MM-DD', scannedAt: ISO }]. Kept alongside
+  // attendanceDates (which stays the source of truth for
+  // day-attended) to avoid touching downstream cert/PDF logic.
+  attendanceScans: {
+    type: DataTypes.JSON,
+    defaultValue: []
+  },
   performanceRating: {
     type: DataTypes.INTEGER,
     allowNull: true,

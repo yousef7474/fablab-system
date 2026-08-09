@@ -18,6 +18,13 @@ router.post('/students/:id/send-certificate', adminAuth, controller.sendCertific
 router.get('/students/:id/certificate-pdf', adminAuth, controller.downloadCertificatePdf);
 router.get('/students/:id/invoice-pdf', adminAuth, controller.downloadInvoicePdf);
 router.get('/students/:id/attendance-id', adminAuth, controller.getAttendanceIdHtml);
+
+// Unified attendance station — same shape as volunteer/staff scan.
+// Literal-path routes BEFORE any parameterized routes below.
+router.post('/students/attendance/scan', adminAuth, controller.scanWorkshopAttendance);
+router.get('/students/attendance/today', adminAuth, controller.workshopAttendanceToday);
+router.delete('/students/attendance/today', adminAuth, requireManager, controller.clearWorkshopAttendanceToday);
+
 router.post('/register', controller.registerStudent);
 router.get('/active', controller.getActiveWorkshops);
 

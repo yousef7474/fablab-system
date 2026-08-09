@@ -843,6 +843,195 @@ exports.getAttendanceIdHtml = async (req, res) => {
   }
 };
 
+// ============== UNIFIED ATTENDANCE STATION ==============
+// Workshop students scan at the door via the shared kiosk. Same
+// shape as volunteers/staff/etc. so the client cascade + today
+// hydrate can handle them uniformly.
+
+const _todayStrRiyadh = () => {
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Asia/Riyadh', year: 'numeric', month: '2-digit', day: '2-digit'
+  }).formatToParts(new Date());
+  const y = parts.find(p => p.type === 'year').value;
+  const m = parts.find(p => p.type === 'month').value;
+  const d = parts.find(p => p.type === 'day').value;
+  return `${y}-${m}-${d}`;
+};
+
+// The workshop QR encodes a JSON payload; try to parse it and pull
+// studentId. Fall back to treating the raw code as a studentId
+// (UUID) or a national ID.
+const _resolveWorkshopStudentByCode = async (code) => {
+  const raw = String(code || '').trim();
+  if (!raw) return null;
+
+  // Try JSON payload
+  if (raw.startsWith('{') && raw.endsWith('}')) {
+    try {
+      const payload = JSON.parse(raw);
+      if (payload?.studentId) {
+        const s = await WorkshopStudent.findByPk(payload.studentId, {
+          include: [{ model: Workshop, as: 'workshop' }]
+        });
+        if (s) return s;
+      }
+    } catch { /* fall through */ }
+  }
+  // Raw UUID
+  const uuidRe = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  if (uuidRe.test(raw)) {
+    const s = await WorkshopStudent.findByPk(raw, {
+      include: [{ model: Workshop, as: 'workshop' }]
+    });
+    if (s) return s;
+  }
+  // National ID fallback
+  const s = await WorkshopStudent.findOne({
+    where: { nationalId: raw },
+    include: [{ model: Workshop, as: 'workshop' }]
+  });
+  return s || null;
+};
+
+// POST /workshops/students/attendance/scan — body { code }
+exports.scanWorkshopAttendance = async (req, res) => {
+  try {
+    const student = await _resolveWorkshopStudentByCode(req.body?.code);
+    if (!student) return res.status(404).json({ message: 'No workshop student matches this code' });
+
+    const date = _todayStrRiyadh();
+    const now = new Date();
+    const dates = Array.isArray(student.attendanceDates) ? [...student.attendanceDates] : [];
+    const scans = Array.isArray(student.attendanceScans) ? [...student.attendanceScans] : [];
+
+    const already = dates.includes(date);
+    let action;
+    if (already) {
+      action = 'already_done';
+    } else {
+      dates.push(date);
+      scans.push({ date, scannedAt: now.toISOString() });
+      // JSON dirty-tracking workaround so both arrays flush
+      student.setDataValue('attendanceDates', dates);
+      student.setDataValue('attendanceScans', scans);
+      student.changed('attendanceDates', true);
+      student.changed('attendanceScans', true);
+      student.attended = true;
+      // First scan also marks payment as verified (matches the
+      // existing print-card side-effect)
+      if (student.paymentStatus !== 'verified') student.paymentStatus = 'verified';
+      await student.save();
+      action = 'checkin';
+    }
+
+    // Existing scan record for today (if any) so the client can show
+    // the actual time
+    const todayScan = scans.find(s => s?.date === date);
+
+    res.json({
+      action,
+      student: {
+        studentId: student.studentId,
+        name: `${student.firstName || ''} ${student.lastName || ''}`.trim(),
+        phone: student.phone
+      },
+      workshop: student.workshop
+        ? {
+            workshopId: student.workshop.workshopId,
+            title: student.workshop.title,
+            color: student.workshop.color
+          }
+        : null,
+      record: {
+        date,
+        checkInAt: todayScan?.scannedAt || now.toISOString(),
+        checkOutAt: null
+      }
+    });
+  } catch (err) {
+    console.error('scanWorkshopAttendance error:', err);
+    res.status(500).json({ message: 'Server error', error: err.message });
+  }
+};
+
+// GET /workshops/students/attendance/today — grouped by workshop
+exports.workshopAttendanceToday = async (req, res) => {
+  try {
+    const date = _todayStrRiyadh();
+    // Pull every student whose attendanceDates includes today. JSON
+    // contains query works on Postgres via a jsonb operator, so we
+    // filter in memory to stay portable.
+    const students = await WorkshopStudent.findAll({
+      include: [{ model: Workshop, as: 'workshop' }],
+      order: [['createdAt', 'ASC']]
+    });
+    const todayStudents = students.filter(s =>
+      Array.isArray(s.attendanceDates) && s.attendanceDates.includes(date)
+    );
+
+    // Group by workshop
+    const groupMap = new Map();
+    for (const s of todayStudents) {
+      const w = s.workshop;
+      const key = w?.workshopId || 'unassigned';
+      if (!groupMap.has(key)) {
+        groupMap.set(key, {
+          workshopId: w?.workshopId || null,
+          title: w?.title || 'Workshop',
+          color: w?.color || '#1a56db',
+          students: []
+        });
+      }
+      const scans = Array.isArray(s.attendanceScans) ? s.attendanceScans : [];
+      const todayScan = scans.find(x => x?.date === date);
+      groupMap.get(key).students.push({
+        attendanceId: s.studentId,   // reuse shape of other today endpoints
+        studentId: s.studentId,
+        name: `${s.firstName || ''} ${s.lastName || ''}`.trim(),
+        phone: s.phone || '',
+        checkInAt: todayScan?.scannedAt || null,
+        checkOutAt: null,
+        status: 'checked_in'
+      });
+    }
+    const groups = Array.from(groupMap.values());
+    const totalCheckins = todayStudents.length;
+    res.json({ date, groups, stats: { checkins: totalCheckins, checkouts: 0 } });
+  } catch (err) {
+    console.error('workshopAttendanceToday error:', err);
+    res.status(500).json({ message: 'Server error', error: err.message });
+  }
+};
+
+// DELETE /workshops/students/attendance/today — clears today's date
+// from every student that has it. Matches the shared Clear-Today
+// button behaviour of the other attendance types.
+exports.clearWorkshopAttendanceToday = async (req, res) => {
+  try {
+    const date = _todayStrRiyadh();
+    const students = await WorkshopStudent.findAll();
+    let count = 0;
+    for (const s of students) {
+      const dates = Array.isArray(s.attendanceDates) ? s.attendanceDates : [];
+      if (!dates.includes(date)) continue;
+      const newDates = dates.filter(d => d !== date);
+      const scans = Array.isArray(s.attendanceScans) ? s.attendanceScans : [];
+      const newScans = scans.filter(x => x?.date !== date);
+      s.setDataValue('attendanceDates', newDates);
+      s.setDataValue('attendanceScans', newScans);
+      s.changed('attendanceDates', true);
+      s.changed('attendanceScans', true);
+      if (newDates.length === 0) s.attended = false;
+      await s.save();
+      count++;
+    }
+    res.json({ message: 'Today cleared', date, count });
+  } catch (err) {
+    console.error('clearWorkshopAttendanceToday error:', err);
+    res.status(500).json({ message: 'Server error', error: err.message });
+  }
+};
+
 // Download certificate as PDF
 exports.downloadCertificatePdf = async (req, res) => {
   try {
