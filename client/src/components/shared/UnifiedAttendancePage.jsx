@@ -10,7 +10,20 @@ import './AttendanceStation.css';
 // first (course-based color grouping) and falls back to Volunteer
 // if not found (single orange "Volunteers" group).
 
+// Marker written to the URL hash while the attendance station is open.
+// A page refresh keeps the hash, so the station re-opens itself even
+// though the parent's `open` state has just been reset to false. This
+// is what makes F5 not close the kiosk.
+const HASH = '#attendance';
+
 const UnifiedAttendancePage = ({ open, onClose, isRTL }) => {
+  // The station renders whenever either the parent asks (open prop)
+  // OR the URL hash says the kiosk was open before refresh.
+  const [selfOpen, setSelfOpen] = useState(() =>
+    typeof window !== 'undefined' && window.location.hash === HASH
+  );
+  const isOpen = open || selfOpen;
+
   const [groups, setGroups] = useState([]);
   const [sessionStats, setSessionStats] = useState({ checkins: 0, checkouts: 0, errors: 0 });
   const [recentScans, setRecentScans] = useState([]);
@@ -21,12 +34,29 @@ const UnifiedAttendancePage = ({ open, onClose, isRTL }) => {
   const hwLastKeyRef = useRef(0);
   const scanPopupTimerRef = useRef(null);
 
+  // Keep the URL hash in sync with the visible state.
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const url = window.location.pathname + window.location.search;
+    if (isOpen && window.location.hash !== HASH) {
+      window.history.replaceState(null, '', url + HASH);
+    } else if (!isOpen && window.location.hash === HASH) {
+      window.history.replaceState(null, '', url);
+    }
+  }, [isOpen]);
+
+  // Bridge the parent's opening intent into selfOpen so a subsequent
+  // manual close (which clears selfOpen) actually hides the station.
+  useEffect(() => {
+    if (open) setSelfOpen(true);
+  }, [open]);
+
   // Live clock refreshed once per second while the station is open.
   useEffect(() => {
-    if (!open) return;
+    if (!isOpen) return;
     const id = setInterval(() => setNow(new Date()), 1000);
     return () => clearInterval(id);
-  }, [open]);
+  }, [isOpen]);
 
   const fmtTime = useCallback((iso) => {
     if (!iso) return '—';
@@ -135,12 +165,30 @@ const UnifiedAttendancePage = ({ open, onClose, isRTL }) => {
   }, [isRTL]);
 
   useEffect(() => {
-    if (!open) return;
+    if (!isOpen) return;
     setSessionStats({ checkins: 0, checkouts: 0, errors: 0 });
     setRecentScans([]);
     setGroups([]);
     hydrate();
-  }, [open, hydrate]);
+  }, [isOpen, hydrate]);
+
+  // Auto-refresh the "today's attendance" board every 10s while the
+  // kiosk is open, so numbers stay live across multiple screens and
+  // any admin edits (manual add, checkout signing) show up without a
+  // manual page refresh. Refreshes pause while the browser tab is
+  // hidden to avoid useless traffic when the screen is off.
+  useEffect(() => {
+    if (!isOpen) return;
+    const tick = () => { if (!document.hidden) hydrate(); };
+    const id = setInterval(tick, 10000);
+    // Also refresh immediately when the tab comes back to the front.
+    const onVis = () => { if (!document.hidden) hydrate(); };
+    document.addEventListener('visibilitychange', onVis);
+    return () => {
+      clearInterval(id);
+      document.removeEventListener('visibilitychange', onVis);
+    };
+  }, [isOpen, hydrate]);
 
   const showResult = useCallback((payload) => {
     if (scanPopupTimerRef.current) clearTimeout(scanPopupTimerRef.current);
@@ -344,7 +392,7 @@ const UnifiedAttendancePage = ({ open, onClose, isRTL }) => {
 
   // USB HID barcode reader — only while this page is open
   useEffect(() => {
-    if (!open) return undefined;
+    if (!isOpen) return undefined;
     const onKey = (e) => {
       const tag = (e.target && e.target.tagName) || '';
       const editable = e.target && (e.target.isContentEditable ||
@@ -401,7 +449,18 @@ const UnifiedAttendancePage = ({ open, onClose, isRTL }) => {
     }
   };
 
-  if (!open) return null;
+  if (!isOpen) return null;
+
+  // Wraps the parent's onClose so the URL hash is cleared and our
+  // internal open state resets in the same call. Passed to every
+  // "close the kiosk" trigger (X button, background click if any).
+  const handleClose = () => {
+    setSelfOpen(false);
+    if (typeof window !== 'undefined' && window.location.hash === HASH) {
+      window.history.replaceState(null, '', window.location.pathname + window.location.search);
+    }
+    if (typeof onClose === 'function') onClose();
+  };
 
   const clockTime = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}:${String(now.getSeconds()).padStart(2, '0')}`;
   const clockDate = new Intl.DateTimeFormat(isRTL ? 'ar-SA-u-ca-gregory' : 'en-GB', {
@@ -446,7 +505,7 @@ const UnifiedAttendancePage = ({ open, onClose, isRTL }) => {
             >
               🗑 {isRTL ? 'مسح سجلات اليوم' : 'Clear today'}
             </button>
-            <button className="as-btn as-btn-close" onClick={onClose}>
+            <button className="as-btn as-btn-close" onClick={handleClose}>
               ✕
             </button>
           </div>
@@ -456,7 +515,8 @@ const UnifiedAttendancePage = ({ open, onClose, isRTL }) => {
         <div className="as-hero">
           <div className="as-ready">
             <div className="as-ready-kicker">
-              {isRTL ? '● متصل · جاهز للاستقبال' : '● ONLINE · READY'}
+              <span className="as-live-dot" />
+              {isRTL ? 'مباشر · تحديث تلقائي كل ١٠ ثوان' : 'LIVE · auto-refresh every 10s'}
             </div>
             <div className="as-ready-pulse" />
             <div className="as-ready-label">
