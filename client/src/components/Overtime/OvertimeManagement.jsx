@@ -71,6 +71,43 @@ const OvertimeManagement = () => {
   const [autoLoading, setAutoLoading] = useState(false);
   const [pickedAutoIds, setPickedAutoIds] = useState(new Set());
 
+  // Send-for-approval modal state
+  const [sendTarget, setSendTarget] = useState(null);
+  const [sendEmail, setSendEmail] = useState('');
+  const [sending, setSending] = useState(false);
+
+  const openSendModal = (row) => {
+    setSendTarget(row);
+    // Pre-fill with the last-used manager email if this row was already sent
+    setSendEmail(row.managerEmail || localStorage.getItem('overtime-last-manager-email') || '');
+  };
+  const closeSendModal = () => { setSendTarget(null); setSendEmail(''); setSending(false); };
+
+  const submitSend = async () => {
+    if (!sendTarget) return;
+    const email = sendEmail.trim();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      return toast.error(isRTL ? 'بريد إلكتروني غير صحيح' : 'Invalid email');
+    }
+    setSending(true);
+    try {
+      const { data } = await api.post(`/overtime/${sendTarget.overtimeId}/send-for-approval`, { managerEmail: email });
+      localStorage.setItem('overtime-last-manager-email', email);
+      if (data?.emailFailed) {
+        toast.warning(isRTL ? 'تم التحديد قيد الاعتماد لكن فشل إرسال البريد' : 'Marked pending but email failed');
+      } else {
+        toast.success(isRTL ? 'تم الإرسال للمدير' : 'Sent to manager');
+      }
+      closeSendModal();
+      load();
+    } catch (err) {
+      const msg = err?.response?.data?.messageAr || err?.response?.data?.message;
+      toast.error(msg || (isRTL ? 'فشل الإرسال' : 'Send failed'));
+    } finally {
+      setSending(false);
+    }
+  };
+
   const load = useCallback(async () => {
     setLoading(true);
     try {
@@ -464,7 +501,17 @@ const OvertimeManagement = () => {
             <div className="empty-state" style={{ gridColumn: '1 / -1' }}>
               {isRTL ? 'لا توجد طلبات ساعات إضافية بعد' : 'No overtime requests yet'}
             </div>
-          ) : filtered.map(row => (
+          ) : filtered.map(row => {
+            const status = row.approvalStatus || 'draft';
+            const statusMeta = {
+              draft:    { bg: '#f1f5f9', bd: '#cbd5e1', fg: '#475569', ar: 'مسودة',   en: 'Draft'    },
+              pending:  { bg: '#fef3c7', bd: '#fde68a', fg: '#92400e', ar: 'قيد الاعتماد', en: 'Pending' },
+              approved: { bg: '#dcfce7', bd: '#86efac', fg: '#166534', ar: 'معتمد',   en: 'Approved' },
+              rejected: { bg: '#fee2e2', bd: '#fecaca', fg: '#991b1b', ar: 'مرفوض',   en: 'Rejected' }
+            }[status] || { bg: '#f1f5f9', bd: '#cbd5e1', fg: '#475569', ar: status, en: status };
+            const canPrint = status === 'approved';
+            const canSend = status === 'draft' || status === 'rejected';
+            return (
             <div key={row.overtimeId} className="volunteer-card">
               <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, marginBottom: 10 }}>
                 <div>
@@ -474,6 +521,29 @@ const OvertimeManagement = () => {
                 <div style={{ background: 'linear-gradient(135deg, #6d28d9, #8b5cf6)', color: 'white', padding: '6px 12px', borderRadius: 999, fontSize: 12, fontWeight: 800 }}>
                   {Number(row.totalHours) || 0} {isRTL ? 'ساعة' : 'hrs'}
                 </div>
+              </div>
+              <div style={{ marginBottom: 8 }}>
+                <span style={{
+                  display: 'inline-block',
+                  padding: '3px 10px',
+                  borderRadius: 999,
+                  fontSize: 11, fontWeight: 800,
+                  background: statusMeta.bg,
+                  border: `1px solid ${statusMeta.bd}`,
+                  color: statusMeta.fg
+                }}>
+                  {isRTL ? statusMeta.ar : statusMeta.en}
+                </span>
+                {status === 'approved' && row.approvedBy && (
+                  <span style={{ marginInlineStart: 8, fontSize: 11, color: '#64748b' }}>
+                    · {isRTL ? 'اعتمده:' : 'by'} <b>{row.approvedBy}</b>
+                  </span>
+                )}
+                {status === 'rejected' && row.managerNote && (
+                  <span style={{ marginInlineStart: 8, fontSize: 11, color: '#991b1b' }} title={row.managerNote}>
+                    · 📝 {row.managerNote.slice(0, 40)}{row.managerNote.length > 40 ? '…' : ''}
+                  </span>
+                )}
               </div>
               <div style={{ fontSize: 13, color: '#475569', lineHeight: 1.9 }}>
                 {row.nationalId && <div>🆔 <span dir="ltr">{row.nationalId}</span></div>}
@@ -486,14 +556,59 @@ const OvertimeManagement = () => {
               </div>
               <div style={{ display: 'flex', gap: 8, marginTop: 14, flexWrap: 'wrap' }}>
                 <button
-                  onClick={() => printOne(row)}
-                  style={{ flex: 1, minWidth: 120, padding: '8px 14px', borderRadius: 8, border: 'none', background: 'linear-gradient(135deg, #6d28d9, #8b5cf6)', color: 'white', cursor: 'pointer', fontWeight: 700, fontSize: 13, fontFamily: 'inherit' }}
+                  onClick={() => canPrint ? printOne(row) : toast.info(isRTL ? 'يجب اعتماد الطلب أولاً' : 'Approval required before printing')}
+                  disabled={!canPrint}
+                  title={canPrint
+                    ? (isRTL ? 'طباعة السند' : 'Print sanad')
+                    : (isRTL ? 'يجب اعتماد الطلب أولاً' : 'Approval required before printing')}
+                  style={{
+                    flex: 1, minWidth: 120, padding: '8px 14px', borderRadius: 8, border: 'none',
+                    background: canPrint ? 'linear-gradient(135deg, #6d28d9, #8b5cf6)' : '#e2e8f0',
+                    color: canPrint ? 'white' : '#94a3b8',
+                    cursor: canPrint ? 'pointer' : 'not-allowed',
+                    fontWeight: 700, fontSize: 13, fontFamily: 'inherit'
+                  }}
                 >
                   🖨 {isRTL ? 'طباعة سند' : 'Print'}
                 </button>
+                {canSend && (
+                  <button
+                    onClick={() => openSendModal(row)}
+                    title={isRTL ? 'إرسال للمدير للاعتماد' : 'Send to manager for approval'}
+                    style={{
+                      padding: '8px 14px', borderRadius: 8, border: '1px solid #fde68a',
+                      background: '#fef3c7', color: '#92400e', cursor: 'pointer',
+                      fontWeight: 800, fontSize: 13, fontFamily: 'inherit'
+                    }}
+                  >
+                    📤 {isRTL ? 'إرسال للاعتماد' : 'Send for approval'}
+                  </button>
+                )}
+                {status === 'pending' && (
+                  <button
+                    onClick={() => openSendModal(row)}
+                    title={isRTL ? 'إعادة إرسال' : 'Resend email'}
+                    style={{
+                      padding: '8px 14px', borderRadius: 8, border: '1px solid #cbd5e1',
+                      background: '#fff', color: '#475569', cursor: 'pointer',
+                      fontWeight: 700, fontSize: 13, fontFamily: 'inherit'
+                    }}
+                  >
+                    ↻ {isRTL ? 'إعادة إرسال' : 'Resend'}
+                  </button>
+                )}
                 <button
                   onClick={() => openEdit(row)}
-                  style={{ padding: '8px 14px', borderRadius: 8, border: '1px solid #cbd5e1', background: '#fff', color: '#334155', cursor: 'pointer', fontWeight: 700, fontSize: 13, fontFamily: 'inherit' }}
+                  disabled={status === 'approved' || status === 'pending'}
+                  title={status === 'approved' || status === 'pending'
+                    ? (isRTL ? 'لا يمكن التعديل بعد الإرسال' : 'Cannot edit once sent')
+                    : (isRTL ? 'تعديل' : 'Edit')}
+                  style={{
+                    padding: '8px 14px', borderRadius: 8, border: '1px solid #cbd5e1',
+                    background: '#fff', color: (status === 'approved' || status === 'pending') ? '#94a3b8' : '#334155',
+                    cursor: (status === 'approved' || status === 'pending') ? 'not-allowed' : 'pointer',
+                    fontWeight: 700, fontSize: 13, fontFamily: 'inherit'
+                  }}
                 >
                   ✏️ {isRTL ? 'تعديل' : 'Edit'}
                 </button>
@@ -505,7 +620,8 @@ const OvertimeManagement = () => {
                 </button>
               </div>
             </div>
-          ))}
+            );
+          })}
         </div>
       )}
 
@@ -789,6 +905,67 @@ const OvertimeManagement = () => {
           </div>
         )}
       </AnimatePresence>
+
+      {/* Send-for-approval modal */}
+      {sendTarget && (
+        <div className="modal-overlay" onClick={closeSendModal}>
+          <div
+            className="modal-content"
+            onClick={(e) => e.stopPropagation()}
+            style={{ maxWidth: 460, background: '#fff', borderRadius: 14, padding: 20 }}
+          >
+            <div style={{ marginBottom: 14 }}>
+              <div style={{ fontSize: 12, color: '#92400e', fontWeight: 700, letterSpacing: 1, textTransform: 'uppercase' }}>
+                {isRTL ? 'إرسال للمدير' : 'Send to Manager'}
+              </div>
+              <div style={{ fontSize: 18, fontWeight: 800, color: '#0f172a', marginTop: 4 }}>
+                {sendTarget.employeeName}
+              </div>
+              <div style={{ fontSize: 13, color: '#64748b', marginTop: 2 }}>
+                {Number(sendTarget.totalHours || 0).toFixed(2)} {isRTL ? 'ساعة' : 'hrs'} · {(sendTarget.days || []).length} {isRTL ? 'يوم' : 'days'}
+              </div>
+            </div>
+            <label style={{ display: 'block', marginBottom: 14 }}>
+              <div style={{ fontSize: 12, fontWeight: 700, color: '#334155', marginBottom: 6 }}>
+                {isRTL ? 'البريد الإلكتروني للمدير' : 'Manager email'}
+              </div>
+              <input
+                type="email"
+                value={sendEmail}
+                onChange={(e) => setSendEmail(e.target.value)}
+                dir="ltr"
+                placeholder="manager@fablabsahsa.com"
+                autoFocus
+                style={{
+                  width: '100%', padding: '10px 12px', borderRadius: 8,
+                  border: '1.5px solid #fde68a', fontFamily: 'inherit', fontSize: 14
+                }}
+              />
+              <div style={{ fontSize: 11, color: '#64748b', marginTop: 6 }}>
+                {isRTL
+                  ? 'سيتم إرسال بريد يحتوي على رابط للاعتماد أو الرفض مباشرةً.'
+                  : 'An email with approve/reject links will be sent.'}
+              </div>
+            </label>
+            <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+              <button
+                onClick={closeSendModal}
+                disabled={sending}
+                style={{ padding: '10px 18px', borderRadius: 8, border: '1px solid #cbd5e1', background: '#fff', color: '#334155', cursor: 'pointer', fontFamily: 'inherit', fontWeight: 700 }}
+              >
+                {isRTL ? 'إلغاء' : 'Cancel'}
+              </button>
+              <button
+                onClick={submitSend}
+                disabled={sending}
+                style={{ padding: '10px 20px', borderRadius: 8, border: 'none', background: '#92400e', color: '#fff', cursor: 'pointer', fontFamily: 'inherit', fontWeight: 800 }}
+              >
+                {sending ? '…' : (isRTL ? '📤 إرسال' : '📤 Send')}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

@@ -26,6 +26,7 @@ const EmployeeDashboard = lazy(() => import('./components/Employee/EmployeeDashb
 const WorkshopRegistration = lazy(() => import('./components/WorkshopRegistration/WorkshopRegistration'));
 const PublicVolunteerReport = lazy(() => import('./components/Public/PublicVolunteerReport'));
 const PublicAttendanceReport = lazy(() => import('./components/Public/PublicAttendanceReport'));
+const PublicOvertimeApproval = lazy(() => import('./components/Public/PublicOvertimeApproval'));
 
 const RouteFallback = () => (
   <div style={{
@@ -78,6 +79,7 @@ const AppContent = () => {
           {/* Public no-login volunteer report pages (token-gated) */}
           <Route path="/public/volunteer/:token" element={<PublicVolunteerReport />} />
           <Route path="/public/report/:token" element={<PublicAttendanceReport />} />
+          <Route path="/public/overtime/:token" element={<PublicOvertimeApproval />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </Suspense>

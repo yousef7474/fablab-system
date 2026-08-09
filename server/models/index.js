@@ -516,6 +516,35 @@ const syncDatabase = async () => {
       await sequelize.query(
         `ALTER TABLE fablab_staff_attendance ADD COLUMN IF NOT EXISTS "approvedBy" VARCHAR(255)`
       );
+      // Overtime approval workflow. Existing rows default to
+      // 'approved' so anything historical stays printable — only
+      // NEW requests go through the manager approval flow.
+      await sequelize.query(
+        `ALTER TABLE overtime_requests ADD COLUMN IF NOT EXISTS "approvalStatus" VARCHAR(16) DEFAULT 'approved'`
+      );
+      await sequelize.query(
+        `ALTER TABLE overtime_requests ADD COLUMN IF NOT EXISTS "approvalToken" UUID`
+      );
+      await sequelize.query(
+        `ALTER TABLE overtime_requests ADD COLUMN IF NOT EXISTS "managerEmail" VARCHAR(255)`
+      );
+      await sequelize.query(
+        `ALTER TABLE overtime_requests ADD COLUMN IF NOT EXISTS "sentForApprovalAt" TIMESTAMP WITH TIME ZONE`
+      );
+      await sequelize.query(
+        `ALTER TABLE overtime_requests ADD COLUMN IF NOT EXISTS "approvedAt" TIMESTAMP WITH TIME ZONE`
+      );
+      await sequelize.query(
+        `ALTER TABLE overtime_requests ADD COLUMN IF NOT EXISTS "rejectedAt" TIMESTAMP WITH TIME ZONE`
+      );
+      await sequelize.query(
+        `ALTER TABLE overtime_requests ADD COLUMN IF NOT EXISTS "managerNote" TEXT`
+      );
+      try {
+        await sequelize.query(
+          `CREATE UNIQUE INDEX IF NOT EXISTS overtime_approval_token_uniq ON overtime_requests ("approvalToken")`
+        );
+      } catch (_) { /* index may already exist */ }
     } catch (migrationError) {
       if (!/does not exist/i.test(migrationError.message)) {
         console.log('profilePhoto columns migration note:', migrationError.message);

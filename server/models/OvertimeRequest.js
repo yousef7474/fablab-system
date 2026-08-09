@@ -23,7 +23,21 @@ const OvertimeRequest = sequelize.define('OvertimeRequest', {
   approvedBy:     { type: DataTypes.STRING, allowNull: true },
   note:           { type: DataTypes.TEXT, allowNull: true },
   days:           { type: DataTypes.JSON, allowNull: false, defaultValue: [] },
-  createdById:    { type: DataTypes.UUID, allowNull: true }
+  createdById:    { type: DataTypes.UUID, allowNull: true },
+  // Approval workflow — admin creates as 'draft', sends for approval
+  // (→ 'pending' with a token + emailed link), manager approves or
+  // rejects. Printing سند is only allowed once 'approved'.
+  approvalStatus: {
+    type: DataTypes.STRING(16),
+    allowNull: false,
+    defaultValue: 'draft'   // 'draft' | 'pending' | 'approved' | 'rejected'
+  },
+  approvalToken:      { type: DataTypes.UUID, allowNull: true, unique: true },
+  managerEmail:       { type: DataTypes.STRING, allowNull: true },
+  sentForApprovalAt:  { type: DataTypes.DATE, allowNull: true },
+  approvedAt:         { type: DataTypes.DATE, allowNull: true },
+  rejectedAt:         { type: DataTypes.DATE, allowNull: true },
+  managerNote:        { type: DataTypes.TEXT, allowNull: true }
 }, {
   tableName: 'overtime_requests',
   timestamps: true,

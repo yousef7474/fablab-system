@@ -18,6 +18,7 @@ import { ar, enUS } from 'date-fns/locale';
 import api from '../../config/api';
 import { EVALUATION_CATEGORIES, MAX_PER_CRITERION, calculateWeightedTotal, calculateBonus } from '../../config/evaluationStructure';
 import VolunteerManagement from '../Volunteer/VolunteerManagement';
+import OvertimeApprovals from './OvertimeApprovals';
 import '../Admin/Admin.css';
 import './Manager.css';
 
@@ -85,7 +86,7 @@ const ManagerDashboard = () => {
   const isRTL = i18n.language === 'ar';
 
   // Valid tabs for URL persistence
-  const validTabs = ['schedule', 'tasks', 'employees', 'todos', 'workspaces', 'volunteers', 'interns', 'education', 'settings'];
+  const validTabs = ['schedule', 'tasks', 'employees', 'todos', 'workspaces', 'volunteers', 'interns', 'education', 'approvals', 'settings'];
 
   // Get initial tab from URL, localStorage, or default to 'schedule'
   const getInitialTab = () => {
@@ -3856,6 +3857,17 @@ const ManagerDashboard = () => {
             {sidebarOpen && <span>{isRTL ? 'مهامي' : 'My Tasks'}</span>}
           </button>
           <button
+            className={`nav-item ${activeTab === 'approvals' ? 'active' : ''}`}
+            onClick={() => { setActiveTab('approvals'); if (window.innerWidth <= 768) setSidebarOpen(false); }}
+            title={isRTL ? 'اعتماد الساعات الإضافية' : 'Overtime Approvals'}
+          >
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M9 11l3 3L22 4"/>
+              <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>
+            </svg>
+            {sidebarOpen && <span>{isRTL ? 'الاعتمادات' : 'Approvals'}</span>}
+          </button>
+          <button
             className={`nav-item ${activeTab === 'workspaces' ? 'active' : ''}`}
             onClick={() => { setActiveTab('workspaces'); if (window.innerWidth <= 768) setSidebarOpen(false); }}
           >
@@ -4668,6 +4680,7 @@ const ManagerDashboard = () => {
 
         {/* Volunteers Content */}
         {activeTab === 'volunteers' && <VolunteerManagement />}
+        {activeTab === 'approvals' && <OvertimeApprovals />}
 
         {/* Interns (University Training) Content */}
         {activeTab === 'interns' && (
