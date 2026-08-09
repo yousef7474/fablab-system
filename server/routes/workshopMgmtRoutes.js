@@ -24,6 +24,10 @@ router.get('/students/:id/attendance-id', adminAuth, controller.getAttendanceIdH
 router.post('/students/attendance/scan', adminAuth, controller.scanWorkshopAttendance);
 router.get('/students/attendance/today', adminAuth, controller.workshopAttendanceToday);
 router.delete('/students/attendance/today', adminAuth, requireManager, controller.clearWorkshopAttendanceToday);
+// Manual check-out override — admin sets the leaving time for a
+// student who forgot to scan. Placed here (BEFORE the parameterised
+// /students/:id routes below) so Express matches the literal path.
+router.patch('/students/:id/attendance-checkout', adminAuth, controller.setWorkshopCheckout);
 
 router.post('/register', controller.registerStudent);
 router.get('/active', controller.getActiveWorkshops);

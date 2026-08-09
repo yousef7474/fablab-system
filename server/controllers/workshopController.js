@@ -1082,6 +1082,90 @@ exports.workshopAttendanceToday = async (req, res) => {
   }
 };
 
+// PATCH /workshops/students/:id/attendance-checkout — admin marks
+// a student out manually when they forgot to scan. Body:
+//   { date?: 'YYYY-MM-DD',   // defaults to today (Riyadh)
+//     checkOutAt: 'HH:MM' | 'HH:MM:SS' | ISO | null }
+// null clears the check-out. Requires a matching check-in for that
+// date (either from a scan or a print-card side-effect).
+exports.setWorkshopCheckout = async (req, res) => {
+  try {
+    const student = await WorkshopStudent.findByPk(req.params.id);
+    if (!student) return res.status(404).json({ message: 'Student not found' });
+
+    const date = req.body?.date || _todayStrRiyadh();
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(String(date))) {
+      return res.status(400).json({ message: 'Invalid date format' });
+    }
+
+    const raw = req.body?.checkOutAt;
+    const clearing = raw === null || raw === undefined || String(raw).trim() === '';
+
+    let newOutAt = null;
+    if (!clearing) {
+      const str = String(raw).trim();
+      if (/^\d{2}:\d{2}(:\d{2})?$/.test(str)) {
+        const timeStr = str.length === 5 ? `${str}:00` : str;
+        newOutAt = new Date(`${date}T${timeStr}+03:00`);
+      } else {
+        newOutAt = new Date(str);
+      }
+      if (!newOutAt || isNaN(newOutAt.getTime())) {
+        return res.status(400).json({
+          message: 'Invalid time format',
+          messageAr: 'صيغة الوقت غير صالحة'
+        });
+      }
+    }
+
+    const dates = Array.isArray(student.attendanceDates) ? [...student.attendanceDates] : [];
+    const scans = Array.isArray(student.attendanceScans) ? [...student.attendanceScans] : [];
+    const idx = scans.findIndex(s => s?.date === date);
+
+    if (idx === -1) {
+      return res.status(400).json({
+        message: 'No check-in recorded for this date',
+        messageAr: 'لا يوجد تسجيل دخول لهذا اليوم'
+      });
+    }
+
+    const existing = scans[idx];
+    const checkInAt = existing.checkInAt || existing.scannedAt || null;
+
+    if (newOutAt && checkInAt && newOutAt < new Date(checkInAt)) {
+      return res.status(400).json({
+        message: 'Check-out cannot be before check-in',
+        messageAr: 'وقت الخروج يجب أن يكون بعد وقت الدخول'
+      });
+    }
+
+    scans[idx] = {
+      date,
+      checkInAt,
+      checkOutAt: newOutAt ? newOutAt.toISOString() : null
+    };
+    if (!dates.includes(date)) dates.push(date);
+
+    student.setDataValue('attendanceScans', scans);
+    student.setDataValue('attendanceDates', dates);
+    student.changed('attendanceScans', true);
+    student.changed('attendanceDates', true);
+    await student.save();
+
+    res.json({
+      message: newOutAt ? 'Check-out saved' : 'Check-out cleared',
+      record: {
+        date,
+        checkInAt,
+        checkOutAt: newOutAt ? newOutAt.toISOString() : null
+      }
+    });
+  } catch (err) {
+    console.error('setWorkshopCheckout error:', err);
+    res.status(500).json({ message: 'Server error', error: err.message });
+  }
+};
+
 // DELETE /workshops/students/attendance/today — clears today's date
 // from every student that has it. Matches the shared Clear-Today
 // button behaviour of the other attendance types.

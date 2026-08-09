@@ -8656,6 +8656,37 @@ const AdminDashboard = () => {
                                     setShowInvoiceModal(true);
                                   }
                                   else if (action === 'printAttId') handlePrintAttendanceId(s.studentId);
+                                  else if (action === 'setCheckout') {
+                                    const now = new Date();
+                                    const hh = String(now.getHours()).padStart(2, '0');
+                                    const mm = String(now.getMinutes()).padStart(2, '0');
+                                    const promptMsg = isRTL
+                                      ? `تسجيل وقت الخروج للطالب "${s.firstName} ${s.lastName || ''}" (بصيغة HH:MM):\nاتركه فارغاً لحذف تسجيل الخروج.`
+                                      : `Enter check-out time for "${s.firstName} ${s.lastName || ''}" (HH:MM):\nLeave blank to clear check-out.`;
+                                    const input = window.prompt(promptMsg, `${hh}:${mm}`);
+                                    if (input === null) return; // cancelled
+                                    const cleaned = input.trim();
+                                    if (cleaned && !/^\d{2}:\d{2}(:\d{2})?$/.test(cleaned)) {
+                                      toast.error(isRTL ? 'صيغة الوقت غير صحيحة (HH:MM)' : 'Invalid time format (HH:MM)');
+                                      return;
+                                    }
+                                    try {
+                                      await api.patch(`/workshops/students/${s.studentId}/attendance-checkout`, {
+                                        checkOutAt: cleaned || null
+                                      });
+                                      toast.success(cleaned
+                                        ? (isRTL ? 'تم تسجيل وقت الخروج' : 'Check-out saved')
+                                        : (isRTL ? 'تم حذف وقت الخروج' : 'Check-out cleared'));
+                                      // Refresh the workshop's students list so any UI that reads attendance updates
+                                      try {
+                                        const res = await api.get(`/workshops/${viewingWorkshopStudents.workshopId}`);
+                                        setViewingWorkshopStudents(res.data);
+                                      } catch {}
+                                    } catch (e2) {
+                                      const msg = e2?.response?.data?.messageAr || e2?.response?.data?.message;
+                                      toast.error(msg || (isRTL ? 'فشل الحفظ' : 'Save failed'));
+                                    }
+                                  }
                                   else if (action === 'emailAttId') { try { await api.post(`/workshops/students/${s.studentId}/send-attendance-id`); toast.success(isRTL ? 'تم إرسال بطاقة الحضور' : 'Attendance ID sent'); } catch(e2) { toast.error('Error'); } }
                                   else if (action === 'emailCustom') { setWorkshopEmailTarget({ studentId: s.studentId, email: s.email }); setShowWorkshopEmailModal(true); }
                                   else if (action === 'whatsapp') { window.open(`https://wa.me/${(s.phone||'').replace(/[^0-9]/g, '')}?text=${encodeURIComponent(`مرحباً ${s.firstName}،\n\nهذه رسالة من فاب لاب الأحساء بخصوص الورشة: ${viewingWorkshopStudents.title}`)}`, '_blank'); }
@@ -8666,6 +8697,7 @@ const AdminDashboard = () => {
                                 <option value="" disabled>{isRTL ? '⚙ إجراءات' : '⚙ Actions'}</option>
                                 <option value="edit">{isRTL ? '✏ تعديل البيانات' : '✏ Edit Info'}</option>
                                 <option value="attendance">{isRTL ? '✅ تعديل الحضور' : '✅ Edit Attendance'}</option>
+                                <option value="setCheckout">{isRTL ? '🕐 تسجيل وقت الخروج' : '🕐 Set Check-out Time'}</option>
                                 <option value="printAttId">{isRTL ? '🎟 طباعة بطاقة الحضور' : '🎟 Print Attendance ID'}</option>
                                 <option value="printCert">{isRTL ? '🎓 طباعة الشهادة' : '🎓 Print Cert'}</option>
                                 <option value="downloadPdf">{isRTL ? '📄 تحميل PDF' : '📄 Download PDF'}</option>
