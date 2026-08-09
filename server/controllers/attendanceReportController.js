@@ -283,19 +283,96 @@ exports.exportUnifiedAttendance = async (req, res) => {
     const results = await Promise.all(tasks);
     const rows = results.flat();
 
-    // Stable multi-key sort: category → date → name
+    // Sort so rows cluster by group within category, then per-person
+    // within a group, then chronological within a person:
+    //   category → group → name → date
     rows.sort((a, b) => {
       if (a.category !== b.category) return a.category.localeCompare(b.category, 'ar');
-      if (a.date !== b.date) return a.date.localeCompare(b.date);
-      return (a.name || '').localeCompare(b.name || '', 'ar');
+      const ga = a.group || '', gb = b.group || '';
+      if (ga !== gb) return ga.localeCompare(gb, 'ar');
+      const na = a.name || '', nb = b.name || '';
+      if (na !== nb) return na.localeCompare(nb, 'ar');
+      return (a.date || '').localeCompare(b.date || '');
     });
+
+    // Build a per-(category, group) tally so admin sees:
+    //   - unique people count (dedup by nationalId when set, else name)
+    //   - total attendance records
+    //   - total hours
+    // Rendered as a summary block at the top of the file.
+    const groupTally = new Map(); // key: "cat||group" → { category, group, personKey→true, records, totalMin }
+    for (const r of rows) {
+      const key = `${r.category}||${r.group}`;
+      if (!groupTally.has(key)) {
+        groupTally.set(key, {
+          category: r.category, group: r.group,
+          persons: new Set(), records: 0, totalMin: 0
+        });
+      }
+      const t = groupTally.get(key);
+      t.persons.add(r.nationalId || r.name || `_${t.records}`);
+      t.records += 1;
+      if (Number.isFinite(r.durationMin)) t.totalMin += r.durationMin;
+    }
 
     const header = [
       'النوع', 'المجموعة', 'الاسم', 'رقم الهوية', 'الجوال',
       'التاريخ', 'وقت الدخول', 'وقت الخروج', 'المدة (دقيقة)', 'المدة (ساعة)'
     ];
-    const lines = [header.join('\t')];
+    const lines = [];
+
+    // -------- Summary block --------
+    if (rows.length > 0) {
+      const rangeLabel = `${from || '…'} → ${to || '…'}`;
+      lines.push(['ملخص السجل', `الفترة: ${rangeLabel}`, '', '', '', '', '', '', '', ''].map(_cell).join('\t'));
+      lines.push(['النوع', 'المجموعة', 'عدد الأشخاص', 'عدد السجلات', 'إجمالي الساعات', '', '', '', '', ''].map(_cell).join('\t'));
+
+      const tallyRows = Array.from(groupTally.values()).sort((a, b) => {
+        if (a.category !== b.category) return a.category.localeCompare(b.category, 'ar');
+        return (a.group || '').localeCompare(b.group || '', 'ar');
+      });
+      let totalPersons = new Set();
+      let totalRecords = 0;
+      let totalMin = 0;
+      for (const t of tallyRows) {
+        totalRecords += t.records;
+        totalMin += t.totalMin;
+        for (const p of t.persons) totalPersons.add(`${t.category}||${p}`);
+        lines.push([
+          t.category, t.group,
+          String(t.persons.size),
+          String(t.records),
+          (t.totalMin / 60).toFixed(2),
+          '', '', '', '', ''
+        ].map(_cell).join('\t'));
+      }
+      lines.push(['الإجمالي', '', String(totalPersons.size), String(totalRecords), (totalMin / 60).toFixed(2), '', '', '', '', ''].map(_cell).join('\t'));
+      // Blank separator + detail-section header
+      lines.push('');
+      lines.push(['تفصيل السجلات', '', '', '', '', '', '', '', '', ''].map(_cell).join('\t'));
+    }
+
+    // -------- Detail rows --------
+    lines.push(header.join('\t'));
+
+    let prevGroupKey = null;
     for (const r of rows) {
+      const groupKey = `${r.category}||${r.group}`;
+      // Small subtotal marker whenever the group changes, so a reader
+      // scrolling the detail knows exactly where each group starts
+      // and how many unique people it holds.
+      if (groupKey !== prevGroupKey) {
+        const t = groupTally.get(groupKey);
+        if (t) {
+          lines.push([
+            `▸ ${r.category}`,
+            `${r.group} (${t.persons.size} شخص · ${t.records} سجل)`,
+            '', '', '', '', '', '', '', ''
+          ].map(_cell).join('\t'));
+        }
+        prevGroupKey = groupKey;
+      }
+
       const mins = r.durationMin === '' ? '' : r.durationMin;
       const hours = r.durationMin === '' ? '' : (r.durationMin / 60).toFixed(2);
       lines.push([
