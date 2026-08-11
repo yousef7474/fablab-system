@@ -903,6 +903,150 @@ const SummerFablab = () => {
     }
   };
 
+  // Certificate print — same visual language as the workshop cert:
+  // A4 landscape, foundation + FABLAB logos, gradient border,
+  // stats cards. Colored per the student's summer program so
+  // certificates from different programs stay distinct.
+  const printSummerCertificate = (s) => {
+    const prog = s.program || programById(s.programId);
+    const color = (prog && colorForProgram(prog)) || '#e02529';
+    const studentName = s.name || (isRTL ? 'الطالب' : 'Student');
+    const certId = 'SUM-' + (s.studentId?.substring(0, 8).toUpperCase() || Date.now());
+    const attendedDays = Array.isArray(s.attendanceDates) ? s.attendanceDates.length : 0;
+
+    // Program duration + required-days threshold (attend > 50% of days)
+    const progDays = (() => {
+      if (!prog?.startDate) return 1;
+      const start = new Date(prog.startDate);
+      const end = prog.endDate ? new Date(prog.endDate) : start;
+      return Math.max(1, Math.ceil((end - start) / (1000 * 60 * 60 * 24)) + 1);
+    })();
+    const reqDays = Math.ceil(progDays / 2);
+    if (attendedDays < reqDays) {
+      toast.error(isRTL
+        ? `يجب على الطالب حضور ${reqDays} يوم على الأقل من أصل ${progDays} يوم. الحضور الحالي: ${attendedDays} يوم`
+        : `Must attend ${reqDays} of ${progDays} days. Attended: ${attendedDays}`);
+      return;
+    }
+
+    const startDateF = prog?.startDate ? prog.startDate.split('-').reverse().join('/') : '';
+    const printWindow = window.open('', '_blank');
+    const html = `<!DOCTYPE html>
+<html dir="rtl" lang="ar">
+<head>
+<meta charset="UTF-8">
+<title>شهادة صيف فاب لاب - ${studentName}</title>
+<style>
+  @page { size: A4 landscape; margin: 0; }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { width: 297mm; height: 210mm; overflow: hidden; }
+  body { font-family: 'Segoe UI', Tahoma, Arial, sans-serif; background: linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%); display: flex; align-items: center; justify-content: center; padding: 10mm; }
+  .certificate { width: 277mm; height: 190mm; background: linear-gradient(145deg, #ffffff 0%, #f8fafc 100%); border-radius: 16px; position: relative; overflow: hidden; box-shadow: 0 30px 60px rgba(0,0,0,0.3); }
+  .certificate::before { content: ''; position: absolute; top: 0; left: 0; right: 0; bottom: 0; border: 6px solid transparent; border-image: linear-gradient(135deg, ${color}, #ff6b6b, #feca57, #48dbfb, ${color}) 1; border-radius: 16px; pointer-events: none; }
+  .decor-circle { position: absolute; border-radius: 50%; opacity: 0.1; }
+  .decor-circle.c1 { width: 200px; height: 200px; background: linear-gradient(135deg, ${color}, #ff6b6b); top: -50px; right: -50px; }
+  .decor-circle.c2 { width: 150px; height: 150px; background: linear-gradient(135deg, #667eea, #764ba2); bottom: -30px; left: -30px; }
+  .decor-circle.c3 { width: 100px; height: 100px; background: linear-gradient(135deg, #feca57, #ff9f43); top: 50%; left: 20px; transform: translateY(-50%); }
+  .decor-circle.c4 { width: 80px; height: 80px; background: linear-gradient(135deg, #48dbfb, #0abde3); bottom: 60px; right: 40px; }
+  .certificate-inner { padding: 20mm 25mm; height: 100%; display: flex; flex-direction: column; position: relative; z-index: 1; }
+  .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12mm; }
+  .logo-container { display: flex; align-items: center; gap: 15px; }
+  .logo { height: 85px; filter: drop-shadow(0 4px 8px rgba(0,0,0,0.15)); }
+  .header-center { text-align: center; flex: 1; padding: 0 20px; }
+  .org-name { font-size: 11px; color: #64748b; letter-spacing: 2px; text-transform: uppercase; margin-bottom: 5px; }
+  .cert-title { font-size: 44px; font-weight: 800; background: linear-gradient(135deg, ${color}, #ff6b6b); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; margin-bottom: 4px; }
+  .cert-subtitle { font-size: 16px; color: #475569; font-weight: 500; letter-spacing: 3px; }
+  .divider { height: 4px; background: linear-gradient(90deg, ${color}, #ff6b6b, #feca57, #48dbfb, #667eea, #764ba2); border-radius: 2px; margin-bottom: 10mm; }
+  .main-content { text-align: center; flex: 1; display: flex; flex-direction: column; justify-content: center; }
+  .presents-text { font-size: 14px; color: #64748b; margin-bottom: 8px; }
+  .student-name { font-size: 42px; font-weight: 700; color: #1e293b; margin-bottom: 8px; position: relative; display: inline-block; }
+  .student-name::after { content: ''; position: absolute; bottom: -4px; left: 50%; transform: translateX(-50%); width: 80%; height: 4px; background: linear-gradient(90deg, ${color}, #ff6b6b, #feca57); border-radius: 2px; }
+  .appreciation-text { font-size: 15px; line-height: 1.8; color: #475569; max-width: 600px; margin: 15px auto; }
+  .highlight { color: ${color}; font-weight: 700; font-size: 17px; }
+  .stats-container { display: flex; justify-content: center; gap: 30px; margin: 12px 0; }
+  .stat-card { background: linear-gradient(135deg, ${color}, #ff6b6b); color: white; padding: 12px 30px; border-radius: 12px; text-align: center; box-shadow: 0 8px 20px ${color}55; min-width: 140px; }
+  .stat-card.alt { background: linear-gradient(135deg, #667eea, #764ba2); box-shadow: 0 8px 20px rgba(102, 126, 234, 0.3); }
+  .stat-card.gold { background: linear-gradient(135deg, #f59e0b, #fbbf24); box-shadow: 0 8px 20px rgba(245, 158, 11, 0.3); }
+  .stat-value { font-size: 22px; font-weight: 700; }
+  .stat-label { font-size: 10px; opacity: 0.9; margin-top: 2px; }
+  .thank-you { font-size: 13px; color: #64748b; margin-top: 10px; font-style: italic; }
+  .hadith { color: ${color}; font-weight: 600; }
+  .footer-section { display: flex; justify-content: space-between; align-items: flex-end; margin-top: auto; padding-top: 10mm; }
+  .cert-info { text-align: left; }
+  .cert-id { font-family: 'Courier New', monospace; font-size: 10px; color: #94a3b8; background: linear-gradient(135deg, #f1f5f9, #e2e8f0); padding: 6px 14px; border-radius: 20px; display: inline-block; }
+  .cert-date { font-size: 10px; color: #94a3b8; margin-top: 5px; }
+  .org-footer { text-align: center; flex: 1; }
+  .org-footer-text { font-size: 10px; color: #94a3b8; }
+  .ribbon { position: absolute; top: 25px; left: -35px; width: 150px; height: 30px; background: linear-gradient(135deg, ${color}, #c41e24); transform: rotate(-45deg); display: flex; align-items: center; justify-content: center; color: white; font-size: 10px; font-weight: 600; box-shadow: 0 4px 10px rgba(0,0,0,0.2); }
+  @media print {
+    html, body { width: 297mm; height: 210mm; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; color-adjust: exact !important; }
+    body { padding: 0; background: linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%) !important; }
+    .certificate { box-shadow: none; margin: auto; }
+    .cert-title { -webkit-text-fill-color: ${color}; color: ${color}; }
+  }
+</style>
+</head>
+<body>
+  <div class="certificate">
+    <div class="decor-circle c1"></div>
+    <div class="decor-circle c2"></div>
+    <div class="decor-circle c3"></div>
+    <div class="decor-circle c4"></div>
+    <div class="ribbon">صيف فاب لاب</div>
+    <div class="certificate-inner">
+      <div class="header">
+        <div class="logo-container"><img src="/found.png" alt="Foundation" class="logo" /></div>
+        <div class="header-center">
+          <div class="org-name">مؤسسة عبدالمنعم الراشد الإنسانية</div>
+          <div class="cert-title">شهادة إتمام برنامج صيفي</div>
+          <div class="cert-subtitle">SUMMER FABLAB CERTIFICATE</div>
+        </div>
+        <div class="logo-container"><img src="/fablab.png" alt="FABLAB" class="logo" /></div>
+      </div>
+      <div class="divider"></div>
+      <div class="main-content">
+        <div class="presents-text">تشهد إدارة فاب لاب الأحساء بأن</div>
+        <div class="student-name">${studentName}</div>
+        <div class="appreciation-text">
+          قد أتم بنجاح البرنامج الصيفي
+          ${prog?.name ? `<span class="highlight">"${prog.name}"</span>` : ''}
+          <br/>
+          واكتسب المعارف والمهارات المطلوبة، ونثمّن التزامه وحضوره المتميز
+        </div>
+        <div class="stats-container">
+          ${prog?.fablabSection ? `<div class="stat-card"><div class="stat-value">${prog.fablabSection}</div><div class="stat-label">القسم</div></div>` : ''}
+          ${attendedDays > 0 ? `<div class="stat-card alt"><div class="stat-value">${attendedDays}</div><div class="stat-label">يوم حضور</div></div>` : ''}
+          ${startDateF ? `<div class="stat-card gold"><div class="stat-value">${startDateF}</div><div class="stat-label">تاريخ البداية</div></div>` : ''}
+        </div>
+        <div class="thank-you">
+          <span class="hadith">"ومن سلك طريقاً يلتمس فيه علماً سهّل الله له به طريقاً إلى الجنة"</span>
+          <br/>
+          شكراً لحضورك وتفاعلك في البرنامج الصيفي
+        </div>
+      </div>
+      <div class="footer-section">
+        <div class="cert-info">
+          <div class="cert-id">${certId}</div>
+          <div class="cert-date">${new Date().toLocaleDateString('ar-SA-u-ca-gregory-nu-latn', { calendar: 'gregory' })}</div>
+        </div>
+        <div class="org-footer">
+          <div class="org-footer-text">
+            فاب لاب الأحساء - مختبر التصنيع الرقمي
+            <br/>
+            FABLAB Al-Ahsa - Digital Fabrication Laboratory
+          </div>
+        </div>
+        <div style="width: 140px;"></div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>`;
+    printWindow.document.write(html);
+    printWindow.document.close();
+    printWindow.focus();
+  };
+
   const openAttendanceLog = async (s) => {
     setLogStudent(s);
     setLogRecords([]);
@@ -1410,6 +1554,14 @@ const SummerFablab = () => {
                           title={isRTL ? 'سجل حضور الطالب (QR)' : 'QR attendance log'}
                         >
                           {'📅'} {isRTL ? 'سجل الحضور' : 'Log'}
+                        </button>
+                        <button
+                          className="summer-btn-secondary"
+                          onClick={() => printSummerCertificate(s)}
+                          title={isRTL ? 'طباعة الشهادة' : 'Print Certificate'}
+                          style={{ background: '#fef3c7', borderColor: '#fde68a', color: '#92400e' }}
+                        >
+                          {'🎓'} {isRTL ? 'شهادة' : 'Cert'}
                         </button>
                         <button
                           className="summer-btn-secondary"

@@ -265,15 +265,116 @@ exports.listStaffAttendance = async (req, res) => {
   }
 };
 
+// PATCH /fablab-staff/attendance/:id/checkout — mirrors the volunteer
+// behaviour: empty body clears the check-out, { checkOutAt: 'HH:MM'
+// | 'HH:MM:SS' | ISO } sets it (HH:MM is anchored to the row's date
+// in Riyadh +03:00). Rejects a check-out earlier than the check-in.
 exports.clearCheckout = async (req, res) => {
   try {
     const rec = await FablabStaffAttendance.findByPk(req.params.id);
     if (!rec) return res.status(404).json({ message: 'Record not found' });
-    if (!rec.checkOutAt) return res.status(400).json({ message: 'No check-out to clear' });
-    await rec.update({ checkOutAt: null });
-    res.json({ message: 'Check-out cleared', record: rec });
+
+    const raw = req.body?.checkOutAt;
+    const hasValue = raw !== undefined && raw !== null && String(raw).trim() !== '';
+
+    if (!hasValue) {
+      if (!rec.checkOutAt) return res.status(400).json({ message: 'No check-out to clear' });
+      await rec.update({ checkOutAt: null });
+      return res.json({ message: 'Check-out cleared', record: rec });
+    }
+
+    const str = String(raw).trim();
+    let newTime;
+    if (/^\d{2}:\d{2}(:\d{2})?$/.test(str)) {
+      const timeStr = str.length === 5 ? `${str}:00` : str;
+      newTime = new Date(`${rec.date}T${timeStr}+03:00`);
+    } else {
+      newTime = new Date(str);
+    }
+    if (isNaN(newTime.getTime())) {
+      return res.status(400).json({
+        message: 'Invalid time format',
+        messageAr: 'صيغة الوقت غير صالحة'
+      });
+    }
+    if (rec.checkInAt && newTime < new Date(rec.checkInAt)) {
+      return res.status(400).json({
+        message: 'Check-out cannot be before check-in',
+        messageAr: 'وقت الخروج يجب أن يكون بعد وقت الدخول'
+      });
+    }
+    await rec.update({ checkOutAt: newTime });
+    res.json({ message: 'Check-out saved', record: rec });
   } catch (err) {
     console.error('Staff clearCheckout error:', err);
+    res.status(500).json({ message: 'Server error', error: err.message });
+  }
+};
+
+// POST /fablab-staff/attendance — admin manually adds a row for a
+// past date. Body: { staffId, date, checkInAt?, checkOutAt? }. Same
+// contract as the volunteer manual-add endpoint.
+exports.createManualAttendance = async (req, res) => {
+  try {
+    const { staffId, date, checkInAt, checkOutAt } = req.body || {};
+    if (!staffId || !date) {
+      return res.status(400).json({
+        message: 'staffId and date are required',
+        messageAr: 'الموظف والتاريخ مطلوبان'
+      });
+    }
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(String(date))) {
+      return res.status(400).json({ message: 'Invalid date format' });
+    }
+    const staff = await FablabStaff.findByPk(staffId);
+    if (!staff) return res.status(404).json({ message: 'Staff not found' });
+
+    const existing = await FablabStaffAttendance.findOne({ where: { staffId, date } });
+    if (existing) {
+      return res.status(409).json({
+        message: 'Attendance for this date already exists — edit it instead',
+        messageAr: 'يوجد سجل حضور لهذا التاريخ — عدّله بدلاً من إنشاء جديد',
+        record: existing
+      });
+    }
+
+    const parseTime = (raw) => {
+      if (raw == null || raw === '') return null;
+      const str = String(raw).trim();
+      let t;
+      if (/^\d{2}:\d{2}(:\d{2})?$/.test(str)) {
+        const timeStr = str.length === 5 ? `${str}:00` : str;
+        t = new Date(`${date}T${timeStr}+03:00`);
+      } else {
+        t = new Date(str);
+      }
+      return isNaN(t.getTime()) ? undefined : t;
+    };
+
+    const inAt = parseTime(checkInAt);
+    const outAt = parseTime(checkOutAt);
+    if (inAt === undefined || outAt === undefined) {
+      return res.status(400).json({ message: 'Invalid time format', messageAr: 'صيغة الوقت غير صالحة' });
+    }
+    if (!inAt && !outAt) {
+      return res.status(400).json({
+        message: 'At least one of checkInAt / checkOutAt is required',
+        messageAr: 'يجب إدخال وقت الدخول أو الخروج على الأقل'
+      });
+    }
+    if (inAt && outAt && outAt < inAt) {
+      return res.status(400).json({
+        message: 'Check-out cannot be before check-in',
+        messageAr: 'وقت الخروج يجب أن يكون بعد وقت الدخول'
+      });
+    }
+
+    const record = await FablabStaffAttendance.create({
+      staffId, date, checkInAt: inAt || null, checkOutAt: outAt || null
+    });
+    res.status(201).json({ message: 'Manual attendance created', record });
+  } catch (err) {
+    console.error('Staff createManualAttendance error:', err);
     res.status(500).json({ message: 'Server error', error: err.message });
   }
 };

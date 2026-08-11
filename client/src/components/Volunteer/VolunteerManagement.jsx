@@ -1781,20 +1781,8 @@ const VolunteerManagement = () => {
                     {isRTL ? 'تصدير الحضور' : 'Export Attendance'}
                   </button>
                 )}
-                <button
-                  className="add-opportunity-btn"
-                  style={{ background: '#0ea5e9' }}
-                  onClick={openVolunteerAttendanceMode}
-                  title={isRTL ? 'صفحة تسجيل الحضور بالماسح' : 'Open scanner attendance page'}
-                >
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <rect x="3" y="3" width="7" height="7"/>
-                    <rect x="14" y="3" width="7" height="7"/>
-                    <rect x="14" y="14" width="7" height="7"/>
-                    <rect x="3" y="14" width="7" height="7"/>
-                  </svg>
-                  {isRTL ? 'صفحة الحضور' : 'Attendance Page'}
-                </button>
+                {/* Attendance station moved to its own admin tab —
+                    button removed intentionally from here. */}
                 <button className="add-opportunity-btn" onClick={() => setShowOpportunityModal(true)}>
                   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                     <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>

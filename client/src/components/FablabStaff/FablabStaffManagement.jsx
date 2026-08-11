@@ -31,6 +31,128 @@ const FablabStaffManagement = () => {
 
   const [attendanceMode, setAttendanceMode] = useState(false);
 
+  // Per-staff attendance history modal — same shape as the volunteer
+  // one (list rows, inline edit check-out via pencil, clear check-out,
+  // delete row, manual add for missed scan days).
+  const [attStaff, setAttStaff] = useState(null);
+  const [attRecords, setAttRecords] = useState([]);
+  const [attLoading, setAttLoading] = useState(false);
+  const [editingCheckoutId, setEditingCheckoutId] = useState(null);
+  const [editingCheckoutValue, setEditingCheckoutValue] = useState('');
+  const [savingCheckout, setSavingCheckout] = useState(false);
+  const [showAddManual, setShowAddManual] = useState(false);
+  const [manualForm, setManualForm] = useState({ date: '', checkInAt: '', checkOutAt: '' });
+  const [savingManual, setSavingManual] = useState(false);
+
+  const fmtHms = (iso) => {
+    if (!iso) return '—';
+    const d = new Date(iso);
+    if (isNaN(d.getTime())) return '—';
+    const pad = (n) => String(n).padStart(2, '0');
+    return `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+  };
+  const durationMin = (rec) => {
+    if (!rec.checkInAt || !rec.checkOutAt) return null;
+    return Math.max(0, Math.round((new Date(rec.checkOutAt) - new Date(rec.checkInAt)) / 60000));
+  };
+
+  const openAttendance = async (row) => {
+    setAttStaff(row);
+    setAttRecords([]);
+    setAttLoading(true);
+    setShowAddManual(false);
+    try {
+      const { data } = await api.get(`/fablab-staff/${row.staffId}/attendance`);
+      setAttRecords(Array.isArray(data) ? data : []);
+    } catch (err) {
+      console.error(err);
+      toast.error(isRTL ? 'تعذر تحميل سجل الحضور' : 'Failed to load attendance');
+    } finally {
+      setAttLoading(false);
+    }
+  };
+
+  const beginEditCheckout = (rec) => {
+    setEditingCheckoutId(rec.attendanceId);
+    if (rec.checkOutAt) {
+      const d = new Date(rec.checkOutAt);
+      setEditingCheckoutValue(`${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`);
+    } else if (rec.checkInAt) {
+      const d = new Date(new Date(rec.checkInAt).getTime() + 60 * 60 * 1000);
+      setEditingCheckoutValue(`${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`);
+    } else setEditingCheckoutValue('18:00');
+  };
+  const cancelEditCheckout = () => { setEditingCheckoutId(null); setEditingCheckoutValue(''); };
+  const saveCheckoutTime = async (rec) => {
+    if (!editingCheckoutValue) return toast.error(isRTL ? 'أدخل وقت الخروج' : 'Enter time');
+    setSavingCheckout(true);
+    try {
+      const { data } = await api.patch(`/fablab-staff/attendance/${rec.attendanceId}/checkout`, {
+        checkOutAt: editingCheckoutValue
+      });
+      setAttRecords(prev => prev.map(r =>
+        r.attendanceId === rec.attendanceId
+          ? { ...r, checkOutAt: data?.record?.checkOutAt || null }
+          : r
+      ));
+      toast.success(isRTL ? 'تم الحفظ' : 'Saved');
+      cancelEditCheckout();
+    } catch (err) {
+      const msg = err?.response?.data?.messageAr || err?.response?.data?.message;
+      toast.error(msg || (isRTL ? 'فشل الحفظ' : 'Save failed'));
+    } finally {
+      setSavingCheckout(false);
+    }
+  };
+  const clearCheckoutRow = async (rec) => {
+    if (!window.confirm(isRTL ? `حذف تسجيل الخروج لتاريخ ${rec.date}؟` : `Clear check-out for ${rec.date}?`)) return;
+    try {
+      await api.patch(`/fablab-staff/attendance/${rec.attendanceId}/checkout`);
+      setAttRecords(prev => prev.map(r =>
+        r.attendanceId === rec.attendanceId ? { ...r, checkOutAt: null } : r
+      ));
+      toast.success(isRTL ? 'تم حذف تسجيل الخروج' : 'Cleared');
+    } catch (err) {
+      const msg = err?.response?.data?.messageAr || err?.response?.data?.message;
+      toast.error(msg || (isRTL ? 'فشل الحذف' : 'Clear failed'));
+    }
+  };
+  const deleteAttendanceRow = async (rec) => {
+    if (!window.confirm(isRTL ? `حذف سجل ${rec.date}؟` : `Delete record for ${rec.date}?`)) return;
+    try {
+      await api.delete(`/fablab-staff/attendance/${rec.attendanceId}`);
+      setAttRecords(prev => prev.filter(r => r.attendanceId !== rec.attendanceId));
+      toast.success(isRTL ? 'تم الحذف' : 'Deleted');
+    } catch { toast.error(isRTL ? 'فشل الحذف' : 'Delete failed'); }
+  };
+  const submitManualAttendance = async () => {
+    if (!attStaff) return;
+    if (!manualForm.date) return toast.error(isRTL ? 'أدخل التاريخ' : 'Enter date');
+    if (!manualForm.checkInAt && !manualForm.checkOutAt) {
+      return toast.error(isRTL ? 'أدخل وقت الدخول أو الخروج على الأقل' : 'Enter at least check-in or check-out');
+    }
+    setSavingManual(true);
+    try {
+      const { data } = await api.post('/fablab-staff/attendance', {
+        staffId: attStaff.staffId,
+        date: manualForm.date,
+        checkInAt: manualForm.checkInAt || undefined,
+        checkOutAt: manualForm.checkOutAt || undefined
+      });
+      setAttRecords(prev => {
+        const next = [data.record, ...prev];
+        next.sort((a, b) => (a.date < b.date ? 1 : -1));
+        return next;
+      });
+      toast.success(isRTL ? 'تمت الإضافة' : 'Added');
+      setManualForm({ date: '', checkInAt: '', checkOutAt: '' });
+      setShowAddManual(false);
+    } catch (err) {
+      const msg = err?.response?.data?.messageAr || err?.response?.data?.message;
+      toast.error(msg || (isRTL ? 'فشل الإضافة' : 'Add failed'));
+    } finally { setSavingManual(false); }
+  };
+
   const fetchStaff = useCallback(async () => {
     setLoading(true);
     try {
@@ -537,6 +659,21 @@ const FablabStaffManagement = () => {
                     </button>
                     <button
                       className="rate-volunteer-btn"
+                      onClick={() => openAttendance(row)}
+                      title={isRTL ? 'سجل الحضور' : 'Attendance history'}
+                      style={{ background: '#dcfce7', color: '#166534' }}
+                    >
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+                        <line x1="16" y1="2" x2="16" y2="6"/>
+                        <line x1="8" y1="2" x2="8" y2="6"/>
+                        <line x1="3" y1="10" x2="21" y2="10"/>
+                        <path d="M8 14h.01M12 14h.01M16 14h.01M8 18h.01M12 18h.01M16 18h.01"/>
+                      </svg>
+                      {isRTL ? 'سجل الحضور' : 'History'}
+                    </button>
+                    <button
+                      className="rate-volunteer-btn"
                       onClick={() => openEdit(row)}
                       title={isRTL ? 'تعديل البيانات' : 'Edit info'}
                       style={{ background: '#eef2ff', color: '#4338ca' }}
@@ -868,6 +1005,156 @@ const FablabStaffManagement = () => {
         onClose={() => setAttendanceMode(false)}
         isRTL={isRTL}
       />
+
+      {/* Per-staff attendance history modal */}
+      {attStaff && (
+        <div className="modal-overlay" onClick={() => setAttStaff(null)}>
+          <div
+            className="modal-content"
+            onClick={(e) => e.stopPropagation()}
+            style={{ maxWidth: 900, background: '#fff', borderRadius: 14, padding: 20, maxHeight: '90vh', overflow: 'auto' }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginBottom: 12 }}>
+              <h2 style={{ margin: 0, fontSize: 20, color: PURPLE_DARK }}>
+                📅 {isRTL ? `سجل حضور — ${attStaff.name}` : `Attendance — ${attStaff.name}`}
+              </h2>
+              <button onClick={() => setAttStaff(null)} style={{ background: 'none', border: 'none', fontSize: 22, color: '#94a3b8', cursor: 'pointer' }}>×</button>
+            </div>
+
+            {/* Summary tiles */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 10, margin: '10px 0 12px' }}>
+              <div style={{ padding: 10, borderRadius: 8, background: '#faf5ff', border: '1px solid #e9d5ff' }}>
+                <div style={{ fontSize: 11, color: '#5b21b6', fontWeight: 700 }}>{isRTL ? 'إجمالي الأيام' : 'Total days'}</div>
+                <div style={{ fontSize: 20, fontWeight: 800, color: '#3b0764' }}>{attRecords.length}</div>
+              </div>
+              <div style={{ padding: 10, borderRadius: 8, background: '#f0fdf4', border: '1px solid #bbf7d0' }}>
+                <div style={{ fontSize: 11, color: '#166534', fontWeight: 700 }}>{isRTL ? 'مكتملة' : 'Completed'}</div>
+                <div style={{ fontSize: 20, fontWeight: 800, color: '#065f46' }}>{attRecords.filter(r => r.checkInAt && r.checkOutAt).length}</div>
+              </div>
+              <div style={{ padding: 10, borderRadius: 8, background: '#fffbeb', border: '1px solid #fde68a' }}>
+                <div style={{ fontSize: 11, color: '#92400e', fontWeight: 700 }}>{isRTL ? 'لم يخرج بعد' : 'Still in'}</div>
+                <div style={{ fontSize: 20, fontWeight: 800, color: '#78350f' }}>{attRecords.filter(r => r.checkInAt && !r.checkOutAt).length}</div>
+              </div>
+              <div style={{ padding: 10, borderRadius: 8, background: '#eff6ff', border: '1px solid #bfdbfe' }}>
+                <div style={{ fontSize: 11, color: '#1e40af', fontWeight: 700 }}>{isRTL ? 'إجمالي الوقت' : 'Total time'}</div>
+                <div style={{ fontSize: 20, fontWeight: 800, color: '#1e3a8a' }}>
+                  {(() => {
+                    const total = attRecords.reduce((s, r) => s + (durationMin(r) || 0), 0);
+                    return `${Math.floor(total / 60)}h ${total % 60}m`;
+                  })()}
+                </div>
+              </div>
+            </div>
+
+            {/* Manual add */}
+            <div style={{ margin: '0 0 12px', display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+              {!showAddManual ? (
+                <button
+                  onClick={() => {
+                    const today = new Date().toISOString().slice(0, 10);
+                    setManualForm({ date: today, checkInAt: '', checkOutAt: '' });
+                    setShowAddManual(true);
+                  }}
+                  style={{ padding: '8px 14px', borderRadius: 8, border: 'none', background: PURPLE, color: '#fff', cursor: 'pointer', fontWeight: 700, fontFamily: 'inherit' }}
+                >
+                  + {isRTL ? 'إضافة سجل يدوي' : 'Add manual record'}
+                </button>
+              ) : (
+                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'end', padding: 10, borderRadius: 8, background: '#faf5ff', border: '1.5px solid #c4b5fd', width: '100%' }}>
+                  <label style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 12 }}>
+                    <span style={{ fontWeight: 700, color: '#5b21b6' }}>{isRTL ? 'التاريخ' : 'Date'}</span>
+                    <input type="date" value={manualForm.date} onChange={(e) => setManualForm(f => ({ ...f, date: e.target.value }))} style={{ padding: '6px 8px', borderRadius: 6, border: '1px solid #c4b5fd' }} />
+                  </label>
+                  <label style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 12 }}>
+                    <span style={{ fontWeight: 700, color: '#5b21b6' }}>{isRTL ? 'وقت الدخول' : 'Check-in'}</span>
+                    <input type="time" value={manualForm.checkInAt} onChange={(e) => setManualForm(f => ({ ...f, checkInAt: e.target.value }))} style={{ padding: '6px 8px', borderRadius: 6, border: '1px solid #c4b5fd', width: 110 }} />
+                  </label>
+                  <label style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 12 }}>
+                    <span style={{ fontWeight: 700, color: '#5b21b6' }}>{isRTL ? 'وقت الخروج' : 'Check-out'}</span>
+                    <input type="time" value={manualForm.checkOutAt} onChange={(e) => setManualForm(f => ({ ...f, checkOutAt: e.target.value }))} style={{ padding: '6px 8px', borderRadius: 6, border: '1px solid #c4b5fd', width: 110 }} />
+                  </label>
+                  <button onClick={submitManualAttendance} disabled={savingManual} style={{ padding: '8px 14px', borderRadius: 8, border: 'none', background: PURPLE, color: '#fff', cursor: 'pointer', fontWeight: 700, fontFamily: 'inherit' }}>
+                    {savingManual ? '…' : (isRTL ? 'حفظ' : 'Save')}
+                  </button>
+                  <button onClick={() => setShowAddManual(false)} disabled={savingManual} style={{ padding: '8px 14px', borderRadius: 8, border: '1px solid #cbd5e1', background: '#fff', color: '#334155', cursor: 'pointer', fontWeight: 700, fontFamily: 'inherit' }}>
+                    {isRTL ? 'إلغاء' : 'Cancel'}
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {/* Table */}
+            {attLoading ? (
+              <div style={{ padding: 20, textAlign: 'center', color: '#64748b' }}>{isRTL ? 'جارٍ التحميل...' : 'Loading...'}</div>
+            ) : attRecords.length === 0 ? (
+              <div style={{ padding: 20, textAlign: 'center', color: '#64748b' }}>{isRTL ? 'لا يوجد سجل حضور بعد' : 'No records yet'}</div>
+            ) : (
+              <div style={{ overflow: 'auto', border: '1px solid #e2e8f0', borderRadius: 8 }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+                  <thead>
+                    <tr style={{ background: '#f8fafc' }}>
+                      <th style={{ padding: 10, textAlign: 'right', color: '#64748b', fontWeight: 700 }}>{isRTL ? 'التاريخ' : 'Date'}</th>
+                      <th style={{ padding: 10, textAlign: 'right', color: '#64748b', fontWeight: 700 }}>{isRTL ? 'الدخول' : 'Check-in'}</th>
+                      <th style={{ padding: 10, textAlign: 'right', color: '#64748b', fontWeight: 700 }}>{isRTL ? 'الخروج' : 'Check-out'}</th>
+                      <th style={{ padding: 10, textAlign: 'right', color: '#64748b', fontWeight: 700 }}>{isRTL ? 'المدة' : 'Duration'}</th>
+                      <th style={{ padding: 10 }}></th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {attRecords.map(r => {
+                      const dur = durationMin(r);
+                      const completed = r.checkInAt && r.checkOutAt;
+                      const isEditing = editingCheckoutId === r.attendanceId;
+                      return (
+                        <tr key={r.attendanceId}>
+                          <td style={{ padding: 10, borderBottom: '1px solid #f1f5f9', fontFamily: 'JetBrains Mono, monospace' }}>{r.date}</td>
+                          <td style={{ padding: 10, borderBottom: '1px solid #f1f5f9', fontFamily: 'JetBrains Mono, monospace' }}>{fmtHms(r.checkInAt)}</td>
+                          <td style={{ padding: 10, borderBottom: '1px solid #f1f5f9', fontFamily: 'JetBrains Mono, monospace' }}>
+                            {isEditing ? (
+                              <span style={{ display: 'inline-flex', gap: 4, alignItems: 'center' }}>
+                                <input
+                                  type="time"
+                                  value={editingCheckoutValue}
+                                  onChange={(e) => setEditingCheckoutValue(e.target.value)}
+                                  autoFocus
+                                  onKeyDown={(e) => { if (e.key === 'Enter') saveCheckoutTime(r); if (e.key === 'Escape') cancelEditCheckout(); }}
+                                  style={{ padding: 4, borderRadius: 4, border: `1.5px solid ${PURPLE}`, width: 100 }}
+                                />
+                                <button onClick={() => saveCheckoutTime(r)} disabled={savingCheckout} style={{ padding: '2px 8px', borderRadius: 4, border: 'none', background: PURPLE, color: '#fff', cursor: 'pointer', fontFamily: 'inherit' }}>{savingCheckout ? '…' : '✓'}</button>
+                                <button onClick={cancelEditCheckout} disabled={savingCheckout} style={{ padding: '2px 8px', borderRadius: 4, border: '1px solid #cbd5e1', background: '#fff', cursor: 'pointer', fontFamily: 'inherit' }}>×</button>
+                              </span>
+                            ) : fmtHms(r.checkOutAt)}
+                          </td>
+                          <td style={{ padding: 10, borderBottom: '1px solid #f1f5f9', fontFamily: 'JetBrains Mono, monospace' }}>
+                            {dur != null ? `${Math.floor(dur / 60)}h ${dur % 60}m` : '—'}
+                          </td>
+                          <td style={{ padding: 10, borderBottom: '1px solid #f1f5f9' }}>
+                            <span style={{ display: 'inline-flex', gap: 4 }}>
+                              {!isEditing && r.checkInAt && (
+                                <button
+                                  onClick={() => beginEditCheckout(r)}
+                                  title={r.checkOutAt ? (isRTL ? 'تعديل الخروج' : 'Edit check-out') : (isRTL ? 'إضافة وقت الخروج' : 'Add check-out')}
+                                  style={{ padding: '4px 8px', borderRadius: 4, border: '1px solid ' + (r.checkOutAt ? '#c7d2fe' : '#86efac'), background: r.checkOutAt ? '#eef2ff' : '#dcfce7', color: r.checkOutAt ? '#4338ca' : '#166534', cursor: 'pointer', fontFamily: 'inherit' }}
+                                >✎</button>
+                              )}
+                              {r.checkOutAt && !isEditing && (
+                                <button onClick={() => clearCheckoutRow(r)} title={isRTL ? 'حذف تسجيل الخروج' : 'Clear check-out'} style={{ padding: '4px 8px', borderRadius: 4, border: '1px solid #fde68a', background: '#fef3c7', color: '#92400e', cursor: 'pointer', fontFamily: 'inherit' }}>↩</button>
+                              )}
+                              {!isEditing && (
+                                <button onClick={() => deleteAttendanceRow(r)} title={isRTL ? 'حذف السجل' : 'Delete'} style={{ padding: '4px 8px', borderRadius: 4, border: '1px solid #fecaca', background: '#fee2e2', color: '#991b1b', cursor: 'pointer', fontFamily: 'inherit' }}>×</button>
+                              )}
+                            </span>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </>
   );
 };

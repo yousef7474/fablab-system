@@ -23,6 +23,7 @@ router.post('/cards', ctrl.getStaffCardsBulk);
 router.post('/attendance/scan', ctrl.scanAttendance);
 router.get('/attendance/today', ctrl.todayAttendance);
 router.delete('/attendance/today', requireManager, ctrl.clearTodayAttendance);
+router.post('/attendance', requireManager, ctrl.createManualAttendance);
 router.patch('/attendance/:id/checkout', requireManager, ctrl.clearCheckout);
 router.patch('/attendance/:id/annotate', requireManager, ctrl.annotateAttendance);
 router.delete('/attendance/:id', requireManager, ctrl.deleteAttendance);
