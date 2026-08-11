@@ -2,7 +2,6 @@ import React, { useEffect, useState, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'react-toastify';
 import api from '../../config/api';
-import AttendanceLog from '../shared/AttendanceLog';
 import UnifiedAttendancePage from '../shared/UnifiedAttendancePage';
 import VolunteerShareControls from '../shared/VolunteerShareControls';
 import MasterShareBar from '../shared/MasterShareBar';
@@ -763,7 +762,6 @@ const SummerFablab = () => {
   const [studentForm, setStudentForm] = useState(emptyStudentForm);
   const [savingStudent, setSavingStudent] = useState(false);
   const [studentProgramFilter, setStudentProgramFilter] = useState('');
-  const [openStudentId, setOpenStudentId] = useState(null);
 
   const openCreateStudent = (programId = '') => {
     setEditingStudentId(null);
@@ -1002,19 +1000,14 @@ const SummerFablab = () => {
             : 0);
     }
 
-    // Program duration + required-days threshold (attend > 50% of days)
-    const progDays = (() => {
-      if (!prog?.startDate) return 1;
-      const start = new Date(prog.startDate);
-      const end = prog.endDate ? new Date(prog.endDate) : start;
-      return Math.max(1, Math.ceil((end - start) / (1000 * 60 * 60 * 24)) + 1);
-    })();
-    const reqDays = Math.ceil(progDays / 2);
-    if (attendedDays < reqDays) {
-      toast.error(isRTL
-        ? `يجب على الطالب حضور ${reqDays} يوم على الأقل من أصل ${progDays} يوم. الحضور الحالي: ${attendedDays} يوم`
-        : `Must attend ${reqDays} of ${progDays} days. Attended: ${attendedDays}`);
-      return;
+    // Soft attendance advisory — admin can still print regardless.
+    // Only asks for a confirm if the student has 0 attended days,
+    // which is almost certainly a mistake.
+    if (attendedDays === 0) {
+      const ok = window.confirm(isRTL
+        ? 'لا يوجد أي حضور مسجل لهذا الطالب. متابعة الطباعة على أي حال؟'
+        : 'No attendance recorded for this student. Print anyway?');
+      if (!ok) return;
     }
 
     const startDateF = prog?.startDate ? prog.startDate.split('-').reverse().join('/') : '';
@@ -1594,7 +1587,6 @@ const SummerFablab = () => {
 
               {filteredStudents.map(s => {
                 const prog = s.program || programById(s.programId);
-                const expanded = openStudentId === s.studentId;
                 const selected = selectedStudentIds.has(s.studentId);
                 return (
                   <div key={s.studentId} className="summer-student-row">
@@ -1651,38 +1643,10 @@ const SummerFablab = () => {
                         >
                           {'🎓'} {isRTL ? 'شهادة' : 'Cert'}
                         </button>
-                        <button
-                          className="summer-btn-secondary"
-                          onClick={() => setOpenStudentId(expanded ? null : s.studentId)}
-                        >
-                          {expanded ? (isRTL ? 'إخفاء الأيام' : 'Hide Days') : (isRTL ? 'أيام البرنامج' : 'Program Days')}
-                        </button>
                         <button className="summer-btn-secondary" onClick={() => openEditStudent(s)}>{isRTL ? 'تعديل' : 'Edit'}</button>
                         <button className="summer-btn-danger" onClick={() => deleteStudent(s.studentId)}>{isRTL ? 'حذف' : 'Delete'}</button>
                       </div>
                     </div>
-                    {expanded && (
-                      <div style={{ padding: '0 1rem 1rem 1rem' }}>
-                        {prog ? (
-                          <AttendanceLog
-                            opportunity={{
-                              opportunityId: s.studentId,
-                              startDate: prog.startDate,
-                              endDate: prog.endDate,
-                              attendanceDays: s.attendanceDays
-                            }}
-                            isRTL={isRTL}
-                            onSaved={fetchStudents}
-                            apiPath="/summer/students"
-                            hideHours={true}
-                          />
-                        ) : (
-                          <p style={{ color: '#64748b', fontSize: '0.85rem' }}>
-                            {isRTL ? 'الطالب غير مرتبط ببرنامج له فترة محددة.' : 'Student is not linked to a program with a date range.'}
-                          </p>
-                        )}
-                      </div>
-                    )}
                   </div>
                 );
               })}
