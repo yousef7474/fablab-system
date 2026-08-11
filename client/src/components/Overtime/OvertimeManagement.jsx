@@ -255,6 +255,38 @@ const OvertimeManagement = () => {
     setShowModal(true);
   };
 
+  // Duplicate an existing overtime as a new draft — carries over
+  // days + approver + notes but clears the identity fields so the
+  // admin picks (or types) the new employee. Save creates a fresh
+  // row; the source is untouched.
+  const openDuplicate = (row) => {
+    setEditingId(null);
+    setSelectedStaffId('');
+    setForm({
+      // Identity — blank so admin picks a new employee from the
+      // staff dropdown at the top of the modal (or types manually).
+      employeeName: '', nationalId: '', phone: '', email: '', position: '',
+      // Everything else copied from the source
+      periodStart: (row.periodStart || '').slice(0, 10),
+      periodEnd: (row.periodEnd || '').slice(0, 10),
+      approvedBy: row.approvedBy || '',
+      note: row.note || '',
+      days: Array.isArray(row.days) && row.days.length
+        ? row.days.map(d => ({
+            date: d.date || '',
+            startTime: d.startTime || '',
+            endTime: d.endTime || '',
+            hours: d.hours || '',
+            task: d.task || ''
+          }))
+        : [{ date: '', startTime: '', endTime: '', hours: '', task: '' }]
+    });
+    setShowModal(true);
+    toast.info(isRTL
+      ? 'اختر موظفاً جديداً من القائمة أو أدخل بياناته يدوياً'
+      : 'Pick a new employee from the dropdown or enter details manually');
+  };
+
   const closeModal = () => { setShowModal(false); setEditingId(null); setForm(emptyForm()); setSelectedStaffId(''); };
 
   const setDay = (i, field, value) => {
@@ -622,6 +654,17 @@ const OvertimeManagement = () => {
                   }}
                 >
                   ✏️ {isRTL ? 'تعديل' : 'Edit'}
+                </button>
+                <button
+                  onClick={() => openDuplicate(row)}
+                  title={isRTL ? 'تكرار الطلب لموظف آخر' : 'Duplicate request for another employee'}
+                  style={{
+                    padding: '8px 14px', borderRadius: 8, border: '1px solid #a7f3d0',
+                    background: '#ecfdf5', color: '#065f46', cursor: 'pointer',
+                    fontWeight: 700, fontSize: 13, fontFamily: 'inherit'
+                  }}
+                >
+                  📋 {isRTL ? 'تكرار' : 'Duplicate'}
                 </button>
                 <button
                   onClick={() => remove(row)}
