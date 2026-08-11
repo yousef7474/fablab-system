@@ -37,6 +37,7 @@ router.post('/attendance/scan',        students.scanAttendance);
 router.get('/attendance/today',        students.todayAttendance);
 router.delete('/attendance/today',     students.clearTodayAttendance);
 router.get('/students/:id/attendance', students.listStudentAttendance);
+router.post('/attendance',             students.createManualAttendance);
 router.patch('/attendance/:id/checkout', students.clearCheckout);
 router.delete('/attendance/:id',       students.deleteAttendance);
 router.post('/attendance/export',      students.exportAttendance);

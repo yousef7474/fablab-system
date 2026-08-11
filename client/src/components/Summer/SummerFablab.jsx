@@ -822,6 +822,71 @@ const SummerFablab = () => {
   const [logStudent, setLogStudent] = useState(null);
   const [logRecords, setLogRecords] = useState([]);
   const [logLoading, setLogLoading] = useState(false);
+  // Inline check-out edit + manual-add (same UX as workshop / volunteer)
+  const [editingCheckoutId, setEditingCheckoutId] = useState(null);
+  const [editingCheckoutValue, setEditingCheckoutValue] = useState('');
+  const [savingCheckout, setSavingCheckout] = useState(false);
+  const [showAddManual, setShowAddManual] = useState(false);
+  const [manualForm, setManualForm] = useState({ date: '', checkInAt: '', checkOutAt: '' });
+  const [savingManual, setSavingManual] = useState(false);
+
+  const beginEditCheckout = (rec) => {
+    setEditingCheckoutId(rec.attendanceId);
+    if (rec.checkOutAt) {
+      const d = new Date(rec.checkOutAt);
+      setEditingCheckoutValue(`${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`);
+    } else if (rec.checkInAt) {
+      const d = new Date(new Date(rec.checkInAt).getTime() + 60 * 60 * 1000);
+      setEditingCheckoutValue(`${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`);
+    } else setEditingCheckoutValue('18:00');
+  };
+  const cancelEditCheckout = () => { setEditingCheckoutId(null); setEditingCheckoutValue(''); };
+  const saveCheckoutTime = async (rec) => {
+    if (!editingCheckoutValue) return toast.error(isRTL ? 'أدخل وقت الخروج' : 'Enter time');
+    setSavingCheckout(true);
+    try {
+      const { data } = await api.patch(`/summer/attendance/${rec.attendanceId}/checkout`, {
+        checkOutAt: editingCheckoutValue
+      });
+      setLogRecords(prev => prev.map(r =>
+        r.attendanceId === rec.attendanceId
+          ? { ...r, checkOutAt: data?.record?.checkOutAt || null }
+          : r
+      ));
+      toast.success(isRTL ? 'تم الحفظ' : 'Saved');
+      cancelEditCheckout();
+    } catch (err) {
+      const msg = err?.response?.data?.messageAr || err?.response?.data?.message;
+      toast.error(msg || (isRTL ? 'فشل الحفظ' : 'Save failed'));
+    } finally { setSavingCheckout(false); }
+  };
+  const submitManualAttendance = async () => {
+    if (!logStudent) return;
+    if (!manualForm.date) return toast.error(isRTL ? 'أدخل التاريخ' : 'Enter date');
+    if (!manualForm.checkInAt && !manualForm.checkOutAt) {
+      return toast.error(isRTL ? 'أدخل وقت الدخول أو الخروج على الأقل' : 'Enter at least check-in or check-out');
+    }
+    setSavingManual(true);
+    try {
+      const { data } = await api.post('/summer/attendance', {
+        studentId: logStudent.studentId,
+        date: manualForm.date,
+        checkInAt: manualForm.checkInAt || undefined,
+        checkOutAt: manualForm.checkOutAt || undefined
+      });
+      setLogRecords(prev => {
+        const next = [data.record, ...prev];
+        next.sort((a, b) => (a.date < b.date ? 1 : -1));
+        return next;
+      });
+      toast.success(isRTL ? 'تمت الإضافة' : 'Added');
+      setManualForm({ date: '', checkInAt: '', checkOutAt: '' });
+      setShowAddManual(false);
+    } catch (err) {
+      const msg = err?.response?.data?.messageAr || err?.response?.data?.message;
+      toast.error(msg || (isRTL ? 'فشل الإضافة' : 'Add failed'));
+    } finally { setSavingManual(false); }
+  };
 
   const toggleSelectStudent = (id) => {
     setSelectedStudentIds(prev => {
@@ -907,12 +972,35 @@ const SummerFablab = () => {
   // A4 landscape, foundation + FABLAB logos, gradient border,
   // stats cards. Colored per the student's summer program so
   // certificates from different programs stay distinct.
-  const printSummerCertificate = (s) => {
+  const printSummerCertificate = async (s) => {
     const prog = s.program || programById(s.programId);
     const color = (prog && colorForProgram(prog)) || '#e02529';
     const studentName = s.name || (isRTL ? 'الطالب' : 'Student');
     const certId = 'SUM-' + (s.studentId?.substring(0, 8).toUpperCase() || Date.now());
-    const attendedDays = Array.isArray(s.attendanceDates) ? s.attendanceDates.length : 0;
+
+    // Fetch attendance history from SummerStudentAttendance — same
+    // source used everywhere else (log modal, unified attendance
+    // page). Counting rows where the student checked in on a
+    // distinct calendar day.
+    let attendedDays = 0;
+    try {
+      const { data } = await api.get(`/summer/students/${s.studentId}/attendance`);
+      const rows = Array.isArray(data) ? data : [];
+      const distinct = new Set();
+      for (const r of rows) {
+        if (r?.date && r?.checkInAt) distinct.add(String(r.date).slice(0, 10));
+      }
+      attendedDays = distinct.size;
+    } catch (err) {
+      console.error('summer cert: failed to fetch attendance', err);
+      // Fall back to the legacy JSON field on the student row so
+      // the cert can still be produced if the endpoint is offline.
+      attendedDays = Array.isArray(s.attendanceDates)
+        ? s.attendanceDates.length
+        : (Array.isArray(s.attendanceDays)
+            ? s.attendanceDays.filter(d => d?.attended).length
+            : 0);
+    }
 
     // Program duration + required-days threshold (attend > 50% of days)
     const progDays = (() => {
@@ -1646,6 +1734,44 @@ const SummerFablab = () => {
               ))}
             </div>
 
+            {/* Manual add — for days the student didn't scan at all */}
+            <div style={{ margin: '0 0 12px', display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+              {!showAddManual ? (
+                <button
+                  onClick={() => {
+                    const today = new Date().toISOString().slice(0, 10);
+                    setManualForm({ date: today, checkInAt: '', checkOutAt: '' });
+                    setShowAddManual(true);
+                  }}
+                  className="summer-btn-primary"
+                  style={{ background: '#7c3aed', color: '#fff', border: 'none' }}
+                >
+                  + {isRTL ? 'إضافة سجل يدوي' : 'Add manual record'}
+                </button>
+              ) : (
+                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'end', padding: 10, borderRadius: 8, background: '#faf5ff', border: '1.5px solid #c4b5fd', width: '100%' }}>
+                  <label style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 12 }}>
+                    <span style={{ fontWeight: 700, color: '#5b21b6' }}>{isRTL ? 'التاريخ' : 'Date'}</span>
+                    <input type="date" value={manualForm.date} onChange={(e) => setManualForm(f => ({ ...f, date: e.target.value }))} style={{ padding: '6px 8px', borderRadius: 6, border: '1px solid #c4b5fd' }} />
+                  </label>
+                  <label style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 12 }}>
+                    <span style={{ fontWeight: 700, color: '#5b21b6' }}>{isRTL ? 'وقت الدخول' : 'Check-in'}</span>
+                    <input type="time" value={manualForm.checkInAt} onChange={(e) => setManualForm(f => ({ ...f, checkInAt: e.target.value }))} style={{ padding: '6px 8px', borderRadius: 6, border: '1px solid #c4b5fd', width: 110 }} />
+                  </label>
+                  <label style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 12 }}>
+                    <span style={{ fontWeight: 700, color: '#5b21b6' }}>{isRTL ? 'وقت الخروج' : 'Check-out'}</span>
+                    <input type="time" value={manualForm.checkOutAt} onChange={(e) => setManualForm(f => ({ ...f, checkOutAt: e.target.value }))} style={{ padding: '6px 8px', borderRadius: 6, border: '1px solid #c4b5fd', width: 110 }} />
+                  </label>
+                  <button onClick={submitManualAttendance} disabled={savingManual} className="summer-btn-primary" style={{ background: '#7c3aed', color: '#fff', border: 'none' }}>
+                    {savingManual ? '…' : (isRTL ? 'حفظ' : 'Save')}
+                  </button>
+                  <button onClick={() => setShowAddManual(false)} disabled={savingManual} className="summer-btn-secondary">
+                    {isRTL ? 'إلغاء' : 'Cancel'}
+                  </button>
+                </div>
+              )}
+            </div>
+
             <div style={{ flex: 1, overflowY: 'auto', border: '1px solid #e2e8f0', borderRadius: 8 }}>
               {logLoading ? (
                 <div style={{ padding: 30, textAlign: 'center', color: '#64748b' }}>
@@ -1671,11 +1797,27 @@ const SummerFablab = () => {
                     {logRecords.map(r => {
                       const dur = durationMin(r);
                       const completed = !!(r.checkInAt && r.checkOutAt);
+                      const isEditing = editingCheckoutId === r.attendanceId;
                       return (
                         <tr key={r.attendanceId} style={{ borderBottom: '1px solid #f1f5f9' }}>
                           <td style={{ padding: '8px 10px', fontFamily: 'Consolas, monospace' }}>{r.date}</td>
                           <td style={{ padding: '8px 10px', fontFamily: 'Consolas, monospace' }}>{fmtLogTime(r.checkInAt)}</td>
-                          <td style={{ padding: '8px 10px', fontFamily: 'Consolas, monospace' }}>{fmtLogTime(r.checkOutAt)}</td>
+                          <td style={{ padding: '8px 10px', fontFamily: 'Consolas, monospace' }}>
+                            {isEditing ? (
+                              <span style={{ display: 'inline-flex', gap: 4, alignItems: 'center' }}>
+                                <input
+                                  type="time"
+                                  value={editingCheckoutValue}
+                                  onChange={(e) => setEditingCheckoutValue(e.target.value)}
+                                  autoFocus
+                                  onKeyDown={(e) => { if (e.key === 'Enter') saveCheckoutTime(r); if (e.key === 'Escape') cancelEditCheckout(); }}
+                                  style={{ padding: 4, borderRadius: 4, border: '1.5px solid #7c3aed', width: 100 }}
+                                />
+                                <button onClick={() => saveCheckoutTime(r)} disabled={savingCheckout} style={{ padding: '2px 8px', borderRadius: 4, border: 'none', background: '#7c3aed', color: '#fff', cursor: 'pointer', fontFamily: 'inherit' }}>{savingCheckout ? '…' : '✓'}</button>
+                                <button onClick={cancelEditCheckout} disabled={savingCheckout} style={{ padding: '2px 8px', borderRadius: 4, border: '1px solid #cbd5e1', background: '#fff', cursor: 'pointer', fontFamily: 'inherit' }}>×</button>
+                              </span>
+                            ) : fmtLogTime(r.checkOutAt)}
+                          </td>
                           <td style={{ padding: '8px 10px', fontFamily: 'Consolas, monospace' }}>{dur != null ? `${Math.floor(dur / 60)}h ${dur % 60}m` : '—'}</td>
                           <td style={{ padding: '8px 10px' }}>
                             <span style={{
@@ -1690,7 +1832,22 @@ const SummerFablab = () => {
                           </td>
                           <td style={{ padding: '8px 10px' }}>
                             <div style={{ display: 'flex', gap: 4 }}>
-                              {r.checkOutAt && (
+                              {!isEditing && r.checkInAt && (
+                                <button
+                                  onClick={() => beginEditCheckout(r)}
+                                  title={r.checkOutAt
+                                    ? (isRTL ? 'تعديل وقت الخروج' : 'Edit check-out')
+                                    : (isRTL ? 'إضافة وقت الخروج يدوياً' : 'Add check-out time')}
+                                  style={{
+                                    padding: '3px 8px', borderRadius: 5,
+                                    border: '1px solid ' + (r.checkOutAt ? '#c7d2fe' : '#86efac'),
+                                    background: r.checkOutAt ? '#eef2ff' : '#dcfce7',
+                                    color: r.checkOutAt ? '#4338ca' : '#166534',
+                                    cursor: 'pointer', fontFamily: 'inherit', fontSize: 12, fontWeight: 700
+                                  }}
+                                >✎</button>
+                              )}
+                              {r.checkOutAt && !isEditing && (
                                 <button
                                   onClick={() => clearLogCheckout(r)}
                                   title={isRTL ? 'حذف تسجيل الخروج فقط' : 'Clear check-out only'}
@@ -1702,16 +1859,18 @@ const SummerFablab = () => {
                                   }}
                                 >↩</button>
                               )}
-                              <button
-                                onClick={() => deleteLogRecord(r)}
-                                title={isRTL ? 'حذف السجل بالكامل' : 'Delete entire record'}
-                                style={{
-                                  padding: '3px 8px', borderRadius: 5,
-                                  border: '1px solid #ef4444', background: '#fff',
-                                  color: '#ef4444', cursor: 'pointer', fontFamily: 'inherit',
-                                  fontSize: 12, fontWeight: 700
-                                }}
-                              >×</button>
+                              {!isEditing && (
+                                <button
+                                  onClick={() => deleteLogRecord(r)}
+                                  title={isRTL ? 'حذف السجل بالكامل' : 'Delete entire record'}
+                                  style={{
+                                    padding: '3px 8px', borderRadius: 5,
+                                    border: '1px solid #ef4444', background: '#fff',
+                                    color: '#ef4444', cursor: 'pointer', fontFamily: 'inherit',
+                                    fontSize: 12, fontWeight: 700
+                                  }}
+                                >×</button>
+                              )}
                             </div>
                           </td>
                         </tr>
