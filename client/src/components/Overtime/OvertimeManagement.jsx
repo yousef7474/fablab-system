@@ -21,6 +21,17 @@ const APPROVERS = [
   'أ. عبدالمحسن السلطان'
 ];
 
+// Preset manager emails for the send-for-approval flow. Only the
+// entries with an email set appear in the dropdown; empty entries
+// are placeholders — fill in when the address is known. Admin can
+// always type a custom email via the "بريد آخر" option.
+const APPROVER_EMAILS = [
+  { name: 'أ. زكي اللويم',        email: 'FabLab.Spc1@fablabahsa.org' },
+  { name: 'م. نوف البوعبيد',      email: '' },
+  { name: 'أ. عبدالله الصفي',     email: '' },
+  { name: 'أ. عبدالمحسن السلطان', email: '' }
+];
+
 const emptyForm = () => ({
   employeeName: '',
   nationalId: '',
@@ -925,28 +936,64 @@ const OvertimeManagement = () => {
                 {Number(sendTarget.totalHours || 0).toFixed(2)} {isRTL ? 'ساعة' : 'hrs'} · {(sendTarget.days || []).length} {isRTL ? 'يوم' : 'days'}
               </div>
             </div>
-            <label style={{ display: 'block', marginBottom: 14 }}>
-              <div style={{ fontSize: 12, fontWeight: 700, color: '#334155', marginBottom: 6 }}>
-                {isRTL ? 'البريد الإلكتروني للمدير' : 'Manager email'}
-              </div>
-              <input
-                type="email"
-                value={sendEmail}
-                onChange={(e) => setSendEmail(e.target.value)}
-                dir="ltr"
-                placeholder="manager@fablabsahsa.com"
-                autoFocus
-                style={{
-                  width: '100%', padding: '10px 12px', borderRadius: 8,
-                  border: '1.5px solid #fde68a', fontFamily: 'inherit', fontSize: 14
-                }}
-              />
-              <div style={{ fontSize: 11, color: '#64748b', marginTop: 6 }}>
-                {isRTL
-                  ? 'سيتم إرسال بريد يحتوي على رابط للاعتماد أو الرفض مباشرةً.'
-                  : 'An email with approve/reject links will be sent.'}
-              </div>
-            </label>
+            {(() => {
+              const presets = APPROVER_EMAILS.filter(p => p.email);
+              const isPreset = presets.some(p => p.email === sendEmail);
+              return (
+                <div style={{ marginBottom: 14 }}>
+                  <div style={{ fontSize: 12, fontWeight: 700, color: '#334155', marginBottom: 6 }}>
+                    {isRTL ? 'اختر المدير' : 'Pick the manager'}
+                  </div>
+                  <select
+                    value={isPreset ? sendEmail : (sendEmail === '' ? '' : '__custom__')}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      if (val === '__custom__') setSendEmail(' '); // placeholder so the input shows and user types
+                      else setSendEmail(val);
+                    }}
+                    style={{
+                      width: '100%', padding: '10px 12px', borderRadius: 8,
+                      border: '1.5px solid #fde68a', fontFamily: 'inherit', fontSize: 14,
+                      background: '#fff', direction: 'rtl'
+                    }}
+                  >
+                    <option value="">— {isRTL ? 'اختر من القائمة' : 'Select from list'} —</option>
+                    {presets.map(p => (
+                      <option key={p.email} value={p.email}>
+                        {p.name} — {p.email}
+                      </option>
+                    ))}
+                    <option value="__custom__">— {isRTL ? 'بريد آخر (يدوي)' : 'Custom email'} —</option>
+                  </select>
+
+                  {/* Text input — always shown once the admin picks
+                      either a preset (so they can see / tweak it) or
+                      the custom option (so they can type freely). */}
+                  {sendEmail !== '' && (
+                    <input
+                      type="email"
+                      value={sendEmail.trim()}
+                      onChange={(e) => setSendEmail(e.target.value)}
+                      dir="ltr"
+                      placeholder="manager@fablabahsa.org"
+                      autoFocus={!isPreset}
+                      style={{
+                        width: '100%', padding: '10px 12px', borderRadius: 8,
+                        border: '1.5px solid #fde68a', fontFamily: 'inherit', fontSize: 14,
+                        marginTop: 8,
+                        background: isPreset ? '#fefce8' : '#fff'
+                      }}
+                    />
+                  )}
+
+                  <div style={{ fontSize: 11, color: '#64748b', marginTop: 6 }}>
+                    {isRTL
+                      ? 'سيتم إرسال بريد يحتوي على رابط للاعتماد أو الرفض مباشرةً.'
+                      : 'An email with approve/reject links will be sent.'}
+                  </div>
+                </div>
+              );
+            })()}
             <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
               <button
                 onClick={closeSendModal}
