@@ -112,154 +112,14 @@
 .registration-page .floating-orbs,
 .registration-page .wave-container { display: none; }
 
-.registration-page .aurora {
-  position: absolute;
-  inset: 0;
-  overflow: hidden;
-  pointer-events: none;
-  z-index: 0;
-  filter: blur(64px) saturate(1.1);
-}
-.registration-page .aurora-blob {
-  position: absolute;
-  border-radius: 50%;
-  opacity: var(--aurora-opacity);
-  mix-blend-mode: screen;
-  animation: blobDrift 22s ease-in-out infinite alternate;
-}
-.registration-page[data-theme="light"] .aurora-blob {
-  mix-blend-mode: multiply;
-  opacity: 0.32;
-}
-.registration-page .aurora-blob:nth-child(1) {
-  top: -10%; left: -5%;
-  width: 520px; height: 520px;
-  background: radial-gradient(circle at 30% 30%, var(--aurora-violet), transparent 65%);
-  animation-duration: 24s;
-}
-.registration-page .aurora-blob:nth-child(2) {
-  top: 10%; right: -8%;
-  width: 460px; height: 460px;
-  background: radial-gradient(circle at 60% 50%, var(--aurora-cyan), transparent 65%);
-  animation-duration: 26s;
-  animation-delay: -6s;
-}
-.registration-page .aurora-blob:nth-child(3) {
-  bottom: -10%; left: 20%;
-  width: 580px; height: 580px;
-  background: radial-gradient(circle at 50% 50%, var(--aurora-pink), transparent 65%);
-  animation-duration: 28s;
-  animation-delay: -10s;
-}
-.registration-page .aurora-blob:nth-child(4) {
-  bottom: 0%; right: 10%;
-  width: 360px; height: 360px;
-  background: radial-gradient(circle at 50% 50%, var(--aurora-lime), transparent 65%);
-  animation-duration: 30s;
-  animation-delay: -14s;
-  opacity: 0.4;
-}
-.registration-page .aurora-blob:nth-child(5) {
-  top: 35%; left: 38%;
-  width: 320px; height: 320px;
-  background: radial-gradient(circle at 50% 50%, var(--aurora-orange), transparent 65%);
-  animation-duration: 32s;
-  animation-delay: -18s;
-  opacity: 0.35;
-}
-
-@keyframes blobDrift {
-  0%   { transform: translate(0, 0) scale(1); }
-  33%  { transform: translate(60px, -40px) scale(1.1); }
-  66%  { transform: translate(-50px, 50px) scale(0.95); }
-  100% { transform: translate(40px, 30px) scale(1.05); }
-}
-
-/* Floating fabrication icons */
-.registration-page .floating-icons {
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  z-index: 1;
-  overflow: hidden;
-}
-.registration-page .float-icon {
-  position: absolute;
-  width: 38px;
-  height: 38px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 12px;
-  background: var(--glass);
-  border: 1px solid var(--glass-border);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
-  color: var(--text-md);
-  animation: iconFloat 14s ease-in-out infinite;
-  box-shadow: 0 8px 24px -10px rgba(0, 0, 0, 0.5);
-}
-.registration-page .float-icon svg { width: 18px; height: 18px; }
-
-.registration-page .float-icon:nth-child(1) { top: 12%; left: 6%;  color: var(--aurora-cyan);   animation-delay: 0s;  }
-.registration-page .float-icon:nth-child(2) { top: 22%; right: 8%; color: var(--aurora-violet); animation-delay: -2s; }
-.registration-page .float-icon:nth-child(3) { top: 60%; left: 4%;  color: var(--aurora-pink);   animation-delay: -4s; }
-.registration-page .float-icon:nth-child(4) { top: 70%; right: 6%; color: var(--aurora-lime);   animation-delay: -6s; }
-.registration-page .float-icon:nth-child(5) { top: 40%; left: 88%; color: var(--aurora-orange); animation-delay: -8s; }
-.registration-page .float-icon:nth-child(6) { top: 88%; left: 50%; color: var(--aurora-blue);   animation-delay: -10s; }
-
-@keyframes iconFloat {
-  0%, 100% { transform: translateY(0) rotate(0deg); }
-  25%      { transform: translateY(-18px) rotate(8deg); }
-  50%      { transform: translateY(-8px) rotate(-6deg); }
-  75%      { transform: translateY(-22px) rotate(4deg); }
-}
-
-@media (max-width: 900px) {
-  .registration-page .float-icon { width: 32px; height: 32px; }
-  .registration-page .float-icon svg { width: 14px; height: 14px; }
-}
-@media (max-width: 700px) {
-  .registration-page .floating-icons { display: none; }
-}
-
-/* Animated star particles */
-.registration-page .stars {
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  z-index: 0;
-}
-.registration-page .stars span {
-  position: absolute;
-  width: 2px;
-  height: 2px;
-  background: #fff;
-  border-radius: 50%;
-  opacity: 0.6;
-  animation: twinkle 3s ease-in-out infinite;
-}
-.registration-page[data-theme="light"] .stars { display: none; }
-.registration-page[data-theme="light"] .registration-page::before { opacity: var(--grid-opacity); }
-.registration-page .stars span:nth-child(1)  { top: 8%;  left: 12%; animation-delay: 0s; }
-.registration-page .stars span:nth-child(2)  { top: 18%; left: 78%; animation-delay: 0.5s; }
-.registration-page .stars span:nth-child(3)  { top: 28%; left: 32%; animation-delay: 1s; }
-.registration-page .stars span:nth-child(4)  { top: 48%; left: 90%; animation-delay: 1.5s; }
-.registration-page .stars span:nth-child(5)  { top: 58%; left: 18%; animation-delay: 2s; }
-.registration-page .stars span:nth-child(6)  { top: 68%; left: 60%; animation-delay: 2.5s; }
-.registration-page .stars span:nth-child(7)  { top: 78%; left: 8%;  animation-delay: 0.3s; }
-.registration-page .stars span:nth-child(8)  { top: 38%; left: 50%; animation-delay: 0.8s; }
-.registration-page .stars span:nth-child(9)  { top: 88%; left: 35%; animation-delay: 1.3s; }
-.registration-page .stars span:nth-child(10) { top: 92%; left: 82%; animation-delay: 1.8s; }
-.registration-page .stars span:nth-child(11) { top: 5%;  left: 50%; animation-delay: 2.3s; }
-.registration-page .stars span:nth-child(12) { top: 50%; left: 5%;  animation-delay: 2.8s; }
-@keyframes twinkle {
-  0%, 100% { opacity: 0.2; transform: scale(0.8); }
-  50%      { opacity: 1;   transform: scale(1.4); box-shadow: 0 0 10px #fff; }
-}
-
-/* Hide editorial marks (from previous design) — keep tag for safety */
-.registration-page .editorial-marks { display: none; }
+/* Decorative aurora/stars/floating-icon layers removed for performance.
+   The JSX no longer renders them; keeping the CSS out saves parse time
+   and prevents accidental repaints. */
+.registration-page .editorial-marks,
+.registration-page .aurora,
+.registration-page .stars,
+.registration-page .floating-icons,
+.registration-page .step-illustration { display: none !important; }
 
 @keyframes floatBubbles {
   0%, 100% {
@@ -2524,33 +2384,38 @@
   transform: scale(0.95);
 }
 
-.calendar-days-grid .calendar-day.unavailable {
-  background: var(--gray-100);
+.calendar-days-grid .calendar-day.unavailable,
+.calendar-days-grid .calendar-day.weekend,
+.calendar-days-grid .calendar-day:disabled {
+  background:
+    repeating-linear-gradient(
+      -45deg,
+      rgba(148, 163, 184, 0.08) 0,
+      rgba(148, 163, 184, 0.08) 4px,
+      transparent 4px,
+      transparent 8px
+    ),
+    var(--gray-100);
+  border-color: transparent;
   color: var(--gray-400);
-  cursor: not-allowed;
+  cursor: not-allowed !important;
   pointer-events: none;
-}
-
-.calendar-days-grid .calendar-day.unavailable:disabled {
-  opacity: 0.6;
-}
-
-.calendar-days-grid .calendar-day.weekend {
-  background: rgba(239, 68, 68, 0.05);
-  color: var(--gray-400);
-  pointer-events: none;
+  text-decoration: line-through;
+  opacity: 0.65;
 }
 
 .calendar-days-grid .calendar-day.today {
   font-weight: 700;
-  box-shadow: inset 0 0 0 2px var(--racing-red);
+  box-shadow: inset 0 0 0 2px #0ea5e9;
+  color: #0369a1;
 }
 
 .calendar-days-grid .calendar-day.selected {
-  background: linear-gradient(135deg, var(--racing-red), #c41e24) !important;
+  background: linear-gradient(135deg, #16a34a, #22c55e) !important;
   color: white !important;
-  border-color: var(--racing-red) !important;
+  border-color: #15803d !important;
   transform: scale(1.05);
+  box-shadow: 0 6px 18px -4px rgba(22, 163, 74, 0.5);
 }
 
 .calendar-legend {
@@ -2586,7 +2451,8 @@
 }
 
 .legend-dot.selected {
-  background: var(--racing-red);
+  background: linear-gradient(135deg, #16a34a, #22c55e);
+  border: 2px solid #15803d;
 }
 
 .legend-dot.section-closed {
@@ -2767,9 +2633,10 @@
 }
 
 .time-slot.selected {
-  background: linear-gradient(135deg, var(--racing-red), #c41e24);
+  background: linear-gradient(135deg, #16a34a, #22c55e);
   color: white;
-  border-color: var(--racing-red);
+  border-color: #15803d;
+  box-shadow: 0 6px 16px -4px rgba(22, 163, 74, 0.5);
 }
 
 .slots-loading {
@@ -3712,11 +3579,11 @@
 .registration-page .form-card .date-slot.selected,
 .registration-page .form-card .available-slot.selected,
 .registration-page .form-card .time-slot.active {
-  background: var(--grad-primary) !important;
-  border-color: transparent !important;
-  color: #07091a !important;
+  background: linear-gradient(135deg, #16a34a, #22c55e) !important;
+  border-color: #15803d !important;
+  color: #ffffff !important;
   font-weight: 700;
-  box-shadow: 0 8px 20px -8px rgba(167, 139, 250, 0.6);
+  box-shadow: 0 12px 26px -8px rgba(22, 163, 74, 0.55) !important;
 }
 .registration-page .form-card .time-slot.unavailable,
 .registration-page .form-card .time-slot.disabled,
@@ -3959,13 +3826,23 @@
   border-color: rgba(8, 145, 178, 0.6) !important;
   color: #082f49 !important;
 }
-.registration-page[data-theme="light"] .form-card .calendar-days-grid .calendar-day.unavailable {
-  background: rgba(241, 245, 249, 0.65) !important;
-  color: #94a3b8 !important;
-}
-.registration-page[data-theme="light"] .form-card .calendar-days-grid .calendar-day.weekend {
-  background: rgba(244, 114, 182, 0.10) !important;
-  border-color: rgba(244, 114, 182, 0.25) !important;
+.registration-page[data-theme="light"] .form-card .calendar-days-grid .calendar-day.unavailable,
+.registration-page[data-theme="light"] .form-card .calendar-days-grid .calendar-day.weekend,
+.registration-page[data-theme="light"] .form-card .calendar-days-grid .calendar-day:disabled {
+  background:
+    repeating-linear-gradient(
+      -45deg,
+      rgba(148, 163, 184, 0.12) 0,
+      rgba(148, 163, 184, 0.12) 4px,
+      transparent 4px,
+      transparent 8px
+    ),
+    rgba(241, 245, 249, 0.7) !important;
+  border-color: transparent !important;
+  color: #cbd5e1 !important;
+  cursor: not-allowed !important;
+  text-decoration: line-through;
+  opacity: 0.7;
 }
 .registration-page[data-theme="light"] .form-card .calendar-days-grid .calendar-day.today {
   border-color: #16a34a !important;
@@ -4375,17 +4252,23 @@
 }
 
 .registration-page .form-card .calendar-days-grid .calendar-day.unavailable,
-.registration-page .form-card .calendar-days-grid .calendar-day.unavailable:disabled {
-  background: rgba(255, 255, 255, 0.02) !important;
-  border-color: rgba(255, 255, 255, 0.04) !important;
-  color: rgba(148, 163, 184, 0.4) !important;
-  cursor: not-allowed;
-  opacity: 0.5;
-}
-
-.registration-page .form-card .calendar-days-grid .calendar-day.weekend {
-  background: rgba(244, 114, 182, 0.05) !important;
-  border-color: rgba(244, 114, 182, 0.12) !important;
+.registration-page .form-card .calendar-days-grid .calendar-day.unavailable:disabled,
+.registration-page .form-card .calendar-days-grid .calendar-day.weekend,
+.registration-page .form-card .calendar-days-grid .calendar-day:disabled {
+  background:
+    repeating-linear-gradient(
+      -45deg,
+      rgba(148, 163, 184, 0.12) 0,
+      rgba(148, 163, 184, 0.12) 4px,
+      transparent 4px,
+      transparent 8px
+    ),
+    rgba(255, 255, 255, 0.03) !important;
+  border-color: rgba(255, 255, 255, 0.05) !important;
+  color: rgba(148, 163, 184, 0.5) !important;
+  cursor: not-allowed !important;
+  text-decoration: line-through;
+  opacity: 0.55;
 }
 
 .registration-page .form-card .calendar-days-grid .calendar-day.today {
@@ -4398,17 +4281,17 @@
 }
 
 .registration-page .form-card .calendar-days-grid .calendar-day.selected {
-  background: var(--grad-primary) !important;
-  border-color: transparent !important;
-  color: #07091a !important;
+  background: linear-gradient(135deg, #16a34a, #22c55e) !important;
+  border-color: #15803d !important;
+  color: #ffffff !important;
   font-weight: 800;
   box-shadow:
-    0 0 0 2px rgba(167, 139, 250, 0.5),
-    0 14px 32px -10px rgba(167, 139, 250, 0.6) !important;
+    0 0 0 2px rgba(34, 197, 94, 0.35),
+    0 14px 32px -10px rgba(22, 163, 74, 0.55) !important;
   transform: scale(1.05);
 }
 .registration-page .form-card .calendar-days-grid .calendar-day.selected .day-number {
-  color: #07091a !important;
+  color: #ffffff !important;
 }
 
 .registration-page .form-card .calendar-days-grid .calendar-day.section-closed {
@@ -4443,7 +4326,8 @@
   background: rgba(148, 163, 184, 0.3) !important;
 }
 .registration-page .form-card .legend-dot.selected {
-  background: var(--grad-primary) !important;
+  background: linear-gradient(135deg, #16a34a, #22c55e) !important;
+  border-color: #15803d !important;
 }
 .registration-page .form-card .legend-dot.section-closed {
   background: rgba(251, 146, 60, 0.6) !important;
@@ -4496,11 +4380,11 @@
   box-shadow: 0 8px 20px -8px rgba(167, 139, 250, 0.45) !important;
 }
 .registration-page .form-card .time-slots-grid .time-slot.selected {
-  background: var(--grad-primary) !important;
-  border-color: transparent !important;
-  color: #07091a !important;
+  background: linear-gradient(135deg, #16a34a, #22c55e) !important;
+  border-color: #15803d !important;
+  color: #ffffff !important;
   font-weight: 700;
-  box-shadow: 0 12px 26px -8px rgba(167, 139, 250, 0.6) !important;
+  box-shadow: 0 12px 26px -8px rgba(22, 163, 74, 0.55) !important;
   transform: scale(1.04);
 }
 .registration-page .form-card .no-slots-message {
@@ -5165,3 +5049,115 @@
   /* Free up vertical space on tiny screens */
   .registration-page .step-illustration { display: none; }
 }
+
+/* =============================================================
+   Application-type cards with descriptions (step 1 clarification)
+   Wider padding, left-aligned text, description under the title.
+   ============================================================= */
+.selection-grid.selection-grid--with-desc {
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+}
+
+.selection-card.selection-card--with-desc {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  text-align: start;
+  padding: 1.5rem 1.25rem 1.35rem;
+  gap: 0.55rem;
+}
+.selection-card--with-desc .selection-card-icon {
+  margin: 0 0 0.35rem;
+  align-self: flex-start;
+}
+.selection-card--with-desc .selection-card-title {
+  font-size: 1.05rem;
+  font-weight: 700;
+  line-height: 1.2;
+}
+.selection-card-description {
+  font-size: 0.83rem;
+  line-height: 1.55;
+  color: var(--gray-500);
+}
+.registration-page .form-card .selection-card-description {
+  color: var(--text-md) !important;
+}
+.selection-card--with-desc.selected .selection-card-description {
+  color: var(--gray-600);
+}
+.registration-page .form-card .selection-card--with-desc.selected .selection-card-description {
+  color: var(--text-hi) !important;
+  opacity: 0.85;
+}
+
+@media (max-width: 480px) {
+  .selection-grid.selection-grid--with-desc { grid-template-columns: 1fr; }
+}
+
+/* =============================================================
+   New FABLAB Visit service card (on UserLookup)
+   Uses a warm-teal accent so it reads distinct from the others.
+   ============================================================= */
+.service-card--visit {
+  --sc-accent: #0ea5e9;
+}
+.registration-page .form-card .service-card.service-card--visit .service-card-icon {
+  color: var(--sc-accent) !important;
+  background: color-mix(in oklab, var(--sc-accent) 18%, transparent) !important;
+}
+.registration-page .form-card .service-card.service-card--visit:hover {
+  border-color: color-mix(in oklab, var(--sc-accent) 55%, rgba(255,255,255,0.1)) !important;
+  box-shadow: 0 22px 48px -22px color-mix(in oklab, var(--sc-accent) 45%, transparent) !important;
+}
+
+/* =============================================================
+   Topbar Home button (moved out of the form card)
+   Slim pill that only appears once the wizard has started.
+   ============================================================= */
+.topbar-home-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 999px;
+  color: var(--text-hi, #f1f5f9);
+  font-family: inherit;
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.16s, border-color 0.16s, color 0.16s, transform 0.14s;
+  white-space: nowrap;
+}
+.topbar-home-btn:hover {
+  background: rgba(255, 255, 255, 0.10);
+  border-color: rgba(255, 48, 55, 0.55);
+  color: #fff;
+  transform: translateY(-1px);
+}
+.topbar-home-btn svg { width: 15px; height: 15px; flex-shrink: 0; }
+
+.registration-page[data-theme="light"] .topbar-home-btn {
+  background: rgba(15, 23, 42, 0.05);
+  border-color: rgba(15, 23, 42, 0.12);
+  color: #1e293b;
+}
+.registration-page[data-theme="light"] .topbar-home-btn:hover {
+  background: rgba(238, 35, 41, 0.08);
+  border-color: rgba(238, 35, 41, 0.4);
+  color: #b91c1c;
+}
+
+@media (max-width: 640px) {
+  .topbar-home-btn span { display: none; }
+  .topbar-home-btn { padding: 8px 10px; }
+}
+
+/* =============================================================
+   Dead layers — the JSX no longer renders these but a few dark-mode
+   overrides still target the old selectors. Hide defensively.
+   ============================================================= */
+.home-button-container,
+.home-button { display: none !important; }

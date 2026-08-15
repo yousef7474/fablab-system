@@ -13,21 +13,8 @@ import DateTimeSelection from './steps/DateTimeSelection';
 import ServiceDetails from './steps/ServiceDetails';
 import Commitment from './steps/Commitment';
 import SuccessPage from './SuccessPage';
-import step1Illustration from '../../illustrations/step1.svg';
-import step2Illustration from '../../illustrations/step2.svg';
-import step3Illustration from '../../illustrations/step3.svg';
-import step4Illustration from '../../illustrations/step4.svg';
-import step5Illustration from '../../illustrations/step5.svg';
-import step6Illustration from '../../illustrations/step6.svg';
-import step7Illustration from '../../illustrations/step7.svg';
 import FabyBot from './FabyBot';
 import './RegistrationForm.css';
-
-const stepIllustrations = [
-  step1Illustration, step2Illustration, step3Illustration,
-  step4Illustration, step5Illustration, step6Illustration,
-  step7Illustration
-];
 
 const STORAGE_KEY = 'fablab_registration_form';
 
@@ -445,9 +432,28 @@ const RegistrationForm = () => {
         </div>
         <div className="topbar-actions">
           {activeStep >= 0 && (
-            <span className="topbar-progress-pill">
-              {String(Math.max(0, activeStep) + 1).padStart(2, '0')} / {String(steps.length).padStart(2, '0')}
-            </span>
+            <>
+              <button
+                type="button"
+                className="topbar-home-btn"
+                onClick={() => {
+                  setActiveStep(-1);
+                  setFormData(defaultFormData);
+                  clearSavedForm();
+                }}
+                title={isRTL ? 'العودة للرئيسية' : 'Back to Home'}
+                aria-label={isRTL ? 'العودة للرئيسية' : 'Back to Home'}
+              >
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+                  <polyline points="9 22 9 12 15 12 15 22"/>
+                </svg>
+                <span>{isRTL ? 'الرئيسية' : 'Home'}</span>
+              </button>
+              <span className="topbar-progress-pill">
+                {String(Math.max(0, activeStep) + 1).padStart(2, '0')} / {String(steps.length).padStart(2, '0')}
+              </span>
+            </>
           )}
           <a
             href="https://main.fablabsahsa.com/"
@@ -485,42 +491,6 @@ const RegistrationForm = () => {
           </button>
         </div>
       </header>
-
-      {/* Animated aurora background */}
-      <div className="aurora" aria-hidden="true">
-        <div className="aurora-blob"></div>
-        <div className="aurora-blob"></div>
-        <div className="aurora-blob"></div>
-        <div className="aurora-blob"></div>
-        <div className="aurora-blob"></div>
-      </div>
-
-      {/* Twinkling stars */}
-      <div className="stars" aria-hidden="true">
-        {Array.from({ length: 12 }).map((_, i) => <span key={i} />)}
-      </div>
-
-      {/* Floating fabrication icons */}
-      <div className="floating-icons" aria-hidden="true">
-        <div className="float-icon" title="3D Printer">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
-        </div>
-        <div className="float-icon" title="Gear">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
-        </div>
-        <div className="float-icon" title="Cube">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>
-        </div>
-        <div className="float-icon" title="Circuit">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="4" y="4" width="16" height="16" rx="2"/><rect x="9" y="9" width="6" height="6"/><line x1="9" y1="2" x2="9" y2="4"/><line x1="15" y1="2" x2="15" y2="4"/><line x1="9" y1="20" x2="9" y2="22"/><line x1="15" y1="20" x2="15" y2="22"/><line x1="20" y1="9" x2="22" y2="9"/><line x1="20" y1="14" x2="22" y2="14"/><line x1="2" y1="9" x2="4" y2="9"/><line x1="2" y1="14" x2="4" y2="14"/></svg>
-        </div>
-        <div className="float-icon" title="Spark">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
-        </div>
-        <div className="float-icon" title="Wrench">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>
-        </div>
-      </div>
 
       <div className="registration-container">
         <div style={{ width: '100%' }}>
@@ -569,28 +539,13 @@ const RegistrationForm = () => {
               <UserLookup
                 onUserFound={handleUserFound}
                 onNewUser={() => setActiveStep(0)}
+                onFablabVisit={() => {
+                  setFormData({ ...defaultFormData, applicationType: 'FABLAB Visit' });
+                  setActiveStep(1);
+                }}
               />
             ) : (
               <>
-                {/* Home Button */}
-                <div className="home-button-container">
-                  <button
-                    className="home-button"
-                    onClick={() => {
-                      setActiveStep(-1);
-                      setFormData(defaultFormData);
-                      clearSavedForm();
-                    }}
-                    title={isRTL ? 'العودة للرئيسية' : 'Back to Home'}
-                  >
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                      <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
-                      <polyline points="9 22 9 12 15 12 15 22"/>
-                    </svg>
-                    <span>{isRTL ? 'الرئيسية' : 'Home'}</span>
-                  </button>
-                </div>
-
                 {/* Stepper */}
                 <div
                   className="stepper-container"
@@ -622,17 +577,6 @@ const RegistrationForm = () => {
                       exit={{ opacity: 0, x: isRTL ? 30 : -30 }}
                       transition={{ duration: 0.3 }}
                     >
-                      {activeStep >= 0 && activeStep < stepIllustrations.length && (
-                        <motion.div
-                          className="step-illustration"
-                          initial={{ opacity: 0, scale: 0.9 }}
-                          animate={{ opacity: 1, scale: 1 }}
-                          transition={{ delay: 0.1, duration: 0.45 }}
-                          aria-hidden="true"
-                        >
-                          <img src={stepIllustrations[activeStep]} alt="" />
-                        </motion.div>
-                      )}
                       {renderStepContent(activeStep)}
                     </motion.div>
                   </AnimatePresence>

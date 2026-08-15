@@ -11,6 +11,8 @@ const ApplicationType = ({ formData, onChange, onNext }) => {
       value: 'Beneficiary',
       label: t('beneficiary'),
       labelAr: 'مستفيد',
+      descriptionAr: 'الشخص الذي يستخدم مرافق وخدمات فاب لاب لتنفيذ مشروع شخصي أو للحصول على استشارة تقنية.',
+      descriptionEn: 'A person who uses FABLAB facilities and services to build a personal project or receive technical consultation.',
       icon: (
         <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
           <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
@@ -22,6 +24,8 @@ const ApplicationType = ({ formData, onChange, onNext }) => {
       value: 'Visitor',
       label: t('visitor'),
       labelAr: 'زائر',
+      descriptionAr: 'الشخص الذي يرغب بحضور فعالية أو نشاط أو ورشة عمل ينظمها فاب لاب.',
+      descriptionEn: 'A person attending an event, activity, or workshop hosted at FABLAB.',
       icon: (
         <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
           <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
@@ -35,6 +39,8 @@ const ApplicationType = ({ formData, onChange, onNext }) => {
       value: 'Volunteer',
       label: t('volunteer'),
       labelAr: 'متطوع',
+      descriptionAr: 'من يرغب بالمساهمة في فعاليات وخدمات فاب لاب من خلال العمل التطوعي بمجال يتناسب مع مهاراته.',
+      descriptionEn: 'Someone who wants to contribute to FABLAB events and services through volunteer work matching their skills.',
       icon: (
         <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
           <path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09z"/>
@@ -48,6 +54,8 @@ const ApplicationType = ({ formData, onChange, onNext }) => {
       value: 'Talented',
       label: t('talented'),
       labelAr: 'موهوب',
+      descriptionAr: 'الطالب أو المتدرب المميز الذي يمتلك مهارات متقدمة ويرغب في تطوير مشاريع إبداعية بدعم من فاب لاب.',
+      descriptionEn: 'A distinguished student or trainee with advanced skills who wants to develop creative projects with FABLAB support.',
       icon: (
         <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
           <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
@@ -58,6 +66,8 @@ const ApplicationType = ({ formData, onChange, onNext }) => {
       value: 'Entity',
       label: t('entity'),
       labelAr: 'كيان',
+      descriptionAr: 'الجهات الحكومية أو الشركات أو الجمعيات التي ترغب بالتعاون مع فاب لاب في مشاريع أو فعاليات.',
+      descriptionEn: 'Government agencies, companies, or associations wishing to partner with FABLAB on projects or events.',
       icon: (
         <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
           <path d="M6 22V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v18Z"/>
@@ -67,19 +77,6 @@ const ApplicationType = ({ formData, onChange, onNext }) => {
           <path d="M10 10h4"/>
           <path d="M10 14h4"/>
           <path d="M10 18h4"/>
-        </svg>
-      )
-    },
-    {
-      value: 'FABLAB Visit',
-      label: t('fablabVisit'),
-      labelAr: 'زيارة فاب لاب',
-      icon: (
-        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-          <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
-          <line x1="16" y1="2" x2="16" y2="6"/>
-          <line x1="8" y1="2" x2="8" y2="6"/>
-          <line x1="3" y1="10" x2="21" y2="10"/>
         </svg>
       )
     }
@@ -97,17 +94,17 @@ const ApplicationType = ({ formData, onChange, onNext }) => {
         {isRTL ? 'نوع الطلب' : 'Application Type'}
       </h2>
       <p className="step-description">
-        {isRTL ? 'اختر نوع التسجيل الذي يناسبك' : 'Select the registration type that suits you'}
+        {isRTL ? 'اختر نوع التسجيل الذي يناسبك — كل بطاقة توضح المستهدفين منها' : 'Select the registration type that suits you — each card explains who it\'s for'}
       </p>
 
-      <div className="selection-grid">
+      <div className="selection-grid selection-grid--with-desc">
         {applicationTypes.map((type, index) => (
           <motion.div
             key={type.value}
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: index * 0.1 }}
-            className={`selection-card ${formData.applicationType === type.value ? 'selected' : ''}`}
+            transition={{ delay: index * 0.06 }}
+            className={`selection-card selection-card--with-desc ${formData.applicationType === type.value ? 'selected' : ''}`}
             onClick={() => handleSelect(type.value)}
           >
             <div className="selection-card-icon">
@@ -115,6 +112,9 @@ const ApplicationType = ({ formData, onChange, onNext }) => {
             </div>
             <div className="selection-card-title">
               {isRTL ? type.labelAr : type.label}
+            </div>
+            <div className="selection-card-description">
+              {isRTL ? type.descriptionAr : type.descriptionEn}
             </div>
           </motion.div>
         ))}
