@@ -9360,7 +9360,7 @@ const AdminDashboard = () => {
                 className="settings-content"
               >
                 <div className="settings-grid">
-                  <div className="settings-card span-2" style={{ border: registrationPaused ? '2px solid #ef4444' : '2px solid #22c55e', background: registrationPaused ? 'rgba(239,68,68,0.03)' : 'rgba(34,197,94,0.03)' }}>
+                  <div className="settings-card" style={{ border: registrationPaused ? '2px solid #ef4444' : '2px solid #22c55e', background: registrationPaused ? 'rgba(239,68,68,0.03)' : 'rgba(34,197,94,0.03)' }}>
                     <h3 style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                       <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={registrationPaused ? '#ef4444' : '#22c55e'} strokeWidth="2">
                         {registrationPaused ? (
