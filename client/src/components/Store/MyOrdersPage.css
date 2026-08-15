@@ -75,7 +75,7 @@
 }
 .mo-card {
   display: grid;
-  grid-template-columns: 130px 1fr auto auto;
+  grid-template-columns: 130px 1fr auto auto auto;
   align-items: center;
   gap: 16px;
   padding: 14px 18px;
@@ -84,6 +84,23 @@
   border-radius: 14px;
   cursor: pointer;
   transition: box-shadow 0.14s, border-color 0.14s, transform 0.14s;
+}
+.mo-invoice-btn {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  border: 1px solid #e5e7eb;
+  background: #fff;
+  cursor: pointer;
+  font-size: 16px;
+  color: #64748b;
+  transition: all 0.14s;
+}
+.mo-invoice-btn:hover {
+  background: #EE2329;
+  color: #fff;
+  border-color: #EE2329;
+  transform: scale(1.06);
 }
 .mo-card:hover {
   transform: translateY(-2px);

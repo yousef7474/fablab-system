@@ -14,6 +14,13 @@ const API_URL = process.env.NODE_ENV === 'production'
   ? '/api'
   : (process.env.REACT_APP_API_URL || 'http://localhost:5000/api');
 
+// Opens the print-ready HTML invoice on the server in a new tab.
+// The invoice page has its own "Print / Save PDF" button.
+const openInvoice = (orderId) => {
+  const base = process.env.NODE_ENV === 'production' ? '' : (process.env.REACT_APP_API_URL || 'http://localhost:5000');
+  window.open(`${base}/api/public/store/orders/${orderId}/invoice`, '_blank', 'noopener');
+};
+
 const SAR = (n) => `${Number(n || 0).toFixed(2)} ر.س`;
 const fmtOrderNo = (n) => n == null ? '—' : `INV-${String(n).padStart(4, '0')}`;
 const fmtWhen = (v, isRTL) => v ? new Date(v).toLocaleString(isRTL ? 'ar-SA-u-ca-gregory-nu-latn' : 'en-US', {
@@ -100,6 +107,14 @@ const MyOrdersPage = () => {
             </div>
           </button>
           <div className="st-topbar-actions">
+            <button
+              type="button"
+              className="st-lang-btn"
+              onClick={() => i18n.changeLanguage(isRTL ? 'en' : 'ar')}
+              title={isRTL ? 'English' : 'العربية'}
+            >
+              {isRTL ? 'EN' : 'ع'}
+            </button>
             <button className="st-topbar-back" type="button" onClick={() => navigate('/store')}>
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/>
@@ -222,6 +237,14 @@ const MyOrdersPage = () => {
                       </span>
                       {o.paidAt && <span className="mo-paid">💵 {isRTL ? 'مدفوع' : 'Paid'}</span>}
                     </div>
+                    <button
+                      type="button"
+                      className="mo-invoice-btn"
+                      title={isRTL ? 'عرض الفاتورة' : 'View Invoice'}
+                      onClick={(e) => { e.stopPropagation(); openInvoice(o.orderId); }}
+                    >
+                      🖨️
+                    </button>
                   </motion.div>
                 );
               })}
@@ -291,8 +314,9 @@ const MyOrdersPage = () => {
                   <div className="mo-note"><b>{isRTL ? 'ملاحظاتك: ' : 'Your notes: '}</b>{selectedOrder.notes}</div>
                 )}
               </div>
-              <div className="st-modal-foot" style={{ padding: '14px 22px', borderTop: '1px solid #e5e7eb', display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+              <div className="st-modal-foot" style={{ padding: '14px 22px', borderTop: '1px solid #e5e7eb', display: 'flex', gap: 8, justifyContent: 'flex-end', flexWrap: 'wrap' }}>
                 <button className="st-btn st-btn--ghost" onClick={() => removeOrder(selectedOrder.orderId)}>{isRTL ? '🗑️ إزالة من قائمتي' : '🗑️ Remove from list'}</button>
+                <button className="st-btn st-btn--ghost" onClick={() => openInvoice(selectedOrder.orderId)}>{isRTL ? '🖨️ طباعة / حفظ PDF' : '🖨️ Print / Save PDF'}</button>
                 <button className="st-btn st-btn--primary" onClick={() => setSelectedOrder(null)}>{isRTL ? 'إغلاق' : 'Close'}</button>
               </div>
             </motion.div>

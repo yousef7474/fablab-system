@@ -98,23 +98,106 @@ const _buildAdminOrderEmail = (order) => {
   };
 };
 
-const _buildCustomerInvoiceEmail = (order, subject, headline) => {
+// Renders the 4-step order timeline as inline HTML for the email.
+// `activeIdx` is the index of the CURRENT step (0..3). Steps before
+// it are shown as done (green), after are grey. Cancelled is a
+// distinct visual — full red bar across all steps.
+const _renderTimeline = (activeIdx, cancelled) => {
+  const steps = [
+    { icon: '📝', label: 'مستلم' },
+    { icon: '✓',  label: 'مؤكد' },
+    { icon: '📦', label: 'جاهز' },
+    { icon: '✅', label: 'مكتمل' }
+  ];
+  if (cancelled) {
+    return `<div style="display:flex;align-items:center;justify-content:center;gap:10px;padding:14px;background:#fef2f2;border:1px solid #fecaca;border-radius:10px;margin:14px 0">
+      <span style="font-size:22px">❌</span>
+      <span style="font-weight:800;color:#b91c1c;font-size:14px">تم إلغاء الطلب</span>
+    </div>`;
+  }
+  const cells = steps.map((s, i) => {
+    const done = i < activeIdx;
+    const active = i === activeIdx;
+    const bg = done ? '#dcfce7' : active ? '#EE2329' : '#f1f5f9';
+    const color = done ? '#16a34a' : active ? '#fff' : '#94a3b8';
+    const border = done ? '2px solid #86efac' : active ? '2px solid #c41e24' : '2px solid transparent';
+    return `<td align="center" style="padding:0 2px">
+      <div style="background:${bg};border:${border};color:${color};padding:8px 6px;border-radius:8px;font-size:11px;font-weight:700">
+        <div style="font-size:18px;margin-bottom:2px">${s.icon}</div>
+        <div>${s.label}</div>
+      </div>
+    </td>`;
+  }).join('');
+  return `<table role="presentation" style="width:100%;border-collapse:separate;border-spacing:0;margin:14px 0"><tr>${cells}</tr></table>`;
+};
+
+// Status → { subject, headline, detail, timelineIdx, cancelled }.
+const _statusMeta = (status) => {
+  switch (status) {
+    case 'confirmed':
+      return {
+        subject: 'تم تأكيد طلبك',
+        headline: 'تم تأكيد طلبك من متجر فاب لاب',
+        detail: 'استلمنا طلبك وتمت مراجعته بنجاح. سنبدأ الآن بتجهيز الأصناف، وسنُعلمك بالبريد فور جاهزيتها للاستلام.',
+        timelineIdx: 1
+      };
+    case 'ready':
+      return {
+        subject: 'طلبك جاهز للاستلام',
+        headline: 'طلبك جاهز في مقر فاب لاب',
+        detail: 'طلبك جاهز الآن ويمكنك الحضور لاستلامه من مقر فاب لاب الأحساء خلال ساعات العمل. يرجى إحضار رقم الطلب أو الفاتورة عند الاستلام والدفع نقداً.',
+        timelineIdx: 2
+      };
+    case 'completed':
+      return {
+        subject: 'تم استلام طلبك — شكراً لك',
+        headline: 'شكراً — تم استلام طلبك بنجاح',
+        detail: 'تم استلام طلبك ودفعه بالكامل. نأمل أن تكون تجربتك ممتازة، ونشكرك على تعاملك مع فاب لاب الأحساء. تجد الفاتورة أدناه ويمكنك حفظها كملف PDF.',
+        timelineIdx: 3
+      };
+    case 'cancelled':
+      return {
+        subject: 'تم إلغاء طلبك',
+        headline: 'نأسف — تم إلغاء طلبك',
+        detail: 'تم إلغاء طلبك من قِبل الإدارة. للاستفسار عن السبب أو تقديم طلب جديد، يرجى التواصل مع فريق فاب لاب على fablabspec@fablabsahsa.com.',
+        cancelled: true
+      };
+    default: // pending
+      return {
+        subject: 'تم استلام طلبك',
+        headline: 'تم استلام طلبك — بانتظار التأكيد',
+        detail: 'استلمنا طلبك بنجاح ونحن الآن بصدد مراجعته. ستصلك رسالة بريد إلكتروني فور تأكيده من قِبل الإدارة.',
+        timelineIdx: 0
+      };
+  }
+};
+
+const _buildCustomerInvoiceEmail = (order, subjectOrMeta, headlineArg, detailArg) => {
+  // Backwards-compat: allow old (subject, headline) call or new (metaObj).
+  const meta = (typeof subjectOrMeta === 'object' && subjectOrMeta)
+    ? subjectOrMeta
+    : { subject: subjectOrMeta, headline: headlineArg, detail: detailArg };
   const orderNo = fmtOrderNumber(order.orderNumber);
+  const timeline = meta.cancelled != null || meta.timelineIdx != null
+    ? _renderTimeline(meta.timelineIdx || 0, !!meta.cancelled)
+    : '';
   return {
-    subject: `${subject} — ${orderNo}`,
+    subject: `${meta.subject} — ${orderNo}`,
     html: `<!doctype html><html dir="rtl"><body style="margin:0;font-family:Segoe UI,Tahoma,Arial,sans-serif;background:#f4f6fb;color:#0f172a;padding:24px">
 <div style="max-width:640px;margin:0 auto;background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 4px 20px rgba(15,23,42,0.08)">
   <div style="background:linear-gradient(135deg,#EE2329,#c41e24);color:#fff;padding:22px 24px">
     <div style="font-size:12px;letter-spacing:1px;opacity:0.85">FABLAB الأحساء · متجر</div>
-    <div style="font-size:22px;font-weight:800;margin-top:6px">${headline}</div>
+    <div style="font-size:22px;font-weight:800;margin-top:6px">${meta.headline}</div>
     <div style="font-size:13px;margin-top:8px;opacity:0.95">رقم الطلب: <b style="font-family:'JetBrains Mono',monospace">${orderNo}</b></div>
   </div>
   <div style="padding:22px 24px">
-    <p style="margin:0 0 14px;font-size:14px;line-height:1.75">
+    <p style="margin:0 0 10px;font-size:14px;line-height:1.75">
       مرحباً ${order.customerName}،
     </p>
-    <p style="margin:0 0 14px;font-size:14px;line-height:1.75">
-      نشكركم على طلبكم من متجر فاب لاب الأحساء. فيما يلي تفاصيل الفاتورة:
+    ${meta.detail ? `<p style="margin:0 0 6px;font-size:14px;line-height:1.85;color:#334155">${meta.detail}</p>` : ''}
+    ${timeline}
+    <p style="margin:14px 0 10px;font-size:13px;line-height:1.75;color:#64748b">
+      فيما يلي تفاصيل فاتورتك:
     </p>
 
     <table style="width:100%;font-size:13px;border-collapse:collapse;background:#f8fafc;border-radius:10px;overflow:hidden;margin-bottom:16px">
@@ -300,11 +383,7 @@ exports.publicCreate = async (req, res) => {
         const adminRes = await _sendMail(STORE_NOTIFY_EMAIL, adminMail.subject, adminMail.html, adminMail.text);
         if (adminRes.ok) await order.update({ adminEmailSentAt: new Date() });
 
-        const custMail = _buildCustomerInvoiceEmail(
-          order,
-          'تم استلام طلبك',
-          'تم استلام طلبك — بانتظار التأكيد'
-        );
+        const custMail = _buildCustomerInvoiceEmail(order, _statusMeta('pending'));
         const custRes = await _sendMail(order.customerEmail, custMail.subject, custMail.html, custMail.text);
         if (custRes.ok) await order.update({ customerEmailSentAt: new Date() });
       } catch (err) {
@@ -381,7 +460,7 @@ exports.publicInvoiceHtml = async (req, res) => {
   .actions button { padding:12px 22px; border-radius:10px; border:none; background:linear-gradient(135deg,#EE2329,#ff4d51); color:#fff; font-family:inherit; font-weight:700; font-size:14px; cursor:pointer; box-shadow:0 8px 20px -8px rgba(238,35,41,0.5); }
   .actions .ghost { background:#fff; color:#0f172a; border:1px solid #e5e7eb; box-shadow:none; }
   .invoice { max-width:820px; margin:0 auto; background:#fff; border-radius:16px; box-shadow:0 20px 40px -20px rgba(15,23,42,0.15); padding:28px; position:relative; overflow:hidden; }
-  .stamp { position:absolute; top:44%; inset-inline-start:20%; transform:rotate(-22deg); border:6px double ${stampColor}; color:${stampColor}; padding:18px 44px; font-family:'Bricolage Grotesque','Cairo',sans-serif; font-weight:900; font-size:44px; letter-spacing:3px; text-align:center; opacity:0.22; pointer-events:none; z-index:0; border-radius:12px; }
+  .stamp { position:absolute; top:44%; inset-inline-start:22%; transform:rotate(-22deg); border:6px double ${stampColor}; color:${stampColor}; padding:18px 44px; font-family:'Bricolage Grotesque','Cairo',sans-serif; font-weight:900; font-size:44px; letter-spacing:3px; text-align:center; background:rgba(255,255,255,0.55); opacity:0.75; pointer-events:none; z-index:999; border-radius:12px; box-shadow:inset 0 0 0 3px ${stampColor}20; }
   .stamp small { display:block; font-size:14px; font-weight:700; margin-top:4px; opacity:0.9; }
   main { position:relative; z-index:1; font-size:12px; line-height:1.55; }
   .invoice-head { display:grid; grid-template-columns:1fr 1fr; gap:16px; padding-bottom:16px; margin-bottom:20px; border-bottom:3px solid #0f172a; }
@@ -555,20 +634,14 @@ exports.updateStatus = async (req, res) => {
     if (status === 'cancelled') patch.cancelledAt = new Date();
     await order.update(patch);
 
-    // Email the customer about the change, when asked
-    if (notifyCustomer && order.customerEmail) {
-      const labels = {
-        confirmed: { subject: 'تم تأكيد طلبك',  headline: 'تم تأكيد طلبك من متجر فاب لاب' },
-        ready:     { subject: 'طلبك جاهز',      headline: 'طلبك جاهز للاستلام' },
-        completed: { subject: 'تم استلام طلبك', headline: 'شكراً — تم استلام طلبك' },
-        cancelled: { subject: 'تم إلغاء طلبك',  headline: 'نأسف — تم إلغاء طلبك' }
-      };
-      const info = labels[status];
-      if (info) {
-        const mail = _buildCustomerInvoiceEmail(order, info.subject, info.headline);
-        await _sendMail(order.customerEmail, mail.subject, mail.html, mail.text);
-        await order.update({ customerEmailSentAt: new Date() });
-      }
+    // Email the customer about the change, when asked. The status-
+    // specific meta gives the recipient a detailed explanation + a
+    // progress-timeline visual, not just a swapped headline.
+    if (notifyCustomer && order.customerEmail && ['confirmed', 'ready', 'completed', 'cancelled'].includes(status)) {
+      const meta = _statusMeta(status);
+      const mail = _buildCustomerInvoiceEmail(order, meta);
+      await _sendMail(order.customerEmail, mail.subject, mail.html, mail.text);
+      await order.update({ customerEmailSentAt: new Date() });
     }
     res.json(order);
   } catch (err) {

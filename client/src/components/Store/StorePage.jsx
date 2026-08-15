@@ -209,6 +209,14 @@ const StorePage = () => {
             </div>
           </button>
           <div className="st-topbar-actions">
+            <button
+              type="button"
+              className="st-lang-btn"
+              onClick={() => i18n.changeLanguage(isRTL ? 'en' : 'ar')}
+              title={isRTL ? 'English' : 'العربية'}
+            >
+              {isRTL ? 'EN' : 'ع'}
+            </button>
             <button className="st-sidebar-toggle" type="button" onClick={() => setSidebarOpen(true)} title={isRTL ? 'التصنيفات' : 'Categories'}>
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/>

@@ -95,6 +95,26 @@
 .st-topbar-back:hover { border-color: var(--st-brand); color: var(--st-brand); }
 .st-topbar-back svg { width: 15px; height: 15px; }
 
+/* ---------- Language toggle ---------- */
+.st-lang-btn {
+  width: 36px;
+  height: 36px;
+  border-radius: 999px;
+  border: 1px solid var(--st-line);
+  background: var(--st-surface);
+  color: var(--st-ink-2);
+  font-family: 'Bricolage Grotesque', 'Cairo', sans-serif;
+  font-weight: 800;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.14s;
+}
+.st-lang-btn:hover {
+  border-color: var(--st-brand);
+  color: var(--st-brand);
+  transform: rotate(360deg);
+}
+
 /* ---------- Sign-in / User chip ---------- */
 .st-signin-btn {
   display: inline-flex;

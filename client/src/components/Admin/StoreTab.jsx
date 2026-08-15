@@ -334,26 +334,29 @@ const StoreTab = () => {
     position: relative;
   }
 
-  /* Diagonal PAID / UNPAID watermark stamp */
+  /* Diagonal PAID / UNPAID stamp — sits ON TOP of the text like a
+     real ink stamp pressed onto the invoice. Slightly translucent
+     so text underneath stays readable, but definitely in front. */
   .stamp {
     position: fixed;
     top: 42%;
-    inset-inline-start: 20%;
+    inset-inline-start: 22%;
     transform: rotate(-22deg);
     border: 6px double ${stampColor};
     color: ${stampColor};
     padding: 18px 44px;
     font-family: 'Bricolage Grotesque', 'Cairo', sans-serif;
     font-weight: 900;
-    font-size: 38px;
+    font-size: 40px;
     letter-spacing: 3px;
     text-align: center;
-    background: rgba(255,255,255,0.05);
-    opacity: 0.22;
+    background: rgba(255,255,255,0.55);
+    opacity: 0.75;
     pointer-events: none;
-    z-index: 0;
+    z-index: 999;
     border-radius: 12px;
     text-transform: uppercase;
+    box-shadow: inset 0 0 0 3px ${stampColor}20;
   }
   .stamp small {
     display: block;
