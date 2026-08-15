@@ -29,6 +29,7 @@ const PublicAttendanceReport = lazy(() => import('./components/Public/PublicAtte
 const PublicOvertimeApproval = lazy(() => import('./components/Public/PublicOvertimeApproval'));
 const FablabVisitForm = lazy(() => import('./components/FablabVisit/FablabVisitForm'));
 const PublicFablabVisitApproval = lazy(() => import('./components/Public/PublicFablabVisitApproval'));
+const StorePage = lazy(() => import('./components/Store/StorePage'));
 
 const RouteFallback = () => (
   <div style={{
@@ -52,7 +53,7 @@ const RouteFallback = () => (
 // Wrapper to conditionally show LanguageSelector (hide on admin/manager/elite pages)
 const ConditionalLanguageSelector = () => {
   const location = useLocation();
-  if (location.pathname === '/admin/login' || location.pathname.startsWith('/manager') || location.pathname.startsWith('/elite') || location.pathname.startsWith('/employee') || location.pathname.startsWith('/workshop') || location.pathname.startsWith('/public/') || location.pathname.startsWith('/fablab-visit')) return null;
+  if (location.pathname === '/admin/login' || location.pathname.startsWith('/manager') || location.pathname.startsWith('/elite') || location.pathname.startsWith('/employee') || location.pathname.startsWith('/workshop') || location.pathname.startsWith('/public/') || location.pathname.startsWith('/fablab-visit') || location.pathname.startsWith('/store')) return null;
   return <LanguageSelector />;
 };
 
@@ -84,6 +85,7 @@ const AppContent = () => {
           <Route path="/public/overtime/:token" element={<PublicOvertimeApproval />} />
           <Route path="/fablab-visit" element={<FablabVisitForm />} />
           <Route path="/public/fablab-visit/:token" element={<PublicFablabVisitApproval />} />
+          <Route path="/store" element={<StorePage />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </Suspense>

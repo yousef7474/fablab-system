@@ -199,6 +199,28 @@ const UserLookup = ({ onUserFound, onNewUser }) => {
           <div className="service-card-arrow" aria-hidden="true">{isRTL ? '←' : '→'}</div>
         </button>
 
+        {/* Store */}
+        <button
+          type="button"
+          className="service-card service-card--store"
+          onClick={() => navigate('/store')}
+        >
+          <div className="service-card-icon">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/>
+              <line x1="3" y1="6" x2="21" y2="6"/>
+              <path d="M16 10a4 4 0 0 1-8 0"/>
+            </svg>
+          </div>
+          <div className="service-card-body">
+            <div className="service-card-title">{isRTL ? 'متجر فاب لاب' : 'FABLAB Store'}</div>
+            <div className="service-card-description">
+              {isRTL ? 'تسوّق الأدوات، المكونات، والمواد — الدفع نقداً عند الاستلام' : 'Shop tools, kits and materials — cash on pickup'}
+            </div>
+          </div>
+          <div className="service-card-arrow" aria-hidden="true">{isRTL ? '←' : '→'}</div>
+        </button>
+
         {/* FABLAB Visit */}
         <button
           type="button"

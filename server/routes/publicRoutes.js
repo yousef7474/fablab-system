@@ -3,6 +3,8 @@ const router = express.Router();
 const volunteerController = require('../controllers/volunteerController');
 const overtimeController = require('../controllers/overtimeController');
 const fablabVisitController = require('../controllers/fablabVisitController');
+const storeItemController = require('../controllers/storeItemController');
+const storeOrderController = require('../controllers/storeOrderController');
 
 // PUBLIC — no auth middleware, no login required.
 // Access is gated by opaque UUID tokens generated on the admin side:
@@ -24,5 +26,11 @@ router.post('/overtime/:token/decide', overtimeController.publicDecide);
 router.post('/fablab-visit/submit', fablabVisitController.publicCreate);
 router.get('/fablab-visit/:token', fablabVisitController.publicGetByToken);
 router.post('/fablab-visit/:token/decide', fablabVisitController.publicDecide);
+
+// Store — public browse + place order + view own order confirmation
+router.get('/store/items',           storeItemController.publicList);
+router.get('/store/items/:id',       storeItemController.publicGet);
+router.post('/store/orders',         storeOrderController.publicCreate);
+router.get('/store/orders/:id',      storeOrderController.publicGet);
 
 module.exports = router;

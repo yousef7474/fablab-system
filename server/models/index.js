@@ -67,6 +67,8 @@ const Contract = require('./Contract');
 const SummerStudentAttendance = require('./SummerStudentAttendance');
 const FablabVisit = require('./FablabVisit');
 const CalendarEvent = require('./CalendarEvent');
+const StoreItem = require('./StoreItem');
+const StoreOrder = require('./StoreOrder');
 
 MawhbaAttendance.belongsTo(MawhbaStudent, { foreignKey: 'studentId', as: 'student', constraints: false });
 MawhbaStudent.hasMany(MawhbaAttendance, { foreignKey: 'studentId', as: 'attendance', constraints: false });
@@ -391,6 +393,34 @@ const syncDatabase = async () => {
     } catch (migrationError) {
       if (!migrationError.message.includes("doesn't exist") && !migrationError.message.includes('already exists')) {
         console.log('Migration note:', migrationError.message);
+      }
+    }
+
+    // Store orders: sequential orderNumber column + index. Backfill
+    // any existing rows so every historical order gets a number.
+    try {
+      await sequelize.query(
+        `ALTER TABLE store_orders ADD COLUMN IF NOT EXISTS "orderNumber" INTEGER`
+      );
+      await sequelize.query(
+        `UPDATE store_orders so
+            SET "orderNumber" = sub.rn
+           FROM (
+             SELECT "orderId",
+                    ROW_NUMBER() OVER (ORDER BY "createdAt") AS rn
+               FROM store_orders
+              WHERE "orderNumber" IS NULL
+           ) sub
+          WHERE so."orderId" = sub."orderId"`
+      );
+      try {
+        await sequelize.query(
+          `CREATE UNIQUE INDEX IF NOT EXISTS store_orders_number_uniq ON store_orders ("orderNumber")`
+        );
+      } catch (_) { /* index may already exist */ }
+    } catch (migrationError) {
+      if (!/does not exist/i.test(migrationError.message)) {
+        console.log('store_orders.orderNumber migration note:', migrationError.message);
       }
     }
 
@@ -797,5 +827,7 @@ module.exports = {
   SummerStudentAttendance,
   FablabVisit,
   CalendarEvent,
+  StoreItem,
+  StoreOrder,
   syncDatabase
 };

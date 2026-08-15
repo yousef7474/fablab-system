@@ -5130,6 +5130,19 @@
   box-shadow: 0 22px 48px -22px color-mix(in oklab, var(--sc-accent) 45%, transparent) !important;
 }
 
+/* Store card variant — brand red so it feels tied to the main FabLab identity */
+.service-card--store {
+  --sc-accent: #EE2329;
+}
+.registration-page .form-card .service-card.service-card--store .service-card-icon {
+  color: var(--sc-accent) !important;
+  background: color-mix(in oklab, var(--sc-accent) 18%, transparent) !important;
+}
+.registration-page .form-card .service-card.service-card--store:hover {
+  border-color: color-mix(in oklab, var(--sc-accent) 55%, rgba(255,255,255,0.1)) !important;
+  box-shadow: 0 22px 48px -22px color-mix(in oklab, var(--sc-accent) 45%, transparent) !important;
+}
+
 /* =============================================================
    Topbar Home button (moved out of the form card)
    Slim pill that only appears once the wizard has started.

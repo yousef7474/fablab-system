@@ -28,6 +28,7 @@ import UnifiedAttendancePage from '../shared/UnifiedAttendancePage';
 import FablabVisitsTab from './FablabVisitsTab';
 import FablabVisitOverrideCodeCard from './FablabVisitOverrideCodeCard';
 import YearCalendar from '../YearCalendar/YearCalendar';
+import StoreTab from './StoreTab';
 
 const COLORS = ['#6366f1', '#22c55e', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4', '#ec4899'];
 
@@ -88,7 +89,7 @@ const AdminDashboard = () => {
   const isRTL = i18n.language === 'ar';
 
   // Valid tabs for URL persistence
-  const validTabs = ['dashboard', 'registrations', 'users', 'employees', 'schedule', 'analytics', 'borrowing', 'education', 'workshops', 'workspaces', 'volunteers', 'workers', 'fablab-staff', 'summer', 'mawhba', 'overtime', 'trainer-assistants', 'contracts', 'customers', 'fablab-visits', 'year-calendar', 'attendance-station', 'quick-messages', 'settings'];
+  const validTabs = ['dashboard', 'registrations', 'users', 'employees', 'schedule', 'analytics', 'borrowing', 'education', 'workshops', 'workspaces', 'volunteers', 'workers', 'fablab-staff', 'summer', 'mawhba', 'overtime', 'trainer-assistants', 'contracts', 'customers', 'fablab-visits', 'store', 'year-calendar', 'attendance-station', 'quick-messages', 'settings'];
 
   // Get initial tab from URL, localStorage, or default to 'dashboard'
   const getInitialTab = () => {
@@ -4825,6 +4826,7 @@ const AdminDashboard = () => {
     { id: 'contracts', icon: 'contracts', labelEn: 'Contracts', labelAr: 'العقود' },
     { id: 'customers', icon: 'customers', labelEn: 'Customers', labelAr: 'العملاء' },
     { id: 'fablab-visits', icon: 'fablab-visits', labelEn: 'FabLab Visits', labelAr: 'زيارات فاب لاب' },
+    { id: 'store', icon: 'store', labelEn: 'Store', labelAr: 'المتجر' },
     { id: 'year-calendar', icon: 'year-calendar', labelEn: 'Year Calendar', labelAr: 'التقويم السنوي' },
     { id: 'attendance-station', icon: 'attendance-station', labelEn: 'Attendance Station', labelAr: 'محطة الحضور' },
     { id: 'quick-messages', icon: 'quick-messages', labelEn: 'Quick Messages', labelAr: 'رسائل جاهزة' },
@@ -4854,6 +4856,7 @@ const AdminDashboard = () => {
       'quick-messages': <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>,
       'fablab-visits': <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/><path d="M8 14h.01M12 14h.01M16 14h.01M8 18h.01M12 18h.01"/></svg>,
       'year-calendar': <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/><rect x="7" y="13" width="3" height="3"/><rect x="14" y="13" width="3" height="3"/></svg>,
+      'store': <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>,
       'attendance-station': <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>,
       settings: <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
     };
@@ -9244,6 +9247,9 @@ const AdminDashboard = () => {
 
             {/* Year Calendar Tab */}
             {activeTab === 'year-calendar' && <YearCalendar />}
+
+            {/* Store Tab */}
+            {activeTab === 'store' && <StoreTab />}
 
             {/* FabLab Staff Tab — wrapped with data-page="manager" so the
                 shared Manager.css classes (.volunteers-content, .volunteer-card,
