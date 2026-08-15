@@ -27,6 +27,8 @@ const WorkshopRegistration = lazy(() => import('./components/WorkshopRegistratio
 const PublicVolunteerReport = lazy(() => import('./components/Public/PublicVolunteerReport'));
 const PublicAttendanceReport = lazy(() => import('./components/Public/PublicAttendanceReport'));
 const PublicOvertimeApproval = lazy(() => import('./components/Public/PublicOvertimeApproval'));
+const FablabVisitForm = lazy(() => import('./components/FablabVisit/FablabVisitForm'));
+const PublicFablabVisitApproval = lazy(() => import('./components/Public/PublicFablabVisitApproval'));
 
 const RouteFallback = () => (
   <div style={{
@@ -50,7 +52,7 @@ const RouteFallback = () => (
 // Wrapper to conditionally show LanguageSelector (hide on admin/manager/elite pages)
 const ConditionalLanguageSelector = () => {
   const location = useLocation();
-  if (location.pathname === '/admin/login' || location.pathname.startsWith('/manager') || location.pathname.startsWith('/elite') || location.pathname.startsWith('/employee') || location.pathname.startsWith('/workshop') || location.pathname.startsWith('/public/')) return null;
+  if (location.pathname === '/admin/login' || location.pathname.startsWith('/manager') || location.pathname.startsWith('/elite') || location.pathname.startsWith('/employee') || location.pathname.startsWith('/workshop') || location.pathname.startsWith('/public/') || location.pathname.startsWith('/fablab-visit')) return null;
   return <LanguageSelector />;
 };
 
@@ -80,6 +82,8 @@ const AppContent = () => {
           <Route path="/public/volunteer/:token" element={<PublicVolunteerReport />} />
           <Route path="/public/report/:token" element={<PublicAttendanceReport />} />
           <Route path="/public/overtime/:token" element={<PublicOvertimeApproval />} />
+          <Route path="/fablab-visit" element={<FablabVisitForm />} />
+          <Route path="/public/fablab-visit/:token" element={<PublicFablabVisitApproval />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </Suspense>

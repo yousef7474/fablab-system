@@ -539,10 +539,6 @@ const RegistrationForm = () => {
               <UserLookup
                 onUserFound={handleUserFound}
                 onNewUser={() => setActiveStep(0)}
-                onFablabVisit={() => {
-                  setFormData({ ...defaultFormData, applicationType: 'FABLAB Visit' });
-                  setActiveStep(1);
-                }}
               />
             ) : (
               <>

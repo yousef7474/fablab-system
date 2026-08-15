@@ -10,7 +10,7 @@ import api from '../../../config/api';
 const ELITE_PASSWORD = 'fabstar123';
 const EDUCATION_PASSWORD = 'education123';
 
-const UserLookup = ({ onUserFound, onNewUser, onFablabVisit }) => {
+const UserLookup = ({ onUserFound, onNewUser }) => {
   const { t, i18n } = useTranslation();
   const isRTL = i18n.language === 'ar';
   const navigate = useNavigate();
@@ -203,7 +203,7 @@ const UserLookup = ({ onUserFound, onNewUser, onFablabVisit }) => {
         <button
           type="button"
           className="service-card service-card--visit"
-          onClick={() => onFablabVisit && onFablabVisit()}
+          onClick={() => navigate('/fablab-visit')}
         >
           <div className="service-card-icon">
             <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
