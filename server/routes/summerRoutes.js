@@ -3,10 +3,18 @@ const router = express.Router();
 const programs = require('../controllers/summerProgramController');
 const teachers = require('../controllers/summerTeacherController');
 const students = require('../controllers/summerStudentController');
+const seasons  = require('../controllers/summerSeasonController');
 const authMiddleware = require('../middleware/auth');
 const { requireManager } = require('../middleware/roleMiddleware');
 
 router.use(authMiddleware);
+
+// Seasons — literal path before the /:id-carrying routes below.
+router.get('/seasons',                seasons.list);
+router.post('/seasons',               requireManager, seasons.create);
+router.patch('/seasons/:id/activate', requireManager, seasons.activate);
+router.put('/seasons/:id',            requireManager, seasons.update);
+router.delete('/seasons/:id',         requireManager, seasons.remove);
 
 // Programs
 router.get('/programs', programs.list);

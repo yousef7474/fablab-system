@@ -1,5 +1,6 @@
 const { Op } = require('sequelize');
 const { SummerProgram, SummerTeacher, SummerStudent, Volunteer, Admin } = require('../models');
+const { getActiveSeasonId } = require('./summerSeasonController');
 
 // When a program is saved with a sectionVolunteers name array, we mirror
 // that selection onto the actual Volunteer records so the Summer FabLab
@@ -40,8 +41,18 @@ const syncSectionVolunteerLinks = async (programId, names) => {
 
 exports.list = async (req, res) => {
   try {
+    // Scope by season if ?season= given, otherwise the active season.
+    // ?season=all bypasses filtering so admin can look at everything.
+    const q = String(req.query.season || '').trim();
+    const where = { isActive: true };
+    if (q && q !== 'all') {
+      where.seasonId = q;
+    } else if (q !== 'all') {
+      const active = await getActiveSeasonId();
+      if (active) where.seasonId = active;
+    }
     const programs = await SummerProgram.findAll({
-      where: { isActive: true },
+      where,
       include: [
         { model: SummerTeacher, as: 'teacher', attributes: ['teacherId', 'name', 'fablabSection'] },
         { model: SummerStudent, as: 'students', where: { isActive: true }, required: false, attributes: ['studentId'] }
@@ -98,7 +109,10 @@ exports.create = async (req, res) => {
       sectionVolunteers: Array.isArray(sectionVolunteers) ? sectionVolunteers : [],
       color: color || null,
       notes: notes || null,
-      createdById: req.admin?.adminId || null
+      createdById: req.admin?.adminId || null,
+      // Auto-attach to whichever season is currently active — admin
+      // can move programs between seasons via the season selector.
+      seasonId: req.body.seasonId || await getActiveSeasonId()
     });
 
     // Mirror the sectionVolunteers list onto the actual Volunteer

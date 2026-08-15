@@ -5,6 +5,7 @@ const {
   SummerProgram,
   SummerStudentAttendance
 } = require('../models');
+const { getActiveSeasonId } = require('./summerSeasonController');
 
 // FabLab section → theme color mapping (mirrors the palette used across
 // the admin panel so the Summer ID card feels consistent with the rest
@@ -73,6 +74,15 @@ exports.list = async (req, res) => {
   try {
     const where = { isActive: true };
     if (req.query.programId) where.programId = req.query.programId;
+    const q = String(req.query.season || '').trim();
+    if (q && q !== 'all') {
+      where.seasonId = q;
+    } else if (q !== 'all' && !req.query.programId) {
+      // Only auto-scope by active season when the caller isn't already
+      // narrowing to a specific program (which itself belongs to a season).
+      const active = await getActiveSeasonId();
+      if (active) where.seasonId = active;
+    }
     const students = await SummerStudent.findAll({
       where,
       include: [
@@ -93,6 +103,15 @@ exports.create = async (req, res) => {
     if (!programId || !name) {
       return res.status(400).json({ message: 'programId and name are required', messageAr: 'البرنامج والاسم مطلوبان' });
     }
+    // Inherit the season from the parent program if we can, so a
+     // student never lands in a different season from their program.
+    let seasonId = req.body.seasonId || null;
+    if (!seasonId && programId) {
+      const p = await SummerProgram.findByPk(programId, { attributes: ['seasonId'] });
+      seasonId = p?.seasonId || null;
+    }
+    if (!seasonId) seasonId = await getActiveSeasonId();
+
     const student = await SummerStudent.create({
       programId,
       name,
@@ -102,7 +121,8 @@ exports.create = async (req, res) => {
       age: age != null && age !== '' ? Number(age) : null,
       gender: gender || null,
       notes: notes || null,
-      createdById: req.admin?.adminId || null
+      createdById: req.admin?.adminId || null,
+      seasonId
     });
     res.status(201).json(student);
   } catch (err) {

@@ -24,7 +24,8 @@ const SummerStudent = sequelize.define('SummerStudent', {
   notes:      { type: DataTypes.TEXT, allowNull: true },
   attendanceDays: { type: DataTypes.JSON, allowNull: true, defaultValue: [] },
   isActive:   { type: DataTypes.BOOLEAN, defaultValue: true },
-  createdById:{ type: DataTypes.UUID, allowNull: true }
+  createdById:{ type: DataTypes.UUID, allowNull: true },
+  seasonId:   { type: DataTypes.UUID, allowNull: true }
 }, {
   tableName: 'summer_students',
   timestamps: true,

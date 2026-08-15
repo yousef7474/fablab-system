@@ -344,6 +344,17 @@ const SummerFablab = () => {
 
   const [subTab, setSubTab] = useState('programs');
 
+  // Seasons — yearly cohorts. `activeSeasonId` is what we actually
+  // filter list endpoints by. Initially set to the server-side active
+  // season on first load.
+  const [seasons, setSeasons] = useState([]);
+  const [activeSeasonId, setActiveSeasonId] = useState('');
+  const [showNewSeasonModal, setShowNewSeasonModal] = useState(false);
+  const [newSeasonForm, setNewSeasonForm] = useState({
+    name: '',
+    year: new Date().getFullYear()
+  });
+
   // Shared data — every panel may need any of these (teachers used by
   // the program form, programs used by the student form etc.)
   const [programs, setPrograms] = useState([]);
@@ -355,32 +366,99 @@ const SummerFablab = () => {
   const [loading, setLoading] = useState({ programs: false, teachers: false, students: false, volunteers: false });
   const setLoadingKey = (k, v) => setLoading(prev => ({ ...prev, [k]: v }));
 
+  // All list endpoints support ?season= — we always send whichever
+  // season the picker is currently on so the tab shows one year's data.
+  const seasonQuery = () => activeSeasonId ? `?season=${activeSeasonId}` : '';
+
   const fetchPrograms = useCallback(async () => {
     setLoadingKey('programs', true);
     try {
-      const res = await api.get('/summer/programs');
+      const res = await api.get(`/summer/programs${seasonQuery()}`);
       setPrograms(Array.isArray(res.data) ? res.data : []);
     } catch (err) { console.error(err); toast.error(isRTL ? 'خطأ في تحميل البرامج' : 'Error loading programs'); }
     finally { setLoadingKey('programs', false); }
-  }, [isRTL]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isRTL, activeSeasonId]);
 
   const fetchTeachers = useCallback(async () => {
     setLoadingKey('teachers', true);
     try {
-      const res = await api.get('/summer/teachers');
+      const res = await api.get(`/summer/teachers${seasonQuery()}`);
       setTeachers(Array.isArray(res.data) ? res.data : []);
     } catch (err) { console.error(err); toast.error(isRTL ? 'خطأ في تحميل المعلمين' : 'Error loading teachers'); }
     finally { setLoadingKey('teachers', false); }
-  }, [isRTL]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isRTL, activeSeasonId]);
 
   const fetchStudents = useCallback(async () => {
     setLoadingKey('students', true);
     try {
-      const res = await api.get('/summer/students');
+      const res = await api.get(`/summer/students${seasonQuery()}`);
       setStudents(Array.isArray(res.data) ? res.data : []);
     } catch (err) { console.error(err); toast.error(isRTL ? 'خطأ في تحميل الطلاب' : 'Error loading students'); }
     finally { setLoadingKey('students', false); }
-  }, [isRTL]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isRTL, activeSeasonId]);
+
+  const fetchSeasons = useCallback(async () => {
+    try {
+      const { data } = await api.get('/summer/seasons');
+      const list = Array.isArray(data) ? data : [];
+      setSeasons(list);
+      if (!activeSeasonId) {
+        const active = list.find(s => s.isActive);
+        if (active) setActiveSeasonId(active.seasonId);
+        else if (list[0]) setActiveSeasonId(list[0].seasonId);
+      }
+    } catch (err) { console.error('fetchSeasons:', err); }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeSeasonId]);
+
+  const handleCreateSeason = async () => {
+    const name = (newSeasonForm.name || '').trim();
+    if (!name) {
+      toast.error(isRTL ? 'يرجى إدخال اسم الموسم' : 'Season name is required');
+      return;
+    }
+    try {
+      const { data } = await api.post('/summer/seasons', {
+        name,
+        year: Number(newSeasonForm.year) || null,
+        activate: true
+      });
+      toast.success(isRTL ? 'تم إنشاء الموسم وتفعيله' : 'Season created and activated');
+      setShowNewSeasonModal(false);
+      setNewSeasonForm({ name: '', year: new Date().getFullYear() + 1 });
+      setActiveSeasonId(data.seasonId);
+      await fetchSeasons();
+    } catch (err) {
+      console.error(err);
+      toast.error(err?.response?.data?.messageAr || (isRTL ? 'خطأ في إنشاء الموسم' : 'Failed to create season'));
+    }
+  };
+
+  const handleActivateSeason = async (id) => {
+    try {
+      await api.patch(`/summer/seasons/${id}/activate`);
+      toast.success(isRTL ? 'تم تفعيل الموسم' : 'Season activated');
+      setActiveSeasonId(id);
+      await fetchSeasons();
+    } catch (err) {
+      toast.error(isRTL ? 'خطأ في تفعيل الموسم' : 'Failed to activate');
+    }
+  };
+
+  const handleDeleteSeason = async (s) => {
+    if (!window.confirm(isRTL ? `حذف الموسم "${s.name}"؟` : `Delete season "${s.name}"?`)) return;
+    try {
+      await api.delete(`/summer/seasons/${s.seasonId}`);
+      toast.success(isRTL ? 'تم الحذف' : 'Deleted');
+      if (activeSeasonId === s.seasonId) setActiveSeasonId('');
+      await fetchSeasons();
+    } catch (err) {
+      toast.error(err?.response?.data?.messageAr || (isRTL ? 'تعذّر الحذف' : 'Delete failed'));
+    }
+  };
 
   const fetchEmployees = useCallback(async () => {
     try {
@@ -403,10 +481,15 @@ const SummerFablab = () => {
     finally { setLoadingKey('volunteers', false); }
   }, [isRTL]);
 
+  // Load seasons once — sets activeSeasonId to whichever the server
+  // says is active. The list-fetching effect below then reacts.
+  useEffect(() => { fetchSeasons(); }, [fetchSeasons]);
+
   useEffect(() => {
     // Always need programs (form pickers reference them in multiple
     // tabs). Teachers, volunteers, and employees are also referenced
-    // by the program/teacher forms, so load them upfront too.
+    // by the program/teacher forms, so load them upfront too. All
+    // season-scoped lists refire whenever the picker changes.
     fetchPrograms();
     fetchTeachers();
     fetchEmployees();
@@ -1209,6 +1292,49 @@ const SummerFablab = () => {
             {isRTL ? 'إدارة البرامج، المعلمين، المتطوعين والطلاب لموسم الصيف.' : 'Manage programs, teachers, volunteers and students for the summer season.'}
           </p>
         </div>
+      </div>
+
+      {/* Season picker — same UX pattern as Mawhba. Active season is
+          the destination for new programs / teachers / students. */}
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, alignItems: 'center', marginBottom: 14, padding: '12px 14px', background: '#fff', border: '1px solid #e5e7eb', borderRadius: 12 }}>
+        <span style={{ fontSize: 12, fontWeight: 700, letterSpacing: 1, color: '#64748b', textTransform: 'uppercase' }}>
+          {isRTL ? 'الموسم' : 'Season'}
+        </span>
+        <select
+          value={activeSeasonId}
+          onChange={(e) => setActiveSeasonId(e.target.value)}
+          style={{ padding: '8px 12px', borderRadius: 8, border: '1px solid #e5e7eb', fontFamily: 'inherit', fontSize: 13, background: '#fff', minWidth: 200, cursor: 'pointer' }}
+        >
+          {seasons.length === 0 && <option value="">{isRTL ? 'لا توجد مواسم' : 'No seasons'}</option>}
+          {seasons.map(s => (
+            <option key={s.seasonId} value={s.seasonId}>
+              {s.name}{s.isActive ? (isRTL ? ' · نشط' : ' · Active') : ''} {s.studentCount ? `(${s.studentCount} ${isRTL ? 'طلاب' : 'students'})` : ''}
+            </option>
+          ))}
+        </select>
+        {activeSeasonId && !seasons.find(s => s.seasonId === activeSeasonId)?.isActive && (
+          <button
+            onClick={() => handleActivateSeason(activeSeasonId)}
+            style={{ padding: '7px 14px', borderRadius: 8, border: '1px solid #f97316', background: 'rgba(249,115,22,0.08)', color: '#c2410c', cursor: 'pointer', fontFamily: 'inherit', fontWeight: 700, fontSize: 12 }}
+          >
+            {isRTL ? '⚡ تفعيل هذا الموسم' : '⚡ Activate this season'}
+          </button>
+        )}
+        <button
+          onClick={() => setShowNewSeasonModal(true)}
+          style={{ padding: '8px 14px', borderRadius: 8, border: 'none', background: 'linear-gradient(135deg,#f97316,#ea580c)', color: '#fff', cursor: 'pointer', fontFamily: 'inherit', fontWeight: 700, fontSize: 12.5, marginInlineStart: 'auto', boxShadow: '0 4px 12px -4px rgba(249,115,22,0.5)' }}
+        >
+          + {isRTL ? 'موسم جديد' : 'New Season'}
+        </button>
+        {activeSeasonId && !seasons.find(s => s.seasonId === activeSeasonId)?.isActive && (
+          <button
+            onClick={() => handleDeleteSeason(seasons.find(s => s.seasonId === activeSeasonId))}
+            title={isRTL ? 'حذف الموسم (يجب أن يكون فارغاً)' : 'Delete season (must be empty)'}
+            style={{ padding: '7px 12px', borderRadius: 8, border: '1px solid #fecaca', background: '#fff', color: '#b91c1c', cursor: 'pointer', fontFamily: 'inherit', fontWeight: 700, fontSize: 12 }}
+          >
+            🗑️
+          </button>
+        )}
       </div>
 
       <div className="summer-subnav">
@@ -2518,6 +2644,66 @@ const SummerFablab = () => {
               <button className="summer-btn-secondary" disabled={savingStudent} onClick={() => setShowStudentForm(false)}>{isRTL ? 'إلغاء' : 'Cancel'}</button>
               <button className="summer-btn-primary" disabled={savingStudent} onClick={saveStudent}>
                 {savingStudent ? (isRTL ? 'جاري الحفظ...' : 'Saving...') : (editingStudentId ? (isRTL ? 'حفظ التعديل' : 'Save Changes') : (isRTL ? 'إضافة' : 'Add'))}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ============= NEW SEASON MODAL ============= */}
+      {showNewSeasonModal && (
+        <div
+          onClick={() => setShowNewSeasonModal(false)}
+          style={{ position: 'fixed', inset: 0, background: 'rgba(15,23,42,0.55)', zIndex: 1100, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{ background: '#fff', borderRadius: 16, maxWidth: 460, width: '100%', padding: 24 }}
+          >
+            <h3 style={{ margin: '0 0 6px', fontSize: 20, fontWeight: 800 }}>
+              {isRTL ? 'موسم جديد لصيف فاب لاب' : 'New Summer FabLab Season'}
+            </h3>
+            <p style={{ margin: '0 0 18px', color: '#64748b', fontSize: 13, lineHeight: 1.6 }}>
+              {isRTL
+                ? 'الموسم الجديد يبدأ فارغاً — تبقى المواسم السابقة كما هي، ويمكنك التبديل بينها من قائمة اختيار الموسم.'
+                : 'The new season starts empty. Previous seasons stay intact — switch the picker to view them.'}
+            </p>
+            <label style={{ display: 'block', marginBottom: 12 }}>
+              <div style={{ fontSize: 12, fontWeight: 700, color: '#334155', marginBottom: 4 }}>
+                {isRTL ? 'اسم الموسم *' : 'Season Name *'}
+              </div>
+              <input
+                type="text"
+                value={newSeasonForm.name}
+                onChange={(e) => setNewSeasonForm(f => ({ ...f, name: e.target.value }))}
+                placeholder={isRTL ? `مثال: صيف فاب لاب ${new Date().getFullYear() + 1}` : `e.g. Summer FabLab ${new Date().getFullYear() + 1}`}
+                style={{ width: '100%', padding: '10px 12px', borderRadius: 8, border: '1px solid #cbd5e1', fontFamily: 'inherit', fontSize: 14 }}
+              />
+            </label>
+            <label style={{ display: 'block', marginBottom: 18 }}>
+              <div style={{ fontSize: 12, fontWeight: 700, color: '#334155', marginBottom: 4 }}>
+                {isRTL ? 'السنة' : 'Year'}
+              </div>
+              <input
+                type="number"
+                value={newSeasonForm.year}
+                onChange={(e) => setNewSeasonForm(f => ({ ...f, year: e.target.value }))}
+                dir="ltr"
+                style={{ width: '100%', padding: '10px 12px', borderRadius: 8, border: '1px solid #cbd5e1', fontFamily: 'inherit', fontSize: 14 }}
+              />
+            </label>
+            <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+              <button
+                onClick={() => setShowNewSeasonModal(false)}
+                style={{ padding: '10px 18px', borderRadius: 10, border: '1px solid #e5e7eb', background: '#fff', cursor: 'pointer', fontWeight: 600 }}
+              >
+                {isRTL ? 'إلغاء' : 'Cancel'}
+              </button>
+              <button
+                onClick={handleCreateSeason}
+                style={{ padding: '10px 22px', borderRadius: 10, border: 'none', background: 'linear-gradient(135deg,#f97316,#ea580c)', color: '#fff', cursor: 'pointer', fontWeight: 800 }}
+              >
+                {isRTL ? 'إنشاء وتفعيل' : 'Create & Activate'}
               </button>
             </div>
           </div>

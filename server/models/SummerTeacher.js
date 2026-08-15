@@ -17,7 +17,8 @@ const SummerTeacher = sequelize.define('SummerTeacher', {
   fablabSection: { type: DataTypes.STRING, allowNull: true },
   bio:        { type: DataTypes.TEXT,   allowNull: true },
   isActive:   { type: DataTypes.BOOLEAN, defaultValue: true },
-  createdById:{ type: DataTypes.UUID,   allowNull: true }
+  createdById:{ type: DataTypes.UUID,   allowNull: true },
+  seasonId:   { type: DataTypes.UUID,   allowNull: true }
 }, {
   tableName: 'summer_teachers',
   timestamps: true,

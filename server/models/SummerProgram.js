@@ -88,6 +88,10 @@ const SummerProgram = sequelize.define('SummerProgram', {
   createdById: {
     type: DataTypes.UUID,
     allowNull: true
+  },
+  seasonId: {
+    type: DataTypes.UUID,
+    allowNull: true
   }
 }, {
   tableName: 'summer_programs',

@@ -1,9 +1,18 @@
 const { SummerTeacher, SummerTeacherRating, SummerProgram, Admin } = require('../models');
+const { getActiveSeasonId } = require('./summerSeasonController');
 
 exports.list = async (req, res) => {
   try {
+    const q = String(req.query.season || '').trim();
+    const where = { isActive: true };
+    if (q && q !== 'all') {
+      where.seasonId = q;
+    } else if (q !== 'all') {
+      const active = await getActiveSeasonId();
+      if (active) where.seasonId = active;
+    }
     const teachers = await SummerTeacher.findAll({
-      where: { isActive: true },
+      where,
       include: [
         { model: SummerTeacherRating, as: 'ratings', attributes: ['ratingId', 'type', 'points', 'criteria', 'notes', 'ratingDate', 'programId'] },
         { model: SummerProgram, as: 'programs', where: { isActive: true }, required: false, attributes: ['programId', 'name', 'startDate', 'endDate'] }
@@ -40,7 +49,8 @@ exports.create = async (req, res) => {
       email: email || null,
       fablabSection: fablabSection || null,
       bio: bio || null,
-      createdById: req.admin?.adminId || null
+      createdById: req.admin?.adminId || null,
+      seasonId: req.body.seasonId || await getActiveSeasonId()
     });
     res.status(201).json(teacher);
   } catch (err) {

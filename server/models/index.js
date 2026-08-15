@@ -71,6 +71,7 @@ const StoreItem = require('./StoreItem');
 const StoreOrder = require('./StoreOrder');
 const DiscountCoupon = require('./DiscountCoupon');
 const StoreCustomer = require('./StoreCustomer');
+const SummerSeason = require('./SummerSeason');
 
 MawhbaAttendance.belongsTo(MawhbaStudent, { foreignKey: 'studentId', as: 'student', constraints: false });
 MawhbaStudent.hasMany(MawhbaAttendance, { foreignKey: 'studentId', as: 'attendance', constraints: false });
@@ -171,6 +172,14 @@ SummerProgram.hasMany(SummerStudent,   { foreignKey: 'programId', as: 'students'
 // Summer Volunteers are just Volunteers with a summerProgramId set.
 Volunteer.belongsTo(SummerProgram,    { foreignKey: 'summerProgramId', as: 'summerProgram', constraints: false });
 SummerProgram.hasMany(Volunteer,      { foreignKey: 'summerProgramId', as: 'summerVolunteers', constraints: false });
+
+// Summer seasons ↔ programs / teachers / students.
+SummerProgram.belongsTo(SummerSeason, { foreignKey: 'seasonId', as: 'season', constraints: false });
+SummerSeason.hasMany(SummerProgram,   { foreignKey: 'seasonId', as: 'programs', constraints: false });
+SummerTeacher.belongsTo(SummerSeason, { foreignKey: 'seasonId', as: 'season', constraints: false });
+SummerSeason.hasMany(SummerTeacher,   { foreignKey: 'seasonId', as: 'teachers', constraints: false });
+SummerStudent.belongsTo(SummerSeason, { foreignKey: 'seasonId', as: 'season', constraints: false });
+SummerSeason.hasMany(SummerStudent,   { foreignKey: 'seasonId', as: 'students', constraints: false });
 
 // Intern relationships
 InternTraining.belongsTo(Intern, { foreignKey: 'internId', as: 'intern' });
@@ -395,6 +404,18 @@ const syncDatabase = async () => {
     } catch (migrationError) {
       if (!migrationError.message.includes("doesn't exist") && !migrationError.message.includes('already exists')) {
         console.log('Migration note:', migrationError.message);
+      }
+    }
+
+    // Summer FabLab seasons: add seasonId columns to programs,
+    // teachers, and students. Idempotent — safe on every boot.
+    try {
+      await sequelize.query(`ALTER TABLE summer_programs ADD COLUMN IF NOT EXISTS "seasonId" UUID`);
+      await sequelize.query(`ALTER TABLE summer_teachers ADD COLUMN IF NOT EXISTS "seasonId" UUID`);
+      await sequelize.query(`ALTER TABLE summer_students ADD COLUMN IF NOT EXISTS "seasonId" UUID`);
+    } catch (migrationError) {
+      if (!/does not exist/i.test(migrationError.message)) {
+        console.log('summer.seasonId migration note:', migrationError.message);
       }
     }
 
@@ -765,6 +786,26 @@ const syncDatabase = async () => {
     } catch (e) {
       console.log('Mawhba season seed note:', e.message);
     }
+
+    // Same story for Summer FabLab — one default season if none exist,
+    // back-fill orphan programs / teachers / students to it.
+    try {
+      const seasonCount = await SummerSeason.count();
+      if (seasonCount === 0) {
+        const year = new Date().getFullYear();
+        const season = await SummerSeason.create({
+          name: `صيف فاب لاب ${year}`,
+          year,
+          isActive: true
+        });
+        await sequelize.query(`UPDATE summer_programs SET "seasonId" = :sid WHERE "seasonId" IS NULL`, { replacements: { sid: season.seasonId } });
+        await sequelize.query(`UPDATE summer_teachers SET "seasonId" = :sid WHERE "seasonId" IS NULL`, { replacements: { sid: season.seasonId } });
+        await sequelize.query(`UPDATE summer_students SET "seasonId" = :sid WHERE "seasonId" IS NULL`, { replacements: { sid: season.seasonId } });
+        console.log(`Seeded default Summer FabLab season ${year} and back-filled existing programs/teachers/students.`);
+      }
+    } catch (e) {
+      console.log('Summer FabLab season seed note:', e.message);
+    }
   } catch (error) {
     console.error('❌ Error synchronizing database:', error);
   }
@@ -845,5 +886,6 @@ module.exports = {
   StoreOrder,
   DiscountCoupon,
   StoreCustomer,
+  SummerSeason,
   syncDatabase
 };
