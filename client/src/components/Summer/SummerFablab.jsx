@@ -814,8 +814,33 @@ const SummerFablab = () => {
       toast.error(msg);
     } finally { setSavingSummerVolunteer(false); }
   };
-  const deleteSummerVolunteer = async (id) => {
-    if (!window.confirm(isRTL ? 'حذف المتطوع؟ سيُحذف من قائمة المتطوعين الرئيسية أيضاً.' : 'Delete this volunteer? Will also remove from the main Volunteers list.')) return;
+  // "Remove from Summer" — clears the volunteer's summerProgramId so
+  // they disappear from the Summer FabLab volunteer list but stay
+  // intact in the main Volunteers section. Also cleans them out of
+  // any program's sectionVolunteers JSON so the program's roster
+  // doesn't show a dangling name.
+  const removeFromSummer = async (v) => {
+    if (!window.confirm(isRTL
+      ? `إزالة "${v.name}" من صيف فاب لاب فقط؟ سيبقى في قائمة المتطوعين الرئيسية.`
+      : `Remove "${v.name}" from Summer FabLab only? They will stay in the main Volunteers list.`
+    )) return;
+    try {
+      await api.put(`/volunteers/${v.volunteerId}`, { summerProgramId: null });
+      // Also strip their name from any program.sectionVolunteers that references them
+      const prog = programs.find(p => Array.isArray(p.sectionVolunteers) && p.sectionVolunteers.includes(v.name));
+      if (prog) {
+        const nextList = (prog.sectionVolunteers || []).filter(n => n !== v.name);
+        try { await api.put(`/summer/programs/${prog.programId}`, { sectionVolunteers: nextList }); } catch (_) {}
+      }
+      toast.success(isRTL ? 'تمت الإزالة من صيف فاب لاب' : 'Removed from Summer FabLab');
+      fetchVolunteers();
+      fetchPrograms();
+    } catch (err) { console.error(err); toast.error(isRTL ? 'تعذّر الإزالة' : 'Remove failed'); }
+  };
+
+  // Full delete kept for the rare "delete forever" case; use with care.
+  const deleteSummerVolunteerForever = async (id) => {
+    if (!window.confirm(isRTL ? '⚠️ حذف نهائي من قائمة المتطوعين الرئيسية أيضاً؟' : '⚠️ Permanently delete from the main Volunteers list too?')) return;
     try {
       await api.delete(`/volunteers/${id}?force=true`);
       toast.success(isRTL ? 'تم الحذف' : 'Deleted');
@@ -1616,7 +1641,22 @@ const SummerFablab = () => {
                     <div className="summer-card-actions">
                       <button className="summer-btn-secondary" onClick={() => openEditSummerVolunteer(v)}>{isRTL ? 'تعديل' : 'Edit'}</button>
                       <button className="summer-btn-rate" onClick={() => openRateSummerVolunteer(v)}>★ {isRTL ? 'تقييم' : 'Rate'}</button>
-                      <button className="summer-btn-danger" onClick={() => deleteSummerVolunteer(v.volunteerId)}>{isRTL ? 'حذف' : 'Delete'}</button>
+                      <button
+                        className="summer-btn-danger"
+                        onClick={() => removeFromSummer(v)}
+                        title={isRTL ? 'إزالة من صيف فاب لاب فقط — يبقى في قائمة المتطوعين' : 'Remove from Summer FabLab only — stays in Volunteers list'}
+                        style={{ background: '#fff', color: '#b45309', border: '1px solid #fde68a' }}
+                      >
+                        {isRTL ? '⇤ إزالة من الصيف' : '⇤ Remove from Summer'}
+                      </button>
+                      <button
+                        className="summer-btn-danger"
+                        onClick={() => deleteSummerVolunteerForever(v.volunteerId)}
+                        title={isRTL ? 'حذف نهائي من كل مكان' : 'Delete forever from everywhere'}
+                        style={{ padding: '6px 10px' }}
+                      >
+                        🗑️
+                      </button>
                     </div>
                     <VolunteerShareControls
                       volunteer={v}
