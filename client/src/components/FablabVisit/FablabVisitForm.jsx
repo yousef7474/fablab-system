@@ -436,10 +436,10 @@ const FablabVisitForm = () => {
                             isToday && !isSelected && 'is-today',
                             block === 'past' && 'is-past',
                             block === 'off-day' && 'is-off',
-                            typeof block === 'object' && 'is-closure',
+                            block && typeof block === 'object' && 'is-closure',
                             overrideMode && block && 'is-override'
                           ].filter(Boolean).join(' ');
-                          const title = typeof block === 'object'
+                          const title = (block && typeof block === 'object')
                             ? `${isRTL ? 'إغلاق' : 'Closure'}: ${isRTL ? (block.reasonAr || block.reasonEn) : block.reasonEn}`
                             : block === 'off-day' ? (isRTL ? 'خارج أيام العمل' : 'Not a working day')
                             : block === 'past' ? (isRTL ? 'تاريخ منقضٍ' : 'Past date')
