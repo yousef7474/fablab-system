@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -6,10 +6,12 @@ import { toast } from 'react-toastify';
 import axios from 'axios';
 import './FablabVisitForm.css';
 
-// This form posts publicly to /api/public/fablab-visit/submit — no auth.
 const API_URL = process.env.NODE_ENV === 'production'
   ? '/api'
   : (process.env.REACT_APP_API_URL || 'http://localhost:5000/api');
+
+const DAY_NAMES_AR = ['الأحد', 'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'];
+const DAY_NAMES_EN = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
 const initialForm = {
   entityName: '',
@@ -22,7 +24,8 @@ const initialForm = {
   visitStartTime: '',
   visitEndTime: '',
   purpose: '',
-  notes: ''
+  notes: '',
+  overrideCode: ''
 };
 
 const FablabVisitForm = () => {
@@ -33,12 +36,69 @@ const FablabVisitForm = () => {
   const [form, setForm] = useState(initialForm);
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const [submittedNumber, setSubmittedNumber] = useState(null);
   const [errors, setErrors] = useState({});
+
+  // Cached config so we can validate + show hints without a round-trip per field.
+  const [workingHours, setWorkingHours] = useState({ startTime: '11:00', endTime: '19:00', workingDays: [0, 1, 2, 3, 4] });
+  const [closures, setClosures] = useState([]);
+  const [needsOverride, setNeedsOverride] = useState(false);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const [wh, cl] = await Promise.all([
+          axios.get(`${API_URL}/settings/working-hours`),
+          axios.get(`${API_URL}/closures`)
+        ]);
+        setWorkingHours(wh.data || workingHours);
+        setClosures(Array.isArray(cl.data) ? cl.data : []);
+      } catch (er) {
+        console.warn('Failed to load working hours/closures — using defaults', er?.message);
+      }
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const setField = (name, value) => {
     setForm(f => ({ ...f, [name]: value }));
     if (errors[name]) setErrors(e => ({ ...e, [name]: null }));
   };
+
+  // --- Client-side validation against working hours / days / closures ---
+  const timingIssue = useMemo(() => {
+    if (!form.visitDate) return null;
+    const day = new Date(`${form.visitDate}T00:00:00`).getDay();
+    if (!workingHours.workingDays.includes(day)) {
+      return isRTL
+        ? `اليوم المحدد (${DAY_NAMES_AR[day]}) خارج أيام العمل الرسمية.`
+        : `Selected day (${DAY_NAMES_EN[day]}) is outside official working days.`;
+    }
+    for (const c of closures) {
+      if (form.visitDate >= String(c.startDate).slice(0, 10) &&
+          form.visitDate <= String(c.endDate).slice(0, 10)) {
+        return isRTL
+          ? `التسجيل مغلق في هذا التاريخ (${c.reasonAr || c.reasonEn || 'إغلاق'}). من ${String(c.startDate).slice(0,10)} إلى ${String(c.endDate).slice(0,10)}.`
+          : `Registration is closed on this date (${c.reasonEn || 'closed'}). ${String(c.startDate).slice(0,10)} → ${String(c.endDate).slice(0,10)}.`;
+      }
+    }
+    if (form.visitStartTime && form.visitStartTime < workingHours.startTime) {
+      return isRTL
+        ? `يجب أن يبدأ الوقت من ${workingHours.startTime} أو بعده.`
+        : `Start time must be at or after ${workingHours.startTime}.`;
+    }
+    if (form.visitEndTime && form.visitEndTime > workingHours.endTime) {
+      return isRTL
+        ? `يجب أن ينتهي الوقت في ${workingHours.endTime} أو قبله.`
+        : `End time must be at or before ${workingHours.endTime}.`;
+    }
+    return null;
+  }, [form.visitDate, form.visitStartTime, form.visitEndTime, workingHours, closures, isRTL]);
+
+  // If there's a timing issue and the field is showing, prompt for override.
+  useEffect(() => {
+    setNeedsOverride(!!timingIssue);
+  }, [timingIssue]);
 
   const validate = () => {
     const err = {};
@@ -56,6 +116,11 @@ const FablabVisitForm = () => {
     }
     if (!form.purpose.trim())        err.purpose = isRTL ? 'مطلوب' : 'Required';
     if (!(Number(form.visitorsCount) > 0)) err.visitorsCount = isRTL ? 'قيمة غير صحيحة' : 'Invalid';
+    if (timingIssue && !form.overrideCode.trim()) {
+      err.overrideCode = isRTL
+        ? 'الرمز مطلوب للتسجيل خارج الأوقات المتاحة'
+        : 'Code required to submit outside allowed times';
+    }
     return err;
   };
 
@@ -69,24 +134,34 @@ const FablabVisitForm = () => {
     }
     setSubmitting(true);
     try {
-      await axios.post(`${API_URL}/public/fablab-visit/submit`, {
+      const { data } = await axios.post(`${API_URL}/public/fablab-visit/submit`, {
         ...form,
-        visitorsCount: Number(form.visitorsCount) || 1
+        visitorsCount: Number(form.visitorsCount) || 1,
+        overrideCode: form.overrideCode.trim() || null
       });
+      setSubmittedNumber(data?.visitNumber ?? null);
       setSubmitted(true);
       toast.success(isRTL ? 'تم إرسال طلبك' : 'Request submitted');
     } catch (er) {
-      toast.error(er?.response?.data?.messageAr || er?.response?.data?.message || (isRTL ? 'حدث خطأ' : 'Error'));
+      const resp = er?.response?.data;
+      if (resp?.requiresOverride) {
+        setNeedsOverride(true);
+        setErrors(e2 => ({ ...e2, overrideCode: isRTL ? 'الرمز مطلوب / غير صالح' : 'Code required / invalid' }));
+      }
+      toast.error(resp?.messageAr || resp?.message || (isRTL ? 'حدث خطأ' : 'Error'));
     } finally {
       setSubmitting(false);
     }
   };
 
   const today = new Date().toISOString().slice(0, 10);
+  const activeClosures = closures.slice(0, 4);
+  const workingDaysLabel = workingHours.workingDays
+    .map(d => (isRTL ? DAY_NAMES_AR[d] : DAY_NAMES_EN[d]))
+    .join('، ');
 
   return (
     <div className="fv" dir={isRTL ? 'rtl' : 'ltr'}>
-      {/* Slim topbar */}
       <header className="fv-topbar">
         <div className="fv-topbar-inner">
           <button className="fv-topbar-brand" onClick={() => navigate('/register')} type="button">
@@ -132,6 +207,33 @@ const FablabVisitForm = () => {
                     : 'Entities, schools, and groups can request an introductory or exploratory tour. The administration will review your request and reply by email.'}
                 </p>
               </header>
+
+              {/* Availability strip */}
+              <div className="fv-availability">
+                <div className="fv-availability-row">
+                  <div className="fv-availability-cell">
+                    <span className="fv-availability-label">{isRTL ? 'أيام العمل' : 'Working Days'}</span>
+                    <span className="fv-availability-value">{workingDaysLabel}</span>
+                  </div>
+                  <div className="fv-availability-cell">
+                    <span className="fv-availability-label">{isRTL ? 'ساعات العمل' : 'Working Hours'}</span>
+                    <span className="fv-availability-value" dir="ltr">{workingHours.startTime} – {workingHours.endTime}</span>
+                  </div>
+                </div>
+                {activeClosures.length > 0 && (
+                  <div className="fv-closures">
+                    <span className="fv-closures-title">{isRTL ? 'فترات إغلاق' : 'Closures'}</span>
+                    <ul>
+                      {activeClosures.map(c => (
+                        <li key={c.closureId}>
+                          <span dir="ltr">{String(c.startDate).slice(0,10)} → {String(c.endDate).slice(0,10)}</span>
+                          {' — '}{isRTL ? (c.reasonAr || c.reasonEn) : c.reasonEn}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </div>
 
               <form className="fv-card" onSubmit={submit} noValidate>
                 <div className="fv-section">
@@ -231,9 +333,11 @@ const FablabVisitForm = () => {
                     </div>
 
                     <div className="fv-field">
-                      <label>{isRTL ? 'من الساعة *' : 'Start Time *'}</label>
+                      <label>{isRTL ? `من الساعة * (${workingHours.startTime}–${workingHours.endTime})` : `Start Time * (${workingHours.startTime}–${workingHours.endTime})`}</label>
                       <input
                         type="time"
+                        min={workingHours.startTime}
+                        max={workingHours.endTime}
                         value={form.visitStartTime}
                         onChange={(e) => setField('visitStartTime', e.target.value)}
                         className={errors.visitStartTime ? 'has-error' : ''}
@@ -246,6 +350,8 @@ const FablabVisitForm = () => {
                       <label>{isRTL ? 'إلى الساعة *' : 'End Time *'}</label>
                       <input
                         type="time"
+                        min={workingHours.startTime}
+                        max={workingHours.endTime}
                         value={form.visitEndTime}
                         onChange={(e) => setField('visitEndTime', e.target.value)}
                         className={errors.visitEndTime ? 'has-error' : ''}
@@ -281,6 +387,39 @@ const FablabVisitForm = () => {
                     </div>
                   </div>
                 </div>
+
+                {/* Timing warning + admin override code (shown only when the date/time is out of range) */}
+                {needsOverride && (
+                  <motion.div
+                    initial={{ opacity: 0, y: -6 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="fv-override"
+                  >
+                    <div className="fv-override-badge">⚠️ {isRTL ? 'خارج الأوقات المتاحة' : 'Outside allowed times'}</div>
+                    <div className="fv-override-body">
+                      {timingIssue && <div className="fv-override-reason">{timingIssue}</div>}
+                      <p className="fv-override-explain">
+                        {isRTL
+                          ? 'لقبول طلبك في وقت غير متاح رسمياً، يجب التواصل مع إدارة فاب لاب للحصول على رمز خاص. الرمز صالح لمدة 5 دقائق فقط، وبعدها يتم توليد رمز جديد.'
+                          : 'To submit a request outside the officially available times, contact FABLAB administration to obtain a special code. The code is valid for 5 minutes only, after which a new one is generated.'}
+                      </p>
+                      <div className="fv-field fv-field--full">
+                        <label>{isRTL ? 'السماح بالتسجيل من قبل إدارة فاب لاب' : 'FABLAB Administration Override Code'}</label>
+                        <input
+                          type="text"
+                          value={form.overrideCode}
+                          onChange={(e) => setField('overrideCode', e.target.value.toUpperCase())}
+                          className={errors.overrideCode ? 'has-error' : ''}
+                          placeholder="ABC123"
+                          maxLength={12}
+                          dir="ltr"
+                          style={{ letterSpacing: '4px', fontFamily: 'JetBrains Mono, monospace', textAlign: 'center', fontSize: 18, fontWeight: 700 }}
+                        />
+                        {errors.overrideCode && <span className="fv-err">{errors.overrideCode}</span>}
+                      </div>
+                    </div>
+                  </motion.div>
+                )}
 
                 <div className="fv-actions">
                   <button
@@ -319,6 +458,11 @@ const FablabVisitForm = () => {
               <h2 className="fv-thanks-title">
                 {isRTL ? 'تم استلام طلبك' : 'Request Received'}
               </h2>
+              {submittedNumber != null && (
+                <div className="fv-thanks-number">
+                  {isRTL ? 'رقم الطلب' : 'Request No.'}: <b dir="ltr">V-{String(submittedNumber).padStart(3, '0')}</b>
+                </div>
+              )}
               <p className="fv-thanks-body">
                 {isRTL
                   ? 'سيتم مراجعة طلب الزيارة من قِبل الإدارة، والرد عليكم على البريد الإلكتروني المسجّل خلال أيام العمل التالية.'
@@ -331,7 +475,7 @@ const FablabVisitForm = () => {
                 <div><span>{isRTL ? 'الزوار' : 'Visitors'}</span><b>{form.visitorsCount}</b></div>
               </div>
               <div className="fv-actions" style={{ justifyContent: 'center', marginTop: 24 }}>
-                <button className="fv-btn fv-btn--ghost" onClick={() => { setForm(initialForm); setSubmitted(false); }}>
+                <button className="fv-btn fv-btn--ghost" onClick={() => { setForm(initialForm); setSubmitted(false); setSubmittedNumber(null); }}>
                   {isRTL ? 'تقديم طلب آخر' : 'Submit Another'}
                 </button>
                 <button className="fv-btn fv-btn--primary" onClick={() => navigate('/register')}>

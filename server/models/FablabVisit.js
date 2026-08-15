@@ -12,6 +12,14 @@ const FablabVisit = sequelize.define('FablabVisit', {
     defaultValue: DataTypes.UUIDV4,
     primaryKey: true
   },
+  // Human-friendly sequential number, shown as "زيارة #123" or "V-123".
+  // Assigned atomically in the controller (MAX(visitNumber)+1). UNIQUE
+  // + IF NOT EXISTS-added on boot so existing tables get it backfilled.
+  visitNumber: {
+    type: DataTypes.INTEGER,
+    allowNull: true,
+    unique: true
+  },
   // Submitter identity
   entityName:      { type: DataTypes.STRING, allowNull: false },   // اسم الجهة
   personInCharge:  { type: DataTypes.STRING, allowNull: false },   // الشخص المسؤول

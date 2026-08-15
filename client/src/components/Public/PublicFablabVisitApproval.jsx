@@ -95,7 +95,14 @@ const PublicFablabVisitApproval = () => {
         <div className="pub-header">
           <div className="pub-header-top">
             <div>
-              <div className="pub-kicker">طلب زيارة</div>
+              <div className="pub-kicker" style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                <span>طلب زيارة</span>
+                {r.visitNumber != null && (
+                  <span style={{ fontFamily: 'JetBrains Mono, monospace', fontWeight: 800, color: '#0284c7', background: '#e0f2fe', padding: '2px 10px', borderRadius: 999, letterSpacing: 1 }}>
+                    V-{String(r.visitNumber).padStart(3, '0')}
+                  </span>
+                )}
+              </div>
               <h1 className="pub-title">{r.entityName}</h1>
               {r.personInCharge && <div className="pub-subtitle">مسؤول: {r.personInCharge}</div>}
             </div>

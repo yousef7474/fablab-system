@@ -26,6 +26,7 @@ import CustomersManagement from '../Customers/CustomersManagement';
 import QuickMessages from './QuickMessages';
 import UnifiedAttendancePage from '../shared/UnifiedAttendancePage';
 import FablabVisitsTab from './FablabVisitsTab';
+import FablabVisitOverrideCodeCard from './FablabVisitOverrideCodeCard';
 
 const COLORS = ['#6366f1', '#22c55e', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4', '#ec4899'];
 
@@ -9433,6 +9434,8 @@ const AdminDashboard = () => {
                       </div>
                     </div>
                   </div>
+
+                  <FablabVisitOverrideCodeCard isRTL={isRTL} />
 
                   <div className="settings-card" style={{ gridColumn: '1 / -1' }}>
                     <h3 style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>

@@ -16,6 +16,7 @@ const APPROVER_EMAILS = [
 const fmtDate = (v) => v ? String(v).slice(0, 10) : '—';
 const fmtTime = (t) => t ? String(t).slice(0, 5) : '—';
 const fmtWhen = (v) => v ? new Date(v).toLocaleString('ar-SA-u-ca-gregory-nu-latn', { calendar: 'gregory', hour: '2-digit', minute: '2-digit', day: '2-digit', month: 'short' }) : '—';
+const fmtVisitNo = (n) => n == null ? '—' : `V-${String(n).padStart(3, '0')}`;
 
 // ---------- Status badge helpers ----------
 const managerBadge = (s) => {
@@ -198,7 +199,7 @@ const FablabVisitsTab = () => {
 </style></head><body>
   <div class="head">
     <div class="brand">فاب لاب الأحساء<small>FABLAB Al-Ahsa</small></div>
-    <div class="doc"><h1>طلب زيارة</h1><div class="id">${v.visitId}</div></div>
+    <div class="doc"><h1>طلب زيارة</h1><div class="id" style="font-size:15px;font-weight:800;color:#0284c7">${fmtVisitNo(v.visitNumber)}</div></div>
   </div>
   <div class="grid">
     <div class="row"><b>الجهة:</b><span>${v.entityName || '—'}</span></div>
@@ -344,7 +345,10 @@ const FablabVisitsTab = () => {
             >
               <div style={{ display: 'flex', justifyContent: 'space-between', gap: 14, flexWrap: 'wrap' }}>
                 <div style={{ minWidth: 0, flex: 1 }}>
-                  <div style={{ fontSize: 16, fontWeight: 800, color: '#0f172a', marginBottom: 4 }}>{v.entityName}</div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 4, flexWrap: 'wrap' }}>
+                    <span style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 12, fontWeight: 700, color: '#0284c7', background: '#e0f2fe', padding: '3px 10px', borderRadius: 999, letterSpacing: 1 }}>{fmtVisitNo(v.visitNumber)}</span>
+                    <span style={{ fontSize: 16, fontWeight: 800, color: '#0f172a' }}>{v.entityName}</span>
+                  </div>
                   <div style={{ fontSize: 13, color: '#475569', marginBottom: 8 }}>
                     مسؤول: {v.personInCharge} · {v.visitorsCount || 1} زائر
                   </div>
@@ -381,7 +385,10 @@ const FablabVisitsTab = () => {
             >
               <div style={{ padding: 24, borderBottom: '1px solid #e5e7eb', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12 }}>
                 <div style={{ minWidth: 0 }}>
-                  <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: 2, color: '#0ea5e9', textTransform: 'uppercase', marginBottom: 4 }}>طلب زيارة</div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6, flexWrap: 'wrap' }}>
+                    <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: 2, color: '#0ea5e9', textTransform: 'uppercase' }}>طلب زيارة</span>
+                    <span style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 12, fontWeight: 800, color: '#0284c7', background: '#e0f2fe', padding: '3px 10px', borderRadius: 999, letterSpacing: 1.5 }}>{fmtVisitNo(openVisit.visitNumber)}</span>
+                  </div>
                   <h3 style={{ margin: 0, fontSize: 22, fontWeight: 800, color: '#0f172a' }}>{openVisit.entityName}</h3>
                   <div style={{ marginTop: 10 }}><StatusPill v={openVisit} /></div>
                 </div>

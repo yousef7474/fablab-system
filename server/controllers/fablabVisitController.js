@@ -1,7 +1,114 @@
-const { FablabVisit } = require('../models');
+const { FablabVisit, Settings, RegistrationClosure } = require('../models');
+const { sequelize } = require('../config/database');
 const crypto = require('crypto');
 const sgMail = require('@sendgrid/mail');
 if (process.env.SENDGRID_API_KEY) sgMail.setApiKey(process.env.SENDGRID_API_KEY);
+
+// Format the sequential visit number for display: 12 → "V-012"
+const formatVisitNumber = (n) =>
+  n == null ? '—' : `V-${String(n).padStart(3, '0')}`;
+
+// Atomically assign the next sequential visitNumber. MAX+1 inside a
+// transaction is safe for our low submission rate; if you ever need
+// concurrent bursts, swap to a Postgres SEQUENCE.
+const _assignNextVisitNumber = async () => {
+  return await sequelize.transaction(async (t) => {
+    const [row] = await sequelize.query(
+      `SELECT COALESCE(MAX("visitNumber"), 0) + 1 AS next FROM fablab_visits`,
+      { transaction: t }
+    );
+    return Number(row?.[0]?.next) || 1;
+  });
+};
+
+// -------------------- OVERRIDE CODE (5-minute rotating) --------------------
+// Stored as a single Settings row: { code, expiresAt }. We regenerate on
+// demand and whenever the current code has expired.
+const OVERRIDE_CODE_KEY = 'fablab_visit_override_code';
+const OVERRIDE_CODE_TTL_MS = 5 * 60 * 1000; // 5 minutes
+
+const _generateCode = () => {
+  // 6 characters, uppercase alphanumeric, unambiguous (no O/0, no I/1)
+  const alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  let out = '';
+  for (let i = 0; i < 6; i++) out += alphabet[Math.floor(Math.random() * alphabet.length)];
+  return out;
+};
+
+const _getOrRotateOverrideCode = async () => {
+  const row = await Settings.findByPk(OVERRIDE_CODE_KEY);
+  const now = Date.now();
+  if (row?.value?.code && row.value.expiresAt && new Date(row.value.expiresAt).getTime() > now) {
+    return row.value;
+  }
+  const next = { code: _generateCode(), expiresAt: new Date(now + OVERRIDE_CODE_TTL_MS).toISOString() };
+  await Settings.upsert({ key: OVERRIDE_CODE_KEY, value: next });
+  return next;
+};
+
+const _forceRotateOverrideCode = async () => {
+  const next = { code: _generateCode(), expiresAt: new Date(Date.now() + OVERRIDE_CODE_TTL_MS).toISOString() };
+  await Settings.upsert({ key: OVERRIDE_CODE_KEY, value: next });
+  return next;
+};
+
+const _isOverrideCodeValid = async (submitted) => {
+  if (!submitted) return false;
+  const row = await Settings.findByPk(OVERRIDE_CODE_KEY);
+  if (!row?.value?.code || !row?.value?.expiresAt) return false;
+  if (String(row.value.code).toUpperCase() !== String(submitted).toUpperCase().trim()) return false;
+  return new Date(row.value.expiresAt).getTime() > Date.now();
+};
+
+// -------------------- WORKING HOURS / CLOSURE CHECKS --------------------
+// Returns { ok: true } or { ok: false, reason: '...', reasonAr: '...' }.
+const _validateTimingAgainstSettings = async (visitDate, visitStartTime, visitEndTime) => {
+  // Working hours + working days
+  const [startRow, endRow, daysRow] = await Promise.all([
+    Settings.findByPk('working_hours_start'),
+    Settings.findByPk('working_hours_end'),
+    Settings.findByPk('working_days')
+  ]);
+  const workStart = startRow?.value || '11:00';
+  const workEnd   = endRow?.value   || '19:00';
+  const workDays  = Array.isArray(daysRow?.value) ? daysRow.value : [0, 1, 2, 3, 4];
+
+  // Weekday check — Sun=0 .. Sat=6
+  const day = new Date(`${visitDate}T00:00:00`).getDay();
+  if (!workDays.includes(day)) {
+    return {
+      ok: false,
+      reason: 'Selected day is not a working day (weekend or closed).',
+      reasonAr: 'اليوم المحدد ليس يوم عمل (نهاية أسبوع أو مغلق).'
+    };
+  }
+
+  // Time window check
+  const hhmm = (t) => String(t || '').slice(0, 5);
+  const s = hhmm(visitStartTime);
+  const e = hhmm(visitEndTime);
+  if (s < workStart || e > workEnd) {
+    return {
+      ok: false,
+      reason: `Visit time must be within working hours ${workStart}–${workEnd}.`,
+      reasonAr: `يجب أن تكون الزيارة ضمن ساعات العمل من ${workStart} إلى ${workEnd}.`
+    };
+  }
+
+  // Active closure check
+  const closures = await RegistrationClosure.findAll({ where: { isActive: true } });
+  for (const c of closures) {
+    if (visitDate >= String(c.startDate) && visitDate <= String(c.endDate)) {
+      return {
+        ok: false,
+        reason: `Registration is closed on this date: ${c.reasonEn || 'closed period'}.`,
+        reasonAr: `التسجيل مغلق في هذا التاريخ: ${c.reasonAr || c.reasonEn || 'فترة إغلاق'}.`
+      };
+    }
+  }
+
+  return { ok: true };
+};
 
 const _UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -12,15 +119,18 @@ const _publicOrigin = () =>
 // -------------------- LIST / CRUD --------------------
 
 // Public — no auth required. Anyone can submit a visit request.
+// If the requested date/time falls outside working hours / working days
+// or lands on an active registration closure, submission is blocked
+// UNLESS the visitor supplies a valid override code (5-min TTL, admin-
+// issued from the settings tab).
 exports.publicCreate = async (req, res) => {
   try {
     const {
       entityName, personInCharge, nationalId, phone, email,
       visitorsCount, visitDate, visitStartTime, visitEndTime,
-      purpose, notes
+      purpose, notes, overrideCode
     } = req.body || {};
 
-    // Minimal server-side validation. Front-end enforces details.
     if (!entityName || !personInCharge || !phone || !email
         || !visitDate || !visitStartTime || !visitEndTime || !purpose) {
       return res.status(400).json({
@@ -29,7 +139,28 @@ exports.publicCreate = async (req, res) => {
       });
     }
 
+    // Check working-hours / working-days / closures. If it fails, only
+    // proceed with a valid override code from the admin.
+    const timing = await _validateTimingAgainstSettings(visitDate, visitStartTime, visitEndTime);
+    let usedOverride = false;
+    if (!timing.ok) {
+      const codeOk = await _isOverrideCodeValid(overrideCode);
+      if (!codeOk) {
+        return res.status(409).json({
+          message: timing.reason + ' A valid override code is required to submit outside allowed times.',
+          messageAr: timing.reasonAr + ' يلزم رمز خاص من إدارة فاب لاب لتقديم الطلب خارج الأوقات المتاحة.',
+          requiresOverride: true
+        });
+      }
+      usedOverride = true;
+      // Consume the code — force-rotate so the same code can't be reused.
+      await _forceRotateOverrideCode();
+    }
+
+    const visitNumber = await _assignNextVisitNumber();
+
     const row = await FablabVisit.create({
+      visitNumber,
       entityName: String(entityName).trim(),
       personInCharge: String(personInCharge).trim(),
       nationalId: nationalId ? String(nationalId).trim() : null,
@@ -40,7 +171,11 @@ exports.publicCreate = async (req, res) => {
       visitStartTime,
       visitEndTime,
       purpose: String(purpose).trim(),
-      notes: notes ? String(notes).trim() : null,
+      // If admin override was used, tag the notes so admin sees it in the review modal.
+      notes: [
+        notes ? String(notes).trim() : null,
+        usedOverride ? '⚠️ تم تقديم هذا الطلب باستخدام رمز إدارة فاب لاب (خارج الأوقات المتاحة).' : null
+      ].filter(Boolean).join('\n\n') || null,
       approvalStatus: 'draft',
       visitorDecision: 'pending'
     });
@@ -48,11 +183,37 @@ exports.publicCreate = async (req, res) => {
     res.status(201).json({
       message: 'Request submitted',
       messageAr: 'تم استلام طلبك — سيتم التواصل معك قريباً',
-      visitId: row.visitId
+      visitId: row.visitId,
+      visitNumber: row.visitNumber
     });
   } catch (err) {
     console.error('publicCreate visit:', err);
     res.status(500).json({ message: 'Server error', detail: err.message });
+  }
+};
+
+// -------------------- ADMIN: OVERRIDE CODE MANAGEMENT --------------------
+
+// GET /fablab-visits/override-code — returns { code, expiresAt }. Rotates
+// automatically if the current one has expired.
+exports.getOverrideCode = async (req, res) => {
+  try {
+    const value = await _getOrRotateOverrideCode();
+    res.json(value);
+  } catch (err) {
+    console.error('getOverrideCode:', err);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+// POST /fablab-visits/override-code/regenerate — forces a fresh code.
+exports.regenerateOverrideCode = async (req, res) => {
+  try {
+    const value = await _forceRotateOverrideCode();
+    res.json(value);
+  } catch (err) {
+    console.error('regenerateOverrideCode:', err);
+    res.status(500).json({ message: 'Server error' });
   }
 };
 
@@ -130,12 +291,14 @@ const _buildManagerEmail = ({ row, token, origin }) => {
   const previewUrl = `${origin}/public/fablab-visit/${token}`;
   const fmtTime = (t) => t ? String(t).slice(0, 5) : '—';
 
+  const visitNoStr = formatVisitNumber(row.visitNumber);
+
   return {
-    subject: `طلب اعتماد زيارة فاب لاب — ${row.entityName}`,
+    subject: `طلب اعتماد زيارة فاب لاب #${visitNoStr} — ${row.entityName}`,
     html: `<!doctype html><html dir="rtl"><body style="margin:0;font-family:Segoe UI,Tahoma,Arial,sans-serif;background:#f4f6fb;color:#0f172a;padding:24px">
 <div style="max-width:640px;margin:0 auto;background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 4px 20px rgba(15,23,42,0.08)">
   <div style="background:linear-gradient(135deg,#0ea5e9,#0284c7);color:#fff;padding:20px 24px">
-    <div style="font-size:12px;letter-spacing:1px;opacity:0.85">FABLAB الأحساء</div>
+    <div style="font-size:12px;letter-spacing:1px;opacity:0.85">FABLAB الأحساء · ${visitNoStr}</div>
     <div style="font-size:20px;font-weight:800;margin-top:4px">طلب اعتماد زيارة</div>
   </div>
   <div style="padding:20px 24px">
@@ -143,7 +306,8 @@ const _buildManagerEmail = ({ row, token, origin }) => {
       تم استلام طلب زيارة جديد بحاجة إلى اعتمادكم:
     </p>
     <table style="width:100%;font-size:13px;border-collapse:collapse;margin-bottom:16px">
-      <tr><td style="padding:6px 0;color:#64748b;width:140px">الجهة:</td><td style="padding:6px 0;font-weight:700">${row.entityName}</td></tr>
+      <tr><td style="padding:6px 0;color:#64748b;width:140px">رقم الطلب:</td><td style="padding:6px 0;font-weight:800;color:#0284c7;font-family:'JetBrains Mono',monospace">${visitNoStr}</td></tr>
+      <tr><td style="padding:6px 0;color:#64748b">الجهة:</td><td style="padding:6px 0;font-weight:700">${row.entityName}</td></tr>
       <tr><td style="padding:6px 0;color:#64748b">الشخص المسؤول:</td><td style="padding:6px 0">${row.personInCharge}</td></tr>
       <tr><td style="padding:6px 0;color:#64748b">الجوال:</td><td style="padding:6px 0;direction:ltr">${row.phone}</td></tr>
       <tr><td style="padding:6px 0;color:#64748b">البريد:</td><td style="padding:6px 0;direction:ltr">${row.email}</td></tr>
@@ -263,6 +427,7 @@ exports.publicGetByToken = async (req, res) => {
     if (!row) return res.status(404).json({ message: 'Not found' });
     res.json({
       visitId: row.visitId,
+      visitNumber: row.visitNumber,
       approvalStatus: row.approvalStatus,
       entityName: row.entityName,
       personInCharge: row.personInCharge,
@@ -332,10 +497,11 @@ const _buildVisitorEmail = ({ row, accepted, customMessage }) => {
   const brand = accepted ? '#16a34a' : '#dc2626';
   const status = accepted ? 'تمت الموافقة على زيارتكم' : 'نأسف — لم نتمكن من قبول الزيارة';
 
+  const visitNoStr = formatVisitNumber(row.visitNumber);
   return {
     subject: accepted
-      ? `تمت الموافقة على زيارتكم لفاب لاب — ${row.visitDate}`
-      : `اعتذار بخصوص طلب زيارة فاب لاب`,
+      ? `تمت الموافقة على زيارتكم لفاب لاب #${visitNoStr}`
+      : `اعتذار بخصوص طلب زيارة فاب لاب #${visitNoStr}`,
     html: `<!doctype html><html dir="rtl"><body style="margin:0;font-family:Segoe UI,Tahoma,Arial,sans-serif;background:#f4f6fb;color:#0f172a;padding:24px">
 <div style="max-width:620px;margin:0 auto;background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 4px 20px rgba(15,23,42,0.08)">
   <div style="background:${brand};color:#fff;padding:22px 24px">
@@ -357,6 +523,7 @@ const _buildVisitorEmail = ({ row, accepted, customMessage }) => {
     `}
 
     <table style="width:100%;font-size:13px;border-collapse:collapse;background:#f8fafc;border-radius:10px;overflow:hidden;margin:12px 0 18px">
+      <tr><td style="padding:10px 14px;color:#64748b;width:130px;border-bottom:1px solid #e5e7eb">رقم الطلب:</td><td style="padding:10px 14px;font-weight:800;color:#0284c7;font-family:'JetBrains Mono',monospace;border-bottom:1px solid #e5e7eb">${visitNoStr}</td></tr>
       <tr><td style="padding:10px 14px;color:#64748b;width:130px;border-bottom:1px solid #e5e7eb">الجهة:</td><td style="padding:10px 14px;font-weight:700;border-bottom:1px solid #e5e7eb">${row.entityName}</td></tr>
       <tr><td style="padding:10px 14px;color:#64748b;border-bottom:1px solid #e5e7eb">تاريخ الزيارة:</td><td style="padding:10px 14px;direction:ltr;border-bottom:1px solid #e5e7eb">${row.visitDate}</td></tr>
       <tr><td style="padding:10px 14px;color:#64748b;border-bottom:1px solid #e5e7eb">الوقت:</td><td style="padding:10px 14px;direction:ltr;border-bottom:1px solid #e5e7eb">${fmtTime(row.visitStartTime)} → ${fmtTime(row.visitEndTime)}</td></tr>

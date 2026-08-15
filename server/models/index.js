@@ -393,6 +393,34 @@ const syncDatabase = async () => {
       }
     }
 
+    // FabLab visits: ensure the sequential visitNumber column exists and
+    // backfill any pre-existing rows so every visit has a number.
+    try {
+      await sequelize.query(
+        `ALTER TABLE fablab_visits ADD COLUMN IF NOT EXISTS "visitNumber" INTEGER`
+      );
+      await sequelize.query(
+        `UPDATE fablab_visits fv
+            SET "visitNumber" = sub.rn
+           FROM (
+             SELECT "visitId",
+                    ROW_NUMBER() OVER (ORDER BY "createdAt") AS rn
+               FROM fablab_visits
+              WHERE "visitNumber" IS NULL
+           ) sub
+          WHERE fv."visitId" = sub."visitId"`
+      );
+      try {
+        await sequelize.query(
+          `CREATE UNIQUE INDEX IF NOT EXISTS fablab_visits_number_uniq ON fablab_visits ("visitNumber")`
+        );
+      } catch (_) { /* index may already exist */ }
+    } catch (migrationError) {
+      if (!/does not exist/i.test(migrationError.message)) {
+        console.log('fablab_visits.visitNumber migration note:', migrationError.message);
+      }
+    }
+
     // Add the two new FabLab sections to every ENUM that hard-codes the
     // section list: registrations, section_availabilities, summer_programs.
     // Idempotent thanks to IF NOT EXISTS.

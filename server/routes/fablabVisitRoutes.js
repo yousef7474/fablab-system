@@ -8,6 +8,10 @@ const { requireManager } = require('../middleware/roleMiddleware');
 // separate mount point (see server/index.js) so it isn't affected.
 router.use(authMiddleware);
 
+// Literal-path routes BEFORE /:id so they aren't shadowed
+router.get('/override-code',              ctrl.getOverrideCode);
+router.post('/override-code/regenerate',  requireManager, ctrl.regenerateOverrideCode);
+
 router.get('/', ctrl.list);
 router.get('/:id', ctrl.get);
 router.put('/:id', requireManager, ctrl.update);
