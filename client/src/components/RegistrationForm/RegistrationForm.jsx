@@ -13,17 +13,34 @@ import DateTimeSelection from './steps/DateTimeSelection';
 import ServiceDetails from './steps/ServiceDetails';
 import Commitment from './steps/Commitment';
 import SuccessPage from './SuccessPage';
+import step1Illustration from '../../illustrations/step1.svg';
+import step2Illustration from '../../illustrations/step2.svg';
+import step3Illustration from '../../illustrations/step3.svg';
+import step4Illustration from '../../illustrations/step4.svg';
+import step5Illustration from '../../illustrations/step5.svg';
+import step6Illustration from '../../illustrations/step6.svg';
+import step7Illustration from '../../illustrations/step7.svg';
 import FabyBot from './FabyBot';
 import './RegistrationForm.css';
 
+const stepIllustrations = [
+  step1Illustration, step2Illustration, step3Illustration,
+  step4Illustration, step5Illustration, step6Illustration,
+  step7Illustration
+];
+
 const STORAGE_KEY = 'fablab_registration_form';
-const THEME_KEY = 'fablab_registration_theme';
 
 const getInitialFormData = () => {
   try {
     const saved = localStorage.getItem(STORAGE_KEY);
-    if (saved) return JSON.parse(saved).formData || null;
-  } catch (e) { console.error(e); }
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      return parsed.formData || null;
+    }
+  } catch (e) {
+    console.error('Error loading saved form data:', e);
+  }
   return null;
 };
 
@@ -34,25 +51,50 @@ const getInitialStep = () => {
       const parsed = JSON.parse(saved);
       return typeof parsed.activeStep === 'number' ? parsed.activeStep : -1;
     }
-  } catch (e) { console.error(e); }
+  } catch (e) {
+    console.error('Error loading saved step:', e);
+  }
   return -1;
 };
 
 const defaultFormData = {
   existingUserId: null,
   applicationType: '',
-  firstName: '', lastName: '', sex: '', nationality: '', nationalId: '',
-  phoneNumber: '', email: '', currentJob: '', nationalAddress: '',
-  entityName: '', visitingEntity: '', personInCharge: '', name: '',
+  firstName: '',
+  lastName: '',
+  sex: '',
+  nationality: '',
+  nationalId: '',
+  phoneNumber: '',
+  email: '',
+  currentJob: '',
+  nationalAddress: '',
+  entityName: '',
+  visitingEntity: '',
+  personInCharge: '',
+  name: '',
   profilePicture: '',
   fablabSection: '',
-  requiredServices: [], otherServiceDetails: '',
-  appointmentDate: '', appointmentTime: '', appointmentDuration: 60,
-  startDate: '', endDate: '', startTime: '', endTime: '',
-  visitDate: '', visitStartTime: '', visitEndTime: '',
-  volunteerSection: '', volunteerSkills: '',
-  serviceDetails: '', serviceType: '', commitmentName: ''
+  requiredServices: [],
+  otherServiceDetails: '',
+  appointmentDate: '',
+  appointmentTime: '',
+  appointmentDuration: 60,
+  startDate: '',
+  endDate: '',
+  startTime: '',
+  endTime: '',
+  visitDate: '',
+  visitStartTime: '',
+  visitEndTime: '',
+  volunteerSection: '',
+  volunteerSkills: '',
+  serviceDetails: '',
+  serviceType: '',
+  commitmentName: ''
 };
+
+const THEME_KEY = 'fablab_registration_theme';
 
 const RegistrationForm = () => {
   const { t, i18n } = useTranslation();
@@ -61,7 +103,11 @@ const RegistrationForm = () => {
   const [searchParams, setSearchParams] = useSearchParams();
 
   const [theme, setTheme] = useState(() => {
-    try { return localStorage.getItem(THEME_KEY) || 'light'; } catch (e) { return 'light'; }
+    try {
+      return localStorage.getItem(THEME_KEY) || 'dark';
+    } catch (e) {
+      return 'dark';
+    }
   });
 
   const toggleTheme = useCallback(() => {
@@ -72,11 +118,14 @@ const RegistrationForm = () => {
     });
   }, []);
 
+  // Get step from URL or localStorage
   const getStepFromUrl = () => {
     const stepParam = searchParams.get('step');
     if (stepParam !== null) {
       const step = parseInt(stepParam, 10);
-      if (!isNaN(step) && step >= -1 && step <= 8) return step;
+      if (!isNaN(step) && step >= -1 && step <= 8) {
+        return step;
+      }
     }
     return null;
   };
@@ -86,30 +135,44 @@ const RegistrationForm = () => {
     return urlStep !== null ? urlStep : getInitialStep();
   });
   const [formData, setFormData] = useState(() => getInitialFormData() || defaultFormData);
+
   const [registrationResult, setRegistrationResult] = useState(null);
   const [loading, setLoading] = useState(false);
   const [registrationDisabled, setRegistrationDisabled] = useState(false);
   const [disabledReason, setDisabledReason] = useState('');
 
+  // Check if registration is disabled
   useEffect(() => {
-    api.get('/settings/registration-status')
-      .then(r => { setRegistrationDisabled(r.data.disabled); setDisabledReason(r.data.reason || ''); })
-      .catch(e => console.error(e));
+    const checkRegistrationStatus = async () => {
+      try {
+        const response = await api.get('/settings/registration-status');
+        setRegistrationDisabled(response.data.disabled);
+        setDisabledReason(response.data.reason || '');
+      } catch (error) {
+        console.error('Error checking registration status:', error);
+      }
+    };
+    checkRegistrationStatus();
   }, []);
 
+  // Sync URL with active step
   useEffect(() => {
     if (!registrationResult) {
       const currentStep = searchParams.get('step');
       const stepStr = activeStep.toString();
       if (currentStep !== stepStr) {
-        if (activeStep === -1) searchParams.delete('step');
-        else searchParams.set('step', stepStr);
+        if (activeStep === -1) {
+          searchParams.delete('step');
+        } else {
+          searchParams.set('step', stepStr);
+        }
         setSearchParams(searchParams, { replace: false });
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeStep, registrationResult]);
 
+  // Listen for browser back/forward navigation
   useEffect(() => {
     const stepParam = searchParams.get('step');
     if (stepParam !== null) {
@@ -118,21 +181,34 @@ const RegistrationForm = () => {
         setActiveStep(step);
       }
     } else if (activeStep !== -1 && !registrationResult) {
+      // URL has no step param, go to initial step
       setActiveStep(-1);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams]);
 
+  // Save form state to localStorage whenever it changes
   useEffect(() => {
     if (!registrationResult) {
       try {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify({ formData, activeStep, savedAt: new Date().toISOString() }));
-      } catch (e) { console.error(e); }
+        localStorage.setItem(STORAGE_KEY, JSON.stringify({
+          formData,
+          activeStep,
+          savedAt: new Date().toISOString()
+        }));
+      } catch (e) {
+        console.error('Error saving form data:', e);
+      }
     }
   }, [formData, activeStep, registrationResult]);
 
+  // Clear saved form data on successful registration
   const clearSavedForm = () => {
-    try { localStorage.removeItem(STORAGE_KEY); } catch (e) { console.error(e); }
+    try {
+      localStorage.removeItem(STORAGE_KEY);
+    } catch (e) {
+      console.error('Error clearing saved form:', e);
+    }
   };
 
   const steps = [
@@ -145,24 +221,41 @@ const RegistrationForm = () => {
     { key: 'section7', label: t('section7') }
   ];
 
-  const handleNext = () => setActiveStep(s => s + 1);
-  const handleBack = () => setActiveStep(s => s - 1);
-  const handleFormDataChange = (data) => setFormData({ ...formData, ...data });
+  const handleNext = () => {
+    setActiveStep((prevStep) => prevStep + 1);
+  };
+
+  const handleBack = () => {
+    setActiveStep((prevStep) => prevStep - 1);
+  };
+
+  const handleFormDataChange = (data) => {
+    setFormData({ ...formData, ...data });
+  };
 
   const handleUserFound = (userData) => {
+    // Auto-fill all user fields from existing user data
+    // User can still change application type, but personal info is pre-filled
     setFormData({
       ...formData,
       existingUserId: userData.userId,
       applicationType: userData.applicationType || '',
-      firstName: userData.firstName || '', lastName: userData.lastName || '',
-      name: userData.name || '', sex: userData.sex || '',
-      nationality: userData.nationality || '', nationalId: userData.nationalId || '',
-      phoneNumber: userData.phoneNumber || '', email: userData.email || '',
-      currentJob: userData.currentJob || '', nationalAddress: userData.nationalAddress || '',
-      entityName: userData.entityName || '', visitingEntity: userData.visitingEntity || '',
-      personInCharge: userData.personInCharge || '', profilePicture: userData.profilePicture || ''
+      firstName: userData.firstName || '',
+      lastName: userData.lastName || '',
+      name: userData.name || '',
+      sex: userData.sex || '',
+      nationality: userData.nationality || '',
+      nationalId: userData.nationalId || '',
+      phoneNumber: userData.phoneNumber || '',
+      email: userData.email || '',
+      currentJob: userData.currentJob || '',
+      nationalAddress: userData.nationalAddress || '',
+      entityName: userData.entityName || '',
+      visitingEntity: userData.visitingEntity || '',
+      personInCharge: userData.personInCharge || '',
+      profilePicture: userData.profilePicture || ''
     });
-    setActiveStep(0);
+    setActiveStep(0); // Go to Application Type step - user can change type but personal info is pre-filled
   };
 
   const handleSubmit = async () => {
@@ -170,16 +263,23 @@ const RegistrationForm = () => {
     try {
       const response = await api.post('/registration/create', formData);
       setRegistrationResult(response.data.registration);
-      clearSavedForm();
+      clearSavedForm(); // Clear saved form data on successful registration
+      // Clear step from URL on success
       searchParams.delete('step');
       setSearchParams(searchParams, { replace: true });
       toast.success(t('registrationSuccess'));
     } catch (error) {
+      console.error('Registration error:', error);
       const errorData = error.response?.data;
-      let msg = errorData
-        ? (isRTL ? (errorData.messageAr || errorData.message || errorData.error) : (errorData.message || errorData.error))
-        : null;
-      if (!msg && error.response?.status) {
+      let errorMessage;
+
+      if (errorData) {
+        errorMessage = isRTL
+          ? (errorData.messageAr || errorData.message || errorData.error)
+          : (errorData.message || errorData.error);
+      }
+
+      if (!errorMessage && error.response?.status) {
         const statusMessages = {
           400: isRTL ? 'بيانات غير مكتملة أو غير صحيحة' : 'Incomplete or invalid data',
           404: isRTL ? 'الخدمة غير متوفرة' : 'Service not found',
@@ -187,231 +287,366 @@ const RegistrationForm = () => {
           413: isRTL ? 'حجم الملف كبير جداً' : 'File too large',
           500: isRTL ? 'خطأ في الخادم - يرجى المحاولة لاحقاً' : 'Server error - please try again later'
         };
-        msg = statusMessages[error.response.status];
+        errorMessage = statusMessages[error.response.status];
       }
-      toast.error(msg || (isRTL ? 'حدث خطأ - يرجى المحاولة مرة أخرى' : 'An error occurred - please try again'));
+
+      toast.error(errorMessage || (isRTL ? 'حدث خطأ - يرجى المحاولة مرة أخرى' : 'An error occurred - please try again'));
     } finally {
       setLoading(false);
     }
   };
 
   const renderStepContent = (step) => {
-    const stepProps = { formData, onChange: handleFormDataChange, onNext: handleNext, onBack: handleBack };
+    const stepProps = {
+      formData,
+      onChange: handleFormDataChange,
+      onNext: handleNext,
+      onBack: handleBack
+    };
+
     switch (step) {
-      case 0: return <ApplicationType {...stepProps} />;
-      case 1: return <ApplicationData {...stepProps} />;
-      case 2: return <FablabSection {...stepProps} />;
-      case 3: return <RequiredService {...stepProps} />;
-      case 4: return <DateTimeSelection {...stepProps} />;
-      case 5: return <ServiceDetails {...stepProps} />;
-      case 6: return <Commitment {...stepProps} onSubmit={handleSubmit} loading={loading} />;
-      default: return null;
+      case 0:
+        return <ApplicationType {...stepProps} />;
+      case 1:
+        return <ApplicationData {...stepProps} />;
+      case 2:
+        return <FablabSection {...stepProps} />;
+      case 3:
+        return <RequiredService {...stepProps} />;
+      case 4:
+        return <DateTimeSelection {...stepProps} />;
+      case 5:
+        return <ServiceDetails {...stepProps} />;
+      case 6:
+        return <Commitment {...stepProps} onSubmit={handleSubmit} loading={loading} />;
+      default:
+        return null;
     }
   };
 
-  const progressPct = activeStep >= 0
-    ? Math.min(100, Math.round(((activeStep + 1) / steps.length) * 100))
-    : 0;
-
-  // ---------- Registration disabled state ----------
   if (registrationDisabled) {
     return (
-      <div className="rp" data-theme={theme} dir={isRTL ? 'rtl' : 'ltr'}>
-        <RegistrationTopBar
-          isRTL={isRTL} theme={theme} onToggleTheme={toggleTheme}
-          activeStep={-1} totalSteps={steps.length} progressPct={0}
-        />
-        <main className="rp-main">
+      <div className="registration-page" data-theme={theme} dir={isRTL ? 'rtl' : 'ltr'}>
+        <div className="registration-container">
           <motion.div
-            className="rp-card rp-card--empty"
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.4 }}
+            className="form-card"
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.5 }}
           >
-            <div className="rp-empty-icon" aria-hidden="true">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
-            </div>
-            <h2 className="rp-empty-title">{isRTL ? 'التسجيل غير متاح حالياً' : 'Registration Unavailable'}</h2>
-            {disabledReason && <p className="rp-empty-reason">{disabledReason}</p>}
-            <p className="rp-empty-body">
-              {isRTL
-                ? 'يرجى المحاولة لاحقاً أو التواصل مع إدارة فاب لاب.'
-                : 'Please try again later or contact FABLAB administration.'}
-            </p>
-            <div className="rp-empty-actions">
-              <button className="rp-btn rp-btn--primary" onClick={() => navigate('/borrow')}>
-                {isRTL ? 'استعارة مكونات' : 'Borrow Components'}
-              </button>
-              <button className="rp-btn rp-btn--ghost" onClick={() => window.location.reload()}>
-                {isRTL ? 'إعادة المحاولة' : 'Try Again'}
-              </button>
+            <div style={{ textAlign: 'center', padding: '50px 30px' }}>
+              <motion.div
+                initial={{ scale: 0 }}
+                animate={{ scale: 1 }}
+                transition={{ type: 'spring', delay: 0.2 }}
+              >
+                <div style={{ width: '90px', height: '90px', background: '#fef2f2', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 24px' }}>
+                  <svg width="45" height="45" viewBox="0 0 24 24" fill="none" stroke="#ef4444" strokeWidth="2">
+                    <circle cx="12" cy="12" r="10"/>
+                    <line x1="15" y1="9" x2="9" y2="15"/>
+                    <line x1="9" y1="9" x2="15" y2="15"/>
+                  </svg>
+                </div>
+              </motion.div>
+              <motion.h2
+                initial={{ y: 20, opacity: 0 }}
+                animate={{ y: 0, opacity: 1 }}
+                transition={{ delay: 0.3 }}
+                style={{ color: '#dc2626', fontSize: '24px', fontWeight: '700', marginBottom: '12px' }}
+              >
+                {isRTL ? 'التسجيل غير متاح حالياً' : 'Registration Currently Unavailable'}
+              </motion.h2>
+              {disabledReason && (
+                <motion.div
+                  initial={{ y: 20, opacity: 0 }}
+                  animate={{ y: 0, opacity: 1 }}
+                  transition={{ delay: 0.4 }}
+                  style={{ background: '#fef2f2', padding: '16px 24px', borderRadius: '12px', margin: '20px auto', maxWidth: '500px', border: '1px solid #fecaca' }}
+                >
+                  <p style={{ color: '#991b1b', fontSize: '15px', fontWeight: '600', margin: '0 0 4px 0' }}>
+                    {isRTL ? 'السبب:' : 'Reason:'}
+                  </p>
+                  <p style={{ color: '#b91c1c', fontSize: '15px', margin: 0, lineHeight: 1.7 }}>
+                    {disabledReason}
+                  </p>
+                </motion.div>
+              )}
+              <motion.p
+                initial={{ y: 20, opacity: 0 }}
+                animate={{ y: 0, opacity: 1 }}
+                transition={{ delay: 0.5 }}
+                style={{ color: '#666', fontSize: '15px', lineHeight: 1.8, maxWidth: '450px', margin: '16px auto' }}
+              >
+                {isRTL
+                  ? 'نعتذر عن عدم إمكانية التسجيل في الوقت الحالي. يرجى المحاولة لاحقاً أو التواصل مع إدارة فاب لاب للمزيد من المعلومات.'
+                  : 'We apologize that registration is not available at this time. Please try again later or contact FABLAB administration for more information.'}
+              </motion.p>
+              <motion.div
+                initial={{ y: 20, opacity: 0 }}
+                animate={{ y: 0, opacity: 1 }}
+                transition={{ delay: 0.6 }}
+                style={{ display: 'flex', gap: '12px', justifyContent: 'center', marginTop: '28px', flexWrap: 'wrap' }}
+              >
+                <button
+                  className="btn btn-primary"
+                  onClick={() => navigate('/borrow')}
+                  style={{ display: 'flex', alignItems: 'center', gap: '8px' }}
+                >
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
+                    <polyline points="3.27 6.96 12 12.01 20.73 6.96"/>
+                    <line x1="12" y1="22.08" x2="12" y2="12"/>
+                  </svg>
+                  {isRTL ? 'استعارة مكونات' : 'Borrow Components'}
+                </button>
+                <button
+                  className="btn btn-secondary"
+                  onClick={() => window.location.reload()}
+                  style={{ display: 'flex', alignItems: 'center', gap: '8px' }}
+                >
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <polyline points="23 4 23 10 17 10"/>
+                    <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
+                  </svg>
+                  {isRTL ? 'إعادة المحاولة' : 'Try Again'}
+                </button>
+              </motion.div>
             </div>
           </motion.div>
-        </main>
+        </div>
       </div>
     );
   }
 
-  // ---------- Success state ----------
   if (registrationResult) {
     return (
-      <div className="rp" data-theme={theme} dir={isRTL ? 'rtl' : 'ltr'}>
-        <RegistrationTopBar
-          isRTL={isRTL} theme={theme} onToggleTheme={toggleTheme}
-          activeStep={activeStep} totalSteps={steps.length} progressPct={100}
-        />
-        <main className="rp-main">
-          <div className="rp-card">
+      <div className="registration-page" data-theme={theme} dir={isRTL ? 'rtl' : 'ltr'}>
+        <div className="registration-container">
+          <div className="form-card">
             <SuccessPage registration={registrationResult} />
           </div>
-        </main>
+        </div>
       </div>
     );
   }
 
-  // ---------- Normal flow ----------
   return (
-    <div className="rp" data-theme={theme} dir={isRTL ? 'rtl' : 'ltr'}>
-      <RegistrationTopBar
-        isRTL={isRTL} theme={theme} onToggleTheme={toggleTheme}
-        activeStep={activeStep} totalSteps={steps.length} progressPct={progressPct}
-      />
-
-      <main className="rp-main">
-        {activeStep === -1 && (
-          <motion.header
-            className="rp-hero"
-            initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, ease: [0.2, 0.9, 0.2, 1] }}
-          >
-            <span className="rp-hero-eyebrow">
-              {isRTL ? 'مختبر التصنيع الرقمي' : 'DIGITAL FABRICATION LAB'}
+    <div className="registration-page" data-theme={theme} dir={isRTL ? 'rtl' : 'ltr'}>
+      {/* Sticky top bar — brand identity + actions */}
+      <header className="registration-topbar">
+        <div className="topbar-brand">
+          <div className="topbar-logo">
+            <img src="/logo.png" alt="FABLAB" />
+          </div>
+          <div className="topbar-titles">
+            <span className="topbar-title">{isRTL ? 'فاب لاب الأحساء' : 'FabLab Al-Ahsa'}</span>
+            <span className="topbar-subtitle">{isRTL ? 'مختبر التصنيع الرقمي' : 'Digital Fabrication Lab'}</span>
+          </div>
+        </div>
+        <div className="topbar-actions">
+          {activeStep >= 0 && (
+            <span className="topbar-progress-pill">
+              {String(Math.max(0, activeStep) + 1).padStart(2, '0')} / {String(steps.length).padStart(2, '0')}
             </span>
-            <h1 className="rp-hero-title">
-              {isRTL ? (<>فاب لاب <span className="rp-hero-accent">الأحساء</span></>) : (<>FabLab <span className="rp-hero-accent">Al-Ahsa</span></>)}
-            </h1>
-            <p className="rp-hero-subtitle">
-              {isRTL ? 'نظام التسجيل وحجز المواعيد' : 'Registration & Appointment System'}
-            </p>
-          </motion.header>
-        )}
-
-        <motion.div
-          className="rp-card"
-          initial={{ opacity: 0, y: 12 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.45, delay: activeStep === -1 ? 0.12 : 0, ease: [0.2, 0.9, 0.2, 1] }}
-        >
-          {activeStep === -1 ? (
-            <UserLookup onUserFound={handleUserFound} onNewUser={() => setActiveStep(0)} />
-          ) : (
-            <>
-              <div className="rp-card-header">
-                <button
-                  className="rp-home-btn"
-                  onClick={() => { setActiveStep(-1); setFormData(defaultFormData); clearSavedForm(); }}
-                  title={isRTL ? 'العودة للرئيسية' : 'Back to Home'}
-                  aria-label={isRTL ? 'العودة للرئيسية' : 'Back to Home'}
-                >
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
-                    <polyline points="9 22 9 12 15 12 15 22"/>
-                  </svg>
-                  <span>{isRTL ? 'الرئيسية' : 'Home'}</span>
-                </button>
-                <div className="rp-step-tag">
-                  <span className="rp-step-num">{String(activeStep + 1).padStart(2, '0')}</span>
-                  <span className="rp-step-sep">/</span>
-                  <span className="rp-step-total">{String(steps.length).padStart(2, '0')}</span>
-                  <span className="rp-step-name">{steps[activeStep]?.label}</span>
-                </div>
-              </div>
-
-              <div className="rp-progress-track" aria-hidden="true">
-                <div className="rp-progress-fill" style={{ width: `${progressPct}%` }} />
-              </div>
-
-              <div className="rp-form-content">
-                <AnimatePresence mode="wait">
-                  <motion.div
-                    key={activeStep}
-                    initial={{ opacity: 0, x: isRTL ? -12 : 12 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    exit={{ opacity: 0, x: isRTL ? 12 : -12 }}
-                    transition={{ duration: 0.22, ease: [0.2, 0.9, 0.2, 1] }}
-                  >
-                    {renderStepContent(activeStep)}
-                  </motion.div>
-                </AnimatePresence>
-              </div>
-            </>
           )}
-        </motion.div>
-      </main>
+          <a
+            href="https://main.fablabsahsa.com/"
+            className="topbar-main-link"
+            title={isRTL ? 'العودة للموقع الرئيسي' : 'Back to main site'}
+            aria-label={isRTL ? 'العودة للموقع الرئيسي' : 'Back to main site'}
+          >
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+              <polyline points="9 22 9 12 15 12 15 22"/>
+            </svg>
+            <span>{isRTL ? 'الموقع الرئيسي' : 'Main site'}</span>
+          </a>
+          <button
+            type="button"
+            className="theme-toggle"
+            onClick={toggleTheme}
+            aria-label={theme === 'dark' ? (isRTL ? 'الوضع الفاتح' : 'Light mode') : (isRTL ? 'الوضع الداكن' : 'Dark mode')}
+            title={theme === 'dark' ? (isRTL ? 'تفعيل الوضع الفاتح' : 'Switch to light mode') : (isRTL ? 'تفعيل الوضع الداكن' : 'Switch to dark mode')}
+          >
+            <svg className="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+            </svg>
+            <svg className="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="12" cy="12" r="5"/>
+              <line x1="12" y1="1" x2="12" y2="3"/>
+              <line x1="12" y1="21" x2="12" y2="23"/>
+              <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/>
+              <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/>
+              <line x1="1" y1="12" x2="3" y2="12"/>
+              <line x1="21" y1="12" x2="23" y2="12"/>
+              <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/>
+              <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
+            </svg>
+          </button>
+        </div>
+      </header>
 
+      {/* Animated aurora background */}
+      <div className="aurora" aria-hidden="true">
+        <div className="aurora-blob"></div>
+        <div className="aurora-blob"></div>
+        <div className="aurora-blob"></div>
+        <div className="aurora-blob"></div>
+        <div className="aurora-blob"></div>
+      </div>
+
+      {/* Twinkling stars */}
+      <div className="stars" aria-hidden="true">
+        {Array.from({ length: 12 }).map((_, i) => <span key={i} />)}
+      </div>
+
+      {/* Floating fabrication icons */}
+      <div className="floating-icons" aria-hidden="true">
+        <div className="float-icon" title="3D Printer">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+        </div>
+        <div className="float-icon" title="Gear">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+        </div>
+        <div className="float-icon" title="Cube">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>
+        </div>
+        <div className="float-icon" title="Circuit">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="4" y="4" width="16" height="16" rx="2"/><rect x="9" y="9" width="6" height="6"/><line x1="9" y1="2" x2="9" y2="4"/><line x1="15" y1="2" x2="15" y2="4"/><line x1="9" y1="20" x2="9" y2="22"/><line x1="15" y1="20" x2="15" y2="22"/><line x1="20" y1="9" x2="22" y2="9"/><line x1="20" y1="14" x2="22" y2="14"/><line x1="2" y1="9" x2="4" y2="9"/><line x1="2" y1="14" x2="4" y2="14"/></svg>
+        </div>
+        <div className="float-icon" title="Spark">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+        </div>
+        <div className="float-icon" title="Wrench">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>
+        </div>
+      </div>
+
+      <div className="registration-container">
+        <div style={{ width: '100%' }}>
+          {/* Welcome hero — only on the initial UserLookup screen */}
+          {activeStep === -1 && (
+            <motion.div
+              className="registration-header"
+              initial={{ opacity: 0, y: -20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.7, ease: [0.2, 0.9, 0.2, 1] }}
+            >
+              <div className="registration-eyebrow">
+                <span>{isRTL ? 'مختبر التصنيع الرقمي' : 'DIGITAL FABRICATION LAB'}</span>
+              </div>
+              <motion.h1
+                className="registration-title"
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.6, delay: 0.2 }}
+              >
+                {isRTL ? (
+                  <>فاب لاب <em>الأحساء</em></>
+                ) : (
+                  <>FabLab <em>Al-Ahsa</em></>
+                )}
+              </motion.h1>
+              <motion.p
+                className="registration-subtitle"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ duration: 0.5, delay: 0.35 }}
+              >
+                {isRTL ? '✨ نظام التسجيل وحجز المواعيد' : '✨ Registration & Appointment System'}
+              </motion.p>
+            </motion.div>
+          )}
+
+          {/* Form Card */}
+          <motion.div
+            className="form-card"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: 0.2 }}
+          >
+            {activeStep === -1 ? (
+              <UserLookup
+                onUserFound={handleUserFound}
+                onNewUser={() => setActiveStep(0)}
+              />
+            ) : (
+              <>
+                {/* Home Button */}
+                <div className="home-button-container">
+                  <button
+                    className="home-button"
+                    onClick={() => {
+                      setActiveStep(-1);
+                      setFormData(defaultFormData);
+                      clearSavedForm();
+                    }}
+                    title={isRTL ? 'العودة للرئيسية' : 'Back to Home'}
+                  >
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+                      <polyline points="9 22 9 12 15 12 15 22"/>
+                    </svg>
+                    <span>{isRTL ? 'الرئيسية' : 'Home'}</span>
+                  </button>
+                </div>
+
+                {/* Stepper */}
+                <div
+                  className="stepper-container"
+                  data-progress={`${String(Math.max(0, activeStep) + 1).padStart(2, '0')} / ${String(steps.length).padStart(2, '0')}`}
+                >
+                  <div className="stepper-wrapper">
+                    {steps.map((step, index) => (
+                      <div
+                        key={step.key}
+                        className={`step-item ${index === activeStep ? 'active' : ''} ${index < activeStep ? 'completed' : ''}`}
+                      >
+                        <div className="step-circle">
+                          {index < activeStep ? '' : String(index + 1).padStart(2, '0')}
+                        </div>
+                        <span className="step-label">{step.label}</span>
+                        {index < steps.length - 1 && <div className="step-connector" />}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Form Content */}
+                <div className="form-content">
+                  <AnimatePresence mode="wait">
+                    <motion.div
+                      key={activeStep}
+                      initial={{ opacity: 0, x: isRTL ? -30 : 30 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      exit={{ opacity: 0, x: isRTL ? 30 : -30 }}
+                      transition={{ duration: 0.3 }}
+                    >
+                      {activeStep >= 0 && activeStep < stepIllustrations.length && (
+                        <motion.div
+                          className="step-illustration"
+                          initial={{ opacity: 0, scale: 0.9 }}
+                          animate={{ opacity: 1, scale: 1 }}
+                          transition={{ delay: 0.1, duration: 0.45 }}
+                          aria-hidden="true"
+                        >
+                          <img src={stepIllustrations[activeStep]} alt="" />
+                        </motion.div>
+                      )}
+                      {renderStepContent(activeStep)}
+                    </motion.div>
+                  </AnimatePresence>
+                </div>
+              </>
+            )}
+          </motion.div>
+        </div>
+      </div>
+
+      {/* FABY - AI Assistant Bot */}
       <FabyBot currentStep={activeStep} formData={formData} />
     </div>
   );
 };
-
-// ---------- Slim, sticky top bar ----------
-const RegistrationTopBar = ({ isRTL, theme, onToggleTheme, activeStep, totalSteps, progressPct }) => (
-  <header className="rp-topbar">
-    <div className="rp-topbar-inner">
-      <a className="rp-topbar-brand" href="/" aria-label="FabLab Al-Ahsa">
-        <img src="/logo.png" alt="" className="rp-topbar-logo" />
-        <div className="rp-topbar-titles">
-          <span className="rp-topbar-title">{isRTL ? 'فاب لاب الأحساء' : 'FabLab Al-Ahsa'}</span>
-          <span className="rp-topbar-sub">{isRTL ? 'التسجيل' : 'Registration'}</span>
-        </div>
-      </a>
-
-      <div className="rp-topbar-actions">
-        {activeStep >= 0 && (
-          <div className="rp-topbar-progress" aria-label={`${progressPct}%`}>
-            <div className="rp-topbar-progress-track">
-              <div className="rp-topbar-progress-fill" style={{ width: `${progressPct}%` }} />
-            </div>
-            <span className="rp-topbar-progress-label">
-              {String(activeStep + 1).padStart(2, '0')}/{String(totalSteps).padStart(2, '0')}
-            </span>
-          </div>
-        )}
-
-        <a
-          href="https://main.fablabsahsa.com/"
-          className="rp-topbar-link"
-          title={isRTL ? 'الموقع الرئيسي' : 'Main site'}
-          aria-label={isRTL ? 'الموقع الرئيسي' : 'Main site'}
-        >
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-            <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
-            <polyline points="9 22 9 12 15 12 15 22"/>
-          </svg>
-        </a>
-
-        <button
-          type="button"
-          className="rp-topbar-toggle"
-          onClick={onToggleTheme}
-          aria-label={theme === 'dark' ? (isRTL ? 'الوضع الفاتح' : 'Light mode') : (isRTL ? 'الوضع الداكن' : 'Dark mode')}
-          title={theme === 'dark' ? (isRTL ? 'تفعيل الوضع الفاتح' : 'Switch to light mode') : (isRTL ? 'تفعيل الوضع الداكن' : 'Switch to dark mode')}
-        >
-          <svg className="rp-icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
-          </svg>
-          <svg className="rp-icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-            <circle cx="12" cy="12" r="4"/>
-            <line x1="12" y1="2" x2="12" y2="4"/><line x1="12" y1="20" x2="12" y2="22"/>
-            <line x1="4.93" y1="4.93" x2="6.34" y2="6.34"/><line x1="17.66" y1="17.66" x2="19.07" y2="19.07"/>
-            <line x1="2" y1="12" x2="4" y2="12"/><line x1="20" y1="12" x2="22" y2="12"/>
-            <line x1="4.93" y1="19.07" x2="6.34" y2="17.66"/><line x1="17.66" y1="6.34" x2="19.07" y2="4.93"/>
-          </svg>
-        </button>
-      </div>
-    </div>
-  </header>
-);
 
 export default RegistrationForm;
