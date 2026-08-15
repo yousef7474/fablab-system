@@ -66,6 +66,7 @@ const Customer = require('./Customer');
 const Contract = require('./Contract');
 const SummerStudentAttendance = require('./SummerStudentAttendance');
 const FablabVisit = require('./FablabVisit');
+const CalendarEvent = require('./CalendarEvent');
 
 MawhbaAttendance.belongsTo(MawhbaStudent, { foreignKey: 'studentId', as: 'student', constraints: false });
 MawhbaStudent.hasMany(MawhbaAttendance, { foreignKey: 'studentId', as: 'attendance', constraints: false });
@@ -783,5 +784,6 @@ module.exports = {
   Contract,
   SummerStudentAttendance,
   FablabVisit,
+  CalendarEvent,
   syncDatabase
 };
