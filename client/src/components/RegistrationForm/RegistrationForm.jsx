@@ -61,7 +61,7 @@ const RegistrationForm = () => {
   const [searchParams, setSearchParams] = useSearchParams();
 
   const [theme, setTheme] = useState(() => {
-    try { return localStorage.getItem(THEME_KEY) || 'light'; } catch (e) { return 'light'; }
+    try { return localStorage.getItem(THEME_KEY) || 'dark'; } catch (e) { return 'dark'; }
   });
 
   const toggleTheme = useCallback(() => {
@@ -217,6 +217,7 @@ const RegistrationForm = () => {
   if (registrationDisabled) {
     return (
       <div className="rp" data-theme={theme} dir={isRTL ? 'rtl' : 'ltr'}>
+        <AmbientBackdrop />
         <RegistrationTopBar
           isRTL={isRTL} theme={theme} onToggleTheme={toggleTheme}
           activeStep={-1} totalSteps={steps.length} progressPct={0}
@@ -239,10 +240,10 @@ const RegistrationForm = () => {
                 : 'Please try again later or contact FABLAB administration.'}
             </p>
             <div className="rp-empty-actions">
-              <button className="rp-btn rp-btn--primary" onClick={() => navigate('/borrow')}>
+              <button className="btn btn-primary" onClick={() => navigate('/borrow')}>
                 {isRTL ? 'استعارة مكونات' : 'Borrow Components'}
               </button>
-              <button className="rp-btn rp-btn--ghost" onClick={() => window.location.reload()}>
+              <button className="btn btn-secondary" onClick={() => window.location.reload()}>
                 {isRTL ? 'إعادة المحاولة' : 'Try Again'}
               </button>
             </div>
@@ -256,6 +257,7 @@ const RegistrationForm = () => {
   if (registrationResult) {
     return (
       <div className="rp" data-theme={theme} dir={isRTL ? 'rtl' : 'ltr'}>
+        <AmbientBackdrop />
         <RegistrationTopBar
           isRTL={isRTL} theme={theme} onToggleTheme={toggleTheme}
           activeStep={activeStep} totalSteps={steps.length} progressPct={100}
@@ -272,6 +274,7 @@ const RegistrationForm = () => {
   // ---------- Normal flow ----------
   return (
     <div className="rp" data-theme={theme} dir={isRTL ? 'rtl' : 'ltr'}>
+      <AmbientBackdrop />
       <RegistrationTopBar
         isRTL={isRTL} theme={theme} onToggleTheme={toggleTheme}
         activeStep={activeStep} totalSteps={steps.length} progressPct={progressPct}
@@ -281,33 +284,89 @@ const RegistrationForm = () => {
         {activeStep === -1 && (
           <motion.header
             className="rp-hero"
-            initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, ease: [0.2, 0.9, 0.2, 1] }}
+            initial="hidden"
+            animate="show"
+            variants={{
+              hidden: { opacity: 0 },
+              show: { opacity: 1, transition: { staggerChildren: 0.08, delayChildren: 0.05 } }
+            }}
           >
-            <span className="rp-hero-eyebrow">
-              {isRTL ? 'مختبر التصنيع الرقمي' : 'DIGITAL FABRICATION LAB'}
-            </span>
-            <h1 className="rp-hero-title">
-              {isRTL ? (<>فاب لاب <span className="rp-hero-accent">الأحساء</span></>) : (<>FabLab <span className="rp-hero-accent">Al-Ahsa</span></>)}
-            </h1>
-            <p className="rp-hero-subtitle">
-              {isRTL ? 'نظام التسجيل وحجز المواعيد' : 'Registration & Appointment System'}
-            </p>
+            <motion.span
+              className="rp-hero-badge"
+              variants={{ hidden: { opacity: 0, y: 6 }, show: { opacity: 1, y: 0 } }}
+            >
+              <span className="rp-hero-badge-dot" aria-hidden="true" />
+              {isRTL ? 'التسجيل مفتوح' : 'REGISTRATION OPEN'}
+            </motion.span>
+            <motion.h1
+              className="rp-hero-title"
+              variants={{ hidden: { opacity: 0, y: 20 }, show: { opacity: 1, y: 0 } }}
+            >
+              {isRTL ? (
+                <>
+                  <span className="rp-hero-line-1">فاب لاب</span>
+                  <span className="rp-hero-line-2"><em>الأحساء</em></span>
+                </>
+              ) : (
+                <>
+                  <span className="rp-hero-line-1">FabLab</span>
+                  <span className="rp-hero-line-2"><em>Al-Ahsa</em></span>
+                </>
+              )}
+            </motion.h1>
+            <motion.p
+              className="rp-hero-subtitle"
+              variants={{ hidden: { opacity: 0, y: 12 }, show: { opacity: 1, y: 0 } }}
+            >
+              {isRTL
+                ? 'احجز موعدك أو سجّل كمتطوّع في مختبر التصنيع الرقمي الأول في الأحساء.'
+                : 'Book a session or join as a volunteer at Al-Ahsa\'s premier digital fabrication lab.'}
+            </motion.p>
+            <motion.div
+              className="rp-hero-meta"
+              variants={{ hidden: { opacity: 0, y: 12 }, show: { opacity: 1, y: 0 } }}
+              aria-hidden="true"
+            >
+              <span className="rp-hero-meta-item">
+                <strong>07</strong>
+                <em>{isRTL ? 'خطوات' : 'STEPS'}</em>
+              </span>
+              <span className="rp-hero-meta-item">
+                <strong>~3</strong>
+                <em>{isRTL ? 'دقائق' : 'MINUTES'}</em>
+              </span>
+              <span className="rp-hero-meta-item">
+                <strong>09</strong>
+                <em>{isRTL ? 'أقسام' : 'SECTIONS'}</em>
+              </span>
+            </motion.div>
           </motion.header>
         )}
 
         <motion.div
           className="rp-card"
-          initial={{ opacity: 0, y: 12 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.45, delay: activeStep === -1 ? 0.12 : 0, ease: [0.2, 0.9, 0.2, 1] }}
+          initial={{ opacity: 0, y: 14, scale: 0.995 }}
+          animate={{ opacity: 1, y: 0, scale: 1 }}
+          transition={{ duration: 0.5, delay: activeStep === -1 ? 0.32 : 0, ease: [0.2, 0.9, 0.2, 1] }}
         >
           {activeStep === -1 ? (
             <UserLookup onUserFound={handleUserFound} onNewUser={() => setActiveStep(0)} />
           ) : (
             <>
-              <div className="rp-card-header">
+              {/* Editorial step header: giant numeral, meta rail, dot progress */}
+              <div className="rp-step-header">
+                <div className="rp-step-headline">
+                  <div className="rp-step-numeral" aria-hidden="true">
+                    {String(activeStep + 1).padStart(2, '0')}
+                    <span className="rp-step-numeral-total">/{String(steps.length).padStart(2, '0')}</span>
+                  </div>
+                  <div className="rp-step-lead">
+                    <span className="rp-step-kicker">
+                      {isRTL ? 'الخطوة الحالية' : 'CURRENT STEP'}
+                    </span>
+                    <span className="rp-step-name">{steps[activeStep]?.label}</span>
+                  </div>
+                </div>
                 <button
                   className="rp-home-btn"
                   onClick={() => { setActiveStep(-1); setFormData(defaultFormData); clearSavedForm(); }}
@@ -318,16 +377,21 @@ const RegistrationForm = () => {
                     <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
                     <polyline points="9 22 9 12 15 12 15 22"/>
                   </svg>
-                  <span>{isRTL ? 'الرئيسية' : 'Home'}</span>
                 </button>
-                <div className="rp-step-tag">
-                  <span className="rp-step-num">{String(activeStep + 1).padStart(2, '0')}</span>
-                  <span className="rp-step-sep">/</span>
-                  <span className="rp-step-total">{String(steps.length).padStart(2, '0')}</span>
-                  <span className="rp-step-name">{steps[activeStep]?.label}</span>
-                </div>
               </div>
 
+              {/* Dot progress */}
+              <div className="rp-step-dots" role="progressbar" aria-valuenow={activeStep + 1} aria-valuemin={1} aria-valuemax={steps.length}>
+                {steps.map((s, i) => (
+                  <span
+                    key={s.key}
+                    className={`rp-step-dot ${i === activeStep ? 'is-active' : ''} ${i < activeStep ? 'is-done' : ''}`}
+                    title={s.label}
+                  />
+                ))}
+              </div>
+
+              {/* Slim progress line — smooth width transition ties dots + bar together */}
               <div className="rp-progress-track" aria-hidden="true">
                 <div className="rp-progress-fill" style={{ width: `${progressPct}%` }} />
               </div>
@@ -336,10 +400,10 @@ const RegistrationForm = () => {
                 <AnimatePresence mode="wait">
                   <motion.div
                     key={activeStep}
-                    initial={{ opacity: 0, x: isRTL ? -12 : 12 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    exit={{ opacity: 0, x: isRTL ? 12 : -12 }}
-                    transition={{ duration: 0.22, ease: [0.2, 0.9, 0.2, 1] }}
+                    initial={{ opacity: 0, x: isRTL ? -18 : 18, filter: 'blur(6px)' }}
+                    animate={{ opacity: 1, x: 0, filter: 'blur(0px)' }}
+                    exit={{ opacity: 0, x: isRTL ? 18 : -18, filter: 'blur(6px)' }}
+                    transition={{ duration: 0.32, ease: [0.2, 0.9, 0.2, 1] }}
                   >
                     {renderStepContent(activeStep)}
                   </motion.div>
@@ -355,27 +419,43 @@ const RegistrationForm = () => {
   );
 };
 
-// ---------- Slim, sticky top bar ----------
+// ---------- Ambient backdrop: pure CSS, no JS animation ----------
+const AmbientBackdrop = () => (
+  <div className="rp-backdrop" aria-hidden="true">
+    <div className="rp-backdrop-grid" />
+    <div className="rp-backdrop-glow rp-backdrop-glow--brand" />
+    <div className="rp-backdrop-glow rp-backdrop-glow--warm" />
+  </div>
+);
+
+// ---------- Sticky top bar ----------
 const RegistrationTopBar = ({ isRTL, theme, onToggleTheme, activeStep, totalSteps, progressPct }) => (
   <header className="rp-topbar">
     <div className="rp-topbar-inner">
       <a className="rp-topbar-brand" href="/" aria-label="FabLab Al-Ahsa">
-        <img src="/logo.png" alt="" className="rp-topbar-logo" />
+        <span className="rp-topbar-mark">
+          <img src="/logo.png" alt="" />
+        </span>
         <div className="rp-topbar-titles">
           <span className="rp-topbar-title">{isRTL ? 'فاب لاب الأحساء' : 'FabLab Al-Ahsa'}</span>
-          <span className="rp-topbar-sub">{isRTL ? 'التسجيل' : 'Registration'}</span>
+          <span className="rp-topbar-sub">
+            <span className="rp-topbar-sub-dot" />
+            {isRTL ? 'التسجيل' : 'Registration'}
+          </span>
         </div>
       </a>
 
       <div className="rp-topbar-actions">
         {activeStep >= 0 && (
           <div className="rp-topbar-progress" aria-label={`${progressPct}%`}>
+            <span className="rp-topbar-progress-value">
+              {String(activeStep + 1).padStart(2, '0')}
+              <span className="rp-topbar-progress-sep">/</span>
+              {String(totalSteps).padStart(2, '0')}
+            </span>
             <div className="rp-topbar-progress-track">
               <div className="rp-topbar-progress-fill" style={{ width: `${progressPct}%` }} />
             </div>
-            <span className="rp-topbar-progress-label">
-              {String(activeStep + 1).padStart(2, '0')}/{String(totalSteps).padStart(2, '0')}
-            </span>
           </div>
         )}
 
