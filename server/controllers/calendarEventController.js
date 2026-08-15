@@ -97,7 +97,7 @@ exports.create = async (req, res) => {
   try {
     const {
       startDate, endDate, title, description,
-      category, color, isImportant, assignedTo
+      category, customCategory, color, isImportant, assignedTo
     } = req.body || {};
 
     if (!startDate || !title) {
@@ -111,6 +111,7 @@ exports.create = async (req, res) => {
       title: String(title).trim(),
       description: description ? String(description).trim() : null,
       category: category || 'task',
+      customCategory: (category === 'other' && customCategory) ? String(customCategory).trim() : null,
       color: color || null,
       isImportant: !!isImportant,
       assignedTo: assignedTo ? String(assignedTo).trim() : null,
@@ -133,6 +134,12 @@ exports.update = async (req, res) => {
     delete payload.createdBy;
     if (payload.startDate) {
       payload.year = new Date(`${payload.startDate}T00:00:00`).getFullYear();
+    }
+    // Only keep customCategory when category is 'other'
+    if (payload.category && payload.category !== 'other') {
+      payload.customCategory = null;
+    } else if (payload.customCategory) {
+      payload.customCategory = String(payload.customCategory).trim() || null;
     }
     await row.update(payload);
     res.json(row);

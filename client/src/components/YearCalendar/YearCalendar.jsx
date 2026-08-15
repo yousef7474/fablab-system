@@ -12,18 +12,29 @@ const DAY_LETTERS_EN = ['S','M','T','W','T','F','S'];
 
 // Category → default color + label
 const CATEGORIES = [
-  { key: 'task',     labelAr: 'مهمة',      labelEn: 'Task',     color: '#EE2329' },
-  { key: 'reminder', labelAr: 'تذكير',     labelEn: 'Reminder', color: '#f59e0b' },
-  { key: 'meeting',  labelAr: 'اجتماع',    labelEn: 'Meeting',  color: '#0ea5e9' },
-  { key: 'event',    labelAr: 'فعالية',    labelEn: 'Event',    color: '#a855f7' },
-  { key: 'holiday',  labelAr: 'عطلة',      labelEn: 'Holiday',  color: '#16a34a' },
-  { key: 'other',    labelAr: 'أخرى',      labelEn: 'Other',    color: '#64748b' }
+  { key: 'task',           labelAr: 'مهمة',       labelEn: 'Task',           color: '#EE2329' },
+  { key: 'reminder',       labelAr: 'تذكير',      labelEn: 'Reminder',       color: '#f59e0b' },
+  { key: 'meeting',        labelAr: 'اجتماع',     labelEn: 'Meeting',        color: '#0ea5e9' },
+  { key: 'event',          labelAr: 'فعالية',     labelEn: 'Event',          color: '#a855f7' },
+  { key: 'holiday',        labelAr: 'عطلة',       labelEn: 'Holiday',        color: '#16a34a' },
+  { key: 'staff-vacation', labelAr: 'عطلة موظف',  labelEn: 'Staff Vacation', color: '#f97316' },
+  { key: 'other',          labelAr: 'أخرى',       labelEn: 'Other',          color: '#64748b' }
+];
+
+// Preset palette shown when the user picks the "other" category and
+// wants a custom color. Deliberately vibrant + high-contrast.
+const COLOR_PALETTE = [
+  '#ef4444', '#f97316', '#f59e0b', '#eab308', '#84cc16',
+  '#22c55e', '#14b8a6', '#06b6d4', '#0ea5e9', '#3b82f6',
+  '#6366f1', '#8b5cf6', '#a855f7', '#ec4899', '#64748b'
 ];
 
 const catColor = (cat) => CATEGORIES.find(c => c.key === cat)?.color || '#64748b';
-const catLabel = (cat, isRTL) => {
-  const c = CATEGORIES.find(x => x.key === cat);
-  return c ? (isRTL ? c.labelAr : c.labelEn) : cat;
+const catLabel = (ev, isRTL) => {
+  // Prefer the user's custom label when the event is category='other'.
+  if (ev.category === 'other' && ev.customCategory) return ev.customCategory;
+  const c = CATEGORIES.find(x => x.key === ev.category);
+  return c ? (isRTL ? c.labelAr : c.labelEn) : ev.category;
 };
 
 // Local-tz safe ISO
@@ -53,7 +64,7 @@ const YearCalendar = () => {
 
   const [form, setForm] = useState({
     startDate: '', endDate: '', title: '', description: '',
-    category: 'task', color: '', isImportant: false, assignedTo: ''
+    category: 'task', customCategory: '', color: '', isImportant: false, assignedTo: ''
   });
 
   const fetchAll = useCallback(async () => {
@@ -113,7 +124,7 @@ const YearCalendar = () => {
     setForm({
       startDate: iso || toISO(new Date()),
       endDate: '',
-      title: '', description: '', category: 'task', color: '',
+      title: '', description: '', category: 'task', customCategory: '', color: '',
       isImportant: false, assignedTo: ''
     });
     setEditModal({ mode: 'create' });
@@ -127,6 +138,7 @@ const YearCalendar = () => {
       title: ev.title || '',
       description: ev.description || '',
       category: ev.category || 'task',
+      customCategory: ev.customCategory || '',
       color: ev.color || '',
       isImportant: !!ev.isImportant,
       assignedTo: ev.assignedTo || ''
@@ -140,12 +152,17 @@ const YearCalendar = () => {
       toast.error(isRTL ? 'العنوان والتاريخ مطلوبان' : 'Title and date are required');
       return;
     }
+    if (form.category === 'other' && !form.customCategory.trim()) {
+      toast.error(isRTL ? 'اكتب اسم الفئة المخصصة' : 'Enter a custom category name');
+      return;
+    }
     try {
       const body = {
         ...form,
         endDate: form.endDate && form.endDate >= form.startDate ? form.endDate : null,
         title: form.title.trim(),
         description: form.description.trim() || null,
+        customCategory: form.category === 'other' ? form.customCategory.trim() : null,
         color: form.color || null,
         assignedTo: form.assignedTo.trim() || null
       };
@@ -378,7 +395,7 @@ const YearCalendar = () => {
                       <div key={i} className="yc-event" style={{ borderInlineStartColor: ev.color || catColor(ev.category) }}>
                         <div className="yc-event-header">
                           <span className="yc-event-cat" style={{ background: (ev.color || catColor(ev.category)) + '22', color: ev.color || catColor(ev.category) }}>
-                            {catLabel(ev.category, isRTL)}
+                            {catLabel(ev, isRTL)}
                           </span>
                           {ev.isImportant && <span className="yc-event-star">⭐</span>}
                         </div>
@@ -475,6 +492,40 @@ const YearCalendar = () => {
                       ))}
                     </div>
                   </div>
+
+                  {/* Custom label + palette — only when "other" is selected */}
+                  {form.category === 'other' && (
+                    <motion.div
+                      className="yc-field yc-field--full yc-custom-block"
+                      initial={{ opacity: 0, y: -6 }}
+                      animate={{ opacity: 1, y: 0 }}
+                    >
+                      <span>{isRTL ? 'اسم الفئة المخصصة *' : 'Custom Category Name *'}</span>
+                      <input
+                        type="text"
+                        value={form.customCategory}
+                        onChange={(e) => setForm(f => ({ ...f, customCategory: e.target.value }))}
+                        placeholder={isRTL ? 'مثال: دورة تدريبية، حدث طارئ...' : 'e.g. Training course, urgent event...'}
+                        maxLength={64}
+                      />
+                      <div className="yc-palette-wrap">
+                        <span className="yc-palette-label">{isRTL ? 'اختر لوناً' : 'Pick a color'}</span>
+                        <div className="yc-palette">
+                          {COLOR_PALETTE.map(col => (
+                            <button
+                              type="button"
+                              key={col}
+                              onClick={() => setForm(f => ({ ...f, color: col }))}
+                              className={`yc-palette-dot ${form.color === col ? 'is-active' : ''}`}
+                              style={{ background: col }}
+                              title={col}
+                              aria-label={col}
+                            />
+                          ))}
+                        </div>
+                      </div>
+                    </motion.div>
+                  )}
 
                   <label className="yc-field">
                     <span>{isRTL ? 'المكلّف (اختياري)' : 'Assigned To (optional)'}</span>

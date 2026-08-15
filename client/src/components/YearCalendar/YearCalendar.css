@@ -556,6 +556,53 @@
   display: inline-block;
 }
 
+/* Custom category block (only visible when "other" is picked) */
+.yc-custom-block {
+  padding: 12px 14px;
+  background: #fefce8;
+  border: 1px dashed #fde68a;
+  border-radius: 12px;
+}
+.yc-custom-block span:first-child {
+  color: #92400e !important;
+}
+.yc-palette-wrap {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px dashed #fde68a;
+}
+.yc-palette-label {
+  display: block;
+  font-size: 10px !important;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #92400e !important;
+  margin-bottom: 6px;
+}
+.yc-palette {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.yc-palette-dot {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 2px solid transparent;
+  cursor: pointer;
+  transition: transform 0.14s, border-color 0.14s, box-shadow 0.14s;
+  padding: 0;
+}
+.yc-palette-dot:hover {
+  transform: scale(1.15);
+}
+.yc-palette-dot.is-active {
+  border-color: #fff;
+  box-shadow: 0 0 0 2px #0f172a, 0 4px 10px rgba(0, 0, 0, 0.2);
+  transform: scale(1.1);
+}
+
 .yc-btn {
   padding: 10px 20px;
   border-radius: 10px;

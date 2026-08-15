@@ -394,6 +394,18 @@ const syncDatabase = async () => {
       }
     }
 
+    // Calendar events: ensure the customCategory column exists so
+    // "أخرى / Other" events can carry a free-text label.
+    try {
+      await sequelize.query(
+        `ALTER TABLE calendar_events ADD COLUMN IF NOT EXISTS "customCategory" VARCHAR(64)`
+      );
+    } catch (migrationError) {
+      if (!/does not exist/i.test(migrationError.message)) {
+        console.log('calendar_events.customCategory migration note:', migrationError.message);
+      }
+    }
+
     // FabLab visits: ensure the sequential visitNumber column exists and
     // backfill any pre-existing rows so every visit has a number.
     try {

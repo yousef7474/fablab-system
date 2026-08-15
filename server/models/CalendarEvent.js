@@ -17,8 +17,12 @@ const CalendarEvent = sequelize.define('CalendarEvent', {
   title:       { type: DataTypes.STRING, allowNull: false },
   description: { type: DataTypes.TEXT, allowNull: true },
   // Categorises the event visually — colored dot, badge, etc.
-  // 'task' | 'reminder' | 'meeting' | 'event' | 'holiday' | 'other'
+  // 'task' | 'reminder' | 'meeting' | 'event' | 'holiday' | 'staff-vacation' | 'other'
   category:    { type: DataTypes.STRING(24), allowNull: false, defaultValue: 'task' },
+  // Only used when category === 'other'. Free-text label the admin
+  // picked so we can display "طارئ" / "دورة تدريبية" etc. as the
+  // pill instead of a generic "أخرى".
+  customCategory: { type: DataTypes.STRING(64), allowNull: true },
   // Optional per-event color override. When null, the UI falls back
   // to the category's default hue.
   color:       { type: DataTypes.STRING(16), allowNull: true },
