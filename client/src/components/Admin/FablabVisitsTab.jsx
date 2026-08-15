@@ -509,8 +509,8 @@ const FablabVisitsTab = () => {
       </div>
       <div class="signature-box">
         <div class="signature-label">توقيع المدير المعتمد</div>
-        ${v.managerName ? `<div class="signature-mgr">${esc(v.managerName)}</div>` : ''}
-        <div class="signature-line">${v.managerName ? esc(v.managerName) : 'التوقيع'}</div>
+        <div class="signature-mgr">أ. زكي اللويم</div>
+        <div class="signature-line">أ. زكي اللويم — المسؤول التنفيذي</div>
       </div>
     </div>
     <div style="text-align: center; margin-top: 12px; font-size: 10px; color: #475569;">
