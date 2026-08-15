@@ -152,6 +152,7 @@ const FablabVisitForm = () => {
     const err = {};
     if (!form.entityName.trim())     err.entityName = isRTL ? 'مطلوب' : 'Required';
     if (!form.personInCharge.trim()) err.personInCharge = isRTL ? 'مطلوب' : 'Required';
+    if (!form.nationalId.trim())     err.nationalId = isRTL ? 'مطلوب' : 'Required';
     if (!form.phone.trim())          err.phone = isRTL ? 'مطلوب' : 'Required';
     if (!form.email.trim())          err.email = isRTL ? 'مطلوب' : 'Required';
     else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim()))
@@ -325,14 +326,17 @@ const FablabVisitForm = () => {
                     </div>
 
                     <div className="fv-field">
-                      <label>{isRTL ? 'رقم الهوية (اختياري)' : 'National ID (optional)'}</label>
+                      <label>{isRTL ? 'رقم الهوية *' : 'National ID *'}</label>
                       <input
                         type="text"
                         value={form.nationalId}
                         onChange={(e) => setField('nationalId', e.target.value)}
+                        className={errors.nationalId ? 'has-error' : ''}
                         inputMode="numeric"
                         dir="ltr"
+                        placeholder={isRTL ? '10 أرقام' : '10 digits'}
                       />
+                      {errors.nationalId && <span className="fv-err">{errors.nationalId}</span>}
                     </div>
 
                     <div className="fv-field">

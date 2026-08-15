@@ -170,65 +170,365 @@ const FablabVisitsTab = () => {
     }
   };
 
+  // Professional print doc — same layout as the beneficiary registration
+  // print (handlePrintRegistration in AdminDashboard), theme swapped to
+  // sky blue for visit requests. Includes both logos and dual signature
+  // block. Escape helper prevents markup injection from free-text fields.
+  const esc = (v) => String(v == null ? '' : v)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+
   const printVisit = (v) => {
     const win = window.open('', '_blank');
-    if (!win) return;
+    if (!win) return toast.error('فشل فتح نافذة الطباعة');
+
     const mgr = managerBadge(v.approvalStatus);
     const vis = visitorBadge(v.visitorDecision);
-    win.document.write(`<!doctype html><html dir="rtl"><head><meta charset="utf-8"><title>طلب زيارة — ${v.entityName}</title>
-<style>
-  @page { size: A4 portrait; margin: 16mm; }
-  * { box-sizing: border-box; }
-  body { font-family: 'Cairo', 'Segoe UI', Tahoma, Arial, sans-serif; color: #0f172a; margin: 0; padding: 24px; }
-  .head { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; border-bottom: 3px solid #0ea5e9; padding-bottom: 16px; margin-bottom: 20px; }
-  .brand { font-size: 22px; font-weight: 800; letter-spacing: -0.5px; }
-  .brand small { display: block; font-weight: 500; color: #64748b; font-size: 12px; margin-top: 4px; letter-spacing: 2px; text-transform: uppercase; }
-  .doc { text-align: end; }
-  .doc h1 { margin: 0 0 4px; font-size: 20px; }
-  .doc .id { font-family: 'JetBrains Mono', monospace; color: #64748b; font-size: 11px; direction: ltr; text-align: end; }
-  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 20px; margin-bottom: 20px; }
-  .row { display: flex; padding: 10px 0; border-bottom: 1px solid #e5e7eb; font-size: 13px; }
-  .row b { min-width: 130px; color: #334155; }
-  .row span { color: #0f172a; }
-  .section { margin-bottom: 20px; }
-  .section h3 { margin: 0 0 8px; font-size: 14px; color: #0369a1; text-transform: uppercase; letter-spacing: 1px; }
-  .box { background: #f8fafc; border: 1px solid #e5e7eb; padding: 14px; border-radius: 8px; font-size: 13px; line-height: 1.75; white-space: pre-wrap; }
-  .badges { display: flex; gap: 8px; margin-top: 10px; }
-  .badge { display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; border-radius: 999px; font-size: 12px; font-weight: 700; border: 1px solid; }
-  .foot { margin-top: 40px; padding-top: 16px; border-top: 1px solid #e5e7eb; display: flex; justify-content: space-between; font-size: 11px; color: #94a3b8; }
-</style></head><body>
-  <div class="head">
-    <div class="brand">فاب لاب الأحساء<small>FABLAB Al-Ahsa</small></div>
-    <div class="doc"><h1>طلب زيارة</h1><div class="id" style="font-size:15px;font-weight:800;color:#0284c7">${fmtVisitNo(v.visitNumber)}</div></div>
+    const visitNoStr = fmtVisitNo(v.visitNumber);
+    const submittedOn = v.createdAt ? new Date(v.createdAt).toLocaleDateString('ar-SA-u-ca-gregory-nu-latn', { calendar: 'gregory', year: 'numeric', month: 'long', day: 'numeric' }) : '—';
+
+    win.document.write(`<!DOCTYPE html>
+<html dir="rtl" lang="ar">
+<head>
+  <meta charset="UTF-8">
+  <title>طلب زيارة فاب لاب — ${esc(visitNoStr)} — ${esc(v.entityName)}</title>
+  <style>
+    @page { size: A4; margin: 10mm; }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: 'Cairo', 'Segoe UI', Tahoma, Arial, sans-serif;
+      padding: 15px;
+      background: #fff;
+      font-size: 11px;
+      line-height: 1.4;
+      color: #333;
+    }
+
+    /* Top IDs Bar (sky blue) */
+    .ids-bar {
+      display: flex;
+      justify-content: space-between;
+      background: linear-gradient(135deg, #0ea5e9, #0284c7);
+      color: white;
+      padding: 8px 15px;
+      border-radius: 6px;
+      margin-bottom: 12px;
+      font-weight: 600;
+      font-size: 12px;
+    }
+    .ids-bar span { display: flex; align-items: center; gap: 5px; }
+
+    /* Header with Logos */
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding-bottom: 12px;
+      border-bottom: 2px solid #0ea5e9;
+      margin-bottom: 15px;
+    }
+    .logo-container { display: flex; align-items: center; gap: 8px; }
+    .logo-container img { height: 55px; width: auto; object-fit: contain; }
+    .header-center { text-align: center; flex: 1; }
+    .header-title {
+      font-size: 16px;
+      font-weight: 700;
+      color: #0284c7;
+      margin-bottom: 3px;
+    }
+    .header-subtitle { font-size: 11px; color: #666; }
+
+    /* Form Title */
+    .form-title {
+      text-align: center;
+      font-size: 14px;
+      font-weight: 700;
+      color: #0c4a6e;
+      margin-bottom: 12px;
+      padding: 8px;
+      background: #f0f9ff;
+      border-radius: 6px;
+      border-right: 4px solid #0ea5e9;
+    }
+
+    /* Sections */
+    .section {
+      margin-bottom: 12px;
+      background: #fafafa;
+      border-radius: 6px;
+      padding: 10px;
+      border: 1px solid #eee;
+    }
+    .section-title {
+      font-size: 11px;
+      font-weight: 700;
+      color: #0284c7;
+      margin-bottom: 8px;
+      padding-bottom: 5px;
+      border-bottom: 1px solid #0ea5e9;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    /* Field Grid */
+    .field-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+    .field-grid-2 { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
+    .field {
+      background: white;
+      padding: 6px 8px;
+      border-radius: 4px;
+      border: 1px solid #e5e5e5;
+    }
+    .field-label {
+      font-size: 9px;
+      color: #888;
+      margin-bottom: 2px;
+      text-transform: uppercase;
+      font-weight: 600;
+      letter-spacing: 0.3px;
+    }
+    .field-value {
+      font-size: 11px;
+      color: #333;
+      font-weight: 500;
+      word-break: break-word;
+    }
+    .field-full { grid-column: span 3; }
+    .field-full-2 { grid-column: span 2; }
+
+    /* Status Badge */
+    .status {
+      display: inline-block;
+      padding: 3px 10px;
+      border-radius: 12px;
+      font-size: 10px;
+      font-weight: 600;
+    }
+    .status.pending  { background: #fef3c7; color: #92400e; }
+    .status.approved { background: #dbeafe; color: #1e40af; }
+    .status.rejected { background: #fee2e2; color: #b91c1c; }
+    .status.accepted { background: #d1fae5; color: #065f46; }
+    .status.draft    { background: #f1f5f9; color: #475569; }
+
+    /* Prose box for purpose / notes */
+    .prose {
+      background: white;
+      padding: 8px 10px;
+      border-radius: 4px;
+      border: 1px solid #e5e5e5;
+      font-size: 11px;
+      line-height: 1.6;
+      white-space: pre-wrap;
+      color: #333;
+    }
+
+    /* Signature Section */
+    .signature-section {
+      margin-top: 15px;
+      padding: 12px;
+      background: #f0f9ff;
+      border-radius: 6px;
+      border: 1px dashed #7dd3fc;
+    }
+    .signature-title {
+      font-size: 11px;
+      font-weight: 700;
+      color: #0284c7;
+      margin-bottom: 10px;
+      text-align: center;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .signature-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+    }
+    .signature-box { text-align: center; }
+    .signature-label { font-size: 10px; color: #475569; margin-bottom: 25px; font-weight: 600; }
+    .signature-line {
+      border-top: 1px solid #333;
+      margin-top: 30px;
+      padding-top: 5px;
+      font-size: 9px;
+      color: #888;
+    }
+    .signature-mgr {
+      font-family: 'Cairo', sans-serif;
+      font-style: italic;
+      font-size: 12px;
+      color: #0f172a;
+      margin: -6px 0 0;
+    }
+
+    /* Footer */
+    .footer {
+      margin-top: 12px;
+      text-align: center;
+      font-size: 9px;
+      color: #888;
+      padding-top: 8px;
+      border-top: 1px solid #eee;
+    }
+
+    @media print {
+      body { padding: 0; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+      .section, .signature-section { break-inside: avoid; }
+    }
+  </style>
+</head>
+<body>
+  <!-- Top IDs Bar -->
+  <div class="ids-bar">
+    <span>رقم الطلب: ${esc(visitNoStr)}</span>
+    <span>معرّف داخلي: ${esc(v.visitId)}</span>
   </div>
-  <div class="grid">
-    <div class="row"><b>الجهة:</b><span>${v.entityName || '—'}</span></div>
-    <div class="row"><b>الشخص المسؤول:</b><span>${v.personInCharge || '—'}</span></div>
-    <div class="row"><b>الجوال:</b><span dir="ltr">${v.phone || '—'}</span></div>
-    <div class="row"><b>البريد:</b><span dir="ltr">${v.email || '—'}</span></div>
-    ${v.nationalId ? `<div class="row"><b>رقم الهوية:</b><span dir="ltr">${v.nationalId}</span></div>` : ''}
-    <div class="row"><b>عدد الزوار:</b><span>${v.visitorsCount || 1}</span></div>
-    <div class="row"><b>تاريخ الزيارة:</b><span dir="ltr">${fmtDate(v.visitDate)}</span></div>
-    <div class="row"><b>الوقت:</b><span dir="ltr">${fmtTime(v.visitStartTime)} → ${fmtTime(v.visitEndTime)}</span></div>
+
+  <!-- Header with Logos -->
+  <div class="header">
+    <div class="logo-container">
+      <img src="/found.png" alt="Abdulmonem Alrashed Foundation" />
+    </div>
+    <div class="header-center">
+      <div class="header-title">فاب لاب الأحساء</div>
+      <div class="header-subtitle">مختبر التصنيع الرقمي — FABLAB Al-Ahsa</div>
+    </div>
+    <div class="logo-container">
+      <img src="/fablab.png" alt="FABLAB" />
+    </div>
   </div>
+
+  <!-- Form Title -->
+  <div class="form-title">نموذج طلب زيارة رسمية — FABLAB Visit Request Form</div>
+
+  <!-- Request Info -->
   <div class="section">
-    <h3>الغرض من الزيارة</h3>
-    <div class="box">${(v.purpose || '').replace(/</g,'&lt;')}</div>
+    <div class="section-title">معلومات الطلب</div>
+    <div class="field-grid">
+      <div class="field">
+        <div class="field-label">تاريخ التقديم</div>
+        <div class="field-value">${esc(submittedOn)}</div>
+      </div>
+      <div class="field">
+        <div class="field-label">رقم الطلب</div>
+        <div class="field-value" style="direction:ltr;font-weight:700;color:#0284c7">${esc(visitNoStr)}</div>
+      </div>
+      <div class="field">
+        <div class="field-label">حالة الاعتماد</div>
+        <div class="field-value"><span class="status ${esc(v.approvalStatus)}">${esc(mgr.text)}</span></div>
+      </div>
+    </div>
   </div>
-  ${v.notes ? `<div class="section"><h3>ملاحظات</h3><div class="box">${v.notes.replace(/</g,'&lt;')}</div></div>` : ''}
-  <div class="badges">
-    <span class="badge" style="background:${mgr.bg};color:${mgr.fg};border-color:${mgr.border}">${mgr.text}</span>
-    ${vis ? `<span class="badge" style="background:${vis.bg};color:${vis.fg};border-color:${vis.border}">${vis.text}</span>` : ''}
-    ${v.managerName ? `<span class="badge" style="background:#f8fafc;color:#334155;border-color:#e5e7eb">المعتمد: ${v.managerName}</span>` : ''}
+
+  <!-- Entity / Applicant Info -->
+  <div class="section">
+    <div class="section-title">معلومات الجهة والمسؤول</div>
+    <div class="field-grid">
+      <div class="field field-full-2">
+        <div class="field-label">اسم الجهة</div>
+        <div class="field-value">${esc(v.entityName)}</div>
+      </div>
+      <div class="field">
+        <div class="field-label">الشخص المسؤول</div>
+        <div class="field-value">${esc(v.personInCharge)}</div>
+      </div>
+      <div class="field">
+        <div class="field-label">رقم الهوية</div>
+        <div class="field-value" style="direction:ltr">${esc(v.nationalId || '—')}</div>
+      </div>
+      <div class="field">
+        <div class="field-label">رقم الجوال</div>
+        <div class="field-value" style="direction:ltr">${esc(v.phone)}</div>
+      </div>
+      <div class="field">
+        <div class="field-label">البريد الإلكتروني</div>
+        <div class="field-value" style="direction:ltr">${esc(v.email)}</div>
+      </div>
+    </div>
   </div>
-  <div class="foot">
-    <span>طُبع في ${new Date().toLocaleString('ar-SA-u-ca-gregory-nu-latn', { calendar: 'gregory' })}</span>
-    <span>fablabsahsa.com</span>
+
+  <!-- Visit Details -->
+  <div class="section">
+    <div class="section-title">تفاصيل الزيارة</div>
+    <div class="field-grid">
+      <div class="field">
+        <div class="field-label">تاريخ الزيارة</div>
+        <div class="field-value" style="direction:ltr">${esc(fmtDate(v.visitDate))}</div>
+      </div>
+      <div class="field">
+        <div class="field-label">وقت البداية</div>
+        <div class="field-value" style="direction:ltr">${esc(fmtTime(v.visitStartTime))}</div>
+      </div>
+      <div class="field">
+        <div class="field-label">وقت النهاية</div>
+        <div class="field-value" style="direction:ltr">${esc(fmtTime(v.visitEndTime))}</div>
+      </div>
+      <div class="field">
+        <div class="field-label">عدد الزوار</div>
+        <div class="field-value">${esc(v.visitorsCount || 1)}</div>
+      </div>
+      <div class="field field-full-2">
+        <div class="field-label">حالة الرد على الزائر</div>
+        <div class="field-value">${vis ? `<span class="status ${v.visitorDecision === 'accepted' ? 'accepted' : 'rejected'}">${esc(vis.text)}</span>` : '<span style="color:#94a3b8">لم يُرسل بعد</span>'}</div>
+      </div>
+    </div>
   </div>
-</body></html>`);
+
+  <!-- Purpose -->
+  <div class="section">
+    <div class="section-title">الغرض من الزيارة</div>
+    <div class="prose">${esc(v.purpose)}</div>
+  </div>
+
+  ${v.notes ? `
+  <!-- Notes -->
+  <div class="section">
+    <div class="section-title">ملاحظات إضافية</div>
+    <div class="prose">${esc(v.notes)}</div>
+  </div>
+  ` : ''}
+
+  ${v.managerNote || v.visitorMessage ? `
+  <!-- Admin / Manager Notes -->
+  <div class="section">
+    <div class="section-title">ملاحظات الإدارة</div>
+    <div class="field-grid-2">
+      ${v.managerNote ? `<div class="field"><div class="field-label">ملاحظة المدير</div><div class="field-value">${esc(v.managerNote)}</div></div>` : ''}
+      ${v.visitorMessage ? `<div class="field"><div class="field-label">رسالة الإدارة للزائر</div><div class="field-value">${esc(v.visitorMessage)}</div></div>` : ''}
+    </div>
+  </div>
+  ` : ''}
+
+  <!-- Signature Section -->
+  <div class="signature-section">
+    <div class="signature-title">التوقيعات والاعتمادات</div>
+    <div class="signature-grid">
+      <div class="signature-box">
+        <div class="signature-label">توقيع الجهة الطالبة</div>
+        <div class="signature-line">${esc(v.personInCharge)}</div>
+      </div>
+      <div class="signature-box">
+        <div class="signature-label">توقيع المدير المعتمد</div>
+        ${v.managerName ? `<div class="signature-mgr">${esc(v.managerName)}</div>` : ''}
+        <div class="signature-line">${v.managerName ? esc(v.managerName) : 'التوقيع'}</div>
+      </div>
+    </div>
+    <div style="text-align: center; margin-top: 12px; font-size: 10px; color: #475569;">
+      التاريخ: ${esc(new Date().toLocaleDateString('ar-SA-u-ca-gregory-nu-latn', { calendar: 'gregory', year: 'numeric', month: 'long', day: 'numeric' }))}
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <div class="footer">
+    <p>مؤسسة عبدالمنعم الراشد الإنسانية — فاب لاب الأحساء</p>
+    <p>Abdulmonem Alrashed Humanitarian Foundation — FABLAB Al-Ahsa</p>
+    <p>تم الطباعة في: ${esc(new Date().toLocaleString('ar-SA-u-ca-gregory-nu-latn', { calendar: 'gregory' }))}</p>
+  </div>
+</body>
+</html>`);
     win.document.close();
     win.focus();
-    setTimeout(() => win.print(), 260);
+    setTimeout(() => win.print(), 300);
   };
 
   // -------------------- RENDER --------------------

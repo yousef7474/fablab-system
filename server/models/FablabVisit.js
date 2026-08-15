@@ -23,7 +23,7 @@ const FablabVisit = sequelize.define('FablabVisit', {
   // Submitter identity
   entityName:      { type: DataTypes.STRING, allowNull: false },   // اسم الجهة
   personInCharge:  { type: DataTypes.STRING, allowNull: false },   // الشخص المسؤول
-  nationalId:      { type: DataTypes.STRING, allowNull: true },
+  nationalId:      { type: DataTypes.STRING, allowNull: false },
   phone:           { type: DataTypes.STRING, allowNull: false },
   email:           { type: DataTypes.STRING, allowNull: false, validate: { isEmail: true } },
   // Visit specifics

@@ -131,7 +131,7 @@ exports.publicCreate = async (req, res) => {
       purpose, notes, overrideCode
     } = req.body || {};
 
-    if (!entityName || !personInCharge || !phone || !email
+    if (!entityName || !personInCharge || !nationalId || !phone || !email
         || !visitDate || !visitStartTime || !visitEndTime || !purpose) {
       return res.status(400).json({
         message: 'Missing required fields',
@@ -163,7 +163,7 @@ exports.publicCreate = async (req, res) => {
       visitNumber,
       entityName: String(entityName).trim(),
       personInCharge: String(personInCharge).trim(),
-      nationalId: nationalId ? String(nationalId).trim() : null,
+      nationalId: String(nationalId).trim(),
       phone: String(phone).trim(),
       email: String(email).trim(),
       visitorsCount: Number(visitorsCount) > 0 ? Number(visitorsCount) : 1,
