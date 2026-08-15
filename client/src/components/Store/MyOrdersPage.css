@@ -253,3 +253,30 @@
   color: #334155;
 }
 .mo-note b { color: #0f172a; }
+
+/* Sign-in prompt banner (shown when user isn't logged in) */
+.mo-signin-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 14px 20px;
+  background: linear-gradient(135deg, rgba(238, 35, 41, 0.06), rgba(238, 35, 41, 0.02));
+  border: 1px dashed rgba(238, 35, 41, 0.35);
+  border-radius: 14px;
+  margin-bottom: 18px;
+}
+.mo-signin-banner > div { display: flex; flex-direction: column; }
+.mo-signin-banner b {
+  color: #0f172a;
+  font-size: 14px;
+  font-weight: 800;
+  margin-bottom: 3px;
+}
+.mo-signin-banner span {
+  font-size: 12.5px;
+  color: #64748b;
+}
+@media (max-width: 640px) {
+  .mo-signin-banner { flex-direction: column; align-items: stretch; text-align: start; }
+}

@@ -6,6 +6,8 @@ const fablabVisitController = require('../controllers/fablabVisitController');
 const storeItemController = require('../controllers/storeItemController');
 const storeOrderController = require('../controllers/storeOrderController');
 const discountCouponController = require('../controllers/discountCouponController');
+const storeCustomerController = require('../controllers/storeCustomerController');
+const customerAuth = require('../middleware/customerAuth');
 
 // PUBLIC — no auth middleware, no login required.
 // Access is gated by opaque UUID tokens generated on the admin side:
@@ -33,6 +35,14 @@ router.get('/store/items',           storeItemController.publicList);
 router.get('/store/items/:id',       storeItemController.publicGet);
 router.post('/store/orders',         storeOrderController.publicCreate);
 router.get('/store/orders/:id',      storeOrderController.publicGet);
+router.get('/store/orders/:id/invoice', storeOrderController.publicInvoiceHtml);
 router.post('/store/coupon/validate', discountCouponController.publicValidate);
+
+// Customer accounts (public — password-based)
+router.post('/store/customer/register', storeCustomerController.register);
+router.post('/store/customer/login',    storeCustomerController.login);
+router.get('/store/customer/me',        customerAuth, storeCustomerController.me);
+router.put('/store/customer/me',        customerAuth, storeCustomerController.updateMe);
+router.get('/store/customer/orders',    customerAuth, storeCustomerController.myOrders);
 
 module.exports = router;

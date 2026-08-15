@@ -70,6 +70,7 @@ const CalendarEvent = require('./CalendarEvent');
 const StoreItem = require('./StoreItem');
 const StoreOrder = require('./StoreOrder');
 const DiscountCoupon = require('./DiscountCoupon');
+const StoreCustomer = require('./StoreCustomer');
 
 MawhbaAttendance.belongsTo(MawhbaStudent, { foreignKey: 'studentId', as: 'student', constraints: false });
 MawhbaStudent.hasMany(MawhbaAttendance, { foreignKey: 'studentId', as: 'attendance', constraints: false });
@@ -843,5 +844,6 @@ module.exports = {
   StoreItem,
   StoreOrder,
   DiscountCoupon,
+  StoreCustomer,
   syncDatabase
 };

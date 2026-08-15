@@ -301,7 +301,7 @@ const StoreTab = () => {
     if (!w) return toast.error('فشل فتح نافذة الطباعة');
     const paid = !!o.paidAt;
     const stampColor = paid ? '#16a34a' : '#dc2626';
-    const stampText = paid ? 'PAID · مدفوع' : 'UNPAID · غير مدفوع';
+    const stampText = paid ? 'تم الدفع' : 'لم يُدفع';
     const stampSub = paid && o.paidAt
       ? new Date(o.paidAt).toLocaleDateString('ar-SA-u-ca-gregory-nu-latn', { calendar: 'gregory' })
       : 'بانتظار الدفع';
@@ -349,7 +349,7 @@ const StoreTab = () => {
     letter-spacing: 3px;
     text-align: center;
     background: rgba(255,255,255,0.05);
-    opacity: 0.18;
+    opacity: 0.22;
     pointer-events: none;
     z-index: 0;
     border-radius: 12px;

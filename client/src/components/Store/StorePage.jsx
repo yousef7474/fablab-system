@@ -5,6 +5,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'react-toastify';
 import axios from 'axios';
 import useCart, { rememberOrder } from './useCart';
+import useCustomer from './useCustomer';
+import AuthModal from './AuthModal';
 import './StorePage.css';
 
 const API_URL = process.env.NODE_ENV === 'production'
@@ -23,6 +25,8 @@ const StorePage = () => {
   const isRTL = i18n.language === 'ar';
   const navigate = useNavigate();
   const cart = useCart();
+  const auth = useCustomer();
+  const [authOpen, setAuthOpen] = useState(false);
 
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -42,6 +46,7 @@ const StorePage = () => {
   const [placing, setPlacing] = useState(false);
   const [orderResult, setOrderResult] = useState(null);
   const [selected, setSelected] = useState(null);
+  const [galleryIdx, setGalleryIdx] = useState(0);
 
   useEffect(() => {
     (async () => {
@@ -93,6 +98,21 @@ const StorePage = () => {
     if (cart.subtotal === 0 && couponApplied) setCouponApplied(null);
   }, [cart.subtotal, couponApplied]);
 
+  // Pre-fill checkout from the signed-in customer whenever the modal
+  // opens or the user's profile changes.
+  useEffect(() => {
+    if (auth.customer) {
+      setCheckout(c => ({
+        ...c,
+        customerName: c.customerName || auth.customer.name || '',
+        customerPhone: c.customerPhone || auth.customer.phone || '',
+        customerEmail: c.customerEmail || auth.customer.email || '',
+        customerNationalId: c.customerNationalId || auth.customer.nationalId || '',
+        deliveryAddress: c.deliveryAddress || auth.customer.address || ''
+      }));
+    }
+  }, [auth.customer]);
+
   const applyCoupon = async () => {
     if (!couponInput.trim()) {
       toast.error(isRTL ? 'أدخل رمز الخصم' : 'Enter a code');
@@ -112,7 +132,14 @@ const StorePage = () => {
       setCouponInput('');
       toast.success(isRTL ? `تم تطبيق خصم ${data.percent}%` : `${data.percent}% off applied`);
     } catch (err) {
-      const msg = err?.response?.data?.messageAr || err?.response?.data?.message || (isRTL ? 'رمز غير صالح' : 'Invalid code');
+      // Surface the server's actual reason — it's much more useful than
+      // a generic "invalid code" toast when the coupon exists but the
+      // rules failed (min-order, dates, usage cap, disabled, ...).
+      console.warn('Coupon validation failed:', err?.response?.status, err?.response?.data);
+      const body = err?.response?.data || {};
+      const msg = body.messageAr || body.message
+        || `${isRTL ? 'خطأ' : 'Error'} ${err?.response?.status || ''}`.trim()
+        || (isRTL ? 'رمز غير صالح' : 'Invalid code');
       toast.error(msg);
     } finally {
       setValidatingCoupon(false);
@@ -193,6 +220,24 @@ const StorePage = () => {
               </svg>
               <span>{isRTL ? 'طلباتي' : 'My Orders'}</span>
             </button>
+            {auth.customer ? (
+              <div className="st-user-chip">
+                <span className="st-user-avatar">{(auth.customer.name || '?')[0].toUpperCase()}</span>
+                <span className="st-user-name">{auth.customer.name}</span>
+                <button type="button" className="st-user-logout" onClick={() => { auth.logout(); toast.info(isRTL ? 'تم تسجيل الخروج' : 'Signed out'); }} title={isRTL ? 'خروج' : 'Sign out'}>
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/>
+                  </svg>
+                </button>
+              </div>
+            ) : (
+              <button type="button" className="st-signin-btn" onClick={() => setAuthOpen(true)}>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/>
+                </svg>
+                <span>{isRTL ? 'تسجيل الدخول' : 'Sign In'}</span>
+              </button>
+            )}
             <button className="st-topbar-back" type="button" onClick={() => navigate('/register')}>
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
@@ -324,7 +369,7 @@ const StorePage = () => {
                   animate={{ opacity: 1, y: 0 }}
                   whileHover={{ y: -6 }}
                   className="st-card"
-                  onClick={() => setSelected(item)}
+                  onClick={() => { setSelected(item); setGalleryIdx(0); }}
                 >
                   {item.isFeatured && <span className="st-badge">⭐ {isRTL ? 'مميز' : 'Featured'}</span>}
                   <div className="st-card-img">
@@ -332,6 +377,9 @@ const StorePage = () => {
                       ? <img src={item.images[0]} alt={item.name} loading="lazy" />
                       : <div className="st-card-img-empty">📦</div>}
                     {item.stock === 0 && <div className="st-card-out-overlay">{isRTL ? 'نفدت الكمية' : 'Out of stock'}</div>}
+                    {Array.isArray(item.images) && item.images.length > 1 && (
+                      <span className="st-card-photos">📷 {item.images.length}</span>
+                    )}
                   </div>
                   <div className="st-card-body">
                     {item.category && <div className="st-card-cat">{item.category}</div>}
@@ -476,17 +524,52 @@ const StorePage = () => {
           <motion.div
             className="st-modal-overlay"
             initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            onClick={() => setSelected(null)}
+            onClick={() => { setSelected(null); setGalleryIdx(0); }}
           >
             <motion.div
               className="st-modal"
               initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }}
               onClick={(e) => e.stopPropagation()}
             >
-              <button type="button" className="st-modal-close" onClick={() => setSelected(null)}>✕</button>
+              <button type="button" className="st-modal-close" onClick={() => { setSelected(null); setGalleryIdx(0); }}>✕</button>
               <div className="st-modal-body">
-                <div className="st-modal-img">
-                  {selected.images?.[0] ? <img src={selected.images[0]} alt={selected.name} /> : <div className="st-card-img-empty">📦</div>}
+                <div className="st-gallery">
+                  <div className="st-gallery-main">
+                    {selected.images?.[galleryIdx] || selected.images?.[0]
+                      ? <img src={selected.images[galleryIdx] || selected.images[0]} alt={selected.name} />
+                      : <div className="st-card-img-empty">📦</div>}
+                    {Array.isArray(selected.images) && selected.images.length > 1 && (
+                      <>
+                        <button
+                          type="button"
+                          className="st-gallery-nav st-gallery-nav--prev"
+                          onClick={() => setGalleryIdx(i => (i > 0 ? i - 1 : selected.images.length - 1))}
+                          aria-label="previous"
+                        >‹</button>
+                        <button
+                          type="button"
+                          className="st-gallery-nav st-gallery-nav--next"
+                          onClick={() => setGalleryIdx(i => (i < selected.images.length - 1 ? i + 1 : 0))}
+                          aria-label="next"
+                        >›</button>
+                        <span className="st-gallery-counter">{galleryIdx + 1} / {selected.images.length}</span>
+                      </>
+                    )}
+                  </div>
+                  {Array.isArray(selected.images) && selected.images.length > 1 && (
+                    <div className="st-gallery-thumbs">
+                      {selected.images.map((img, i) => (
+                        <button
+                          type="button"
+                          key={i}
+                          className={`st-gallery-thumb ${i === galleryIdx ? 'is-active' : ''}`}
+                          onClick={() => setGalleryIdx(i)}
+                        >
+                          <img src={img} alt="" />
+                        </button>
+                      ))}
+                    </div>
+                  )}
                 </div>
                 <div>
                   {selected.category && <div className="st-modal-cat">{selected.category}</div>}
@@ -589,6 +672,19 @@ const StorePage = () => {
               </form>
             </motion.div>
           </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Auth modal */}
+      <AnimatePresence>
+        {authOpen && (
+          <AuthModal
+            isRTL={isRTL}
+            onClose={() => setAuthOpen(false)}
+            onSuccess={() => setAuthOpen(false)}
+            login={auth.login}
+            register={auth.register}
+          />
         )}
       </AnimatePresence>
 

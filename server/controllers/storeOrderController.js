@@ -143,6 +143,13 @@ const _buildCustomerInvoiceEmail = (order, subject, headline) => {
 
     ${order.adminNotes ? `<div style="background:#eff6ff;padding:12px 14px;border-radius:8px;font-size:13px;color:#1e3a8a;margin-bottom:16px;border-inline-start:3px solid #3b82f6"><b>ملاحظة من الإدارة</b><br>${order.adminNotes}</div>` : ''}
 
+    <div style="text-align:center;margin:20px 0 12px">
+      <a href="${_publicOrigin()}/api/public/store/orders/${order.orderId}/invoice" style="display:inline-block;background:#0f172a;color:#fff;padding:12px 28px;border-radius:8px;text-decoration:none;font-weight:800;font-size:14px">📄 عرض الفاتورة / حفظ PDF</a>
+    </div>
+    <p style="margin:6px 0 0;font-size:12px;color:#94a3b8;text-align:center;line-height:1.6">
+      افتح الرابط ثم اضغط "طباعة / حفظ PDF" لتنزيل نسخة PDF من فاتورتك.
+    </p>
+
     <p style="margin:16px 0 0;font-size:13px;color:#334155;line-height:1.7">
       للاستفسار عن الطلب، يرجى التواصل معنا وذكر رقم الطلب أعلاه.<br>
       شكراً لتعاملكم مع فاب لاب الأحساء.
@@ -329,6 +336,182 @@ exports.publicGet = async (req, res) => {
   } catch (err) {
     console.error('publicGet order:', err);
     res.status(500).json({ message: 'Server error' });
+  }
+};
+
+// GET /public/store/orders/:id/invoice — HTML invoice, safe to open
+// in any browser. Printing (Ctrl+P) → "Save as PDF" produces a
+// customer-ready PDF file, which is what the completed-order email
+// links to.
+exports.publicInvoiceHtml = async (req, res) => {
+  try {
+    const order = await StoreOrder.findByPk(req.params.id);
+    if (!order) return res.status(404).send('Order not found');
+
+    const o = order.toJSON();
+    const esc = (v) => String(v == null ? '' : v)
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+    const paid = !!o.paidAt;
+    const stampColor = paid ? '#16a34a' : '#dc2626';
+    const stampText = paid ? 'تم الدفع' : 'لم يُدفع';
+    const stampSub = paid && o.paidAt
+      ? new Date(o.paidAt).toLocaleDateString('ar-SA-u-ca-gregory-nu-latn', { calendar: 'gregory' })
+      : 'بانتظار الدفع';
+    const orderNo = fmtOrderNumber(o.orderNumber);
+    const itemsHtml = (o.items || []).map((i, idx) => `
+      <tr>
+        <td class="cell-idx">${idx + 1}</td>
+        <td>${esc(i.name)}</td>
+        <td class="cell-num">${i.quantity}</td>
+        <td class="cell-num">${SAR(i.price)}</td>
+        <td class="cell-num cell-total">${SAR(i.lineTotal)}</td>
+      </tr>`).join('');
+    const invoiceDate = new Date(o.createdAt).toLocaleDateString('ar-SA-u-ca-gregory-nu-latn', {
+      calendar: 'gregory', year: 'numeric', month: 'long', day: 'numeric'
+    });
+
+    res.setHeader('Content-Type', 'text/html; charset=utf-8');
+    res.send(`<!DOCTYPE html><html dir="rtl" lang="ar"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>فاتورة ${orderNo}</title>
+<style>
+  :root { color-scheme: light; }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family:'Cairo','Segoe UI',Tahoma,Arial,sans-serif; background:#f4f6fb; color:#1f2937; padding:24px 12px; }
+  .actions { max-width:820px; margin:0 auto 16px; display:flex; gap:10px; justify-content:end; flex-wrap:wrap; }
+  .actions button { padding:12px 22px; border-radius:10px; border:none; background:linear-gradient(135deg,#EE2329,#ff4d51); color:#fff; font-family:inherit; font-weight:700; font-size:14px; cursor:pointer; box-shadow:0 8px 20px -8px rgba(238,35,41,0.5); }
+  .actions .ghost { background:#fff; color:#0f172a; border:1px solid #e5e7eb; box-shadow:none; }
+  .invoice { max-width:820px; margin:0 auto; background:#fff; border-radius:16px; box-shadow:0 20px 40px -20px rgba(15,23,42,0.15); padding:28px; position:relative; overflow:hidden; }
+  .stamp { position:absolute; top:44%; inset-inline-start:20%; transform:rotate(-22deg); border:6px double ${stampColor}; color:${stampColor}; padding:18px 44px; font-family:'Bricolage Grotesque','Cairo',sans-serif; font-weight:900; font-size:44px; letter-spacing:3px; text-align:center; opacity:0.22; pointer-events:none; z-index:0; border-radius:12px; }
+  .stamp small { display:block; font-size:14px; font-weight:700; margin-top:4px; opacity:0.9; }
+  main { position:relative; z-index:1; font-size:12px; line-height:1.55; }
+  .invoice-head { display:grid; grid-template-columns:1fr 1fr; gap:16px; padding-bottom:16px; margin-bottom:20px; border-bottom:3px solid #0f172a; }
+  .brand { display:flex; gap:12px; align-items:center; }
+  .brand-logos { display:flex; gap:8px; }
+  .brand-logos img { height:52px; }
+  .brand-info h1 { font-family:'Bricolage Grotesque','Cairo',sans-serif; font-size:19px; color:#0f172a; margin-bottom:3px; }
+  .brand-info p { font-size:11px; color:#6b7280; }
+  .invoice-meta { text-align:end; }
+  .invoice-meta h2 { font-family:'Bricolage Grotesque','Cairo',sans-serif; font-size:26px; font-weight:800; color:#0f172a; margin-bottom:4px; }
+  .invoice-meta .no { font-family:'JetBrains Mono',monospace; font-size:15px; color:#EE2329; font-weight:800; letter-spacing:2px; }
+  .invoice-meta .dates { display:grid; grid-template-columns:auto auto; gap:4px 10px; margin-top:10px; font-size:11px; justify-content:end; }
+  .invoice-meta .dates span { color:#6b7280; }
+  .invoice-meta .dates b { color:#0f172a; direction:ltr; }
+  .parties { display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:18px; }
+  .party { background:#f8fafc; border:1px solid #e5e7eb; border-radius:8px; padding:12px 14px; }
+  .party-title { font-size:10px; color:#6b7280; letter-spacing:1.4px; text-transform:uppercase; font-weight:700; margin-bottom:6px; }
+  .party-name { font-size:14px; font-weight:800; color:#0f172a; margin-bottom:4px; }
+  .party-row { font-size:11px; color:#4b5563; margin-top:2px; }
+  .party-row b { color:#0f172a; }
+  .items-title { font-size:11px; color:#6b7280; letter-spacing:1.4px; text-transform:uppercase; font-weight:700; margin-bottom:6px; }
+  table.items { width:100%; border-collapse:collapse; margin-bottom:12px; border:1px solid #d1d5db; border-radius:6px; overflow:hidden; }
+  table.items thead { background:#0f172a; color:#fff; }
+  table.items thead th { padding:10px 12px; text-align:start; font-size:10.5px; text-transform:uppercase; letter-spacing:1px; }
+  table.items thead th.cell-num { text-align:end; }
+  table.items tbody tr:nth-child(even) { background:#f9fafb; }
+  table.items tbody td { padding:10px 12px; border-top:1px solid #e5e7eb; font-size:12px; }
+  .cell-idx { font-family:'JetBrains Mono',monospace; color:#6b7280; width:28px; text-align:center; }
+  .cell-num { font-family:'JetBrains Mono',monospace; text-align:end; }
+  .cell-total { font-weight:800; color:#0f172a; }
+  .totals-wrap { display:grid; grid-template-columns:1fr 320px; gap:14px; margin-bottom:16px; }
+  .payment-info { background:#f8fafc; border:1px solid #e5e7eb; border-radius:8px; padding:12px 14px; font-size:11px; }
+  .payment-info .pi-title { font-size:10px; text-transform:uppercase; letter-spacing:1.4px; color:#6b7280; font-weight:700; margin-bottom:6px; }
+  .payment-info .pi-row { margin:3px 0; color:#4b5563; }
+  .payment-info .pi-row b { color:#0f172a; }
+  .totals { width:100%; border-collapse:collapse; font-size:12px; }
+  .totals td { padding:8px 12px; border-bottom:1px solid #e5e7eb; }
+  .totals td.label { color:#6b7280; text-align:end; }
+  .totals td.val { font-family:'JetBrains Mono',monospace; text-align:end; font-weight:700; color:#0f172a; }
+  .totals .discount td.label { color:#16a34a; }
+  .totals .discount td.val { color:#16a34a; }
+  .totals .final td { background:#EE2329; color:#fff; font-family:'JetBrains Mono',monospace; font-size:15px; font-weight:800; padding:14px; border:none; }
+  .totals .final td.label { text-align:end; font-family:'Cairo',sans-serif; }
+  .invoice-foot { margin-top:18px; padding-top:12px; border-top:1px solid #e5e7eb; display:flex; justify-content:space-between; font-size:10px; color:#9ca3af; }
+  @media print {
+    body { background:#fff; padding:0; }
+    .actions { display:none; }
+    .invoice { box-shadow:none; border-radius:0; padding:14mm 12mm; max-width:none; }
+    @page { size:A4; margin:0; }
+  }
+</style></head><body>
+<div class="actions">
+  <button onclick="window.print()">🖨️ طباعة / حفظ PDF</button>
+  <button class="ghost" onclick="window.close()">إغلاق</button>
+</div>
+<div class="invoice">
+  <div class="stamp">${stampText}<small>${esc(stampSub)}</small></div>
+  <main>
+    <div class="invoice-head">
+      <div class="brand">
+        <div class="brand-logos">
+          <img src="/found.png" alt="مؤسسة" />
+          <img src="/fablab.png" alt="فاب لاب" />
+        </div>
+        <div class="brand-info">
+          <h1>فاب لاب الأحساء</h1>
+          <p>مؤسسة عبدالمنعم الراشد الإنسانية · متجر</p>
+        </div>
+      </div>
+      <div class="invoice-meta">
+        <h2>فاتورة</h2>
+        <div class="no">${orderNo}</div>
+        <div class="dates">
+          <span>تاريخ الإصدار</span><b>${esc(invoiceDate)}</b>
+          <span>طريقة الدفع</span><b>نقداً عند الاستلام</b>
+        </div>
+      </div>
+    </div>
+
+    <div class="parties">
+      <div class="party">
+        <div class="party-title">المُصدَر إلى — Bill To</div>
+        <div class="party-name">${esc(o.customerName)}</div>
+        <div class="party-row"><b>الجوال: </b>${esc(o.customerPhone)}</div>
+        <div class="party-row"><b>البريد: </b>${esc(o.customerEmail)}</div>
+        ${o.customerNationalId ? `<div class="party-row"><b>الهوية: </b>${esc(o.customerNationalId)}</div>` : ''}
+        ${o.deliveryAddress ? `<div class="party-row"><b>العنوان: </b>${esc(o.deliveryAddress)}</div>` : ''}
+      </div>
+      <div class="party">
+        <div class="party-title">المُصدِر — From</div>
+        <div class="party-name">فاب لاب الأحساء</div>
+        <div class="party-row">مؤسسة عبدالمنعم الراشد الإنسانية</div>
+        <div class="party-row">المملكة العربية السعودية — الأحساء</div>
+        <div class="party-row"><b>البريد: </b>fablabspec@fablabsahsa.com</div>
+      </div>
+    </div>
+
+    <div class="items-title">تفاصيل المشتريات</div>
+    <table class="items">
+      <thead>
+        <tr><th class="cell-idx">#</th><th>الصنف</th><th class="cell-num">الكمية</th><th class="cell-num">السعر</th><th class="cell-num">الإجمالي</th></tr>
+      </thead>
+      <tbody>${itemsHtml}</tbody>
+    </table>
+
+    <div class="totals-wrap">
+      <div class="payment-info">
+        <div class="pi-title">معلومات الدفع</div>
+        <div class="pi-row"><b>حالة الطلب: </b>${esc(o.status)}</div>
+        <div class="pi-row"><b>حالة الدفع: </b>${paid ? '✓ مدفوع بالكامل' : 'بانتظار الدفع'}</div>
+        ${o.paidAt ? `<div class="pi-row"><b>تاريخ الدفع: </b>${esc(new Date(o.paidAt).toLocaleDateString('ar-SA-u-ca-gregory-nu-latn', { calendar: 'gregory' }))}</div>` : ''}
+      </div>
+      <table class="totals">
+        <tr><td class="label">المجموع الفرعي</td><td class="val">${SAR(o.subtotal)}</td></tr>
+        ${Number(o.discountAmount) > 0 ? `<tr class="discount"><td class="label">خصم (${esc(o.couponCode)} · ${o.couponPercent}%)</td><td class="val">-${SAR(o.discountAmount)}</td></tr>` : ''}
+        <tr><td class="label">ضريبة القيمة المضافة (${Math.round((o.taxRate || 0) * 100)}%)</td><td class="val">${SAR(o.taxAmount)}</td></tr>
+        <tr class="final"><td class="label">الإجمالي المستحق</td><td class="val">${SAR(o.total)}</td></tr>
+      </table>
+    </div>
+
+    <div class="invoice-foot">
+      <div><b>فاب لاب الأحساء</b> · مؤسسة عبدالمنعم الراشد الإنسانية</div>
+      <div>fablabsahsa.com</div>
+    </div>
+  </main>
+</div>
+</body></html>`);
+  } catch (err) {
+    console.error('publicInvoiceHtml:', err);
+    res.status(500).send('Server error');
   }
 };
 

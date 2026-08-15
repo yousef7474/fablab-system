@@ -5,6 +5,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'react-toastify';
 import axios from 'axios';
 import { listRememberedOrders, forgetOrder } from './useCart';
+import useCustomer from './useCustomer';
+import AuthModal from './AuthModal';
 import './StorePage.css';
 import './MyOrdersPage.css';
 
@@ -31,28 +33,48 @@ const MyOrdersPage = () => {
   const isRTL = i18n.language === 'ar';
   const navigate = useNavigate();
 
+  const auth = useCustomer();
+  const [authOpen, setAuthOpen] = useState(false);
   const [remembered, setRemembered] = useState(() => listRememberedOrders());
   const [orders, setOrders] = useState({}); // orderId → order
   const [loading, setLoading] = useState(true);
   const [selectedOrder, setSelectedOrder] = useState(null);
+  const [serverOrders, setServerOrders] = useState([]);
 
+  // Prefer the server-side order list when the customer is logged in;
+  // otherwise fall back to the localStorage-remembered list.
   useEffect(() => {
+    let cancelled = false;
     (async () => {
+      setLoading(true);
+      if (auth.customer && auth.token) {
+        try {
+          const { data } = await axios.get(`${API_URL}/public/store/customer/orders`, {
+            headers: { Authorization: `Bearer ${auth.token}` }
+          });
+          if (!cancelled) {
+            setServerOrders(Array.isArray(data) ? data : []);
+            setLoading(false);
+          }
+          return;
+        } catch (err) {
+          console.warn('customer myOrders load failed', err);
+        }
+      }
+      // Fallback — pull individual orders by remembered id
       const list = listRememberedOrders();
-      if (list.length === 0) { setLoading(false); return; }
+      if (list.length === 0) { if (!cancelled) { setServerOrders([]); setLoading(false); } return; }
       const results = await Promise.allSettled(
         list.map(x => axios.get(`${API_URL}/public/store/orders/${x.orderId}`))
       );
       const map = {};
       results.forEach((r, i) => {
-        if (r.status === 'fulfilled') {
-          map[list[i].orderId] = r.value.data;
-        }
+        if (r.status === 'fulfilled') map[list[i].orderId] = r.value.data;
       });
-      setOrders(map);
-      setLoading(false);
+      if (!cancelled) { setOrders(map); setLoading(false); }
     })();
-  }, []);
+    return () => { cancelled = true; };
+  }, [auth.customer, auth.token]);
 
   const removeOrder = (orderId) => {
     if (!window.confirm(isRTL ? 'إزالة هذا الطلب من قائمتك؟ لن يُحذف الطلب من النظام.' : 'Remove this order from your list? The order remains in the system.')) return;
@@ -60,9 +82,11 @@ const MyOrdersPage = () => {
     setRemembered(listRememberedOrders());
   };
 
-  const sorted = [...remembered].sort((a, b) => new Date(b.savedAt) - new Date(a.savedAt));
-
-  const spent = Object.values(orders).reduce((s, o) => s + Number(o.total || 0), 0);
+  const displayList = auth.customer
+    ? serverOrders.map(o => ({ orderId: o.orderId, orderNumber: o.orderNumber, total: o.total, savedAt: o.createdAt, order: o }))
+    : [...remembered].sort((a, b) => new Date(b.savedAt) - new Date(a.savedAt)).map(r => ({ ...r, order: orders[r.orderId] }));
+  const spent = displayList.reduce((s, x) => s + Number(x.order?.total || 0), 0);
+  const completedCount = displayList.filter(x => x.order?.status === 'completed').length;
 
   return (
     <div className="st" dir={isRTL ? 'rtl' : 'ltr'}>
@@ -82,6 +106,24 @@ const MyOrdersPage = () => {
               </svg>
               <span>{isRTL ? 'المتجر' : 'Store'}</span>
             </button>
+            {auth.customer ? (
+              <div className="st-user-chip">
+                <span className="st-user-avatar">{(auth.customer.name || '?')[0].toUpperCase()}</span>
+                <span className="st-user-name">{auth.customer.name}</span>
+                <button type="button" className="st-user-logout" onClick={auth.logout} title={isRTL ? 'خروج' : 'Sign out'}>
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/>
+                  </svg>
+                </button>
+              </div>
+            ) : (
+              <button type="button" className="st-signin-btn" onClick={() => setAuthOpen(true)}>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/>
+                </svg>
+                <span>{isRTL ? 'دخول' : 'Sign In'}</span>
+              </button>
+            )}
           </div>
         </div>
       </header>
@@ -96,9 +138,21 @@ const MyOrdersPage = () => {
           </p>
         </header>
 
+        {!auth.customer && (
+          <div className="mo-signin-banner">
+            <div>
+              <b>{isRTL ? '💡 سجّل دخولك لعرض جميع طلباتك' : '💡 Sign in to see all your orders'}</b>
+              <span>{isRTL ? 'اربط طلباتك بحسابك للوصول إليها من أي جهاز' : 'Link your orders to your account and access them from any device'}</span>
+            </div>
+            <button className="st-btn st-btn--primary" onClick={() => setAuthOpen(true)}>
+              {isRTL ? 'تسجيل الدخول' : 'Sign In'}
+            </button>
+          </div>
+        )}
+
         {loading ? (
           <div className="st-loading"><div className="st-spinner" /><span>{isRTL ? 'جارٍ التحميل...' : 'Loading...'}</span></div>
-        ) : sorted.length === 0 ? (
+        ) : displayList.length === 0 ? (
           <div className="mo-empty">
             <div style={{ fontSize: 64, opacity: 0.35 }}>📄</div>
             <h3>{isRTL ? 'لا توجد طلبات بعد' : 'No orders yet'}</h3>
@@ -111,11 +165,11 @@ const MyOrdersPage = () => {
           <>
             <div className="mo-stats">
               <div className="mo-stat">
-                <div className="mo-stat-value">{sorted.length}</div>
+                <div className="mo-stat-value">{displayList.length}</div>
                 <div className="mo-stat-label">{isRTL ? 'إجمالي الطلبات' : 'Total Orders'}</div>
               </div>
               <div className="mo-stat">
-                <div className="mo-stat-value">{Object.values(orders).filter(o => o.status === 'completed').length}</div>
+                <div className="mo-stat-value">{completedCount}</div>
                 <div className="mo-stat-label">{isRTL ? 'مكتملة' : 'Completed'}</div>
               </div>
               <div className="mo-stat">
@@ -125,8 +179,8 @@ const MyOrdersPage = () => {
             </div>
 
             <div className="mo-list">
-              {sorted.map(rec => {
-                const o = orders[rec.orderId];
+              {displayList.map(rec => {
+                const o = rec.order;
                 if (!o) {
                   return (
                     <div key={rec.orderId} className="mo-card is-missing">
@@ -175,6 +229,19 @@ const MyOrdersPage = () => {
           </>
         )}
       </div>
+
+      {/* Auth modal */}
+      <AnimatePresence>
+        {authOpen && (
+          <AuthModal
+            isRTL={isRTL}
+            onClose={() => setAuthOpen(false)}
+            onSuccess={() => setAuthOpen(false)}
+            login={auth.login}
+            register={auth.register}
+          />
+        )}
+      </AnimatePresence>
 
       {/* Detail modal */}
       <AnimatePresence>

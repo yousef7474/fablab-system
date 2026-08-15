@@ -5,29 +5,34 @@ const { DiscountCoupon } = require('../models');
 // Returns { ok: true, coupon } or { ok: false, reason, reasonAr }.
 // Callable from the order controller so cart price stays honest.
 const validateCouponAgainstOrder = async (code, subtotal) => {
-  if (!code) return { ok: false, reason: 'No code', reasonAr: 'لم يُدخل رمز' };
-  const coupon = await DiscountCoupon.findOne({
-    where: { code: String(code).trim().toUpperCase() }
-  });
-  if (!coupon) return { ok: false, reason: 'Coupon not found', reasonAr: 'الرمز غير صالح' };
-  if (!coupon.isActive) return { ok: false, reason: 'Coupon disabled', reasonAr: 'الرمز غير مفعّل' };
+  const trimmed = String(code || '').trim().toUpperCase();
+  if (!trimmed) return { ok: false, reason: 'No code entered', reasonAr: 'لم يُدخل رمز خصم' };
+
+  const coupon = await DiscountCoupon.findOne({ where: { code: trimmed } });
+  if (!coupon) return { ok: false, reason: `Coupon "${trimmed}" not found`, reasonAr: `الرمز "${trimmed}" غير موجود` };
+  if (!coupon.isActive) return { ok: false, reason: 'Coupon is disabled', reasonAr: 'الرمز غير مفعّل — تواصل مع الإدارة' };
 
   const today = new Date().toISOString().slice(0, 10);
-  if (coupon.validFrom && today < String(coupon.validFrom)) {
-    return { ok: false, reason: 'Not yet valid', reasonAr: 'الرمز لم يبدأ سريانه بعد' };
+  if (coupon.validFrom && today < String(coupon.validFrom).slice(0, 10)) {
+    return { ok: false, reason: `Not valid until ${coupon.validFrom}`, reasonAr: `الرمز يبدأ سريانه في ${String(coupon.validFrom).slice(0, 10)}` };
   }
-  if (coupon.validUntil && today > String(coupon.validUntil)) {
-    return { ok: false, reason: 'Coupon expired', reasonAr: 'انتهت صلاحية الرمز' };
+  if (coupon.validUntil && today > String(coupon.validUntil).slice(0, 10)) {
+    return { ok: false, reason: `Expired on ${coupon.validUntil}`, reasonAr: `انتهت صلاحية الرمز في ${String(coupon.validUntil).slice(0, 10)}` };
   }
-  if (coupon.maxUses != null && coupon.usedCount >= coupon.maxUses) {
-    return { ok: false, reason: 'Usage limit reached', reasonAr: 'استُنفذ عدد استخدامات الرمز' };
+  // maxUses <= 0 is treated as unlimited (matches how stock uses -1)
+  if (coupon.maxUses != null && Number(coupon.maxUses) > 0 && Number(coupon.usedCount || 0) >= Number(coupon.maxUses)) {
+    return { ok: false, reason: 'Usage limit reached', reasonAr: 'استُنفذ عدد استخدامات هذا الرمز' };
   }
-  if (coupon.minOrderTotal != null && Number(subtotal) < Number(coupon.minOrderTotal)) {
-    return {
-      ok: false,
-      reason: `Minimum order ${coupon.minOrderTotal} not met`,
-      reasonAr: `الحد الأدنى للطلب ${coupon.minOrderTotal} ر.س لتفعيل الرمز`
-    };
+  if (coupon.minOrderTotal != null && Number(coupon.minOrderTotal) > 0) {
+    const need = Number(coupon.minOrderTotal);
+    const have = Number(subtotal) || 0;
+    if (have < need) {
+      return {
+        ok: false,
+        reason: `Minimum order ${need} not met (have ${have})`,
+        reasonAr: `الحد الأدنى لتفعيل الرمز: ${need.toFixed(2)} ر.س (الحالي: ${have.toFixed(2)} ر.س)`
+      };
+    }
   }
   return { ok: true, coupon };
 };
@@ -75,15 +80,26 @@ exports.create = async (req, res) => {
       return res.status(400).json({ message: 'code and percent are required' });
     }
     const p = Math.max(1, Math.min(100, Number(percent) || 1));
+    // Sanitize numeric bounds — treat <= 0 as "no limit / no minimum".
+    const cleanMaxUses = (() => {
+      if (maxUses == null || maxUses === '') return null;
+      const n = Number(maxUses);
+      return Number.isFinite(n) && n > 0 ? n : null;
+    })();
+    const cleanMinOrder = (() => {
+      if (minOrderTotal == null || minOrderTotal === '') return null;
+      const n = Number(minOrderTotal);
+      return Number.isFinite(n) && n > 0 ? n : null;
+    })();
     const row = await DiscountCoupon.create({
       code, // hook uppercases + trims
       description: description ? String(description).trim() : null,
       percent: p,
       isActive: isActive !== false,
-      maxUses: maxUses != null && maxUses !== '' ? Number(maxUses) : null,
+      maxUses: cleanMaxUses,
       validFrom: validFrom || null,
       validUntil: validUntil || null,
-      minOrderTotal: minOrderTotal != null && minOrderTotal !== '' ? Number(minOrderTotal) : null
+      minOrderTotal: cleanMinOrder
     });
     res.status(201).json(row);
   } catch (err) {
