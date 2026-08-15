@@ -2351,9 +2351,15 @@
 }
 
 .calendar-days-grid .calendar-day:focus {
-  outline: 2px solid var(--racing-red);
+  outline: 2px solid #16a34a;
   outline-offset: 2px;
 }
+.calendar-days-grid .calendar-day:focus-visible {
+  outline: 2px solid #16a34a;
+  outline-offset: 2px;
+}
+.calendar-days-grid .calendar-day.available:focus,
+.calendar-days-grid .calendar-day.selected:focus { outline-color: #15803d; }
 
 .calendar-days-grid .calendar-day .day-number {
   pointer-events: none;
@@ -2456,50 +2462,43 @@
 }
 
 .legend-dot.section-closed {
-  background: rgba(249, 115, 22, 0.3);
-  border: 2px solid #f97316;
+  background:
+    repeating-linear-gradient(
+      -45deg,
+      rgba(148, 163, 184, 0.6) 0,
+      rgba(148, 163, 184, 0.6) 2px,
+      transparent 2px,
+      transparent 4px
+    ),
+    var(--gray-100);
+  border: 2px solid var(--gray-300);
 }
 
-/* Section deactivated calendar days */
-.calendar-days-grid .calendar-day.section-deactivated {
-  background: rgba(249, 115, 22, 0.15) !important;
-  border-color: rgba(249, 115, 22, 0.4) !important;
-  color: var(--gray-500) !important;
-  cursor: not-allowed !important;
-  pointer-events: none !important;
-  position: relative;
-}
-
-.calendar-days-grid .calendar-day.section-deactivated .deactivated-indicator {
-  position: absolute;
-  top: 2px;
-  right: 2px;
-  font-size: 0.6rem;
-  font-weight: 700;
-  color: #ea580c;
-  background: rgba(249, 115, 22, 0.2);
-  width: 14px;
-  height: 14px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-/* Registration-wide closure (admin-set, all sections) */
+/* Section-deactivated / registration-closed days share the same
+   quiet "unavailable" look as weekend/disabled — no orange or red
+   attention-grab; the diagonal hatch + strikethrough already say
+   "you can't pick this." */
+.calendar-days-grid .calendar-day.section-deactivated,
 .calendar-days-grid .calendar-day.registration-closed {
-  background: rgba(239, 68, 68, 0.15) !important;
-  border-color: rgba(239, 68, 68, 0.45) !important;
-  color: var(--gray-500) !important;
+  background:
+    repeating-linear-gradient(
+      -45deg,
+      rgba(148, 163, 184, 0.10) 0,
+      rgba(148, 163, 184, 0.10) 4px,
+      transparent 4px,
+      transparent 8px
+    ),
+    var(--gray-100) !important;
+  border-color: transparent !important;
+  color: var(--gray-400) !important;
   cursor: not-allowed !important;
   pointer-events: none !important;
+  text-decoration: line-through;
+  opacity: 0.7;
   position: relative;
 }
 
-.calendar-days-grid .calendar-day.registration-closed .deactivated-indicator {
-  color: #b91c1c;
-  background: rgba(239, 68, 68, 0.2);
-}
+.calendar-days-grid .calendar-day .deactivated-indicator { display: none !important; }
 
 /* Section deactivation warning banner */
 .section-deactivation-warning {
@@ -4294,16 +4293,27 @@
   color: #ffffff !important;
 }
 
-.registration-page .form-card .calendar-days-grid .calendar-day.section-closed {
-  background: rgba(251, 146, 60, 0.08) !important;
-  border-color: rgba(251, 146, 60, 0.25) !important;
-  color: rgba(254, 215, 170, 0.7) !important;
+.registration-page .form-card .calendar-days-grid .calendar-day.section-closed,
+.registration-page .form-card .calendar-days-grid .calendar-day.section-deactivated,
+.registration-page .form-card .calendar-days-grid .calendar-day.registration-closed {
+  background:
+    repeating-linear-gradient(
+      -45deg,
+      rgba(148, 163, 184, 0.10) 0,
+      rgba(148, 163, 184, 0.10) 4px,
+      transparent 4px,
+      transparent 8px
+    ),
+    rgba(255, 255, 255, 0.03) !important;
+  border-color: rgba(255, 255, 255, 0.05) !important;
+  color: rgba(148, 163, 184, 0.5) !important;
+  text-decoration: line-through !important;
+  opacity: 0.55 !important;
+  cursor: not-allowed !important;
 }
 
 .registration-page .form-card .calendar-days-grid .calendar-day .deactivated-indicator {
-  background: var(--aurora-orange) !important;
-  color: #07091a !important;
-  font-weight: 800;
+  display: none !important;
 }
 
 /* Calendar legend */
@@ -4330,7 +4340,16 @@
   border-color: #15803d !important;
 }
 .registration-page .form-card .legend-dot.section-closed {
-  background: rgba(251, 146, 60, 0.6) !important;
+  background:
+    repeating-linear-gradient(
+      -45deg,
+      rgba(148, 163, 184, 0.6) 0,
+      rgba(148, 163, 184, 0.6) 2px,
+      transparent 2px,
+      transparent 4px
+    ),
+    rgba(148, 163, 184, 0.35) !important;
+  border-color: rgba(148, 163, 184, 0.5) !important;
 }
 
 /* Section closed warning under calendar */
