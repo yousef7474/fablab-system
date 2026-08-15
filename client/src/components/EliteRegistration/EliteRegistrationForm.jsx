@@ -175,10 +175,12 @@ const EliteRegistrationForm = () => {
 • قسم الإلكترونيات والبرمجة
 • قسم CNC الليزر
 • قسم CNC الخشب
+• قسم CNC المعادن
 • قسم الطباعة ثلاثية الأبعاد (3D)
 • قسم الروبوتات والذكاء الاصطناعي
 • نادي الأطفال
-• قسم قص الفينيل`
+• قسم قص الفينيل
+• قسم طباعة UV والملصقات`
         },
         {
           title: '4. نظام التصنيف والفئات',
@@ -269,10 +271,12 @@ const EliteRegistrationForm = () => {
 • Electronics and Programming
 • CNC Laser
 • CNC Wood
+• CNC Metal
 • 3D Printing
 • Robotics and AI
 • Kids Club
-• Vinyl Cutting`
+• Vinyl Cutting
+• UV Printing and Sticker Making`
         },
         {
           title: '4. Classification System and Categories',

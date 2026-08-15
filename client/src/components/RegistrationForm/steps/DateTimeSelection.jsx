@@ -772,10 +772,12 @@ const DateTimeSelection = ({ formData, onChange, onNext, onBack }) => {
               <option value="Electronics and Programming">{isRTL ? 'الإلكترونيات والبرمجة' : 'Electronics and Programming'}</option>
               <option value="CNC Laser">{isRTL ? 'الليزر CNC' : 'CNC Laser'}</option>
               <option value="CNC Wood">{isRTL ? 'الخشب CNC' : 'CNC Wood'}</option>
+              <option value="CNC Metal">{isRTL ? 'المعادن CNC' : 'CNC Metal'}</option>
               <option value="3D">{isRTL ? 'الطباعة ثلاثية الأبعاد' : '3D Printing'}</option>
               <option value="Robotic and AI">{isRTL ? 'الروبوتات والذكاء الاصطناعي' : 'Robotic and AI'}</option>
               <option value="Kid's Club">{isRTL ? 'نادي الأطفال' : "Kid's Club"}</option>
               <option value="Vinyl Cutting">{isRTL ? 'قص الفينيل' : 'Vinyl Cutting'}</option>
+              <option value="UV Printing and Sticker Making">{isRTL ? 'طباعة UV والملصقات' : 'UV Printing & Stickers'}</option>
               <option value="General">{isRTL ? 'عام / متعدد الأقسام' : 'General / Multiple Sections'}</option>
             </select>
           </motion.div>

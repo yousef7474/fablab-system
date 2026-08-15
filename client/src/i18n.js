@@ -47,10 +47,12 @@ const resources = {
       "electronicsAndProgramming": "Electronics and Programming",
       "cncLaser": "CNC Laser",
       "cncWood": "CNC Wood",
+      "cncMetal": "CNC Metal",
       "3d": "3D",
       "roboticAndAI": "Robotic and AI",
       "kidsClub": "Kid's Club",
       "vinylCutting": "Vinyl Cutting",
+      "uvPrintingAndStickers": "UV Printing and Sticker Making",
 
       // Services
       "inPersonConsultation": "In-person consultation",
@@ -252,10 +254,12 @@ const resources = {
       "electronicsAndProgramming": "الإلكترونيات والبرمجة",
       "cncLaser": "CNC الليزر",
       "cncWood": "CNC الخشب",
+      "cncMetal": "CNC المعادن",
       "3d": "الطباعة ثلاثية الأبعاد",
       "roboticAndAI": "الروبوت والذكاء الاصطناعي",
       "kidsClub": "نادي الأطفال",
       "vinylCutting": "القطع بالفينيل",
+      "uvPrintingAndStickers": "طباعة UV والملصقات",
 
       // Services
       "inPersonConsultation": "استشارة حضورياً",

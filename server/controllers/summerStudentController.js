@@ -13,10 +13,12 @@ const SECTION_COLORS = {
   'Electronics and Programming': '#6366f1',
   'CNC Laser':                   '#22c55e',
   'CNC Wood':                    '#f59e0b',
+  'CNC Metal':                   '#64748b',
   '3D':                          '#ef4444',
   'Robotic and AI':              '#8b5cf6',
   "Kid's Club":                  '#06b6d4',
-  'Vinyl Cutting':               '#ec4899'
+  'Vinyl Cutting':               '#ec4899',
+  'UV Printing and Sticker Making': '#14b8a6'
 };
 const DEFAULT_SECTION_COLOR = '#f97316'; // Summer FabLab orange
 

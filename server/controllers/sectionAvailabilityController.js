@@ -1,15 +1,17 @@
 const { SectionAvailability, Admin } = require('../models');
 const { Op } = require('sequelize');
 
-// All 7 FABLAB sections
+// All FABLAB sections
 const ALL_SECTIONS = [
   'Electronics and Programming',
   'CNC Laser',
   'CNC Wood',
+  'CNC Metal',
   '3D',
   'Robotic and AI',
   "Kid's Club",
-  'Vinyl Cutting'
+  'Vinyl Cutting',
+  'UV Printing and Sticker Making'
 ];
 
 // Helper: Auto-expire deactivations that have passed their end date

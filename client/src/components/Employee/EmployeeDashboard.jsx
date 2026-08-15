@@ -13,10 +13,12 @@ const SECTION_COLORS = {
   'Electronics and Programming': '#6366f1',
   'CNC Laser': '#22c55e',
   'CNC Wood': '#f59e0b',
+  'CNC Metal': '#64748b',
   '3D': '#ef4444',
   'Robotic and AI': '#8b5cf6',
   "Kid's Club": '#06b6d4',
-  'Vinyl Cutting': '#ec4899'
+  'Vinyl Cutting': '#ec4899',
+  'UV Printing and Sticker Making': '#14b8a6'
 };
 
 // ---------- Animated integer counter ----------
@@ -140,10 +142,12 @@ const EmployeeDashboard = () => {
     'Electronics and Programming': isRTL ? 'الإلكترونيات والبرمجة' : 'Electronics & Programming',
     'CNC Laser': isRTL ? 'ليزر CNC' : 'CNC Laser',
     'CNC Wood': isRTL ? 'خشب CNC' : 'CNC Wood',
+    'CNC Metal': isRTL ? 'معادن CNC' : 'CNC Metal',
     '3D': isRTL ? 'الطباعة ثلاثية الأبعاد' : '3D Printing',
     'Robotic and AI': isRTL ? 'الروبوتات والذكاء الاصطناعي' : 'Robotics & AI',
     "Kid's Club": isRTL ? 'نادي الأطفال' : "Kid's Club",
-    'Vinyl Cutting': isRTL ? 'قص الفينيل' : 'Vinyl Cutting'
+    'Vinyl Cutting': isRTL ? 'قص الفينيل' : 'Vinyl Cutting',
+    'UV Printing and Sticker Making': isRTL ? 'طباعة UV والملصقات' : 'UV Printing & Stickers'
   };
 
   const statusLabels = {

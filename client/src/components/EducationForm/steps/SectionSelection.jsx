@@ -6,10 +6,12 @@ const sections = [
   { value: 'Electronics and Programming', labelAr: 'الإلكترونيات والبرمجة', labelEn: 'Electronics and Programming', icon: '💻' },
   { value: 'CNC Laser', labelAr: 'القطع بالليزر', labelEn: 'CNC Laser', icon: '🔦' },
   { value: 'CNC Wood', labelAr: 'القطع الخشبي', labelEn: 'CNC Wood', icon: '🪵' },
+  { value: 'CNC Metal', labelAr: 'قطع المعادن', labelEn: 'CNC Metal', icon: '🔩' },
   { value: '3D', labelAr: 'الطباعة ثلاثية الأبعاد', labelEn: '3D Printing', icon: '🖨️' },
   { value: 'Robotic and AI', labelAr: 'الروبوتات والذكاء الاصطناعي', labelEn: 'Robotic and AI', icon: '🤖' },
   { value: "Kid's Club", labelAr: 'نادي الأطفال', labelEn: "Kid's Club", icon: '👧' },
   { value: 'Vinyl Cutting', labelAr: 'قص الفينيل', labelEn: 'Vinyl Cutting', icon: '✂️' },
+  { value: 'UV Printing and Sticker Making', labelAr: 'طباعة UV والملصقات', labelEn: 'UV Printing & Stickers', icon: '🎨' },
   { value: 'Other', labelAr: 'أخرى', labelEn: 'Other', icon: '📋' }
 ];
 

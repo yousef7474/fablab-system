@@ -27,10 +27,12 @@ const SECTION_COLORS = {
   'Electronics and Programming': '#6366f1',
   'CNC Laser': '#22c55e',
   'CNC Wood': '#f59e0b',
+  'CNC Metal': '#64748b',
   '3D': '#ef4444',
   'Robotic and AI': '#8b5cf6',
   "Kid's Club": '#06b6d4',
-  'Vinyl Cutting': '#ec4899'
+  'Vinyl Cutting': '#ec4899',
+  'UV Printing and Sticker Making': '#14b8a6'
 };
 
 // Distinct employee colors - maximally different hues for easy distinction
@@ -332,10 +334,12 @@ const ManagerDashboard = () => {
     'Electronics and Programming': isRTL ? 'الإلكترونيات والبرمجة' : 'Electronics & Programming',
     'CNC Laser': isRTL ? 'ليزر CNC' : 'CNC Laser',
     'CNC Wood': isRTL ? 'خشب CNC' : 'CNC Wood',
+    'CNC Metal': isRTL ? 'معادن CNC' : 'CNC Metal',
     '3D': isRTL ? 'الطباعة ثلاثية الأبعاد' : '3D Printing',
     'Robotic and AI': isRTL ? 'الروبوتات والذكاء الاصطناعي' : 'Robotics & AI',
     "Kid's Club": isRTL ? 'نادي الأطفال' : "Kid's Club",
-    'Vinyl Cutting': isRTL ? 'قص الفينيل' : 'Vinyl Cutting'
+    'Vinyl Cutting': isRTL ? 'قص الفينيل' : 'Vinyl Cutting',
+    'UV Printing and Sticker Making': isRTL ? 'طباعة UV والملصقات' : 'UV Printing & Stickers'
   };
 
   // Apply theme to document
@@ -3542,10 +3546,12 @@ const ManagerDashboard = () => {
       'Electronics and Programming': 'الإلكترونيات والبرمجة',
       'CNC Laser': 'القطع بالليزر',
       'CNC Wood': 'القطع الخشبي',
+      'CNC Metal': 'قطع المعادن',
       '3D': 'الطباعة ثلاثية الأبعاد',
       'Robotic and AI': 'الروبوتات والذكاء الاصطناعي',
       "Kid's Club": 'نادي الأطفال',
       'Vinyl Cutting': 'قص الفينيل',
+      'UV Printing and Sticker Making': 'طباعة UV والملصقات',
       'Other': 'أخرى'
     };
     const sectionLabel = sectionLabelsEdu[education.section] || education.section;
@@ -7557,7 +7563,7 @@ const ManagerDashboard = () => {
                   </select>
                   <select className="filter-select" value={educationFilters.section} onChange={(e) => setEducationFilters({ ...educationFilters, section: e.target.value })}>
                     <option value="">{isRTL ? 'كل الأقسام' : 'All Sections'}</option>
-                    {['Electronics and Programming', 'CNC Laser', 'CNC Wood', '3D', 'Robotic and AI', "Kid's Club", 'Vinyl Cutting', 'Other'].map(s => (
+                    {['Electronics and Programming', 'CNC Laser', 'CNC Wood', 'CNC Metal', '3D', 'Robotic and AI', "Kid's Club", 'Vinyl Cutting', 'UV Printing and Sticker Making', 'Other'].map(s => (
                       <option key={s} value={s}>{sectionLabels[s] || s}</option>
                     ))}
                   </select>

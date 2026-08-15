@@ -21,10 +21,12 @@ const Registration = sequelize.define('Registration', {
       'Electronics and Programming',
       'CNC Laser',
       'CNC Wood',
+      'CNC Metal',
       '3D',
       'Robotic and AI',
       "Kid's Club",
-      'Vinyl Cutting'
+      'Vinyl Cutting',
+      'UV Printing and Sticker Making'
     ),
     allowNull: false
   },

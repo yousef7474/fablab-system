@@ -32,10 +32,12 @@ const SECTION_COLORS = {
   'Electronics and Programming': '#6366f1',
   'CNC Laser': '#22c55e',
   'CNC Wood': '#f59e0b',
+  'CNC Metal': '#64748b',
   '3D': '#ef4444',
   'Robotic and AI': '#8b5cf6',
   "Kid's Club": '#06b6d4',
-  'Vinyl Cutting': '#ec4899'
+  'Vinyl Cutting': '#ec4899',
+  'UV Printing and Sticker Making': '#14b8a6'
 };
 
 const EMPLOYEE_COLORS = [
@@ -2980,10 +2982,12 @@ const AdminDashboard = () => {
         'Electronics and Programming': isRTL ? 'الإلكترونيات والبرمجة' : 'Electronics & Programming',
         'CNC Laser': isRTL ? 'الليزر CNC' : 'CNC Laser',
         'CNC Wood': isRTL ? 'الخشب CNC' : 'CNC Wood',
+        'CNC Metal': isRTL ? 'المعادن CNC' : 'CNC Metal',
         '3D': isRTL ? 'الطباعة ثلاثية الأبعاد' : '3D Printing',
         'Robotic and AI': isRTL ? 'الروبوتات والذكاء الاصطناعي' : 'Robotics & AI',
         "Kid's Club": isRTL ? 'نادي الأطفال' : "Kid's Club",
-        'Vinyl Cutting': isRTL ? 'قطع الفينيل' : 'Vinyl Cutting'
+        'Vinyl Cutting': isRTL ? 'قطع الفينيل' : 'Vinyl Cutting',
+        'UV Printing and Sticker Making': isRTL ? 'طباعة UV والملصقات' : 'UV Printing & Stickers'
       };
       return labels[registration.fablabSection] || registration.fablabSection || (isRTL ? 'غير متوفر' : 'N/A');
     };
@@ -4501,10 +4505,12 @@ const AdminDashboard = () => {
       'Electronics and Programming': 'الإلكترونيات والبرمجة',
       'CNC Laser': 'القطع بالليزر',
       'CNC Wood': 'القطع الخشبي',
+      'CNC Metal': 'قطع المعادن',
       '3D': 'الطباعة ثلاثية الأبعاد',
       'Robotic and AI': 'الروبوتات والذكاء الاصطناعي',
       "Kid's Club": 'نادي الأطفال',
       'Vinyl Cutting': 'قص الفينيل',
+      'UV Printing and Sticker Making': 'طباعة UV والملصقات',
       'Other': 'أخرى'
     };
     const sectionLabel = sectionLabelsEdu[education.section] || education.section;
@@ -4896,10 +4902,12 @@ const AdminDashboard = () => {
     'Electronics and Programming': isRTL ? 'الإلكترونيات والبرمجة' : 'Electronics & Programming',
     'CNC Laser': isRTL ? 'الليزر CNC' : 'CNC Laser',
     'CNC Wood': isRTL ? 'الخشب CNC' : 'CNC Wood',
+    'CNC Metal': isRTL ? 'المعادن CNC' : 'CNC Metal',
     '3D': isRTL ? 'الطباعة ثلاثية الأبعاد' : '3D Printing',
     'Robotic and AI': isRTL ? 'الروبوتات والذكاء الاصطناعي' : 'Robotics & AI',
     "Kid's Club": isRTL ? 'نادي الأطفال' : "Kid's Club",
-    'Vinyl Cutting': isRTL ? 'قطع الفينيل' : 'Vinyl Cutting'
+    'Vinyl Cutting': isRTL ? 'قطع الفينيل' : 'Vinyl Cutting',
+    'UV Printing and Sticker Making': isRTL ? 'طباعة UV والملصقات' : 'UV Printing & Stickers'
   };
 
   const statusLabels = {
@@ -5272,10 +5280,12 @@ const AdminDashboard = () => {
                     <option value="Electronics and Programming">{isRTL ? 'الإلكترونيات والبرمجة' : 'Electronics & Programming'}</option>
                     <option value="CNC Laser">{isRTL ? 'الليزر CNC' : 'CNC Laser'}</option>
                     <option value="CNC Wood">{isRTL ? 'الخشب CNC' : 'CNC Wood'}</option>
+                    <option value="CNC Metal">{isRTL ? 'المعادن CNC' : 'CNC Metal'}</option>
                     <option value="3D">{isRTL ? 'الطباعة ثلاثية الأبعاد' : '3D Printing'}</option>
                     <option value="Robotic and AI">{isRTL ? 'الروبوتات والذكاء الاصطناعي' : 'Robotics & AI'}</option>
                     <option value="Kid's Club">{isRTL ? 'نادي الأطفال' : "Kid's Club"}</option>
                     <option value="Vinyl Cutting">{isRTL ? 'قطع الفينيل' : 'Vinyl Cutting'}</option>
+                    <option value="UV Printing and Sticker Making">{isRTL ? 'طباعة UV والملصقات' : 'UV Printing & Stickers'}</option>
                   </select>
 
                   <select
@@ -7236,7 +7246,7 @@ const AdminDashboard = () => {
                   </select>
                   <select className="filter-select" value={educationFilters.section} onChange={(e) => setEducationFilters({ ...educationFilters, section: e.target.value })}>
                     <option value="">{isRTL ? 'كل الأقسام' : 'All Sections'}</option>
-                    {['Electronics and Programming', 'CNC Laser', 'CNC Wood', '3D', 'Robotic and AI', "Kid's Club", 'Vinyl Cutting', 'Other'].map(s => (
+                    {['Electronics and Programming', 'CNC Laser', 'CNC Wood', 'CNC Metal', '3D', 'Robotic and AI', "Kid's Club", 'Vinyl Cutting', 'UV Printing and Sticker Making', 'Other'].map(s => (
                       <option key={s} value={s}>{s}</option>
                     ))}
                   </select>
@@ -9867,10 +9877,12 @@ const AdminDashboard = () => {
                       { value: 'Electronics and Programming', labelEn: 'Electronics & Programming', labelAr: 'الإلكترونيات والبرمجة' },
                       { value: 'CNC Laser', labelEn: 'CNC Laser', labelAr: 'الليزر CNC' },
                       { value: 'CNC Wood', labelEn: 'CNC Wood', labelAr: 'الخشب CNC' },
+                      { value: 'CNC Metal', labelEn: 'CNC Metal', labelAr: 'المعادن CNC' },
                       { value: '3D', labelEn: '3D Printing', labelAr: 'الطباعة ثلاثية الأبعاد' },
                       { value: 'Robotic and AI', labelEn: 'Robotics & AI', labelAr: 'الروبوتات والذكاء الاصطناعي' },
                       { value: "Kid's Club", labelEn: "Kid's Club", labelAr: 'نادي الأطفال' },
-                      { value: 'Vinyl Cutting', labelEn: 'Vinyl Cutting', labelAr: 'قص الفينيل' }
+                      { value: 'Vinyl Cutting', labelEn: 'Vinyl Cutting', labelAr: 'قص الفينيل' },
+                      { value: 'UV Printing and Sticker Making', labelEn: 'UV Printing & Stickers', labelAr: 'طباعة UV والملصقات' }
                     ].map(section => {
                       const status = getSectionStatus(section.value);
                       const hasDeactivations = status.hasDeactivations;
@@ -10610,10 +10622,12 @@ const AdminDashboard = () => {
                     { value: 'Electronics and Programming', ar: 'الإلكترونيات والبرمجة', en: 'Electronics & Programming' },
                     { value: 'CNC Laser',                   ar: 'الليزر CNC',            en: 'CNC Laser' },
                     { value: 'CNC Wood',                    ar: 'الخشب CNC',             en: 'CNC Wood' },
+                    { value: 'CNC Metal',                   ar: 'المعادن CNC',           en: 'CNC Metal' },
                     { value: '3D',                          ar: 'الطباعة ثلاثية الأبعاد', en: '3D Printing' },
                     { value: 'Robotic and AI',              ar: 'الروبوتات والذكاء الاصطناعي', en: 'Robotics & AI' },
                     { value: "Kid's Club",                  ar: 'نادي الأطفال',          en: "Kid's Club" },
-                    { value: 'Vinyl Cutting',               ar: 'قطع الفينيل',            en: 'Vinyl Cutting' }
+                    { value: 'Vinyl Cutting',               ar: 'قطع الفينيل',            en: 'Vinyl Cutting' },
+                    { value: 'UV Printing and Sticker Making', ar: 'طباعة UV والملصقات', en: 'UV Printing & Stickers' }
                   ].map(sec => {
                     const checked = (employeeForm.sections || []).includes(sec.value);
                     const color = SECTION_COLORS[sec.value] || '#64748b';

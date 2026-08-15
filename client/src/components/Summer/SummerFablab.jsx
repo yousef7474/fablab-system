@@ -214,10 +214,12 @@ const STANDARD_SECTIONS = [
   { value: 'Electronics and Programming', labelAr: 'الإلكترونيات والبرمجة', labelEn: 'Electronics & Programming' },
   { value: 'CNC Laser',                   labelAr: 'الليزر CNC',            labelEn: 'CNC Laser' },
   { value: 'CNC Wood',                    labelAr: 'الخشب CNC',             labelEn: 'CNC Wood' },
+  { value: 'CNC Metal',                   labelAr: 'المعادن CNC',           labelEn: 'CNC Metal' },
   { value: '3D',                          labelAr: 'الطباعة ثلاثية الأبعاد', labelEn: '3D Printing' },
   { value: 'Robotic and AI',              labelAr: 'الروبوتات والذكاء',     labelEn: 'Robotics & AI' },
   { value: "Kid's Club",                  labelAr: 'نادي الأطفال',          labelEn: "Kid's Club" },
-  { value: 'Vinyl Cutting',               labelAr: 'قص الفينيل',             labelEn: 'Vinyl Cutting' }
+  { value: 'Vinyl Cutting',               labelAr: 'قص الفينيل',             labelEn: 'Vinyl Cutting' },
+  { value: 'UV Printing and Sticker Making', labelAr: 'طباعة UV والملصقات', labelEn: 'UV Printing & Stickers' }
 ];
 
 const SUB_TABS = [
@@ -262,10 +264,12 @@ const SECTION_COLORS = {
   'Electronics and Programming': '#6366f1',
   'CNC Laser':                   '#22c55e',
   'CNC Wood':                    '#f59e0b',
+  'CNC Metal':                   '#64748b',
   '3D':                          '#ef4444',
   'Robotic and AI':              '#8b5cf6',
   "Kid's Club":                  '#06b6d4',
-  'Vinyl Cutting':               '#ec4899'
+  'Vinyl Cutting':               '#ec4899',
+  'UV Printing and Sticker Making': '#14b8a6'
 };
 const DEFAULT_PROGRAM_COLOR = '#f97316'; // Summer FabLab orange
 

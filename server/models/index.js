@@ -392,6 +392,34 @@ const syncDatabase = async () => {
       }
     }
 
+    // Add the two new FabLab sections to every ENUM that hard-codes the
+    // section list: registrations, section_availabilities, summer_programs.
+    // Idempotent thanks to IF NOT EXISTS.
+    try {
+      await sequelize.query("ALTER TYPE \"enum_registrations_fablabSection\" ADD VALUE IF NOT EXISTS 'CNC Metal'");
+      await sequelize.query("ALTER TYPE \"enum_registrations_fablabSection\" ADD VALUE IF NOT EXISTS 'UV Printing and Sticker Making'");
+    } catch (migrationError) {
+      if (!migrationError.message.includes("doesn't exist") && !migrationError.message.includes('already exists')) {
+        console.log('registrations.fablabSection ENUM migration note:', migrationError.message);
+      }
+    }
+    try {
+      await sequelize.query("ALTER TYPE \"enum_section_availabilities_section\" ADD VALUE IF NOT EXISTS 'CNC Metal'");
+      await sequelize.query("ALTER TYPE \"enum_section_availabilities_section\" ADD VALUE IF NOT EXISTS 'UV Printing and Sticker Making'");
+    } catch (migrationError) {
+      if (!migrationError.message.includes("doesn't exist") && !migrationError.message.includes('already exists')) {
+        console.log('SectionAvailabilities.section ENUM migration note:', migrationError.message);
+      }
+    }
+    try {
+      await sequelize.query("ALTER TYPE \"enum_summer_programs_fablabSection\" ADD VALUE IF NOT EXISTS 'CNC Metal'");
+      await sequelize.query("ALTER TYPE \"enum_summer_programs_fablabSection\" ADD VALUE IF NOT EXISTS 'UV Printing and Sticker Making'");
+    } catch (migrationError) {
+      if (!migrationError.message.includes("doesn't exist") && !migrationError.message.includes('already exists')) {
+        console.log('summer_programs.fablabSection ENUM migration note:', migrationError.message);
+      }
+    }
+
     // Migrate manager_todos.status ENUM to include 'in_progress' and 'cancelled'
     try {
       const [todoStatusCol] = await sequelize.query(

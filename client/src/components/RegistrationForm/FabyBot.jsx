@@ -159,6 +159,8 @@ ${hoursRangeEn}
 🤖 **الروبوتات والذكاء الاصطناعي** - تصميم وبرمجة الروبوتات
 👶 **نادي الأطفال** - ورش تعليمية للصغار
 ✂️ **قطع الفينيل** - ملصقات وطباعة حرارية
+🔩 **CNC المعادن** - قطع ونقش المعادن
+🎨 **طباعة UV والملصقات** - طباعة عالية الجودة على مواد متنوعة
 
 هل تريد معرفة المزيد عن خدمة معينة؟`,
         en: `At FABLAB Al-Ahsa, we offer various services including:
@@ -170,6 +172,8 @@ ${hoursRangeEn}
 🤖 **Robotics & AI** - Robot design and programming
 👶 **Kid's Club** - Educational workshops for children
 ✂️ **Vinyl Cutting** - Stickers and heat transfer
+🔩 **CNC Metal** - Metal cutting and engraving
+🎨 **UV Printing & Stickers** - High-quality printing on various materials
 
 Would you like to know more about a specific service?`
       }
@@ -277,7 +281,13 @@ Would you like to know more about a specific service?`
 ورش تعليمية ممتعة للأطفال
 
 ✂️ **قطع الفينيل**
-للملصقات والطباعة الحرارية`,
+للملصقات والطباعة الحرارية
+
+🔩 **المعادن CNC**
+لقص ونقش المعادن
+
+🎨 **طباعة UV والملصقات**
+طباعة عالية الجودة على مواد متنوعة`,
         en: `🏭 **FABLAB Sections:**
 
 🔌 **Electronics & Programming**
@@ -299,7 +309,13 @@ For robotics and automation projects
 Fun educational workshops for children
 
 ✂️ **Vinyl Cutting**
-For stickers and heat transfer printing`
+For stickers and heat transfer printing
+
+🔩 **CNC Metal**
+For metal cutting and engraving
+
+🎨 **UV Printing & Stickers**
+High-quality printing on various materials`
       }
     },
     cost: {

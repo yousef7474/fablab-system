@@ -7,10 +7,12 @@ const sectionTranslations = {
   'Electronics and Programming': 'الإلكترونيات والبرمجة',
   'CNC Laser': 'القطع بالليزر',
   'CNC Wood': 'القطع الخشبي',
+  'CNC Metal': 'قطع المعادن',
   '3D': 'الطباعة ثلاثية الأبعاد',
   'Robotic and AI': 'الروبوتات والذكاء الاصطناعي',
   "Kid's Club": 'نادي الأطفال',
   'Vinyl Cutting': 'قص الفينيل',
+  'UV Printing and Sticker Making': 'طباعة UV والملصقات',
   'Other': 'أخرى'
 };
 

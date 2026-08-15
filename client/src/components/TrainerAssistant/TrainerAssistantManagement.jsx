@@ -11,10 +11,12 @@ const FABLAB_SECTIONS = [
   'Electronics and Programming',
   'CNC Laser',
   'CNC Wood',
+  'CNC Metal',
   '3D',
   'Robotic and AI',
   "Kid's Club",
-  'Vinyl Cutting'
+  'Vinyl Cutting',
+  'UV Printing and Sticker Making'
 ];
 
 // Post-chance evaluation criteria, each rated 0–5. `rating` on the
