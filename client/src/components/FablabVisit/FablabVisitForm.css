@@ -218,6 +218,310 @@
   line-height: 1.6;
 }
 
+/* ---------- Override mode toggle ---------- */
+.fv-override-toggle {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 14px 16px;
+  margin: 16px 0 20px;
+  background: var(--fv-surface-2);
+  border: 1px dashed var(--fv-line);
+  border-radius: 12px;
+  cursor: pointer;
+  transition: border-color 0.16s, background 0.16s;
+}
+.fv-override-toggle:hover { border-color: #f59e0b; background: #fffbeb; }
+.fv-override-toggle.is-on { border-color: #f59e0b; background: #fffbeb; border-style: solid; }
+.fv-override-toggle input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  accent-color: #f59e0b;
+  margin-top: 3px;
+  cursor: pointer;
+}
+.fv-override-toggle-body { flex: 1; }
+.fv-override-toggle-title {
+  font-weight: 700;
+  color: var(--fv-ink);
+  font-size: 14px;
+  margin-bottom: 4px;
+}
+.fv-override-toggle-hint {
+  font-size: 12.5px;
+  color: var(--fv-muted);
+  line-height: 1.6;
+}
+.fv-override-toggle.is-on .fv-override-toggle-title { color: #92400e; }
+.fv-override-toggle.is-on .fv-override-toggle-hint { color: #78350f; }
+
+/* ---------- Calendar ---------- */
+.fv-cal-label {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--fv-ink-2);
+  letter-spacing: 0.02em;
+  margin-bottom: 8px;
+  text-transform: uppercase;
+}
+.fv-cal-label-hint {
+  font-family: 'JetBrains Mono', monospace;
+  font-weight: 600;
+  font-size: 11px;
+  color: var(--fv-brand);
+  background: var(--fv-brand-tint);
+  padding: 3px 8px;
+  border-radius: 999px;
+  letter-spacing: 1px;
+  text-transform: none;
+}
+
+.fv-cal-block { margin-top: 6px; }
+
+.fv-cal {
+  border: 1px solid var(--fv-line);
+  background: var(--fv-surface);
+  border-radius: 16px;
+  padding: 16px;
+}
+.fv-cal.has-error { border-color: var(--fv-danger); }
+
+.fv-cal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+.fv-cal-month {
+  font-family: 'Bricolage Grotesque', var(--fv-font-body);
+  font-weight: 700;
+  font-size: 17px;
+  letter-spacing: -0.005em;
+  color: var(--fv-ink);
+}
+.fv-cal-nav {
+  width: 32px; height: 32px;
+  border-radius: 10px;
+  border: 1px solid var(--fv-line);
+  background: var(--fv-surface);
+  color: var(--fv-ink-2);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: border-color 0.16s, color 0.16s, background 0.16s;
+}
+.fv-cal-nav:hover { border-color: var(--fv-brand); color: var(--fv-brand); background: var(--fv-brand-tint); }
+.fv-cal-nav svg { width: 16px; height: 16px; }
+
+.fv-cal-weekdays {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 4px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  color: var(--fv-muted);
+  text-align: center;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--fv-line);
+  margin-bottom: 6px;
+}
+.fv-cal-weekdays > div { padding: 4px 0; }
+
+.fv-cal-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 4px;
+}
+
+.fv-cal-day {
+  position: relative;
+  aspect-ratio: 1 / 1;
+  border-radius: 10px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--fv-ink);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.14s, border-color 0.14s, color 0.14s, transform 0.14s;
+  padding: 0;
+}
+.fv-cal-day:hover:not(:disabled):not(.fv-cal-day--empty) {
+  background: var(--fv-surface-2);
+  border-color: var(--fv-brand);
+  color: var(--fv-brand);
+  transform: scale(1.04);
+}
+.fv-cal-day--empty { cursor: default; background: transparent !important; }
+
+.fv-cal-day.is-past,
+.fv-cal-day.is-off,
+.fv-cal-day.is-closure {
+  color: #cbd5e1;
+  cursor: not-allowed;
+  background:
+    repeating-linear-gradient(
+      -45deg,
+      rgba(148, 163, 184, 0.10) 0,
+      rgba(148, 163, 184, 0.10) 4px,
+      transparent 4px,
+      transparent 8px
+    ),
+    rgba(241, 245, 249, 0.7);
+  text-decoration: line-through;
+  opacity: 0.7;
+}
+.fv-cal-day.is-past:hover,
+.fv-cal-day.is-off:hover,
+.fv-cal-day.is-closure:hover { transform: none; border-color: transparent; color: #cbd5e1; background:
+    repeating-linear-gradient(
+      -45deg,
+      rgba(148, 163, 184, 0.10) 0,
+      rgba(148, 163, 184, 0.10) 4px,
+      transparent 4px,
+      transparent 8px
+    ),
+    rgba(241, 245, 249, 0.7); }
+
+/* When override mode is on, previously-blocked days become
+   clickable and get an amber outline to signal they need the code. */
+.fv-cal-day.is-override {
+  color: #92400e;
+  cursor: pointer;
+  background: repeating-linear-gradient(
+      -45deg,
+      rgba(245, 158, 11, 0.12) 0,
+      rgba(245, 158, 11, 0.12) 4px,
+      transparent 4px,
+      transparent 8px
+    ),
+    #fffbeb;
+  text-decoration: none;
+  opacity: 1;
+  border-color: rgba(245, 158, 11, 0.35);
+}
+.fv-cal-day.is-override:hover {
+  transform: scale(1.04);
+  border-color: #f59e0b;
+  color: #92400e;
+}
+
+.fv-cal-day.is-today:not(.is-selected):not(:disabled) {
+  border-color: var(--fv-brand);
+  color: var(--fv-brand);
+}
+
+.fv-cal-day.is-selected {
+  background: linear-gradient(135deg, #16a34a, #22c55e);
+  color: #ffffff;
+  border-color: #15803d;
+  transform: scale(1.05);
+  box-shadow: 0 6px 18px -4px rgba(22, 163, 74, 0.5);
+  text-decoration: none;
+  opacity: 1;
+}
+.fv-cal-day.is-selected:hover { transform: scale(1.05); color: #fff; }
+
+.fv-cal-legend {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+  padding-top: 12px;
+  border-top: 1px solid var(--fv-line);
+  margin-top: 10px;
+  font-size: 11.5px;
+  color: var(--fv-muted);
+}
+.fv-cal-legend-item { display: inline-flex; align-items: center; gap: 6px; }
+.fv-cal-dot {
+  width: 10px; height: 10px; border-radius: 999px;
+  display: inline-block;
+}
+.fv-cal-dot.is-avail    { background: var(--fv-surface-2); border: 1px solid var(--fv-brand); }
+.fv-cal-dot.is-sel      { background: linear-gradient(135deg, #16a34a, #22c55e); }
+.fv-cal-dot.is-block    { background:
+    repeating-linear-gradient(-45deg, rgba(148,163,184,0.6) 0, rgba(148,163,184,0.6) 2px, transparent 2px, transparent 4px),
+    #cbd5e1; }
+.fv-cal-dot.is-override { background:
+    repeating-linear-gradient(-45deg, rgba(245,158,11,0.6) 0, rgba(245,158,11,0.6) 2px, transparent 2px, transparent 4px),
+    #fef3c7;
+  border: 1px solid #f59e0b; }
+
+/* ---------- Time slot picker ---------- */
+.fv-slot-block { margin-top: 20px; }
+.fv-slot-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+@media (max-width: 640px) {
+  .fv-slot-row { grid-template-columns: 1fr; }
+}
+.fv-slot-col {
+  background: var(--fv-surface-2);
+  border: 1px solid var(--fv-line);
+  border-radius: 12px;
+  padding: 12px;
+}
+.fv-slot-col-title {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  color: var(--fv-muted);
+  text-transform: uppercase;
+  margin-bottom: 10px;
+  padding-inline-start: 4px;
+}
+.fv-slot-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(72px, 1fr));
+  gap: 6px;
+}
+.fv-slot {
+  padding: 10px 6px;
+  border: 1px solid var(--fv-line);
+  background: var(--fv-surface);
+  border-radius: 8px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--fv-ink-2);
+  cursor: pointer;
+  text-align: center;
+  transition: border-color 0.14s, background 0.14s, color 0.14s, transform 0.14s;
+  direction: ltr;
+}
+.fv-slot:hover:not(.is-sel) {
+  border-color: var(--fv-brand);
+  color: var(--fv-brand);
+  transform: translateY(-1px);
+}
+.fv-slot.is-sel {
+  border-color: #15803d;
+  background: linear-gradient(135deg, #16a34a, #22c55e);
+  color: #ffffff;
+  box-shadow: 0 4px 12px -4px rgba(22, 163, 74, 0.5);
+}
+.fv-slot-empty {
+  padding: 20px 14px;
+  text-align: center;
+  color: var(--fv-muted);
+  font-size: 12.5px;
+  background: var(--fv-surface);
+  border: 1px dashed var(--fv-line);
+  border-radius: 8px;
+}
+
 /* ---------- Override code block ---------- */
 .fv-override {
   margin: 4px 0 16px;
