@@ -9360,7 +9360,7 @@ const AdminDashboard = () => {
                 className="settings-content"
               >
                 <div className="settings-grid">
-                  <div className="settings-card span-2" style={{ border: registrationPaused ? '2px solid #ef4444' : '2px solid #22c55e', background: registrationPaused ? 'rgba(239,68,68,0.03)' : 'rgba(34,197,94,0.03)' }}>
+                  <div className="settings-card" style={{ gridColumn: '1 / -1', border: registrationPaused ? '2px solid #ef4444' : '2px solid #22c55e', background: registrationPaused ? 'rgba(239,68,68,0.03)' : 'rgba(34,197,94,0.03)' }}>
                     <h3 style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                       <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={registrationPaused ? '#ef4444' : '#22c55e'} strokeWidth="2">
                         {registrationPaused ? (
@@ -9437,7 +9437,7 @@ const AdminDashboard = () => {
 
                   <FablabVisitOverrideCodeCard isRTL={isRTL} />
 
-                  <div className="settings-card span-2">
+                  <div className="settings-card" style={{ gridColumn: '1 / -1' }}>
                     <h3 style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                         <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
@@ -9966,7 +9966,7 @@ const AdminDashboard = () => {
                   </div>
 
                   {/* Sidebar tab visibility — per-admin, localStorage-backed */}
-                  <div className="settings-card span-2" style={{ border: '2px solid #6366f1', background: 'rgba(99,102,241,0.03)' }}>
+                  <div className="settings-card" style={{ gridColumn: '1 / -1', border: '2px solid #6366f1', background: 'rgba(99,102,241,0.03)' }}>
                     <h3 style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                       <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#6366f1" strokeWidth="2">
                         <rect x="3" y="3" width="7" height="7"/>
