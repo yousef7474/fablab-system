@@ -71,7 +71,7 @@ const FablabVisitOverrideCodeCard = ({ isRTL }) => {
   const tint = remainingSec > 180 ? '#0ea5e9' : remainingSec > 60 ? '#f59e0b' : '#dc2626';
 
   return (
-    <div className="settings-card" style={{ gridColumn: '1 / -1', border: `2px solid ${tint}`, background: `${tint}0d` }}>
+    <div className="settings-card span-2" style={{ border: `2px solid ${tint}`, background: `${tint}0d` }}>
       <h3 style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
         <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={tint} strokeWidth="2">
           <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
