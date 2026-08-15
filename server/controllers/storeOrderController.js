@@ -1,5 +1,6 @@
-const { StoreOrder, StoreItem } = require('../models');
+const { StoreOrder, StoreItem, DiscountCoupon } = require('../models');
 const { sequelize } = require('../config/database');
+const { validateCouponAgainstOrder } = require('./discountCouponController');
 const sgMail = require('@sendgrid/mail');
 if (process.env.SENDGRID_API_KEY) sgMail.setApiKey(process.env.SENDGRID_API_KEY);
 
@@ -71,6 +72,7 @@ const _buildAdminOrderEmail = (order) => {
       <tbody>${_renderItemRows(order.items || [])}</tbody>
       <tfoot>
         <tr><td colspan="3" style="padding:8px 12px;text-align:end;color:#64748b">المجموع الفرعي</td><td style="padding:8px 12px;text-align:end">${SAR(order.subtotal)}</td></tr>
+        ${Number(order.discountAmount) > 0 ? `<tr><td colspan="3" style="padding:8px 12px;text-align:end;color:#16a34a">خصم (${order.couponCode} · ${order.couponPercent}%)</td><td style="padding:8px 12px;text-align:end;color:#16a34a">-${SAR(order.discountAmount)}</td></tr>` : ''}
         <tr><td colspan="3" style="padding:8px 12px;text-align:end;color:#64748b">ضريبة القيمة المضافة (${Math.round((order.taxRate || 0) * 100)}%)</td><td style="padding:8px 12px;text-align:end">${SAR(order.taxAmount)}</td></tr>
         <tr style="background:#fef2f2"><td colspan="3" style="padding:12px;text-align:end;color:#c41e24;font-weight:800;font-size:14px">الإجمالي الكلي</td><td style="padding:12px;text-align:end;color:#c41e24;font-weight:800;font-size:16px">${SAR(order.total)}</td></tr>
       </tfoot>
@@ -133,6 +135,7 @@ const _buildCustomerInvoiceEmail = (order, subject, headline) => {
       <tbody>${_renderItemRows(order.items || [])}</tbody>
       <tfoot>
         <tr><td colspan="3" style="padding:8px 12px;text-align:end;color:#64748b">المجموع الفرعي</td><td style="padding:8px 12px;text-align:end">${SAR(order.subtotal)}</td></tr>
+        ${Number(order.discountAmount) > 0 ? `<tr><td colspan="3" style="padding:8px 12px;text-align:end;color:#16a34a">خصم (${order.couponCode} · ${order.couponPercent}%)</td><td style="padding:8px 12px;text-align:end;color:#16a34a">-${SAR(order.discountAmount)}</td></tr>` : ''}
         <tr><td colspan="3" style="padding:8px 12px;text-align:end;color:#64748b">ضريبة القيمة المضافة (${Math.round((order.taxRate || 0) * 100)}%)</td><td style="padding:8px 12px;text-align:end">${SAR(order.taxAmount)}</td></tr>
         <tr style="background:#fef2f2"><td colspan="3" style="padding:12px;text-align:end;color:#c41e24;font-weight:800;font-size:14px">الإجمالي الكلي</td><td style="padding:12px;text-align:end;color:#c41e24;font-weight:800;font-size:16px">${SAR(order.total)}</td></tr>
       </tfoot>
@@ -185,7 +188,7 @@ exports.publicCreate = async (req, res) => {
   try {
     const {
       customerName, customerPhone, customerEmail, customerNationalId,
-      deliveryAddress, notes, items
+      deliveryAddress, notes, items, couponCode
     } = req.body || {};
 
     if (!customerName || !customerPhone || !customerEmail || !Array.isArray(items) || items.length === 0) {
@@ -226,9 +229,28 @@ exports.publicCreate = async (req, res) => {
       });
     }
     subtotal = +subtotal.toFixed(2);
+
+    // Apply coupon if the client passed one — server verifies again to
+    // stop the client sending a fabricated discount.
+    let couponCodeApplied = null;
+    let couponPercentApplied = null;
+    let discountAmount = 0;
+    let couponRow = null;
+    if (couponCode && String(couponCode).trim()) {
+      const check = await validateCouponAgainstOrder(couponCode, subtotal);
+      if (!check.ok) {
+        return res.status(400).json({ message: check.reason, messageAr: check.reasonAr });
+      }
+      couponRow = check.coupon;
+      couponCodeApplied = couponRow.code;
+      couponPercentApplied = couponRow.percent;
+      discountAmount = +(subtotal * (couponRow.percent / 100)).toFixed(2);
+    }
+
+    const netAfterDiscount = +(subtotal - discountAmount).toFixed(2);
     const taxRate = 0.15;
-    const taxAmount = +(subtotal * taxRate).toFixed(2);
-    const total = +(subtotal + taxAmount).toFixed(2);
+    const taxAmount = +(netAfterDiscount * taxRate).toFixed(2);
+    const total = +(netAfterDiscount + taxAmount).toFixed(2);
 
     const orderNumber = await _assignNextOrderNumber();
 
@@ -241,9 +263,20 @@ exports.publicCreate = async (req, res) => {
       deliveryAddress: deliveryAddress ? String(deliveryAddress).trim() : null,
       notes: notes ? String(notes).trim() : null,
       items: snapshot,
-      subtotal, taxRate, taxAmount, total,
+      subtotal,
+      couponCode: couponCodeApplied,
+      couponPercent: couponPercentApplied,
+      discountAmount,
+      taxRate, taxAmount, total,
       status: 'pending'
     });
+
+    // Consume the coupon usage once the order is persisted
+    if (couponRow) {
+      try {
+        await couponRow.update({ usedCount: (couponRow.usedCount || 0) + 1 });
+      } catch (e) { /* non-fatal */ }
+    }
 
     // Decrement stock (only for items with finite stock)
     for (const line of snapshot) {

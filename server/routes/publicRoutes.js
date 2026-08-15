@@ -5,6 +5,7 @@ const overtimeController = require('../controllers/overtimeController');
 const fablabVisitController = require('../controllers/fablabVisitController');
 const storeItemController = require('../controllers/storeItemController');
 const storeOrderController = require('../controllers/storeOrderController');
+const discountCouponController = require('../controllers/discountCouponController');
 
 // PUBLIC — no auth middleware, no login required.
 // Access is gated by opaque UUID tokens generated on the admin side:
@@ -32,5 +33,6 @@ router.get('/store/items',           storeItemController.publicList);
 router.get('/store/items/:id',       storeItemController.publicGet);
 router.post('/store/orders',         storeOrderController.publicCreate);
 router.get('/store/orders/:id',      storeOrderController.publicGet);
+router.post('/store/coupon/validate', discountCouponController.publicValidate);
 
 module.exports = router;

@@ -69,6 +69,7 @@ const FablabVisit = require('./FablabVisit');
 const CalendarEvent = require('./CalendarEvent');
 const StoreItem = require('./StoreItem');
 const StoreOrder = require('./StoreOrder');
+const DiscountCoupon = require('./DiscountCoupon');
 
 MawhbaAttendance.belongsTo(MawhbaStudent, { foreignKey: 'studentId', as: 'student', constraints: false });
 MawhbaStudent.hasMany(MawhbaAttendance, { foreignKey: 'studentId', as: 'attendance', constraints: false });
@@ -393,6 +394,18 @@ const syncDatabase = async () => {
     } catch (migrationError) {
       if (!migrationError.message.includes("doesn't exist") && !migrationError.message.includes('already exists')) {
         console.log('Migration note:', migrationError.message);
+      }
+    }
+
+    // Store orders: coupon fields (couponCode, couponPercent,
+    // discountAmount) for the discount-coupon flow.
+    try {
+      await sequelize.query(`ALTER TABLE store_orders ADD COLUMN IF NOT EXISTS "couponCode" VARCHAR(48)`);
+      await sequelize.query(`ALTER TABLE store_orders ADD COLUMN IF NOT EXISTS "couponPercent" INTEGER`);
+      await sequelize.query(`ALTER TABLE store_orders ADD COLUMN IF NOT EXISTS "discountAmount" DECIMAL(10,2) DEFAULT 0`);
+    } catch (migrationError) {
+      if (!/does not exist/i.test(migrationError.message)) {
+        console.log('store_orders.coupon fields migration note:', migrationError.message);
       }
     }
 
@@ -829,5 +842,6 @@ module.exports = {
   CalendarEvent,
   StoreItem,
   StoreOrder,
+  DiscountCoupon,
   syncDatabase
 };

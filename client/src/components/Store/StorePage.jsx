@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'react-toastify';
 import axios from 'axios';
-import useCart from './useCart';
+import useCart, { rememberOrder } from './useCart';
 import './StorePage.css';
 
 const API_URL = process.env.NODE_ENV === 'production'
@@ -29,10 +29,18 @@ const StorePage = () => {
   const [category, setCategory] = useState('all');
   const [search, setSearch] = useState('');
   const [drawer, setDrawer] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+
+  // Coupon
+  const [couponInput, setCouponInput] = useState('');
+  const [couponApplied, setCouponApplied] = useState(null); // { code, percent, discountAmount }
+  const [validatingCoupon, setValidatingCoupon] = useState(false);
+
+  // Checkout state
   const [checkoutOpen, setCheckoutOpen] = useState(false);
   const [checkout, setCheckout] = useState(emptyCheckout);
   const [placing, setPlacing] = useState(false);
-  const [orderResult, setOrderResult] = useState(null); // { orderNumber, total }
+  const [orderResult, setOrderResult] = useState(null);
   const [selected, setSelected] = useState(null);
 
   useEffect(() => {
@@ -50,14 +58,17 @@ const StorePage = () => {
   }, []);
 
   const categories = useMemo(() => {
-    const set = new Set();
-    items.forEach(i => { if (i.category) set.add(i.category); });
-    return ['all', ...set];
-  }, [items]);
+    const map = new Map();
+    items.forEach(i => {
+      const k = i.category || (isRTL ? 'بدون فئة' : 'Uncategorized');
+      map.set(k, (map.get(k) || 0) + 1);
+    });
+    return Array.from(map.entries()).map(([name, count]) => ({ name, count }));
+  }, [items, isRTL]);
 
   const filtered = useMemo(() => {
     let list = items;
-    if (category !== 'all') list = list.filter(i => i.category === category);
+    if (category !== 'all') list = list.filter(i => (i.category || (isRTL ? 'بدون فئة' : 'Uncategorized')) === category);
     if (search.trim()) {
       const q = search.trim().toLowerCase();
       list = list.filter(i =>
@@ -66,12 +77,52 @@ const StorePage = () => {
         (i.description || '').toLowerCase().includes(q)
       );
     }
-    // Featured first, then by created
     return list.slice().sort((a, b) => (b.isFeatured ? 1 : 0) - (a.isFeatured ? 1 : 0));
-  }, [items, category, search]);
+  }, [items, category, search, isRTL]);
 
-  const tax = +(cart.subtotal * 0.15).toFixed(2);
-  const total = +(cart.subtotal + tax).toFixed(2);
+  const featuredCount = useMemo(() => items.filter(i => i.isFeatured).length, [items]);
+
+  // Recompute totals when cart or coupon changes
+  const discountAmount = couponApplied ? +(cart.subtotal * (couponApplied.percent / 100)).toFixed(2) : 0;
+  const netAfterDiscount = +(cart.subtotal - discountAmount).toFixed(2);
+  const tax = +(netAfterDiscount * 0.15).toFixed(2);
+  const total = +(netAfterDiscount + tax).toFixed(2);
+
+  // Auto-clear the coupon if the cart empties
+  useEffect(() => {
+    if (cart.subtotal === 0 && couponApplied) setCouponApplied(null);
+  }, [cart.subtotal, couponApplied]);
+
+  const applyCoupon = async () => {
+    if (!couponInput.trim()) {
+      toast.error(isRTL ? 'أدخل رمز الخصم' : 'Enter a code');
+      return;
+    }
+    setValidatingCoupon(true);
+    try {
+      const { data } = await axios.post(`${API_URL}/public/store/coupon/validate`, {
+        code: couponInput.trim().toUpperCase(),
+        subtotal: cart.subtotal
+      });
+      setCouponApplied({
+        code: data.code,
+        percent: data.percent,
+        description: data.description
+      });
+      setCouponInput('');
+      toast.success(isRTL ? `تم تطبيق خصم ${data.percent}%` : `${data.percent}% off applied`);
+    } catch (err) {
+      const msg = err?.response?.data?.messageAr || err?.response?.data?.message || (isRTL ? 'رمز غير صالح' : 'Invalid code');
+      toast.error(msg);
+    } finally {
+      setValidatingCoupon(false);
+    }
+  };
+
+  const clearCoupon = () => {
+    setCouponApplied(null);
+    setCouponInput('');
+  };
 
   const addToCart = (item) => {
     if (item.stock === 0) {
@@ -102,10 +153,13 @@ const StorePage = () => {
     try {
       const { data } = await axios.post(`${API_URL}/public/store/orders`, {
         ...checkout,
-        items: cart.lines.map(l => ({ itemId: l.itemId, quantity: l.quantity }))
+        items: cart.lines.map(l => ({ itemId: l.itemId, quantity: l.quantity })),
+        couponCode: couponApplied?.code || null
       });
-      setOrderResult({ orderNumber: data.orderNumber, total: data.total });
+      rememberOrder({ orderId: data.orderId, orderNumber: data.orderNumber, total: data.total });
+      setOrderResult({ orderId: data.orderId, orderNumber: data.orderNumber, total: data.total });
       cart.clear();
+      setCouponApplied(null);
       setCheckoutOpen(false);
       setCheckout(emptyCheckout);
     } catch (err) {
@@ -128,6 +182,17 @@ const StorePage = () => {
             </div>
           </button>
           <div className="st-topbar-actions">
+            <button className="st-sidebar-toggle" type="button" onClick={() => setSidebarOpen(true)} title={isRTL ? 'التصنيفات' : 'Categories'}>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/>
+              </svg>
+            </button>
+            <button className="st-topbar-link" type="button" onClick={() => navigate('/store/my-orders')} title={isRTL ? 'طلباتي' : 'My Orders'}>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/>
+              </svg>
+              <span>{isRTL ? 'طلباتي' : 'My Orders'}</span>
+            </button>
             <button className="st-topbar-back" type="button" onClick={() => navigate('/register')}>
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
@@ -146,107 +211,161 @@ const StorePage = () => {
         </div>
       </header>
 
-      <main className="st-main">
-        {/* Hero */}
-        <header className="st-hero">
-          <span className="st-hero-eyebrow">{isRTL ? 'متجر فاب لاب' : 'FABLAB STORE'}</span>
-          <h1 className="st-hero-title">
-            {isRTL ? 'تسوّق أدوات ومكونات فاب لاب الأحساء' : 'Shop FabLab Al-Ahsa Tools & Kits'}
-          </h1>
-          <p className="st-hero-sub">
-            {isRTL
-              ? 'اختر من مجموعة الأدوات، المكونات، والمواد الاستهلاكية. الدفع نقداً عند الاستلام.'
-              : 'Pick from our tools, components, and consumables. Cash payment on pickup.'}
-          </p>
-        </header>
-
-        {/* Filters */}
-        <div className="st-filters">
-          <div className="st-search">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
-            </svg>
-            <input
-              type="search"
-              placeholder={isRTL ? 'ابحث عن منتج...' : 'Search products...'}
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-            />
-          </div>
-          <div className="st-cats">
-            {categories.map(c => (
-              <button
-                key={c}
-                type="button"
-                onClick={() => setCategory(c)}
-                className={`st-cat ${category === c ? 'is-active' : ''}`}
-              >
-                {c === 'all' ? (isRTL ? 'الكل' : 'All') : c}
-              </button>
-            ))}
+      {/* Hero */}
+      <div className="st-hero-wrap">
+        <div className="st-hero-inner">
+          <div className="st-hero-content">
+            <span className="st-hero-eyebrow">{isRTL ? '🛍️ متجر فاب لاب' : '🛍️ FABLAB STORE'}</span>
+            <h1 className="st-hero-title">
+              {isRTL ? 'أدوات، مكونات، ومواد للمبدعين' : 'Tools, Kits & Materials for Makers'}
+            </h1>
+            <p className="st-hero-sub">
+              {isRTL
+                ? 'كل ما تحتاج لتنفيذ مشاريعك في مكان واحد. الدفع نقداً عند الاستلام.'
+                : 'Everything you need for your projects. Cash payment on pickup.'}
+            </p>
+            <div className="st-hero-badges">
+              <span className="st-hero-badge">🚚 {isRTL ? 'استلام سريع' : 'Quick pickup'}</span>
+              <span className="st-hero-badge">💵 {isRTL ? 'دفع نقدي' : 'Cash payment'}</span>
+              <span className="st-hero-badge">✅ {isRTL ? 'ضمان الجودة' : 'Quality guaranteed'}</span>
+            </div>
           </div>
         </div>
+      </div>
 
-        {/* Grid */}
-        {loading ? (
-          <div className="st-loading">
-            <div className="st-spinner" />
-            <span>{isRTL ? 'جارٍ التحميل...' : 'Loading...'}</span>
+      {/* Body layout: sidebar + main */}
+      <div className="st-layout">
+        {/* Categories sidebar */}
+        <aside className={`st-sidebar ${sidebarOpen ? 'is-open' : ''}`}>
+          <div className="st-sidebar-head">
+            <h3>{isRTL ? 'التصنيفات' : 'Categories'}</h3>
+            <button type="button" className="st-sidebar-close" onClick={() => setSidebarOpen(false)}>✕</button>
           </div>
-        ) : filtered.length === 0 ? (
-          <div className="st-empty">
-            <div style={{ fontSize: 48, opacity: 0.4 }}>🛍️</div>
-            <p>{isRTL ? 'لا توجد منتجات' : 'No products'}</p>
-          </div>
-        ) : (
-          <div className="st-grid">
-            {filtered.map(item => (
-              <motion.div
-                key={item.itemId}
-                layout
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                whileHover={{ y: -4 }}
-                className="st-card"
-                onClick={() => setSelected(item)}
+          <nav className="st-sidebar-nav">
+            <button
+              type="button"
+              className={`st-sidebar-item ${category === 'all' ? 'is-active' : ''}`}
+              onClick={() => { setCategory('all'); setSidebarOpen(false); }}
+            >
+              <span className="st-sidebar-icon">🛒</span>
+              <span className="st-sidebar-label">{isRTL ? 'جميع المنتجات' : 'All Products'}</span>
+              <span className="st-sidebar-count">{items.length}</span>
+            </button>
+            {featuredCount > 0 && (
+              <button
+                type="button"
+                className={`st-sidebar-item ${category === '__featured' ? 'is-active' : ''}`}
+                onClick={() => { setCategory('__featured'); setSidebarOpen(false); }}
               >
-                {item.isFeatured && <span className="st-badge">{isRTL ? '⭐ مميز' : '⭐ Featured'}</span>}
-                <div className="st-card-img">
-                  {item.images?.[0]
-                    ? <img src={item.images[0]} alt={item.name} loading="lazy" />
-                    : <div className="st-card-img-empty">📦</div>}
-                </div>
-                <div className="st-card-body">
-                  <div className="st-card-name">{isRTL ? item.name : (item.nameEn || item.name)}</div>
-                  {item.description && (
-                    <div className="st-card-desc">{isRTL ? item.description : (item.descriptionEn || item.description)}</div>
-                  )}
-                  <div className="st-card-foot">
-                    <div className="st-card-price">{SAR(item.price)}</div>
-                    <div className={`st-card-stock ${item.stock === 0 ? 'is-out' : ''}`}>
-                      {item.stock < 0
-                        ? (isRTL ? 'متوفر' : 'Available')
-                        : item.stock === 0
-                          ? (isRTL ? 'غير متوفر' : 'Out of stock')
-                          : (isRTL ? `متبقي ${item.stock}` : `${item.stock} left`)}
-                    </div>
-                  </div>
-                  <button
-                    type="button"
-                    className="st-card-add"
-                    disabled={item.stock === 0}
-                    onClick={(e) => { e.stopPropagation(); addToCart(item); }}
-                  >
-                    {item.stock === 0
-                      ? (isRTL ? 'غير متوفر' : 'Out of stock')
-                      : (isRTL ? '🛒 أضف للسلة' : '🛒 Add to cart')}
-                  </button>
-                </div>
-              </motion.div>
+                <span className="st-sidebar-icon">⭐</span>
+                <span className="st-sidebar-label">{isRTL ? 'المميّزة' : 'Featured'}</span>
+                <span className="st-sidebar-count">{featuredCount}</span>
+              </button>
+            )}
+            <div className="st-sidebar-divider">{isRTL ? 'الفئات' : 'CATEGORIES'}</div>
+            {categories.map(c => (
+              <button
+                key={c.name}
+                type="button"
+                className={`st-sidebar-item ${category === c.name ? 'is-active' : ''}`}
+                onClick={() => { setCategory(c.name); setSidebarOpen(false); }}
+              >
+                <span className="st-sidebar-icon">📦</span>
+                <span className="st-sidebar-label">{c.name}</span>
+                <span className="st-sidebar-count">{c.count}</span>
+              </button>
             ))}
+          </nav>
+        </aside>
+        <div className={`st-sidebar-overlay ${sidebarOpen ? 'is-open' : ''}`} onClick={() => setSidebarOpen(false)} />
+
+        <main className="st-main">
+          {/* Search + heading */}
+          <div className="st-toolbar">
+            <div className="st-toolbar-title">
+              <h2>
+                {category === 'all' ? (isRTL ? 'جميع المنتجات' : 'All Products')
+                  : category === '__featured' ? (isRTL ? '⭐ المميزة' : '⭐ Featured')
+                  : category}
+              </h2>
+              <span>{filtered.length} {isRTL ? 'منتج' : 'items'}</span>
+            </div>
+            <div className="st-search">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+              </svg>
+              <input
+                type="search"
+                placeholder={isRTL ? 'ابحث عن منتج...' : 'Search products...'}
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+              />
+            </div>
           </div>
-        )}
-      </main>
+
+          {/* Grid */}
+          {loading ? (
+            <div className="st-loading">
+              <div className="st-spinner" />
+              <span>{isRTL ? 'جارٍ التحميل...' : 'Loading...'}</span>
+            </div>
+          ) : (category === '__featured' ? filtered.filter(i => i.isFeatured) : filtered).length === 0 ? (
+            <div className="st-empty">
+              <div style={{ fontSize: 56, opacity: 0.35 }}>🛍️</div>
+              <p>{isRTL ? 'لا توجد منتجات في هذه الفئة' : 'No products in this category'}</p>
+            </div>
+          ) : (
+            <div className="st-grid">
+              {(category === '__featured' ? filtered.filter(i => i.isFeatured) : filtered).map(item => (
+                <motion.div
+                  key={item.itemId}
+                  layout
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  whileHover={{ y: -6 }}
+                  className="st-card"
+                  onClick={() => setSelected(item)}
+                >
+                  {item.isFeatured && <span className="st-badge">⭐ {isRTL ? 'مميز' : 'Featured'}</span>}
+                  <div className="st-card-img">
+                    {item.images?.[0]
+                      ? <img src={item.images[0]} alt={item.name} loading="lazy" />
+                      : <div className="st-card-img-empty">📦</div>}
+                    {item.stock === 0 && <div className="st-card-out-overlay">{isRTL ? 'نفدت الكمية' : 'Out of stock'}</div>}
+                  </div>
+                  <div className="st-card-body">
+                    {item.category && <div className="st-card-cat">{item.category}</div>}
+                    <div className="st-card-name">{isRTL ? item.name : (item.nameEn || item.name)}</div>
+                    {item.description && (
+                      <div className="st-card-desc">{isRTL ? item.description : (item.descriptionEn || item.description)}</div>
+                    )}
+                    <div className="st-card-foot">
+                      <div className="st-card-price">{SAR(item.price)}</div>
+                      <div className={`st-card-stock ${item.stock === 0 ? 'is-out' : ''}`}>
+                        {item.stock < 0
+                          ? (isRTL ? 'متوفر' : 'Available')
+                          : item.stock === 0
+                            ? (isRTL ? 'غير متوفر' : 'Out')
+                            : (isRTL ? `${item.stock} متبقي` : `${item.stock} left`)}
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      className="st-card-add"
+                      disabled={item.stock === 0}
+                      onClick={(e) => { e.stopPropagation(); addToCart(item); }}
+                    >
+                      {item.stock === 0
+                        ? (isRTL ? 'غير متوفر' : 'Out of stock')
+                        : (isRTL ? '🛒 أضف للسلة' : '🛒 Add to cart')}
+                    </button>
+                  </div>
+                </motion.div>
+              ))}
+            </div>
+          )}
+        </main>
+      </div>
 
       {/* Cart drawer */}
       <AnimatePresence>
@@ -304,9 +423,41 @@ const StorePage = () => {
 
               {cart.lines.length > 0 && (
                 <div className="st-drawer-foot">
+                  {/* Coupon */}
+                  <div className="st-coupon-block">
+                    {couponApplied ? (
+                      <div className="st-coupon-applied">
+                        <span>✓ {isRTL ? 'رمز خصم' : 'Discount code'}</span>
+                        <b>{couponApplied.code}</b>
+                        <span className="st-coupon-pct">-{couponApplied.percent}%</span>
+                        <button type="button" onClick={clearCoupon} className="st-coupon-clear">✕</button>
+                      </div>
+                    ) : (
+                      <div className="st-coupon-input">
+                        <input
+                          type="text"
+                          placeholder={isRTL ? 'رمز خصم' : 'Discount code'}
+                          value={couponInput}
+                          onChange={(e) => setCouponInput(e.target.value.toUpperCase())}
+                          onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); applyCoupon(); } }}
+                          disabled={validatingCoupon}
+                        />
+                        <button type="button" onClick={applyCoupon} disabled={validatingCoupon || !couponInput.trim()}>
+                          {validatingCoupon ? '...' : (isRTL ? 'تطبيق' : 'Apply')}
+                        </button>
+                      </div>
+                    )}
+                  </div>
+
                   <div className="st-totals">
                     <div><span>{isRTL ? 'المجموع الفرعي' : 'Subtotal'}</span><b>{SAR(cart.subtotal)}</b></div>
-                    <div><span>{isRTL ? 'ضريبة القيمة المضافة 15%' : 'VAT 15%'}</span><b>{SAR(tax)}</b></div>
+                    {discountAmount > 0 && (
+                      <div className="st-totals-discount">
+                        <span>{isRTL ? `خصم (${couponApplied.percent}%)` : `Discount (${couponApplied.percent}%)`}</span>
+                        <b>-{SAR(discountAmount)}</b>
+                      </div>
+                    )}
+                    <div><span>{isRTL ? 'ضريبة 15%' : 'VAT 15%'}</span><b>{SAR(tax)}</b></div>
                     <div className="st-totals-final"><span>{isRTL ? 'الإجمالي' : 'Total'}</span><b>{SAR(total)}</b></div>
                   </div>
                   <button type="button" className="st-checkout-btn" onClick={openCheckout}>
@@ -413,6 +564,12 @@ const StorePage = () => {
                 <div className="st-checkout-summary">
                   <div className="st-totals">
                     <div><span>{isRTL ? 'المجموع الفرعي' : 'Subtotal'}</span><b>{SAR(cart.subtotal)}</b></div>
+                    {discountAmount > 0 && (
+                      <div className="st-totals-discount">
+                        <span>{isRTL ? `خصم (${couponApplied.code} · ${couponApplied.percent}%)` : `Discount (${couponApplied.code} · ${couponApplied.percent}%)`}</span>
+                        <b>-{SAR(discountAmount)}</b>
+                      </div>
+                    )}
                     <div><span>{isRTL ? 'ضريبة 15%' : 'VAT 15%'}</span><b>{SAR(tax)}</b></div>
                     <div className="st-totals-final"><span>{isRTL ? 'الإجمالي' : 'Total'}</span><b>{SAR(total)}</b></div>
                   </div>
@@ -468,8 +625,8 @@ const StorePage = () => {
                 <button type="button" className="st-btn st-btn--ghost" onClick={() => setOrderResult(null)}>
                   {isRTL ? 'متابعة التسوق' : 'Keep Shopping'}
                 </button>
-                <button type="button" className="st-btn st-btn--primary" onClick={() => navigate('/register')}>
-                  {isRTL ? 'العودة للرئيسية' : 'Back to Home'}
+                <button type="button" className="st-btn st-btn--primary" onClick={() => navigate('/store/my-orders')}>
+                  {isRTL ? 'عرض طلباتي' : 'View My Orders'}
                 </button>
               </div>
             </motion.div>

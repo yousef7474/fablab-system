@@ -23,14 +23,24 @@ const emptyItem = {
   isActive: true, isFeatured: false, sku: ''
 };
 
+const emptyCoupon = {
+  code: '', description: '', percent: 10, isActive: true,
+  maxUses: '', validFrom: '', validUntil: '', minOrderTotal: ''
+};
+
 const StoreTab = () => {
   const { i18n } = useTranslation();
   const isRTL = i18n.language === 'ar';
 
-  const [tab, setTab] = useState('orders');   // 'orders' | 'items'
+  const [tab, setTab] = useState('orders');   // 'orders' | 'items' | 'coupons'
   const [items, setItems] = useState([]);
   const [orders, setOrders] = useState([]);
+  const [coupons, setCoupons] = useState([]);
   const [loading, setLoading] = useState(true);
+
+  const [couponModal, setCouponModal] = useState(null); // { mode, coupon? }
+  const [couponForm, setCouponForm] = useState(emptyCoupon);
+  const [savingCoupon, setSavingCoupon] = useState(false);
 
   // Item modal
   const [itemModal, setItemModal] = useState(null); // { mode, item? }
@@ -50,12 +60,14 @@ const StoreTab = () => {
   const fetchAll = useCallback(async () => {
     setLoading(true);
     try {
-      const [i, o] = await Promise.all([
+      const [i, o, c] = await Promise.all([
         api.get('/store/items'),
-        api.get('/store/orders')
+        api.get('/store/orders'),
+        api.get('/store/coupons')
       ]);
       setItems(Array.isArray(i.data) ? i.data : []);
       setOrders(Array.isArray(o.data) ? o.data : []);
+      setCoupons(Array.isArray(c.data) ? c.data : []);
     } catch (err) {
       toast.error('تعذّر تحميل المتجر');
     } finally {
@@ -209,6 +221,67 @@ const StoreTab = () => {
     } catch { toast.error('تعذّر الحفظ'); }
   };
 
+  // ---- Coupon actions ----
+  const openCreateCoupon = () => { setCouponForm(emptyCoupon); setCouponModal({ mode: 'create' }); };
+  const openEditCoupon = (c) => {
+    setCouponForm({
+      code: c.code || '',
+      description: c.description || '',
+      percent: c.percent || 10,
+      isActive: !!c.isActive,
+      maxUses: c.maxUses ?? '',
+      validFrom: c.validFrom ? String(c.validFrom).slice(0, 10) : '',
+      validUntil: c.validUntil ? String(c.validUntil).slice(0, 10) : '',
+      minOrderTotal: c.minOrderTotal ?? ''
+    });
+    setCouponModal({ mode: 'edit', coupon: c });
+  };
+  const saveCoupon = async () => {
+    if (!couponForm.code.trim() || !couponForm.percent) {
+      toast.error('الرمز والنسبة مطلوبان');
+      return;
+    }
+    setSavingCoupon(true);
+    try {
+      const body = {
+        ...couponForm,
+        code: couponForm.code.trim().toUpperCase(),
+        percent: Number(couponForm.percent),
+        maxUses: couponForm.maxUses === '' ? null : Number(couponForm.maxUses),
+        validFrom: couponForm.validFrom || null,
+        validUntil: couponForm.validUntil || null,
+        minOrderTotal: couponForm.minOrderTotal === '' ? null : Number(couponForm.minOrderTotal)
+      };
+      if (couponModal.mode === 'create') {
+        await api.post('/store/coupons', body);
+        toast.success('تمت إضافة الرمز');
+      } else {
+        await api.put(`/store/coupons/${couponModal.coupon.couponId}`, body);
+        toast.success('تم التحديث');
+      }
+      setCouponModal(null);
+      await fetchAll();
+    } catch (err) {
+      toast.error(err?.response?.data?.messageAr || err?.response?.data?.message || 'تعذّر الحفظ');
+    } finally {
+      setSavingCoupon(false);
+    }
+  };
+  const deleteCoupon = async (c) => {
+    if (!window.confirm(`حذف رمز "${c.code}"؟`)) return;
+    try {
+      await api.delete(`/store/coupons/${c.couponId}`);
+      toast.success('تم الحذف');
+      await fetchAll();
+    } catch { toast.error('تعذّر الحذف'); }
+  };
+  const toggleCouponActive = async (c) => {
+    try {
+      await api.put(`/store/coupons/${c.couponId}`, { isActive: !c.isActive });
+      await fetchAll();
+    } catch { toast.error('تعذّر التحديث'); }
+  };
+
   const deleteOrder = async (order) => {
     if (!window.confirm(`حذف الطلب ${fmtOrderNo(order.orderNumber)}؟`)) return;
     try {
@@ -226,125 +299,377 @@ const StoreTab = () => {
   const printInvoice = (o) => {
     const w = window.open('', '_blank');
     if (!w) return toast.error('فشل فتح نافذة الطباعة');
-    const itemsHtml = (o.items || []).map(i => `
+    const paid = !!o.paidAt;
+    const stampColor = paid ? '#16a34a' : '#dc2626';
+    const stampText = paid ? 'PAID · مدفوع' : 'UNPAID · غير مدفوع';
+    const stampSub = paid && o.paidAt
+      ? new Date(o.paidAt).toLocaleDateString('ar-SA-u-ca-gregory-nu-latn', { calendar: 'gregory' })
+      : 'بانتظار الدفع';
+
+    const itemsHtml = (o.items || []).map((i, idx) => `
       <tr>
-        <td style="padding:10px 8px;border-bottom:1px solid #e5e7eb">${esc(i.name)}</td>
-        <td style="padding:10px 8px;border-bottom:1px solid #e5e7eb;text-align:center">${i.quantity}</td>
-        <td style="padding:10px 8px;border-bottom:1px solid #e5e7eb;text-align:end;font-family:'JetBrains Mono',monospace">${SAR(i.price)}</td>
-        <td style="padding:10px 8px;border-bottom:1px solid #e5e7eb;text-align:end;font-weight:700;font-family:'JetBrains Mono',monospace">${SAR(i.lineTotal)}</td>
+        <td class="cell-idx">${idx + 1}</td>
+        <td class="cell-name">${esc(i.name)}</td>
+        <td class="cell-num">${i.quantity}</td>
+        <td class="cell-num">${SAR(i.price)}</td>
+        <td class="cell-num cell-total">${SAR(i.lineTotal)}</td>
       </tr>`).join('');
+
+    const invoiceDate = new Date(o.createdAt).toLocaleDateString('ar-SA-u-ca-gregory-nu-latn', {
+      calendar: 'gregory', year: 'numeric', month: 'long', day: 'numeric'
+    });
+    const dueLabel = paid ? '—' : 'عند الاستلام';
+
     w.document.write(`<!DOCTYPE html><html dir="rtl" lang="ar"><head><meta charset="UTF-8"><title>فاتورة ${fmtOrderNo(o.orderNumber)}</title>
 <style>
-  @page { size: A4; margin: 12mm; }
+  @page { size: A4; margin: 14mm; }
   * { margin: 0; padding: 0; box-sizing: border-box; }
-  body { font-family: 'Cairo','Segoe UI',Tahoma,Arial,sans-serif; color: #333; padding: 20px; font-size: 12px; line-height: 1.5; }
-  .ids-bar { display: flex; justify-content: space-between; background: linear-gradient(135deg,#EE2329,#c41e24); color:#fff; padding: 10px 16px; border-radius: 8px; margin-bottom: 14px; font-weight: 700; }
-  .head { display: flex; justify-content: space-between; align-items: center; padding-bottom: 14px; border-bottom: 2px solid #EE2329; margin-bottom: 18px; }
-  .head img { height: 55px; object-fit: contain; }
-  .head-center { text-align: center; flex: 1; }
-  .head-center h1 { color: #EE2329; font-size: 18px; margin-bottom: 3px; }
-  .head-center p { color: #666; font-size: 11px; }
-  .form-title { text-align: center; font-size: 15px; font-weight: 700; padding: 10px; background: #fef2f2; border-radius: 6px; border-right: 4px solid #EE2329; margin-bottom: 16px; }
-  .section { background: #fafafa; border: 1px solid #eee; border-radius: 6px; padding: 12px; margin-bottom: 12px; }
-  .section h3 { font-size: 11px; font-weight: 700; color: #EE2329; margin-bottom: 8px; padding-bottom: 5px; border-bottom: 1px solid #EE2329; text-transform: uppercase; letter-spacing: 0.5px; }
-  .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
-  .field { background: white; padding: 6px 10px; border-radius: 4px; border: 1px solid #eee; }
-  .field-label { font-size: 9px; color: #888; margin-bottom: 3px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.3px; }
-  .field-value { font-size: 11px; color: #333; font-weight: 500; }
-  .field-full { grid-column: span 3; }
-  table { width: 100%; border-collapse: collapse; font-size: 11px; margin-top: 8px; }
-  table thead { background: #fef2f2; }
-  table th { padding: 10px 8px; text-align: right; color: #c41e24; font-size: 10px; text-transform: uppercase; }
-  table th:nth-child(2) { text-align: center; }
-  table th:nth-child(3), table th:nth-child(4) { text-align: end; }
-  .totals { margin-top: 6px; }
-  .totals tr td { padding: 6px 8px; }
-  .totals .subtotal td { color: #64748b; text-align: end; }
-  .totals .final { background: #EE2329; color: #fff; }
-  .totals .final td { padding: 12px; font-weight: 800; font-size: 14px; text-align: end; font-family: 'JetBrains Mono',monospace; }
-  .signature { margin-top: 20px; padding: 12px; background: #f8f9fa; border-radius: 6px; border: 1px dashed #ccc; }
-  .signature h3 { font-size: 11px; font-weight: 700; text-align: center; margin-bottom: 12px; color: #EE2329; text-transform: uppercase; letter-spacing: 0.5px; }
-  .signature-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
-  .signature-box { text-align: center; }
-  .signature-line { border-top: 1px solid #333; margin-top: 32px; padding-top: 5px; font-size: 9px; color: #888; }
-  .footer { margin-top: 14px; text-align: center; font-size: 9px; color: #888; padding-top: 8px; border-top: 1px solid #eee; }
-  @media print { body { padding: 0; -webkit-print-color-adjust: exact; print-color-adjust: exact; } .section, .signature { break-inside: avoid; } }
+  body {
+    font-family: 'Cairo','Segoe UI',Tahoma,Arial,sans-serif;
+    color: #1f2937;
+    background: #fff;
+    padding: 20px 22px;
+    font-size: 11.5px;
+    line-height: 1.55;
+    position: relative;
+  }
+
+  /* Diagonal PAID / UNPAID watermark stamp */
+  .stamp {
+    position: fixed;
+    top: 42%;
+    inset-inline-start: 20%;
+    transform: rotate(-22deg);
+    border: 6px double ${stampColor};
+    color: ${stampColor};
+    padding: 18px 44px;
+    font-family: 'Bricolage Grotesque', 'Cairo', sans-serif;
+    font-weight: 900;
+    font-size: 38px;
+    letter-spacing: 3px;
+    text-align: center;
+    background: rgba(255,255,255,0.05);
+    opacity: 0.18;
+    pointer-events: none;
+    z-index: 0;
+    border-radius: 12px;
+    text-transform: uppercase;
+  }
+  .stamp small {
+    display: block;
+    font-size: 12px;
+    letter-spacing: 1px;
+    font-weight: 700;
+    margin-top: 4px;
+    opacity: 0.9;
+  }
+
+  main { position: relative; z-index: 1; }
+
+  /* --- Formal invoice header --- */
+  .invoice-head {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    padding-bottom: 16px;
+    margin-bottom: 20px;
+    border-bottom: 3px solid #0f172a;
+  }
+  .brand { display: flex; gap: 12px; align-items: center; }
+  .brand-logos { display: flex; gap: 8px; }
+  .brand-logos img { height: 48px; object-fit: contain; }
+  .brand-info { }
+  .brand-info h1 {
+    font-family: 'Bricolage Grotesque', 'Cairo', sans-serif;
+    font-size: 18px;
+    color: #0f172a;
+    margin-bottom: 3px;
+    letter-spacing: -0.01em;
+  }
+  .brand-info p { font-size: 10.5px; color: #6b7280; margin: 0; }
+  .brand-info small {
+    display: block;
+    font-size: 10px;
+    color: #6b7280;
+    margin-top: 4px;
+    font-family: 'JetBrains Mono', monospace;
+  }
+
+  .invoice-meta {
+    text-align: end;
+  }
+  .invoice-meta h2 {
+    font-family: 'Bricolage Grotesque', 'Cairo', sans-serif;
+    font-size: 26px;
+    font-weight: 800;
+    color: #0f172a;
+    letter-spacing: -0.02em;
+    margin-bottom: 4px;
+  }
+  .invoice-meta .no {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 15px;
+    color: #EE2329;
+    font-weight: 800;
+    letter-spacing: 2px;
+  }
+  .invoice-meta .dates {
+    display: grid;
+    grid-template-columns: auto auto;
+    gap: 4px 10px;
+    margin-top: 10px;
+    font-size: 10.5px;
+    justify-content: end;
+  }
+  .invoice-meta .dates span { color: #6b7280; }
+  .invoice-meta .dates b { color: #0f172a; font-weight: 700; direction: ltr; }
+
+  /* --- Parties block --- */
+  .parties {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin-bottom: 18px;
+  }
+  .party {
+    background: #f8fafc;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    padding: 12px 14px;
+  }
+  .party-title {
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 1.4px;
+    color: #6b7280;
+    font-weight: 700;
+    margin-bottom: 6px;
+  }
+  .party-name {
+    font-size: 14px;
+    font-weight: 800;
+    color: #0f172a;
+    margin-bottom: 4px;
+  }
+  .party-row {
+    font-size: 11px;
+    color: #4b5563;
+    margin-top: 2px;
+    direction: ltr;
+    text-align: start;
+  }
+  .party-row b { color: #0f172a; font-weight: 600; direction: rtl; }
+
+  /* --- Items table --- */
+  .items-title {
+    font-size: 11px;
+    color: #6b7280;
+    letter-spacing: 1.4px;
+    text-transform: uppercase;
+    font-weight: 700;
+    margin-bottom: 6px;
+  }
+  table.items {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 12px;
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    overflow: hidden;
+  }
+  table.items thead {
+    background: #0f172a;
+    color: #fff;
+  }
+  table.items thead th {
+    padding: 10px 12px;
+    text-align: start;
+    font-size: 10.5px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    font-weight: 700;
+  }
+  table.items thead th.cell-num { text-align: end; }
+  table.items tbody tr:nth-child(even) { background: #f9fafb; }
+  table.items tbody td {
+    padding: 10px 12px;
+    border-top: 1px solid #e5e7eb;
+    font-size: 11.5px;
+  }
+  .cell-idx {
+    font-family: 'JetBrains Mono', monospace;
+    color: #6b7280;
+    width: 28px;
+    text-align: center;
+  }
+  .cell-name { color: #0f172a; }
+  .cell-num {
+    font-family: 'JetBrains Mono', monospace;
+    text-align: end;
+  }
+  .cell-total { font-weight: 700; color: #0f172a; }
+
+  /* --- Totals --- */
+  .totals-wrap {
+    display: grid;
+    grid-template-columns: 1fr 320px;
+    gap: 14px;
+    margin-bottom: 16px;
+  }
+  .payment-info {
+    background: #f8fafc;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    padding: 12px 14px;
+    font-size: 11px;
+  }
+  .payment-info .pi-title {
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 1.4px;
+    color: #6b7280;
+    font-weight: 700;
+    margin-bottom: 6px;
+  }
+  .payment-info .pi-row { margin: 3px 0; color: #4b5563; }
+  .payment-info .pi-row b { color: #0f172a; font-weight: 700; }
+  .totals {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 11.5px;
+  }
+  .totals td {
+    padding: 8px 12px;
+    border-bottom: 1px solid #e5e7eb;
+  }
+  .totals td.label { color: #6b7280; text-align: end; }
+  .totals td.val { font-family: 'JetBrains Mono', monospace; text-align: end; font-weight: 700; color: #0f172a; }
+  .totals .discount td.label { color: #16a34a; }
+  .totals .discount td.val { color: #16a34a; }
+  .totals .final td {
+    background: #EE2329;
+    color: #fff;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 15px;
+    font-weight: 800;
+    padding: 14px;
+    border: none;
+  }
+  .totals .final td.label { text-align: end; font-family: 'Cairo', sans-serif; }
+
+  /* --- Notes --- */
+  .notes {
+    background: #fffbeb;
+    border-inline-start: 3px solid #f59e0b;
+    border-radius: 6px;
+    padding: 10px 14px;
+    font-size: 11px;
+    color: #78350f;
+    margin-bottom: 14px;
+  }
+  .notes b { display: block; margin-bottom: 3px; color: #92400e; font-weight: 700; }
+
+  /* --- Footer --- */
+  .invoice-foot {
+    margin-top: 18px;
+    padding-top: 12px;
+    border-top: 1px solid #e5e7eb;
+    display: flex;
+    justify-content: space-between;
+    font-size: 10px;
+    color: #9ca3af;
+  }
+  .invoice-foot .foot-brand b { color: #0f172a; }
+
+  @media print {
+    body { padding: 0; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    .party, .payment-info { break-inside: avoid; }
+  }
 </style></head><body>
-  <div class="ids-bar">
-    <span>رقم الفاتورة: ${esc(fmtOrderNo(o.orderNumber))}</span>
-    <span>المعرّف الداخلي: ${esc(o.orderId)}</span>
-  </div>
-  <div class="head">
-    <img src="/found.png" alt="مؤسسة" />
-    <div class="head-center">
-      <h1>فاب لاب الأحساء</h1>
-      <p>FABLAB Al-Ahsa · متجر</p>
+  <div class="stamp">${stampText}<small>${esc(stampSub)}</small></div>
+  <main>
+    <div class="invoice-head">
+      <div class="brand">
+        <div class="brand-logos">
+          <img src="/found.png" alt="مؤسسة" />
+          <img src="/fablab.png" alt="فاب لاب" />
+        </div>
+        <div class="brand-info">
+          <h1>فاب لاب الأحساء</h1>
+          <p>مؤسسة عبدالمنعم الراشد الإنسانية</p>
+          <small>fablabsahsa.com · متجر</small>
+        </div>
+      </div>
+      <div class="invoice-meta">
+        <h2>فاتورة</h2>
+        <div class="no">${esc(fmtOrderNo(o.orderNumber))}</div>
+        <div class="dates">
+          <span>تاريخ الإصدار</span><b>${esc(invoiceDate)}</b>
+          <span>الاستحقاق</span><b>${esc(dueLabel)}</b>
+          <span>طريقة الدفع</span><b>نقداً عند الاستلام</b>
+        </div>
+      </div>
     </div>
-    <img src="/fablab.png" alt="فاب لاب" />
-  </div>
-  <div class="form-title">فاتورة ضريبية — Tax Invoice</div>
 
-  <div class="section">
-    <h3>معلومات الطلب</h3>
-    <div class="grid">
-      <div class="field"><div class="field-label">تاريخ الطلب</div><div class="field-value">${esc(new Date(o.createdAt).toLocaleString('ar-SA-u-ca-gregory-nu-latn', { calendar: 'gregory' }))}</div></div>
-      <div class="field"><div class="field-label">الحالة</div><div class="field-value">${esc(STATUS_BADGES[o.status]?.text || o.status)}</div></div>
-      <div class="field"><div class="field-label">حالة الدفع</div><div class="field-value">${o.paidAt ? '✓ مدفوع' : 'بانتظار الدفع'}</div></div>
+    <div class="parties">
+      <div class="party">
+        <div class="party-title">المُصدَر إلى — Bill To</div>
+        <div class="party-name">${esc(o.customerName)}</div>
+        <div class="party-row"><b>الجوال: </b>${esc(o.customerPhone)}</div>
+        <div class="party-row"><b>البريد: </b>${esc(o.customerEmail)}</div>
+        ${o.customerNationalId ? `<div class="party-row"><b>الهوية: </b>${esc(o.customerNationalId)}</div>` : ''}
+        ${o.deliveryAddress ? `<div class="party-row" style="direction:rtl;text-align:start"><b>العنوان: </b>${esc(o.deliveryAddress)}</div>` : ''}
+      </div>
+      <div class="party">
+        <div class="party-title">المُصدِر — From</div>
+        <div class="party-name">فاب لاب الأحساء</div>
+        <div class="party-row" style="direction:rtl;text-align:start">مؤسسة عبدالمنعم الراشد الإنسانية</div>
+        <div class="party-row" style="direction:rtl;text-align:start">المملكة العربية السعودية — الأحساء</div>
+        <div class="party-row"><b>البريد: </b>fablabspec@fablabsahsa.com</div>
+      </div>
     </div>
-  </div>
 
-  <div class="section">
-    <h3>بيانات العميل</h3>
-    <div class="grid">
-      <div class="field field-full"><div class="field-label">الاسم</div><div class="field-value">${esc(o.customerName)}</div></div>
-      <div class="field"><div class="field-label">الجوال</div><div class="field-value" style="direction:ltr">${esc(o.customerPhone)}</div></div>
-      <div class="field"><div class="field-label">البريد</div><div class="field-value" style="direction:ltr">${esc(o.customerEmail)}</div></div>
-      ${o.customerNationalId ? `<div class="field"><div class="field-label">رقم الهوية</div><div class="field-value" style="direction:ltr">${esc(o.customerNationalId)}</div></div>` : ''}
-      ${o.deliveryAddress ? `<div class="field field-full"><div class="field-label">العنوان</div><div class="field-value">${esc(o.deliveryAddress)}</div></div>` : ''}
-    </div>
-  </div>
-
-  <div class="section">
-    <h3>تفاصيل المشتريات</h3>
-    <table>
+    <div class="items-title">تفاصيل المشتريات — Line Items</div>
+    <table class="items">
       <thead>
-        <tr><th>الصنف</th><th>الكمية</th><th>السعر</th><th>الإجمالي</th></tr>
+        <tr>
+          <th class="cell-idx">#</th>
+          <th>الصنف</th>
+          <th class="cell-num">الكمية</th>
+          <th class="cell-num">السعر</th>
+          <th class="cell-num">الإجمالي</th>
+        </tr>
       </thead>
       <tbody>${itemsHtml}</tbody>
     </table>
-    <table class="totals">
-      <tr class="subtotal"><td colspan="3">المجموع الفرعي</td><td style="text-align:end;font-family:'JetBrains Mono',monospace">${SAR(o.subtotal)}</td></tr>
-      <tr class="subtotal"><td colspan="3">ضريبة القيمة المضافة (${Math.round((o.taxRate || 0) * 100)}%)</td><td style="text-align:end;font-family:'JetBrains Mono',monospace">${SAR(o.taxAmount)}</td></tr>
-      <tr class="final"><td colspan="3">الإجمالي الكلي</td><td>${SAR(o.total)}</td></tr>
-    </table>
-  </div>
 
-  ${o.notes || o.adminNotes ? `
-  <div class="section">
-    <h3>ملاحظات</h3>
-    ${o.notes ? `<div style="margin-bottom:8px;padding:8px 12px;background:white;border:1px solid #eee;border-radius:4px"><b>ملاحظات العميل:</b> ${esc(o.notes)}</div>` : ''}
-    ${o.adminNotes ? `<div style="padding:8px 12px;background:#eff6ff;border:1px solid #bfdbfe;border-radius:4px;color:#1e3a8a"><b>ملاحظات الإدارة:</b> ${esc(o.adminNotes)}</div>` : ''}
-  </div>` : ''}
-
-  <div class="signature">
-    <h3>التوقيعات</h3>
-    <div class="signature-grid">
-      <div class="signature-box">
-        <div style="font-size:10px;color:#666;margin-bottom:28px;font-weight:600">توقيع العميل</div>
-        <div class="signature-line">${esc(o.customerName)}</div>
+    <div class="totals-wrap">
+      <div class="payment-info">
+        <div class="pi-title">معلومات الدفع</div>
+        <div class="pi-row"><b>الحالة: </b>${esc(STATUS_BADGES[o.status]?.text || o.status)}</div>
+        <div class="pi-row"><b>حالة الدفع: </b>${paid ? '✓ مدفوع بالكامل' : 'بانتظار الدفع عند الاستلام'}</div>
+        ${o.paidAt ? `<div class="pi-row"><b>تاريخ الدفع: </b><span style="direction:ltr">${esc(new Date(o.paidAt).toLocaleDateString('ar-SA-u-ca-gregory-nu-latn', { calendar: 'gregory' }))}</span></div>` : ''}
+        <div class="pi-row" style="margin-top:6px;padding-top:6px;border-top:1px dashed #d1d5db"><b>طريقة الدفع: </b>نقداً</div>
       </div>
-      <div class="signature-box">
-        <div style="font-size:10px;color:#666;margin-bottom:28px;font-weight:600">توقيع المسؤول</div>
-        <div class="signature-line">مسؤول متجر فاب لاب</div>
-      </div>
+      <table class="totals">
+        <tr><td class="label">المجموع الفرعي</td><td class="val">${SAR(o.subtotal)}</td></tr>
+        ${Number(o.discountAmount) > 0 ? `<tr class="discount"><td class="label">خصم (${esc(o.couponCode)} · ${o.couponPercent}%)</td><td class="val">-${SAR(o.discountAmount)}</td></tr>` : ''}
+        <tr><td class="label">ضريبة القيمة المضافة (${Math.round((o.taxRate || 0) * 100)}%)</td><td class="val">${SAR(o.taxAmount)}</td></tr>
+        <tr class="final"><td class="label">الإجمالي المستحق</td><td class="val">${SAR(o.total)}</td></tr>
+      </table>
     </div>
-    <div style="text-align:center;margin-top:12px;font-size:10px;color:#475569">التاريخ: ${esc(new Date().toLocaleDateString('ar-SA-u-ca-gregory-nu-latn', { calendar: 'gregory', year: 'numeric', month: 'long', day: 'numeric' }))}</div>
-  </div>
 
-  <div class="footer">
-    <p>مؤسسة عبدالمنعم الراشد الإنسانية — فاب لاب الأحساء</p>
-    <p>طُبع في: ${esc(new Date().toLocaleString('ar-SA-u-ca-gregory-nu-latn', { calendar: 'gregory' }))}</p>
-  </div>
+    ${o.notes || o.adminNotes ? `
+    <div class="notes">
+      ${o.notes ? `<b>ملاحظات العميل:</b>${esc(o.notes)}` : ''}
+      ${o.adminNotes ? `<div style="margin-top:${o.notes ? '8px' : '0'}"><b>ملاحظات الإدارة:</b>${esc(o.adminNotes)}</div>` : ''}
+    </div>` : ''}
+
+    <div class="invoice-foot">
+      <div class="foot-brand"><b>فاب لاب الأحساء</b> · مؤسسة عبدالمنعم الراشد الإنسانية</div>
+      <div>طُبع في: ${esc(new Date().toLocaleString('ar-SA-u-ca-gregory-nu-latn', { calendar: 'gregory' }))}</div>
+    </div>
+  </main>
 </body></html>`);
     w.document.close();
     w.focus();
@@ -366,6 +691,9 @@ const StoreTab = () => {
           </button>
           <button className={`stt-tab ${tab === 'items' ? 'is-active' : ''}`} onClick={() => setTab('items')}>
             {isRTL ? 'المنتجات' : 'Products'}
+          </button>
+          <button className={`stt-tab ${tab === 'coupons' ? 'is-active' : ''}`} onClick={() => setTab('coupons')}>
+            {isRTL ? 'أكواد الخصم' : 'Coupons'}
           </button>
         </div>
       </div>
@@ -397,6 +725,14 @@ const StoreTab = () => {
           onEdit={openEditItem}
           onDelete={deleteItem}
           onToggle={toggleActive}
+        />
+      ) : tab === 'coupons' ? (
+        <CouponsPanel
+          coupons={coupons}
+          onCreate={openCreateCoupon}
+          onEdit={openEditCoupon}
+          onDelete={deleteCoupon}
+          onToggle={toggleCouponActive}
         />
       ) : (
         <OrdersPanel
@@ -496,6 +832,68 @@ const StoreTab = () => {
                 <button className="stt-btn stt-btn--ghost" onClick={() => setItemModal(null)} disabled={savingItem}>{isRTL ? 'إلغاء' : 'Cancel'}</button>
                 <button className="stt-btn stt-btn--primary" onClick={saveItem} disabled={savingItem}>
                   {savingItem ? (isRTL ? 'جارٍ الحفظ...' : 'Saving...') : (isRTL ? 'حفظ' : 'Save')}
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Coupon modal */}
+      <AnimatePresence>
+        {couponModal && (
+          <motion.div className="stt-overlay" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setCouponModal(null)}>
+            <motion.div className="stt-modal" initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }} onClick={(e) => e.stopPropagation()}>
+              <div className="stt-modal-head">
+                <h3>{couponModal.mode === 'create' ? (isRTL ? 'رمز خصم جديد' : 'New Coupon') : (isRTL ? 'تعديل الرمز' : 'Edit Coupon')}</h3>
+                <button onClick={() => setCouponModal(null)} className="stt-close">✕</button>
+              </div>
+              <div className="stt-modal-body">
+                <div className="stt-form">
+                  <div className="stt-field">
+                    <label>{isRTL ? 'رمز الخصم *' : 'Code *'}</label>
+                    <input type="text" value={couponForm.code} onChange={e => setCouponForm(f => ({ ...f, code: e.target.value.toUpperCase() }))} placeholder="EID2026" dir="ltr" style={{ fontFamily: 'JetBrains Mono, monospace', letterSpacing: 2, fontWeight: 700 }} />
+                  </div>
+                  <div className="stt-field">
+                    <label>{isRTL ? 'نسبة الخصم % *' : 'Percent % *'}</label>
+                    <input type="number" min="1" max="100" value={couponForm.percent} onChange={e => setCouponForm(f => ({ ...f, percent: e.target.value }))} dir="ltr" />
+                  </div>
+                  <div className="stt-field stt-field--full">
+                    <label>{isRTL ? 'الوصف (اختياري)' : 'Description (optional)'}</label>
+                    <input type="text" value={couponForm.description} onChange={e => setCouponForm(f => ({ ...f, description: e.target.value }))} placeholder={isRTL ? 'مثال: عرض عيد الفطر' : 'e.g. Eid promo'} />
+                  </div>
+                  <div className="stt-field">
+                    <label>{isRTL ? 'الحد الأقصى للاستخدام (فارغ = بلا حد)' : 'Max Uses (blank = unlimited)'}</label>
+                    <input type="number" min="0" value={couponForm.maxUses} onChange={e => setCouponForm(f => ({ ...f, maxUses: e.target.value }))} dir="ltr" />
+                  </div>
+                  <div className="stt-field">
+                    <label>{isRTL ? 'الحد الأدنى للطلب (ر.س)' : 'Min Order Total (SAR)'}</label>
+                    <input type="number" min="0" step="0.01" value={couponForm.minOrderTotal} onChange={e => setCouponForm(f => ({ ...f, minOrderTotal: e.target.value }))} dir="ltr" />
+                  </div>
+                  <div className="stt-field">
+                    <label>{isRTL ? 'يبدأ من' : 'Valid From'}</label>
+                    <input type="date" value={couponForm.validFrom} onChange={e => setCouponForm(f => ({ ...f, validFrom: e.target.value }))} dir="ltr" />
+                  </div>
+                  <div className="stt-field">
+                    <label>{isRTL ? 'ينتهي في' : 'Valid Until'}</label>
+                    <input type="date" value={couponForm.validUntil} onChange={e => setCouponForm(f => ({ ...f, validUntil: e.target.value }))} dir="ltr" />
+                  </div>
+                  <div className="stt-field stt-field--full stt-toggles">
+                    <label className="stt-toggle">
+                      <input type="checkbox" checked={couponForm.isActive} onChange={e => setCouponForm(f => ({ ...f, isActive: e.target.checked }))} />
+                      <span>{isRTL ? 'مفعّل' : 'Active'}</span>
+                    </label>
+                  </div>
+                </div>
+              </div>
+              <div className="stt-modal-foot">
+                {couponModal.mode === 'edit' && (
+                  <button className="stt-btn stt-btn--danger" onClick={() => { deleteCoupon(couponModal.coupon); setCouponModal(null); }}>🗑️ حذف</button>
+                )}
+                <div style={{ flex: 1 }} />
+                <button className="stt-btn stt-btn--ghost" onClick={() => setCouponModal(null)} disabled={savingCoupon}>إلغاء</button>
+                <button className="stt-btn stt-btn--primary" onClick={saveCoupon} disabled={savingCoupon}>
+                  {savingCoupon ? 'جارٍ الحفظ...' : 'حفظ'}
                 </button>
               </div>
             </motion.div>
@@ -695,5 +1093,57 @@ const OrdersPanel = ({ orders, totalOrders, filter, setFilter, search, setSearch
     )}
   </div>
 );
+
+const CouponsPanel = ({ coupons, onCreate, onEdit, onDelete, onToggle }) => {
+  const today = new Date().toISOString().slice(0, 10);
+  const statusOf = (c) => {
+    if (!c.isActive) return { text: 'معطّل', bg: '#f1f5f9', fg: '#475569' };
+    if (c.validUntil && today > String(c.validUntil).slice(0, 10)) return { text: 'منتهي', bg: '#fee2e2', fg: '#b91c1c' };
+    if (c.validFrom && today < String(c.validFrom).slice(0, 10)) return { text: 'قادم', bg: '#dbeafe', fg: '#1d4ed8' };
+    if (c.maxUses != null && c.usedCount >= c.maxUses) return { text: 'استُنفد', bg: '#fef3c7', fg: '#92400e' };
+    return { text: 'نشط', bg: '#dcfce7', fg: '#166534' };
+  };
+  return (
+    <div>
+      <div className="stt-toolbar">
+        <button className="stt-btn stt-btn--primary" onClick={onCreate}>+ رمز خصم جديد</button>
+      </div>
+      {coupons.length === 0 ? (
+        <div className="stt-empty">لا توجد رموز خصم — أضف رمزاً للبدء</div>
+      ) : (
+        <div className="stt-coupon-grid">
+          {coupons.map(c => {
+            const st = statusOf(c);
+            return (
+              <div key={c.couponId} className="stt-coupon-card">
+                <div className="stt-coupon-head">
+                  <span className="stt-coupon-status" style={{ background: st.bg, color: st.fg }}>{st.text}</span>
+                  <span className="stt-coupon-pct">-{c.percent}%</span>
+                </div>
+                <div className="stt-coupon-code">{c.code}</div>
+                {c.description && <div className="stt-coupon-desc">{c.description}</div>}
+                <div className="stt-coupon-meta">
+                  <div><span>الاستخدام</span><b>{c.usedCount}{c.maxUses != null ? ` / ${c.maxUses}` : ''}</b></div>
+                  {c.minOrderTotal != null && <div><span>حد أدنى</span><b>{SAR(c.minOrderTotal)}</b></div>}
+                  {(c.validFrom || c.validUntil) && (
+                    <div className="stt-coupon-meta-full">
+                      <span>الفترة</span>
+                      <b dir="ltr">{c.validFrom || '—'} → {c.validUntil || '—'}</b>
+                    </div>
+                  )}
+                </div>
+                <div className="stt-coupon-actions">
+                  <button onClick={() => onToggle(c)} className={c.isActive ? 'is-on' : ''}>{c.isActive ? '👁️ نشط' : '⏸ معطّل'}</button>
+                  <button onClick={() => onEdit(c)}>✏️ تعديل</button>
+                  <button onClick={() => onDelete(c)} className="danger">🗑️</button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+};
 
 export default StoreTab;

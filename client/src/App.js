@@ -30,6 +30,7 @@ const PublicOvertimeApproval = lazy(() => import('./components/Public/PublicOver
 const FablabVisitForm = lazy(() => import('./components/FablabVisit/FablabVisitForm'));
 const PublicFablabVisitApproval = lazy(() => import('./components/Public/PublicFablabVisitApproval'));
 const StorePage = lazy(() => import('./components/Store/StorePage'));
+const MyOrdersPage = lazy(() => import('./components/Store/MyOrdersPage'));
 
 const RouteFallback = () => (
   <div style={{
@@ -86,6 +87,7 @@ const AppContent = () => {
           <Route path="/fablab-visit" element={<FablabVisitForm />} />
           <Route path="/public/fablab-visit/:token" element={<PublicFablabVisitApproval />} />
           <Route path="/store" element={<StorePage />} />
+          <Route path="/store/my-orders" element={<MyOrdersPage />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </Suspense>

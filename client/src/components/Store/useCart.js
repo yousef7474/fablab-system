@@ -81,3 +81,36 @@ export default function useCart() {
 
   return { lines, add, setQuantity, remove, clear, subtotal, count };
 }
+
+// Independent helper for remembering past orders on this browser. Kept
+// as tiny records so the /store/my-orders page can pull the freshest
+// state from the server per-id at view time.
+const ORDERS_KEY = 'fablab_store_my_orders';
+
+export const rememberOrder = ({ orderId, orderNumber, total }) => {
+  try {
+    const raw = localStorage.getItem(ORDERS_KEY);
+    const list = raw ? JSON.parse(raw) : [];
+    const existing = Array.isArray(list) ? list : [];
+    const next = [
+      { orderId, orderNumber, total, savedAt: new Date().toISOString() },
+      ...existing.filter(x => x.orderId !== orderId)
+    ].slice(0, 50);
+    localStorage.setItem(ORDERS_KEY, JSON.stringify(next));
+  } catch {}
+};
+
+export const listRememberedOrders = () => {
+  try {
+    const raw = localStorage.getItem(ORDERS_KEY);
+    const list = raw ? JSON.parse(raw) : [];
+    return Array.isArray(list) ? list : [];
+  } catch { return []; }
+};
+
+export const forgetOrder = (orderId) => {
+  try {
+    const list = listRememberedOrders().filter(x => x.orderId !== orderId);
+    localStorage.setItem(ORDERS_KEY, JSON.stringify(list));
+  } catch {}
+};

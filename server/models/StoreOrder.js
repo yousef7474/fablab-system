@@ -27,6 +27,10 @@ const StoreOrder = sequelize.define('StoreOrder', {
   //   [{ itemId, name, price, quantity, lineTotal, image }]
   items:       { type: DataTypes.JSON, allowNull: false, defaultValue: [] },
   subtotal:    { type: DataTypes.DECIMAL(10, 2), allowNull: false, defaultValue: 0 },
+  // Coupon fields — populated when a valid code is applied at checkout.
+  couponCode:      { type: DataTypes.STRING(48), allowNull: true },
+  couponPercent:   { type: DataTypes.INTEGER, allowNull: true },
+  discountAmount:  { type: DataTypes.DECIMAL(10, 2), allowNull: false, defaultValue: 0 },
   taxRate:     { type: DataTypes.DECIMAL(5, 4),  allowNull: false, defaultValue: 0.15 }, // KSA VAT
   taxAmount:   { type: DataTypes.DECIMAL(10, 2), allowNull: false, defaultValue: 0 },
   total:       { type: DataTypes.DECIMAL(10, 2), allowNull: false, defaultValue: 0 },
