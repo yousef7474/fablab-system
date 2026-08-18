@@ -12,13 +12,16 @@ const DAY_LETTERS_EN = ['S','M','T','W','T','F','S'];
 
 // Category → default color + label
 const CATEGORIES = [
-  { key: 'task',           labelAr: 'مهمة',       labelEn: 'Task',           color: '#EE2329' },
-  { key: 'reminder',       labelAr: 'تذكير',      labelEn: 'Reminder',       color: '#f59e0b' },
-  { key: 'meeting',        labelAr: 'اجتماع',     labelEn: 'Meeting',        color: '#0ea5e9' },
-  { key: 'event',          labelAr: 'فعالية',     labelEn: 'Event',          color: '#a855f7' },
-  { key: 'holiday',        labelAr: 'عطلة',       labelEn: 'Holiday',        color: '#16a34a' },
-  { key: 'staff-vacation', labelAr: 'عطلة موظف',  labelEn: 'Staff Vacation', color: '#f97316' },
-  { key: 'other',          labelAr: 'أخرى',       labelEn: 'Other',          color: '#64748b' }
+  { key: 'task',           labelAr: 'مهمة',        labelEn: 'Task',           color: '#EE2329' },
+  { key: 'reminder',       labelAr: 'تذكير',       labelEn: 'Reminder',       color: '#f59e0b' },
+  { key: 'meeting',        labelAr: 'اجتماع',      labelEn: 'Meeting',        color: '#0ea5e9' },
+  { key: 'event',          labelAr: 'فعالية',      labelEn: 'Event',          color: '#a855f7' },
+  { key: 'holiday',        labelAr: 'عطلة',        labelEn: 'Holiday',        color: '#16a34a' },
+  { key: 'staff-vacation', labelAr: 'عطلة موظف',   labelEn: 'Staff Vacation', color: '#f97316' },
+  { key: 'other',          labelAr: 'أخرى',        labelEn: 'Other',          color: '#64748b' },
+  // Virtual read-only categories mirrored from the Schedule tab.
+  { key: 'appointment',    labelAr: 'موعد تسجيل',  labelEn: 'Appointment',    color: '#8b5cf6' },
+  { key: 'employee-task',  labelAr: 'مهمة موظف',   labelEn: 'Employee Task',  color: '#ec4899' }
 ];
 
 // Preset palette shown when the user picks the "other" category and
@@ -56,6 +59,9 @@ const YearCalendar = () => {
   const [year, setYear] = useState(currentYear);
   const [events, setEvents] = useState([]);
   const [holidays, setHolidays] = useState([]);
+  // Registrations + tasks pulled from the Schedule tab and rendered as
+  // read-only virtual events so the calendar reflects real bookings.
+  const [scheduleItems, setScheduleItems] = useState([]);
   const [loading, setLoading] = useState(true);
 
   const [dayModal, setDayModal] = useState(null);  // { iso, events }
@@ -70,12 +76,16 @@ const YearCalendar = () => {
   const fetchAll = useCallback(async () => {
     setLoading(true);
     try {
-      const [e, h] = await Promise.all([
+      // Schedule endpoint is admin-only; a 403 for managers must not
+      // break the whole calendar, so it's fetched separately.
+      const [e, h, s] = await Promise.all([
         api.get(`/calendar-events?year=${year}`),
-        api.get(`/calendar-events/saudi-holidays?year=${year}`)
+        api.get(`/calendar-events/saudi-holidays?year=${year}`),
+        api.get('/admin/schedule?includeTasks=true').catch(() => ({ data: [] }))
       ]);
       setEvents(Array.isArray(e.data) ? e.data : []);
       setHolidays(Array.isArray(h.data) ? h.data : []);
+      setScheduleItems(Array.isArray(s.data) ? s.data : []);
     } catch (err) {
       console.error('fetch calendar:', err);
       toast.error(isRTL ? 'تعذّر تحميل التقويم' : 'Failed to load calendar');
@@ -86,7 +96,58 @@ const YearCalendar = () => {
 
   useEffect(() => { fetchAll(); }, [fetchAll]);
 
-  // All events (user-created + holidays) keyed by ISO date for quick lookup
+  // Convert the Schedule tab payload (appointments + tasks) into
+  // read-only virtual events that share the same rendering pipeline.
+  const virtualEvents = useMemo(() => {
+    const list = [];
+    for (const it of scheduleItems || []) {
+      if (!it || !it.date) continue;
+      const start = String(it.date).slice(0, 10);
+      // Tasks may span multiple days via dueDateEnd; appointments are single-day.
+      const end = it.dueDateEnd ? String(it.dueDateEnd).slice(0, 10) : start;
+      if (it.type === 'appointment') {
+        const timeSuffix = it.startTime ? ` — ${String(it.startTime).slice(0, 5)}` : '';
+        list.push({
+          eventId: `sched-appt-${it.id}`,
+          title: `${isRTL ? 'موعد' : 'Appointment'}: ${it.title || ''}${timeSuffix}`,
+          startDate: start,
+          endDate: end,
+          category: 'appointment',
+          color: '#8b5cf6',
+          description: [
+            it.section && `${isRTL ? 'القسم' : 'Section'}: ${it.section}`,
+            it.startTime && `${isRTL ? 'الوقت' : 'Time'}: ${String(it.startTime).slice(0,5)}${it.endTime ? ` → ${String(it.endTime).slice(0,5)}` : ''}`,
+            it.phone && `${isRTL ? 'الجوال' : 'Phone'}: ${it.phone}`
+          ].filter(Boolean).join(' · ') || null,
+          assignedTo: it.title || null,
+          isReadOnly: true,
+          isImportant: false
+        });
+      } else if (it.type === 'task') {
+        const timeSuffix = it.startTime ? ` — ${String(it.startTime).slice(0, 5)}` : '';
+        list.push({
+          eventId: `sched-task-${it.id}`,
+          title: `${isRTL ? 'مهمة' : 'Task'}: ${it.title || ''}${timeSuffix}`,
+          startDate: start,
+          endDate: end,
+          category: 'employee-task',
+          color: '#ec4899',
+          description: [
+            it.assignee && `${isRTL ? 'المكلّف' : 'Assignee'}: ${it.assignee}`,
+            it.section && `${isRTL ? 'القسم' : 'Section'}: ${it.section}`,
+            it.priority && `${isRTL ? 'الأولوية' : 'Priority'}: ${it.priority}`,
+            it.status && `${isRTL ? 'الحالة' : 'Status'}: ${it.status}`
+          ].filter(Boolean).join(' · ') || null,
+          assignedTo: it.assignee || null,
+          isReadOnly: true,
+          isImportant: it.priority === 'high' || it.priority === 'urgent'
+        });
+      }
+    }
+    return list;
+  }, [scheduleItems, isRTL]);
+
+  // All events (user-created + holidays + schedule-overlay) keyed by ISO date for quick lookup
   const eventsByDay = useMemo(() => {
     const map = new Map();
     const push = (iso, ev) => {
@@ -106,8 +167,9 @@ const YearCalendar = () => {
     };
     holidays.forEach(walk);
     events.forEach(walk);
+    virtualEvents.forEach(walk);
     return map;
-  }, [events, holidays]);
+  }, [events, holidays, virtualEvents]);
 
   // Stats for the mini strip at the top
   const stats = useMemo(() => ({
@@ -115,8 +177,10 @@ const YearCalendar = () => {
     tasks: events.filter(e => e.category === 'task').length,
     meetings: events.filter(e => e.category === 'meeting').length,
     important: events.filter(e => e.isImportant).length,
-    holidays: holidays.length
-  }), [events, holidays]);
+    holidays: holidays.length,
+    appointments: virtualEvents.filter(e => e.category === 'appointment').length,
+    employeeTasks: virtualEvents.filter(e => e.category === 'employee-task').length
+  }), [events, holidays, virtualEvents]);
 
   // ---------- Actions ----------
 
@@ -325,11 +389,13 @@ const YearCalendar = () => {
       {/* Stats strip */}
       <div className="yc-stats">
         {[
-          { label: isRTL ? 'الأحداث' : 'Events',     value: stats.total,     tint: '#EE2329' },
-          { label: isRTL ? 'مهام' : 'Tasks',        value: stats.tasks,     tint: '#EE2329' },
-          { label: isRTL ? 'اجتماعات' : 'Meetings', value: stats.meetings,  tint: '#0ea5e9' },
-          { label: isRTL ? 'مهم' : 'Important',     value: stats.important, tint: '#f59e0b' },
-          { label: isRTL ? 'عطل رسمية' : 'Holidays', value: stats.holidays,  tint: '#16a34a' }
+          { label: isRTL ? 'الأحداث' : 'Events',        value: stats.total,          tint: '#EE2329' },
+          { label: isRTL ? 'مهام' : 'Tasks',           value: stats.tasks,          tint: '#EE2329' },
+          { label: isRTL ? 'اجتماعات' : 'Meetings',    value: stats.meetings,       tint: '#0ea5e9' },
+          { label: isRTL ? 'مواعيد' : 'Appointments',  value: stats.appointments,   tint: '#8b5cf6' },
+          { label: isRTL ? 'مهام موظفين' : 'Emp Tasks', value: stats.employeeTasks, tint: '#ec4899' },
+          { label: isRTL ? 'مهم' : 'Important',        value: stats.important,      tint: '#f59e0b' },
+          { label: isRTL ? 'عطل رسمية' : 'Holidays',    value: stats.holidays,       tint: '#16a34a' }
         ].map((s, i) => (
           <div key={i} className="yc-stat" style={{ borderColor: `${s.tint}55` }}>
             <div className="yc-stat-value" style={{ color: s.tint }}>{s.value}</div>

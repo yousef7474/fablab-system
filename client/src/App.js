@@ -31,6 +31,8 @@ const FablabVisitForm = lazy(() => import('./components/FablabVisit/FablabVisitF
 const PublicFablabVisitApproval = lazy(() => import('./components/Public/PublicFablabVisitApproval'));
 const StorePage = lazy(() => import('./components/Store/StorePage'));
 const MyOrdersPage = lazy(() => import('./components/Store/MyOrdersPage'));
+const PrintServicePage = lazy(() => import('./components/Print3D/PrintServicePage'));
+const PrintQuotePage = lazy(() => import('./components/Print3D/PrintQuotePage'));
 
 const RouteFallback = () => (
   <div style={{
@@ -54,7 +56,7 @@ const RouteFallback = () => (
 // Wrapper to conditionally show LanguageSelector (hide on admin/manager/elite pages)
 const ConditionalLanguageSelector = () => {
   const location = useLocation();
-  if (location.pathname === '/admin/login' || location.pathname.startsWith('/manager') || location.pathname.startsWith('/elite') || location.pathname.startsWith('/employee') || location.pathname.startsWith('/workshop') || location.pathname.startsWith('/public/') || location.pathname.startsWith('/fablab-visit') || location.pathname.startsWith('/store')) return null;
+  if (location.pathname === '/admin/login' || location.pathname.startsWith('/manager') || location.pathname.startsWith('/elite') || location.pathname.startsWith('/employee') || location.pathname.startsWith('/workshop') || location.pathname.startsWith('/public/') || location.pathname.startsWith('/fablab-visit') || location.pathname.startsWith('/store') || location.pathname.startsWith('/print-service') || location.pathname.startsWith('/print-quote')) return null;
   return <LanguageSelector />;
 };
 
@@ -88,6 +90,8 @@ const AppContent = () => {
           <Route path="/public/fablab-visit/:token" element={<PublicFablabVisitApproval />} />
           <Route path="/store" element={<StorePage />} />
           <Route path="/store/my-orders" element={<MyOrdersPage />} />
+          <Route path="/print-service" element={<PrintServicePage />} />
+          <Route path="/print-quote/:token" element={<PrintQuotePage />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </Suspense>

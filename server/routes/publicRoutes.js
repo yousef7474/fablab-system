@@ -7,6 +7,7 @@ const storeItemController = require('../controllers/storeItemController');
 const storeOrderController = require('../controllers/storeOrderController');
 const discountCouponController = require('../controllers/discountCouponController');
 const storeCustomerController = require('../controllers/storeCustomerController');
+const print3DController = require('../controllers/print3DController');
 const customerAuth = require('../middleware/customerAuth');
 
 // PUBLIC — no auth middleware, no login required.
@@ -44,5 +45,12 @@ router.post('/store/customer/login',    storeCustomerController.login);
 router.get('/store/customer/me',        customerAuth, storeCustomerController.me);
 router.put('/store/customer/me',        customerAuth, storeCustomerController.updateMe);
 router.get('/store/customer/orders',    customerAuth, storeCustomerController.myOrders);
+
+// 3D printing service — public form submit, quote-token page, accept/reject,
+// and printable invoice HTML.
+router.post('/print3d',                    print3DController.publicCreate);
+router.get('/print3d/quote/:token',        print3DController.publicGetByToken);
+router.post('/print3d/quote/:token/decide', print3DController.publicDecide);
+router.get('/print3d/:id/invoice',         print3DController.publicInvoiceHtml);
 
 module.exports = router;

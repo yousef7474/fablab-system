@@ -35,6 +35,10 @@ const StorePage = () => {
   const [drawer, setDrawer] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
+  // Admin-controlled temporary closure — blocks checkout and shows a banner.
+  const [storeClosed, setStoreClosed] = useState(false);
+  const [storeCloseReason, setStoreCloseReason] = useState('');
+
   // Coupon
   const [couponInput, setCouponInput] = useState('');
   const [couponApplied, setCouponApplied] = useState(null); // { code, percent, discountAmount }
@@ -51,8 +55,13 @@ const StorePage = () => {
   useEffect(() => {
     (async () => {
       try {
-        const { data } = await axios.get(`${API_URL}/public/store/items`);
-        setItems(Array.isArray(data) ? data : []);
+        const [itemsRes, statusRes] = await Promise.all([
+          axios.get(`${API_URL}/public/store/items`),
+          axios.get(`${API_URL}/settings/store-status`).catch(() => ({ data: { disabled: false, reason: '' } }))
+        ]);
+        setItems(Array.isArray(itemsRes.data) ? itemsRes.data : []);
+        setStoreClosed(!!statusRes.data.disabled);
+        setStoreCloseReason(statusRes.data.reason || '');
       } catch (err) {
         toast.error(isRTL ? 'تعذّر تحميل المتجر' : 'Failed to load store');
       } finally {
@@ -162,6 +171,10 @@ const StorePage = () => {
 
   const openCheckout = () => {
     if (cart.lines.length === 0) return;
+    if (storeClosed) {
+      toast.warning(storeCloseReason || (isRTL ? 'المتجر مغلق مؤقتاً' : 'Store is temporarily closed'));
+      return;
+    }
     setCheckoutOpen(true);
     setDrawer(false);
   };
@@ -285,6 +298,37 @@ const StorePage = () => {
           </div>
         </div>
       </div>
+
+      {/* Temporary closure banner */}
+      {storeClosed && (
+        <div
+          role="alert"
+          style={{
+            background: 'linear-gradient(135deg, #fef3c7, #fde68a)',
+            borderTop: '1px solid rgba(245, 158, 11, 0.4)',
+            borderBottom: '1px solid rgba(245, 158, 11, 0.4)',
+            color: '#78350f',
+            padding: '14px 20px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 12,
+            justifyContent: 'center',
+            fontWeight: 600,
+            fontSize: 15,
+            textAlign: 'center'
+          }}
+        >
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#b45309" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+            <circle cx="12" cy="12" r="10"/>
+            <line x1="12" y1="8" x2="12" y2="12"/>
+            <line x1="12" y1="16" x2="12.01" y2="16"/>
+          </svg>
+          <span>
+            {isRTL ? 'المتجر مغلق مؤقتاً — ' : 'The store is temporarily closed — '}
+            {storeCloseReason || (isRTL ? 'الطلبات الجديدة معطّلة حالياً' : 'new orders are disabled right now')}
+          </span>
+        </div>
+      )}
 
       {/* Body layout: sidebar + main */}
       <div className="st-layout">
@@ -516,8 +560,17 @@ const StorePage = () => {
                     <div><span>{isRTL ? 'ضريبة 15%' : 'VAT 15%'}</span><b>{SAR(tax)}</b></div>
                     <div className="st-totals-final"><span>{isRTL ? 'الإجمالي' : 'Total'}</span><b>{SAR(total)}</b></div>
                   </div>
-                  <button type="button" className="st-checkout-btn" onClick={openCheckout}>
-                    {isRTL ? 'إتمام الشراء' : 'Checkout'} →
+                  <button
+                    type="button"
+                    className="st-checkout-btn"
+                    onClick={openCheckout}
+                    disabled={storeClosed}
+                    style={storeClosed ? { opacity: 0.6, cursor: 'not-allowed' } : undefined}
+                    title={storeClosed ? (storeCloseReason || (isRTL ? 'المتجر مغلق مؤقتاً' : 'Store is temporarily closed')) : undefined}
+                  >
+                    {storeClosed
+                      ? (isRTL ? 'المتجر مغلق مؤقتاً' : 'Store closed')
+                      : (isRTL ? 'إتمام الشراء' : 'Checkout')} {storeClosed ? '' : '→'}
                   </button>
                 </div>
               )}

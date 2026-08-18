@@ -72,6 +72,7 @@ const StoreOrder = require('./StoreOrder');
 const DiscountCoupon = require('./DiscountCoupon');
 const StoreCustomer = require('./StoreCustomer');
 const SummerSeason = require('./SummerSeason');
+const Print3DRequest = require('./Print3DRequest');
 
 MawhbaAttendance.belongsTo(MawhbaStudent, { foreignKey: 'studentId', as: 'student', constraints: false });
 MawhbaStudent.hasMany(MawhbaAttendance, { foreignKey: 'studentId', as: 'attendance', constraints: false });
@@ -762,6 +763,34 @@ const syncDatabase = async () => {
     await sequelize.sync({ alter: true });
     console.log('✅ Database synchronized successfully.');
 
+    // Print3D requests: backfill sequential requestNumber for any
+    // historical rows that predate the sequential-number column.
+    try {
+      await sequelize.query(
+        `ALTER TABLE print3d_requests ADD COLUMN IF NOT EXISTS "requestNumber" INTEGER`
+      );
+      await sequelize.query(
+        `UPDATE print3d_requests p
+            SET "requestNumber" = sub.rn
+           FROM (
+             SELECT "requestId",
+                    ROW_NUMBER() OVER (ORDER BY "createdAt") AS rn
+               FROM print3d_requests
+              WHERE "requestNumber" IS NULL
+           ) sub
+          WHERE p."requestId" = sub."requestId"`
+      );
+      try {
+        await sequelize.query(
+          `CREATE UNIQUE INDEX IF NOT EXISTS print3d_requests_number_uniq ON print3d_requests ("requestNumber")`
+        );
+      } catch (_) { /* index may already exist */ }
+    } catch (migrationError) {
+      if (!/does not exist/i.test(migrationError.message)) {
+        console.log('print3d_requests.requestNumber migration note:', migrationError.message);
+      }
+    }
+
     // Seed default settings
     await Settings.seedDefaults();
 
@@ -887,5 +916,6 @@ module.exports = {
   DiscountCoupon,
   StoreCustomer,
   SummerSeason,
+  Print3DRequest,
   syncDatabase
 };

@@ -115,9 +115,43 @@ const updateRegistrationStatus = async (req, res) => {
   }
 };
 
+// GET /api/settings/store-status (public — used by StorePage to disable checkout)
+const getStoreStatus = async (req, res) => {
+  try {
+    const disabled = await Settings.findByPk('store_disabled');
+    const reason = await Settings.findByPk('store_disabled_reason');
+    res.json({
+      disabled: disabled ? !!disabled.value : false,
+      reason: reason ? reason.value : ''
+    });
+  } catch (error) {
+    console.error('Error fetching store status:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+// PUT /api/settings/store-status (admin-protected)
+const updateStoreStatus = async (req, res) => {
+  try {
+    const { disabled, reason } = req.body;
+    await Settings.upsert({ key: 'store_disabled', value: !!disabled });
+    await Settings.upsert({ key: 'store_disabled_reason', value: reason || '' });
+    res.json({
+      message: disabled ? 'Store disabled' : 'Store enabled',
+      disabled: !!disabled,
+      reason: reason || ''
+    });
+  } catch (error) {
+    console.error('Error updating store status:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
 module.exports = {
   getWorkingHours,
   updateWorkingHours,
   getRegistrationStatus,
-  updateRegistrationStatus
+  updateRegistrationStatus,
+  getStoreStatus,
+  updateStoreStatus
 };

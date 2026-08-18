@@ -1,4 +1,4 @@
-const { StoreOrder, StoreItem, DiscountCoupon } = require('../models');
+const { StoreOrder, StoreItem, DiscountCoupon, Settings } = require('../models');
 const { sequelize } = require('../config/database');
 const { validateCouponAgainstOrder } = require('./discountCouponController');
 const sgMail = require('@sendgrid/mail');
@@ -285,6 +285,18 @@ exports.publicCreate = async (req, res) => {
       return res.status(400).json({
         message: 'Missing required fields',
         messageAr: 'الرجاء تعبئة جميع الحقول المطلوبة'
+      });
+    }
+
+    // Reject orders if admin has temporarily closed the store.
+    const disabled = await Settings.findByPk('store_disabled');
+    if (disabled && disabled.value) {
+      const reasonRow = await Settings.findByPk('store_disabled_reason');
+      const reason = reasonRow?.value || '';
+      return res.status(503).json({
+        message: 'Store is temporarily closed',
+        messageAr: reason || 'المتجر مغلق مؤقتاً — لا يمكن استلام طلبات جديدة حالياً',
+        storeDisabled: true
       });
     }
 

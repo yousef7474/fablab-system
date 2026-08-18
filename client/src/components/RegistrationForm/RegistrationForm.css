@@ -5143,6 +5143,19 @@
   box-shadow: 0 22px 48px -22px color-mix(in oklab, var(--sc-accent) 45%, transparent) !important;
 }
 
+/* 3D Printing service — indigo accent so it reads as a technical/new service */
+.service-card--print3d {
+  --sc-accent: #6366f1;
+}
+.registration-page .form-card .service-card.service-card--print3d .service-card-icon {
+  color: var(--sc-accent) !important;
+  background: color-mix(in oklab, var(--sc-accent) 18%, transparent) !important;
+}
+.registration-page .form-card .service-card.service-card--print3d:hover {
+  border-color: color-mix(in oklab, var(--sc-accent) 55%, rgba(255,255,255,0.1)) !important;
+  box-shadow: 0 22px 48px -22px color-mix(in oklab, var(--sc-accent) 45%, transparent) !important;
+}
+
 /* =============================================================
    Topbar Home button (moved out of the form card)
    Slim pill that only appears once the wizard has started.

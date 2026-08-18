@@ -31,6 +31,7 @@ const overtimeRoutes = require('./routes/overtimeRoutes');
 const fablabVisitRoutes = require('./routes/fablabVisitRoutes');
 const calendarEventRoutes = require('./routes/calendarEventRoutes');
 const storeRoutes = require('./routes/storeRoutes');
+const print3DRoutes = require('./routes/print3DRoutes');
 const trainerAssistantRoutes = require('./routes/trainerAssistantRoutes');
 const customerRoutes = require('./routes/customerRoutes');
 const contractRoutes = require('./routes/contractRoutes');
@@ -54,8 +55,10 @@ const corsOptions = {
 
 // Middleware
 app.use(cors(corsOptions));
-app.use(express.json({ limit: '10mb' })); // Increased for base64 image uploads (5MB image ≈ 6.7MB base64)
-app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+// 50mb ceiling accommodates 3D-print files (STL/OBJ/3MF) base64-encoded
+// alongside the existing base64 image uploads.
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
 // Routes
 app.use('/api/registration', registrationRoutes);
@@ -76,6 +79,7 @@ app.use('/api/overtime', overtimeRoutes);
 app.use('/api/fablab-visits', fablabVisitRoutes);
 app.use('/api/calendar-events', calendarEventRoutes);
 app.use('/api/store', storeRoutes);
+app.use('/api/print3d', print3DRoutes);
 app.use('/api/trainer-assistants', trainerAssistantRoutes);
 app.use('/api/customers', customerRoutes);
 app.use('/api/contracts', contractRoutes);
