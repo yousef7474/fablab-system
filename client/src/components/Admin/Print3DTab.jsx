@@ -40,6 +40,11 @@ const Print3DTab = () => {
   const [selected, setSelected] = useState(null);
   const [detail, setDetail] = useState(null);
   const [weight, setWeight] = useState('');
+  // Per-request pricing overrides — default to the global settings but
+  // let the admin tune them for one specific job.
+  const [rateOverride, setRateOverride] = useState('');
+  const [setupOverride, setSetupOverride] = useState('');
+  const [multiOverride, setMultiOverride] = useState('');
   const [sendEmail, setSendEmail] = useState(true);
   const [savingQuote, setSavingQuote] = useState(false);
   const [adminNote, setAdminNote] = useState('');
@@ -94,18 +99,24 @@ const Print3DTab = () => {
     setSelected(r);
     setDetail(null);
     setWeight(r.estimatedWeight || '');
+    setRateOverride(r.materialRate != null ? r.materialRate : (rates?.[String(r.material || '').toUpperCase()] ?? ''));
+    setSetupOverride(r.setupFee != null ? r.setupFee : (rates?.setupFee ?? ''));
+    setMultiOverride(r.multiColorFee != null ? r.multiColorFee : (rates?.multiColorFee ?? ''));
     setAdminNote(r.adminNotes || '');
     setStatusEdit(r.status);
     try {
       const { data } = await api.get(`/print3d/${r.requestId}`);
       setDetail(data);
+      if (data.materialRate != null) setRateOverride(data.materialRate);
+      if (data.setupFee != null) setSetupOverride(data.setupFee);
+      if (data.multiColorFee != null) setMultiOverride(data.multiColorFee);
     } catch (err) {
       toast.error(isRTL ? 'تعذّر تحميل الطلب' : 'Failed to load request');
     }
   };
 
   const closeDetail = () => {
-    setSelected(null); setDetail(null); setWeight(''); setAdminNote(''); setStatusEdit('');
+    setSelected(null); setDetail(null); setWeight(''); setRateOverride(''); setSetupOverride(''); setMultiOverride(''); setAdminNote(''); setStatusEdit('');
   };
 
   const submitQuote = async () => {
@@ -116,10 +127,11 @@ const Print3DTab = () => {
     }
     setSavingQuote(true);
     try {
-      const { data } = await api.post(`/print3d/${selected.requestId}/quote`, {
-        estimatedWeight: w,
-        sendEmail
-      });
+      const body = { estimatedWeight: w, sendEmail };
+      if (rateOverride !== '' && Number.isFinite(Number(rateOverride))) body.materialRate = Number(rateOverride);
+      if (setupOverride !== '' && Number.isFinite(Number(setupOverride))) body.setupFee = Number(setupOverride);
+      if (multiOverride !== '' && Number.isFinite(Number(multiOverride))) body.multiColorFee = Number(multiOverride);
+      const { data } = await api.post(`/print3d/${selected.requestId}/quote`, body);
       toast.success(isRTL ? 'تم إرسال عرض السعر' : 'Quote sent');
       setDetail(data);
       setRows(rs => rs.map(x => x.requestId === selected.requestId ? { ...x, ...data, fileData: undefined } : x));
@@ -176,7 +188,7 @@ const Print3DTab = () => {
     (async () => {
       try {
         const res = await fetch(`${API_URL}/print3d/${selected.requestId}/download`, {
-          headers: { Authorization: `Bearer ${localStorage.getItem('token') || ''}` }
+          headers: { Authorization: `Bearer ${localStorage.getItem('adminToken') || ''}` }
         });
         if (!res.ok) throw new Error('download failed');
         const blob = await res.blob();
@@ -418,9 +430,9 @@ const Print3DTab = () => {
                   {/* Quote */}
                   <section className="p3t-section">
                     <h4>{isRTL ? '💵 عرض السعر' : '💵 Quote'}</h4>
-                    <div className="p3t-quote">
+                    <div className="p3t-quote-grid">
                       <label>
-                        <span>{isRTL ? 'الوزن التقديري (غرام)' : 'Estimated weight (grams)'}</span>
+                        <span>{isRTL ? 'الوزن (غرام)' : 'Weight (g)'}</span>
                         <input
                           type="number"
                           step="0.1"
@@ -430,6 +442,63 @@ const Print3DTab = () => {
                           placeholder={isRTL ? 'مثال: 45.5' : 'e.g., 45.5'}
                         />
                       </label>
+                      <label>
+                        <span>{isRTL ? `سعر الغرام (${detail.material})` : `Rate / g (${detail.material})`}</span>
+                        <input
+                          type="number"
+                          step="0.01"
+                          min="0"
+                          value={rateOverride}
+                          onChange={e => setRateOverride(e.target.value)}
+                          placeholder={rates ? String(rates[detail.material] || '') : '0.00'}
+                        />
+                      </label>
+                      <label>
+                        <span>{isRTL ? 'رسوم الإعداد' : 'Setup fee'}</span>
+                        <input
+                          type="number"
+                          step="0.01"
+                          min="0"
+                          value={setupOverride}
+                          onChange={e => setSetupOverride(e.target.value)}
+                          placeholder={rates ? String(rates.setupFee || '') : '0'}
+                        />
+                      </label>
+                      {detail.colorMode === 'multi' && (
+                        <label>
+                          <span>{isRTL ? 'رسوم الألوان' : 'Multi-color fee'}</span>
+                          <input
+                            type="number"
+                            step="0.01"
+                            min="0"
+                            value={multiOverride}
+                            onChange={e => setMultiOverride(e.target.value)}
+                            placeholder={rates ? String(rates.multiColorFee || '') : '0'}
+                          />
+                        </label>
+                      )}
+                    </div>
+                    <div className="p3t-quote-preview">
+                      {(() => {
+                        const w = Number(weight) || 0;
+                        const rate = Number(rateOverride) || (rates?.[detail.material] || 0);
+                        const setup = Number(setupOverride) || (rates?.setupFee || 0);
+                        const multi = detail.colorMode === 'multi' ? (Number(multiOverride) || (rates?.multiColorFee || 0)) : 0;
+                        const preSub = w * rate + setup + multi;
+                        const sub = Math.max(preSub, rates?.minCharge || 0);
+                        const tax = sub * 0.15;
+                        const total = sub + tax;
+                        return (
+                          <>
+                            <span>{isRTL ? 'المعاينة:' : 'Preview:'}</span>
+                            <b>{w} × {SAR(rate)} + {SAR(setup)}{multi > 0 ? ` + ${SAR(multi)}` : ''} = <span style={{ color: '#0ea5e9' }}>{SAR(sub)}</span></b>
+                            <span>+ {SAR(tax)} {isRTL ? 'ضريبة' : 'VAT'} → </span>
+                            <b style={{ fontSize: 15 }}>{SAR(total)}</b>
+                          </>
+                        );
+                      })()}
+                    </div>
+                    <div className="p3t-quote-actions">
                       <label className="p3t-quote-check">
                         <input type="checkbox" checked={sendEmail} onChange={e => setSendEmail(e.target.checked)} />
                         <span>{isRTL ? 'إرسال العرض بالبريد للعميل' : 'Email quote to customer'}</span>

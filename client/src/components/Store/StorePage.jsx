@@ -211,6 +211,8 @@ const StorePage = () => {
 
   return (
     <div className="st" dir={isRTL ? 'rtl' : 'ltr'}>
+      {/* Everything under .st-inner gets blurred when the store is closed. */}
+      <div className={`st-inner ${storeClosed ? 'is-blurred' : ''}`}>
       {/* Topbar */}
       <header className="st-topbar">
         <div className="st-topbar-inner">
@@ -298,37 +300,6 @@ const StorePage = () => {
           </div>
         </div>
       </div>
-
-      {/* Temporary closure banner */}
-      {storeClosed && (
-        <div
-          role="alert"
-          style={{
-            background: 'linear-gradient(135deg, #fef3c7, #fde68a)',
-            borderTop: '1px solid rgba(245, 158, 11, 0.4)',
-            borderBottom: '1px solid rgba(245, 158, 11, 0.4)',
-            color: '#78350f',
-            padding: '14px 20px',
-            display: 'flex',
-            alignItems: 'center',
-            gap: 12,
-            justifyContent: 'center',
-            fontWeight: 600,
-            fontSize: 15,
-            textAlign: 'center'
-          }}
-        >
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#b45309" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
-            <circle cx="12" cy="12" r="10"/>
-            <line x1="12" y1="8" x2="12" y2="12"/>
-            <line x1="12" y1="16" x2="12.01" y2="16"/>
-          </svg>
-          <span>
-            {isRTL ? 'المتجر مغلق مؤقتاً — ' : 'The store is temporarily closed — '}
-            {storeCloseReason || (isRTL ? 'الطلبات الجديدة معطّلة حالياً' : 'new orders are disabled right now')}
-          </span>
-        </div>
-      )}
 
       {/* Body layout: sidebar + main */}
       <div className="st-layout">
@@ -736,6 +707,8 @@ const StorePage = () => {
         )}
       </AnimatePresence>
 
+      </div>{/* /.st-inner */}
+
       {/* Auth modal */}
       <AnimatePresence>
         {authOpen && (
@@ -785,6 +758,50 @@ const StorePage = () => {
                 <button type="button" className="st-btn st-btn--primary" onClick={() => navigate('/store/my-orders')}>
                   {isRTL ? 'عرض طلباتي' : 'View My Orders'}
                 </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Store closed — full-page blocking overlay. Blurs the browsing
+          layer beneath so it's clear no actions are possible. */}
+      <AnimatePresence>
+        {storeClosed && (
+          <motion.div
+            className="st-closed-overlay"
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+          >
+            <motion.div
+              className="st-closed-card"
+              initial={{ scale: 0.9, y: 20, opacity: 0 }}
+              animate={{ scale: 1, y: 0, opacity: 1 }}
+              exit={{ scale: 0.9, y: 20, opacity: 0 }}
+              transition={{ type: 'spring', damping: 22, stiffness: 220 }}
+            >
+              <div className="st-closed-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+                  <rect x="4" y="10" width="16" height="12" rx="2"/>
+                  <path d="M8 10V6a4 4 0 0 1 8 0v4"/>
+                </svg>
+              </div>
+              <h2>{isRTL ? 'المتجر مغلق مؤقتاً' : 'Store Temporarily Closed'}</h2>
+              <p className="st-closed-reason">
+                {storeCloseReason || (isRTL ? 'الطلبات الجديدة معطّلة حالياً — سنعود قريباً' : 'New orders are disabled — we will be back soon')}
+              </p>
+              <div className="st-closed-actions">
+                <button type="button" onClick={() => navigate('/register')}>
+                  {isRTL ? 'العودة للصفحة الرئيسية' : 'Back to home'}
+                </button>
+                <button type="button" className="ghost" onClick={() => navigate('/store/my-orders')}>
+                  {isRTL ? 'عرض طلباتي السابقة' : 'View my past orders'}
+                </button>
+              </div>
+              <div className="st-closed-hint">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/>
+                </svg>
+                <span>{isRTL ? 'سيتم استئناف الطلبات فور فتح المتجر مجدداً' : 'Orders will resume as soon as the store re-opens'}</span>
               </div>
             </motion.div>
           </motion.div>

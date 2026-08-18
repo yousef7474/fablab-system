@@ -551,10 +551,13 @@ exports.rates = async (req, res) => {
   }
 };
 
-// Recalculate + save the quote on the request.
+// Recalculate + save the quote on the request. Accepts optional
+// admin overrides for material rate, setup fee, and multi-color fee
+// so the operator can tune the price for a specific job without
+// changing the global defaults.
 exports.quote = async (req, res) => {
   try {
-    const { estimatedWeight, sendEmail } = req.body || {};
+    const { estimatedWeight, materialRate, setupFee, multiColorFee, sendEmail } = req.body || {};
     const r = await Print3DRequest.findByPk(req.params.id);
     if (!r) return res.status(404).json({ message: 'Not found' });
 
@@ -564,7 +567,16 @@ exports.quote = async (req, res) => {
     }
 
     const rates = await _loadRates();
-    const q = _computeQuote(w, r.material, r.colorMode, rates);
+    // Layer any per-request overrides on top of the seeded defaults.
+    const effectiveRates = {
+      ...rates,
+      [String(r.material || '').toUpperCase()]: Number.isFinite(Number(materialRate)) && Number(materialRate) >= 0
+        ? Number(materialRate)
+        : rates[String(r.material || '').toUpperCase()],
+      setupFee: Number.isFinite(Number(setupFee)) && Number(setupFee) >= 0 ? Number(setupFee) : rates.setupFee,
+      multiColorFee: Number.isFinite(Number(multiColorFee)) && Number(multiColorFee) >= 0 ? Number(multiColorFee) : rates.multiColorFee
+    };
+    const q = _computeQuote(w, r.material, r.colorMode, effectiveRates);
     await r.update({
       estimatedWeight: w,
       materialRate: q.materialRate,
