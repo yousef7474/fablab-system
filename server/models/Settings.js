@@ -31,7 +31,11 @@ Settings.seedDefaults = async () => {
     { key: 'print3d_setup_fee',       value: 15 },
     { key: 'print3d_multi_color_fee', value: 20 },
     { key: 'print3d_min_charge',      value: 25 }, // minimum charge per print
-    { key: 'print3d_supported_files', value: ['stl', 'obj', '3mf', 'step', 'stp', 'ply', 'gcode'] }
+    { key: 'print3d_supported_files', value: ['stl', 'obj', '3mf', 'step', 'stp', 'ply', 'gcode'] },
+    // Year Calendar preference — show the schedule overlay
+    // (appointments + employee tasks) or keep it hidden. Universal
+    // across all admin logins so any device honors the same choice.
+    { key: 'calendar_show_schedule_overlay', value: true }
   ];
 
   for (const setting of defaults) {

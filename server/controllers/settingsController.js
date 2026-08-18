@@ -147,11 +147,46 @@ const updateStoreStatus = async (req, res) => {
   }
 };
 
+// GET /api/settings/calendar-prefs (admin-protected)
+// Universal admin preference for the Year Calendar. When
+// showScheduleOverlay is false the calendar hides the auto-generated
+// appointment + employee-task overlay so it doesn't feel over-filled.
+const getCalendarPrefs = async (req, res) => {
+  try {
+    const overlay = await Settings.findByPk('calendar_show_schedule_overlay');
+    res.json({
+      showScheduleOverlay: overlay ? !!overlay.value : true
+    });
+  } catch (error) {
+    console.error('Error fetching calendar prefs:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+// PUT /api/settings/calendar-prefs (admin-protected)
+const updateCalendarPrefs = async (req, res) => {
+  try {
+    const { showScheduleOverlay } = req.body || {};
+    if (showScheduleOverlay !== undefined) {
+      await Settings.upsert({
+        key: 'calendar_show_schedule_overlay',
+        value: !!showScheduleOverlay
+      });
+    }
+    res.json({ showScheduleOverlay: !!showScheduleOverlay });
+  } catch (error) {
+    console.error('Error updating calendar prefs:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
 module.exports = {
   getWorkingHours,
   updateWorkingHours,
   getRegistrationStatus,
   updateRegistrationStatus,
   getStoreStatus,
-  updateStoreStatus
+  updateStoreStatus,
+  getCalendarPrefs,
+  updateCalendarPrefs
 };

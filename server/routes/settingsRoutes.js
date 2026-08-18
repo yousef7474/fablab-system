@@ -12,5 +12,7 @@ router.get('/store-status', settingsController.getStoreStatus);
 router.put('/working-hours', authMiddleware, settingsController.updateWorkingHours);
 router.put('/registration-status', authMiddleware, settingsController.updateRegistrationStatus);
 router.put('/store-status', authMiddleware, settingsController.updateStoreStatus);
+router.get('/calendar-prefs', authMiddleware, settingsController.getCalendarPrefs);
+router.put('/calendar-prefs', authMiddleware, settingsController.updateCalendarPrefs);
 
 module.exports = router;

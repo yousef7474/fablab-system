@@ -62,6 +62,10 @@ const YearCalendar = () => {
   // Registrations + tasks pulled from the Schedule tab and rendered as
   // read-only virtual events so the calendar reflects real bookings.
   const [scheduleItems, setScheduleItems] = useState([]);
+  // Universal admin preference — persisted server-side so any device
+  // where the admin logs in gets the same show/hide choice.
+  const [showScheduleOverlay, setShowScheduleOverlay] = useState(true);
+  const [togglingOverlay, setTogglingOverlay] = useState(false);
   const [loading, setLoading] = useState(true);
 
   const [dayModal, setDayModal] = useState(null);  // { iso, events }
@@ -76,16 +80,18 @@ const YearCalendar = () => {
   const fetchAll = useCallback(async () => {
     setLoading(true);
     try {
-      // Schedule endpoint is admin-only; a 403 for managers must not
-      // break the whole calendar, so it's fetched separately.
-      const [e, h, s] = await Promise.all([
+      // Schedule + prefs endpoints tolerate failure so a non-admin
+      // (or a fresh install without the pref row) still renders.
+      const [e, h, s, p] = await Promise.all([
         api.get(`/calendar-events?year=${year}`),
         api.get(`/calendar-events/saudi-holidays?year=${year}`),
-        api.get('/admin/schedule?includeTasks=true').catch(() => ({ data: [] }))
+        api.get('/admin/schedule?includeTasks=true').catch(() => ({ data: [] })),
+        api.get('/settings/calendar-prefs').catch(() => ({ data: { showScheduleOverlay: true } }))
       ]);
       setEvents(Array.isArray(e.data) ? e.data : []);
       setHolidays(Array.isArray(h.data) ? h.data : []);
       setScheduleItems(Array.isArray(s.data) ? s.data : []);
+      setShowScheduleOverlay(!!p.data?.showScheduleOverlay);
     } catch (err) {
       console.error('fetch calendar:', err);
       toast.error(isRTL ? 'تعذّر تحميل التقويم' : 'Failed to load calendar');
@@ -93,6 +99,23 @@ const YearCalendar = () => {
       setLoading(false);
     }
   }, [year, isRTL]);
+
+  const toggleScheduleOverlay = async () => {
+    const next = !showScheduleOverlay;
+    setShowScheduleOverlay(next); // optimistic
+    setTogglingOverlay(true);
+    try {
+      await api.put('/settings/calendar-prefs', { showScheduleOverlay: next });
+      toast.success(next
+        ? (isRTL ? 'تم إظهار المواعيد ومهام الموظفين' : 'Schedule overlay shown')
+        : (isRTL ? 'تم إخفاء المواعيد ومهام الموظفين' : 'Schedule overlay hidden'));
+    } catch (err) {
+      setShowScheduleOverlay(!next); // revert
+      toast.error(isRTL ? 'تعذّر حفظ التفضيل' : 'Failed to save preference');
+    } finally {
+      setTogglingOverlay(false);
+    }
+  };
 
   useEffect(() => { fetchAll(); }, [fetchAll]);
 
@@ -167,20 +190,22 @@ const YearCalendar = () => {
     };
     holidays.forEach(walk);
     events.forEach(walk);
-    virtualEvents.forEach(walk);
+    if (showScheduleOverlay) virtualEvents.forEach(walk);
     return map;
-  }, [events, holidays, virtualEvents]);
+  }, [events, holidays, virtualEvents, showScheduleOverlay]);
 
-  // Stats for the mini strip at the top
+  // Stats for the mini strip at the top. Appointment/employee-task
+  // counters zero out when the overlay is hidden so the strip mirrors
+  // what's actually rendered on the grid.
   const stats = useMemo(() => ({
     total: events.length,
     tasks: events.filter(e => e.category === 'task').length,
     meetings: events.filter(e => e.category === 'meeting').length,
     important: events.filter(e => e.isImportant).length,
     holidays: holidays.length,
-    appointments: virtualEvents.filter(e => e.category === 'appointment').length,
-    employeeTasks: virtualEvents.filter(e => e.category === 'employee-task').length
-  }), [events, holidays, virtualEvents]);
+    appointments: showScheduleOverlay ? virtualEvents.filter(e => e.category === 'appointment').length : 0,
+    employeeTasks: showScheduleOverlay ? virtualEvents.filter(e => e.category === 'employee-task').length : 0
+  }), [events, holidays, virtualEvents, showScheduleOverlay]);
 
   // ---------- Actions ----------
 
@@ -377,6 +402,28 @@ const YearCalendar = () => {
         </div>
 
         <div className="yc-actions">
+          <button
+            type="button"
+            className={`yc-overlay-btn ${showScheduleOverlay ? 'is-on' : 'is-off'}`}
+            onClick={toggleScheduleOverlay}
+            disabled={togglingOverlay}
+            title={isRTL
+              ? 'إظهار/إخفاء المواعيد ومهام الموظفين (تفضيل مشترك بين جميع تسجيلات الدخول)'
+              : 'Show/hide appointments & employee tasks (shared across all logins)'}
+          >
+            {showScheduleOverlay ? (
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>
+              </svg>
+            ) : (
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/>
+              </svg>
+            )}
+            {showScheduleOverlay
+              ? (isRTL ? 'المواعيد ظاهرة' : 'Schedule shown')
+              : (isRTL ? 'المواعيد مخفية' : 'Schedule hidden')}
+          </button>
           <button type="button" className="yc-add-btn" onClick={() => openCreate(toISO(new Date()))}>
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>

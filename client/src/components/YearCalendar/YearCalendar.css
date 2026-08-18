@@ -121,6 +121,36 @@
 .yc-add-btn:hover { transform: translateY(-1px); box-shadow: 0 10px 24px -8px rgba(238, 35, 41, 0.55); }
 .yc-add-btn svg { width: 15px; height: 15px; }
 
+/* Schedule overlay toggle — visually secondary next to Add Event */
+.yc-overlay-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 9px 14px;
+  background: transparent;
+  border: 1px solid rgba(148, 163, 184, 0.4);
+  border-radius: 10px;
+  font-weight: 700;
+  font-size: 12.5px;
+  font-family: inherit;
+  cursor: pointer;
+  transition: all 0.15s;
+  color: inherit;
+}
+.yc-overlay-btn svg { width: 15px; height: 15px; }
+.yc-overlay-btn.is-on {
+  background: rgba(139, 92, 246, 0.1);
+  border-color: rgba(139, 92, 246, 0.45);
+  color: #8b5cf6;
+}
+.yc-overlay-btn.is-on:hover:not(:disabled) { background: rgba(139, 92, 246, 0.18); }
+.yc-overlay-btn.is-off {
+  background: rgba(148, 163, 184, 0.08);
+  color: #94a3b8;
+}
+.yc-overlay-btn.is-off:hover:not(:disabled) { background: rgba(148, 163, 184, 0.16); color: #64748b; }
+.yc-overlay-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+
 /* ---------- Stats strip ---------- */
 .yc-stats {
   display: grid;
