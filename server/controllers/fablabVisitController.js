@@ -602,6 +602,69 @@ exports.publicDecide = async (req, res) => {
   }
 };
 
+// -------------------- MANAGER DASHBOARD (logged-in, no token) --------------------
+
+// GET /fablab-visits/pending — for the manager approvals tab
+exports.listPending = async (req, res) => {
+  try {
+    const rows = await FablabVisit.findAll({
+      where: { approvalStatus: 'pending' },
+      order: [['sentForApprovalAt', 'DESC']]
+    });
+    res.json(rows);
+  } catch (err) {
+    console.error('listPending visits:', err);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+// POST /fablab-visits/:id/manager-approve — logged-in manager
+exports.managerApprove = async (req, res) => {
+  try {
+    const row = await FablabVisit.findByPk(req.params.id);
+    if (!row) return res.status(404).json({ message: 'Not found' });
+    if (row.approvalStatus === 'approved') {
+      return res.status(409).json({ message: 'Already approved' });
+    }
+    await row.update({
+      approvalStatus: 'approved',
+      approvedAt: new Date(),
+      rejectedAt: null,
+      managerNote: req.body?.note ? String(req.body.note).trim() : row.managerNote,
+      managerName: req.body?.managerName
+        ? String(req.body.managerName).trim()
+        : (req.admin?.fullName || row.managerName),
+      approvalToken: null // once decided from the dashboard, invalidate the email link
+    });
+    res.json({ message: 'Approved', row });
+  } catch (err) {
+    console.error('managerApprove visit:', err);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+// POST /fablab-visits/:id/manager-reject — logged-in manager
+exports.managerReject = async (req, res) => {
+  try {
+    const row = await FablabVisit.findByPk(req.params.id);
+    if (!row) return res.status(404).json({ message: 'Not found' });
+    await row.update({
+      approvalStatus: 'rejected',
+      rejectedAt: new Date(),
+      approvedAt: null,
+      managerNote: req.body?.note ? String(req.body.note).trim() : row.managerNote,
+      managerName: req.body?.managerName
+        ? String(req.body.managerName).trim()
+        : (req.admin?.fullName || row.managerName),
+      approvalToken: null
+    });
+    res.json({ message: 'Rejected', row });
+  } catch (err) {
+    console.error('managerReject visit:', err);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
 // -------------------- ADMIN: FINAL DECISION TO VISITOR --------------------
 
 const _buildVisitorEmail = ({ row, accepted, customMessage }) => {

@@ -19,6 +19,7 @@ import api from '../../config/api';
 import { EVALUATION_CATEGORIES, MAX_PER_CRITERION, calculateWeightedTotal, calculateBonus } from '../../config/evaluationStructure';
 import VolunteerManagement from '../Volunteer/VolunteerManagement';
 import OvertimeApprovals from './OvertimeApprovals';
+import FablabVisitApprovals from './FablabVisitApprovals';
 import YearCalendar from '../YearCalendar/YearCalendar';
 import '../Admin/Admin.css';
 import './Manager.css';
@@ -3991,12 +3992,18 @@ const ManagerDashboard = () => {
               ? (isRTL ? 'الموظفين' : 'Employees')
               : activeTab === 'todos'
               ? (isRTL ? 'مهامي' : 'My Tasks')
+              : activeTab === 'approvals'
+              ? (isRTL ? 'الاعتمادات' : 'Approvals')
               : activeTab === 'workspaces'
               ? (isRTL ? 'مساحات العمل' : 'Workspaces')
               : activeTab === 'volunteers'
               ? (isRTL ? 'المتطوعين' : 'Volunteers')
               : activeTab === 'interns'
               ? (isRTL ? 'تدريب جامعي' : 'University Training')
+              : activeTab === 'education'
+              ? (isRTL ? 'التدريب المدرسي' : 'School Education')
+              : activeTab === 'year-calendar'
+              ? (isRTL ? 'التقويم السنوي' : 'Year Calendar')
               : (isRTL ? 'الإعدادات' : 'Settings')
             }</h1>
             <p>{activeTab === 'schedule'
@@ -4007,12 +4014,18 @@ const ManagerDashboard = () => {
               ? (isRTL ? 'إدارة الموظفين وتقييمهم' : 'Manage employees and ratings')
               : activeTab === 'todos'
               ? (isRTL ? 'قائمة مهامي الشخصية' : 'My personal task list')
+              : activeTab === 'approvals'
+              ? (isRTL ? 'اعتماد الساعات الإضافية وطلبات زيارة فاب لاب' : 'Overtime and FabLab visit approvals')
               : activeTab === 'workspaces'
               ? (isRTL ? 'إدارة مساحات العمل للعملاء' : 'Manage customer workspaces')
               : activeTab === 'volunteers'
               ? (isRTL ? 'إدارة المتطوعين وفرص التطوع' : 'Manage volunteers and opportunities')
               : activeTab === 'interns'
               ? (isRTL ? 'إدارة طلاب التدريب الصيفي الجامعي' : 'Manage university summer training interns')
+              : activeTab === 'education'
+              ? (isRTL ? 'إدارة برامج التدريب المدرسي' : 'Manage school education programs')
+              : activeTab === 'year-calendar'
+              ? (isRTL ? 'عرض التقويم السنوي والفعاليات' : 'View the yearly calendar and events')
               : (isRTL ? 'إدارة إعدادات الحساب واللغة' : 'Manage account and language settings')
             }</p>
             </div>
@@ -4701,7 +4714,12 @@ const ManagerDashboard = () => {
 
         {/* Volunteers Content */}
         {activeTab === 'volunteers' && <VolunteerManagement />}
-        {activeTab === 'approvals' && <OvertimeApprovals />}
+        {activeTab === 'approvals' && (
+          <>
+            <OvertimeApprovals />
+            <FablabVisitApprovals />
+          </>
+        )}
 
         {/* Interns (University Training) Content */}
         {activeTab === 'interns' && (

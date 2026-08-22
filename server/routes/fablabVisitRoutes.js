@@ -11,6 +11,8 @@ router.use(authMiddleware);
 // Literal-path routes BEFORE /:id so they aren't shadowed
 router.get('/override-code',              ctrl.getOverrideCode);
 router.post('/override-code/regenerate',  requireManager, ctrl.regenerateOverrideCode);
+// Manager approvals board — pending list + approve/reject from the dashboard
+router.get('/pending',                    requireManager, ctrl.listPending);
 
 router.get('/', ctrl.list);
 router.get('/:id', ctrl.get);
@@ -19,5 +21,7 @@ router.delete('/:id', requireManager, ctrl.remove);
 
 router.post('/:id/send-for-approval', requireManager, ctrl.sendForApproval);
 router.post('/:id/notify-visitor',    requireManager, ctrl.notifyVisitor);
+router.post('/:id/manager-approve',   requireManager, ctrl.managerApprove);
+router.post('/:id/manager-reject',    requireManager, ctrl.managerReject);
 
 module.exports = router;
