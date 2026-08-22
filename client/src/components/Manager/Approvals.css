@@ -1,0 +1,365 @@
+/* ============================================================
+   Manager Approvals — shared styles for OvertimeApprovals
+   and FablabVisitApprovals. Professional, readable hierarchy.
+   ============================================================ */
+
+.ap {
+  padding: 4px 2px;
+  font-family: 'Cairo', 'Inter', system-ui, sans-serif;
+  color: var(--text-primary, #0f172a);
+}
+.ap + .ap { margin-top: 32px; }
+
+/* ---- Section header ---- */
+.ap-head {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+  margin-bottom: 18px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--border-color, #e5e7eb);
+}
+.ap-head h2 {
+  margin: 0;
+  font-family: 'Bricolage Grotesque', 'Cairo', sans-serif;
+  font-size: 22px;
+  font-weight: 800;
+  letter-spacing: -0.3px;
+}
+.ap-count {
+  padding: 5px 14px;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 0.2px;
+}
+.ap-count--amber { background: #fef3c7; color: #92400e; border: 1px solid #fde68a; }
+.ap-count--sky   { background: #e0f2fe; color: #075985; border: 1px solid #7dd3fc; }
+.ap-refresh {
+  margin-inline-start: auto;
+  padding: 9px 16px;
+  border-radius: 10px;
+  border: 1px solid var(--border-color, #cbd5e1);
+  background: var(--card-bg, #fff);
+  color: var(--text-secondary, #334155);
+  cursor: pointer;
+  font-family: inherit;
+  font-weight: 700;
+  font-size: 13px;
+  transition: all 0.15s;
+}
+.ap-refresh:hover { border-color: var(--text-secondary, #64748b); transform: translateY(-1px); }
+
+/* ---- Loading / empty ---- */
+.ap-loading, .ap-empty {
+  padding: 44px 20px;
+  text-align: center;
+  background: var(--card-bg, #fff);
+  border: 1px dashed var(--border-color, #e2e8f0);
+  border-radius: 14px;
+  color: var(--text-secondary, #94a3b8);
+  font-size: 15px;
+  font-weight: 600;
+}
+
+/* ---- Card grid ---- */
+.ap-grid {
+  display: grid;
+  gap: 14px;
+}
+
+.ap-card {
+  background: var(--card-bg, #fff);
+  border: 1px solid var(--border-color, #e2e8f0);
+  border-radius: 14px;
+  overflow: hidden;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04);
+  transition: box-shadow 0.15s, transform 0.15s;
+}
+.ap-card:hover { box-shadow: 0 8px 24px -12px rgba(15, 23, 42, 0.12); }
+.ap-card--overtime { border-inline-start: 5px solid #d97706; }
+.ap-card--visit    { border-inline-start: 5px solid #0ea5e9; }
+
+/* ---- Card head (always-visible top row) ---- */
+.ap-card-top {
+  padding: 18px 22px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+.ap-card-lead { min-width: 0; flex: 1 1 auto; }
+.ap-card-lead-line {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 4px;
+}
+.ap-hash {
+  font-family: 'JetBrains Mono', monospace;
+  font-weight: 800;
+  font-size: 13px;
+  letter-spacing: 1.4px;
+  padding: 3px 10px;
+  border-radius: 6px;
+}
+.ap-hash--visit { color: #0284c7; background: #e0f2fe; }
+.ap-hash--overtime { color: #b45309; background: #fef3c7; }
+.ap-title {
+  font-weight: 800;
+  font-size: 18px;
+  color: var(--text-primary, #0f172a);
+  line-height: 1.3;
+}
+.ap-sub {
+  font-size: 13.5px;
+  color: var(--text-secondary, #64748b);
+  line-height: 1.6;
+  margin-top: 3px;
+}
+.ap-sub b { color: var(--text-primary, #334155); font-weight: 700; }
+.ap-when {
+  font-size: 12px;
+  color: #94a3b8;
+  margin-top: 4px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* Right-side pill + toggle */
+.ap-card-right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.ap-pill {
+  padding: 8px 16px;
+  border-radius: 999px;
+  font-weight: 800;
+  font-size: 14px;
+  color: #fff;
+  white-space: nowrap;
+  box-shadow: 0 4px 12px -4px rgba(0, 0, 0, 0.15);
+}
+.ap-pill--overtime { background: linear-gradient(135deg, #d97706, #f59e0b); }
+.ap-pill--visit    { background: linear-gradient(135deg, #0ea5e9, #2563eb); }
+
+.ap-toggle {
+  padding: 8px 16px;
+  border-radius: 10px;
+  border: 1px solid var(--border-color, #cbd5e1);
+  background: var(--card-bg, #fff);
+  color: var(--text-secondary, #475569);
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  transition: all 0.15s;
+}
+.ap-toggle:hover { border-color: var(--text-secondary, #64748b); background: #f8fafc; }
+
+/* ---- Expanded body ---- */
+.ap-body {
+  padding: 4px 22px 18px;
+  background: linear-gradient(180deg, #f8fafc, #ffffff);
+  border-top: 1px solid var(--border-color, #f1f5f9);
+}
+
+/* KV grid */
+.ap-kv-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 10px;
+  margin-top: 14px;
+  margin-bottom: 12px;
+}
+.ap-kv {
+  padding: 12px 14px;
+  background: #fff;
+  border: 1px solid var(--border-color, #e5e7eb);
+  border-radius: 10px;
+}
+.ap-kv-label {
+  font-size: 11px;
+  font-weight: 700;
+  color: #64748b;
+  letter-spacing: 0.9px;
+  text-transform: uppercase;
+  margin-bottom: 4px;
+}
+.ap-kv-value {
+  font-size: 14.5px;
+  font-weight: 700;
+  color: var(--text-primary, #0f172a);
+  font-family: 'JetBrains Mono', monospace;
+  word-break: break-word;
+}
+.ap-kv-value--plain { font-family: 'Cairo', 'Inter', sans-serif; }
+
+/* Section blocks (purpose, admin note) */
+.ap-block {
+  padding: 14px 16px;
+  background: #fff;
+  border: 1px solid var(--border-color, #e5e7eb);
+  border-radius: 10px;
+  margin-top: 10px;
+}
+.ap-block-label {
+  font-size: 11px;
+  font-weight: 700;
+  color: #64748b;
+  letter-spacing: 0.9px;
+  text-transform: uppercase;
+  margin-bottom: 8px;
+}
+.ap-block-text {
+  font-size: 14.5px;
+  color: var(--text-primary, #334155);
+  line-height: 1.75;
+  white-space: pre-wrap;
+}
+.ap-block--admin {
+  background: #fffbeb;
+  border-color: #fde68a;
+  border-inline-start: 4px solid #f59e0b;
+}
+.ap-block--admin .ap-block-label { color: #b45309; }
+.ap-block--admin .ap-block-text { color: #78350f; }
+
+/* Overtime days table */
+.ap-table-wrap {
+  margin-top: 12px;
+  overflow-x: auto;
+  background: #fff;
+  border: 1px solid var(--border-color, #e5e7eb);
+  border-radius: 10px;
+}
+.ap-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+  min-width: 480px;
+}
+.ap-table thead {
+  background: #f5f3ff;
+}
+.ap-table th {
+  padding: 12px 14px;
+  text-align: start;
+  color: #6d28d9;
+  font-weight: 800;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+}
+.ap-table td {
+  padding: 12px 14px;
+  border-top: 1px solid #f1f5f9;
+  color: var(--text-primary, #334155);
+}
+.ap-table td.mono { font-family: 'JetBrains Mono', monospace; font-weight: 600; }
+.ap-table td.center { text-align: center; }
+
+/* ---- Footer actions ---- */
+.ap-actions {
+  padding: 14px 22px;
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+  border-top: 1px solid var(--border-color, #f1f5f9);
+  background: #fafbfd;
+  flex-wrap: wrap;
+}
+.ap-btn {
+  padding: 11px 22px;
+  border-radius: 10px;
+  border: none;
+  font-family: inherit;
+  font-weight: 800;
+  font-size: 14px;
+  cursor: pointer;
+  transition: transform 0.15s, box-shadow 0.15s, opacity 0.15s;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.ap-btn:disabled { opacity: 0.55; cursor: not-allowed; }
+.ap-btn--approve {
+  background: linear-gradient(135deg, #16a34a, #15803d);
+  color: #fff;
+  box-shadow: 0 6px 16px -6px rgba(22, 163, 74, 0.5);
+}
+.ap-btn--approve:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 10px 22px -6px rgba(22, 163, 74, 0.6);
+}
+.ap-btn--reject {
+  background: #fff;
+  border: 1px solid #fecaca;
+  color: #dc2626;
+}
+.ap-btn--reject:hover:not(:disabled) { background: #fef2f2; border-color: #f87171; }
+.ap-btn--ghost {
+  background: #fff;
+  border: 1px solid var(--border-color, #cbd5e1);
+  color: var(--text-secondary, #334155);
+  font-weight: 700;
+}
+.ap-btn--ghost:hover:not(:disabled) { border-color: #94a3b8; background: #f8fafc; }
+.ap-btn--danger {
+  background: #dc2626;
+  color: #fff;
+}
+.ap-btn--danger:hover:not(:disabled) { background: #b91c1c; }
+
+/* ---- Reject panel (inline under card) ---- */
+.ap-reject-panel {
+  padding: 16px 22px;
+  background: #fef2f2;
+  border-top: 1px solid #fecaca;
+}
+.ap-reject-label {
+  font-size: 14px;
+  font-weight: 800;
+  color: #991b1b;
+  margin-bottom: 8px;
+}
+.ap-reject-panel textarea {
+  width: 100%;
+  padding: 12px 14px;
+  border-radius: 10px;
+  border: 1px solid #fecaca;
+  background: #fff;
+  font-family: inherit;
+  font-size: 14px;
+  resize: vertical;
+  color: var(--text-primary, #0f172a);
+  min-height: 72px;
+}
+.ap-reject-panel textarea:focus {
+  outline: none;
+  border-color: #dc2626;
+  box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.15);
+}
+.ap-reject-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 10px;
+  justify-content: flex-end;
+}
+
+/* ---- Responsive ---- */
+@media (max-width: 600px) {
+  .ap-card-top { padding: 14px 16px; }
+  .ap-body { padding: 4px 16px 14px; }
+  .ap-actions { padding: 12px 16px; }
+  .ap-title { font-size: 16px; }
+  .ap-pill { font-size: 13px; padding: 7px 14px; }
+  .ap-btn { padding: 10px 18px; font-size: 13.5px; }
+  .ap-head h2 { font-size: 19px; }
+}
