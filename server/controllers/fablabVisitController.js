@@ -123,6 +123,104 @@ const _publicOrigin = () =>
 // or lands on an active registration closure, submission is blocked
 // UNLESS the visitor supplies a valid override code (5-min TTL, admin-
 // issued from the settings tab).
+// Central inbox for FABLAB operations — mirrored from the store /
+// print3d flows so admin sees every incoming public submission here.
+const VISIT_NOTIFY_EMAIL = 'fablabspec@fablabsahsa.com';
+
+const _sendMail = async (to, subject, html, text) => {
+  if (!process.env.SENDGRID_API_KEY) return { ok: false, reason: 'no-api-key' };
+  try {
+    await sgMail.send({
+      from: {
+        email: process.env.SENDGRID_FROM_EMAIL,
+        name: process.env.SENDGRID_FROM_NAME || 'FABLAB Al-Ahsa'
+      },
+      to, subject, html, text
+    });
+    return { ok: true };
+  } catch (err) {
+    console.error('visit email failed:', err?.response?.body || err);
+    return { ok: false, reason: err.message };
+  }
+};
+
+const _esc = (v) => String(v == null ? '' : v)
+  .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+  .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+
+// Confirmation to the visitor: "we got your request".
+const _buildVisitorReceivedEmail = (row) => {
+  const visitNo = formatVisitNumber(row.visitNumber);
+  const brand = '#0ea5e9';
+  return {
+    subject: `تم استلام طلب زيارة فاب لاب — ${visitNo}`,
+    text: `تم استلام طلبك ${visitNo}. سيتم مراجعته وسنتواصل معك قريباً.`,
+    html: `<!doctype html><html dir="rtl"><body style="margin:0;font-family:Segoe UI,Tahoma,Arial,sans-serif;background:#f4f6fb;color:#0f172a;padding:24px">
+<div style="max-width:640px;margin:0 auto;background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 4px 20px rgba(15,23,42,0.08)">
+  <div style="background:linear-gradient(135deg,${brand},#0284c7);color:#fff;padding:22px 26px">
+    <div style="font-size:12px;letter-spacing:1.2px;opacity:0.85">FABLAB الأحساء · زيارات</div>
+    <div style="font-size:22px;font-weight:800;margin-top:4px">تم استلام طلبك ✓</div>
+  </div>
+  <div style="padding:24px 26px;font-size:14px;line-height:1.75">
+    <p style="margin:0 0 14px">مرحباً <b>${_esc(row.personInCharge)}</b>،</p>
+    <p style="margin:0 0 14px">شكراً لتواصلك مع فاب لاب الأحساء. تم استلام طلب زيارتكم بنجاح وسيتم مراجعته من قبل الإدارة والتواصل معكم في أقرب وقت.</p>
+    <table style="width:100%;font-size:13px;border-collapse:collapse;background:#f8fafc;border-radius:10px;margin:12px 0;overflow:hidden">
+      <tr><td style="padding:8px 14px;color:#64748b;width:150px">رقم الطلب:</td><td style="padding:8px 14px;font-weight:800;font-family:monospace;color:${brand}">${_esc(visitNo)}</td></tr>
+      <tr><td style="padding:8px 14px;color:#64748b">الجهة:</td><td style="padding:8px 14px;font-weight:600">${_esc(row.entityName)}</td></tr>
+      <tr><td style="padding:8px 14px;color:#64748b">تاريخ الزيارة:</td><td style="padding:8px 14px;font-family:monospace" dir="ltr">${_esc(row.visitDate)}</td></tr>
+      <tr><td style="padding:8px 14px;color:#64748b">الوقت:</td><td style="padding:8px 14px;font-family:monospace" dir="ltr">${_esc(row.visitStartTime)} → ${_esc(row.visitEndTime)}</td></tr>
+      <tr><td style="padding:8px 14px;color:#64748b">عدد الزوار:</td><td style="padding:8px 14px">${_esc(row.visitorsCount)}</td></tr>
+    </table>
+    <p style="margin:14px 0 0;font-size:12px;color:#6b7280;padding:10px 14px;background:#fef3c7;border-inline-start:3px solid #f59e0b;border-radius:6px">
+      ⏳ سيصلكم قرار الموافقة أو الاعتذار عبر البريد الإلكتروني بمجرد الانتهاء من المراجعة.
+    </p>
+  </div>
+  <div style="background:#f8fafc;padding:12px 24px;font-size:11px;color:#94a3b8;text-align:center">
+    فاب لاب الأحساء · مؤسسة عبدالمنعم الراشد الإنسانية
+  </div>
+</div>
+</body></html>`
+  };
+};
+
+// Heads-up to the ops inbox: "a new visit request came in".
+const _buildAdminVisitReceivedEmail = (row) => {
+  const visitNo = formatVisitNumber(row.visitNumber);
+  return {
+    subject: `طلب زيارة جديد ${visitNo} — ${row.entityName}`,
+    text: `New visit request ${visitNo} from ${row.entityName} (${row.personInCharge}).`,
+    html: `<!doctype html><html dir="rtl"><body style="margin:0;font-family:Segoe UI,Tahoma,Arial,sans-serif;background:#f4f6fb;color:#0f172a;padding:24px">
+<div style="max-width:640px;margin:0 auto;background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 4px 20px rgba(15,23,42,0.08)">
+  <div style="background:linear-gradient(135deg,#EE2329,#c41e24);color:#fff;padding:22px 26px">
+    <div style="font-size:12px;letter-spacing:1.2px;opacity:0.85">FABLAB الأحساء · زيارات</div>
+    <div style="font-size:20px;font-weight:800;margin-top:4px">طلب زيارة جديد ${_esc(visitNo)}</div>
+  </div>
+  <div style="padding:22px 26px;font-size:14px;line-height:1.7">
+    <p style="margin:0 0 14px">وصل طلب زيارة جديد بحاجة إلى مراجعتكم واعتماد المدير.</p>
+    <table style="width:100%;font-size:13px;border-collapse:collapse;margin:0 0 16px">
+      <tr><td style="padding:6px 0;color:#64748b;width:150px">الجهة:</td><td style="padding:6px 0;font-weight:700">${_esc(row.entityName)}</td></tr>
+      <tr><td style="padding:6px 0;color:#64748b">المسؤول:</td><td style="padding:6px 0">${_esc(row.personInCharge)}</td></tr>
+      <tr><td style="padding:6px 0;color:#64748b">رقم الهوية:</td><td style="padding:6px 0" dir="ltr">${_esc(row.nationalId)}</td></tr>
+      <tr><td style="padding:6px 0;color:#64748b">الجوال:</td><td style="padding:6px 0" dir="ltr">${_esc(row.phone)}</td></tr>
+      <tr><td style="padding:6px 0;color:#64748b">البريد:</td><td style="padding:6px 0" dir="ltr">${_esc(row.email)}</td></tr>
+      <tr><td style="padding:6px 0;color:#64748b">عدد الزوار:</td><td style="padding:6px 0">${_esc(row.visitorsCount)}</td></tr>
+      <tr><td style="padding:6px 0;color:#64748b">تاريخ الزيارة:</td><td style="padding:6px 0" dir="ltr">${_esc(row.visitDate)}</td></tr>
+      <tr><td style="padding:6px 0;color:#64748b">الوقت:</td><td style="padding:6px 0" dir="ltr">${_esc(row.visitStartTime)} → ${_esc(row.visitEndTime)}</td></tr>
+      <tr><td style="padding:6px 0;color:#64748b;vertical-align:top">الغرض:</td><td style="padding:6px 0;white-space:pre-wrap">${_esc(row.purpose)}</td></tr>
+      ${row.notes ? `<tr><td style="padding:6px 0;color:#64748b;vertical-align:top">ملاحظات:</td><td style="padding:6px 0;white-space:pre-wrap">${_esc(row.notes)}</td></tr>` : ''}
+    </table>
+    <div style="text-align:center;margin-top:16px">
+      <a href="${_publicOrigin()}/admin/dashboard?tab=fablab-visits" style="display:inline-block;background:#EE2329;color:#fff;padding:12px 28px;border-radius:8px;text-decoration:none;font-weight:800">مراجعة الطلب</a>
+    </div>
+  </div>
+  <div style="background:#f8fafc;padding:12px 24px;font-size:11px;color:#94a3b8;text-align:center">
+    فاب لاب الأحساء · مؤسسة عبدالمنعم الراشد الإنسانية
+  </div>
+</div>
+</body></html>`
+  };
+};
+
 exports.publicCreate = async (req, res) => {
   try {
     const {
@@ -178,6 +276,20 @@ exports.publicCreate = async (req, res) => {
       ].filter(Boolean).join('\n\n') || null,
       approvalStatus: 'draft',
       visitorDecision: 'pending'
+    });
+
+    // Fire-and-forget notification pair — mirrors store / print3d
+    // flows so the ops inbox sees every submission and the visitor
+    // gets an immediate confirmation.
+    process.nextTick(async () => {
+      try {
+        const adminMail = _buildAdminVisitReceivedEmail(row);
+        await _sendMail(VISIT_NOTIFY_EMAIL, adminMail.subject, adminMail.html, adminMail.text);
+      } catch (e) { console.error('visit admin-notify email:', e); }
+      try {
+        const visitorMail = _buildVisitorReceivedEmail(row);
+        await _sendMail(row.email, visitorMail.subject, visitorMail.html, visitorMail.text);
+      } catch (e) { console.error('visit visitor-confirm email:', e); }
     });
 
     res.status(201).json({
