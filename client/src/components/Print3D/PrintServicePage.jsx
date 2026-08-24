@@ -397,7 +397,15 @@ const PrintServicePage = () => {
               <input
                 type="file"
                 multiple
-                accept={supported.map(s => `.${s}`).join(',')}
+                // Mobile browsers (iOS Safari, Android Chrome) filter the
+                // file picker by MIME type, and 3D formats like STL/OBJ/
+                // 3MF/STEP/PLY/GCODE have no MIME registered on the OS —
+                // so passing an extension-only `accept` list greys them
+                // out in the picker even when they're on the device.
+                // Using */* here + the client/server extension whitelist
+                // (handleFiles + publicCreate) keeps the mobile picker
+                // usable without weakening validation.
+                accept="*/*"
                 onChange={e => { handleFiles(e.target.files); e.target.value = ''; }}
               />
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
