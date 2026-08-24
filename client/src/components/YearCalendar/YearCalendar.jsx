@@ -51,9 +51,19 @@ const toISO = (d) => {
 // Compare two YYYY-MM-DD strings inclusively
 const inRange = (iso, start, end) => iso >= start && iso <= (end || start);
 
-const YearCalendar = () => {
+// Props:
+//   apiClient  — optional axios instance. Defaults to the admin `api`.
+//                Pass an employee/manager-scoped client to reuse this
+//                view across dashboards with different auth.
+//   readOnly   — hides create/edit/delete UI + skips write-side
+//                endpoints (admin/schedule overlay + calendar prefs).
+//                Fetches use /employee/calendar-events instead.
+const YearCalendar = ({ apiClient, readOnly = false } = {}) => {
   const { i18n } = useTranslation();
   const isRTL = i18n.language === 'ar';
+
+  const client = apiClient || api;
+  const eventsBasePath = readOnly ? '/employee/calendar-events' : '/calendar-events';
 
   const currentYear = new Date().getFullYear();
   const [year, setYear] = useState(currentYear);
@@ -81,12 +91,18 @@ const YearCalendar = () => {
     setLoading(true);
     try {
       // Schedule + prefs endpoints tolerate failure so a non-admin
-      // (or a fresh install without the pref row) still renders.
+      // (or a fresh install without the pref row) still renders. In
+      // read-only mode we skip them entirely since employees don't
+      // have access.
       const [e, h, s, p] = await Promise.all([
-        api.get(`/calendar-events?year=${year}`),
-        api.get(`/calendar-events/saudi-holidays?year=${year}`),
-        api.get('/admin/schedule?includeTasks=true').catch(() => ({ data: [] })),
-        api.get('/settings/calendar-prefs').catch(() => ({ data: { showScheduleOverlay: true } }))
+        client.get(`${eventsBasePath}?year=${year}`),
+        client.get(`${eventsBasePath}/saudi-holidays?year=${year}`),
+        readOnly
+          ? Promise.resolve({ data: [] })
+          : client.get('/admin/schedule?includeTasks=true').catch(() => ({ data: [] })),
+        readOnly
+          ? Promise.resolve({ data: { showScheduleOverlay: true } })
+          : client.get('/settings/calendar-prefs').catch(() => ({ data: { showScheduleOverlay: true } }))
       ]);
       setEvents(Array.isArray(e.data) ? e.data : []);
       setHolidays(Array.isArray(h.data) ? h.data : []);
@@ -98,14 +114,15 @@ const YearCalendar = () => {
     } finally {
       setLoading(false);
     }
-  }, [year, isRTL]);
+  }, [year, isRTL, client, eventsBasePath, readOnly]);
 
   const toggleScheduleOverlay = async () => {
+    if (readOnly) return;
     const next = !showScheduleOverlay;
     setShowScheduleOverlay(next); // optimistic
     setTogglingOverlay(true);
     try {
-      await api.put('/settings/calendar-prefs', { showScheduleOverlay: next });
+      await client.put('/settings/calendar-prefs', { showScheduleOverlay: next });
       toast.success(next
         ? (isRTL ? 'تم إظهار المواعيد ومهام الموظفين' : 'Schedule overlay shown')
         : (isRTL ? 'تم إخفاء المواعيد ومهام الموظفين' : 'Schedule overlay hidden'));
@@ -256,10 +273,10 @@ const YearCalendar = () => {
         assignedTo: form.assignedTo.trim() || null
       };
       if (editModal.mode === 'create') {
-        await api.post('/calendar-events', body);
+        await client.post('/calendar-events', body);
         toast.success(isRTL ? 'تمت إضافة الحدث' : 'Event added');
       } else {
-        await api.put(`/calendar-events/${editModal.event.eventId}`, body);
+        await client.put(`/calendar-events/${editModal.event.eventId}`, body);
         toast.success(isRTL ? 'تم التحديث' : 'Updated');
       }
       setEditModal(null);
@@ -272,7 +289,7 @@ const YearCalendar = () => {
   const deleteEvent = async (ev) => {
     if (!window.confirm(isRTL ? 'حذف هذا الحدث؟' : 'Delete this event?')) return;
     try {
-      await api.delete(`/calendar-events/${ev.eventId}`);
+      await client.delete(`/calendar-events/${ev.eventId}`);
       toast.success(isRTL ? 'تم الحذف' : 'Deleted');
       setEditModal(null);
       setDayModal(null);
@@ -283,8 +300,11 @@ const YearCalendar = () => {
   };
 
   // Range-drag support: mousedown → mouseup on cells to pre-fill dates.
-  const handleDayMouseDown = (iso) => setDragStart(iso);
+  // No-ops in read-only mode so employees can't accidentally start a
+  // create flow that would 401 anyway.
+  const handleDayMouseDown = (iso) => { if (!readOnly) setDragStart(iso); };
   const handleDayMouseUp = (iso) => {
+    if (readOnly) return;
     if (dragStart && dragStart !== iso) {
       const [s, e] = dragStart < iso ? [dragStart, iso] : [iso, dragStart];
       openCreate(s);
@@ -346,7 +366,7 @@ const YearCalendar = () => {
                 onMouseDown={() => handleDayMouseDown(iso)}
                 onMouseUp={() => handleDayMouseUp(iso)}
                 onClick={() => openDay(iso)}
-                onDoubleClick={() => openCreate(iso)}
+                onDoubleClick={() => { if (!readOnly) openCreate(iso); }}
                 className={`yc-cell ${isToday ? 'is-today' : ''} ${isWeekend ? 'is-weekend' : ''} ${dayEvents.length ? 'has-events' : ''} ${hasImportant ? 'is-important' : ''}`}
                 title={dayEvents.length ? dayEvents.map(e => e.title).join(' · ') : ''}
               >
@@ -402,34 +422,38 @@ const YearCalendar = () => {
         </div>
 
         <div className="yc-actions">
-          <button
-            type="button"
-            className={`yc-overlay-btn ${showScheduleOverlay ? 'is-on' : 'is-off'}`}
-            onClick={toggleScheduleOverlay}
-            disabled={togglingOverlay}
-            title={isRTL
-              ? 'إظهار/إخفاء المواعيد ومهام الموظفين (تفضيل مشترك بين جميع تسجيلات الدخول)'
-              : 'Show/hide appointments & employee tasks (shared across all logins)'}
-          >
-            {showScheduleOverlay ? (
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>
-              </svg>
-            ) : (
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/>
-              </svg>
-            )}
-            {showScheduleOverlay
-              ? (isRTL ? 'المواعيد ظاهرة' : 'Schedule shown')
-              : (isRTL ? 'المواعيد مخفية' : 'Schedule hidden')}
-          </button>
+          {!readOnly && (
+            <button
+              type="button"
+              className={`yc-overlay-btn ${showScheduleOverlay ? 'is-on' : 'is-off'}`}
+              onClick={toggleScheduleOverlay}
+              disabled={togglingOverlay}
+              title={isRTL
+                ? 'إظهار/إخفاء المواعيد ومهام الموظفين (تفضيل مشترك بين جميع تسجيلات الدخول)'
+                : 'Show/hide appointments & employee tasks (shared across all logins)'}
+            >
+              {showScheduleOverlay ? (
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>
+                </svg>
+              ) : (
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/>
+                </svg>
+              )}
+              {showScheduleOverlay
+                ? (isRTL ? 'المواعيد ظاهرة' : 'Schedule shown')
+                : (isRTL ? 'المواعيد مخفية' : 'Schedule hidden')}
+            </button>
+          )}
+          {!readOnly && (
           <button type="button" className="yc-add-btn" onClick={() => openCreate(toISO(new Date()))}>
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
             </svg>
             {isRTL ? 'إضافة حدث' : 'Add Event'}
           </button>
+          )}
         </div>
       </div>
 
@@ -463,11 +487,20 @@ const YearCalendar = () => {
         </div>
       )}
 
-      <div className="yc-tip">
-        💡 {isRTL
-          ? 'انقر مرتين على يوم لإضافة حدث فوري، أو اسحب من يوم لآخر لتحديد فترة زمنية.'
-          : 'Double-click a day to quick-add an event, or drag from one day to another to create a range.'}
-      </div>
+      {!readOnly && (
+        <div className="yc-tip">
+          💡 {isRTL
+            ? 'انقر مرتين على يوم لإضافة حدث فوري، أو اسحب من يوم لآخر لتحديد فترة زمنية.'
+            : 'Double-click a day to quick-add an event, or drag from one day to another to create a range.'}
+        </div>
+      )}
+      {readOnly && (
+        <div className="yc-tip">
+          👁️ {isRTL
+            ? 'عرض للقراءة فقط — انقر على أي يوم لعرض التفاصيل.'
+            : 'Read-only view — click any day to see its details.'}
+        </div>
+      )}
 
       {/* Day detail modal */}
       <AnimatePresence>
@@ -524,7 +557,7 @@ const YearCalendar = () => {
                             {isRTL ? 'المكلّف' : 'Assigned'}: <b>{ev.assignedTo}</b>
                           </div>
                         )}
-                        {!ev.isReadOnly && (
+                        {!ev.isReadOnly && !readOnly && (
                           <div className="yc-event-actions">
                             <button type="button" onClick={() => openEdit(ev)}>{isRTL ? '✏️ تعديل' : '✏️ Edit'}</button>
                             <button type="button" className="danger" onClick={() => deleteEvent(ev)}>{isRTL ? '🗑️ حذف' : '🗑️ Delete'}</button>
@@ -536,12 +569,14 @@ const YearCalendar = () => {
                 )}
               </div>
 
-              <div className="yc-modal-foot">
-                <button type="button" className="yc-add-btn" onClick={() => openCreate(dayModal.iso)}>
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-                  {isRTL ? 'إضافة حدث لهذا اليوم' : 'Add event on this day'}
-                </button>
-              </div>
+              {!readOnly && (
+                <div className="yc-modal-foot">
+                  <button type="button" className="yc-add-btn" onClick={() => openCreate(dayModal.iso)}>
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                    {isRTL ? 'إضافة حدث لهذا اليوم' : 'Add event on this day'}
+                  </button>
+                </div>
+              )}
             </motion.div>
           </motion.div>
         )}

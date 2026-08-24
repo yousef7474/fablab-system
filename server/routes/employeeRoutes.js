@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const employeeController = require('../controllers/employeeController');
 const activityController = require('../controllers/activityController');
+const calendarEventController = require('../controllers/calendarEventController');
 const employeeAuth = require('../middleware/employeeAuth');
 const adminAuth = require('../middleware/auth');
 
@@ -21,6 +22,12 @@ router.post('/activity/login', employeeAuth, activityController.recordLogin);
 router.post('/activity/heartbeat', employeeAuth, activityController.heartbeat);
 router.post('/activity/interaction', employeeAuth, activityController.recordInteraction);
 router.get('/activity/my-weekly', employeeAuth, activityController.getMyWeeklyStats);
+
+// Read-only year calendar for the employee dashboard. Employees see the
+// same events and Saudi holidays admins see, but cannot create / edit /
+// delete — the write routes stay under /api/calendar-events (adminAuth).
+router.get('/calendar-events/saudi-holidays', employeeAuth, calendarEventController.saudiHolidays);
+router.get('/calendar-events',                employeeAuth, calendarEventController.list);
 
 // Manager views employee activity (requires admin auth)
 router.get('/activity/all', adminAuth, activityController.getAllEmployeeStats);

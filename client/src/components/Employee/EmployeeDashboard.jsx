@@ -7,6 +7,7 @@ import { format, parseISO, startOfMonth, endOfMonth, eachDayOfInterval, isToday,
 import { ar, enUS } from 'date-fns/locale';
 import employeeApi from '../../config/employeeApi';
 import { EVALUATION_CATEGORIES } from '../../config/evaluationStructure';
+import YearCalendar from '../YearCalendar/YearCalendar';
 import './Employee.css';
 
 const SECTION_COLORS = {
@@ -465,12 +466,13 @@ const EmployeeDashboard = () => {
   const filteredTasks = taskStatusFilter === 'all' ? tasks : tasks.filter(t => t.status === taskStatusFilter);
 
   const tabs = [
-    { key: 'overview',  label: isRTL ? 'نظرة عامة' : 'Overview',  icon: '◈' },
-    { key: 'tasks',     label: isRTL ? 'المهام' : 'Tasks',        icon: '⬢' },
-    { key: 'schedule',  label: isRTL ? 'الجدول' : 'Schedule',     icon: '◱' },
-    { key: 'ratings',   label: isRTL ? 'التقييمات' : 'Ratings',   icon: '★' },
-    { key: 'workshops', label: isRTL ? 'الورش' : 'Workshops',     icon: '⬡' },
-    { key: 'profile',   label: isRTL ? 'الملف الشخصي' : 'Profile', icon: '◉' },
+    { key: 'overview',      label: isRTL ? 'نظرة عامة' : 'Overview',       icon: '◈' },
+    { key: 'tasks',         label: isRTL ? 'المهام' : 'Tasks',              icon: '⬢' },
+    { key: 'schedule',      label: isRTL ? 'الجدول' : 'Schedule',           icon: '◱' },
+    { key: 'year-calendar', label: isRTL ? 'التقويم السنوي' : 'Year Calendar', icon: '▦' },
+    { key: 'ratings',       label: isRTL ? 'التقييمات' : 'Ratings',         icon: '★' },
+    { key: 'workshops',     label: isRTL ? 'الورش' : 'Workshops',           icon: '⬡' },
+    { key: 'profile',       label: isRTL ? 'الملف الشخصي' : 'Profile',      icon: '◉' },
   ];
 
   // Compute the activity ring's stroke dashoffset. Ring circumference = 2πr,
@@ -1447,6 +1449,20 @@ const EmployeeDashboard = () => {
                   </motion.div>
                 ));
               })()}
+            </motion.div>
+          )}
+
+          {/* ═══════════════════════════════════════════════════ YEAR CALENDAR (read-only) */}
+          {activeTab === 'year-calendar' && (
+            <motion.div
+              key="year-calendar"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -12 }}
+              transition={{ type: 'spring', stiffness: 260, damping: 24 }}
+              style={{ padding: '4px 2px' }}
+            >
+              <YearCalendar apiClient={employeeApi} readOnly />
             </motion.div>
           )}
 
