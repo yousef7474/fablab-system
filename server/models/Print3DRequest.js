@@ -21,11 +21,15 @@ const Print3DRequest = sequelize.define('Print3DRequest', {
   customerNationalId: { type: DataTypes.STRING, allowNull: true },
   deliveryAddress: { type: DataTypes.TEXT, allowNull: true },
 
-  // File
-  fileName: { type: DataTypes.STRING(255), allowNull: false },
-  fileType: { type: DataTypes.STRING(32), allowNull: false },  // extension: stl, obj, 3mf, step, stp, ply, gcode
-  fileSize: { type: DataTypes.INTEGER, allowNull: false, defaultValue: 0 }, // bytes
-  fileData: { type: DataTypes.TEXT('long'), allowNull: false }, // base64 payload
+  // File(s) — supports up to 5 uploads or a single .zip bundle.
+  // `files` is the source of truth: [{ fileName, fileType, fileSize, fileData }]
+  // The legacy fileName/fileType/fileSize/fileData columns mirror the FIRST
+  // entry so older admin views and invoice code keep rendering correctly.
+  files:    { type: DataTypes.JSON, allowNull: false, defaultValue: [] },
+  fileName: { type: DataTypes.STRING(255), allowNull: true },
+  fileType: { type: DataTypes.STRING(32), allowNull: true },  // extension: stl, obj, 3mf, step, stp, ply, gcode, zip
+  fileSize: { type: DataTypes.INTEGER, allowNull: true, defaultValue: 0 }, // bytes
+  fileData: { type: DataTypes.TEXT('long'), allowNull: true }, // base64 payload of first file
 
   // Printing options
   material:  { type: DataTypes.STRING(16), allowNull: false, defaultValue: 'PLA' }, // PLA | PETG | TPU

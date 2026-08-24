@@ -208,6 +208,13 @@
 .p3d-dropzone-title { font-size: 15px; font-weight: 700; color: #f1f5f9; }
 .p3d-dropzone-sub { font-size: 12px; color: #94a3b8; letter-spacing: 0.6px; }
 
+/* File list — vertical stack of file chips */
+.p3d-file-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
 /* File chip */
 .p3d-file {
   display: flex;

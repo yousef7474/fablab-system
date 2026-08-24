@@ -36,13 +36,14 @@ const MATERIALS = [
 ];
 
 const MAX_FILE_MB = 40;
+const MAX_FILES = 5;
 
 const PrintServicePage = () => {
   const { i18n } = useTranslation();
   const isRTL = i18n.language === 'ar';
   const navigate = useNavigate();
 
-  const [supported, setSupported] = useState(['stl','obj','3mf','step','stp','ply','gcode']);
+  const [supported, setSupported] = useState(['stl','obj','3mf','step','stp','ply','gcode','zip']);
 
   const [form, setForm] = useState({
     customerName: '',
@@ -57,7 +58,9 @@ const PrintServicePage = () => {
     multiColorParts: [{ part: '', color: '#dc2626' }]
   });
 
-  const [file, setFile] = useState(null); // { name, size, type, dataUrl }
+  // Array of up to MAX_FILES uploaded files. Each entry:
+  //   { name, size, type, dataUrl }
+  const [files, setFiles] = useState([]);
   const [terms, setTerms] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [result, setResult] = useState(null); // { requestNumber }
@@ -70,33 +73,64 @@ const PrintServicePage = () => {
 
   const patch = (k, v) => setForm(f => ({ ...f, [k]: v }));
 
-  const handleFile = (f) => {
-    if (!f) return;
-    const ext = (f.name.split('.').pop() || '').toLowerCase();
-    if (!supported.includes(ext)) {
-      toast.error(isRTL
-        ? `صيغة الملف .${ext} غير مدعومة — المدعوم: ${supported.join(', ').toUpperCase()}`
-        : `.${ext} not supported. Supported: ${supported.join(', ').toUpperCase()}`);
-      return;
+  // Accept a FileList (or array) and add every valid file up to the
+  // MAX_FILES ceiling. Rejects silently on empty input, toasts on
+  // unsupported extension / oversize / limit-exceeded.
+  const handleFiles = (list) => {
+    const incoming = Array.from(list || []);
+    if (incoming.length === 0) return;
+
+    setFiles(prev => {
+      const remainingSlots = MAX_FILES - prev.length;
+      if (remainingSlots <= 0) {
+        toast.warning(isRTL
+          ? `الحد الأقصى ${MAX_FILES} ملفات — ضع الملفات الزائدة داخل مجلد وارفعها كملف مضغوط (.zip)`
+          : `Max ${MAX_FILES} files — for more, please zip them together (.zip)`);
+        return prev;
+      }
+      if (incoming.length > remainingSlots) {
+        toast.warning(isRTL
+          ? `تجاوزت الحد الأقصى (${MAX_FILES}) — سيتم رفع أول ${remainingSlots} ملفات فقط. للمزيد، اضغطها في ملف .zip`
+          : `Over the ${MAX_FILES} limit — only the first ${remainingSlots} will be added. Zip the rest.`);
+      }
+      return prev;
+    });
+
+    // Filter + read outside the setState so async doesn't race.
+    const remaining = MAX_FILES - files.length;
+    const toAdd = incoming.slice(0, Math.max(0, remaining));
+    for (const f of toAdd) {
+      const ext = (f.name.split('.').pop() || '').toLowerCase();
+      if (!supported.includes(ext)) {
+        toast.error(isRTL
+          ? `صيغة الملف .${ext} غير مدعومة — المدعوم: ${supported.join(', ').toUpperCase()}`
+          : `.${ext} not supported. Supported: ${supported.join(', ').toUpperCase()}`);
+        continue;
+      }
+      if (f.size > MAX_FILE_MB * 1024 * 1024) {
+        toast.error(isRTL
+          ? `حجم "${f.name}" يجب أن يكون أقل من ${MAX_FILE_MB} ميجابايت`
+          : `"${f.name}" must be under ${MAX_FILE_MB} MB`);
+        continue;
+      }
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        setFiles(prev => {
+          if (prev.length >= MAX_FILES) return prev;
+          return [...prev, {
+            name: f.name,
+            size: f.size,
+            type: ext,
+            dataUrl: e.target.result
+          }];
+        });
+      };
+      reader.onerror = () => toast.error(isRTL ? `تعذّر قراءة "${f.name}"` : `Failed to read "${f.name}"`);
+      reader.readAsDataURL(f);
     }
-    if (f.size > MAX_FILE_MB * 1024 * 1024) {
-      toast.error(isRTL
-        ? `حجم الملف يجب أن يكون أقل من ${MAX_FILE_MB} ميجابايت`
-        : `File must be under ${MAX_FILE_MB} MB`);
-      return;
-    }
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      setFile({
-        name: f.name,
-        size: f.size,
-        type: ext,
-        dataUrl: e.target.result
-      });
-    };
-    reader.onerror = () => toast.error(isRTL ? 'تعذّر قراءة الملف' : 'Failed to read file');
-    reader.readAsDataURL(f);
   };
+
+  const removeFile = (idx) => setFiles(prev => prev.filter((_, i) => i !== idx));
 
   const addPart = () => setForm(f => ({
     ...f,
@@ -113,14 +147,14 @@ const PrintServicePage = () => {
 
   const canSubmit = useMemo(() => {
     if (!form.customerName.trim() || !form.customerPhone.trim() || !form.customerEmail.trim()) return false;
-    if (!file) return false;
+    if (files.length === 0) return false;
     if (!terms) return false;
     if (form.colorMode === 'multi') {
       const validParts = form.multiColorParts.filter(p => p.part.trim() && p.color.trim());
       if (validParts.length === 0) return false;
     }
     return true;
-  }, [form, file, terms]);
+  }, [form, files, terms]);
 
   const submit = async (e) => {
     e.preventDefault();
@@ -134,10 +168,19 @@ const PrintServicePage = () => {
     }
     setSubmitting(true);
     try {
-      // Strip the data-URI prefix — server only needs the base64 payload.
-      const b64 = String(file.dataUrl).includes(',')
-        ? String(file.dataUrl).split(',').pop()
-        : file.dataUrl;
+      // Strip the data-URI prefix from each file — the server just
+      // needs the raw base64 payload.
+      const filesPayload = files.map(f => {
+        const b64 = String(f.dataUrl).includes(',')
+          ? String(f.dataUrl).split(',').pop()
+          : f.dataUrl;
+        return {
+          fileName: f.name,
+          fileType: f.type,
+          fileSize: f.size,
+          fileData: b64
+        };
+      });
 
       const payload = {
         customerName: form.customerName.trim(),
@@ -146,10 +189,7 @@ const PrintServicePage = () => {
         customerNationalId: form.customerNationalId.trim() || null,
         deliveryAddress: form.deliveryAddress.trim() || null,
         notes: form.notes.trim() || null,
-        fileName: file.name,
-        fileType: file.type,
-        fileSize: file.size,
-        fileData: b64,
+        files: filesPayload,
         material: form.material,
         colorMode: form.colorMode,
         singleColor: form.colorMode === 'single' ? form.singleColor : null,
@@ -201,7 +241,7 @@ const PrintServicePage = () => {
           </p>
           <div className="p3d-success-actions">
             <button type="button" onClick={() => navigate('/register')}>{isRTL ? 'الرئيسية' : 'Home'}</button>
-            <button type="button" className="ghost" onClick={() => { setResult(null); setFile(null); setTerms(false); setForm(f => ({ ...f, notes: '' })); }}>
+            <button type="button" className="ghost" onClick={() => { setResult(null); setFiles([]); setTerms(false); setForm(f => ({ ...f, notes: '' })); }}>
               {isRTL ? 'طلب طباعة آخر' : 'Another request'}
             </button>
           </div>
@@ -292,50 +332,106 @@ const PrintServicePage = () => {
           <div className="p3d-card-head">
             <span className="p3d-step">2</span>
             <div>
-              <h3>{isRTL ? 'ملف التصميم' : 'Design File'}</h3>
+              <h3>{isRTL ? 'ملفات التصميم' : 'Design Files'}</h3>
               <p>
-                {isRTL ? 'الصيغ المدعومة: ' : 'Supported formats: '}
+                {isRTL
+                  ? `يمكنك رفع حتى ${MAX_FILES} ملفات — الصيغ المدعومة: `
+                  : `Upload up to ${MAX_FILES} files — supported formats: `}
                 <b>{supported.map(s => s.toUpperCase()).join(', ')}</b>
-                {isRTL ? ` — الحد الأقصى ${MAX_FILE_MB} ميجا` : ` — max ${MAX_FILE_MB}MB`}
+                {isRTL ? ` — الحد الأقصى ${MAX_FILE_MB} ميجا لكل ملف` : ` — max ${MAX_FILE_MB}MB per file`}
+              </p>
+              <p style={{ marginTop: 4, fontSize: 12, color: '#94a3b8' }}>
+                💡 {isRTL
+                  ? `للأعمال التي تزيد عن ${MAX_FILES} ملفات، ضعها في مجلد وارفعها كملف مضغوط .zip`
+                  : `Need more than ${MAX_FILES} files? Put them in a folder and upload as a .zip archive.`}
               </p>
             </div>
           </div>
 
-          {!file ? (
-            <label className="p3d-dropzone">
+          {/* List of already-added files */}
+          {files.length > 0 && (
+            <div className="p3d-file-list">
+              <AnimatePresence initial={false}>
+                {files.map((f, idx) => (
+                  <motion.div
+                    key={`${f.name}-${idx}`}
+                    className="p3d-file"
+                    initial={{ opacity: 0, y: -6 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -6 }}
+                  >
+                    <div className="p3d-file-icon">
+                      {f.type === 'zip' ? (
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                          <polyline points="14 2 14 8 20 8"/>
+                          <line x1="12" y1="12" x2="12" y2="18"/><line x1="10" y1="14" x2="14" y2="14"/><line x1="10" y1="16" x2="14" y2="16"/>
+                        </svg>
+                      ) : (
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                          <polyline points="14 2 14 8 20 8"/>
+                        </svg>
+                      )}
+                    </div>
+                    <div className="p3d-file-body">
+                      <div className="p3d-file-name">{f.name}</div>
+                      <div className="p3d-file-meta">
+                        <span>{(f.size / 1024).toFixed(1)} KB</span>
+                        <span>·</span>
+                        <span className="p3d-file-ext">.{f.type}</span>
+                      </div>
+                    </div>
+                    <button type="button" className="p3d-file-remove" onClick={() => removeFile(idx)}>
+                      {isRTL ? 'حذف' : 'Remove'}
+                    </button>
+                  </motion.div>
+                ))}
+              </AnimatePresence>
+            </div>
+          )}
+
+          {/* Dropzone stays visible until MAX_FILES reached */}
+          {files.length < MAX_FILES && (
+            <label className="p3d-dropzone" style={files.length > 0 ? { marginTop: 12 } : undefined}>
               <input
                 type="file"
+                multiple
                 accept={supported.map(s => `.${s}`).join(',')}
-                onChange={e => handleFile(e.target.files?.[0])}
+                onChange={e => { handleFiles(e.target.files); e.target.value = ''; }}
               />
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
                 <polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/>
               </svg>
-              <span className="p3d-dropzone-title">{isRTL ? 'اضغط لرفع ملف الطباعة' : 'Click to upload your file'}</span>
+              <span className="p3d-dropzone-title">
+                {files.length === 0
+                  ? (isRTL ? 'اضغط لرفع ملفات الطباعة' : 'Click to upload print files')
+                  : (isRTL
+                      ? `إضافة المزيد (${files.length}/${MAX_FILES})`
+                      : `Add more (${files.length}/${MAX_FILES})`)}
+              </span>
               <span className="p3d-dropzone-sub">
                 {supported.map(s => `.${s}`).join(' · ')}
               </span>
             </label>
-          ) : (
-            <div className="p3d-file">
-              <div className="p3d-file-icon">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-                  <polyline points="14 2 14 8 20 8"/>
-                </svg>
-              </div>
-              <div className="p3d-file-body">
-                <div className="p3d-file-name">{file.name}</div>
-                <div className="p3d-file-meta">
-                  <span>{(file.size / 1024).toFixed(1)} KB</span>
-                  <span>·</span>
-                  <span className="p3d-file-ext">.{file.type}</span>
-                </div>
-              </div>
-              <button type="button" className="p3d-file-remove" onClick={() => setFile(null)}>
-                {isRTL ? 'حذف' : 'Remove'}
-              </button>
+          )}
+          {files.length >= MAX_FILES && (
+            <div style={{
+              marginTop: 12, padding: '12px 14px',
+              background: 'rgba(14,165,233,0.08)',
+              border: '1px solid rgba(14,165,233,0.28)',
+              borderRadius: 10, fontSize: 13, color: '#0369a1',
+              display: 'flex', alignItems: 'center', gap: 10
+            }}>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+                <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/>
+              </svg>
+              <span>
+                {isRTL
+                  ? `تم بلوغ الحد الأقصى (${MAX_FILES} ملفات). احذف ملفاً لإضافة آخر، أو للمزيد اضغطها في ملف .zip.`
+                  : `Reached the ${MAX_FILES}-file limit. Remove one to add more — or zip them all for a single upload.`}
+              </span>
             </div>
           )}
         </motion.section>
@@ -558,7 +654,7 @@ const PrintServicePage = () => {
               <div className="p3d-modal-body">
                 {isRTL ? (
                   <ol>
-                    <li><b>الملفات المدعومة:</b> يقبل النظام صيغ STL, OBJ, 3MF, STEP/STP, PLY, GCODE فقط. الحد الأقصى لحجم الملف {MAX_FILE_MB} ميجابايت.</li>
+                    <li><b>الملفات المدعومة:</b> يقبل النظام صيغ STL, OBJ, 3MF, STEP/STP, PLY, GCODE، بالإضافة إلى الملفات المضغوطة ZIP. الحد الأقصى {MAX_FILES} ملفات في الطلب الواحد، وحجم كل ملف لا يزيد عن {MAX_FILE_MB} ميجابايت. للأعمال الأكبر يرجى ضغط الملفات في مجلد واحد ورفعه كملف .zip.</li>
                     <li><b>عرض السعر:</b> يتم حساب التكلفة بناءً على الوزن التقديري للتصميم والخامة المختارة وعدد الألوان. يُرسل عرض السعر إلى بريدك الإلكتروني وسنبدأ الطباعة فقط بعد موافقتك الكتابية.</li>
                     <li><b>الحق في الرفض:</b> يحق لك رفض عرض السعر دون أي التزام مالي، كما يحق للفاب لاب رفض أي طلب يتعارض مع سياسات المنشأة.</li>
                     <li><b>المحتوى الفكري:</b> أنت مسؤول عن ملكية التصميم أو حصولك على إذن باستخدامه، ولا يتحمل الفاب لاب أي مسؤولية قانونية عن ملفات المستخدمين.</li>
@@ -571,7 +667,7 @@ const PrintServicePage = () => {
                   </ol>
                 ) : (
                   <ol>
-                    <li><b>Supported files:</b> STL, OBJ, 3MF, STEP/STP, PLY, GCODE only. Max file size {MAX_FILE_MB}MB.</li>
+                    <li><b>Supported files:</b> STL, OBJ, 3MF, STEP/STP, PLY, GCODE, plus ZIP archives. Up to {MAX_FILES} files per request, each up to {MAX_FILE_MB}MB. For larger jobs, please put everything in a folder and upload it as a .zip.</li>
                     <li><b>Quote:</b> Cost is calculated from estimated weight, material and color count. You receive a quote by email and printing only begins after your written acceptance.</li>
                     <li><b>Right to refuse:</b> You may reject the quote with no obligation. FabLab may also decline any request that violates lab policies.</li>
                     <li><b>Intellectual property:</b> You are responsible for owning or licensing your design. FabLab assumes no legal responsibility for user-submitted files.</li>

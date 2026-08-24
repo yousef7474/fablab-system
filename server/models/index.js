@@ -763,6 +763,45 @@ const syncDatabase = async () => {
     await sequelize.sync({ alter: true });
     console.log('✅ Database synchronized successfully.');
 
+    // Print3D requests: add the multi-file `files` JSON column and
+    // backfill it from the legacy single-file columns for any existing
+    // rows so old submissions keep working with the new admin UI.
+    try {
+      await sequelize.query(
+        `ALTER TABLE print3d_requests ADD COLUMN IF NOT EXISTS "files" JSON NOT NULL DEFAULT '[]'::json`
+      );
+      await sequelize.query(
+        `UPDATE print3d_requests
+            SET "files" = json_build_array(
+              json_build_object(
+                'fileName', "fileName",
+                'fileType', "fileType",
+                'fileSize', "fileSize",
+                'fileData', "fileData"
+              )
+            )
+          WHERE ("files" IS NULL OR "files"::text = '[]')
+            AND "fileName" IS NOT NULL
+            AND "fileData" IS NOT NULL`
+      );
+    } catch (migrationError) {
+      if (!/does not exist/i.test(migrationError.message)) {
+        console.log('print3d_requests.files migration note:', migrationError.message);
+      }
+    }
+
+    // Print3D settings: make sure "zip" is in the supported file list
+    // for existing installs whose seed row predates zip support.
+    try {
+      const row = await Settings.findByPk('print3d_supported_files');
+      if (row && Array.isArray(row.value) && !row.value.includes('zip')) {
+        await Settings.upsert({
+          key: 'print3d_supported_files',
+          value: [...row.value, 'zip']
+        });
+      }
+    } catch (e) { /* settings migration best-effort */ }
+
     // Print3D requests: backfill sequential requestNumber for any
     // historical rows that predate the sequential-number column.
     try {

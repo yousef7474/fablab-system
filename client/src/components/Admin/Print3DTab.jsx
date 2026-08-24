@@ -183,23 +183,27 @@ const Print3DTab = () => {
     }
   };
 
-  const downloadFile = () => {
-    // Route requires auth — fetch as blob then trigger download.
+  // Download the file at `index` in the request's files[] array.
+  // Falls back to the legacy single-file endpoint when index === 0.
+  const downloadFile = (index = 0, fileName) => {
     (async () => {
       try {
-        const res = await fetch(`${API_URL}/print3d/${selected.requestId}/download`, {
+        const url = index > 0
+          ? `${API_URL}/print3d/${selected.requestId}/download/${index}`
+          : `${API_URL}/print3d/${selected.requestId}/download`;
+        const res = await fetch(url, {
           headers: { Authorization: `Bearer ${localStorage.getItem('adminToken') || ''}` }
         });
         if (!res.ok) throw new Error('download failed');
         const blob = await res.blob();
-        const url = URL.createObjectURL(blob);
+        const blobUrl = URL.createObjectURL(blob);
         const a = document.createElement('a');
-        a.href = url;
-        a.download = selected.fileName || 'print.stl';
+        a.href = blobUrl;
+        a.download = fileName || selected.fileName || 'print.stl';
         document.body.appendChild(a);
         a.click();
         a.remove();
-        URL.revokeObjectURL(url);
+        URL.revokeObjectURL(blobUrl);
       } catch (err) {
         toast.error(isRTL ? 'تعذّر تحميل الملف' : 'Download failed');
       }
@@ -310,7 +314,22 @@ const Print3DTab = () => {
                 </div>
                 <div className="p3t-row-file">
                   <span className="p3t-row-file-ext">.{r.fileType}</span>
-                  <span className="p3t-row-file-name" title={r.fileName}>{r.fileName}</span>
+                  <span className="p3t-row-file-name" title={r.fileName}>
+                    {r.fileName}
+                    {Array.isArray(r.files) && r.files.length > 1 && (
+                      <span style={{
+                        marginInlineStart: 6,
+                        padding: '1px 8px',
+                        background: '#e0f2fe',
+                        color: '#0369a1',
+                        borderRadius: 999,
+                        fontSize: 10.5,
+                        fontWeight: 800
+                      }}>
+                        +{r.files.length - 1}
+                      </span>
+                    )}
+                  </span>
                 </div>
                 <div className="p3t-row-material">
                   <span className="p3t-row-mat-badge">{r.material}</span>
@@ -377,19 +396,50 @@ const Print3DTab = () => {
                     </div>
                   </section>
 
-                  {/* File */}
+                  {/* Files — supports up to 5 uploads or a single .zip */}
                   <section className="p3t-section">
-                    <h4>{isRTL ? '📄 الملف' : '📄 File'}</h4>
-                    <div className="p3t-file-row">
-                      <span className="p3t-file-ext">.{detail.fileType}</span>
-                      <div className="p3t-file-info">
-                        <b>{detail.fileName}</b>
-                        <span>{(detail.fileSize / 1024).toFixed(1)} KB</span>
-                      </div>
-                      <button type="button" className="p3t-btn p3t-btn--primary" onClick={downloadFile}>
-                        ⬇ {isRTL ? 'تحميل الملف' : 'Download file'}
-                      </button>
-                    </div>
+                    {(() => {
+                      // Prefer the new files[] array; fall back to the
+                      // legacy single-file columns for older records.
+                      const fileList = Array.isArray(detail.files) && detail.files.length
+                        ? detail.files
+                        : (detail.fileName
+                            ? [{ fileName: detail.fileName, fileType: detail.fileType, fileSize: detail.fileSize }]
+                            : []);
+                      return (
+                        <>
+                          <h4>
+                            {isRTL
+                              ? (fileList.length > 1 ? `📄 الملفات (${fileList.length})` : '📄 الملف')
+                              : (fileList.length > 1 ? `📄 Files (${fileList.length})` : '📄 File')}
+                          </h4>
+                          {fileList.length === 0 ? (
+                            <div style={{ padding: 12, color: '#94a3b8', fontStyle: 'italic', fontSize: 13 }}>
+                              {isRTL ? 'لا توجد ملفات مرفقة' : 'No files attached'}
+                            </div>
+                          ) : (
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                              {fileList.map((f, i) => (
+                                <div key={i} className="p3t-file-row">
+                                  <span className="p3t-file-ext">.{f.fileType}</span>
+                                  <div className="p3t-file-info">
+                                    <b>{f.fileName}</b>
+                                    <span>{((f.fileSize || 0) / 1024).toFixed(1)} KB</span>
+                                  </div>
+                                  <button
+                                    type="button"
+                                    className="p3t-btn p3t-btn--primary"
+                                    onClick={() => downloadFile(i, f.fileName)}
+                                  >
+                                    ⬇ {isRTL ? 'تحميل' : 'Download'}
+                                  </button>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </>
+                      );
+                    })()}
                   </section>
 
                   {/* Print options */}

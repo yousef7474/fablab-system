@@ -103,12 +103,15 @@ const esc = (v) => String(v == null ? '' : v)
 
 // -------------------- PUBLIC: SUBMIT --------------------
 
+const MAX_FILES = 5;
+
 exports.publicCreate = async (req, res) => {
   try {
     const {
       customerName, customerPhone, customerEmail, customerNationalId,
       deliveryAddress, notes,
-      fileName, fileType, fileSize, fileData,
+      files, // preferred: [{ fileName, fileType, fileSize, fileData }]
+      fileName, fileType, fileSize, fileData, // legacy single-file body
       material, colorMode, singleColor, multiColorParts,
       termsAccepted
     } = req.body || {};
@@ -119,10 +122,25 @@ exports.publicCreate = async (req, res) => {
         messageAr: 'يرجى تعبئة جميع البيانات الشخصية'
       });
     }
-    if (!fileName || !fileData) {
+
+    // Normalize into a single files[] array so old clients (single
+    // fileName/fileData) and new clients (files[]) both work.
+    const incoming = Array.isArray(files) && files.length
+      ? files
+      : (fileName && fileData
+          ? [{ fileName, fileType, fileSize, fileData }]
+          : []);
+
+    if (incoming.length === 0) {
       return res.status(400).json({
-        message: 'File is required',
-        messageAr: 'يجب رفع ملف الطباعة'
+        message: 'At least one file is required',
+        messageAr: 'يجب رفع ملف واحد على الأقل'
+      });
+    }
+    if (incoming.length > MAX_FILES) {
+      return res.status(400).json({
+        message: `Too many files (max ${MAX_FILES})`,
+        messageAr: `الحد الأقصى ${MAX_FILES} ملفات — يرجى ضغط الملفات الزائدة في ملف مضغوط (.zip)`
       });
     }
     if (!termsAccepted) {
@@ -133,11 +151,29 @@ exports.publicCreate = async (req, res) => {
     }
 
     const rates = await _loadRates();
-    const ext = String(fileType || fileName.split('.').pop() || '').toLowerCase().replace(/^\./, '');
-    if (!rates.supported.includes(ext)) {
-      return res.status(400).json({
-        message: `Unsupported file type .${ext}`,
-        messageAr: `صيغة الملف غير مدعومة (.${ext}) — الصيغ المدعومة: ${rates.supported.join(', ').toUpperCase()}`
+
+    // Validate and normalize every incoming file.
+    const normalizedFiles = [];
+    for (const f of incoming) {
+      if (!f || !f.fileName || !f.fileData) {
+        return res.status(400).json({
+          message: 'Every file must have a name and data',
+          messageAr: 'كل ملف يجب أن يحتوي على اسم وبيانات'
+        });
+      }
+      const ext = String(f.fileType || String(f.fileName).split('.').pop() || '')
+        .toLowerCase().replace(/^\./, '');
+      if (!rates.supported.includes(ext)) {
+        return res.status(400).json({
+          message: `Unsupported file type .${ext}`,
+          messageAr: `صيغة الملف غير مدعومة (.${ext}) — الصيغ المدعومة: ${rates.supported.join(', ').toUpperCase()}`
+        });
+      }
+      normalizedFiles.push({
+        fileName: String(f.fileName).slice(0, 250),
+        fileType: ext,
+        fileSize: Math.max(0, Number(f.fileSize) || 0),
+        fileData: String(f.fileData)
       });
     }
 
@@ -155,6 +191,7 @@ exports.publicCreate = async (req, res) => {
 
     const requestNumber = await _assignNextNumber();
     const quoteToken = crypto.randomBytes(24).toString('hex');
+    const primary = normalizedFiles[0];
 
     const r = await Print3DRequest.create({
       requestNumber,
@@ -164,10 +201,13 @@ exports.publicCreate = async (req, res) => {
       customerNationalId: customerNationalId ? String(customerNationalId).trim() : null,
       deliveryAddress: deliveryAddress ? String(deliveryAddress).trim() : null,
       notes: notes ? String(notes).trim() : null,
-      fileName: String(fileName).slice(0, 250),
-      fileType: ext,
-      fileSize: Math.max(0, Number(fileSize) || 0),
-      fileData: String(fileData),
+      files: normalizedFiles,
+      // Legacy mirror columns — keep the first file here so old
+      // invoice / admin code that reads fileName directly still works.
+      fileName: primary.fileName,
+      fileType: primary.fileType,
+      fileSize: primary.fileSize,
+      fileData: primary.fileData,
       material: mat,
       colorMode: cMode,
       singleColor: cMode === 'single' ? (singleColor || null) : null,
@@ -197,7 +237,7 @@ exports.publicCreate = async (req, res) => {
               <table style="width:100%;font-size:13px;border-collapse:collapse;margin:12px 0">
                 <tr><td style="padding:4px 0;color:#64748b;width:130px">الجوال:</td><td dir="ltr">${esc(r.customerPhone)}</td></tr>
                 <tr><td style="padding:4px 0;color:#64748b">البريد:</td><td dir="ltr">${esc(r.customerEmail)}</td></tr>
-                <tr><td style="padding:4px 0;color:#64748b">الملف:</td><td dir="ltr">${esc(r.fileName)} (${(r.fileSize/1024).toFixed(1)} KB)</td></tr>
+                <tr><td style="padding:4px 0;color:#64748b">الملفات:</td><td>${normalizedFiles.length} ${normalizedFiles.length === 1 ? 'ملف' : 'ملفات'} — <span dir="ltr">${normalizedFiles.map(f => esc(f.fileName)).join(', ')}</span></td></tr>
                 <tr><td style="padding:4px 0;color:#64748b">الخامة:</td><td>${esc(r.material)}</td></tr>
                 <tr><td style="padding:4px 0;color:#64748b">نمط اللون:</td><td>${cMode === 'multi' ? 'متعدد الألوان' : 'لون واحد'}</td></tr>
               </table>
@@ -251,8 +291,16 @@ exports.publicGetByToken = async (req, res) => {
     const r = await Print3DRequest.findOne({ where: { quoteToken: req.params.token } });
     if (!r) return res.status(404).json({ message: 'Not found', messageAr: 'الطلب غير موجود' });
     const o = r.toJSON();
-    // Strip the file payload from the public JSON response.
+    // Strip file payloads from the public JSON response — the
+    // customer only needs the quote details, never the file bytes.
     delete o.fileData;
+    if (Array.isArray(o.files)) {
+      o.files = o.files.map(f => ({
+        fileName: f?.fileName,
+        fileType: f?.fileType,
+        fileSize: f?.fileSize
+      }));
+    }
     res.json(o);
   } catch (err) {
     console.error('publicGetByToken:', err);
@@ -491,6 +539,22 @@ exports.publicInvoiceHtml = async (req, res) => {
 
 // -------------------- ADMIN --------------------
 
+// Strip the base64 payloads from files[] so the admin list/get
+// responses stay lean. Callers use the download endpoint to get
+// the actual bytes.
+const _stripFileData = (row) => {
+  if (!row) return row;
+  const j = row.toJSON ? row.toJSON() : row;
+  if (Array.isArray(j.files)) {
+    j.files = j.files.map(f => ({
+      fileName: f?.fileName,
+      fileType: f?.fileType,
+      fileSize: f?.fileSize
+    }));
+  }
+  return j;
+};
+
 exports.list = async (req, res) => {
   try {
     const { status } = req.query;
@@ -501,7 +565,7 @@ exports.list = async (req, res) => {
       order: [['createdAt', 'DESC']],
       attributes: { exclude: ['fileData'] } // keep the list payload lean
     });
-    res.json(rows);
+    res.json(rows.map(_stripFileData));
   } catch (err) {
     console.error('print3d list:', err);
     res.status(500).json({ message: 'Server error' });
@@ -514,24 +578,33 @@ exports.get = async (req, res) => {
       attributes: { exclude: ['fileData'] }
     });
     if (!r) return res.status(404).json({ message: 'Not found' });
-    res.json(r);
+    res.json(_stripFileData(r));
   } catch (err) {
     console.error('print3d get:', err);
     res.status(500).json({ message: 'Server error' });
   }
 };
 
-// Download the raw file. Streams the base64 payload back as its
-// original binary type.
+// Download one file from the request. `index` is 0-based; defaults to
+// 0 so the legacy /:id/download URL still returns the first file.
+// New callers use /:id/download/:index for per-file downloads.
 exports.download = async (req, res) => {
   try {
     const r = await Print3DRequest.findByPk(req.params.id);
     if (!r) return res.status(404).send('Not found');
-    const raw = String(r.fileData || '');
+    const idx = Math.max(0, parseInt(req.params.index, 10) || 0);
+    const files = Array.isArray(r.files) && r.files.length
+      ? r.files
+      : (r.fileName && r.fileData
+          ? [{ fileName: r.fileName, fileType: r.fileType, fileSize: r.fileSize, fileData: r.fileData }]
+          : []);
+    if (idx >= files.length) return res.status(404).send('File index out of range');
+    const target = files[idx];
+    const raw = String(target.fileData || '');
     // Accept "data:application/octet-stream;base64,XXXX" or plain base64.
     const b64 = raw.includes(',') ? raw.split(',').pop() : raw;
     const buf = Buffer.from(b64, 'base64');
-    const safeName = r.fileName.replace(/[^A-Za-z0-9._-]/g, '_');
+    const safeName = String(target.fileName || 'print').replace(/[^A-Za-z0-9._-]/g, '_');
     res.setHeader('Content-Type', 'application/octet-stream');
     res.setHeader('Content-Disposition', `attachment; filename="${safeName}"`);
     res.setHeader('Content-Length', buf.length);
