@@ -30,6 +30,13 @@ const AutoStaffOvertime = () => {
   const [to, setTo] = useState(today());
   const [staffFilter, setStaffFilter] = useState('');
   const [staff, setStaff] = useState([]);
+  // Per-row editable "reason" (what the overtime was for). Value is
+  // debounce-saved to /fablab-staff/attendance/:id/annotate on blur
+  // and carried into the sanad through the manual-request import
+  // (reason → task in OvertimeManagement.jsx).
+  const [reasonDrafts, setReasonDrafts] = useState({});
+  const [savingId, setSavingId] = useState(null);
+  const [savedId, setSavedId] = useState(null);
 
   const fetchStaff = useCallback(async () => {
     try {
@@ -58,6 +65,31 @@ const AutoStaffOvertime = () => {
 
   useEffect(() => { fetchStaff(); }, [fetchStaff]);
   useEffect(() => { fetchOvertime(); }, [fetchOvertime]);
+
+  // Seed drafts from server data whenever rows change.
+  useEffect(() => {
+    const seed = {};
+    for (const r of rows) seed[r.attendanceId] = r.reason || '';
+    setReasonDrafts(seed);
+  }, [rows]);
+
+  const saveReason = async (row) => {
+    const draft = (reasonDrafts[row.attendanceId] || '').trim();
+    if (draft === (row.reason || '')) return; // no change
+    setSavingId(row.attendanceId);
+    try {
+      await api.patch(`/fablab-staff/attendance/${row.attendanceId}/annotate`, { reason: draft });
+      // Reflect the saved value locally so re-editing doesn't re-save.
+      setRows(prev => prev.map(x => x.attendanceId === row.attendanceId ? { ...x, reason: draft || null } : x));
+      setSavedId(row.attendanceId);
+      setTimeout(() => setSavedId(id => id === row.attendanceId ? null : id), 1400);
+    } catch (err) {
+      console.error(err);
+      toast.error(isRTL ? 'تعذّر حفظ التفاصيل' : 'Failed to save details');
+    } finally {
+      setSavingId(id => id === row.attendanceId ? null : id);
+    }
+  };
 
   return (
     <div style={{
@@ -135,24 +167,64 @@ const AutoStaffOvertime = () => {
               <th style={{ padding: 10, textAlign: 'center', color: '#5b21b6', fontWeight: 700 }}>{isRTL ? 'الدخول' : 'In'}</th>
               <th style={{ padding: 10, textAlign: 'center', color: '#5b21b6', fontWeight: 700 }}>{isRTL ? 'الخروج' : 'Out'}</th>
               <th style={{ padding: 10, textAlign: 'center', color: '#5b21b6', fontWeight: 700 }}>{isRTL ? 'الإضافية' : 'Overtime'}</th>
+              <th style={{ padding: 10, textAlign: 'right', color: '#5b21b6', fontWeight: 700, minWidth: 220 }}>
+                {isRTL ? 'التفاصيل' : 'Details'}
+                <span style={{ marginInlineStart: 6, fontSize: 10, fontWeight: 500, color: '#8b5cf6' }}>
+                  📄 {isRTL ? '(تُطبع على السند)' : '(prints on sanad)'}
+                </span>
+              </th>
             </tr>
           </thead>
           <tbody>
             {loading ? (
-              <tr><td colSpan="5" style={{ padding: 20, textAlign: 'center', color: '#64748b' }}>{isRTL ? 'جارٍ التحميل...' : 'Loading...'}</td></tr>
+              <tr><td colSpan="6" style={{ padding: 20, textAlign: 'center', color: '#64748b' }}>{isRTL ? 'جارٍ التحميل...' : 'Loading...'}</td></tr>
             ) : rows.length === 0 ? (
-              <tr><td colSpan="5" style={{ padding: 20, textAlign: 'center', color: '#64748b' }}>{isRTL ? 'لا توجد ساعات إضافية في هذه الفترة' : 'No overtime in this period'}</td></tr>
-            ) : rows.map(r => (
-              <tr key={r.attendanceId} style={{ borderTop: '1px solid #f1f5f9' }}>
-                <td style={{ padding: 10, fontWeight: 600 }}>{r.staff?.name || '—'}</td>
-                <td style={{ padding: 10, fontFamily: 'JetBrains Mono, monospace' }}>{r.date}</td>
-                <td style={{ padding: 10, fontFamily: 'JetBrains Mono, monospace', textAlign: 'center' }} dir="ltr">{fmtTime(r.checkInAt)}</td>
-                <td style={{ padding: 10, fontFamily: 'JetBrains Mono, monospace', textAlign: 'center' }} dir="ltr">{fmtTime(r.checkOutAt)}</td>
-                <td style={{ padding: 10, fontFamily: 'JetBrains Mono, monospace', color: '#b91c1c', fontWeight: 700, textAlign: 'center' }} dir="ltr">
-                  {fmtHM(r.overtimeMinutes)}
-                </td>
-              </tr>
-            ))}
+              <tr><td colSpan="6" style={{ padding: 20, textAlign: 'center', color: '#64748b' }}>{isRTL ? 'لا توجد ساعات إضافية في هذه الفترة' : 'No overtime in this period'}</td></tr>
+            ) : rows.map(r => {
+              const isSaving = savingId === r.attendanceId;
+              const isSaved = savedId === r.attendanceId;
+              return (
+                <tr key={r.attendanceId} style={{ borderTop: '1px solid #f1f5f9' }}>
+                  <td style={{ padding: 10, fontWeight: 600 }}>{r.staff?.name || '—'}</td>
+                  <td style={{ padding: 10, fontFamily: 'JetBrains Mono, monospace' }}>{r.date}</td>
+                  <td style={{ padding: 10, fontFamily: 'JetBrains Mono, monospace', textAlign: 'center' }} dir="ltr">{fmtTime(r.checkInAt)}</td>
+                  <td style={{ padding: 10, fontFamily: 'JetBrains Mono, monospace', textAlign: 'center' }} dir="ltr">{fmtTime(r.checkOutAt)}</td>
+                  <td style={{ padding: 10, fontFamily: 'JetBrains Mono, monospace', color: '#b91c1c', fontWeight: 700, textAlign: 'center' }} dir="ltr">
+                    {fmtHM(r.overtimeMinutes)}
+                  </td>
+                  <td style={{ padding: 8, position: 'relative' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <input
+                        type="text"
+                        value={reasonDrafts[r.attendanceId] || ''}
+                        onChange={(e) => setReasonDrafts(d => ({ ...d, [r.attendanceId]: e.target.value }))}
+                        onBlur={() => saveReason(r)}
+                        onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); e.target.blur(); } }}
+                        placeholder={isRTL ? 'اكتب سبب/تفاصيل هذا اليوم...' : 'What was this overtime for?'}
+                        style={{
+                          flex: 1,
+                          padding: '7px 10px',
+                          borderRadius: 6,
+                          border: `1px solid ${isSaved ? '#16a34a' : '#e0e7ff'}`,
+                          background: isSaved ? '#f0fdf4' : '#fff',
+                          fontFamily: 'inherit',
+                          fontSize: 12.5,
+                          color: '#0f172a',
+                          outline: 'none',
+                          transition: 'border-color 0.15s, background 0.2s'
+                        }}
+                      />
+                      {isSaving && (
+                        <span style={{ fontSize: 11, color: '#8b5cf6', fontWeight: 700 }}>...</span>
+                      )}
+                      {isSaved && !isSaving && (
+                        <span style={{ fontSize: 12, color: '#16a34a', fontWeight: 800 }}>✓</span>
+                      )}
+                    </div>
+                  </td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </div>
