@@ -676,6 +676,11 @@ const syncDatabase = async () => {
       await sequelize.query(
         `ALTER TABLE overtime_requests ADD COLUMN IF NOT EXISTS "managerNote" TEXT`
       );
+      // Free-text overtime details printed on the سند under a
+      // dedicated row (separate from the general admin `note`).
+      await sequelize.query(
+        `ALTER TABLE overtime_requests ADD COLUMN IF NOT EXISTS "sanadDetails" TEXT`
+      );
       try {
         await sequelize.query(
           `CREATE UNIQUE INDEX IF NOT EXISTS overtime_approval_token_uniq ON overtime_requests ("approvalToken")`

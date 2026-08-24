@@ -180,6 +180,71 @@ const updateCalendarPrefs = async (req, res) => {
   }
 };
 
+// GET /api/settings/quick-messages (admin-protected)
+// Returns the editable Quick Messages template library. Falls back
+// to the hardcoded seed defaults when the row hasn't been set yet.
+const QUICK_MESSAGES_DEFAULTS = [
+  {
+    id: 'project-feedback',
+    title: 'استلام وتقييم المشروع',
+    tag: 'مشاريع',
+    color: '#EE2329',
+    url: 'https://forms.gle/N4aNMLkcdHQ25Cm97',
+    body: `السلام عليكم ورحمة الله وبركاته\n\nحيّاكم الله،\n\nيسرّنا في *فاب لاب الأحساء* — مؤسسة عبدالمنعم الراشد الإنسانية، أن نهنئكم على إتمام مشروعكم بنجاح، ونشكر لكم ثقتكم واختياركم لنا شريكًا في رحلة تنفيذه.\n\nوحرصًا منّا على توثيق المشروع وتطوير خدماتنا، نأمل منكم تعبئة *نموذج استلام وإتمام وتقييم المشروع* عبر الرابط التالي:\n\nhttps://forms.gle/N4aNMLkcdHQ25Cm97\n\n📌 لا تستغرق التعبئة أكثر من 5 دقائق.\n📸 يُرجى إرفاق صور واضحة للمشروع لاعتماد التوثيق.\n💬 آراؤكم وملاحظاتكم محل تقدير، وتُسهم في تحسين خدماتنا مستقبلًا.\n\nنتمنى لكم دوام التوفيق والنجاح، وسعدنا بخدمتكم.\nفاب لاب الأحساء | مؤسسة عبدالمنعم الراشد الإنسانية`
+  },
+  {
+    id: 'appointment-booking',
+    title: 'حجز موعد',
+    tag: 'حجوزات',
+    color: '#2563eb',
+    url: 'https://fablabsahsa.com/',
+    body: `تحية طيبة وبعد،\n\nنود إفادتكم بأنه في حال حاجتكم إلى أي مساعدة أو استشارة داخل فاب لاب، يُرجى حجز موعد مسبق عبر منصتنا الإلكترونية ليتم جدولة الموعد وتخصيص الفريق المناسب لخدمتكم.\n\nيرجى التسجيل/تسجيل الدخول ثم اختيار خدمة حجز موعد وتحديد نوع الطلب والوقت المناسب عبر الرابط التالي:\nhttps://fablabsahsa.com/\n\nسيتم إرسال تأكيد الموعد وتفاصيله إلى بريدكم الإلكتروني بعد إتمام عملية الحجز.\n\nنثمّن تعاونكم، ونسعد بخدمتكم.\n\nوتفضلوا بقبول فائق الاحترام،\nفاب لاب — فريق خدمة المستفيدين`
+  },
+  {
+    id: 'service-feedback',
+    title: 'تقييم الخدمة',
+    tag: 'تقييم',
+    color: '#16a34a',
+    url: 'https://forms.gle/cxtnJjtZbwRyYvC48',
+    body: `تحية طيبة وبعد،\n\nانطلاقًا من حرص فاب لاب على تحسين جودة الخدمات وتطويرها باستمرار، نأمل منكم التكرّم بتعبئة نموذج تقييم الخدمة التي قُدِّمت لكم مؤخرًا. يسهم تقييمكم في قياس رضاكم وتحديد مجالات التحسين.\n\nيرجى الدخول إلى نموذج التقييم عبر الرابط التالي:\nhttps://forms.gle/cxtnJjtZbwRyYvC48\n\nنؤكّد أن جميع البيانات ستُعامل بسرية تامة، وتستخدم لأغراض التطوير والتحسين فقط.\nشاكرين لكم وقتكم وتعاونكم.\n\nوتفضلوا بقبول فائق الاحترام،\nفاب لاب — فريق خدمة المستفيدين`
+  }
+];
+
+const getQuickMessages = async (req, res) => {
+  try {
+    const row = await Settings.findByPk('quick_messages');
+    const messages = row && Array.isArray(row.value) ? row.value : QUICK_MESSAGES_DEFAULTS;
+    res.json({ messages });
+  } catch (error) {
+    console.error('Error fetching quick messages:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+const updateQuickMessages = async (req, res) => {
+  try {
+    const { messages } = req.body || {};
+    if (!Array.isArray(messages)) {
+      return res.status(400).json({ message: 'messages must be an array' });
+    }
+    // Sanitize each entry — coerce strings, trim, keep only known fields.
+    const cleaned = messages.map((m, i) => ({
+      id: (m && String(m.id || '').trim()) || `msg-${Date.now()}-${i}`,
+      title: String(m?.title || '').trim(),
+      tag: String(m?.tag || '').trim(),
+      color: String(m?.color || '#0ea5e9').trim(),
+      url: String(m?.url || '').trim(),
+      body: String(m?.body || '')
+    })).filter(m => m.title || m.body); // drop empty rows
+
+    await Settings.upsert({ key: 'quick_messages', value: cleaned });
+    res.json({ messages: cleaned });
+  } catch (error) {
+    console.error('Error updating quick messages:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
 module.exports = {
   getWorkingHours,
   updateWorkingHours,
@@ -188,5 +253,7 @@ module.exports = {
   getStoreStatus,
   updateStoreStatus,
   getCalendarPrefs,
-  updateCalendarPrefs
+  updateCalendarPrefs,
+  getQuickMessages,
+  updateQuickMessages
 };

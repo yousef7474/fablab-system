@@ -14,5 +14,7 @@ router.put('/registration-status', authMiddleware, settingsController.updateRegi
 router.put('/store-status', authMiddleware, settingsController.updateStoreStatus);
 router.get('/calendar-prefs', authMiddleware, settingsController.getCalendarPrefs);
 router.put('/calendar-prefs', authMiddleware, settingsController.updateCalendarPrefs);
+router.get('/quick-messages', authMiddleware, settingsController.getQuickMessages);
+router.put('/quick-messages', authMiddleware, settingsController.updateQuickMessages);
 
 module.exports = router;

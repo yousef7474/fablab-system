@@ -22,6 +22,10 @@ const OvertimeRequest = sequelize.define('OvertimeRequest', {
   // سند and used as an audit trail.
   approvedBy:     { type: DataTypes.STRING, allowNull: true },
   note:           { type: DataTypes.TEXT, allowNull: true },
+  // Free-text description of what the overtime was for, printed on
+  // the سند under a dedicated "تفاصيل السند" row so accounting sees
+  // it separately from the general admin `note`.
+  sanadDetails:   { type: DataTypes.TEXT, allowNull: true },
   days:           { type: DataTypes.JSON, allowNull: false, defaultValue: [] },
   createdById:    { type: DataTypes.UUID, allowNull: true },
   // Approval workflow — admin creates as 'draft', sends for approval

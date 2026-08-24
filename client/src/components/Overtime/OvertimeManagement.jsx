@@ -42,6 +42,7 @@ const emptyForm = () => ({
   periodEnd: '',
   approvedBy: '',
   note: '',
+  sanadDetails: '',
   days: [{ date: '', startTime: '', endTime: '', hours: '', task: '' }]
 });
 
@@ -250,6 +251,7 @@ const OvertimeManagement = () => {
       periodEnd: (row.periodEnd || '').slice(0, 10),
       approvedBy: row.approvedBy || '',
       note: row.note || '',
+      sanadDetails: row.sanadDetails || '',
       days: Array.isArray(row.days) && row.days.length ? row.days : [{ date: '', hours: '', task: '' }]
     });
     setShowModal(true);
@@ -271,6 +273,7 @@ const OvertimeManagement = () => {
       periodEnd: (row.periodEnd || '').slice(0, 10),
       approvedBy: row.approvedBy || '',
       note: row.note || '',
+      sanadDetails: row.sanadDetails || '',
       days: Array.isArray(row.days) && row.days.length
         ? row.days.map(d => ({
             date: d.date || '',
@@ -466,6 +469,7 @@ const OvertimeManagement = () => {
         <tr><th>إجمالي الساعات</th><td><strong>${Number(row.totalHours) || 0} ساعة</strong></td></tr>
         <tr><th>معتمد من</th><td>${safe(row.approvedBy) || '&nbsp;'}</td></tr>
         <tr><th>ملاحظة</th><td>${safe(row.note) || '&nbsp;'}</td></tr>
+        <tr><th>تفاصيل السند</th><td style="white-space:pre-wrap;line-height:1.6">${safe(row.sanadDetails) || '&nbsp;'}</td></tr>
         <tr><th>تاريخ الإصدار</th><td>${safe(dateStr) || '&nbsp;'}</td></tr>
       </table>
       <div class="signature-box"><h4>إقرار الموظف</h4>
@@ -802,6 +806,23 @@ const OvertimeManagement = () => {
                   <div className="form-group modern-input" style={{ marginTop: 10 }}>
                     <label>{isRTL ? 'ملاحظة' : 'Note'}</label>
                     <textarea className="modern-input-field" rows={2} value={form.note} onChange={e => setForm({ ...form, note: e.target.value })} />
+                  </div>
+                  <div className="form-group modern-input" style={{ marginTop: 10 }}>
+                    <label>
+                      {isRTL ? 'تفاصيل السند' : 'Sanad details'}
+                      <span style={{ marginInlineStart: 6, fontSize: 11, color: '#8b5cf6', fontWeight: 600 }}>
+                        📄 {isRTL ? 'يُطبع على السند' : 'printed on the sanad'}
+                      </span>
+                    </label>
+                    <textarea
+                      className="modern-input-field"
+                      rows={3}
+                      value={form.sanadDetails}
+                      onChange={e => setForm({ ...form, sanadDetails: e.target.value })}
+                      placeholder={isRTL
+                        ? 'صف الغرض من الساعات الإضافية أو أي تفاصيل تريد أن تظهر على السند...'
+                        : 'Describe the purpose of the overtime or anything else you want printed on the sanad...'}
+                    />
                   </div>
                 </div>
 
