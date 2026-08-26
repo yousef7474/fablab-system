@@ -269,17 +269,31 @@ const InstitutionSupportTab = () => {
     window.open(url, '_blank');
   };
 
-  // ---------- Student names editor ----------
-  const [studentInput, setStudentInput] = useState('');
+  // ---------- Student editor ----------
+  // Each student is { name, phone, nationalId }. Old rows that carry
+  // plain strings are normalized to that shape on render.
+  const [studentDraft, setStudentDraft] = useState({ name: '', phone: '', nationalId: '' });
+  const normalizeStudent = (s) => typeof s === 'string'
+    ? { name: s, phone: '', nationalId: '' }
+    : { name: s?.name || '', phone: s?.phone || '', nationalId: s?.nationalId || '' };
+  const students = (selected?.studentNames || []).map(normalizeStudent);
   const addStudent = () => {
-    const name = studentInput.trim();
-    if (!name) return;
-    setSelected(s => ({ ...s, studentNames: [...(s.studentNames || []), name] }));
-    setStudentInput('');
+    const name = studentDraft.name.trim();
+    if (!name) {
+      return toast.error(isRTL ? 'اسم الطالبة مطلوب' : 'Student name required');
+    }
+    setSelected(s => ({
+      ...s,
+      studentNames: [
+        ...students,
+        { name, phone: studentDraft.phone.trim(), nationalId: studentDraft.nationalId.trim() }
+      ]
+    }));
+    setStudentDraft({ name: '', phone: '', nationalId: '' });
   };
   const removeStudent = (i) => setSelected(s => ({
     ...s,
-    studentNames: (s.studentNames || []).filter((_, idx) => idx !== i)
+    studentNames: students.filter((_, idx) => idx !== i)
   }));
 
   // ---------- Render ----------
@@ -468,27 +482,73 @@ const InstitutionSupportTab = () => {
                       </label>
                     </div>
 
-                    <label style={{ marginTop: 10, display: 'block' }}>
-                      <span>{isRTL ? 'الطلاب / الطالبات' : 'Students'}</span>
-                      <div className="isp-chip-input">
-                        <input
-                          type="text"
-                          value={studentInput}
-                          onChange={e => setStudentInput(e.target.value)}
-                          onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addStudent(); } }}
-                          placeholder={isRTL ? 'اكتب اسماً واضغط Enter' : 'Type a name and press Enter'}
-                        />
-                        <button type="button" onClick={addStudent}>+ {isRTL ? 'إضافة' : 'Add'}</button>
+                    <div className="isp-students" style={{ marginTop: 12 }}>
+                      <div className="isp-students-title">
+                        <span>{isRTL ? '👥 الطلاب / الطالبات' : '👥 Students'}</span>
+                        <b>{students.length}</b>
                       </div>
-                      <div className="isp-chips">
-                        {(selected.studentNames || []).map((n, i) => (
-                          <span key={i} className="isp-chip">
-                            {n}
-                            <button type="button" onClick={() => removeStudent(i)}>✕</button>
-                          </span>
-                        ))}
+                      <div className="isp-students-add">
+                        <div className="isp-students-add-grid">
+                          <input
+                            type="text"
+                            value={studentDraft.name}
+                            onChange={e => setStudentDraft(d => ({ ...d, name: e.target.value }))}
+                            onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addStudent(); } }}
+                            placeholder={isRTL ? 'الاسم الكامل *' : 'Full name *'}
+                          />
+                          <input
+                            type="tel"
+                            dir="ltr"
+                            value={studentDraft.phone}
+                            onChange={e => setStudentDraft(d => ({ ...d, phone: e.target.value }))}
+                            onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addStudent(); } }}
+                            placeholder={isRTL ? 'رقم الجوال' : 'Phone'}
+                          />
+                          <input
+                            type="text"
+                            dir="ltr"
+                            value={studentDraft.nationalId}
+                            onChange={e => setStudentDraft(d => ({ ...d, nationalId: e.target.value }))}
+                            onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addStudent(); } }}
+                            placeholder={isRTL ? 'رقم الهوية' : 'National ID'}
+                          />
+                          <button type="button" className="isp-students-add-btn" onClick={addStudent}>
+                            + {isRTL ? 'إضافة' : 'Add'}
+                          </button>
+                        </div>
                       </div>
-                    </label>
+                      {students.length > 0 && (
+                        <div className="isp-students-list">
+                          {students.map((st, i) => (
+                            <div key={i} className="isp-student-card">
+                              <div className="isp-student-avatar">
+                                {(st.name || '?').trim().charAt(0).toUpperCase()}
+                              </div>
+                              <div className="isp-student-body">
+                                <b>{st.name || (isRTL ? '(بدون اسم)' : '(no name)')}</b>
+                                <div className="isp-student-meta">
+                                  {st.phone && <span dir="ltr">📞 {st.phone}</span>}
+                                  {st.nationalId && <span dir="ltr">🆔 {st.nationalId}</span>}
+                                  {!st.phone && !st.nationalId && (
+                                    <span style={{ color: '#94a3b8', fontStyle: 'italic' }}>
+                                      {isRTL ? 'لا توجد بيانات اتصال' : 'No contact info'}
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+                              <button
+                                type="button"
+                                className="isp-student-del"
+                                onClick={() => removeStudent(i)}
+                                title={isRTL ? 'حذف' : 'Remove'}
+                              >
+                                ✕
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
 
                     <label style={{ marginTop: 10, display: 'block' }}>
                       <span>{isRTL ? 'تقييم المشروع (نسبة الدعم / كمية الدعم / ملاحظات)' : 'Evaluation (support % / amount / notes)'}</span>
@@ -687,7 +747,7 @@ const InstitutionSupportTab = () => {
                         <button className="isp-btn isp-btn--danger" onClick={() => deleteProject(selected)}>
                           🗑️ {isRTL ? 'حذف المشروع' : 'Delete project'}
                         </button>
-                        <button className="isp-btn isp-btn--print" onClick={openPrint}>
+                        <button className="isp-btn isp-btn--print-solid" onClick={openPrint}>
                           🖨️ {isRTL ? 'طباعة تقرير كامل' : 'Print full report'}
                         </button>
                       </div>

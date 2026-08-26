@@ -34,6 +34,26 @@ const _normalizeFile = (f) => {
   };
 };
 
+// Coerce whatever the client sends for studentNames into a normalized
+// [{ name, phone, nationalId }] shape. Accepts either plain strings
+// (legacy shape) or objects; drops entries with no usable name.
+const _normalizeStudents = (arr) => {
+  if (!Array.isArray(arr)) return [];
+  return arr.map(s => {
+    if (typeof s === 'string') {
+      const name = s.trim();
+      return name ? { name, phone: '', nationalId: '' } : null;
+    }
+    const name = String(s?.name || '').trim();
+    if (!name) return null;
+    return {
+      name,
+      phone: String(s?.phone || '').trim(),
+      nationalId: String(s?.nationalId || '').trim()
+    };
+  }).filter(Boolean);
+};
+
 // Strip base64 payloads for list/get JSON responses so payloads stay
 // small. Callers use the download endpoint to fetch actual bytes.
 const _stripFileData = (row) => {
@@ -130,9 +150,7 @@ exports.create = async (req, res) => {
       projectNumber,
       projectName: String(projectName).trim(),
       supervisorName: supervisorName ? String(supervisorName).trim() : null,
-      studentNames: Array.isArray(studentNames)
-        ? studentNames.map(s => String(s || '').trim()).filter(Boolean)
-        : [],
+      studentNames: _normalizeStudents(studentNames),
       evaluation: evaluation ? String(evaluation).trim() : null,
       startDate: startDate || null,
       approvedBy: approvedBy ? String(approvedBy).trim() : null,
@@ -166,7 +184,7 @@ exports.update = async (req, res) => {
       if (req.body[f] !== undefined) patch[f] = req.body[f];
     }
     if (Array.isArray(req.body.studentNames)) {
-      patch.studentNames = req.body.studentNames.map(s => String(s || '').trim()).filter(Boolean);
+      patch.studentNames = _normalizeStudents(req.body.studentNames);
     }
     if (patch.projectName != null) {
       const trimmed = String(patch.projectName).trim();
@@ -450,6 +468,14 @@ exports.printHtml = async (req, res) => {
   .prose { font-size:14px; line-height:1.8; color:#334155; white-space:pre-wrap; }
   .chips { display:flex; flex-wrap:wrap; gap:6px; }
   .chip { padding:5px 12px; background:#fff; border:1px solid #cbd5e1; border-radius:999px; font-size:12.5px; font-weight:600; color:#334155; }
+  table.students-table { width:100%; border-collapse:collapse; font-size:12.5px; background:#fff; border-radius:8px; overflow:hidden; border:1px solid #e5e7eb; }
+  table.students-table thead { background:#0f172a; color:#fff; }
+  table.students-table thead th { padding:10px 12px; text-align:start; font-size:11px; text-transform:uppercase; letter-spacing:0.8px; font-weight:800; }
+  table.students-table tbody td { padding:10px 12px; border-top:1px solid #f1f5f9; color:#334155; }
+  table.students-table tbody tr:nth-child(even) td { background:#f9fafb; }
+  table.students-table td.c { text-align:center; }
+  table.students-table td.mono { font-family:'JetBrains Mono',monospace; }
+  table.students-table td b { color:#0f172a; }
   ul.files { list-style:none; display:flex; flex-direction:column; gap:6px; font-size:13.5px; }
   ul.files li { padding:8px 12px; background:#fff; border:1px solid #e5e7eb; border-radius:8px; }
   ul.files .ext { display:inline-block; padding:2px 8px; background:#0f172a; color:#fff; border-radius:5px; font-family:monospace; font-size:10.5px; font-weight:800; margin-inline-start:6px; }
@@ -506,9 +532,31 @@ exports.printHtml = async (req, res) => {
       <div><span>معتمد من:</span><b>${esc(p.approvedBy || '—')}</b></div>
     </div>
     ${Array.isArray(p.studentNames) && p.studentNames.length > 0 ? `
-      <div style="margin-top:12px">
-        <div style="font-size:11px;color:#64748b;font-weight:700;letter-spacing:0.8px;text-transform:uppercase;margin-bottom:6px">الطالبات</div>
-        <div class="chips">${p.studentNames.map(n => `<span class="chip">${esc(n)}</span>`).join('')}</div>
+      <div style="margin-top:14px">
+        <div style="font-size:11px;color:#64748b;font-weight:700;letter-spacing:0.8px;text-transform:uppercase;margin-bottom:8px">الطالبات (${p.studentNames.length})</div>
+        <table class="students-table">
+          <thead>
+            <tr>
+              <th style="width:36px">#</th>
+              <th>الاسم</th>
+              <th>الجوال</th>
+              <th>رقم الهوية</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${p.studentNames.map((s, i) => {
+              const name = typeof s === 'string' ? s : (s?.name || '');
+              const phone = typeof s === 'object' ? (s?.phone || '') : '';
+              const nid = typeof s === 'object' ? (s?.nationalId || '') : '';
+              return `<tr>
+                <td class="c">${i + 1}</td>
+                <td><b>${esc(name)}</b></td>
+                <td class="mono" dir="ltr">${esc(phone || '—')}</td>
+                <td class="mono" dir="ltr">${esc(nid || '—')}</td>
+              </tr>`;
+            }).join('')}
+          </tbody>
+        </table>
       </div>` : ''}
   </section>
 
