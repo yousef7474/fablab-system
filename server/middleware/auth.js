@@ -3,8 +3,11 @@ const { Admin } = require('../models');
 
 const authMiddleware = async (req, res, next) => {
   try {
-    // Get token from header
-    const token = req.header('Authorization')?.replace('Bearer ', '');
+    // Get token from header — or from ?token=... as a fallback so
+    // print / download URLs opened with window.open (which can't set
+    // an Authorization header) can still authenticate.
+    const token = req.header('Authorization')?.replace('Bearer ', '')
+      || req.query?.token;
 
     if (!token) {
       return res.status(401).json({ message: 'No token, authorization denied' });

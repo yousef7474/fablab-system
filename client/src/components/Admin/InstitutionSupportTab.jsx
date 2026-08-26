@@ -262,7 +262,11 @@ const InstitutionSupportTab = () => {
   };
 
   const openPrint = () => {
-    window.open(`${API_URL}/institution-support/${selected.projectId}/print`, '_blank');
+    // window.open() can't send an Authorization header, so pass the
+    // token via the query-string fallback the auth middleware accepts.
+    const token = localStorage.getItem('adminToken') || '';
+    const url = `${API_URL}/institution-support/${selected.projectId}/print?token=${encodeURIComponent(token)}`;
+    window.open(url, '_blank');
   };
 
   // ---------- Student names editor ----------
