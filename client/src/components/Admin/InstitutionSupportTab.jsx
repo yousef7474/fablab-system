@@ -205,6 +205,56 @@ const InstitutionSupportTab = () => {
     }
   };
 
+  // ---------- Registration files ----------
+  const uploadRegistrationFiles = async (fileList) => {
+    const list = Array.from(fileList || []);
+    if (!list.length) return;
+    try {
+      const payloads = await Promise.all(list.map(readAsFilePayload));
+      const { data } = await api.post(`/institution-support/${selected.projectId}/registration-files`, { files: payloads });
+      setSelected(data);
+      setRows(prev => prev.map(r => r.projectId === data.projectId ? { ...r, ...data, registrationFileCount: data.registrationFiles?.length ?? r.registrationFileCount } : r));
+      toast.success(isRTL ? `📎 تمت إضافة ${list.length} ملف` : `📎 Added ${list.length} file(s)`);
+    } catch (err) {
+      toast.error(isRTL ? 'تعذّر رفع الملفات' : 'Upload failed');
+    }
+  };
+  const removeRegistrationFile = async (index) => {
+    if (!window.confirm(isRTL ? 'حذف هذا الملف؟' : 'Delete this file?')) return;
+    try {
+      const { data } = await api.delete(`/institution-support/${selected.projectId}/registration-files/${index}`);
+      setSelected(data);
+      setRows(prev => prev.map(r => r.projectId === data.projectId ? { ...r, ...data, registrationFileCount: data.registrationFiles?.length ?? r.registrationFileCount } : r));
+    } catch (err) {
+      toast.error(isRTL ? 'تعذّر الحذف' : 'Delete failed');
+    }
+  };
+
+  // ---------- Chat screenshots ----------
+  const uploadChatScreenshots = async (fileList) => {
+    const list = Array.from(fileList || []);
+    if (!list.length) return;
+    try {
+      const payloads = await Promise.all(list.map(readAsFilePayload));
+      const { data } = await api.post(`/institution-support/${selected.projectId}/chat-screenshots`, { files: payloads });
+      setSelected(data);
+      setRows(prev => prev.map(r => r.projectId === data.projectId ? { ...r, ...data, chatScreenshotCount: data.chatScreenshots?.length ?? r.chatScreenshotCount } : r));
+      toast.success(isRTL ? `💬 تمت إضافة ${list.length} لقطة` : `💬 Added ${list.length} screenshot(s)`);
+    } catch (err) {
+      toast.error(isRTL ? 'تعذّر رفع اللقطات' : 'Upload failed');
+    }
+  };
+  const removeChatScreenshot = async (index) => {
+    if (!window.confirm(isRTL ? 'حذف هذه اللقطة؟' : 'Delete this screenshot?')) return;
+    try {
+      const { data } = await api.delete(`/institution-support/${selected.projectId}/chat-screenshots/${index}`);
+      setSelected(data);
+      setRows(prev => prev.map(r => r.projectId === data.projectId ? { ...r, ...data, chatScreenshotCount: data.chatScreenshots?.length ?? r.chatScreenshotCount } : r));
+    } catch (err) {
+      toast.error(isRTL ? 'تعذّر الحذف' : 'Delete failed');
+    }
+  };
+
   // ---------- Invoices ----------
   const [newInvoice, setNewInvoice] = useState({ file: null, reason: '', amount: '', invoiceDate: '' });
   const addInvoice = async () => {
@@ -422,7 +472,9 @@ const InstitutionSupportTab = () => {
                     { label: isRTL ? 'تقرير إنجليزي' : 'EN report', done: !!selected.reportEn, icon: '📄' },
                     { label: isRTL ? 'براءة اختراع' : 'Patent',     done: !!selected.patentFile, icon: '©' },
                     { label: isRTL ? `صور (${selected.images?.length || 0}/${MAX_IMAGES})` : `Images (${selected.images?.length || 0}/${MAX_IMAGES})`, done: (selected.images?.length || 0) > 0, icon: '📸' },
-                    { label: isRTL ? `فواتير (${selected.invoices?.length || 0})` : `Invoices (${selected.invoices?.length || 0})`, done: (selected.invoices?.length || 0) > 0, icon: '🧾' }
+                    { label: isRTL ? `فواتير (${selected.invoices?.length || 0})` : `Invoices (${selected.invoices?.length || 0})`, done: (selected.invoices?.length || 0) > 0, icon: '🧾' },
+                    { label: isRTL ? `ملفات تسجيل (${selected.registrationFiles?.length || 0})` : `Registration (${selected.registrationFiles?.length || 0})`, done: (selected.registrationFiles?.length || 0) > 0, icon: '📎' },
+                    { label: isRTL ? `محادثات (${selected.chatScreenshots?.length || 0})` : `Chats (${selected.chatScreenshots?.length || 0})`, done: (selected.chatScreenshots?.length || 0) > 0, icon: '💬' }
                   ].map((s, i) => (
                     <div key={i} className={`isp-progress-item ${s.done ? 'is-done' : ''}`}>
                       <span className="isp-progress-icon">{s.done ? '✓' : s.icon}</span>
@@ -743,6 +795,54 @@ const InstitutionSupportTab = () => {
                         )}
                       </section>
 
+                      {/* -------- Registration files -------- */}
+                      <section className="isp-section">
+                        <div className="isp-section-head">
+                          <span className="isp-step isp-step--5">5</span>
+                          <div>
+                            <h4>{isRTL ? 'ملفات التسجيل في فاب لاب' : 'FabLab registration files'}</h4>
+                            <p>{isRTL
+                              ? 'ارفع نماذج التسجيل والاستمارات التي تم استيفاؤها من الطلاب عند انضمامهم للفاب لاب'
+                              : 'Upload registration forms and paperwork filled by students when they joined the lab'}</p>
+                          </div>
+                          <span className="isp-count-pill">{selected.registrationFiles?.length || 0}</span>
+                        </div>
+                        <FileListSection
+                          files={selected.registrationFiles || []}
+                          onUpload={uploadRegistrationFiles}
+                          onDownload={(i, name) => downloadFile('registration', i, name)}
+                          onRemove={removeRegistrationFile}
+                          uploadHint={isRTL ? 'ملفات PDF أو صور — يمكنك اختيار عدة ملفات دفعة واحدة' : 'PDFs or images — multi-select supported'}
+                          accent="#2563eb"
+                          uploadLabel={isRTL ? '+ رفع ملفات التسجيل' : '+ Upload registration files'}
+                          isRTL={isRTL}
+                        />
+                      </section>
+
+                      {/* -------- Chat screenshots -------- */}
+                      <section className="isp-section">
+                        <div className="isp-section-head">
+                          <span className="isp-step isp-step--6">6</span>
+                          <div>
+                            <h4>{isRTL ? 'لقطات المحادثات (واتساب / بريد إلكتروني)' : 'Chat screenshots (WhatsApp / email)'}</h4>
+                            <p>{isRTL
+                              ? 'اختياري — أضف صور المحادثات المتعلقة بالمشروع لتوثيق التواصل مع الطلاب'
+                              : 'Optional — attach chat screenshots to document communication with students'}</p>
+                          </div>
+                          <span className="isp-count-pill">{selected.chatScreenshots?.length || 0}</span>
+                        </div>
+                        <FileListSection
+                          files={selected.chatScreenshots || []}
+                          onUpload={uploadChatScreenshots}
+                          onDownload={(i, name) => downloadFile('chat', i, name)}
+                          onRemove={removeChatScreenshot}
+                          uploadHint={isRTL ? 'صور فقط عادةً — لكن أي ملف مقبول' : 'Usually images — but any file works'}
+                          accent="#8b5cf6"
+                          uploadLabel={isRTL ? '+ رفع لقطات محادثة' : '+ Upload screenshots'}
+                          isRTL={isRTL}
+                        />
+                      </section>
+
                       <div className="isp-modal-foot">
                         <button className="isp-btn isp-btn--danger" onClick={() => deleteProject(selected)}>
                           🗑️ {isRTL ? 'حذف المشروع' : 'Delete project'}
@@ -826,6 +926,52 @@ const ReportSlot = ({ label, accent = '#0ea5e9', badge, optional, file, onUpload
         onChange={e => { if (e.target.files?.[0]) { onUpload(e.target.files[0]); e.target.value = ''; } }}
       />
     </div>
+  );
+};
+
+// ---------- Small subcomponent: file list section ----------
+// Used by both registration-files and chat-screenshots sections.
+const FileListSection = ({ files, onUpload, onDownload, onRemove, uploadLabel, uploadHint, accent = '#0ea5e9', isRTL }) => {
+  const inputRef = useRef(null);
+  return (
+    <>
+      <label className="isp-file-dropzone" style={{ '--fx-accent': accent }}>
+        <input
+          ref={inputRef}
+          type="file"
+          multiple
+          accept="*/*"
+          onChange={(e) => { onUpload(e.target.files); e.target.value = ''; }}
+        />
+        <span>{uploadLabel}</span>
+        {uploadHint && <small>{uploadHint}</small>}
+      </label>
+      {files.length > 0 && (
+        <div className="isp-file-list">
+          {files.map((f, i) => {
+            const ext = String(f.fileType || '').toLowerCase();
+            const isImg = ['jpg','jpeg','png','gif','webp','bmp','svg','avif','heic'].includes(ext);
+            const isPdf = ext === 'pdf';
+            const icon = isImg ? '🖼️' : isPdf ? '📕' : '📄';
+            return (
+              <div key={i} className="isp-file-item" style={{ '--fx-accent': accent }}>
+                <div className="isp-file-item-icon">{icon}</div>
+                <div className="isp-file-item-body">
+                  <b title={f.fileName}>{f.fileName}</b>
+                  <span>{((f.fileSize || 0) / 1024).toFixed(1)} KB · .{ext}</span>
+                </div>
+                <div className="isp-file-item-actions">
+                  <button onClick={() => onDownload(i, f.fileName)}>
+                    ⬇ {isRTL ? 'تحميل' : 'Download'}
+                  </button>
+                  <button className="danger" onClick={() => onRemove(i)}>🗑</button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </>
   );
 };
 

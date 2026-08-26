@@ -32,4 +32,12 @@ router.post('/:id/invoices',                      requireManager, ctrl.addInvoic
 router.put('/:id/invoices/:index',                requireManager, ctrl.updateInvoice);
 router.delete('/:id/invoices/:index',             requireManager, ctrl.removeInvoice);
 
+// Registration files (fablab registration paperwork)
+router.post('/:id/registration-files',            requireManager, ctrl.addRegistrationFiles);
+router.delete('/:id/registration-files/:index',   requireManager, ctrl.removeRegistrationFile);
+
+// Chat screenshots (WhatsApp / email)
+router.post('/:id/chat-screenshots',              requireManager, ctrl.addChatScreenshots);
+router.delete('/:id/chat-screenshots/:index',     requireManager, ctrl.removeChatScreenshot);
+
 module.exports = router;

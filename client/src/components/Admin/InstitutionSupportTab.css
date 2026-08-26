@@ -353,6 +353,8 @@
 .isp-step--2 { background: linear-gradient(135deg, #2563eb, #1e40af); box-shadow: 0 4px 12px -4px rgba(37,99,235,0.5); }
 .isp-step--3 { background: linear-gradient(135deg, #16a34a, #15803d); box-shadow: 0 4px 12px -4px rgba(22,163,74,0.5); }
 .isp-step--4 { background: linear-gradient(135deg, #b45309, #92400e); box-shadow: 0 4px 12px -4px rgba(180,83,9,0.5); }
+.isp-step--5 { background: linear-gradient(135deg, #2563eb, #1e40af); box-shadow: 0 4px 12px -4px rgba(37,99,235,0.5); }
+.isp-step--6 { background: linear-gradient(135deg, #8b5cf6, #6d28d9); box-shadow: 0 4px 12px -4px rgba(139,92,246,0.5); }
 .isp-section-head h4 {
   font-family: 'Bricolage Grotesque', 'Cairo', sans-serif;
   font-size: 17px;
@@ -554,6 +556,87 @@
 @media (max-width: 640px) {
   .isp-students-add-grid { grid-template-columns: 1fr; }
 }
+
+/* ---------- Generic file-list section (registration + chats) ---------- */
+.isp-file-dropzone {
+  --fx-accent: #0ea5e9;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 22px 20px;
+  border: 2px dashed color-mix(in oklab, var(--fx-accent) 30%, #cbd5e1);
+  border-radius: 12px;
+  background: color-mix(in oklab, var(--fx-accent) 4%, #fff);
+  color: color-mix(in oklab, var(--fx-accent) 75%, #0f172a);
+  cursor: pointer;
+  transition: all 0.15s;
+  margin-bottom: 12px;
+  font-family: inherit;
+}
+.isp-file-dropzone:hover {
+  border-color: var(--fx-accent);
+  background: color-mix(in oklab, var(--fx-accent) 8%, #fff);
+  transform: translateY(-1px);
+}
+.isp-file-dropzone input { display: none; }
+.isp-file-dropzone span { font-weight: 800; font-size: 14.5px; }
+.isp-file-dropzone small { font-size: 11.5px; color: #64748b; }
+
+.isp-file-list { display: flex; flex-direction: column; gap: 8px; }
+.isp-file-item {
+  --fx-accent: #0ea5e9;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  background: #fff;
+  border: 1px solid var(--border-color, #e5e7eb);
+  border-radius: 10px;
+  transition: box-shadow 0.15s, border-color 0.15s, transform 0.15s;
+}
+.isp-file-item:hover {
+  box-shadow: 0 8px 20px -12px rgba(15,23,42,0.12);
+  border-color: var(--fx-accent);
+  transform: translateY(-1px);
+}
+.isp-file-item-icon {
+  width: 40px; height: 40px;
+  border-radius: 10px;
+  background: color-mix(in oklab, var(--fx-accent) 12%, #fff);
+  color: var(--fx-accent);
+  display: grid;
+  place-items: center;
+  font-size: 20px;
+  flex-shrink: 0;
+}
+.isp-file-item-body { flex: 1; min-width: 0; }
+.isp-file-item-body b {
+  display: block;
+  color: var(--text-primary, #0f172a);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 13.5px;
+  margin-bottom: 3px;
+}
+.isp-file-item-body span { font-size: 11.5px; color: var(--text-secondary, #94a3b8); font-family: monospace; }
+.isp-file-item-actions { display: flex; gap: 6px; flex-shrink: 0; }
+.isp-file-item-actions button {
+  padding: 7px 12px;
+  border-radius: 7px;
+  border: 1px solid var(--border-color, #cbd5e1);
+  background: #fff;
+  color: var(--text-primary, #334155);
+  font-family: inherit;
+  font-weight: 700;
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.12s;
+}
+.isp-file-item-actions button:hover { background: #f8fafc; border-color: #94a3b8; }
+.isp-file-item-actions button.danger { color: #dc2626; border-color: #fecaca; padding: 7px 10px; }
+.isp-file-item-actions button.danger:hover { background: #fef2f2; }
 
 /* ============================================================
    Report cards (3-col grid) — Documents section

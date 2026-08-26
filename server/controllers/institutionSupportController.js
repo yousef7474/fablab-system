@@ -63,7 +63,9 @@ const _stripFileData = (row) => {
   j.reportAr   = shrink(j.reportAr);
   j.reportEn   = shrink(j.reportEn);
   j.patentFile = shrink(j.patentFile);
-  j.images     = Array.isArray(j.images)   ? j.images.map(shrink) : [];
+  j.images             = Array.isArray(j.images)             ? j.images.map(shrink) : [];
+  j.registrationFiles  = Array.isArray(j.registrationFiles)  ? j.registrationFiles.map(shrink) : [];
+  j.chatScreenshots    = Array.isArray(j.chatScreenshots)    ? j.chatScreenshots.map(shrink) : [];
   j.invoices   = Array.isArray(j.invoices) ? j.invoices.map(inv => ({
     fileName: inv.fileName,
     fileType: inv.fileType,
@@ -82,18 +84,20 @@ exports.list = async (req, res) => {
     const rows = await InstitutionProject.findAll({
       where: { isActive: true },
       order: [['createdAt', 'DESC']],
-      attributes: { exclude: ['reportAr', 'reportEn', 'patentFile', 'images', 'invoices'] }
+      attributes: { exclude: ['reportAr', 'reportEn', 'patentFile', 'images', 'invoices', 'registrationFiles', 'chatScreenshots'] }
     });
     // Also include lightweight counts so the list can show "N images"
     // and "N invoices" without downloading the payloads.
     const withCounts = await Promise.all(rows.map(async r => {
       const full = await InstitutionProject.findByPk(r.projectId, {
-        attributes: ['images', 'invoices', 'reportAr', 'reportEn', 'patentFile']
+        attributes: ['images', 'invoices', 'reportAr', 'reportEn', 'patentFile', 'registrationFiles', 'chatScreenshots']
       });
       return {
         ...r.toJSON(),
         imageCount: Array.isArray(full?.images) ? full.images.length : 0,
         invoiceCount: Array.isArray(full?.invoices) ? full.invoices.length : 0,
+        registrationFileCount: Array.isArray(full?.registrationFiles) ? full.registrationFiles.length : 0,
+        chatScreenshotCount: Array.isArray(full?.chatScreenshots) ? full.chatScreenshots.length : 0,
         hasReportAr: !!full?.reportAr,
         hasReportEn: !!full?.reportEn,
         hasPatentFile: !!full?.patentFile
@@ -355,6 +359,70 @@ exports.removeInvoice = async (req, res) => {
   }
 };
 
+// -------------------- REGISTRATION FILES --------------------
+
+exports.addRegistrationFiles = async (req, res) => {
+  try {
+    const row = await InstitutionProject.findByPk(req.params.id);
+    if (!row) return res.status(404).json({ message: 'Not found' });
+    const incoming = Array.isArray(req.body?.files) ? req.body.files : [];
+    const clean = incoming.map(_normalizeFile).filter(Boolean);
+    const current = Array.isArray(row.registrationFiles) ? row.registrationFiles : [];
+    await row.update({ registrationFiles: [...current, ...clean] });
+    res.json(_stripFileData(row));
+  } catch (err) {
+    console.error('institution addRegistrationFiles:', err);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+exports.removeRegistrationFile = async (req, res) => {
+  try {
+    const row = await InstitutionProject.findByPk(req.params.id);
+    if (!row) return res.status(404).json({ message: 'Not found' });
+    const idx = parseInt(req.params.index, 10);
+    if (!Number.isFinite(idx)) return res.status(400).json({ message: 'Invalid index' });
+    const current = Array.isArray(row.registrationFiles) ? row.registrationFiles : [];
+    await row.update({ registrationFiles: current.filter((_, i) => i !== idx) });
+    res.json(_stripFileData(row));
+  } catch (err) {
+    console.error('institution removeRegistrationFile:', err);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+// -------------------- CHAT SCREENSHOTS --------------------
+
+exports.addChatScreenshots = async (req, res) => {
+  try {
+    const row = await InstitutionProject.findByPk(req.params.id);
+    if (!row) return res.status(404).json({ message: 'Not found' });
+    const incoming = Array.isArray(req.body?.files) ? req.body.files : [];
+    const clean = incoming.map(_normalizeFile).filter(Boolean);
+    const current = Array.isArray(row.chatScreenshots) ? row.chatScreenshots : [];
+    await row.update({ chatScreenshots: [...current, ...clean] });
+    res.json(_stripFileData(row));
+  } catch (err) {
+    console.error('institution addChatScreenshots:', err);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+exports.removeChatScreenshot = async (req, res) => {
+  try {
+    const row = await InstitutionProject.findByPk(req.params.id);
+    if (!row) return res.status(404).json({ message: 'Not found' });
+    const idx = parseInt(req.params.index, 10);
+    if (!Number.isFinite(idx)) return res.status(400).json({ message: 'Invalid index' });
+    const current = Array.isArray(row.chatScreenshots) ? row.chatScreenshots : [];
+    await row.update({ chatScreenshots: current.filter((_, i) => i !== idx) });
+    res.json(_stripFileData(row));
+  } catch (err) {
+    console.error('institution removeChatScreenshot:', err);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
 // -------------------- DOWNLOAD --------------------
 
 // GET /:id/download/:kind[/:index]
@@ -376,6 +444,14 @@ exports.download = async (req, res) => {
     } else if (kind === 'invoice') {
       const idx = parseInt(req.params.index, 10);
       const arr = Array.isArray(row.invoices) ? row.invoices : [];
+      file = Number.isFinite(idx) ? arr[idx] : null;
+    } else if (kind === 'registration') {
+      const idx = parseInt(req.params.index, 10);
+      const arr = Array.isArray(row.registrationFiles) ? row.registrationFiles : [];
+      file = Number.isFinite(idx) ? arr[idx] : null;
+    } else if (kind === 'chat') {
+      const idx = parseInt(req.params.index, 10);
+      const arr = Array.isArray(row.chatScreenshots) ? row.chatScreenshots : [];
       file = Number.isFinite(idx) ? arr[idx] : null;
     } else {
       return res.status(400).send('Invalid kind');
@@ -432,11 +508,71 @@ exports.printHtml = async (req, res) => {
         <td class="c">${esc(inv.fileName || '')} <span class="ext">.${esc(inv.fileType || '')}</span></td>
       </tr>`).join('');
 
-    const filesSection = [
-      p.reportAr   && `<li><b>التقرير (عربي):</b> ${esc(p.reportAr.fileName)} <span class="ext">.${esc(p.reportAr.fileType)}</span></li>`,
-      p.reportEn   && `<li><b>التقرير (إنجليزي):</b> ${esc(p.reportEn.fileName)} <span class="ext">.${esc(p.reportEn.fileType)}</span></li>`,
-      p.patentFile && `<li><b>ملف براءة الاختراع:</b> ${esc(p.patentFile.fileName)} <span class="ext">.${esc(p.patentFile.fileType)}</span></li>`
+    // Render a single file (report, patent, registration doc, or
+    // screenshot) as an inline block that shows the actual content:
+    //   - Images → <img> with the data URI
+    //   - PDFs   → <embed> sized to A4 so the pages render inline
+    //   - Other  → a labeled placeholder card (docx, xlsx, etc.)
+    const IMG_EXTS = new Set(['jpg','jpeg','png','gif','webp','bmp','svg','avif','heic','heif']);
+    const renderEmbeddedFile = (file, label) => {
+      if (!file || !file.fileData) return '';
+      const ext = String(file.fileType || '').toLowerCase().replace(/^\./, '');
+      const raw = String(file.fileData);
+      const isPdf = ext === 'pdf';
+      const isImg = IMG_EXTS.has(ext);
+      const mime = isPdf ? 'application/pdf'
+        : isImg ? `image/${ext === 'jpg' ? 'jpeg' : ext}`
+        : 'application/octet-stream';
+      const src = raw.startsWith('data:') ? raw : `data:${mime};base64,${raw}`;
+
+      const captionHtml = `<div class="file-caption">
+        ${label ? `<b>${esc(label)}</b>` : ''}
+        <span class="file-name">${esc(file.fileName || '')}</span>
+        <span class="ext">.${esc(ext)}</span>
+      </div>`;
+
+      if (isImg) {
+        return `<div class="embedded-file embedded-image">
+          ${captionHtml}
+          <img src="${src}" alt="${esc(label || file.fileName || '')}" />
+        </div>`;
+      }
+      if (isPdf) {
+        // <embed> renders inline in Chromium; when saved-as-PDF, at
+        // least the first page will be captured. A visible note tells
+        // the reader that multi-page PDFs may need the original file.
+        return `<div class="embedded-file embedded-pdf">
+          ${captionHtml}
+          <embed src="${src}" type="application/pdf" />
+          <div class="file-note">📄 عرض للملف — إذا كان الملف يحتوي على صفحات متعددة، يرجى الرجوع إلى الملف الأصلي في النظام لعرض كامل الصفحات.</div>
+        </div>`;
+      }
+      // Unsupported inline format — show a labeled placeholder card.
+      return `<div class="embedded-file embedded-other">
+        ${captionHtml}
+        <div class="file-placeholder">
+          <div class="ph-icon">📎</div>
+          <div>
+            <b>${esc(file.fileName || '')}</b>
+            <div>لا يمكن عرض هذا النوع من الملفات داخل التقرير (${esc(ext).toUpperCase()}). يرجى تحميل الملف من النظام لعرضه.</div>
+          </div>
+        </div>
+      </div>`;
+    };
+
+    const embeddedReports = [
+      p.reportAr   && renderEmbeddedFile(p.reportAr,   'التقرير (عربي)'),
+      p.reportEn   && renderEmbeddedFile(p.reportEn,   'التقرير (إنجليزي)'),
+      p.patentFile && renderEmbeddedFile(p.patentFile, 'ملف براءة الاختراع')
     ].filter(Boolean).join('');
+
+    const embeddedRegistration = (Array.isArray(p.registrationFiles) ? p.registrationFiles : [])
+      .map((f, i) => renderEmbeddedFile(f, `ملف تسجيل #${i + 1}`))
+      .join('');
+
+    const embeddedScreenshots = (Array.isArray(p.chatScreenshots) ? p.chatScreenshots : [])
+      .map((f, i) => renderEmbeddedFile(f, `محادثة #${i + 1}`))
+      .join('');
 
     res.setHeader('Content-Type', 'text/html; charset=utf-8');
     res.send(`<!DOCTYPE html><html dir="rtl" lang="ar"><head><meta charset="UTF-8"><title>${esc(projectNo)} — ${esc(p.projectName)}</title>
@@ -491,6 +627,20 @@ exports.printHtml = async (req, res) => {
   .img-cell { background:#fff; border:1px solid #e5e7eb; border-radius:10px; overflow:hidden; page-break-inside:avoid; }
   .img-cell img { width:100%; height:220px; object-fit:cover; display:block; }
   .img-cell figcaption { padding:6px 10px; font-size:11px; color:#64748b; background:#f8fafc; border-top:1px solid #e5e7eb; }
+  /* Embedded reports / registration / screenshots */
+  .embedded-file { margin-bottom:16px; background:#fff; border:1px solid #e5e7eb; border-radius:10px; overflow:hidden; page-break-inside:avoid; }
+  .embedded-file:last-child { margin-bottom:0; }
+  .file-caption { display:flex; align-items:center; gap:8px; flex-wrap:wrap; padding:10px 14px; background:#f8fafc; border-bottom:1px solid #e5e7eb; font-size:12px; }
+  .file-caption b { color:#0f172a; font-size:13px; }
+  .file-caption .file-name { color:#64748b; overflow:hidden; text-overflow:ellipsis; max-width:100%; }
+  .file-caption .ext { display:inline-block; padding:2px 8px; background:#0f172a; color:#fff; border-radius:5px; font-family:monospace; font-size:10.5px; font-weight:800; letter-spacing:0.4px; }
+  .embedded-image img { display:block; width:100%; max-height:900px; object-fit:contain; background:#fff; }
+  .embedded-pdf embed { display:block; width:100%; height:900px; background:#fff; border:none; }
+  .file-note { padding:8px 14px; font-size:10.5px; color:#78350f; background:#fffbeb; border-top:1px solid #fde68a; }
+  .embedded-other .file-placeholder { display:flex; gap:14px; align-items:center; padding:20px 22px; }
+  .embedded-other .file-placeholder .ph-icon { font-size:36px; }
+  .embedded-other .file-placeholder b { display:block; color:#0f172a; font-size:14px; margin-bottom:4px; }
+  .embedded-other .file-placeholder div div { font-size:12px; color:#64748b; line-height:1.6; }
   footer { margin-top:20px; padding-top:12px; border-top:1px solid #e5e7eb; display:flex; justify-content:space-between; font-size:10.5px; color:#94a3b8; }
   @media print {
     body { background:#fff; padding:0; }
@@ -572,10 +722,16 @@ exports.printHtml = async (req, res) => {
     <div class="prose">${esc(p.notes)}</div>
   </section>` : ''}
 
-  ${filesSection ? `
+  ${embeddedReports ? `
   <section class="card">
-    <h3>الملفات المرفقة</h3>
-    <ul class="files">${filesSection}</ul>
+    <h3>التقارير والمستندات</h3>
+    ${embeddedReports}
+  </section>` : ''}
+
+  ${embeddedRegistration ? `
+  <section class="card">
+    <h3>ملفات التسجيل في فاب لاب (${(p.registrationFiles || []).length})</h3>
+    ${embeddedRegistration}
   </section>` : ''}
 
   ${invoiceRows ? `
@@ -599,6 +755,12 @@ exports.printHtml = async (req, res) => {
   <section class="card">
     <h3>صور المشروع (${(p.images || []).length})</h3>
     <div class="images">${imageEls}</div>
+  </section>` : ''}
+
+  ${embeddedScreenshots ? `
+  <section class="card">
+    <h3>لقطات المحادثات (${(p.chatScreenshots || []).length})</h3>
+    ${embeddedScreenshots}
   </section>` : ''}
 
   <footer>

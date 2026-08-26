@@ -37,6 +37,12 @@ const InstitutionProject = sequelize.define('InstitutionProject', {
   // Purchase invoices: [{ fileName, fileType, fileSize, fileData,
   //   reason, amount?, invoiceDate? }]
   invoices:   { type: DataTypes.JSON, allowNull: false, defaultValue: [] },
+  // FabLab registration files (registration paperwork submitted by
+  // students when they joined the lab) — array of file objects.
+  registrationFiles: { type: DataTypes.JSON, allowNull: false, defaultValue: [] },
+  // Optional screenshots of WhatsApp / email conversations related
+  // to the project — array of image / pdf file objects.
+  chatScreenshots:   { type: DataTypes.JSON, allowNull: false, defaultValue: [] },
 
   createdById: { type: DataTypes.UUID, allowNull: true },
   isActive:    { type: DataTypes.BOOLEAN, allowNull: false, defaultValue: true }
