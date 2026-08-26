@@ -821,17 +821,31 @@ exports.printHtml = async (req, res) => {
 // downloaded file is a single self-contained PDF with all the real
 // content — no more "only-first-page" limitation of <embed>.
 exports.exportPdf = async (req, res) => {
+  const t0 = Date.now();
+  let stage = 'load-project';
   try {
     const row = await InstitutionProject.findByPk(req.params.id);
     if (!row) return res.status(404).send('Not found');
     const p = row.toJSON();
+    console.log(`[institution/pdf] ${p.projectId} — starting export`);
 
-    // 1) Build the cover PDF from HTML (with PDFs as marker cards).
+    // 1) Build the cover HTML (with PDFs as marker cards). Log its
+    //    size so we can spot memory-blowup scenarios in production.
+    stage = 'build-html';
     const html = _buildProjectHtml(p, { skipPdfEmbeds: true, forPrint: false });
-    const coverBytes = await generatePdfFromHtml(html, { landscape: false });
+    console.log(`[institution/pdf] ${p.projectId} — HTML built (${(html.length / 1024).toFixed(1)} KB)`);
 
-    // 2) Merge every uploaded PDF into it, in a stable order that
+    // 2) Render the cover to PDF via puppeteer.
+    stage = 'render-cover';
+    const coverBytes = await generatePdfFromHtml(html, {
+      landscape: false,
+      timeout: 90000
+    });
+    console.log(`[institution/pdf] ${p.projectId} — cover PDF rendered (${(coverBytes.length / 1024).toFixed(1)} KB)`);
+
+    // 3) Merge every uploaded PDF into it, in a stable order that
     //    matches the sections shown in the cover.
+    stage = 'load-cover-into-pdf-lib';
     const merged = await PDFDocument.load(coverBytes);
     const pdfSources = [];
     const collect = (file) => {
@@ -848,28 +862,37 @@ exports.exportPdf = async (req, res) => {
     (p.registrationFiles || []).forEach(collect);
     (p.invoices || []).forEach(collect);
     (p.chatScreenshots || []).forEach(collect);
+    console.log(`[institution/pdf] ${p.projectId} — merging ${pdfSources.length} uploaded PDF(s)`);
 
+    stage = 'merge-pdfs';
     for (const src of pdfSources) {
       try {
         const doc = await PDFDocument.load(src.buf, { ignoreEncryption: true });
         const pages = await merged.copyPages(doc, doc.getPageIndices());
         pages.forEach((pg) => merged.addPage(pg));
       } catch (mergeErr) {
-        console.warn(`Could not merge PDF "${src.label}":`, mergeErr.message);
+        console.warn(`[institution/pdf] Skipped bad PDF "${src.label}":`, mergeErr.message);
         // Continue — one bad PDF shouldn't break the whole export.
       }
     }
 
+    stage = 'save';
     const finalBytes = await merged.save();
     const projectNo = fmtProjectNumber(p.projectNumber);
-    const safeName = `${projectNo}_${String(p.projectName || 'project').replace(/[^A-Za-z0-9._؀-ۿ-]/g, '_').slice(0, 60)}.pdf`;
+    // ASCII-only filename to avoid Content-Disposition encoding issues.
+    const safeName = `${projectNo}.pdf`;
 
     res.setHeader('Content-Type', 'application/pdf');
     res.setHeader('Content-Disposition', `attachment; filename="${safeName}"`);
     res.setHeader('Content-Length', finalBytes.length);
     res.send(Buffer.from(finalBytes));
+    console.log(`[institution/pdf] ${p.projectId} — done in ${Date.now() - t0}ms (${(finalBytes.length / 1024).toFixed(1)} KB)`);
   } catch (err) {
-    console.error('institution exportPdf:', err);
-    res.status(500).json({ message: 'Server error', detail: err.message });
+    console.error(`[institution/pdf] FAILED at stage=${stage} after ${Date.now() - t0}ms:`, err);
+    res.status(500).json({
+      message: 'PDF export failed',
+      stage,
+      detail: err && err.message ? err.message : String(err)
+    });
   }
 };

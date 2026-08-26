@@ -24,21 +24,38 @@ const generatePdfFromHtml = async (html, options = {}) => {
   const browser = await puppeteer.launch({
     executablePath: chromiumPath,
     headless: 'new',
-    args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage', '--disable-gpu']
+    args: [
+      '--no-sandbox',
+      '--disable-setuid-sandbox',
+      '--disable-dev-shm-usage',
+      '--disable-gpu',
+      // Reduce memory footprint on the 2GB droplet — many small
+      // reports with lots of embedded images can otherwise OOM.
+      '--single-process',
+      '--no-zygote',
+      '--disable-extensions'
+    ]
   });
 
   try {
     const page = await browser.newPage();
-    await page.setContent(html, { waitUntil: 'load', timeout: 30000 });
-    // Wait a bit for fonts/images to load
-    await new Promise(r => setTimeout(r, 2000));
+    // 'load' waits for every subresource — but our HTML is fully
+    // self-contained (all images are inline data URIs), so
+    // 'domcontentloaded' is enough and much faster.
+    await page.setContent(html, {
+      waitUntil: 'domcontentloaded',
+      timeout: options.timeout || 60000
+    });
+    // Brief settle time for fonts / large inline images to decode.
+    await new Promise(r => setTimeout(r, 800));
 
     const pdfData = await page.pdf({
       format: options.format || 'A4',
       landscape: options.landscape !== undefined ? options.landscape : true,
       printBackground: true,
       preferCSSPageSize: true,
-      margin: { top: 0, right: 0, bottom: 0, left: 0 }
+      margin: options.margin || { top: 0, right: 0, bottom: 0, left: 0 },
+      timeout: options.timeout || 60000
     });
 
     // Ensure it's a proper Buffer

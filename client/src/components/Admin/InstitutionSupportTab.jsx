@@ -329,7 +329,15 @@ const InstitutionSupportTab = () => {
       const token = localStorage.getItem('adminToken') || '';
       const url = `${API_URL}/institution-support/${selected.projectId}/pdf?token=${encodeURIComponent(token)}`;
       const res = await fetch(url);
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      if (!res.ok) {
+        // Try to surface the server's actual failure reason (stage + detail).
+        let serverMsg = `HTTP ${res.status}`;
+        try {
+          const body = await res.json();
+          if (body?.detail) serverMsg = `${body.stage || 'error'}: ${body.detail}`;
+        } catch { /* not JSON — ignore */ }
+        throw new Error(serverMsg);
+      }
       const blob = await res.blob();
       const blobUrl = URL.createObjectURL(blob);
       const a = document.createElement('a');
@@ -340,7 +348,7 @@ const InstitutionSupportTab = () => {
       toast.success(isRTL ? '✅ تم تحميل التقرير الكامل' : '✅ Full report downloaded');
     } catch (err) {
       console.error('mergedPdf:', err);
-      toast.error(isRTL ? 'تعذّر تصدير PDF — راجع سجل الخادم' : 'PDF export failed — check server logs');
+      toast.error((isRTL ? 'تعذّر تصدير PDF — ' : 'PDF export failed — ') + (err.message || 'unknown error'), { autoClose: 8000 });
     } finally {
       setExportingPdf(false);
     }
