@@ -367,26 +367,56 @@ const InstitutionSupportTab = () => {
               onClick={e => e.stopPropagation()}
             >
               <div className="isp-modal-head">
-                <div>
-                  <div className="isp-modal-kicker">
-                    {modal === 'create'
-                      ? (isRTL ? 'مشروع جديد' : 'New project')
-                      : (isRTL ? 'تفاصيل المشروع' : 'Project details')}
+                <div className="isp-modal-head-lead">
+                  <div className="isp-modal-icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M3 21h18"/>
+                      <path d="M5 21V9l7-5 7 5v12"/>
+                      <rect x="9" y="12" width="6" height="9"/>
+                      <path d="M9 9h6"/>
+                    </svg>
                   </div>
-                  <h3>{selected.projectName || (isRTL ? '(بدون اسم)' : '(untitled)')}</h3>
-                  {selected.projectNumber != null && (
-                    <div className="isp-modal-no">{fmtProjectNo(selected.projectNumber)}</div>
-                  )}
+                  <div>
+                    <div className="isp-modal-kicker">
+                      {modal === 'create'
+                        ? (isRTL ? '✨ إنشاء مشروع دعم جديد' : '✨ Create a new support project')
+                        : (isRTL ? 'ملف مشروع الدعم' : 'Support project file')}
+                    </div>
+                    <h3>{selected.projectName || (isRTL ? '(بدون اسم)' : '(untitled)')}</h3>
+                    {selected.projectNumber != null && (
+                      <div className="isp-modal-no">{fmtProjectNo(selected.projectNumber)}</div>
+                    )}
+                  </div>
                 </div>
-                <div style={{ display: 'flex', gap: 8, alignItems: 'flex-start' }}>
+                <div className="isp-modal-head-actions">
                   {modal === 'edit' && (
                     <button className="isp-btn isp-btn--print" onClick={openPrint}>
-                      🖨️ {isRTL ? 'طباعة كاملة' : 'Print full'}
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+                      {isRTL ? 'طباعة PDF' : 'Print PDF'}
                     </button>
                   )}
-                  <button className="isp-modal-close" onClick={close}>✕</button>
+                  <button className="isp-modal-close" onClick={close} title={isRTL ? 'إغلاق' : 'Close'}>✕</button>
                 </div>
               </div>
+
+              {/* Completeness strip (edit mode only) */}
+              {modal === 'edit' && !detailLoading && (
+                <div className="isp-progress-strip">
+                  {[
+                    { label: isRTL ? 'المعلومات' : 'Info',   done: !!selected.projectName, icon: '📋' },
+                    { label: isRTL ? 'تقرير عربي' : 'AR report',    done: !!selected.reportAr, icon: '📄' },
+                    { label: isRTL ? 'تقرير إنجليزي' : 'EN report', done: !!selected.reportEn, icon: '📄' },
+                    { label: isRTL ? 'براءة اختراع' : 'Patent',     done: !!selected.patentFile, icon: '©' },
+                    { label: isRTL ? `صور (${selected.images?.length || 0}/${MAX_IMAGES})` : `Images (${selected.images?.length || 0}/${MAX_IMAGES})`, done: (selected.images?.length || 0) > 0, icon: '📸' },
+                    { label: isRTL ? `فواتير (${selected.invoices?.length || 0})` : `Invoices (${selected.invoices?.length || 0})`, done: (selected.invoices?.length || 0) > 0, icon: '🧾' }
+                  ].map((s, i) => (
+                    <div key={i} className={`isp-progress-item ${s.done ? 'is-done' : ''}`}>
+                      <span className="isp-progress-icon">{s.done ? '✓' : s.icon}</span>
+                      <span>{s.label}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
 
               {detailLoading ? (
                 <div className="isp-modal-body">
@@ -394,9 +424,28 @@ const InstitutionSupportTab = () => {
                 </div>
               ) : (
                 <div className="isp-modal-body">
+                  {/* -------- Create-mode welcome banner -------- */}
+                  {modal === 'create' && (
+                    <div className="isp-welcome">
+                      <div className="isp-welcome-icon">✨</div>
+                      <div>
+                        <b>{isRTL ? 'ابدأ بالمعلومات الأساسية' : 'Start with the basics'}</b>
+                        <p>{isRTL
+                          ? 'أدخل معلومات المشروع الأساسية أولاً — بعد الإنشاء سيمكنك رفع التقارير والصور والفواتير.'
+                          : 'Enter the core project info first — after creating you can upload reports, images, and invoices.'}</p>
+                      </div>
+                    </div>
+                  )}
+
                   {/* -------- Meta -------- */}
                   <section className="isp-section">
-                    <h4>📋 {isRTL ? 'معلومات المشروع' : 'Project info'}</h4>
+                    <div className="isp-section-head">
+                      <span className="isp-step">1</span>
+                      <div>
+                        <h4>{isRTL ? 'معلومات المشروع' : 'Project info'}</h4>
+                        <p>{isRTL ? 'البيانات الأساسية للمشروع، فريق العمل، والاعتماد' : 'Core details, team, and approval'}</p>
+                      </div>
+                    </div>
                     <div className="isp-grid-2">
                       <label>
                         <span>{isRTL ? 'اسم المشروع *' : 'Project name *'}</span>
@@ -451,9 +500,13 @@ const InstitutionSupportTab = () => {
                       <textarea rows={2} value={selected.notes || ''} onChange={e => patch('notes', e.target.value)} />
                     </label>
 
-                    <div style={{ marginTop: 12, textAlign: 'end' }}>
-                      <button className="isp-btn isp-btn--primary" onClick={saveMeta} disabled={saving}>
-                        {saving ? '…' : (modal === 'create' ? (isRTL ? '💾 إنشاء' : '💾 Create') : (isRTL ? '💾 حفظ التعديلات' : '💾 Save changes'))}
+                    <div className="isp-save-bar">
+                      <button className="isp-btn isp-btn--primary isp-btn--lg" onClick={saveMeta} disabled={saving}>
+                        {saving
+                          ? (isRTL ? 'جاري الحفظ...' : 'Saving...')
+                          : modal === 'create'
+                            ? <>✨ {isRTL ? 'إنشاء المشروع والمتابعة' : 'Create project & continue'}</>
+                            : <>💾 {isRTL ? 'حفظ التعديلات' : 'Save changes'}</>}
                       </button>
                     </div>
                   </section>
@@ -462,41 +515,58 @@ const InstitutionSupportTab = () => {
                   {modal === 'edit' && (
                     <>
                       <section className="isp-section">
-                        <h4>📄 {isRTL ? 'الملفات' : 'Documents'}</h4>
-                        <ReportSlot
-                          label={isRTL ? 'تقرير المشروع (عربي)' : 'Project report (Arabic)'}
-                          file={selected.reportAr}
-                          onUpload={(f) => uploadReport('ar', f)}
-                          onClear={() => clearReport('ar')}
-                          onDownload={() => downloadFile('report-ar', null, selected.reportAr?.fileName)}
-                          isRTL={isRTL}
-                        />
-                        <ReportSlot
-                          label={isRTL ? 'تقرير المشروع (إنجليزي)' : 'Project report (English)'}
-                          file={selected.reportEn}
-                          onUpload={(f) => uploadReport('en', f)}
-                          onClear={() => clearReport('en')}
-                          onDownload={() => downloadFile('report-en', null, selected.reportEn?.fileName)}
-                          isRTL={isRTL}
-                        />
-                        <ReportSlot
-                          label={isRTL ? 'ملف براءة الاختراع (إن وجد)' : 'Patent file (if any)'}
-                          file={selected.patentFile}
-                          onUpload={(f) => uploadReport('patent', f)}
-                          onClear={() => clearReport('patent')}
-                          onDownload={() => downloadFile('patent', null, selected.patentFile?.fileName)}
-                          isRTL={isRTL}
-                        />
+                        <div className="isp-section-head">
+                          <span className="isp-step isp-step--2">2</span>
+                          <div>
+                            <h4>{isRTL ? 'الملفات والتقارير' : 'Documents & reports'}</h4>
+                            <p>{isRTL ? 'ارفع التقرير العربي، التقرير الإنجليزي، وملف براءة الاختراع' : 'Upload the Arabic report, English report, and patent file'}</p>
+                          </div>
+                        </div>
+                        <div className="isp-reports-grid">
+                          <ReportSlot
+                            label={isRTL ? 'تقرير المشروع (عربي)' : 'Project report (Arabic)'}
+                            accent="#EE2329"
+                            badge="AR"
+                            file={selected.reportAr}
+                            onUpload={(f) => uploadReport('ar', f)}
+                            onClear={() => clearReport('ar')}
+                            onDownload={() => downloadFile('report-ar', null, selected.reportAr?.fileName)}
+                            isRTL={isRTL}
+                          />
+                          <ReportSlot
+                            label={isRTL ? 'تقرير المشروع (إنجليزي)' : 'Project report (English)'}
+                            accent="#2563eb"
+                            badge="EN"
+                            file={selected.reportEn}
+                            onUpload={(f) => uploadReport('en', f)}
+                            onClear={() => clearReport('en')}
+                            onDownload={() => downloadFile('report-en', null, selected.reportEn?.fileName)}
+                            isRTL={isRTL}
+                          />
+                          <ReportSlot
+                            label={isRTL ? 'ملف براءة الاختراع' : 'Patent file'}
+                            accent="#8b5cf6"
+                            badge="©"
+                            optional
+                            file={selected.patentFile}
+                            onUpload={(f) => uploadReport('patent', f)}
+                            onClear={() => clearReport('patent')}
+                            onDownload={() => downloadFile('patent', null, selected.patentFile?.fileName)}
+                            isRTL={isRTL}
+                          />
+                        </div>
                       </section>
 
                       {/* -------- Images -------- */}
                       <section className="isp-section">
-                        <h4>
-                          📸 {isRTL ? 'صور المشروع' : 'Project images'}
-                          <span className="isp-hint">
-                            {(selected.images?.length || 0)}/{MAX_IMAGES}
-                          </span>
-                        </h4>
+                        <div className="isp-section-head">
+                          <span className="isp-step isp-step--3">3</span>
+                          <div>
+                            <h4>{isRTL ? 'صور المشروع' : 'Project images'}</h4>
+                            <p>{isRTL ? `يمكنك رفع حتى ${MAX_IMAGES} صورة توثق المشروع` : `Upload up to ${MAX_IMAGES} images documenting the project`}</p>
+                          </div>
+                          <span className="isp-count-pill">{(selected.images?.length || 0)}<span>/{MAX_IMAGES}</span></span>
+                        </div>
                         {(selected.images?.length || 0) < MAX_IMAGES && (
                           <label className="isp-dropzone">
                             <input
@@ -536,8 +606,18 @@ const InstitutionSupportTab = () => {
 
                       {/* -------- Invoices -------- */}
                       <section className="isp-section">
-                        <h4>🧾 {isRTL ? 'الفواتير والمصروفات' : 'Invoices & expenses'}</h4>
+                        <div className="isp-section-head">
+                          <span className="isp-step isp-step--4">4</span>
+                          <div>
+                            <h4>{isRTL ? 'الفواتير والمصروفات' : 'Invoices & expenses'}</h4>
+                            <p>{isRTL ? 'ارفع كل فاتورة على حدة مع سبب الشراء والمبلغ' : 'Upload each invoice with its reason and amount'}</p>
+                          </div>
+                          <span className="isp-count-pill">{selected.invoices?.length || 0}</span>
+                        </div>
                         <div className="isp-invoice-add">
+                          <div className="isp-invoice-add-title">
+                            <span>+ {isRTL ? 'إضافة فاتورة جديدة' : 'Add new invoice'}</span>
+                          </div>
                           <div className="isp-grid-2">
                             <label>
                               <span>{isRTL ? 'ملف الفاتورة (صورة أو PDF)' : 'Invoice file (image or PDF)'}</span>
@@ -624,25 +704,58 @@ const InstitutionSupportTab = () => {
 };
 
 // ---------- Small subcomponent: report slot ----------
-const ReportSlot = ({ label, file, onUpload, onClear, onDownload, isRTL }) => {
+const ReportSlot = ({ label, accent = '#0ea5e9', badge, optional, file, onUpload, onClear, onDownload, isRTL }) => {
   const inputRef = useRef(null);
+  const filled = !!file;
   return (
-    <div className="isp-report">
-      <div className="isp-report-label">{label}</div>
-      {file ? (
-        <div className="isp-report-file">
-          <span className="isp-report-ext">.{file.fileType}</span>
-          <div className="isp-report-info">
-            <b>{file.fileName}</b>
-            <span>{((file.fileSize || 0) / 1024).toFixed(1)} KB</span>
+    <div
+      className={`isp-report-card ${filled ? 'is-filled' : 'is-empty'}`}
+      style={{ '--accent': accent }}
+    >
+      <div className="isp-report-card-head">
+        {badge && <span className="isp-report-badge" style={{ background: accent }}>{badge}</span>}
+        <div>
+          <div className="isp-report-card-title">
+            {label}
+            {optional && <span className="isp-report-optional">{isRTL ? 'اختياري' : 'optional'}</span>}
           </div>
-          <button onClick={onDownload}>⬇ {isRTL ? 'تحميل' : 'Download'}</button>
-          <button onClick={() => inputRef.current?.click()}>🔄 {isRTL ? 'استبدال' : 'Replace'}</button>
-          <button className="danger" onClick={onClear}>🗑</button>
+          <div className="isp-report-card-status">
+            {filled
+              ? (isRTL ? '✓ تم الرفع' : '✓ Uploaded')
+              : (isRTL ? 'لا يوجد ملف بعد' : 'No file yet')}
+          </div>
         </div>
+      </div>
+
+      {filled ? (
+        <>
+          <div className="isp-report-card-file">
+            <span className="isp-report-ext" style={{ background: accent }}>.{file.fileType}</span>
+            <div className="isp-report-info">
+              <b title={file.fileName}>{file.fileName}</b>
+              <span>{((file.fileSize || 0) / 1024).toFixed(1)} KB</span>
+            </div>
+          </div>
+          <div className="isp-report-card-actions">
+            <button onClick={onDownload} title={isRTL ? 'تحميل' : 'Download'}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+              {isRTL ? 'تحميل' : 'Download'}
+            </button>
+            <button onClick={() => inputRef.current?.click()} title={isRTL ? 'استبدال' : 'Replace'}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+              {isRTL ? 'استبدال' : 'Replace'}
+            </button>
+            <button className="danger" onClick={onClear} title={isRTL ? 'حذف' : 'Delete'}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-2 14a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2L5 6"/></svg>
+            </button>
+          </div>
+        </>
       ) : (
         <button className="isp-report-upload" onClick={() => inputRef.current?.click()}>
-          + {isRTL ? 'رفع ملف' : 'Upload file'}
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/>
+          </svg>
+          {isRTL ? 'اضغط لرفع الملف' : 'Click to upload'}
         </button>
       )}
       <input
