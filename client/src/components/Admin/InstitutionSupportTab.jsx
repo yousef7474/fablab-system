@@ -319,6 +319,33 @@ const InstitutionSupportTab = () => {
     window.open(url, '_blank');
   };
 
+  // Download the full merged PDF (cover pages + all uploaded PDFs
+  // merged in verbatim via pdf-lib). May take a few seconds — big
+  // requests can be slow because puppeteer renders the cover.
+  const [exportingPdf, setExportingPdf] = useState(false);
+  const downloadMergedPdf = async () => {
+    setExportingPdf(true);
+    try {
+      const token = localStorage.getItem('adminToken') || '';
+      const url = `${API_URL}/institution-support/${selected.projectId}/pdf?token=${encodeURIComponent(token)}`;
+      const res = await fetch(url);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const blob = await res.blob();
+      const blobUrl = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = blobUrl;
+      a.download = `${fmtProjectNo(selected.projectNumber)}.pdf`;
+      document.body.appendChild(a); a.click(); a.remove();
+      URL.revokeObjectURL(blobUrl);
+      toast.success(isRTL ? '✅ تم تحميل التقرير الكامل' : '✅ Full report downloaded');
+    } catch (err) {
+      console.error('mergedPdf:', err);
+      toast.error(isRTL ? 'تعذّر تصدير PDF — راجع سجل الخادم' : 'PDF export failed — check server logs');
+    } finally {
+      setExportingPdf(false);
+    }
+  };
+
   // ---------- Student editor ----------
   // Each student is { name, phone, nationalId }. Old rows that carry
   // plain strings are normalized to that shape on render.
@@ -454,10 +481,27 @@ const InstitutionSupportTab = () => {
                 </div>
                 <div className="isp-modal-head-actions">
                   {modal === 'edit' && (
-                    <button className="isp-btn isp-btn--print" onClick={openPrint}>
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
-                      {isRTL ? 'طباعة PDF' : 'Print PDF'}
-                    </button>
+                    <>
+                      <button
+                        className="isp-btn isp-btn--print"
+                        onClick={downloadMergedPdf}
+                        disabled={exportingPdf}
+                        title={isRTL ? 'تنزيل PDF كامل ومدمج (يشمل جميع الملفات)' : 'Download merged PDF with all uploaded files'}
+                      >
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                        {exportingPdf
+                          ? (isRTL ? 'جاري التصدير...' : 'Exporting...')
+                          : (isRTL ? 'PDF كامل' : 'Full PDF')}
+                      </button>
+                      <button
+                        className="isp-btn isp-btn--print"
+                        onClick={openPrint}
+                        title={isRTL ? 'معاينة التقرير في المتصفح' : 'Browser preview'}
+                      >
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+                        {isRTL ? 'معاينة' : 'Preview'}
+                      </button>
+                    </>
                   )}
                   <button className="isp-modal-close" onClick={close} title={isRTL ? 'إغلاق' : 'Close'}>✕</button>
                 </div>
@@ -847,9 +891,20 @@ const InstitutionSupportTab = () => {
                         <button className="isp-btn isp-btn--danger" onClick={() => deleteProject(selected)}>
                           🗑️ {isRTL ? 'حذف المشروع' : 'Delete project'}
                         </button>
-                        <button className="isp-btn isp-btn--print-solid" onClick={openPrint}>
-                          🖨️ {isRTL ? 'طباعة تقرير كامل' : 'Print full report'}
-                        </button>
+                        <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+                          <button className="isp-btn isp-btn--print-solid" onClick={openPrint}>
+                            👁️ {isRTL ? 'معاينة في المتصفح' : 'Preview in browser'}
+                          </button>
+                          <button
+                            className="isp-btn isp-btn--primary"
+                            onClick={downloadMergedPdf}
+                            disabled={exportingPdf}
+                          >
+                            {exportingPdf
+                              ? (isRTL ? '⏳ جاري تصدير PDF...' : '⏳ Exporting PDF...')
+                              : (isRTL ? '⬇️ تحميل PDF كامل مدمج' : '⬇️ Download merged PDF')}
+                          </button>
+                        </div>
                       </div>
                     </>
                   )}

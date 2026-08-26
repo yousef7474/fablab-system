@@ -1,5 +1,7 @@
 const { InstitutionProject } = require('../models');
 const { sequelize } = require('../config/database');
+const { PDFDocument } = require('pdf-lib');
+const { generatePdfFromHtml } = require('../utils/pdfGenerator');
 
 const MAX_IMAGES = 50;
 
@@ -474,91 +476,103 @@ exports.download = async (req, res) => {
 
 // -------------------- PRINT (single full HTML report) --------------------
 
-exports.printHtml = async (req, res) => {
-  try {
-    const row = await InstitutionProject.findByPk(req.params.id);
-    if (!row) return res.status(404).send('Not found');
-    const p = row.toJSON();
-    const projectNo = fmtProjectNumber(p.projectNumber);
-    const invoiceDate = new Date(p.createdAt).toLocaleDateString('ar-SA-u-ca-gregory-nu-latn', {
-      calendar: 'gregory', year: 'numeric', month: 'long', day: 'numeric'
-    });
+// Build the full project HTML report as a self-contained string.
+// When `opts.skipPdfEmbeds` is true, PDF files render as a lightweight
+// caption card instead of an <embed> — used by the merge-PDF flow so
+// the actual PDF pages can be appended via pdf-lib afterward. When
+// `opts.forPrint` is true, includes an in-page toolbar with a print
+// button (used by the browser preview path only).
+const _buildProjectHtml = (p, opts = {}) => {
+  const { skipPdfEmbeds = false, forPrint = false } = opts;
+  const projectNo = fmtProjectNumber(p.projectNumber);
+  const invoiceDate = new Date(p.createdAt).toLocaleDateString('ar-SA-u-ca-gregory-nu-latn', {
+    calendar: 'gregory', year: 'numeric', month: 'long', day: 'numeric'
+  });
 
-    // Images: embed as data URIs so the print page is fully self-
-    // contained (a downloaded PDF stays viewable offline).
-    const imageEls = (Array.isArray(p.images) ? p.images : []).map((img, i) => {
-      if (!img?.fileData) return '';
-      const raw = String(img.fileData);
-      const src = raw.startsWith('data:')
-        ? raw
-        : `data:image/${(img.fileType || 'jpeg').toLowerCase()};base64,${raw}`;
-      return `<figure class="img-cell">
-        <img src="${esc(src)}" alt="${esc(img.fileName || `image-${i + 1}`)}" />
-        <figcaption>#${i + 1} · ${esc(img.fileName || '')}</figcaption>
-      </figure>`;
-    }).join('');
+  // Render a single file (report, patent, registration doc, or
+  // screenshot) as an inline block that shows the actual content:
+  //   - Images → <img> with the data URI
+  //   - PDFs   → <embed> sized to A4 so the pages render inline
+  //              (or a lightweight caption card when skipPdfEmbeds
+  //               is true — the merge flow appends real PDF pages)
+  //   - Other  → a labeled placeholder card (docx, xlsx, etc.)
+  const IMG_EXTS = new Set(['jpg','jpeg','png','gif','webp','bmp','svg','avif','heic','heif']);
+  const renderEmbeddedFile = (file, label) => {
+    if (!file || !file.fileData) return '';
+    const ext = String(file.fileType || '').toLowerCase().replace(/^\./, '');
+    const raw = String(file.fileData);
+    const isPdf = ext === 'pdf';
+    const isImg = IMG_EXTS.has(ext);
+    const mime = isPdf ? 'application/pdf'
+      : isImg ? `image/${ext === 'jpg' ? 'jpeg' : ext}`
+      : 'application/octet-stream';
+    const src = raw.startsWith('data:') ? raw : `data:${mime};base64,${raw}`;
 
-    // Invoices table
-    const invoiceRows = (Array.isArray(p.invoices) ? p.invoices : []).map((inv, i) => `
-      <tr>
-        <td class="c">${i + 1}</td>
-        <td>${esc(inv.reason || '—')}</td>
-        <td class="c mono">${esc(inv.invoiceDate || '—')}</td>
-        <td class="c mono">${inv.amount != null ? Number(inv.amount).toFixed(2) + ' ر.س' : '—'}</td>
-        <td class="c">${esc(inv.fileName || '')} <span class="ext">.${esc(inv.fileType || '')}</span></td>
-      </tr>`).join('');
+    const captionHtml = `<div class="file-caption">
+      ${label ? `<b>${esc(label)}</b>` : ''}
+      <span class="file-name">${esc(file.fileName || '')}</span>
+      <span class="ext">.${esc(ext)}</span>
+    </div>`;
 
-    // Render a single file (report, patent, registration doc, or
-    // screenshot) as an inline block that shows the actual content:
-    //   - Images → <img> with the data URI
-    //   - PDFs   → <embed> sized to A4 so the pages render inline
-    //   - Other  → a labeled placeholder card (docx, xlsx, etc.)
-    const IMG_EXTS = new Set(['jpg','jpeg','png','gif','webp','bmp','svg','avif','heic','heif']);
-    const renderEmbeddedFile = (file, label) => {
-      if (!file || !file.fileData) return '';
-      const ext = String(file.fileType || '').toLowerCase().replace(/^\./, '');
-      const raw = String(file.fileData);
-      const isPdf = ext === 'pdf';
-      const isImg = IMG_EXTS.has(ext);
-      const mime = isPdf ? 'application/pdf'
-        : isImg ? `image/${ext === 'jpg' ? 'jpeg' : ext}`
-        : 'application/octet-stream';
-      const src = raw.startsWith('data:') ? raw : `data:${mime};base64,${raw}`;
-
-      const captionHtml = `<div class="file-caption">
-        ${label ? `<b>${esc(label)}</b>` : ''}
-        <span class="file-name">${esc(file.fileName || '')}</span>
-        <span class="ext">.${esc(ext)}</span>
-      </div>`;
-
-      if (isImg) {
-        return `<div class="embedded-file embedded-image">
-          ${captionHtml}
-          <img src="${src}" alt="${esc(label || file.fileName || '')}" />
-        </div>`;
-      }
-      if (isPdf) {
-        // <embed> renders inline in Chromium; when saved-as-PDF, at
-        // least the first page will be captured. A visible note tells
-        // the reader that multi-page PDFs may need the original file.
-        return `<div class="embedded-file embedded-pdf">
-          ${captionHtml}
-          <embed src="${src}" type="application/pdf" />
-          <div class="file-note">📄 عرض للملف — إذا كان الملف يحتوي على صفحات متعددة، يرجى الرجوع إلى الملف الأصلي في النظام لعرض كامل الصفحات.</div>
-        </div>`;
-      }
-      // Unsupported inline format — show a labeled placeholder card.
-      return `<div class="embedded-file embedded-other">
+    if (isImg) {
+      return `<div class="embedded-file embedded-image">
         ${captionHtml}
-        <div class="file-placeholder">
-          <div class="ph-icon">📎</div>
-          <div>
-            <b>${esc(file.fileName || '')}</b>
-            <div>لا يمكن عرض هذا النوع من الملفات داخل التقرير (${esc(ext).toUpperCase()}). يرجى تحميل الملف من النظام لعرضه.</div>
-          </div>
-        </div>
+        <img src="${src}" alt="${esc(label || file.fileName || '')}" />
       </div>`;
-    };
+    }
+    if (isPdf) {
+      if (skipPdfEmbeds) {
+        // Merge flow — just show a caption card. The actual PDF
+        // pages get appended after the cover PDF via pdf-lib.
+        return `<div class="embedded-file embedded-pdf-marker">
+          ${captionHtml}
+          <div class="file-note">📎 محتوى الملف يُلحق كصفحات مستقلة داخل نفس التقرير.</div>
+        </div>`;
+      }
+      // Browser preview — inline <embed>. When saved-as-PDF from
+      // the browser, only the first page will render; the merge
+      // endpoint (/pdf) is the way to get a fully-flattened PDF.
+      return `<div class="embedded-file embedded-pdf">
+        ${captionHtml}
+        <embed src="${src}" type="application/pdf" />
+        <div class="file-note">📄 عرض للملف — إذا كان الملف يحتوي على صفحات متعددة، استخدم زر "تحميل PDF كامل" لتصدير كل الملفات مدمجة.</div>
+      </div>`;
+    }
+    // Unsupported inline format — show a labeled placeholder card.
+    return `<div class="embedded-file embedded-other">
+      ${captionHtml}
+      <div class="file-placeholder">
+        <div class="ph-icon">📎</div>
+        <div>
+          <b>${esc(file.fileName || '')}</b>
+          <div>لا يمكن عرض هذا النوع من الملفات داخل التقرير (${esc(ext).toUpperCase()}). يرجى تحميل الملف من النظام لعرضه.</div>
+        </div>
+      </div>
+    </div>`;
+  };
+
+  // Images (project image gallery) — always inlined as data URIs.
+  const imageEls = (Array.isArray(p.images) ? p.images : []).map((img, i) => {
+    if (!img?.fileData) return '';
+    const raw = String(img.fileData);
+    const src = raw.startsWith('data:')
+      ? raw
+      : `data:image/${(img.fileType || 'jpeg').toLowerCase()};base64,${raw}`;
+    return `<figure class="img-cell">
+      <img src="${esc(src)}" alt="${esc(img.fileName || `image-${i + 1}`)}" />
+      <figcaption>#${i + 1} · ${esc(img.fileName || '')}</figcaption>
+    </figure>`;
+  }).join('');
+
+  // Invoices table
+  const invoiceRows = (Array.isArray(p.invoices) ? p.invoices : []).map((inv, i) => `
+    <tr>
+      <td class="c">${i + 1}</td>
+      <td>${esc(inv.reason || '—')}</td>
+      <td class="c mono">${esc(inv.invoiceDate || '—')}</td>
+      <td class="c mono">${inv.amount != null ? Number(inv.amount).toFixed(2) + ' ر.س' : '—'}</td>
+      <td class="c">${esc(inv.fileName || '')} <span class="ext">.${esc(inv.fileType || '')}</span></td>
+    </tr>`).join('');
 
     const embeddedReports = [
       p.reportAr   && renderEmbeddedFile(p.reportAr,   'التقرير (عربي)'),
@@ -574,8 +588,21 @@ exports.printHtml = async (req, res) => {
       .map((f, i) => renderEmbeddedFile(f, `محادثة #${i + 1}`))
       .join('');
 
-    res.setHeader('Content-Type', 'text/html; charset=utf-8');
-    res.send(`<!DOCTYPE html><html dir="rtl" lang="ar"><head><meta charset="UTF-8"><title>${esc(projectNo)} — ${esc(p.projectName)}</title>
+    // Invoice files: each invoice can carry a PDF or image — embed
+    // the file content itself below the tabular summary.
+    const embeddedInvoices = (Array.isArray(p.invoices) ? p.invoices : [])
+      .map((inv, i) => {
+        if (!inv?.fileData) return '';
+        const reasonLabel = inv.reason || `فاتورة #${i + 1}`;
+        const amountLabel = inv.amount != null
+          ? ` — ${Number(inv.amount).toFixed(2)} ر.س`
+          : '';
+        const dateLabel = inv.invoiceDate ? ` — ${inv.invoiceDate}` : '';
+        return renderEmbeddedFile(inv, `فاتورة: ${reasonLabel}${amountLabel}${dateLabel}`);
+      })
+      .join('');
+
+  return `<!DOCTYPE html><html dir="rtl" lang="ar"><head><meta charset="UTF-8"><title>${esc(projectNo)} — ${esc(p.projectName)}</title>
 <style>
   :root { color-scheme: light; }
   * { margin:0; padding:0; box-sizing:border-box; }
@@ -651,10 +678,10 @@ exports.printHtml = async (req, res) => {
     @page { size:A4; margin:0; }
   }
 </style></head><body>
-<div class="actions">
+${forPrint ? `<div class="actions">
   <button onclick="window.print()">🖨️ طباعة / حفظ PDF</button>
   <button class="ghost" onclick="window.close()">إغلاق</button>
-</div>
+</div>` : ''}
 <div class="doc">
   <header>
     <div class="brand">
@@ -749,6 +776,7 @@ exports.printHtml = async (req, res) => {
       </thead>
       <tbody>${invoiceRows}</tbody>
     </table>
+    ${embeddedInvoices ? `<div style="margin-top:14px">${embeddedInvoices}</div>` : ''}
   </section>` : ''}
 
   ${imageEls ? `
@@ -768,9 +796,80 @@ exports.printHtml = async (req, res) => {
     <div>fablabsahsa.com</div>
   </footer>
 </div>
-</body></html>`);
+</body></html>`;
+};
+
+// GET /:id/print — HTML preview in the browser (Save-as-PDF still
+// works, but for a fully-merged PDF including uploaded PDF files use
+// GET /:id/pdf instead).
+exports.printHtml = async (req, res) => {
+  try {
+    const row = await InstitutionProject.findByPk(req.params.id);
+    if (!row) return res.status(404).send('Not found');
+    const html = _buildProjectHtml(row.toJSON(), { skipPdfEmbeds: false, forPrint: true });
+    res.setHeader('Content-Type', 'text/html; charset=utf-8');
+    res.send(html);
   } catch (err) {
     console.error('institution printHtml:', err);
     res.status(500).send('Server error');
+  }
+};
+
+// GET /:id/pdf — full merged PDF. Cover pages (meta, invoice table,
+// images, screenshots) are rendered from HTML via puppeteer; every
+// uploaded PDF file is then appended verbatim via pdf-lib so the
+// downloaded file is a single self-contained PDF with all the real
+// content — no more "only-first-page" limitation of <embed>.
+exports.exportPdf = async (req, res) => {
+  try {
+    const row = await InstitutionProject.findByPk(req.params.id);
+    if (!row) return res.status(404).send('Not found');
+    const p = row.toJSON();
+
+    // 1) Build the cover PDF from HTML (with PDFs as marker cards).
+    const html = _buildProjectHtml(p, { skipPdfEmbeds: true, forPrint: false });
+    const coverBytes = await generatePdfFromHtml(html, { landscape: false });
+
+    // 2) Merge every uploaded PDF into it, in a stable order that
+    //    matches the sections shown in the cover.
+    const merged = await PDFDocument.load(coverBytes);
+    const pdfSources = [];
+    const collect = (file) => {
+      if (!file || !file.fileData) return;
+      const ext = String(file.fileType || '').toLowerCase();
+      if (ext !== 'pdf') return;
+      const raw = String(file.fileData);
+      const b64 = raw.includes(',') ? raw.split(',').pop() : raw;
+      pdfSources.push({ label: file.fileName, buf: Buffer.from(b64, 'base64') });
+    };
+    collect(p.reportAr);
+    collect(p.reportEn);
+    collect(p.patentFile);
+    (p.registrationFiles || []).forEach(collect);
+    (p.invoices || []).forEach(collect);
+    (p.chatScreenshots || []).forEach(collect);
+
+    for (const src of pdfSources) {
+      try {
+        const doc = await PDFDocument.load(src.buf, { ignoreEncryption: true });
+        const pages = await merged.copyPages(doc, doc.getPageIndices());
+        pages.forEach((pg) => merged.addPage(pg));
+      } catch (mergeErr) {
+        console.warn(`Could not merge PDF "${src.label}":`, mergeErr.message);
+        // Continue — one bad PDF shouldn't break the whole export.
+      }
+    }
+
+    const finalBytes = await merged.save();
+    const projectNo = fmtProjectNumber(p.projectNumber);
+    const safeName = `${projectNo}_${String(p.projectName || 'project').replace(/[^A-Za-z0-9._؀-ۿ-]/g, '_').slice(0, 60)}.pdf`;
+
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="${safeName}"`);
+    res.setHeader('Content-Length', finalBytes.length);
+    res.send(Buffer.from(finalBytes));
+  } catch (err) {
+    console.error('institution exportPdf:', err);
+    res.status(500).json({ message: 'Server error', detail: err.message });
   }
 };

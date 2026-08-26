@@ -10,6 +10,7 @@ router.use(authMiddleware);
 // they aren't shadowed. Both allow admin+manager reads; only manager
 // (or admin per project policy) can mutate.
 router.get('/:id/print',                          ctrl.printHtml);
+router.get('/:id/pdf',                            ctrl.exportPdf);
 router.get('/:id/download/:kind',                 ctrl.download);
 router.get('/:id/download/:kind/:index',          ctrl.download);
 
