@@ -16,5 +16,7 @@ router.get('/calendar-prefs', authMiddleware, settingsController.getCalendarPref
 router.put('/calendar-prefs', authMiddleware, settingsController.updateCalendarPrefs);
 router.get('/quick-messages', authMiddleware, settingsController.getQuickMessages);
 router.put('/quick-messages', authMiddleware, settingsController.updateQuickMessages);
+router.get('/store-categories', authMiddleware, settingsController.getStoreCategories);
+router.put('/store-categories', authMiddleware, settingsController.updateStoreCategories);
 
 module.exports = router;

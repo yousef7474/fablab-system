@@ -46,6 +46,12 @@ const StoreTab = () => {
   const [itemModal, setItemModal] = useState(null); // { mode, item? }
   const [form, setForm] = useState(emptyItem);
   const [savingItem, setSavingItem] = useState(false);
+  // Persistent category library — admin picks from this list or types
+  // a new one via the "أخرى" option. Server-side merged with any
+  // categories used by existing items so nothing goes missing.
+  const [categories, setCategories] = useState([]);
+  const [categoryMode, setCategoryMode] = useState('pick'); // 'pick' | 'new'
+  const [newCategoryInput, setNewCategoryInput] = useState('');
 
   // Order modal
   const [orderModal, setOrderModal] = useState(null);
@@ -60,14 +66,16 @@ const StoreTab = () => {
   const fetchAll = useCallback(async () => {
     setLoading(true);
     try {
-      const [i, o, c] = await Promise.all([
+      const [i, o, c, cats] = await Promise.all([
         api.get('/store/items'),
         api.get('/store/orders'),
-        api.get('/store/coupons')
+        api.get('/store/coupons'),
+        api.get('/settings/store-categories').catch(() => ({ data: { categories: [] } }))
       ]);
       setItems(Array.isArray(i.data) ? i.data : []);
       setOrders(Array.isArray(o.data) ? o.data : []);
       setCoupons(Array.isArray(c.data) ? c.data : []);
+      setCategories(Array.isArray(cats.data?.categories) ? cats.data.categories : []);
     } catch (err) {
       toast.error('تعذّر تحميل المتجر');
     } finally {
@@ -108,7 +116,12 @@ const StoreTab = () => {
   }, [orders, orderFilter, orderSearch]);
 
   // ---- Item actions ----
-  const openCreateItem = () => { setForm(emptyItem); setItemModal({ mode: 'create' }); };
+  const openCreateItem = () => {
+    setForm(emptyItem);
+    setCategoryMode('pick');
+    setNewCategoryInput('');
+    setItemModal({ mode: 'create' });
+  };
   const openEditItem = (item) => {
     setForm({
       name: item.name || '',
@@ -123,6 +136,11 @@ const StoreTab = () => {
       isFeatured: !!item.isFeatured,
       sku: item.sku || ''
     });
+    // If this item's category isn't in the saved list, keep it in
+    // "pick" mode (the dropdown will still show it since the server
+    // merges live-item categories with the library).
+    setCategoryMode('pick');
+    setNewCategoryInput('');
     setItemModal({ mode: 'edit', item });
   };
 
@@ -152,14 +170,38 @@ const StoreTab = () => {
       toast.error('الاسم والسعر مطلوبان');
       return;
     }
+    // Resolve the category from either the dropdown or the "أخرى"
+    // free-text input, then persist any new value to the settings
+    // library so it appears in future dropdowns.
+    let finalCategory = form.category;
+    if (categoryMode === 'new') {
+      const typed = newCategoryInput.trim();
+      if (!typed) {
+        toast.error(isRTL ? 'اكتب اسم الفئة الجديدة' : 'Type the new category name');
+        return;
+      }
+      finalCategory = typed;
+    }
+    const payload = { ...form, category: finalCategory };
     setSavingItem(true);
     try {
       if (itemModal.mode === 'create') {
-        await api.post('/store/items', form);
+        await api.post('/store/items', payload);
         toast.success('تمت إضافة المنتج');
       } else {
-        await api.put(`/store/items/${itemModal.item.itemId}`, form);
+        await api.put(`/store/items/${itemModal.item.itemId}`, payload);
         toast.success('تم التحديث');
+      }
+      // Persist a new category to the settings library so it appears
+      // in the dropdown next time. Only when the value is actually
+      // new — no need to bounce the settings row otherwise.
+      if (finalCategory && !categories.includes(finalCategory)) {
+        try {
+          const next = Array.from(new Set([...categories, finalCategory]))
+            .sort((a, b) => a.localeCompare(b, 'ar'));
+          await api.put('/settings/store-categories', { categories: next });
+          setCategories(next);
+        } catch { /* best-effort — item is saved anyway */ }
       }
       setItemModal(null);
       await fetchAll();
@@ -779,7 +821,41 @@ const StoreTab = () => {
                   </div>
                   <div className="stt-field">
                     <label>{isRTL ? 'الفئة' : 'Category'}</label>
-                    <input type="text" value={form.category} onChange={e => setForm(f => ({ ...f, category: e.target.value }))} placeholder={isRTL ? 'مثال: أدوات، مكونات' : 'e.g. Tools, Kits'} />
+                    <select
+                      value={categoryMode === 'new' ? '__other__' : form.category}
+                      onChange={e => {
+                        const v = e.target.value;
+                        if (v === '__other__') {
+                          setCategoryMode('new');
+                          setNewCategoryInput('');
+                          // Keep form.category as-is so save resolves via newCategoryInput.
+                        } else {
+                          setCategoryMode('pick');
+                          setForm(f => ({ ...f, category: v }));
+                        }
+                      }}
+                    >
+                      <option value="">— {isRTL ? 'بدون فئة' : 'No category'} —</option>
+                      {/* Ensure the currently-selected value is present even
+                          if it hasn't been persisted yet (e.g., legacy items). */}
+                      {form.category && !categories.includes(form.category) && categoryMode === 'pick' && (
+                        <option value={form.category}>{form.category}</option>
+                      )}
+                      {categories.map(c => (
+                        <option key={c} value={c}>{c}</option>
+                      ))}
+                      <option value="__other__">➕ {isRTL ? 'أخرى (إضافة جديدة)' : 'Other (add new)'}</option>
+                    </select>
+                    {categoryMode === 'new' && (
+                      <input
+                        type="text"
+                        value={newCategoryInput}
+                        onChange={e => setNewCategoryInput(e.target.value)}
+                        placeholder={isRTL ? 'اسم الفئة الجديدة' : 'New category name'}
+                        style={{ marginTop: 6 }}
+                        autoFocus
+                      />
+                    )}
                   </div>
                   <div className="stt-field">
                     <label>SKU</label>

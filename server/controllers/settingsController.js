@@ -245,6 +245,53 @@ const updateQuickMessages = async (req, res) => {
   }
 };
 
+// GET /api/settings/store-categories (admin-protected)
+// Returns the persisted category library merged with any categories
+// already used by existing store items — so admins always see every
+// live category even if a row was created before the library existed.
+const getStoreCategories = async (req, res) => {
+  try {
+    const { StoreItem } = require('../models');
+    const row = await Settings.findByPk('store_categories');
+    const saved = row && Array.isArray(row.value) ? row.value : [];
+
+    const items = await StoreItem.findAll({
+      where: { isActive: true },
+      attributes: ['category']
+    });
+    const derived = items
+      .map(i => (i.category || '').trim())
+      .filter(Boolean);
+
+    const merged = Array.from(new Set([...saved, ...derived]))
+      .sort((a, b) => a.localeCompare(b, 'ar'));
+    res.json({ categories: merged });
+  } catch (error) {
+    console.error('Error fetching store categories:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+// PUT /api/settings/store-categories (admin-protected)
+// Replaces the persisted category library. Body: { categories: [...] }
+// Also called implicitly when the item modal adds a new "Other" value.
+const updateStoreCategories = async (req, res) => {
+  try {
+    const { categories } = req.body || {};
+    if (!Array.isArray(categories)) {
+      return res.status(400).json({ message: 'categories must be an array' });
+    }
+    const cleaned = Array.from(new Set(
+      categories.map(c => String(c || '').trim()).filter(Boolean)
+    ));
+    await Settings.upsert({ key: 'store_categories', value: cleaned });
+    res.json({ categories: cleaned });
+  } catch (error) {
+    console.error('Error updating store categories:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
 module.exports = {
   getWorkingHours,
   updateWorkingHours,
@@ -255,5 +302,7 @@ module.exports = {
   getCalendarPrefs,
   updateCalendarPrefs,
   getQuickMessages,
-  updateQuickMessages
+  updateQuickMessages,
+  getStoreCategories,
+  updateStoreCategories
 };

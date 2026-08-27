@@ -15,6 +15,54 @@ const API_URL = process.env.NODE_ENV === 'production'
 
 const SAR = (n) => `${Number(n || 0).toFixed(2)} ر.س`;
 
+// Render a plain-text description with professional typography. When
+// a group of consecutive lines all start with a bullet marker
+// (•, -, *, or Arabic numeric ordering), promote them to a real <ul>
+// so the modal shows a tidy list instead of a flat paragraph. Any
+// other text renders inside <p> with white-space:pre-wrap so admin's
+// line breaks are preserved.
+const BULLET_RE = /^\s*[•\-*·▪●◆◇]\s+/;
+const renderProseWithBullets = (text) => {
+  const lines = String(text).split(/\r?\n/);
+  const blocks = [];
+  let paragraph = [];
+  let list = [];
+  const flushParagraph = () => {
+    if (paragraph.length) {
+      blocks.push({ type: 'p', text: paragraph.join('\n') });
+      paragraph = [];
+    }
+  };
+  const flushList = () => {
+    if (list.length) {
+      blocks.push({ type: 'ul', items: [...list] });
+      list = [];
+    }
+  };
+  for (const raw of lines) {
+    const trimmed = raw.trim();
+    if (!trimmed) {
+      flushParagraph();
+      flushList();
+      continue;
+    }
+    if (BULLET_RE.test(trimmed)) {
+      flushParagraph();
+      list.push(trimmed.replace(BULLET_RE, ''));
+    } else {
+      flushList();
+      paragraph.push(raw);
+    }
+  }
+  flushParagraph();
+  flushList();
+
+  return blocks.map((b, i) => b.type === 'ul'
+    ? <ul key={i}>{b.items.map((it, j) => <li key={j}>{it}</li>)}</ul>
+    : <p key={i} style={{ margin: i === 0 ? '0 0 8px' : '8px 0' }}>{b.text}</p>
+  );
+};
+
 const emptyCheckout = {
   customerName: '', customerPhone: '', customerEmail: '',
   customerNationalId: '', deliveryAddress: '', notes: ''
@@ -606,7 +654,22 @@ const StorePage = () => {
                 <div>
                   {selected.category && <div className="st-modal-cat">{selected.category}</div>}
                   <h2>{isRTL ? selected.name : (selected.nameEn || selected.name)}</h2>
-                  {selected.description && <p className="st-modal-desc">{isRTL ? selected.description : (selected.descriptionEn || selected.description)}</p>}
+                  {(() => {
+                    const desc = isRTL
+                      ? selected.description
+                      : (selected.descriptionEn || selected.description);
+                    if (!desc || !String(desc).trim()) return null;
+                    return (
+                      <div className="st-modal-desc-block">
+                        <div className="st-modal-desc-label">
+                          {isRTL ? 'وصف المنتج' : 'Product description'}
+                        </div>
+                        <div className="st-modal-desc">
+                          {renderProseWithBullets(String(desc))}
+                        </div>
+                      </div>
+                    );
+                  })()}
                   <div className="st-modal-price">{SAR(selected.price)}</div>
                   <div className={`st-card-stock ${selected.stock === 0 ? 'is-out' : ''}`}>
                     {selected.stock < 0

@@ -629,13 +629,19 @@
   overflow: hidden;
 }
 .st-card-desc {
-  font-size: 12px;
+  font-size: 12.5px;
   color: var(--st-muted);
-  line-height: 1.5;
+  line-height: 1.7;
   display: -webkit-box;
-  -webkit-line-clamp: 2;
+  -webkit-line-clamp: 3;
   -webkit-box-orient: vertical;
   overflow: hidden;
+  padding: 6px 0 2px;
+  border-inline-start: 2px solid rgba(238, 35, 41, 0.35);
+  padding-inline-start: 10px;
+  margin-bottom: 4px;
+  white-space: pre-line;
+  font-style: italic;
 }
 .st-card-foot {
   display: flex;
@@ -1215,12 +1221,38 @@
   font-size: 22px;
   color: var(--st-ink);
 }
-.st-modal-desc {
-  color: var(--st-muted);
-  font-size: 14px;
-  line-height: 1.6;
-  margin: 0 0 16px;
+/* Modal description — proper prose block with a section label,
+   generous line-height, and pre-wrap so line breaks from the admin
+   textarea render as intended. */
+.st-modal-desc-block {
+  margin: 12px 0 18px;
+  padding: 14px 16px;
+  background: linear-gradient(180deg, rgba(238, 35, 41, 0.04), rgba(255, 255, 255, 0));
+  border: 1px solid rgba(238, 35, 41, 0.15);
+  border-inline-start: 3px solid var(--st-brand);
+  border-radius: 10px;
 }
+.st-modal-desc-label {
+  font-size: 10.5px;
+  font-weight: 800;
+  color: var(--st-brand);
+  letter-spacing: 1.2px;
+  text-transform: uppercase;
+  margin-bottom: 6px;
+}
+.st-modal-desc {
+  color: var(--st-ink);
+  font-size: 14.5px;
+  line-height: 1.85;
+  margin: 0;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+/* When admin uses "•" or "-" or "*" bullet lines, render them as a
+   tidy list. Applied automatically by React when the description
+   text contains list markers. */
+.st-modal-desc ul { padding-inline-start: 22px; margin: 0; }
+.st-modal-desc li { margin: 4px 0; line-height: 1.75; }
 .st-modal-price {
   font-family: 'JetBrains Mono', monospace;
   font-weight: 800;

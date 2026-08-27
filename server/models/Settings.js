@@ -32,6 +32,10 @@ Settings.seedDefaults = async () => {
     { key: 'print3d_multi_color_fee', value: 20 },
     { key: 'print3d_min_charge',      value: 25 }, // minimum charge per print
     { key: 'print3d_supported_files', value: ['stl', 'obj', '3mf', 'step', 'stp', 'ply', 'gcode', 'zip'] },
+    // FabLab store category library — admin picks from this list when
+    // adding a new item, or types a new one which gets appended here
+    // for future use.
+    { key: 'store_categories', value: [] },
     // Year Calendar preference — show the schedule overlay
     // (appointments + employee tasks) or keep it hidden. Universal
     // across all admin logins so any device honors the same choice.
