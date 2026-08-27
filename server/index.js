@@ -33,6 +33,7 @@ const calendarEventRoutes = require('./routes/calendarEventRoutes');
 const storeRoutes = require('./routes/storeRoutes');
 const print3DRoutes = require('./routes/print3DRoutes');
 const institutionSupportRoutes = require('./routes/institutionSupportRoutes');
+const aiRoutes = require('./routes/aiRoutes');
 const trainerAssistantRoutes = require('./routes/trainerAssistantRoutes');
 const customerRoutes = require('./routes/customerRoutes');
 const contractRoutes = require('./routes/contractRoutes');
@@ -82,6 +83,10 @@ app.use('/api/calendar-events', calendarEventRoutes);
 app.use('/api/store', storeRoutes);
 app.use('/api/print3d', print3DRoutes);
 app.use('/api/institution-support', institutionSupportRoutes);
+// AI-facing read-only API — protected by a long-lived AI_API_KEY.
+// Give the key to your AI model; it can then read (but never mutate)
+// every resource in the system to answer questions.
+app.use('/api/ai', aiRoutes);
 app.use('/api/trainer-assistants', trainerAssistantRoutes);
 app.use('/api/customers', customerRoutes);
 app.use('/api/contracts', contractRoutes);
