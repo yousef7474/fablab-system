@@ -41,4 +41,8 @@ router.delete('/:id/registration-files/:index',   requireManager, ctrl.removeReg
 router.post('/:id/chat-screenshots',              requireManager, ctrl.addChatScreenshots);
 router.delete('/:id/chat-screenshots/:index',     requireManager, ctrl.removeChatScreenshot);
 
+// Google Form results (evaluation form PDFs / exports)
+router.post('/:id/google-form-results',           requireManager, ctrl.addGoogleFormResults);
+router.delete('/:id/google-form-results/:index',  requireManager, ctrl.removeGoogleFormResult);
+
 module.exports = router;

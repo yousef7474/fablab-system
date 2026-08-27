@@ -355,6 +355,7 @@
 .isp-step--4 { background: linear-gradient(135deg, #b45309, #92400e); box-shadow: 0 4px 12px -4px rgba(180,83,9,0.5); }
 .isp-step--5 { background: linear-gradient(135deg, #2563eb, #1e40af); box-shadow: 0 4px 12px -4px rgba(37,99,235,0.5); }
 .isp-step--6 { background: linear-gradient(135deg, #8b5cf6, #6d28d9); box-shadow: 0 4px 12px -4px rgba(139,92,246,0.5); }
+.isp-step--7 { background: linear-gradient(135deg, #16a34a, #15803d); box-shadow: 0 4px 12px -4px rgba(22,163,74,0.5); }
 .isp-section-head h4 {
   font-family: 'Bricolage Grotesque', 'Cairo', sans-serif;
   font-size: 17px;

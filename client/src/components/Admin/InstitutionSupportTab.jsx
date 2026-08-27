@@ -255,6 +255,31 @@ const InstitutionSupportTab = () => {
     }
   };
 
+  // ---------- Google Form results ----------
+  const uploadGoogleFormResults = async (fileList) => {
+    const list = Array.from(fileList || []);
+    if (!list.length) return;
+    try {
+      const payloads = await Promise.all(list.map(readAsFilePayload));
+      const { data } = await api.post(`/institution-support/${selected.projectId}/google-form-results`, { files: payloads });
+      setSelected(data);
+      setRows(prev => prev.map(r => r.projectId === data.projectId ? { ...r, ...data, googleFormResultCount: data.googleFormResults?.length ?? r.googleFormResultCount } : r));
+      toast.success(isRTL ? `📊 تمت إضافة ${list.length} نتيجة` : `📊 Added ${list.length} result(s)`);
+    } catch (err) {
+      toast.error(isRTL ? 'تعذّر رفع الملفات' : 'Upload failed');
+    }
+  };
+  const removeGoogleFormResult = async (index) => {
+    if (!window.confirm(isRTL ? 'حذف هذه النتيجة؟' : 'Delete this result?')) return;
+    try {
+      const { data } = await api.delete(`/institution-support/${selected.projectId}/google-form-results/${index}`);
+      setSelected(data);
+      setRows(prev => prev.map(r => r.projectId === data.projectId ? { ...r, ...data, googleFormResultCount: data.googleFormResults?.length ?? r.googleFormResultCount } : r));
+    } catch (err) {
+      toast.error(isRTL ? 'تعذّر الحذف' : 'Delete failed');
+    }
+  };
+
   // ---------- Invoices ----------
   const [newInvoice, setNewInvoice] = useState({ file: null, reason: '', amount: '', invoiceDate: '' });
   const addInvoice = async () => {
@@ -526,7 +551,8 @@ const InstitutionSupportTab = () => {
                     { label: isRTL ? `صور (${selected.images?.length || 0}/${MAX_IMAGES})` : `Images (${selected.images?.length || 0}/${MAX_IMAGES})`, done: (selected.images?.length || 0) > 0, icon: '📸' },
                     { label: isRTL ? `فواتير (${selected.invoices?.length || 0})` : `Invoices (${selected.invoices?.length || 0})`, done: (selected.invoices?.length || 0) > 0, icon: '🧾' },
                     { label: isRTL ? `ملفات تسجيل (${selected.registrationFiles?.length || 0})` : `Registration (${selected.registrationFiles?.length || 0})`, done: (selected.registrationFiles?.length || 0) > 0, icon: '📎' },
-                    { label: isRTL ? `محادثات (${selected.chatScreenshots?.length || 0})` : `Chats (${selected.chatScreenshots?.length || 0})`, done: (selected.chatScreenshots?.length || 0) > 0, icon: '💬' }
+                    { label: isRTL ? `محادثات (${selected.chatScreenshots?.length || 0})` : `Chats (${selected.chatScreenshots?.length || 0})`, done: (selected.chatScreenshots?.length || 0) > 0, icon: '💬' },
+                    { label: isRTL ? `نماذج قوقل (${selected.googleFormResults?.length || 0})` : `Google Forms (${selected.googleFormResults?.length || 0})`, done: (selected.googleFormResults?.length || 0) > 0, icon: '📊' }
                   ].map((s, i) => (
                     <div key={i} className={`isp-progress-item ${s.done ? 'is-done' : ''}`}>
                       <span className="isp-progress-icon">{s.done ? '✓' : s.icon}</span>
@@ -891,6 +917,30 @@ const InstitutionSupportTab = () => {
                           uploadHint={isRTL ? 'صور فقط عادةً — لكن أي ملف مقبول' : 'Usually images — but any file works'}
                           accent="#8b5cf6"
                           uploadLabel={isRTL ? '+ رفع لقطات محادثة' : '+ Upload screenshots'}
+                          isRTL={isRTL}
+                        />
+                      </section>
+
+                      {/* -------- Google Form results -------- */}
+                      <section className="isp-section">
+                        <div className="isp-section-head">
+                          <span className="isp-step isp-step--7">7</span>
+                          <div>
+                            <h4>{isRTL ? 'نتائج نماذج قوقل' : 'Google Form results'}</h4>
+                            <p>{isRTL
+                              ? 'ارفع تصدير نتائج نموذج قوقل الخاص بالمشروع (PDF أو صور) — سيُدمج داخل التقرير الكامل'
+                              : 'Upload the Google Form export for this project (PDF or images) — merged into the full report'}</p>
+                          </div>
+                          <span className="isp-count-pill">{selected.googleFormResults?.length || 0}</span>
+                        </div>
+                        <FileListSection
+                          files={selected.googleFormResults || []}
+                          onUpload={uploadGoogleFormResults}
+                          onDownload={(i, name) => downloadFile('googleform', i, name)}
+                          onRemove={removeGoogleFormResult}
+                          uploadHint={isRTL ? 'PDF من "طباعة النتائج" أو صور — عدة ملفات مقبولة' : 'PDF from "Print responses" or images — multi-select supported'}
+                          accent="#16a34a"
+                          uploadLabel={isRTL ? '+ رفع نتائج نموذج قوقل' : '+ Upload Google Form results'}
                           isRTL={isRTL}
                         />
                       </section>

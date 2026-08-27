@@ -68,6 +68,7 @@ const _stripFileData = (row) => {
   j.images             = Array.isArray(j.images)             ? j.images.map(shrink) : [];
   j.registrationFiles  = Array.isArray(j.registrationFiles)  ? j.registrationFiles.map(shrink) : [];
   j.chatScreenshots    = Array.isArray(j.chatScreenshots)    ? j.chatScreenshots.map(shrink) : [];
+  j.googleFormResults  = Array.isArray(j.googleFormResults)  ? j.googleFormResults.map(shrink) : [];
   j.invoices   = Array.isArray(j.invoices) ? j.invoices.map(inv => ({
     fileName: inv.fileName,
     fileType: inv.fileType,
@@ -86,13 +87,13 @@ exports.list = async (req, res) => {
     const rows = await InstitutionProject.findAll({
       where: { isActive: true },
       order: [['createdAt', 'DESC']],
-      attributes: { exclude: ['reportAr', 'reportEn', 'patentFile', 'images', 'invoices', 'registrationFiles', 'chatScreenshots'] }
+      attributes: { exclude: ['reportAr', 'reportEn', 'patentFile', 'images', 'invoices', 'registrationFiles', 'chatScreenshots', 'googleFormResults'] }
     });
     // Also include lightweight counts so the list can show "N images"
     // and "N invoices" without downloading the payloads.
     const withCounts = await Promise.all(rows.map(async r => {
       const full = await InstitutionProject.findByPk(r.projectId, {
-        attributes: ['images', 'invoices', 'reportAr', 'reportEn', 'patentFile', 'registrationFiles', 'chatScreenshots']
+        attributes: ['images', 'invoices', 'reportAr', 'reportEn', 'patentFile', 'registrationFiles', 'chatScreenshots', 'googleFormResults']
       });
       return {
         ...r.toJSON(),
@@ -100,6 +101,7 @@ exports.list = async (req, res) => {
         invoiceCount: Array.isArray(full?.invoices) ? full.invoices.length : 0,
         registrationFileCount: Array.isArray(full?.registrationFiles) ? full.registrationFiles.length : 0,
         chatScreenshotCount: Array.isArray(full?.chatScreenshots) ? full.chatScreenshots.length : 0,
+        googleFormResultCount: Array.isArray(full?.googleFormResults) ? full.googleFormResults.length : 0,
         hasReportAr: !!full?.reportAr,
         hasReportEn: !!full?.reportEn,
         hasPatentFile: !!full?.patentFile
@@ -425,6 +427,38 @@ exports.removeChatScreenshot = async (req, res) => {
   }
 };
 
+// -------------------- GOOGLE FORM RESULTS --------------------
+
+exports.addGoogleFormResults = async (req, res) => {
+  try {
+    const row = await InstitutionProject.findByPk(req.params.id);
+    if (!row) return res.status(404).json({ message: 'Not found' });
+    const incoming = Array.isArray(req.body?.files) ? req.body.files : [];
+    const clean = incoming.map(_normalizeFile).filter(Boolean);
+    const current = Array.isArray(row.googleFormResults) ? row.googleFormResults : [];
+    await row.update({ googleFormResults: [...current, ...clean] });
+    res.json(_stripFileData(row));
+  } catch (err) {
+    console.error('institution addGoogleFormResults:', err);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+exports.removeGoogleFormResult = async (req, res) => {
+  try {
+    const row = await InstitutionProject.findByPk(req.params.id);
+    if (!row) return res.status(404).json({ message: 'Not found' });
+    const idx = parseInt(req.params.index, 10);
+    if (!Number.isFinite(idx)) return res.status(400).json({ message: 'Invalid index' });
+    const current = Array.isArray(row.googleFormResults) ? row.googleFormResults : [];
+    await row.update({ googleFormResults: current.filter((_, i) => i !== idx) });
+    res.json(_stripFileData(row));
+  } catch (err) {
+    console.error('institution removeGoogleFormResult:', err);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
 // -------------------- DOWNLOAD --------------------
 
 // GET /:id/download/:kind[/:index]
@@ -454,6 +488,10 @@ exports.download = async (req, res) => {
     } else if (kind === 'chat') {
       const idx = parseInt(req.params.index, 10);
       const arr = Array.isArray(row.chatScreenshots) ? row.chatScreenshots : [];
+      file = Number.isFinite(idx) ? arr[idx] : null;
+    } else if (kind === 'googleform') {
+      const idx = parseInt(req.params.index, 10);
+      const arr = Array.isArray(row.googleFormResults) ? row.googleFormResults : [];
       file = Number.isFinite(idx) ? arr[idx] : null;
     } else {
       return res.status(400).send('Invalid kind');
@@ -586,6 +624,10 @@ const _buildProjectHtml = (p, opts = {}) => {
 
     const embeddedScreenshots = (Array.isArray(p.chatScreenshots) ? p.chatScreenshots : [])
       .map((f, i) => renderEmbeddedFile(f, `محادثة #${i + 1}`))
+      .join('');
+
+    const embeddedGoogleForms = (Array.isArray(p.googleFormResults) ? p.googleFormResults : [])
+      .map((f, i) => renderEmbeddedFile(f, `نتيجة نموذج قوقل #${i + 1}`))
       .join('');
 
     // Invoice files: each invoice can carry a PDF or image — embed
@@ -791,6 +833,12 @@ ${forPrint ? `<div class="actions">
     ${embeddedScreenshots}
   </section>` : ''}
 
+  ${embeddedGoogleForms ? `
+  <section class="card">
+    <h3>نتائج نماذج قوقل (${(p.googleFormResults || []).length})</h3>
+    ${embeddedGoogleForms}
+  </section>` : ''}
+
   <footer>
     <div><b>فاب لاب الأحساء</b> · مؤسسة عبدالمنعم الراشد الإنسانية</div>
     <div>fablabsahsa.com</div>
@@ -862,6 +910,7 @@ exports.exportPdf = async (req, res) => {
     (p.registrationFiles || []).forEach(collect);
     (p.invoices || []).forEach(collect);
     (p.chatScreenshots || []).forEach(collect);
+    (p.googleFormResults || []).forEach(collect);
     console.log(`[institution/pdf] ${p.projectId} — merging ${pdfSources.length} uploaded PDF(s)`);
 
     stage = 'merge-pdfs';

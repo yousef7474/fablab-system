@@ -808,8 +808,9 @@ const syncDatabase = async () => {
       }
     } catch (e) { /* settings migration best-effort */ }
 
-    // Institution-support: new arrays for registration paperwork and
-    // chat screenshots. Older rows default to [].
+    // Institution-support: new arrays for registration paperwork,
+    // chat screenshots, and Google Form results. Older rows default
+    // to [].
     try {
       await sequelize.query(
         `ALTER TABLE institution_projects ADD COLUMN IF NOT EXISTS "registrationFiles" JSON NOT NULL DEFAULT '[]'::json`
@@ -817,9 +818,12 @@ const syncDatabase = async () => {
       await sequelize.query(
         `ALTER TABLE institution_projects ADD COLUMN IF NOT EXISTS "chatScreenshots" JSON NOT NULL DEFAULT '[]'::json`
       );
+      await sequelize.query(
+        `ALTER TABLE institution_projects ADD COLUMN IF NOT EXISTS "googleFormResults" JSON NOT NULL DEFAULT '[]'::json`
+      );
     } catch (migrationError) {
       if (!/does not exist/i.test(migrationError.message)) {
-        console.log('institution_projects.registrationFiles/chatScreenshots migration note:', migrationError.message);
+        console.log('institution_projects file-array migrations note:', migrationError.message);
       }
     }
 

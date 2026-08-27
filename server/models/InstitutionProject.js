@@ -43,6 +43,10 @@ const InstitutionProject = sequelize.define('InstitutionProject', {
   // Optional screenshots of WhatsApp / email conversations related
   // to the project — array of image / pdf file objects.
   chatScreenshots:   { type: DataTypes.JSON, allowNull: false, defaultValue: [] },
+  // Google Form results (evaluation form exports / responses) —
+  // array of file objects. Usually PDFs or spreadsheets exported
+  // from Google Forms; images are also allowed.
+  googleFormResults: { type: DataTypes.JSON, allowNull: false, defaultValue: [] },
 
   createdById: { type: DataTypes.UUID, allowNull: true },
   isActive:    { type: DataTypes.BOOLEAN, allowNull: false, defaultValue: true }
