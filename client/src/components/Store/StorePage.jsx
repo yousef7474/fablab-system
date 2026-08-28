@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -438,47 +438,14 @@ const StorePage = () => {
                   layout
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
-                  whileHover={{ y: -6 }}
-                  className="st-card"
-                  onClick={() => { setSelected(item); setGalleryIdx(0); }}
+                  className="st-card-wrap"
                 >
-                  {item.isFeatured && <span className="st-badge">⭐ {isRTL ? 'مميز' : 'Featured'}</span>}
-                  <div className="st-card-img">
-                    {item.images?.[0]
-                      ? <img src={item.images[0]} alt={item.name} loading="lazy" />
-                      : <div className="st-card-img-empty">📦</div>}
-                    {item.stock === 0 && <div className="st-card-out-overlay">{isRTL ? 'نفدت الكمية' : 'Out of stock'}</div>}
-                    {Array.isArray(item.images) && item.images.length > 1 && (
-                      <span className="st-card-photos">📷 {item.images.length}</span>
-                    )}
-                  </div>
-                  <div className="st-card-body">
-                    {item.category && <div className="st-card-cat">{item.category}</div>}
-                    <div className="st-card-name">{isRTL ? item.name : (item.nameEn || item.name)}</div>
-                    {item.description && (
-                      <div className="st-card-desc">{isRTL ? item.description : (item.descriptionEn || item.description)}</div>
-                    )}
-                    <div className="st-card-foot">
-                      <div className="st-card-price">{SAR(item.price)}</div>
-                      <div className={`st-card-stock ${item.stock === 0 ? 'is-out' : ''}`}>
-                        {item.stock < 0
-                          ? (isRTL ? 'متوفر' : 'Available')
-                          : item.stock === 0
-                            ? (isRTL ? 'غير متوفر' : 'Out')
-                            : (isRTL ? `${item.stock} متبقي` : `${item.stock} left`)}
-                      </div>
-                    </div>
-                    <button
-                      type="button"
-                      className="st-card-add"
-                      disabled={item.stock === 0}
-                      onClick={(e) => { e.stopPropagation(); addToCart(item); }}
-                    >
-                      {item.stock === 0
-                        ? (isRTL ? 'غير متوفر' : 'Out of stock')
-                        : (isRTL ? '🛒 أضف للسلة' : '🛒 Add to cart')}
-                    </button>
-                  </div>
+                  <StoreItemCard
+                    item={item}
+                    isRTL={isRTL}
+                    onOpen={() => { setSelected(item); setGalleryIdx(0); }}
+                    onAdd={() => addToCart(item)}
+                  />
                 </motion.div>
               ))}
             </div>
@@ -598,99 +565,21 @@ const StorePage = () => {
         )}
       </AnimatePresence>
 
-      {/* Item detail modal */}
+      {/* Item detail modal — futuristic PDP */}
       <AnimatePresence>
         {selected && (
-          <motion.div
-            className="st-modal-overlay"
-            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            onClick={() => { setSelected(null); setGalleryIdx(0); }}
-          >
-            <motion.div
-              className="st-modal"
-              initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }}
-              onClick={(e) => e.stopPropagation()}
-            >
-              <button type="button" className="st-modal-close" onClick={() => { setSelected(null); setGalleryIdx(0); }}>✕</button>
-              <div className="st-modal-body">
-                <div className="st-gallery">
-                  <div className="st-gallery-main">
-                    {selected.images?.[galleryIdx] || selected.images?.[0]
-                      ? <img src={selected.images[galleryIdx] || selected.images[0]} alt={selected.name} />
-                      : <div className="st-card-img-empty">📦</div>}
-                    {Array.isArray(selected.images) && selected.images.length > 1 && (
-                      <>
-                        <button
-                          type="button"
-                          className="st-gallery-nav st-gallery-nav--prev"
-                          onClick={() => setGalleryIdx(i => (i > 0 ? i - 1 : selected.images.length - 1))}
-                          aria-label="previous"
-                        >‹</button>
-                        <button
-                          type="button"
-                          className="st-gallery-nav st-gallery-nav--next"
-                          onClick={() => setGalleryIdx(i => (i < selected.images.length - 1 ? i + 1 : 0))}
-                          aria-label="next"
-                        >›</button>
-                        <span className="st-gallery-counter">{galleryIdx + 1} / {selected.images.length}</span>
-                      </>
-                    )}
-                  </div>
-                  {Array.isArray(selected.images) && selected.images.length > 1 && (
-                    <div className="st-gallery-thumbs">
-                      {selected.images.map((img, i) => (
-                        <button
-                          type="button"
-                          key={i}
-                          className={`st-gallery-thumb ${i === galleryIdx ? 'is-active' : ''}`}
-                          onClick={() => setGalleryIdx(i)}
-                        >
-                          <img src={img} alt="" />
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                </div>
-                <div>
-                  {selected.category && <div className="st-modal-cat">{selected.category}</div>}
-                  <h2>{isRTL ? selected.name : (selected.nameEn || selected.name)}</h2>
-                  {(() => {
-                    const desc = isRTL
-                      ? selected.description
-                      : (selected.descriptionEn || selected.description);
-                    if (!desc || !String(desc).trim()) return null;
-                    return (
-                      <div className="st-modal-desc-block">
-                        <div className="st-modal-desc-label">
-                          {isRTL ? 'وصف المنتج' : 'Product description'}
-                        </div>
-                        <div className="st-modal-desc">
-                          {renderProseWithBullets(String(desc))}
-                        </div>
-                      </div>
-                    );
-                  })()}
-                  <div className="st-modal-price">{SAR(selected.price)}</div>
-                  <div className={`st-card-stock ${selected.stock === 0 ? 'is-out' : ''}`}>
-                    {selected.stock < 0
-                      ? (isRTL ? 'متوفر' : 'Available')
-                      : selected.stock === 0
-                        ? (isRTL ? 'غير متوفر' : 'Out of stock')
-                        : (isRTL ? `متبقي ${selected.stock}` : `${selected.stock} left`)}
-                  </div>
-                  <button
-                    type="button"
-                    className="st-card-add"
-                    disabled={selected.stock === 0}
-                    onClick={() => { addToCart(selected); setSelected(null); }}
-                    style={{ marginTop: 16 }}
-                  >
-                    {isRTL ? '🛒 أضف للسلة' : '🛒 Add to cart'}
-                  </button>
-                </div>
-              </div>
-            </motion.div>
-          </motion.div>
+          <ItemDetailModal
+            item={selected}
+            isRTL={isRTL}
+            galleryIdx={galleryIdx}
+            setGalleryIdx={setGalleryIdx}
+            onClose={() => { setSelected(null); setGalleryIdx(0); }}
+            onAdd={(qty) => {
+              for (let i = 0; i < qty; i++) addToCart(selected);
+              setSelected(null);
+              setGalleryIdx(0);
+            }}
+          />
         )}
       </AnimatePresence>
 
@@ -870,6 +759,406 @@ const StorePage = () => {
           </motion.div>
         )}
       </AnimatePresence>
+    </div>
+  );
+};
+
+// ---------- Item detail modal — futuristic PDP ----------
+// - Two-column glass modal: gallery on one side, product info on the
+//   other (stacks on mobile).
+// - Directional arrows: SVG chevrons that respect RTL, and next/prev
+//   wiring flips based on RTL so tapping "→" always means "forward".
+// - Auto-cycling gallery every 4s while the modal is open — pauses if
+//   the user manually navigates or hovers a thumbnail.
+// - Feature chips extracted from bullet lines in the description.
+// - Quantity stepper + gradient primary CTA with icon.
+const ItemDetailModal = ({ item, isRTL, galleryIdx, setGalleryIdx, onClose, onAdd }) => {
+  const images = Array.isArray(item.images) ? item.images.filter(Boolean) : [];
+  const hasMany = images.length > 1;
+  const desc = isRTL ? item.description : (item.descriptionEn || item.description);
+  const [qty, setQty] = useState(1);
+  const [auto, setAuto] = useState(true);
+  const timerRef = useRef(null);
+
+  // Auto-advance the gallery every 4s while enabled.
+  useEffect(() => {
+    if (!auto || !hasMany) return;
+    timerRef.current = setInterval(() => {
+      setGalleryIdx(i => (i + 1) % images.length);
+    }, 4000);
+    return () => clearInterval(timerRef.current);
+  }, [auto, hasMany, images.length, setGalleryIdx]);
+
+  // Keyboard navigation — arrow keys respect RTL.
+  useEffect(() => {
+    const onKey = (e) => {
+      if (e.key === 'Escape') return onClose();
+      if (!hasMany) return;
+      if (e.key === 'ArrowRight') {
+        setAuto(false);
+        setGalleryIdx(i => isRTL
+          ? (i + 1) % images.length              // RTL: right = next
+          : (i - 1 + images.length) % images.length); // LTR: right = prev
+      }
+      if (e.key === 'ArrowLeft') {
+        setAuto(false);
+        setGalleryIdx(i => isRTL
+          ? (i - 1 + images.length) % images.length  // RTL: left = prev
+          : (i + 1) % images.length);                // LTR: left = next
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [hasMany, images.length, isRTL, onClose, setGalleryIdx]);
+
+  const goPrev = () => { setAuto(false); setGalleryIdx(i => (i - 1 + images.length) % images.length); };
+  const goNext = () => { setAuto(false); setGalleryIdx(i => (i + 1) % images.length); };
+
+  // Split description into bullet features vs prose so we can render
+  // "features chips" in the sidebar.
+  const bullets = [];
+  const proseLines = [];
+  if (desc) {
+    for (const line of String(desc).split(/\r?\n/)) {
+      const t = line.trim();
+      if (!t) continue;
+      if (BULLET_RE.test(t)) bullets.push(t.replace(BULLET_RE, ''));
+      else proseLines.push(line);
+    }
+  }
+  const prose = proseLines.join('\n');
+  const currentImg = images[galleryIdx] || images[0];
+
+  return (
+    <motion.div
+      className="st-pdp-overlay"
+      initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+      onClick={onClose}
+    >
+      <motion.div
+        className="st-pdp"
+        initial={{ opacity: 0, y: 24, scale: 0.96 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        exit={{ opacity: 0, y: 24, scale: 0.96 }}
+        transition={{ type: 'spring', damping: 22, stiffness: 240 }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Close */}
+        <button type="button" className="st-pdp-close" onClick={onClose} aria-label="close">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round">
+            <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+          </svg>
+        </button>
+
+        <div className="st-pdp-grid">
+          {/* -------- Gallery -------- */}
+          <div className="st-pdp-gallery">
+            <div
+              className="st-pdp-stage"
+              onMouseEnter={() => setAuto(false)}
+              onMouseLeave={() => setAuto(true)}
+            >
+              {currentImg ? (
+                <AnimatePresence mode="wait" initial={false}>
+                  <motion.img
+                    key={galleryIdx}
+                    src={currentImg}
+                    alt={item.name}
+                    initial={{ opacity: 0, scale: 1.06 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, scale: 0.97 }}
+                    transition={{ duration: 0.45, ease: 'easeOut' }}
+                    draggable={false}
+                  />
+                </AnimatePresence>
+              ) : (
+                <div className="st-pdp-empty">📦</div>
+              )}
+
+              {item.isFeatured && (
+                <div className="st-pdp-featured">
+                  <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l2.6 6.5L21 9l-5 4.4L17.6 20 12 16.8 6.4 20 8 13.4 3 9l6.4-.5z"/></svg>
+                  {isRTL ? 'مميّز' : 'Featured'}
+                </div>
+              )}
+
+              {item.stock === 0 && (
+                <div className="st-pdp-out">
+                  <div>{isRTL ? '❌ نفدت الكمية' : '❌ Out of stock'}</div>
+                </div>
+              )}
+
+              {hasMany && (
+                <>
+                  {/* Chevron arrows — visually match the reading direction.
+                      Prev = "point-back", Next = "point-forward". */}
+                  <button
+                    type="button"
+                    className="st-pdp-nav st-pdp-nav--prev"
+                    onClick={goPrev}
+                    aria-label={isRTL ? 'السابق' : 'Previous'}
+                  >
+                    {isRTL ? (
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 6 15 12 9 18"/></svg>
+                    ) : (
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 6 9 12 15 18"/></svg>
+                    )}
+                  </button>
+                  <button
+                    type="button"
+                    className="st-pdp-nav st-pdp-nav--next"
+                    onClick={goNext}
+                    aria-label={isRTL ? 'التالي' : 'Next'}
+                  >
+                    {isRTL ? (
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 6 9 12 15 18"/></svg>
+                    ) : (
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 6 15 12 9 18"/></svg>
+                    )}
+                  </button>
+                  <div className="st-pdp-counter">
+                    <span>{galleryIdx + 1}</span>
+                    <em>/ {images.length}</em>
+                  </div>
+                </>
+              )}
+            </div>
+
+            {hasMany && (
+              <div className="st-pdp-thumbs">
+                {images.map((img, i) => (
+                  <button
+                    type="button"
+                    key={i}
+                    className={`st-pdp-thumb ${i === galleryIdx ? 'is-active' : ''}`}
+                    onClick={() => { setAuto(false); setGalleryIdx(i); }}
+                    onMouseEnter={() => setAuto(false)}
+                  >
+                    <img src={img} alt="" />
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* -------- Info sidebar -------- */}
+          <div className="st-pdp-info">
+            {item.category && (
+              <div className="st-pdp-cat">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
+                </svg>
+                {item.category}
+              </div>
+            )}
+            <h2 className="st-pdp-title">{isRTL ? item.name : (item.nameEn || item.name)}</h2>
+
+            {bullets.length > 0 && (
+              <div className="st-pdp-features">
+                {bullets.map((b, i) => (
+                  <span key={i} className="st-pdp-chip">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+                      <polyline points="20 6 9 17 4 12"/>
+                    </svg>
+                    {b}
+                  </span>
+                ))}
+              </div>
+            )}
+
+            {prose && (
+              <div className="st-pdp-desc-block">
+                <div className="st-pdp-desc-label">
+                  <span className="st-pdp-desc-bar" />
+                  {isRTL ? 'وصف المنتج' : 'Product description'}
+                </div>
+                <div className="st-pdp-desc">{prose}</div>
+              </div>
+            )}
+
+            <div className="st-pdp-priceline">
+              <div className="st-pdp-priceline-main">
+                <span className="st-pdp-price-label">{isRTL ? 'السعر' : 'Price'}</span>
+                <motion.div
+                  key={item.itemId}
+                  initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
+                  className="st-pdp-price"
+                >{SAR(item.price)}</motion.div>
+              </div>
+              <div className={`st-pdp-stock ${item.stock === 0 ? 'is-out' : ''}`}>
+                <span className="st-pdp-stock-dot" />
+                {item.stock < 0
+                  ? (isRTL ? 'متوفر بكميات كافية' : 'In stock')
+                  : item.stock === 0
+                    ? (isRTL ? 'نفدت الكمية' : 'Out of stock')
+                    : (isRTL ? `متبقي ${item.stock}` : `${item.stock} left`)}
+              </div>
+            </div>
+
+            {/* Quantity + CTA */}
+            {item.stock !== 0 && (
+              <div className="st-pdp-qty-row">
+                <div className="st-pdp-qty">
+                  <button type="button" onClick={() => setQty(q => Math.max(1, q - 1))} aria-label="decrease">−</button>
+                  <span>{qty}</span>
+                  <button type="button" onClick={() => setQty(q => Math.min(99, q + 1))} aria-label="increase">+</button>
+                </div>
+                <button
+                  type="button"
+                  className="st-pdp-cta"
+                  onClick={() => onAdd(qty)}
+                >
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                    <circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/>
+                    <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/>
+                  </svg>
+                  <span>{isRTL ? 'أضف للسلة' : 'Add to cart'}</span>
+                  <b>{SAR(item.price * qty)}</b>
+                </button>
+              </div>
+            )}
+            {item.stock === 0 && (
+              <button type="button" className="st-pdp-cta is-disabled" disabled>
+                {isRTL ? 'غير متوفر حالياً' : 'Currently unavailable'}
+              </button>
+            )}
+
+            {/* Trust row */}
+            <div className="st-pdp-trust">
+              <div className="st-pdp-trust-item">
+                <span className="st-pdp-trust-icon">🚚</span>
+                <div>
+                  <b>{isRTL ? 'استلام سريع' : 'Quick pickup'}</b>
+                  <span>{isRTL ? 'استلم من الفاب لاب' : 'Pick up at FabLab'}</span>
+                </div>
+              </div>
+              <div className="st-pdp-trust-item">
+                <span className="st-pdp-trust-icon">💵</span>
+                <div>
+                  <b>{isRTL ? 'دفع نقدي' : 'Cash payment'}</b>
+                  <span>{isRTL ? 'عند الاستلام' : 'On pickup'}</span>
+                </div>
+              </div>
+              <div className="st-pdp-trust-item">
+                <span className="st-pdp-trust-icon">✅</span>
+                <div>
+                  <b>{isRTL ? 'ضمان الجودة' : 'Quality guarantee'}</b>
+                  <span>{isRTL ? 'كل المنتجات مفحوصة' : 'Every item verified'}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </motion.div>
+    </motion.div>
+  );
+};
+
+// ---------- Storefront card with auto-cycling image gallery ----------
+// Hover starts a 1.5s image rotation; leaving resets to the first
+// image. Dot indicators show current frame. Crossfade transitions
+// (motion) so the effect feels premium rather than jumpy.
+const StoreItemCard = ({ item, isRTL, onOpen, onAdd }) => {
+  const images = Array.isArray(item.images) ? item.images.filter(Boolean) : [];
+  const hasMany = images.length > 1;
+  const [idx, setIdx] = useState(0);
+  const [hovering, setHovering] = useState(false);
+  const timerRef = useRef(null);
+
+  useEffect(() => {
+    if (!hovering || !hasMany) {
+      clearInterval(timerRef.current);
+      return;
+    }
+    timerRef.current = setInterval(() => {
+      setIdx(i => (i + 1) % images.length);
+    }, 1500);
+    return () => clearInterval(timerRef.current);
+  }, [hovering, hasMany, images.length]);
+
+  // Reset frame when hover ends so the primary image is always the cover.
+  useEffect(() => { if (!hovering) setIdx(0); }, [hovering]);
+
+  return (
+    <div
+      className="st-card"
+      onClick={onOpen}
+      onMouseEnter={() => setHovering(true)}
+      onMouseLeave={() => setHovering(false)}
+    >
+      {item.isFeatured && <span className="st-badge">⭐ {isRTL ? 'مميز' : 'Featured'}</span>}
+      <div className="st-card-img">
+        {images[0] ? (
+          <AnimatePresence mode="wait" initial={false}>
+            <motion.img
+              key={idx}
+              src={images[idx]}
+              alt={item.name}
+              loading="lazy"
+              initial={{ opacity: 0, scale: 1.05 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.98 }}
+              transition={{ duration: 0.35, ease: 'easeOut' }}
+            />
+          </AnimatePresence>
+        ) : (
+          <div className="st-card-img-empty">📦</div>
+        )}
+        {item.stock === 0 && (
+          <div className="st-card-out-overlay">{isRTL ? 'نفدت الكمية' : 'Out of stock'}</div>
+        )}
+        {hasMany && (
+          <>
+            <span className="st-card-photos">📷 {images.length}</span>
+            {/* dot indicators */}
+            <div className="st-card-dots" aria-hidden="true">
+              {images.map((_, i) => (
+                <span
+                  key={i}
+                  className={`st-card-dot ${i === idx ? 'is-active' : ''}`}
+                />
+              ))}
+            </div>
+          </>
+        )}
+        {/* Quick-view overlay button — reveals on hover */}
+        <div className="st-card-quick">
+          <span>{isRTL ? '👁 عرض سريع' : '👁 Quick view'}</span>
+        </div>
+      </div>
+      <div className="st-card-body">
+        {item.category && <div className="st-card-cat">{item.category}</div>}
+        <div className="st-card-name">{isRTL ? item.name : (item.nameEn || item.name)}</div>
+        {item.description && (
+          <div className="st-card-desc">
+            {isRTL ? item.description : (item.descriptionEn || item.description)}
+          </div>
+        )}
+        <div className="st-card-foot">
+          <div className="st-card-price">{SAR(item.price)}</div>
+          <div className={`st-card-stock ${item.stock === 0 ? 'is-out' : ''}`}>
+            {item.stock < 0
+              ? (isRTL ? '✓ متوفر' : '✓ Available')
+              : item.stock === 0
+                ? (isRTL ? 'غير متوفر' : 'Out')
+                : (isRTL ? `${item.stock} متبقي` : `${item.stock} left`)}
+          </div>
+        </div>
+        <button
+          type="button"
+          className="st-card-add"
+          disabled={item.stock === 0}
+          onClick={(e) => { e.stopPropagation(); onAdd(); }}
+        >
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/>
+            <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/>
+          </svg>
+          <span>{item.stock === 0
+            ? (isRTL ? 'غير متوفر' : 'Out of stock')
+            : (isRTL ? 'أضف للسلة' : 'Add to cart')}</span>
+        </button>
+      </div>
     </div>
   );
 };
