@@ -855,3 +855,24 @@
   padding: 14px 16px;
 }
 .sv2-feed-item.detailed .sv2-feed-body {
+  gap: 6px;
+}
+
+/* ---------- Responsive ---------- */
+@media (max-width: 900px) {
+  .sv2-command {
+    grid-template-columns: 1fr;
+    padding: 14px 16px;
+  }
+  .sv2-metrics {
+    justify-content: flex-start;
+  }
+  .sv2-metric { min-width: 72px; padding: 8px 12px; }
+  .sv2-metric-value { font-size: 1.35rem; }
+}
+@media (max-width: 640px) {
+  .sv2-cal-day { min-height: 52px; padding: 4px 6px; }
+  .sv2-cal-day-num { font-size: 0.75rem; }
+  .sv2-command-title h2 { font-size: 1.15rem; }
+  .sv2-task-form .form-row { grid-template-columns: 1fr; }
+}
