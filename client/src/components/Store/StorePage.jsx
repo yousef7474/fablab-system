@@ -1055,36 +1055,44 @@ const ItemDetailModal = ({ item, isRTL, galleryIdx, setGalleryIdx, onClose, onAd
 };
 
 // ---------- Storefront card with auto-cycling image gallery ----------
-// Hover starts a 1.5s image rotation; leaving resets to the first
-// image. Dot indicators show current frame. Crossfade transitions
-// (motion) so the effect feels premium rather than jumpy.
+// The main store grid cycles every card continuously (not only on
+// hover) so the shelf feels alive as soon as it loads. Each card
+// picks a random start offset + a slightly randomized interval so
+// dozens of cards don't advance in lockstep. Hover pauses the
+// cycle so the customer can inspect the current image without it
+// swapping under their cursor. Dot indicators stay visible when
+// there are multiple images.
 const StoreItemCard = ({ item, isRTL, onOpen, onAdd }) => {
   const images = Array.isArray(item.images) ? item.images.filter(Boolean) : [];
   const hasMany = images.length > 1;
-  const [idx, setIdx] = useState(0);
-  const [hovering, setHovering] = useState(false);
+
+  // Random 0..len-1 start so different cards don't show the same
+  // frame at the same time on page load. Random 2.4-3.2s interval
+  // desyncs advances too.
+  const [idx, setIdx] = useState(() =>
+    hasMany ? Math.floor(Math.random() * images.length) : 0
+  );
+  const intervalMs = useRef(2400 + Math.floor(Math.random() * 800));
+  const [paused, setPaused] = useState(false);
   const timerRef = useRef(null);
 
   useEffect(() => {
-    if (!hovering || !hasMany) {
+    if (!hasMany || paused) {
       clearInterval(timerRef.current);
       return;
     }
     timerRef.current = setInterval(() => {
       setIdx(i => (i + 1) % images.length);
-    }, 1500);
+    }, intervalMs.current);
     return () => clearInterval(timerRef.current);
-  }, [hovering, hasMany, images.length]);
-
-  // Reset frame when hover ends so the primary image is always the cover.
-  useEffect(() => { if (!hovering) setIdx(0); }, [hovering]);
+  }, [hasMany, paused, images.length]);
 
   return (
     <div
       className="st-card"
       onClick={onOpen}
-      onMouseEnter={() => setHovering(true)}
-      onMouseLeave={() => setHovering(false)}
+      onMouseEnter={() => setPaused(true)}
+      onMouseLeave={() => setPaused(false)}
     >
       {item.isFeatured && <span className="st-badge">⭐ {isRTL ? 'مميز' : 'Featured'}</span>}
       <div className="st-card-img">
@@ -1098,7 +1106,7 @@ const StoreItemCard = ({ item, isRTL, onOpen, onAdd }) => {
               initial={{ opacity: 0, scale: 1.05 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.98 }}
-              transition={{ duration: 0.35, ease: 'easeOut' }}
+              transition={{ duration: 0.4, ease: 'easeOut' }}
             />
           </AnimatePresence>
         ) : (
@@ -1110,7 +1118,9 @@ const StoreItemCard = ({ item, isRTL, onOpen, onAdd }) => {
         {hasMany && (
           <>
             <span className="st-card-photos">📷 {images.length}</span>
-            {/* dot indicators */}
+            {/* Dot indicators — visible whenever a card has >1 image so
+                users can see the shelf is cycling; expand + brighten
+                on hover for extra emphasis. */}
             <div className="st-card-dots" aria-hidden="true">
               {images.map((_, i) => (
                 <span
