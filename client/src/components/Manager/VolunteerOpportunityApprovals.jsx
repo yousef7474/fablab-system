@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'react-toastify';
 import api from '../../config/api';
+import printVolunteerOpportunity from '../shared/printVolunteerOpportunity';
 import './Approvals.css';
 
 const fmtWhen = (iso) => {
@@ -44,8 +45,14 @@ const VolunteerOpportunityApprovals = () => {
   const approve = async (row) => {
     setBusy(prev => new Set(prev).add(row.requestId));
     try {
-      await api.post(`/volunteer-opportunity-requests/${row.requestId}/manager-approve`);
-      toast.success(isRTL ? 'تم اعتماد الفرصة التطوعية' : 'Opportunity approved');
+      const { data } = await api.post(`/volunteer-opportunity-requests/${row.requestId}/manager-approve`);
+      toast.success(isRTL
+        ? '✅ تم الاعتماد — سيتم فتح صفحة الطباعة'
+        : '✅ Approved — opening the printable document');
+      // Auto-open the printable document with the manager's signature
+      // line so the manager can print/save-PDF right away.
+      const approvedRow = data?.row || { ...row, approvalStatus: 'approved', approvedAt: new Date().toISOString() };
+      setTimeout(() => { try { printVolunteerOpportunity(approvedRow); } catch {} }, 400);
       setRows(prev => prev.filter(r => r.requestId !== row.requestId));
     } catch (err) {
       toast.error(err?.response?.data?.message || (isRTL ? 'فشل الاعتماد' : 'Approve failed'));
@@ -53,6 +60,14 @@ const VolunteerOpportunityApprovals = () => {
       setBusy(prev => { const n = new Set(prev); n.delete(row.requestId); return n; });
     }
   };
+
+  // Manual print — useful if the manager blocks the popup on the
+  // first attempt and needs to retry.
+  const reprint = (row) => printVolunteerOpportunity({
+    ...row,
+    approvalStatus: 'approved',
+    approvedAt: row.approvedAt || new Date().toISOString()
+  });
 
   const openReject = (row) => { setRejectingId(row.requestId); setRejectNote(''); };
   const doReject = async () => {
@@ -220,11 +235,18 @@ const VolunteerOpportunityApprovals = () => {
                   </div>
                 ) : (
                   <div className="ap-actions">
+                    <button
+                      className="ap-btn ap-btn--ghost"
+                      onClick={() => reprint(r)}
+                      title={isRTL ? 'معاينة الوثيقة قبل الاعتماد' : 'Preview the document before approving'}
+                    >
+                      👁 {isRTL ? 'معاينة الوثيقة' : 'Preview doc'}
+                    </button>
                     <button className="ap-btn ap-btn--reject" onClick={() => openReject(r)} disabled={isBusy}>
                       ✕ {isRTL ? 'رفض' : 'Reject'}
                     </button>
                     <button className="ap-btn ap-btn--approve" onClick={() => approve(r)} disabled={isBusy}>
-                      {isBusy ? '…' : (isRTL ? '✓ اعتماد' : '✓ Approve')}
+                      {isBusy ? '…' : (isRTL ? '✓ اعتماد وطباعة' : '✓ Approve & Print')}
                     </button>
                   </div>
                 )}

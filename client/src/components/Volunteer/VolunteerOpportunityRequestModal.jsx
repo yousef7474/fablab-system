@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'react-toastify';
 import api from '../../config/api';
+import printVolunteerOpportunity from '../shared/printVolunteerOpportunity';
 
 // Default manager (approver) for volunteer-opportunity requests.
 // Admin can still type a different email, but this pre-fills so the
@@ -469,6 +470,21 @@ const ListBody = ({ rows, loading, isRTL, managerEmail, setManagerEmail, onSend,
               )}
 
               <div style={{ marginTop: 12, display: 'flex', gap: 8, justifyContent: 'flex-end', flexWrap: 'wrap' }}>
+                {r.approvalStatus === 'approved' && (
+                  <button
+                    onClick={() => printVolunteerOpportunity(r)}
+                    style={{
+                      padding: '8px 16px', borderRadius: 8, border: 'none',
+                      background: 'linear-gradient(135deg, #16a34a, #15803d)',
+                      color: '#fff', fontFamily: 'inherit', fontWeight: 700, fontSize: 12.5,
+                      cursor: 'pointer',
+                      display: 'inline-flex', alignItems: 'center', gap: 6
+                    }}
+                    title={isRTL ? 'طباعة وثيقة الاعتماد مع مساحة توقيع المدير' : 'Print the approval document with manager signature space'}
+                  >
+                    🖨️ {isRTL ? 'طباعة وثيقة الاعتماد' : 'Print approval doc'}
+                  </button>
+                )}
                 {(r.approvalStatus === 'draft' || r.approvalStatus === 'rejected') && (
                   <button
                     onClick={() => onSend(r.requestId)}
