@@ -1,8 +1,10 @@
+/* =====================================================================
+   SCHEDULE TAB — "MISSION CONTROL" style
    ---------------------------------------------------------------------
-   Scoped under .schedule-v2 so every rule wins the specificity battle
-   against the original .schedule-content styles above without needing
-   !important. Uses the admin panel's design-system tokens so it flips
-   with the theme (dark/light) automatically.
+   Extracted from Admin.css so the manager dashboard can share the same
+   look. Both dashboards import this file; the admin also keeps its
+   in-file copy for now to avoid touching the huge Admin.css during
+   this move.
    ===================================================================== */
 .schedule-v2 {
   --sv2-red: #EE2329;
