@@ -5206,3 +5206,178 @@
    ============================================================= */
 .home-button-container,
 .home-button { display: none !important; }
+
+/* =============================================================
+   Contact strip — three deep-link buttons on the register page
+   (WhatsApp, email, phone). Kept visually distinct from the
+   service cards above but shares the same glass-dark aesthetic.
+   ============================================================= */
+.registration-page .contact-strip {
+  max-width: 960px;
+  margin: 24px auto 0;
+  padding: 22px 24px;
+  background: linear-gradient(180deg,
+    rgba(255, 255, 255, 0.05),
+    rgba(255, 255, 255, 0.015));
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 20px;
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  box-shadow:
+    0 20px 60px -20px rgba(0, 0, 0, 0.5),
+    inset 0 1px 0 rgba(255, 255, 255, 0.06);
+}
+.registration-page .contact-strip-title {
+  text-align: center;
+  margin-bottom: 18px;
+}
+.registration-page .contact-strip-kicker {
+  display: inline-block;
+  font-family: 'Bricolage Grotesque', 'Cairo', sans-serif;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 3px;
+  color: #EE2329;
+  padding: 4px 14px;
+  background: rgba(238, 35, 41, 0.12);
+  border: 1px solid rgba(238, 35, 41, 0.28);
+  border-radius: 999px;
+  margin-bottom: 8px;
+  text-transform: uppercase;
+}
+.registration-page .contact-strip-title p {
+  margin: 4px 0 0;
+  font-size: 13.5px;
+  color: rgba(255, 255, 255, 0.7);
+  line-height: 1.6;
+}
+
+.registration-page .contact-strip-actions {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 12px;
+}
+
+.registration-page .contact-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 14px;
+  padding: 16px 18px;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #fff;
+  text-decoration: none;
+  font-family: inherit;
+  transition: transform 0.18s ease, box-shadow 0.18s ease,
+              background 0.18s ease, border-color 0.18s ease;
+  position: relative;
+  overflow: hidden;
+}
+.registration-page .contact-btn::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg,
+    transparent 40%, rgba(255, 255, 255, 0.08) 50%, transparent 60%);
+  transform: translateX(-100%);
+  transition: transform 0.55s ease;
+  pointer-events: none;
+}
+.registration-page .contact-btn:hover {
+  transform: translateY(-3px);
+  border-color: rgba(255, 255, 255, 0.22);
+  background: rgba(255, 255, 255, 0.07);
+}
+.registration-page .contact-btn:hover::before { transform: translateX(100%); }
+.registration-page .contact-btn:active { transform: translateY(-1px); }
+
+.registration-page .contact-btn-icon {
+  flex-shrink: 0;
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  display: grid;
+  place-items: center;
+  color: #fff;
+  background: rgba(255, 255, 255, 0.08);
+}
+.registration-page .contact-btn-icon svg {
+  width: 22px;
+  height: 22px;
+}
+
+.registration-page .contact-btn-body {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+.registration-page .contact-btn-label {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.6px;
+  color: rgba(255, 255, 255, 0.65);
+  text-transform: uppercase;
+}
+.registration-page .contact-btn-value {
+  font-family: 'JetBrains Mono', 'Consolas', ui-monospace, monospace;
+  font-size: 14px;
+  font-weight: 700;
+  color: #fff;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Per-service accents so each button feels distinct */
+.registration-page .contact-btn--wa {
+  border-color: rgba(37, 211, 102, 0.35);
+  background: linear-gradient(135deg,
+    rgba(37, 211, 102, 0.14), rgba(37, 211, 102, 0.04));
+}
+.registration-page .contact-btn--wa .contact-btn-icon {
+  background: linear-gradient(135deg, #25d366, #128c7e);
+  box-shadow: 0 6px 16px -6px rgba(37, 211, 102, 0.6);
+}
+.registration-page .contact-btn--wa:hover {
+  border-color: rgba(37, 211, 102, 0.65);
+  box-shadow: 0 16px 34px -14px rgba(37, 211, 102, 0.55);
+}
+
+.registration-page .contact-btn--email {
+  border-color: rgba(59, 130, 246, 0.35);
+  background: linear-gradient(135deg,
+    rgba(59, 130, 246, 0.14), rgba(59, 130, 246, 0.04));
+}
+.registration-page .contact-btn--email .contact-btn-icon {
+  background: linear-gradient(135deg, #3b82f6, #1e40af);
+  box-shadow: 0 6px 16px -6px rgba(59, 130, 246, 0.6);
+}
+.registration-page .contact-btn--email:hover {
+  border-color: rgba(59, 130, 246, 0.65);
+  box-shadow: 0 16px 34px -14px rgba(59, 130, 246, 0.55);
+}
+
+.registration-page .contact-btn--phone {
+  border-color: rgba(238, 35, 41, 0.35);
+  background: linear-gradient(135deg,
+    rgba(238, 35, 41, 0.14), rgba(238, 35, 41, 0.04));
+}
+.registration-page .contact-btn--phone .contact-btn-icon {
+  background: linear-gradient(135deg, #EE2329, #c41e24);
+  box-shadow: 0 6px 16px -6px rgba(238, 35, 41, 0.6);
+}
+.registration-page .contact-btn--phone:hover {
+  border-color: rgba(238, 35, 41, 0.65);
+  box-shadow: 0 16px 34px -14px rgba(238, 35, 41, 0.55);
+}
+
+@media (max-width: 640px) {
+  .registration-page .contact-strip {
+    padding: 18px 16px;
+    margin-top: 20px;
+  }
+  .registration-page .contact-btn { padding: 14px 14px; }
+  .registration-page .contact-btn-value { font-size: 12.5px; }
+}
