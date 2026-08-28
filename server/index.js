@@ -34,6 +34,7 @@ const storeRoutes = require('./routes/storeRoutes');
 const print3DRoutes = require('./routes/print3DRoutes');
 const institutionSupportRoutes = require('./routes/institutionSupportRoutes');
 const aiRoutes = require('./routes/aiRoutes');
+const volunteerOpportunityRequestRoutes = require('./routes/volunteerOpportunityRequestRoutes');
 const trainerAssistantRoutes = require('./routes/trainerAssistantRoutes');
 const customerRoutes = require('./routes/customerRoutes');
 const contractRoutes = require('./routes/contractRoutes');
@@ -87,6 +88,7 @@ app.use('/api/institution-support', institutionSupportRoutes);
 // Give the key to your AI model; it can then read (but never mutate)
 // every resource in the system to answer questions.
 app.use('/api/ai', aiRoutes);
+app.use('/api/volunteer-opportunity-requests', volunteerOpportunityRequestRoutes);
 app.use('/api/trainer-assistants', trainerAssistantRoutes);
 app.use('/api/customers', customerRoutes);
 app.use('/api/contracts', contractRoutes);

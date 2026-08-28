@@ -7,7 +7,7 @@ import api from '../../config/api';
 // Manager approver quick-pick (mirrors the overtime tab convention).
 // Empty emails are hidden — admin can still type a custom one.
 const APPROVER_EMAILS = [
-  { name: 'أ. زكي اللويم',        email: 'FabLab.Spc1@fablabahsa.org' },
+  { name: 'أ. زكي اللويم',        email: 'zakiallwoaim@gmail.com' },
   { name: 'م. نوف البوعبيد',      email: '' },
   { name: 'أ. عبدالله الصفي',     email: '' },
   { name: 'أ. عبدالمحسن السلطان', email: '' }

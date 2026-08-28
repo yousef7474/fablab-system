@@ -26,7 +26,7 @@ const APPROVERS = [
 // are placeholders — fill in when the address is known. Admin can
 // always type a custom email via the "بريد آخر" option.
 const APPROVER_EMAILS = [
-  { name: 'أ. زكي اللويم',        email: 'FabLab.Spc1@fablabahsa.org' },
+  { name: 'أ. زكي اللويم',        email: 'zakiallwoaim@gmail.com' },
   { name: 'م. نوف البوعبيد',      email: '' },
   { name: 'أ. عبدالله الصفي',     email: '' },
   { name: 'أ. عبدالمحسن السلطان', email: '' }

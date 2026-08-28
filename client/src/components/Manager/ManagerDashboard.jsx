@@ -20,6 +20,7 @@ import { EVALUATION_CATEGORIES, MAX_PER_CRITERION, calculateWeightedTotal, calcu
 import VolunteerManagement from '../Volunteer/VolunteerManagement';
 import OvertimeApprovals from './OvertimeApprovals';
 import FablabVisitApprovals from './FablabVisitApprovals';
+import VolunteerOpportunityApprovals from './VolunteerOpportunityApprovals';
 import YearCalendar from '../YearCalendar/YearCalendar';
 import '../Admin/Admin.css';
 import './Manager.css';
@@ -4015,7 +4016,7 @@ const ManagerDashboard = () => {
               : activeTab === 'todos'
               ? (isRTL ? 'قائمة مهامي الشخصية' : 'My personal task list')
               : activeTab === 'approvals'
-              ? (isRTL ? 'اعتماد الساعات الإضافية وطلبات زيارة فاب لاب' : 'Overtime and FabLab visit approvals')
+              ? (isRTL ? 'اعتماد الساعات الإضافية، طلبات زيارة فاب لاب، والفرص التطوعية' : 'Overtime, FabLab visits, and volunteer opportunity approvals')
               : activeTab === 'workspaces'
               ? (isRTL ? 'إدارة مساحات العمل للعملاء' : 'Manage customer workspaces')
               : activeTab === 'volunteers'
@@ -4718,6 +4719,7 @@ const ManagerDashboard = () => {
           <>
             <OvertimeApprovals />
             <FablabVisitApprovals />
+            <VolunteerOpportunityApprovals />
           </>
         )}
 

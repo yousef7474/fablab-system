@@ -11,6 +11,7 @@ import VolunteerContractModal from '../shared/VolunteerContractModal';
 import AttendanceLog from '../shared/AttendanceLog';
 import VolunteerShareControls from '../shared/VolunteerShareControls';
 import MasterShareBar from '../shared/MasterShareBar';
+import VolunteerOpportunityRequestModal from './VolunteerOpportunityRequestModal';
 
 const VolunteerManagement = () => {
   const { i18n } = useTranslation();
@@ -19,6 +20,7 @@ const VolunteerManagement = () => {
   // Volunteer state
   const [volunteers, setVolunteers] = useState([]);
   const [showVolunteerModal, setShowVolunteerModal] = useState(false);
+  const [showOpportunityRequestModal, setShowOpportunityRequestModal] = useState(false);
   const [editingVolunteerId, setEditingVolunteerId] = useState(null);
   // Attendance mode state
   const [volunteerAttendanceMode, setVolunteerAttendanceMode] = useState(false);
@@ -1732,6 +1734,22 @@ const VolunteerManagement = () => {
                   </svg>
                   {isRTL ? 'إضافة متطوع' : 'Add Volunteer'}
                 </button>
+                <button
+                  className="add-volunteer-btn"
+                  style={{ background: 'linear-gradient(135deg, #16a34a, #15803d)' }}
+                  onClick={() => setShowOpportunityRequestModal(true)}
+                  title={isRTL
+                    ? 'إعداد طلب فرصة تطوعية جديدة وإرساله للمدير للاعتماد'
+                    : 'Draft a new volunteer-opportunity request and send it to the manager'}
+                >
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                    <polyline points="14 2 14 8 20 8"/>
+                    <line x1="12" y1="18" x2="12" y2="12"/>
+                    <line x1="9" y1="15" x2="15" y2="15"/>
+                  </svg>
+                  {isRTL ? 'طلب فرصة تطوعية' : 'Volunteer Opportunity Request'}
+                </button>
                 {volunteers.length > 0 && selectedIdsForPrint.size > 0 && (
                   <button
                     className="add-opportunity-btn"
@@ -2094,6 +2112,11 @@ const VolunteerManagement = () => {
               )}
             </div>
           </div>
+
+        {/* Volunteer-opportunity request modal */}
+        {showOpportunityRequestModal && (
+          <VolunteerOpportunityRequestModal onClose={() => setShowOpportunityRequestModal(false)} />
+        )}
 
         {/* Volunteer Modal */}
         {showVolunteerModal && (

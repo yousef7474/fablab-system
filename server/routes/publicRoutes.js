@@ -8,6 +8,7 @@ const storeOrderController = require('../controllers/storeOrderController');
 const discountCouponController = require('../controllers/discountCouponController');
 const storeCustomerController = require('../controllers/storeCustomerController');
 const print3DController = require('../controllers/print3DController');
+const vorController = require('../controllers/volunteerOpportunityRequestController');
 const customerAuth = require('../middleware/customerAuth');
 
 // PUBLIC — no auth middleware, no login required.
@@ -52,5 +53,9 @@ router.post('/print3d',                    print3DController.publicCreate);
 router.get('/print3d/quote/:token',        print3DController.publicGetByToken);
 router.post('/print3d/quote/:token/decide', print3DController.publicDecide);
 router.get('/print3d/:id/invoice',         print3DController.publicInvoiceHtml);
+
+// Volunteer opportunity request — manager approval via emailed link.
+router.get('/volunteer-opportunity/:token',        vorController.publicGetByToken);
+router.post('/volunteer-opportunity/:token/decide', vorController.publicDecide);
 
 module.exports = router;
