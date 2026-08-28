@@ -2,6 +2,7 @@ const { Volunteer, VolunteerOpportunity, VolunteerRating, VolunteerReceipt, Volu
 const { Op } = require('sequelize');
 const crypto = require('crypto');
 const QRCode = require('qrcode');
+const { buildQrPayload, requireRole } = require('../utils/qrPayload');
 
 // ============== VOLUNTEER PROFILE MANAGEMENT ==============
 
@@ -768,7 +769,7 @@ exports.getVolunteerCard = async (req, res) => {
   try {
     const volunteer = await Volunteer.findByPk(req.params.id);
     if (!volunteer) return res.status(404).json({ message: 'Volunteer not found' });
-    const qrDataUrl = await makeQrDataUrl(volunteer.nationalId);
+    const qrDataUrl = await makeQrDataUrl(buildQrPayload('VOL', volunteer.nationalId));
     res.json({ volunteer, qrDataUrl });
   } catch (err) {
     console.error('Error getting volunteer card:', err);
@@ -786,7 +787,7 @@ exports.getVolunteerCardsBulk = async (req, res) => {
     const volunteers = await Volunteer.findAll({ where: { volunteerId: volunteerIds } });
     const cards = await Promise.all(volunteers.map(async (v) => ({
       volunteer: v,
-      qrDataUrl: await makeQrDataUrl(v.nationalId)
+      qrDataUrl: await makeQrDataUrl(buildQrPayload('VOL', v.nationalId))
     })));
     res.json({ cards });
   } catch (err) {
@@ -906,9 +907,13 @@ exports.scanAttendance = async (req, res) => {
     const raw = String(req.body?.code || '').trim();
     if (!raw) return res.status(400).json({ message: 'No code provided' });
 
-    const volunteer = await Volunteer.findOne({ where: { nationalId: raw } });
+    const check = requireRole(raw, 'VOL');
+    if (!check.ok) return res.status(check.status).json(check.response);
+    const nid = check.id;
+
+    const volunteer = await Volunteer.findOne({ where: { nationalId: nid } });
     if (!volunteer) {
-      return res.status(404).json({ message: 'No volunteer matches this code', code: raw });
+      return res.status(404).json({ message: 'No volunteer matches this code', code: nid });
     }
 
     const date = todayStr();

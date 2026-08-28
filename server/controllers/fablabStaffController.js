@@ -1,6 +1,7 @@
 const { FablabStaff, FablabStaffAttendance } = require('../models');
 const { Op } = require('sequelize');
 const QRCode = require('qrcode');
+const { buildQrPayload, requireRole } = require('../utils/qrPayload');
 
 // ============== Riyadh-anchored "today" ==============
 
@@ -124,7 +125,7 @@ exports.getStaffCard = async (req, res) => {
   try {
     const row = await FablabStaff.findByPk(req.params.id);
     if (!row) return res.status(404).json({ message: 'Staff not found' });
-    const qrDataUrl = await makeQrDataUrl(row.nationalId);
+    const qrDataUrl = await makeQrDataUrl(buildQrPayload('STAFF', row.nationalId));
     res.json({ staff: row, qrDataUrl });
   } catch (err) {
     console.error('getStaffCard error:', err);
@@ -141,7 +142,7 @@ exports.getStaffCardsBulk = async (req, res) => {
     const rows = await FablabStaff.findAll({ where: { staffId: staffIds } });
     const cards = await Promise.all(rows.map(async (r) => ({
       staff: r,
-      qrDataUrl: await makeQrDataUrl(r.nationalId)
+      qrDataUrl: await makeQrDataUrl(buildQrPayload('STAFF', r.nationalId))
     })));
     res.json({ cards });
   } catch (err) {
@@ -157,9 +158,16 @@ exports.scanAttendance = async (req, res) => {
     const raw = String(req.body?.code || '').trim();
     if (!raw) return res.status(400).json({ message: 'No code provided' });
 
-    const staff = await FablabStaff.findOne({ where: { nationalId: raw } });
+    // Reject QRs that identify themselves as a different role — this
+    // is the main win of the FL:ROLE:id payload format. Unprefixed
+    // legacy codes still work.
+    const check = requireRole(raw, 'STAFF');
+    if (!check.ok) return res.status(check.status).json(check.response);
+    const nid = check.id;
+
+    const staff = await FablabStaff.findOne({ where: { nationalId: nid } });
     if (!staff) {
-      return res.status(404).json({ message: 'No staff matches this code', code: raw });
+      return res.status(404).json({ message: 'No staff matches this code', code: nid });
     }
 
     const date = todayStr();

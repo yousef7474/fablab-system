@@ -1,5 +1,6 @@
 const { Op } = require('sequelize');
 const QRCode = require('qrcode');
+const { buildQrPayload, requireRole } = require('../utils/qrPayload');
 const {
   SummerStudent,
   SummerProgram,
@@ -180,7 +181,7 @@ exports.cardData = async (req, res) => {
         messageAr: 'هذا الطالب لا يملك رقم هوية — رقم الهوية مطلوب لطباعة بطاقة QR'
       });
     }
-    const qrDataUrl = await QRCode.toDataURL(student.nationalId, {
+    const qrDataUrl = await QRCode.toDataURL(buildQrPayload('SUMMER', student.nationalId), {
       errorCorrectionLevel: 'M', margin: 0, width: 340,
       color: { dark: '#0f172a', light: '#ffffff' }
     });
@@ -214,7 +215,7 @@ exports.cardsBulk = async (req, res) => {
     const skipped = [];
     for (const s of students) {
       if (!s.nationalId) { skipped.push({ studentId: s.studentId, name: s.name }); continue; }
-      const qrDataUrl = await QRCode.toDataURL(s.nationalId, {
+      const qrDataUrl = await QRCode.toDataURL(buildQrPayload('SUMMER', s.nationalId), {
         errorCorrectionLevel: 'M', margin: 0, width: 340,
         color: { dark: '#0f172a', light: '#ffffff' }
       });
@@ -241,11 +242,15 @@ exports.scanAttendance = async (req, res) => {
     const raw = String(req.body?.code || '').trim();
     if (!raw) return res.status(400).json({ message: 'No code provided' });
 
+    const check = requireRole(raw, 'SUMMER');
+    if (!check.ok) return res.status(check.status).json(check.response);
+    const nid = check.id;
+
     const student = await SummerStudent.findOne({
-      where: { nationalId: raw, isActive: true },
+      where: { nationalId: nid, isActive: true },
       include: [{ model: SummerProgram, as: 'program' }]
     });
-    if (!student) return res.status(404).json({ message: 'No Summer student matches this code', code: raw });
+    if (!student) return res.status(404).json({ message: 'No Summer student matches this code', code: nid });
 
     const date = todayStr();
     const now = new Date();

@@ -2,6 +2,7 @@ const { Workshop, WorkshopStudent, Employee, Admin } = require('../models');
 const { Op } = require('sequelize');
 const { sequelize } = require('../config/database');
 const { sendWorkshopRegistrationEmail, sendAttendanceIdEmail, sendWorkshopCustomEmail, generateAttendanceIdHtml, sendCertificateEmail } = require('../utils/emailService');
+const { requireRole } = require('../utils/qrPayload');
 
 // Create a new workshop (admin)
 exports.createWorkshop = async (req, res) => {
@@ -940,7 +941,13 @@ const _dayScanEntry = (scans, date) => {
 //   - Repeat scan within 15 min of check-in → duplicate (soft warning)
 exports.scanWorkshopAttendance = async (req, res) => {
   try {
-    const student = await _resolveWorkshopStudentByCode(req.body?.code);
+    // Reject cross-role QRs (e.g., a staff card scanned at the
+    // workshop station). Unprefixed codes fall through and are
+    // resolved by the legacy JSON/UUID paths below.
+    const check = requireRole(req.body?.code, 'WORKSHOP');
+    if (!check.ok) return res.status(check.status).json(check.response);
+
+    const student = await _resolveWorkshopStudentByCode(check.id);
     if (!student) return res.status(404).json({ message: 'No workshop student matches this code' });
 
     const date = _todayStrRiyadh();

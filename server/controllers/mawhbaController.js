@@ -1,6 +1,7 @@
 const { MawhbaStudent, MawhbaCourseColor, MawhbaAttendance, MawhbaSeason } = require('../models');
 const { Op } = require('sequelize');
 const QRCode = require('qrcode');
+const { buildQrPayload, requireRole } = require('../utils/qrPayload');
 const { sendCustomEmail } = require('../utils/emailService');
 
 const DEFAULT_COURSE_COLOR = '#8b5cf6';
@@ -353,7 +354,7 @@ exports.cardData = async (req, res) => {
     const student = await MawhbaStudent.findByPk(req.params.id);
     if (!student) return res.status(404).json({ message: 'Student not found' });
     const color = await getColorForCourse(student.courseName);
-    const qrDataUrl = await QRCode.toDataURL(student.nationalId, {
+    const qrDataUrl = await QRCode.toDataURL(buildQrPayload('MAWHBA', student.nationalId), {
       errorCorrectionLevel: 'M',
       margin: 0,
       width: 340,
@@ -379,7 +380,7 @@ exports.cardsBulk = async (req, res) => {
     const colorMap = Object.fromEntries(colorRows.map(r => [r.courseName, r.color]));
     const result = [];
     for (const s of students) {
-      const qrDataUrl = await QRCode.toDataURL(s.nationalId, {
+      const qrDataUrl = await QRCode.toDataURL(buildQrPayload('MAWHBA', s.nationalId), {
         errorCorrectionLevel: 'M', margin: 0, width: 340,
         color: { dark: '#0f172a', light: '#ffffff' }
       });
@@ -910,9 +911,13 @@ exports.scanAttendance = async (req, res) => {
     const raw = String(req.body?.code || '').trim();
     if (!raw) return res.status(400).json({ message: 'No code provided' });
 
+    const check = requireRole(raw, 'MAWHBA');
+    if (!check.ok) return res.status(check.status).json(check.response);
+    const nid = check.id;
+
     // The Mawhba QR encodes the student's national ID
-    const student = await MawhbaStudent.findOne({ where: { nationalId: raw } });
-    if (!student) return res.status(404).json({ message: 'No Mawhba student matches this code', code: raw });
+    const student = await MawhbaStudent.findOne({ where: { nationalId: nid } });
+    if (!student) return res.status(404).json({ message: 'No Mawhba student matches this code', code: nid });
 
     const date = todayStr();
     const now = new Date();

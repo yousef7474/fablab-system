@@ -1,6 +1,7 @@
 const { Intern, InternTraining, InternRating, InternAttendance, Admin } = require('../models');
 const { Op } = require('sequelize');
 const QRCode = require('qrcode');
+const { buildQrPayload, requireRole } = require('../utils/qrPayload');
 
 // ============== INTERN PROFILE MANAGEMENT ==============
 
@@ -602,7 +603,7 @@ exports.getInternCard = async (req, res) => {
   try {
     const intern = await Intern.findByPk(req.params.id);
     if (!intern) return res.status(404).json({ message: 'Intern not found' });
-    const qrDataUrl = await makeQrDataUrl(intern.nationalId);
+    const qrDataUrl = await makeQrDataUrl(buildQrPayload('INTERN', intern.nationalId));
     res.json({ intern, qrDataUrl });
   } catch (err) {
     console.error('getInternCard:', err);
@@ -619,7 +620,7 @@ exports.getInternCardsBulk = async (req, res) => {
     const interns = await Intern.findAll({ where: { internId: internIds } });
     const cards = await Promise.all(interns.map(async (i) => ({
       intern: i,
-      qrDataUrl: await makeQrDataUrl(i.nationalId)
+      qrDataUrl: await makeQrDataUrl(buildQrPayload('INTERN', i.nationalId))
     })));
     res.json({ cards });
   } catch (err) {
@@ -650,9 +651,13 @@ exports.scanAttendance = async (req, res) => {
     const raw = String(req.body?.code || '').trim();
     if (!raw) return res.status(400).json({ message: 'No code provided' });
 
-    const intern = await Intern.findOne({ where: { nationalId: raw } });
+    const check = requireRole(raw, 'INTERN');
+    if (!check.ok) return res.status(check.status).json(check.response);
+    const nid = check.id;
+
+    const intern = await Intern.findOne({ where: { nationalId: nid } });
     if (!intern) {
-      return res.status(404).json({ message: 'No intern matches this code', code: raw });
+      return res.status(404).json({ message: 'No intern matches this code', code: nid });
     }
 
     const date = todayStr();

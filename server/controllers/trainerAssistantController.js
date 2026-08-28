@@ -1,6 +1,7 @@
 const { TrainerAssistant, TrainerAssignment, TrainerAssistantAttendance } = require('../models');
 const { Op } = require('sequelize');
 const QRCode = require('qrcode');
+const { buildQrPayload, requireRole } = require('../utils/qrPayload');
 const sgMail = require('@sendgrid/mail');
 
 if (process.env.SENDGRID_API_KEY) {
@@ -259,9 +260,13 @@ exports.scanAttendance = async (req, res) => {
     const raw = String(req.body?.code || '').trim();
     if (!raw) return res.status(400).json({ message: 'No code provided' });
 
-    const trainer = await TrainerAssistant.findOne({ where: { nationalId: raw } });
+    const check = requireRole(raw, 'TRAINER');
+    if (!check.ok) return res.status(check.status).json(check.response);
+    const nid = check.id;
+
+    const trainer = await TrainerAssistant.findOne({ where: { nationalId: nid } });
     if (!trainer) {
-      return res.status(404).json({ message: 'No trainer matches this code', code: raw });
+      return res.status(404).json({ message: 'No trainer matches this code', code: nid });
     }
 
     const date = _todayStr();
@@ -505,7 +510,7 @@ exports.getTrainerCard = async (req, res) => {
         messageAr: 'لا يوجد رقم هوية للمدرب — لا يمكن توليد QR'
       });
     }
-    const qrDataUrl = await _makeQrDataUrl(trainer.nationalId);
+    const qrDataUrl = await _makeQrDataUrl(buildQrPayload('TRAINER', trainer.nationalId));
     res.json({ trainer, qrDataUrl });
   } catch (err) {
     console.error('Trainer getTrainerCard error:', err);
@@ -526,7 +531,7 @@ exports.getTrainerCardsBulk = async (req, res) => {
     const cards = [];
     for (const t of trainers) {
       if (!t.nationalId) continue;
-      cards.push({ trainer: t, qrDataUrl: await _makeQrDataUrl(t.nationalId) });
+      cards.push({ trainer: t, qrDataUrl: await _makeQrDataUrl(buildQrPayload('TRAINER', t.nationalId)) });
     }
     res.json({ cards });
   } catch (err) {
