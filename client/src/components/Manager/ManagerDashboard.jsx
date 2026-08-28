@@ -19,6 +19,7 @@ import api from '../../config/api';
 import { EVALUATION_CATEGORIES, MAX_PER_CRITERION, calculateWeightedTotal, calculateBonus } from '../../config/evaluationStructure';
 import VolunteerManagement from '../Volunteer/VolunteerManagement';
 import ApprovalsHub from './ApprovalsHub';
+import '../shared/ScheduleV2.css';
 import YearCalendar from '../YearCalendar/YearCalendar';
 import '../Admin/Admin.css';
 import './Manager.css';
@@ -4042,252 +4043,478 @@ const ManagerDashboard = () => {
           )}
         </header>
 
-        {/* Schedule Content */}
-        {activeTab === 'schedule' && (
-        <div className="schedule-layout">
-          {/* Calendar Section */}
-          <div className="calendar-section">
-            {/* Calendar Header */}
-            <div className="calendar-header">
-              <button className="calendar-nav" onClick={handlePrevMonth}>
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <polyline points={isRTL ? "9 18 15 12 9 6" : "15 18 9 12 15 6"}/>
-                </svg>
-              </button>
-              <h3>
-                {format(selectedDate, 'MMMM yyyy', { locale: isRTL ? ar : enUS })}
-              </h3>
-              <button className="calendar-nav" onClick={handleNextMonth}>
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <polyline points={isRTL ? "15 18 9 12 15 6" : "9 18 15 12 9 6"}/>
-                </svg>
-              </button>
-            </div>
+        {/* Schedule Content — sv2 styling ported from the admin
+            dashboard so both roles get the same "Mission Control"
+            look. Keeps all manager-specific features (view calendar,
+            select a day, edit/delete tasks, add task for a day,
+            filter by employee, upcoming-tasks sidebar) unchanged.  */}
+        {activeTab === 'schedule' && (() => {
+          const _todayD = new Date();
+          const _todayCount = getEventsForDay(_todayD).length;
+          // Filtered schedule for the current filter (mirrors admin's
+          // getFilteredSchedule but lives inline since the manager
+          // never needed it before).
+          const _filteredSchedule = (() => {
+            if (!Array.isArray(schedule)) return [];
+            if (scheduleFilter === 'all' || !scheduleFilter) return schedule;
+            const selectedEmployee = employees.find(e => e.employeeId === scheduleFilter);
+            return schedule.filter(e => {
+              if (e.type === 'task') {
+                return selectedEmployee && (e.assignee === selectedEmployee.name || e.employeeId === scheduleFilter);
+              }
+              // Appointments filter by section (matches employee's sections)
+              if (!selectedEmployee) return true;
+              const empSections = Array.isArray(selectedEmployee.sections)
+                ? selectedEmployee.sections
+                : (selectedEmployee.section ? [selectedEmployee.section] : []);
+              return empSections.includes(e.section);
+            });
+          })();
+          const _weekEnd = new Date(_todayD.getTime() + 7 * 24 * 60 * 60 * 1000);
+          const _weekCount = _filteredSchedule.filter(e => {
+            const d = new Date(e.date || e.appointmentDate || e.visitDate || e.startDate || e.dueDate);
+            return d >= _todayD && d <= _weekEnd;
+          }).length;
+          const _upcomingCount = _filteredSchedule.length;
+          const _activeEmp = scheduleFilter && scheduleFilter !== 'all'
+            ? employees.find(e => e.employeeId === scheduleFilter)
+            : null;
 
-            {/* Week Days */}
-            <div className="calendar-weekdays">
-              {weekDays.map(day => (
-                <div key={day} className="weekday">{day}</div>
-              ))}
-            </div>
+          return (
+          <motion.div
+            key="schedule"
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -8 }}
+            transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
+            className="schedule-content schedule-v2"
+          >
+            {/* ═══════════════════════════════════ COMMAND BAR ═══════════════════════════════════ */}
+            <motion.div
+              className="sv2-command"
+              initial={{ opacity: 0, y: -8 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
+            >
+              <div className="sv2-command-left">
+                <div className="sv2-command-title">
+                  <span className="sv2-command-kicker">
+                    {isRTL ? 'مركز التحكم · الجدول' : 'MISSION CONTROL · SCHEDULE'}
+                  </span>
+                  <h2>{isRTL ? 'إدارة المواعيد والمهام' : 'Appointments & Task Operations'}</h2>
+                </div>
+                <AnimatePresence mode="wait">
+                  {_activeEmp ? (
+                    <motion.div
+                      key={`filter-${scheduleFilter}`}
+                      className="sv2-filter-chip"
+                      style={{
+                        color: getEmployeeColor(employees, _activeEmp.employeeId),
+                        borderColor: getEmployeeColor(employees, _activeEmp.employeeId) + '80',
+                        background: getEmployeeColor(employees, _activeEmp.employeeId) + '15'
+                      }}
+                      initial={{ opacity: 0, scale: 0.85 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      exit={{ opacity: 0, scale: 0.85 }}
+                      transition={{ type: 'spring', stiffness: 340, damping: 24 }}
+                    >
+                      <span className="sv2-filter-chip-dot" />
+                      <span className="sv2-filter-chip-name">{_activeEmp.name}</span>
+                      <button
+                        className="sv2-filter-chip-close"
+                        onClick={() => setScheduleFilter('all')}
+                        title={isRTL ? 'مسح الفلتر' : 'Clear filter'}
+                      >×</button>
+                    </motion.div>
+                  ) : (
+                    <motion.div
+                      key="filter-all"
+                      className="sv2-filter-chip all"
+                      initial={{ opacity: 0, scale: 0.85 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      exit={{ opacity: 0, scale: 0.85 }}
+                      transition={{ type: 'spring', stiffness: 340, damping: 24 }}
+                    >
+                      <span className="sv2-filter-chip-dot" style={{ background: 'currentColor', color: '#94a3b8' }} />
+                      <span>{isRTL ? 'كل الموظفين' : 'All Employees'}</span>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+              <div className="sv2-metrics">
+                <motion.div className="sv2-metric today"
+                  initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.12, type: 'spring', stiffness: 300, damping: 22 }}>
+                  <span className="sv2-metric-value">{_todayCount}</span>
+                  <span className="sv2-metric-label">{isRTL ? 'اليوم' : 'Today'}</span>
+                </motion.div>
+                <motion.div className="sv2-metric week"
+                  initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.18, type: 'spring', stiffness: 300, damping: 22 }}>
+                  <span className="sv2-metric-value">{_weekCount}</span>
+                  <span className="sv2-metric-label">{isRTL ? '7 أيام' : '7 Days'}</span>
+                </motion.div>
+                <motion.div className="sv2-metric upcoming"
+                  initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.24, type: 'spring', stiffness: 300, damping: 22 }}>
+                  <span className="sv2-metric-value">{_upcomingCount}</span>
+                  <span className="sv2-metric-label">{isRTL ? 'قادم' : 'Upcoming'}</span>
+                </motion.div>
+              </div>
+            </motion.div>
 
-            {/* Calendar Days */}
-            <div className="calendar-days">
-              {/* Empty cells for days before first of month */}
-              {Array(days[0].getDay()).fill(null).map((_, i) => (
-                <div key={`empty-${i}`} className="calendar-day empty"></div>
-              ))}
-
-              {/* Days */}
-              {days.map(day => {
-                const events = getEventsForDay(day);
-                const hasEvents = events.length > 0;
-
-                return (
-                  <motion.div
-                    key={day.toISOString()}
-                    className={`calendar-day ${isToday(day) ? 'today' : ''} ${hasEvents ? 'has-events' : ''} ${selectedCalendarDay && isSameDay(day, selectedCalendarDay) ? 'selected' : ''}`}
-                    onClick={() => setSelectedCalendarDay(hasEvents ? day : null)}
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
-                  >
-                    <span className="day-number">{format(day, 'd')}</span>
-                    {hasEvents && (
-                      <span className="calendar-event-count">{events.length}</span>
-                    )}
-                  </motion.div>
-                );
-              })}
-            </div>
-
-            {/* Selected Day Details */}
-            <AnimatePresence>
-              {selectedCalendarDay && (
-                <motion.div
-                  className="selected-day-section"
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -20 }}
-                >
-                  <div className="selected-day-header">
-                    <h4>
-                      {format(selectedCalendarDay, 'EEEE, d MMMM', { locale: isRTL ? ar : enUS })}
-                    </h4>
-                    <button onClick={() => setSelectedCalendarDay(null)}>×</button>
+            {/* ═══════════════════════════════════ MAIN GRID ═══════════════════════════════════ */}
+            <div className="sv2-grid">
+              {/* ─────────── LEFT: Calendar Panel ─────────── */}
+              <motion.div
+                className="sv2-panel"
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.12, duration: 0.45, ease: [0.16, 1, 0.3, 1] }}
+              >
+                <div className="sv2-panel-head">
+                  <div className="sv2-panel-title">
+                    <span className="sv2-panel-tag">[01]</span>
+                    <h3>{isRTL ? 'التقويم' : 'Calendar Grid'}</h3>
                   </div>
-                  <div className="selected-day-events">
-                    {getEventsForDay(selectedCalendarDay).map(event => (
-                      <div
-                        key={event.id}
-                        className={`event-item ${event.type === 'task' ? `task-event priority-${event.priority}` : ''}`}
-                        style={event.type !== 'task' ? { borderLeftColor: SECTION_COLORS[event.section] } : {}}
-                      >
-                        <div className="event-header">
-                          <span className="event-title">{event.title}</span>
-                          {event.type === 'task' && (
-                            <span className={`task-status ${event.status}`}>
-                              {event.status === 'pending' ? (isRTL ? 'قيد الانتظار' : 'Pending') :
-                               event.status === 'in_progress' ? (isRTL ? 'قيد التنفيذ' : 'In Progress') :
-                               event.status === 'completed' ? (isRTL ? 'مكتمل' : 'Completed') :
-                               event.status === 'uncompleted' ? (isRTL ? 'غير مكتمل' : 'Uncompleted') :
-                               (isRTL ? 'ملغى' : 'Cancelled')}
-                            </span>
-                          )}
-                        </div>
-                        <div className="event-meta">
-                          {event.startTime && <span>🕐 {formatTimeAMPM(event.startTime)}{event.endTime && ` - ${formatTimeAMPM(event.endTime)}`}{event.duration && ` (${event.duration} ${isRTL ? 'د' : 'min'})`}</span>}
-                          <span>📍 {sectionLabels[event.section] || event.section}</span>
-                          {event.type === 'task' && event.assignee && (
-                            <span>👤 {event.assignee}</span>
-                          )}
-                        </div>
-                        {event.type === 'task' && (
-                          <div className="task-actions">
-                            <select
-                              className="schedule-status-select"
-                              value={event.status}
-                              onChange={(e) => handleUpdateTaskStatus(event.id, e.target.value)}
-                              onClick={(e) => e.stopPropagation()}
-                            >
-                              <option value="pending">{isRTL ? 'قيد الانتظار' : 'Pending'}</option>
-                              <option value="in_progress">{isRTL ? 'قيد التنفيذ' : 'In Progress'}</option>
-                              <option value="completed">{isRTL ? 'مكتمل' : 'Completed'}</option>
-                              <option value="uncompleted">{isRTL ? 'غير مكتمل' : 'Uncompleted'}</option>
-                              <option value="cancelled">{isRTL ? 'ملغى' : 'Cancelled'}</option>
-                            </select>
-                            <button
-                              className="task-action-btn edit"
-                              onClick={() => openEditTaskModal(event)}
-                            >
-                              {isRTL ? 'تعديل' : 'Edit'}
-                            </button>
-                            <button
-                              className="task-action-btn delete"
-                              onClick={() => handleDeleteTask(event.id)}
-                            >
-                              {isRTL ? 'حذف' : 'Delete'}
-                            </button>
-                          </div>
-                        )}
-                      </div>
+                  <div className="sv2-cal-nav">
+                    <button
+                      className="sv2-cal-btn"
+                      onClick={handlePrevMonth}
+                      title={isRTL ? 'الشهر السابق' : 'Previous month'}
+                    >
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <polyline points="15 18 9 12 15 6"/>
+                      </svg>
+                    </button>
+                    <span className="sv2-cal-today">
+                      {format(selectedDate, 'MMMM yyyy', { locale: isRTL ? ar : enUS })}
+                    </span>
+                    <button
+                      className="sv2-cal-btn"
+                      onClick={handleNextMonth}
+                      title={isRTL ? 'الشهر التالي' : 'Next month'}
+                    >
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <polyline points="9 18 15 12 9 6"/>
+                      </svg>
+                    </button>
+                    <button
+                      className="sv2-cal-btn"
+                      onClick={() => setSelectedDate(new Date())}
+                      title={isRTL ? 'اليوم' : 'Today'}
+                      style={{ marginInlineStart: 4 }}
+                    >
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <circle cx="12" cy="12" r="5"/>
+                      </svg>
+                    </button>
+                  </div>
+                </div>
+                <div className="sv2-panel-body">
+                  <div className="sv2-cal-weekdays">
+                    {weekDays.map(day => (
+                      <div key={day} className="sv2-cal-weekday">{day}</div>
                     ))}
                   </div>
-                  <button
-                    className="add-task-btn"
-                    style={{ marginTop: '12px', width: '100%' }}
-                    onClick={() => openCreateTaskModal(selectedCalendarDay)}
+                  <motion.div
+                    className="sv2-cal-grid"
+                    key={format(selectedDate, 'yyyy-MM')}
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={{ staggerChildren: 0.006 }}
                   >
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                      <line x1="12" y1="5" x2="12" y2="19"/>
-                      <line x1="5" y1="12" x2="19" y2="12"/>
-                    </svg>
-                    {isRTL ? 'إضافة مهمة لهذا اليوم' : 'Add task for this day'}
-                  </button>
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </div>
+                    {Array(days[0].getDay()).fill(null).map((_, i) => (
+                      <div key={`empty-${i}`} className="sv2-cal-day empty" />
+                    ))}
+                    {days.map((day) => {
+                      const events = getEventsForDay(day);
+                      const isTodayDay = isToday(day);
+                      const isSelected = selectedCalendarDay && isSameDay(day, selectedCalendarDay);
+                      const eventDots = events.slice(0, 3);
+                      const extra = events.length - eventDots.length;
+                      return (
+                        <motion.div
+                          key={day.toISOString()}
+                          className={`sv2-cal-day ${isTodayDay ? 'today' : ''} ${events.length > 0 ? 'has-events' : ''} ${isSelected ? 'selected' : ''}`}
+                          onClick={() => events.length > 0 && setSelectedCalendarDay(day)}
+                          style={{ cursor: events.length > 0 ? 'pointer' : 'default' }}
+                          whileHover={events.length > 0 ? { scale: 1.04 } : {}}
+                          whileTap={events.length > 0 ? { scale: 0.96 } : {}}
+                          initial={{ opacity: 0, y: 4 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{ duration: 0.25 }}
+                        >
+                          <span className="sv2-cal-day-num">{format(day, 'd')}</span>
+                          {events.length > 0 && (
+                            <div className="sv2-cal-day-dots">
+                              {eventDots.map((ev, i) => (
+                                <span
+                                  key={i}
+                                  className="sv2-cal-day-dot"
+                                  style={{ background: SECTION_COLORS[ev.section] || '#EE2329' }}
+                                />
+                              ))}
+                              {extra > 0 && <span className="sv2-cal-day-dot more">+{extra}</span>}
+                            </div>
+                          )}
+                        </motion.div>
+                      );
+                    })}
+                  </motion.div>
+                </div>
+              </motion.div>
 
-          {/* Right Sidebar - Tasks & Employees */}
-          <div className="schedule-sidebar">
-            {/* Employees Filter */}
-            <div className="employees-section">
-              <h3>{isRTL ? 'الموظفون' : 'Employees'}</h3>
-              <div className="employees-grid">
-                <div
-                  className={`employee-card ${scheduleFilter === 'all' ? 'active' : ''}`}
-                  onClick={() => setScheduleFilter('all')}
+              {/* ─────────── RIGHT: Operations Stack ─────────── */}
+              <div className="sv2-right">
+                {/* ─── Roster Panel — filter by employee ─── */}
+                <motion.div
+                  className="sv2-panel"
+                  initial={{ opacity: 0, y: 12 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.18, duration: 0.45, ease: [0.16, 1, 0.3, 1] }}
                 >
-                  <div className="employee-avatar" style={{ background: 'linear-gradient(135deg, #6366f1, #8b5cf6)' }}>
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                      <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
-                      <circle cx="9" cy="7" r="4"/>
-                      <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
-                      <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
-                    </svg>
-                  </div>
-                  <span>{isRTL ? 'الكل' : 'All'}</span>
-                </div>
-                {employees.map(emp => (
-                  <div
-                    key={emp.employeeId}
-                    className={`employee-card ${scheduleFilter === emp.employeeId ? 'active' : ''}`}
-                    onClick={() => setScheduleFilter(emp.employeeId)}
-                  >
-                    <div
-                      className="employee-avatar"
-                      style={{ background: getEmployeeColor(employees, emp.employeeId) }}
-                    >
-                      {emp.name.charAt(0)}
+                  <div className="sv2-panel-head">
+                    <div className="sv2-panel-title">
+                      <span className="sv2-panel-tag">[02]</span>
+                      <h3>{isRTL ? 'الموظفون' : 'Roster'}</h3>
                     </div>
-                    <span>{emp.name}</span>
                   </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Upcoming Tasks */}
-            <div className="tasks-sidebar">
-              <div className="tasks-sidebar-header">
-                <h3>
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <path d="M9 11l3 3L22 4"/>
-                    <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>
-                  </svg>
-                  {isRTL ? 'المهام القادمة' : 'Upcoming Tasks'}
-                  <span className="task-count">{getUpcomingTasks().length}</span>
-                </h3>
-              </div>
-
-              {getUpcomingTasks().length === 0 ? (
-                <div className="tasks-empty">
-                  <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-                    <path d="M9 11l3 3L22 4"/>
-                    <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>
-                  </svg>
-                  <p>{isRTL ? 'لا توجد مهام قادمة' : 'No upcoming tasks'}</p>
-                </div>
-              ) : (
-                <div className="task-list">
-                  {getUpcomingTasks().map(task => (
-                    <div
-                      key={task.id}
-                      className={`task-item priority-${task.priority}`}
-                      onClick={() => openEditTaskModal(task)}
-                    >
-                      <div className="task-item-header">
-                        <span className="task-item-title">{task.title}</span>
-                        <span className={`priority-badge ${task.priority}`}>
-                          {task.priority === 'high' ? '!' : task.priority === 'medium' ? '•' : '○'}
-                        </span>
-                      </div>
-                      <div className="task-item-due">
-                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <div className="sv2-panel-body">
+                    <div className="sv2-roster-strip">
+                      <button
+                        className={`sv2-roster-btn-all ${scheduleFilter === 'all' ? 'active' : ''}`}
+                        onClick={() => setScheduleFilter('all')}
+                        title={isRTL ? 'كل المواعيد' : 'All schedules'}
+                      >
+                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                           <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
                           <line x1="16" y1="2" x2="16" y2="6"/>
                           <line x1="8" y1="2" x2="8" y2="6"/>
+                          <line x1="3" y1="10" x2="21" y2="10"/>
                         </svg>
-                        {formatDate(task.date)}
-                        {task.startTime && ` • ${formatTimeAMPM(task.startTime)}`}
-                        {task.duration && ` (${task.duration} ${isRTL ? 'د' : 'min'})`}
-                      </div>
-                      {task.assignee && (
-                        <div className="task-item-assignee">
-                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
-                            <circle cx="12" cy="7" r="4"/>
-                          </svg>
-                          {task.assignee}
+                        <span className="sv2-roster-name" style={{ marginTop: 2 }}>
+                          {isRTL ? 'الكل' : 'All'}
+                        </span>
+                      </button>
+
+                      {employees.length === 0 ? (
+                        <div className="sv2-roster-empty">
+                          {isRTL ? '— لا يوجد موظفون —' : '— No employees yet —'}
                         </div>
-                      )}
+                      ) : employees.map((emp) => {
+                        const isActiveForFilter = scheduleFilter === emp.employeeId;
+                        return (
+                          <motion.div
+                            key={emp.employeeId}
+                            className={`sv2-roster-emp ${isActiveForFilter ? 'active' : ''}`}
+                            whileHover={{ y: -2 }}
+                            onClick={() => setScheduleFilter(isActiveForFilter ? 'all' : emp.employeeId)}
+                            style={{ cursor: 'pointer' }}
+                          >
+                            <div className="sv2-roster-avatar" style={{ backgroundColor: getEmployeeColor(employees, emp.employeeId) }}>
+                              {emp.name?.charAt(0)?.toUpperCase()}
+                            </div>
+                            <span className="sv2-roster-name">{emp.name}</span>
+                            {emp.section && (
+                              <div className="sv2-roster-secs">
+                                <span className="sv2-roster-sec-chip" style={{
+                                  background: (SECTION_COLORS[emp.section] || '#64748b') + '20',
+                                  color: SECTION_COLORS[emp.section] || '#64748b'
+                                }}>
+                                  {sectionLabels[emp.section] || emp.section}
+                                </span>
+                              </div>
+                            )}
+                          </motion.div>
+                        );
+                      })}
                     </div>
-                  ))}
-                </div>
-              )}
+                  </div>
+                </motion.div>
+
+                {/* ─── Upcoming Tasks Feed ─── */}
+                <motion.div
+                  className="sv2-panel"
+                  initial={{ opacity: 0, y: 12 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.24, duration: 0.45, ease: [0.16, 1, 0.3, 1] }}
+                >
+                  <div className="sv2-panel-head">
+                    <div className="sv2-panel-title">
+                      <span className="sv2-panel-tag">[03]</span>
+                      <h3>{isRTL ? 'المهام القادمة' : 'Upcoming Tasks'}</h3>
+                    </div>
+                    <span className="sv2-chip">
+                      {getUpcomingTasks().length} {isRTL ? 'مهمة' : 'tasks'}
+                    </span>
+                  </div>
+                  <div className="sv2-panel-body">
+                    {getUpcomingTasks().length === 0 ? (
+                      <div className="sv2-empty">
+                        <svg width="42" height="42" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                          <path d="M9 11l3 3L22 4"/>
+                          <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>
+                        </svg>
+                        <p>{isRTL ? 'لا توجد مهام قادمة' : 'No upcoming tasks'}</p>
+                      </div>
+                    ) : (
+                      <div className="sv2-feed">
+                        {getUpcomingTasks().map(task => (
+                          <div
+                            key={task.id}
+                            className="sv2-feed-item"
+                            style={{ cursor: 'pointer' }}
+                            onClick={() => openEditTaskModal(task)}
+                          >
+                            <div className="sv2-feed-body">
+                              <div className="sv2-feed-title">
+                                {task.title}
+                                <span className={`sv2-feed-tasktag ${task.priority}`}>
+                                  {task.priority === 'high'   ? (isRTL ? 'عالية' : 'High')
+                                  : task.priority === 'medium' ? (isRTL ? 'متوسطة' : 'Med')
+                                  : (isRTL ? 'منخفضة' : 'Low')}
+                                </span>
+                              </div>
+                              <div className="sv2-feed-meta">
+                                <span className="sv2-chip">
+                                  📅 {formatDate(task.date)}
+                                  {task.startTime && ` · ${formatTimeAMPM(task.startTime)}`}
+                                </span>
+                                {task.assignee && (
+                                  <span className="sv2-chip">👤 {task.assignee}</span>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </motion.div>
+              </div>
             </div>
-          </div>
-        </div>
-        )}
+
+            {/* ═══════════════════════════════════ SELECTED-DAY PANEL ═══════════════════════════════════ */}
+            <AnimatePresence>
+              {selectedCalendarDay && (
+                <motion.div
+                  className="sv2-panel"
+                  style={{ marginTop: 16 }}
+                  initial={{ opacity: 0, y: 12 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -8 }}
+                >
+                  <div className="sv2-selday-head">
+                    <div className="sv2-selday-title">
+                      <span className="kicker">{isRTL ? 'اليوم المحدد' : 'SELECTED DAY'}</span>
+                      <h3>{format(selectedCalendarDay, 'EEEE, d MMMM yyyy', { locale: isRTL ? ar : enUS })}</h3>
+                    </div>
+                    <button
+                      className="sv2-selday-close"
+                      onClick={() => setSelectedCalendarDay(null)}
+                      title={isRTL ? 'إغلاق' : 'Close'}
+                    >×</button>
+                  </div>
+                  <div className="sv2-panel-body">
+                    <div className="sv2-feed">
+                      {getEventsForDay(selectedCalendarDay).map(event => (
+                        <div
+                          key={event.id}
+                          className="sv2-feed-item detailed"
+                          style={{ borderInlineStartColor: SECTION_COLORS[event.section] || '#EE2329' }}
+                        >
+                          <div className="sv2-feed-body">
+                            <div className="sv2-feed-title">
+                              {event.title}
+                              {event.type === 'task' && (
+                                <span className={`sv2-feed-tasktag ${event.priority || 'medium'}`}>
+                                  {event.status === 'pending'      ? (isRTL ? 'قيد الانتظار' : 'Pending') :
+                                   event.status === 'in_progress'  ? (isRTL ? 'قيد التنفيذ' : 'In Progress') :
+                                   event.status === 'completed'    ? (isRTL ? 'مكتمل' : 'Completed') :
+                                   event.status === 'uncompleted'  ? (isRTL ? 'غير مكتمل' : 'Uncompleted') :
+                                   (isRTL ? 'ملغى' : 'Cancelled')}
+                                </span>
+                              )}
+                            </div>
+                            <div className="sv2-feed-meta">
+                              {event.startTime && (
+                                <span className="sv2-chip">
+                                  🕐 {formatTimeAMPM(event.startTime)}
+                                  {event.endTime && ` — ${formatTimeAMPM(event.endTime)}`}
+                                  {event.duration && ` (${event.duration} ${isRTL ? 'د' : 'min'})`}
+                                </span>
+                              )}
+                              <span className="sv2-chip">
+                                📍 {sectionLabels[event.section] || event.section}
+                              </span>
+                              {event.type === 'task' && event.assignee && (
+                                <span className="sv2-chip">👤 {event.assignee}</span>
+                              )}
+                            </div>
+                            {event.type === 'task' && (
+                              <div className="sv2-feed-actions" style={{ display: 'flex', gap: 8, marginTop: 10, flexWrap: 'wrap' }}>
+                                <select
+                                  className="sv2-status-select"
+                                  value={event.status}
+                                  onChange={(e) => handleUpdateTaskStatus(event.id, e.target.value)}
+                                  onClick={(e) => e.stopPropagation()}
+                                >
+                                  <option value="pending">{isRTL ? 'قيد الانتظار' : 'Pending'}</option>
+                                  <option value="in_progress">{isRTL ? 'قيد التنفيذ' : 'In Progress'}</option>
+                                  <option value="completed">{isRTL ? 'مكتمل' : 'Completed'}</option>
+                                  <option value="uncompleted">{isRTL ? 'غير مكتمل' : 'Uncompleted'}</option>
+                                  <option value="cancelled">{isRTL ? 'ملغى' : 'Cancelled'}</option>
+                                </select>
+                                <button
+                                  onClick={() => openEditTaskModal(event)}
+                                  style={{
+                                    padding: '6px 14px', borderRadius: 8,
+                                    border: '1px solid var(--border-color, #cbd5e1)',
+                                    background: 'var(--card-bg, #fff)', color: 'var(--text-primary, #0f172a)',
+                                    fontFamily: 'inherit', fontWeight: 700, fontSize: 12, cursor: 'pointer'
+                                  }}
+                                >✏️ {isRTL ? 'تعديل' : 'Edit'}</button>
+                                <button
+                                  onClick={() => handleDeleteTask(event.id)}
+                                  style={{
+                                    padding: '6px 14px', borderRadius: 8,
+                                    border: '1px solid #fecaca',
+                                    background: '#fff', color: '#dc2626',
+                                    fontFamily: 'inherit', fontWeight: 700, fontSize: 12, cursor: 'pointer'
+                                  }}
+                                >🗑️ {isRTL ? 'حذف' : 'Delete'}</button>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                    <button
+                      onClick={() => openCreateTaskModal(selectedCalendarDay)}
+                      style={{
+                        marginTop: 14, width: '100%',
+                        padding: '12px 18px', borderRadius: 10, border: 'none',
+                        background: 'linear-gradient(135deg, #EE2329, #c41e24)',
+                        color: '#fff', cursor: 'pointer',
+                        fontFamily: 'inherit', fontWeight: 800, fontSize: 14,
+                        display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+                        boxShadow: '0 8px 20px -8px rgba(238,35,41,0.5)'
+                      }}
+                    >
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <line x1="12" y1="5" x2="12" y2="19"/>
+                        <line x1="5" y1="12" x2="19" y2="12"/>
+                      </svg>
+                      {isRTL ? 'إضافة مهمة لهذا اليوم' : 'Add task for this day'}
+                    </button>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </motion.div>
+          );
+        })()}
 
         {/* Evaluation Modal */}
         {showEvalModal && (
