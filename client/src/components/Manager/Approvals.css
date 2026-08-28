@@ -3,12 +3,109 @@
    and FablabVisitApprovals. Professional, readable hierarchy.
    ============================================================ */
 
+/* ============================================================
+   Approvals Hub — segmented switcher that replaces the previous
+   "three sections stacked under headings" layout.
+   ============================================================ */
+
+.ap-hub-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 14px 18px;
+  background: var(--card-bg, #fff);
+  border: 1px solid var(--border-color, #e5e7eb);
+  border-radius: 14px;
+  margin-bottom: 18px;
+  flex-wrap: wrap;
+  box-shadow: 0 4px 12px -6px rgba(15, 23, 42, 0.08);
+}
+.ap-hub-total {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--text-secondary, #64748b);
+  font-weight: 600;
+}
+.ap-hub-total b {
+  font-family: 'JetBrains Mono', monospace;
+  color: var(--text-primary, #0f172a);
+  font-size: 15px;
+  font-weight: 800;
+  padding: 2px 10px;
+  background: #fef3c7;
+  border-radius: 8px;
+  border: 1px solid #fde68a;
+}
+.ap-hub-total-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #f59e0b;
+  box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.25);
+  animation: ap-hub-pulse 2s ease-in-out infinite;
+}
+@keyframes ap-hub-pulse {
+  0%, 100% { box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.25); }
+  50% { box-shadow: 0 0 0 6px rgba(245, 158, 11, 0.1); }
+}
+
+.ap-hub-tabs {
+  display: inline-flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.ap-hub-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 16px;
+  border-radius: 10px;
+  border: 1.5px solid var(--border-color, #e5e7eb);
+  background: var(--card-bg, #fff);
+  color: var(--text-secondary, #475569);
+  cursor: pointer;
+  font-family: inherit;
+  font-weight: 700;
+  font-size: 13px;
+  transition: transform 0.15s, box-shadow 0.15s, border-color 0.15s;
+}
+.ap-hub-tab:hover:not(.is-active) {
+  transform: translateY(-1px);
+  border-color: #cbd5e1;
+  background: #f8fafc;
+}
+.ap-hub-tab-icon { font-size: 15px; line-height: 1; }
+.ap-hub-tab-label { line-height: 1; }
+.ap-hub-tab-badge {
+  padding: 2px 9px;
+  border-radius: 999px;
+  font-family: 'JetBrains Mono', monospace;
+  font-weight: 800;
+  font-size: 11.5px;
+  min-width: 22px;
+  text-align: center;
+}
+
+.ap-hub-panel {
+  animation: ap-hub-fadein 0.25s ease-out;
+}
+@keyframes ap-hub-fadein {
+  from { opacity: 0; transform: translateY(4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
 .ap {
   padding: 4px 2px;
   font-family: 'Cairo', 'Inter', system-ui, sans-serif;
   color: var(--text-primary, #0f172a);
 }
-.ap + .ap { margin-top: 32px; }
+/* The hub renders one queue at a time — no need for the old
+   between-sections spacing. */
+.ap-hub-panel > .ap + .ap { margin-top: 32px; }
 
 /* ---- Section header ---- */
 .ap-head {

@@ -289,6 +289,13 @@ exports.listPending = async (req, res) => {
   }
 };
 
+// Hard-coded standard approver for volunteer opportunities. Falling
+// back to req.admin.fullName was wrong — the admin who clicks the
+// button is often just a system user labeled "FABLAB Manager", but
+// the ACTUAL signing manager is fixed. Keep this name authoritative
+// so the printed sanad always shows the right person.
+const DEFAULT_MANAGER_NAME = 'أ. زكي اللويم';
+
 exports.managerApprove = async (req, res) => {
   try {
     const row = await VolunteerOpportunityRequest.findByPk(req.params.id);
@@ -301,7 +308,7 @@ exports.managerApprove = async (req, res) => {
       managerNote: req.body?.note ? String(req.body.note).trim() : row.managerNote,
       managerName: req.body?.managerName
         ? String(req.body.managerName).trim()
-        : (req.admin?.fullName || row.managerName),
+        : (row.managerName || DEFAULT_MANAGER_NAME),
       approvalToken: null
     });
     res.json({ message: 'Approved', row });
@@ -322,7 +329,7 @@ exports.managerReject = async (req, res) => {
       managerNote: req.body?.note ? String(req.body.note).trim() : row.managerNote,
       managerName: req.body?.managerName
         ? String(req.body.managerName).trim()
-        : (req.admin?.fullName || row.managerName),
+        : (row.managerName || DEFAULT_MANAGER_NAME),
       approvalToken: null
     });
     res.json({ message: 'Rejected', row });

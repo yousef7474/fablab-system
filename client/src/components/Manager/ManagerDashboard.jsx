@@ -18,9 +18,7 @@ import { ar, enUS } from 'date-fns/locale';
 import api from '../../config/api';
 import { EVALUATION_CATEGORIES, MAX_PER_CRITERION, calculateWeightedTotal, calculateBonus } from '../../config/evaluationStructure';
 import VolunteerManagement from '../Volunteer/VolunteerManagement';
-import OvertimeApprovals from './OvertimeApprovals';
-import FablabVisitApprovals from './FablabVisitApprovals';
-import VolunteerOpportunityApprovals from './VolunteerOpportunityApprovals';
+import ApprovalsHub from './ApprovalsHub';
 import YearCalendar from '../YearCalendar/YearCalendar';
 import '../Admin/Admin.css';
 import './Manager.css';
@@ -4715,13 +4713,7 @@ const ManagerDashboard = () => {
 
         {/* Volunteers Content */}
         {activeTab === 'volunteers' && <VolunteerManagement />}
-        {activeTab === 'approvals' && (
-          <>
-            <OvertimeApprovals />
-            <FablabVisitApprovals />
-            <VolunteerOpportunityApprovals />
-          </>
-        )}
+        {activeTab === 'approvals' && <ApprovalsHub />}
 
         {/* Interns (University Training) Content */}
         {activeTab === 'interns' && (
