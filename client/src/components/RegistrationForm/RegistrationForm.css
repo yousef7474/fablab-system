@@ -5381,3 +5381,70 @@
   .registration-page .contact-btn { padding: 14px 14px; }
   .registration-page .contact-btn-value { font-size: 12.5px; }
 }
+
+/* ── Light-mode overrides for the contact strip ─────────────────
+   The default (dark) rules use white text on a translucent panel.
+   In light mode the panel becomes a paper-colored card so text
+   must flip to dark; the accent icon tiles keep their gradients
+   because those already have enough contrast against white. */
+.registration-page[data-theme="light"] .contact-strip {
+  background: linear-gradient(180deg, #ffffff, #f8fafc);
+  border-color: #e2e8f0;
+  box-shadow:
+    0 12px 32px -14px rgba(15, 23, 42, 0.12),
+    inset 0 1px 0 rgba(255, 255, 255, 1);
+}
+.registration-page[data-theme="light"] .contact-strip-kicker {
+  color: #EE2329;
+  background: rgba(238, 35, 41, 0.08);
+  border-color: rgba(238, 35, 41, 0.28);
+}
+.registration-page[data-theme="light"] .contact-strip-title p {
+  color: #475569;
+}
+
+.registration-page[data-theme="light"] .contact-btn {
+  background: #ffffff;
+  border-color: #e5e7eb;
+  color: #0f172a;
+  box-shadow: 0 4px 12px -6px rgba(15, 23, 42, 0.08);
+}
+.registration-page[data-theme="light"] .contact-btn:hover {
+  background: #ffffff;
+  border-color: #cbd5e1;
+}
+.registration-page[data-theme="light"] .contact-btn-label {
+  color: #64748b;
+}
+.registration-page[data-theme="light"] .contact-btn-value {
+  color: #0f172a;
+}
+
+/* Per-service light variants — tinted paper backgrounds so each
+   button still reads as WhatsApp / Email / Phone at a glance. */
+.registration-page[data-theme="light"] .contact-btn--wa {
+  background: linear-gradient(135deg, #f0fdf4, #ffffff);
+  border-color: rgba(37, 211, 102, 0.45);
+}
+.registration-page[data-theme="light"] .contact-btn--wa:hover {
+  border-color: #22c55e;
+  box-shadow: 0 12px 28px -14px rgba(37, 211, 102, 0.6);
+}
+
+.registration-page[data-theme="light"] .contact-btn--email {
+  background: linear-gradient(135deg, #eff6ff, #ffffff);
+  border-color: rgba(59, 130, 246, 0.45);
+}
+.registration-page[data-theme="light"] .contact-btn--email:hover {
+  border-color: #3b82f6;
+  box-shadow: 0 12px 28px -14px rgba(59, 130, 246, 0.6);
+}
+
+.registration-page[data-theme="light"] .contact-btn--phone {
+  background: linear-gradient(135deg, #fef2f2, #ffffff);
+  border-color: rgba(238, 35, 41, 0.45);
+}
+.registration-page[data-theme="light"] .contact-btn--phone:hover {
+  border-color: #EE2329;
+  box-shadow: 0 12px 28px -14px rgba(238, 35, 41, 0.6);
+}
