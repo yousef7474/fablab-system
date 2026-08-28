@@ -292,7 +292,99 @@ const UnifiedAttendancePage = ({ open, onClose, isRTL }) => {
     return { kind: 'checkin', label: isRTL ? 'تم تسجيل الدخول' : 'Checked In' };
   }, [isRTL]);
 
+  // Parse a scanned code into { role, id } — mirrors the server's
+  // qrPayload helper. If the QR carries FL:{ROLE}:{id} we can jump
+  // straight to the correct endpoint instead of trying all 7.
+  const parseQrCode = (raw) => {
+    const s = String(raw || '').trim();
+    const m = /^FL:([A-Z]+):(.+)$/.exec(s);
+    if (m) return { role: m[1], id: m[2].trim(), raw: s, prefixed: true };
+    return { role: null, id: s, raw: s, prefixed: false };
+  };
+
+  // Endpoint map — kept in sync with the server-side ROLE constants.
+  const ROLE_TO_ENDPOINT = {
+    STAFF:    '/fablab-staff/attendance/scan',
+    VOL:      '/volunteers/attendance/scan',
+    INTERN:   '/interns/attendance/scan',
+    TRAINER:  '/trainer-assistants/attendance/scan',
+    MAWHBA:   '/mawhba/attendance/scan',
+    SUMMER:   '/summer/attendance/scan',
+    WORKSHOP: '/workshops/students/attendance/scan'
+  };
+
   const handleScan = useCallback(async (code) => {
+    // Fast path: if the QR encodes its role, dispatch directly to the
+    // correct endpoint. Every scan is either the right endpoint or a
+    // clean "not found" — no wasted round-trips through the wrong
+    // tables, no risk of scoring a hit against the wrong person.
+    const parsed = parseQrCode(code);
+    if (parsed.role && ROLE_TO_ENDPOINT[parsed.role]) {
+      try {
+        // Send the FULL prefixed code so the server also validates
+        // (defense in depth — client and server both agree on role).
+        const { data } = await api.post(ROLE_TO_ENDPOINT[parsed.role], { code });
+        const refTime = data?.record?.[data.action === 'checkout' ? 'checkOutAt' : 'checkInAt']
+          || new Date().toISOString();
+        const { kind, label } = labelFor(data.action);
+
+        // Common per-role display config so the recent-scans row and
+        // the flash card show consistent branding.
+        const cfg = {
+          STAFF:    { name: data.staff?.name,     badge: data.staff?.position     || (isRTL ? 'موظف'     : 'Staff'),        badgeType: isRTL ? 'موظف فاب لاب'      : 'FabLab staff',        color: '#7c3aed' },
+          VOL:      { name: data.volunteer?.name, badge: isRTL ? 'متطوع' : 'Volunteer',                                        badgeType: isRTL ? 'متطوع'              : 'Volunteer',           color: '#f97316' },
+          INTERN:   { name: data.intern?.name,    badge: data.intern?.university  || (isRTL ? 'تدريب جامعي' : 'University'),   badgeType: isRTL ? 'متدرب جامعي'        : 'University trainee',  color: '#0ea5e9' },
+          TRAINER:  { name: data.trainer?.name,   badge: isRTL ? 'مدرب معاون' : 'Assistant Trainer',                          badgeType: isRTL ? 'مدرب معاون'          : 'Assistant Trainer',   color: '#059669' },
+          MAWHBA:   { name: data.student?.nameAr || data.student?.nameEn, badge: data.student?.courseName || (isRTL ? 'موهبة' : 'Mawhba'), badgeType: isRTL ? 'طالب موهبة'  : 'Mawhba student',      color: data.color || '#8b5cf6' },
+          SUMMER:   { name: data.student?.name,   badge: data.student?.program?.name || (isRTL ? 'صيف فاب لاب' : 'Summer'),    badgeType: isRTL ? 'طالب صيف فاب لاب'    : 'Summer FabLab student', color: data.color || '#f97316' },
+          WORKSHOP: { name: data.student?.name,   badge: data.workshop?.title || (isRTL ? 'ورشة' : 'Workshop'),                 badgeType: isRTL ? 'طالب ورشة'          : 'Workshop student',    color: data.workshop?.color || '#1a56db' }
+        }[parsed.role];
+
+        const payload = {
+          kind, label,
+          name: cfg.name || parsed.id,
+          badge: cfg.badge,
+          badgeType: cfg.badgeType,
+          time: fmtTimeLong(refTime),
+          color: cfg.color
+        };
+        showResult(payload);
+        if (kind === 'checkin')       setSessionStats(p => ({ ...p, checkins: p.checkins + 1 }));
+        else if (kind === 'checkout') setSessionStats(p => ({ ...p, checkouts: p.checkouts + 1 }));
+        setRecentScans(prev => [payload, ...prev].slice(0, 30));
+
+        // Volunteer auto-marked opportunities toast (kept from the
+        // legacy branch — only the volunteer endpoint carries this).
+        if (parsed.role === 'VOL' && kind === 'checkout' && Array.isArray(data.autoMarked) && data.autoMarked.length > 0) {
+          const list = data.autoMarked.map(m => `${m.title} (${m.hours}h)`).join('، ');
+          toast.success(
+            isRTL ? `تم تسجيل حضور تلقائي في: ${list}` : `Auto-marked in: ${list}`,
+            { autoClose: 6000 }
+          );
+        }
+        hydrate();
+        return;
+      } catch (err) {
+        // 404 = person not found for this role. 409 shouldn't happen
+        // here because we sent to the role's own endpoint, but if it
+        // does, surface the server's Arabic message.
+        const msg = err?.response?.data?.messageAr
+          || err?.response?.data?.message
+          || (isRTL ? 'لم يتم العثور على المستخدم' : 'Not found');
+        showResult({
+          kind: 'error', label: msg, name: parsed.id, badge: '', time: '',
+          color: '#ef4444'
+        });
+        setSessionStats(p => ({ ...p, errors: p.errors + 1 }));
+        setRecentScans(prev => [{
+          kind: 'error', label: msg, name: parsed.id, badge: '', time: '', color: '#ef4444'
+        }, ...prev].slice(0, 30));
+        return;
+      }
+    }
+
+    // Legacy path (no FL: prefix — previously-printed cards). Fall
+    // back to the try-all sequence so old cards keep working.
     // Try Summer FabLab first — the busy program during summer, so
     // matching it first minimizes latency for the on-site scanner
     try {
