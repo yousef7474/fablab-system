@@ -332,6 +332,45 @@ const printTrainerAssistantSanad = ({ trainer, assignment, attendance = [] }) =>
   }
   .summary-card.cost .value { color: #6d28d9; }
 
+  /* National-ID photo page — same treatment as the volunteer receipt
+     so the sanad family stays visually consistent. Sits between the
+     info page and the days pages so the ID appears early in the doc
+     right after the trainer's info summary. */
+  .page.idphoto .content { align-items: center; }
+  .idphoto-heading {
+    font-size: 18pt; font-weight: 800; letter-spacing: 2px;
+    color: #0f172a; margin: 0 0 6mm; text-align: center;
+  }
+  .idphoto-sub {
+    font-size: 10pt; color: #6d28d9; font-weight: 700; margin-bottom: 6mm;
+  }
+  .idphoto-frame {
+    flex: 1; width: 100%;
+    display: flex; align-items: center; justify-content: center;
+    padding: 4mm;
+  }
+  .idphoto-frame img {
+    max-width: 100%;
+    max-height: 100%;
+    object-fit: contain;
+    box-shadow: 0 3mm 18mm rgba(15, 23, 42, 0.20);
+    border-radius: 3mm;
+    background: #fff;
+    padding: 4mm;
+    border: 1px solid #cbd5e1;
+  }
+  .idphoto-nophoto {
+    color: #94a3b8; font-size: 13pt; font-weight: 700;
+    border: 2px dashed #cbd5e1; padding: 24mm;
+    border-radius: 4mm; background: rgba(255,255,255,0.85);
+    text-align: center;
+  }
+  .idphoto-caption {
+    margin-top: 5mm; font-size: 10pt; color: #64748b;
+    text-align: center;
+  }
+  .idphoto-caption b { color: #0f172a; }
+
   /* Signature page — the signatures live INSIDE a fully opaque white
      panel that MASKS whatever letterhead footer graphics happen to sit
      underneath, guaranteeing a clean band the manager can sign in ink.
@@ -435,7 +474,24 @@ const printTrainerAssistantSanad = ({ trainer, assignment, attendance = [] }) =>
     </div>
   </div>
 
-  <!-- PAGES 2..N: attendance table pages (chunked, ${rowChunks.length} page(s)) -->
+  <!-- PAGE 2: national ID photo — matches the volunteer sanad style -->
+  <div class="page idphoto">
+    <div class="content">
+      <div class="idphoto-heading">صورة الهوية الوطنية</div>
+      <div class="idphoto-sub">National ID · ${esc(ref)}</div>
+      <div class="idphoto-frame">
+        ${(trainer.nationalIdPhoto || trainer.profilePhoto)
+          ? `<img src="${trainer.nationalIdPhoto || trainer.profilePhoto}" alt="National ID" />`
+          : '<div class="idphoto-nophoto">لا توجد صورة هوية محفوظة لهذا المدرب</div>'}
+      </div>
+      <div class="idphoto-caption">
+        <b>${esc(trainer.name || '')}</b>
+        ${trainer.nationalId ? ` · رقم الهوية: <span dir="ltr">${esc(trainer.nationalId)}</span>` : ''}
+      </div>
+    </div>
+  </div>
+
+  <!-- PAGES 3..N: attendance table pages (chunked, ${rowChunks.length} page(s)) -->
   ${daysPages}
 
   <!-- LAST PAGE: signature page — opaque white panel masks the letterhead footer -->
