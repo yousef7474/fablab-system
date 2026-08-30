@@ -716,6 +716,19 @@ const syncDatabase = async () => {
       }
     }
 
+    // Trainer assignments gain the per-day attendance log so admins
+    // can mark attended days, hours, and task descriptions from the
+    // shared AttendanceLog component (same UX as volunteer chances).
+    try {
+      await sequelize.query(
+        `ALTER TABLE trainer_assignments ADD COLUMN IF NOT EXISTS "attendanceDays" JSON DEFAULT '[]'::json`
+      );
+    } catch (migrationError) {
+      if (!/does not exist/i.test(migrationError.message)) {
+        console.log('trainer_assignments.attendanceDays migration note:', migrationError.message);
+      }
+    }
+
     // Public share fields on volunteers. Sequelize's sync({ alter: true })
     // won't add a UNIQUE UUID column reliably, so we add the columns
     // ourselves and backfill shareToken for any existing rows before

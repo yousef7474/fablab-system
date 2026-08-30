@@ -22,7 +22,18 @@ const TrainerAssignment = sequelize.define('TrainerAssignment', {
   // whatever keys are present, and is what UI/list views use.
   criteria:   { type: DataTypes.JSON, allowNull: true },
   rating:     { type: DataTypes.FLOAT, allowNull: true },  // computed from criteria; 0–5
-  notes:      { type: DataTypes.TEXT, allowNull: true }
+  notes:      { type: DataTypes.TEXT, allowNull: true },
+  // Per-day attendance log — same shape as VolunteerOpportunity's:
+  // [{ date: 'YYYY-MM-DD', attended: true, hours: 6, task: '...' }, ...].
+  // Populated via the shared AttendanceLog component. The printed
+  // trainer سند prefers this array when present (each attended day
+  // earns 75 SAR), falling back to the trainer's QR attendance rows
+  // for legacy chances that pre-date this field.
+  attendanceDays: {
+    type: DataTypes.JSON,
+    allowNull: true,
+    defaultValue: []
+  }
 }, {
   tableName: 'trainer_assignments',
   timestamps: true

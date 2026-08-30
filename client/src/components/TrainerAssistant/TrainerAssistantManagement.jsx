@@ -4,6 +4,7 @@ import { toast } from 'react-toastify';
 import { useTranslation } from 'react-i18next';
 import api from '../../config/api';
 import printTrainerAssistantSanad, { RATE_PER_DAY_SAR } from '../shared/printTrainerAssistantSanad';
+import AttendanceLog from '../shared/AttendanceLog';
 import '../Mawhba/Mawhba.css';
 
 // Predefined FabLab sections used as the skills picker. Admin can
@@ -125,6 +126,9 @@ const TrainerAssistantManagement = () => {
   // Ref used by the "Evaluate now" shortcut so we can scroll the eval
   // block into view after prefilling the form.
   const evalBlockRef = useRef(null);
+  // ID of the chance whose per-day AttendanceLog is currently expanded
+  // beneath its card. null = all collapsed.
+  const [expandedAttendanceId, setExpandedAttendanceId] = useState(null);
 
   const [emailTarget, setEmailTarget] = useState(null);
   const [emailForm, setEmailForm] = useState(emptyEmail());
@@ -1601,6 +1605,21 @@ const TrainerAssistantManagement = () => {
                                   ⭐ {isRTL ? 'تقييم' : 'Rate'}
                                 </button>
                               )}
+                              {/* Per-day attendance + task descriptions — inline expander */}
+                              <button
+                                onClick={() => setExpandedAttendanceId(prev => prev === a.assignmentId ? null : a.assignmentId)}
+                                title={isRTL ? 'الحضور اليومي والمهام' : 'Daily attendance & tasks'}
+                                style={{
+                                  padding: '6px 12px', borderRadius: 6, border: 'none',
+                                  background: expandedAttendanceId === a.assignmentId
+                                    ? 'linear-gradient(135deg, #059669, #10b981)'
+                                    : 'linear-gradient(135deg, #10b981, #34d399)',
+                                  color: 'white', cursor: 'pointer', fontWeight: 800, fontSize: 12,
+                                  display: 'inline-flex', alignItems: 'center', gap: 4, fontFamily: 'inherit'
+                                }}
+                              >
+                                📅 {isRTL ? 'الأيام' : 'Days'}
+                              </button>
                               {/* سند — per-day attendance + cost sheet (75 SAR/day) */}
                               <button
                                 onClick={() => printSanadForAssignment(a)}
@@ -1635,6 +1654,40 @@ const TrainerAssistantManagement = () => {
                               </div>
                             )}
                             {a.notes && <div style={{ marginTop: 6, fontSize: 12, color: '#475569' }}>💬 {a.notes}</div>}
+
+                            {expandedAttendanceId === a.assignmentId && (
+                              <div style={{
+                                marginTop: 12,
+                                padding: 12,
+                                background: '#fff',
+                                border: '1.5px solid #10b981',
+                                borderRadius: 10
+                              }}>
+                                <AttendanceLog
+                                  opportunity={{
+                                    ...a,
+                                    opportunityId: a.assignmentId,
+                                    startDate: (a.startAt || a.chanceDate)
+                                      ? String(a.startAt || a.chanceDate).slice(0, 10)
+                                      : null,
+                                    endDate: (a.endAt || a.chanceDate)
+                                      ? String(a.endAt || a.chanceDate).slice(0, 10)
+                                      : null,
+                                    dailyHours: 6,
+                                    attendanceDays: Array.isArray(a.attendanceDays) ? a.attendanceDays : []
+                                  }}
+                                  apiPath="/trainer-assistants/assignments"
+                                  dayRate={RATE_PER_DAY_SAR}
+                                  isRTL={isRTL}
+                                  onSaved={async () => {
+                                    try {
+                                      const fresh = (await api.get(`/trainer-assistants/${showAssignmentsFor.trainerId}`)).data;
+                                      setShowAssignmentsFor(fresh);
+                                    } catch { /* soft-refresh only */ }
+                                  }}
+                                />
+                              </div>
+                            )}
                           </div>
                         );
                       })}

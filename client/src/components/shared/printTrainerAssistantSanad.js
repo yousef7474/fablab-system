@@ -48,8 +48,11 @@ const refFor = (assignment) => {
 };
 
 // `attendance` is the trainer's TrainerAssistantAttendance rows (any
-// range — we filter locally to the chance's [startAt, endAt] window
-// so the sanad only shows days that belong to this specific chance).
+// range — filtered locally to the chance's [startAt, endAt] window).
+// If `assignment.attendanceDays` is a populated array (the per-day log
+// filled from the admin's AttendanceLog UI), it wins — those rows
+// carry an explicit `attended` flag, per-day hours, and a task
+// description, which give the sanad its truest picture.
 const printTrainerAssistantSanad = ({ trainer, assignment, attendance = [] }) => {
   if (!trainer || !assignment) {
     alert('البيانات ناقصة لطباعة السند');
@@ -71,42 +74,80 @@ const printTrainerAssistantSanad = ({ trainer, assignment, attendance = [] }) =>
     ? String(assignment.endAt).slice(0, 10)
     : (assignment.chanceDate ? String(assignment.chanceDate).slice(0, 10) : null);
 
-  const attInRange = (Array.isArray(attendance) ? attendance : [])
-    .filter(r => {
-      if (!r?.date) return false;
-      if (!startYmd && !endYmd) return true;
-      return (!startYmd || r.date >= startYmd) && (!endYmd || r.date <= endYmd);
-    })
-    .sort((a, b) => (a.date < b.date ? -1 : 1));
+  // Prefer the manually-filled attendanceDays (with task descriptions
+  // + per-day hours) over the raw QR log. Normalize both into a
+  // uniform { date, complete, hours, checkInAt?, checkOutAt?, task? }
+  // shape so the rendering below is single-path.
+  const manualDays = Array.isArray(assignment.attendanceDays) ? assignment.attendanceDays.filter(d => d && d.date) : [];
+  let unified;
+  let usingManual = false;
+  if (manualDays.length > 0) {
+    usingManual = true;
+    unified = manualDays
+      .filter(d => !startYmd || d.date >= startYmd)
+      .filter(d => !endYmd || d.date <= endYmd)
+      .map(d => ({
+        date: d.date,
+        complete: !!d.attended,
+        hours: Number(d.hours) || 0,
+        task: String(d.task || '').trim(),
+        checkInAt: null,
+        checkOutAt: null
+      }));
+  } else {
+    unified = (Array.isArray(attendance) ? attendance : [])
+      .filter(r => {
+        if (!r?.date) return false;
+        if (!startYmd && !endYmd) return true;
+        return (!startYmd || r.date >= startYmd) && (!endYmd || r.date <= endYmd);
+      })
+      .map(r => ({
+        date: r.date,
+        complete: !!(r.checkInAt && r.checkOutAt),
+        hours: hoursFor(r),
+        task: '',
+        checkInAt: r.checkInAt,
+        checkOutAt: r.checkOutAt
+      }));
+  }
+  unified.sort((a, b) => (a.date < b.date ? -1 : 1));
 
-  // A "counted" day is one with BOTH check-in AND check-out (i.e. the
-  // trainer actually completed a session). Days with only a check-in
-  // are shown in the table but marked as incomplete and don't earn
-  // the 75 SAR.
-  const countedDays = attInRange.filter(r => r.checkInAt && r.checkOutAt).length;
+  const countedDays = unified.filter(r => r.complete).length;
   const totalCost = countedDays * RATE_PER_DAY_SAR;
-  const totalHours = attInRange.reduce((s, r) => s + hoursFor(r), 0);
+  const totalHours = unified.reduce((s, r) => s + r.hours, 0);
 
   const ref = refFor(assignment);
   const dateStr = fmtDate(new Date().toISOString());
 
-  const dayRows = attInRange.length ? attInRange.map((r, i) => {
-    const complete = !!(r.checkInAt && r.checkOutAt);
-    const hrs = hoursFor(r);
-    const rowCost = complete ? RATE_PER_DAY_SAR : 0;
+  // Two column layouts depending on the source. Manual attendance
+  // gives us the richer "task done" column; QR-derived attendance
+  // gives us actual clock-in/clock-out times.
+  const dayRows = unified.length ? unified.map((r, i) => {
+    const rowCost = r.complete ? RATE_PER_DAY_SAR : 0;
+    if (usingManual) {
+      return `
+        <tr class="${r.complete ? 'row-ok' : 'row-partial'}">
+          <td class="c-idx">${i + 1}</td>
+          <td class="c-day">${esc(fmtDay(r.date))}</td>
+          <td class="c-num">${r.hours ? r.hours.toFixed(2) : '—'}</td>
+          <td class="c-num">${rowCost}</td>
+          <td class="c-task">${esc(r.task) || '—'}</td>
+          <td class="c-status">${r.complete ? '✓' : '—'}</td>
+        </tr>`;
+    }
     return `
-      <tr class="${complete ? 'row-ok' : 'row-partial'}">
+      <tr class="${r.complete ? 'row-ok' : 'row-partial'}">
         <td class="c-idx">${i + 1}</td>
         <td class="c-day">${esc(fmtDay(r.date))}</td>
         <td class="c-t">${esc(fmtTime(r.checkInAt))}</td>
         <td class="c-t">${esc(fmtTime(r.checkOutAt))}</td>
-        <td class="c-num">${hrs ? hrs.toFixed(2) : '—'}</td>
+        <td class="c-num">${r.hours ? r.hours.toFixed(2) : '—'}</td>
         <td class="c-num">${rowCost}</td>
-        <td class="c-status">${complete ? '✓' : '—'}</td>
+        <td class="c-status">${r.complete ? '✓' : '—'}</td>
       </tr>`;
   }).join('') : `
     <tr>
-      <td colspan="7" style="text-align:center; padding: 4mm; color: #94a3b8;">لا توجد سجلات حضور ضمن فترة الفرصة</td>
+      <td colspan="${usingManual ? 6 : 7}" style="text-align:center; padding: 4mm; color: #94a3b8;">لا توجد سجلات حضور ضمن فترة الفرصة</td>
     </tr>`;
 
   const rangeStr = (startYmd || endYmd)
@@ -144,13 +185,21 @@ const printTrainerAssistantSanad = ({ trainer, assignment, attendance = [] }) =>
   .content {
     position: absolute;
     top: 16%;
-    bottom: 18%;
+    /* Widened bottom safe zone (was 18%) — the letterhead's footer
+       decoration on receipt-bg.png needs about 24% of the page free
+       so the signature lines don't land ON TOP of the footer graphics
+       when printed. */
+    bottom: 24%;
     left: 14mm;
     right: 14mm;
     display: flex;
     flex-direction: column;
     overflow: hidden;
   }
+  /* On the signatures page we pull the safe zone up even further so
+     there is a clean, unencumbered white band for the manager's ink
+     signature. */
+  .page.sig-page .content { bottom: 28%; }
 
   .doc-title { text-align: center; font-size: 20pt; font-weight: 800; letter-spacing: 3px; margin: 0 0 2mm; color: #0f172a; }
   .doc-sub   { text-align: center; font-size: 11pt; color: #6d28d9; font-weight: 700; margin-bottom: 3mm; }
@@ -187,9 +236,10 @@ const printTrainerAssistantSanad = ({ trainer, assignment, attendance = [] }) =>
     color: #0f172a; font-weight: 800;
   }
   .days-table .c-idx { width: 8mm; color: #64748b; font-weight: 700; }
-  .days-table .c-day { text-align: right; font-weight: 700; color: #0f172a; }
+  .days-table .c-day { text-align: right; font-weight: 700; color: #0f172a; white-space: nowrap; }
   .days-table .c-t { font-family: 'JetBrains Mono', monospace; color: #334155; }
   .days-table .c-num { font-family: 'JetBrains Mono', monospace; font-weight: 800; color: #0f172a; }
+  .days-table .c-task { text-align: right; color: #1f2937; font-weight: 600; font-size: 8.5pt; line-height: 1.35; }
   .days-table .c-status { font-size: 11pt; color: #16a34a; }
   .days-table .row-partial td { background: rgba(254, 243, 199, 0.7); color: #92400e; }
   .days-table .row-partial .c-status { color: #b45309; }
@@ -234,27 +284,31 @@ const printTrainerAssistantSanad = ({ trainer, assignment, attendance = [] }) =>
     color: #5b21b6; font-weight: 800; font-size: 12pt;
     border-radius: 20mm; margin-bottom: 8mm;
   }
-  .sig-heading-wrap { text-align: center; margin-bottom: 6mm; }
+  .sig-heading-wrap { text-align: center; margin-bottom: 4mm; }
   .sig-info {
-    margin: 0 auto 8mm; max-width: 150mm;
-    padding: 4mm 6mm;
+    margin: 0 auto 5mm; max-width: 150mm;
+    padding: 3mm 6mm;
     background: rgba(255, 255, 255, 0.9);
     border: 1px solid #cbd5e1;
     border-radius: 3mm;
-    font-size: 10pt; color: #334155; text-align: center; line-height: 1.8;
+    font-size: 10pt; color: #334155; text-align: center; line-height: 1.6;
   }
   .sig-info b { color: #0f172a; }
-  .sig-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10mm; margin-top: 4mm; }
-  .sig-cell { text-align: center; font-size: 10.5pt; padding: 4mm 2mm; }
-  .sig-cell .sig-role { color: #475569; font-weight: 700; margin-bottom: 3mm; font-size: 10pt; }
-  .sig-cell .sig-name { font-weight: 800; color: #0f172a; font-size: 12pt; margin-bottom: 12mm; }
-  .sig-cell .sig-line { border-bottom: 2px solid #1f2937; height: 18mm; margin: 0 4mm 3mm; }
+  .sig-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8mm; margin-top: 3mm; }
+  /* The sig-cell padding+margin values are tuned so the signature
+     LINES themselves sit inside the letterhead's white band, not on
+     top of the footer graphics. Do not shrink the line height — the
+     manager needs the room to actually sign. */
+  .sig-cell { text-align: center; font-size: 10.5pt; padding: 2mm 2mm; }
+  .sig-cell .sig-role { color: #475569; font-weight: 700; margin-bottom: 2mm; font-size: 10pt; }
+  .sig-cell .sig-name { font-weight: 800; color: #0f172a; font-size: 12pt; margin-bottom: 6mm; }
+  .sig-cell .sig-line { border-bottom: 2px solid #1f2937; height: 20mm; margin: 0 3mm 2mm; }
   .sig-cell .sig-hint { color: #64748b; font-size: 9pt; }
   .sig-cell.manager .sig-line { border-bottom-color: #6d28d9; border-bottom-width: 2.5px; }
   .sig-cell.manager .sig-role { color: #5b21b6; }
   .sig-cell.manager .sig-name { color: #5b21b6; }
   .sig-date-row {
-    margin-top: 10mm; padding-top: 5mm;
+    margin-top: 6mm; padding-top: 3mm;
     border-top: 1px dashed #94a3b8;
     display: flex; justify-content: space-around;
     font-size: 10pt; color: #475569;
@@ -293,16 +347,16 @@ const printTrainerAssistantSanad = ({ trainer, assignment, attendance = [] }) =>
         </tbody>
       </table>
 
-      <div class="section-heading">📅 سجل الحضور والأيام</div>
+      <div class="section-heading">📅 ${usingManual ? 'سجل الحضور والمهام المنجزة' : 'سجل الحضور والأيام'}</div>
       <table class="days-table">
         <thead>
           <tr>
             <th>#</th>
             <th>اليوم</th>
-            <th>الدخول</th>
-            <th>الخروج</th>
+            ${usingManual ? '' : '<th>الدخول</th><th>الخروج</th>'}
             <th>الساعات</th>
             <th>الأجرة (ريال)</th>
+            ${usingManual ? '<th>المهمة المنجزة</th>' : ''}
             <th>مكتمل</th>
           </tr>
         </thead>
@@ -311,9 +365,10 @@ const printTrainerAssistantSanad = ({ trainer, assignment, attendance = [] }) =>
         </tbody>
         <tfoot>
           <tr>
-            <td colspan="4" style="text-align:right">الإجماليات</td>
+            <td colspan="2" style="text-align:right">الإجماليات</td>
             <td>${totalHours.toFixed(2)}</td>
             <td>${totalCost}</td>
+            ${usingManual ? '<td></td>' : '<td></td><td></td>'}
             <td>${countedDays}</td>
           </tr>
         </tfoot>

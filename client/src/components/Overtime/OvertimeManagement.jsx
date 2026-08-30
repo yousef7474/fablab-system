@@ -446,7 +446,10 @@ const OvertimeManagement = () => {
   /* Content band is stretched a bit — the 10-row table + 3-name
      signers row was drifting into the printed footer logos.
      Bottom margin is reduced from 12% to 14%, header from 18% to 16%. */
-  .receipt-content { position: absolute; top: 16%; bottom: 14%; left: 14mm; right: 14mm; display: flex; flex-direction: column; }
+  /* Bottom safe zone widened from 14% → 22% — was leaving the
+     signers row on top of receipt-bg.png's footer decoration, so the
+     manager had no clean band to sign in. */
+  .receipt-content { position: absolute; top: 16%; bottom: 22%; left: 14mm; right: 14mm; display: flex; flex-direction: column; }
   .receipt-title { text-align: center; font-size: 22pt; font-weight: 800; letter-spacing: 3px; margin: 0 0 5mm 0; color: #0f172a; }
   .receipt-table { width: 100%; border-collapse: collapse; margin-bottom: 3mm; }
   .receipt-table th, .receipt-table td { border: 1.2px solid #475569; padding: 1.9mm 4mm; font-size: 11.5pt; vertical-align: middle; }

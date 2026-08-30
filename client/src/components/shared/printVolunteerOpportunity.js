@@ -106,13 +106,19 @@ const printVolunteerOpportunity = (r) => {
   .content {
     position: absolute;
     top: 16%;
-    bottom: 18%;
+    /* Widened bottom safe zone (was 18%) — the letterhead's footer
+       decoration on receipt-bg.png crowded the signature lines when
+       printed. 24% leaves a clean white band for the manager's ink. */
+    bottom: 24%;
     left: 14mm;
     right: 14mm;
     display: flex;
     flex-direction: column;
     overflow: hidden;
   }
+  /* Signatures page gets even more clearance so the manager has a
+     full unencumbered area to sign. */
+  .page.sig-page .content { bottom: 28%; }
 
   .doc-title { text-align: center; font-size: 20pt; font-weight: 800; letter-spacing: 3px; margin: 0 0 2mm; color: #0f172a; }
   .doc-sub { text-align: center; font-size: 11pt; color: #16a34a; font-weight: 700; margin-bottom: 3mm; }
@@ -177,18 +183,18 @@ const printVolunteerOpportunity = (r) => {
     gap: 10mm;
     margin-top: 4mm;
   }
-  .sig-cell { text-align: center; font-size: 10.5pt; padding: 4mm 2mm; }
-  .sig-cell .sig-role { color: #475569; font-weight: 700; margin-bottom: 3mm; font-size: 10pt; letter-spacing: 0.5px; }
-  .sig-cell .sig-name { font-weight: 800; color: #0f172a; font-size: 12pt; margin-bottom: 12mm; }
-  .sig-cell .sig-line { border-bottom: 2px solid #1f2937; height: 18mm; margin: 0 4mm 3mm; }
+  .sig-cell { text-align: center; font-size: 10.5pt; padding: 2mm 2mm; }
+  .sig-cell .sig-role { color: #475569; font-weight: 700; margin-bottom: 2mm; font-size: 10pt; letter-spacing: 0.5px; }
+  .sig-cell .sig-name { font-weight: 800; color: #0f172a; font-size: 12pt; margin-bottom: 6mm; }
+  .sig-cell .sig-line { border-bottom: 2px solid #1f2937; height: 20mm; margin: 0 3mm 2mm; }
   .sig-cell .sig-hint { color: #64748b; font-size: 9pt; letter-spacing: 0.5px; }
   .sig-cell.manager .sig-line { border-bottom-color: #16a34a; border-bottom-width: 2.5px; }
   .sig-cell.manager .sig-role { color: #15803d; }
   .sig-cell.manager .sig-name { color: #15803d; }
 
   .sig-date-row {
-    margin-top: 10mm;
-    padding-top: 5mm;
+    margin-top: 6mm;
+    padding-top: 3mm;
     border-top: 1px dashed #94a3b8;
     display: flex;
     justify-content: space-around;

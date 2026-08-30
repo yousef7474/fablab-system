@@ -4,6 +4,7 @@ import api from '../../config/api';
 import OvertimeApprovals from './OvertimeApprovals';
 import FablabVisitApprovals from './FablabVisitApprovals';
 import VolunteerOpportunityApprovals from './VolunteerOpportunityApprovals';
+import ApprovalArchiveTab from '../Admin/ApprovalArchiveTab';
 import './Approvals.css';
 
 // Segmented switcher for the manager's Approvals tab. Instead of
@@ -16,7 +17,11 @@ import './Approvals.css';
 const TABS = [
   { id: 'overtime',  ar: 'الساعات الإضافية',  en: 'Overtime',           icon: '🕓', color: '#d97706', endpoint: '/overtime/pending' },
   { id: 'visit',     ar: 'زيارات فاب لاب',    en: 'FabLab Visits',      icon: '🏢', color: '#0ea5e9', endpoint: '/fablab-visits/pending' },
-  { id: 'volunteer', ar: 'الفرص التطوعية',    en: 'Volunteer',          icon: '🤝', color: '#16a34a', endpoint: '/volunteer-opportunity-requests/pending' }
+  { id: 'volunteer', ar: 'الفرص التطوعية',    en: 'Volunteer',          icon: '🤝', color: '#16a34a', endpoint: '/volunteer-opportunity-requests/pending' },
+  // Archive isn't a "queue" — it's the audit trail of every request
+  // ever sent to the manager, so no pending-count endpoint. Rendered
+  // as an ordinary tab that shows the historical list w/ reprint.
+  { id: 'archive',   ar: 'الأرشيف',           en: 'Archive',            icon: '🗂', color: '#475569', endpoint: null }
 ];
 
 const ApprovalsHub = () => {
@@ -30,7 +35,7 @@ const ApprovalsHub = () => {
   // without hitting the API too aggressively.
   const loadCounts = useCallback(async () => {
     const next = {};
-    await Promise.all(TABS.map(async (t) => {
+    await Promise.all(TABS.filter(t => t.endpoint).map(async (t) => {
       try {
         const { data } = await api.get(t.endpoint);
         next[t.id] = Array.isArray(data) ? data.length : 0;
@@ -108,6 +113,7 @@ const ApprovalsHub = () => {
         {active === 'overtime'  && <OvertimeApprovals />}
         {active === 'visit'     && <FablabVisitApprovals />}
         {active === 'volunteer' && <VolunteerOpportunityApprovals />}
+        {active === 'archive'   && <ApprovalArchiveTab />}
       </div>
     </div>
   );
