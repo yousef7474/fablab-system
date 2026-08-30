@@ -43,6 +43,7 @@ const publicRoutes = require('./routes/publicRoutes');
 const attendanceReportRoutes = require('./routes/attendanceReportRoutes');
 const { startBorrowingScheduler } = require('./utils/borrowingScheduler');
 const { seedInitialCustomers } = require('./utils/seedCustomers');
+const { backfillApprovalArchive } = require('./utils/backfillApprovalArchive');
 const { startTaskReminderScheduler } = require('./utils/taskReminderScheduler');
 const { startEliteCourseScheduler } = require('./utils/eliteCourseScheduler');
 const { processWeeklyCredits } = require('./controllers/activityController');
@@ -168,6 +169,17 @@ const startServer = async () => {
     // Seed initial mailing-list customers (idempotent — no-op if table
     // already has rows). Runs after sync so the customers table exists.
     await seedInitialCustomers();
+
+    // Backfill the approval archive from historical rows (idempotent —
+    // skips anything already archived). Existing pending / approved /
+    // rejected volunteer opportunity + overtime requests get an
+    // archive entry so the manager's Archive tab shows history from
+    // before the archive feature existed.
+    try {
+      await backfillApprovalArchive();
+    } catch (err) {
+      console.log('backfillApprovalArchive skipped:', err.message);
+    }
 
     // Start schedulers
     startBorrowingScheduler();

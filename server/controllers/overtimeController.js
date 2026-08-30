@@ -457,3 +457,10 @@ exports.publicDecide = async (req, res) => {
     res.status(500).json({ message: 'Server error' });
   }
 };
+
+// Exposed for the archive backfill (server/utils/backfillApprovalArchive.js)
+// so historical rows can be materialized into the archive using the
+// same HTML template the live send flow emits.
+exports._buildApprovalEmail = _buildApprovalEmail;
+exports._overtimeRef = overtimeRef;
+exports._publicOrigin = _publicOrigin;

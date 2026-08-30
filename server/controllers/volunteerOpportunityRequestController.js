@@ -453,3 +453,8 @@ exports.publicDecide = async (req, res) => {
     res.status(500).json({ message: 'Server error' });
   }
 };
+
+// Exposed for the archive backfill.
+exports._buildApprovalEmail = _buildApprovalEmail;
+exports._fmtRequestNumber = fmtRequestNumber;
+exports._publicOrigin = _publicOrigin;

@@ -3,8 +3,20 @@
 // table at a fixed 75 SAR/day rate. Modeled on
 // printVolunteerOpportunity.js so both printed docs feel like one
 // family of forms.
+//
+// Page layout (revised):
+//   Page 1                → header + trainer/chance info + summary tiles
+//   Page 2 .. N           → days-attendance table, chunked so a long
+//                           chance never gets its rows clipped
+//   Last page (sig-page)  → clean signature area on an opaque white
+//                           panel that MASKS the letterhead footer
+//                           graphics, guaranteeing room to sign
 
 const RATE_PER_DAY_SAR = 75;
+// Max rows we let a single days-table page carry. Tuned so the table
+// fits inside the letterhead's safe zone with the header + section
+// heading present.
+const ROWS_PER_PAGE = 16;
 
 const esc = (v) => String(v == null ? '' : v)
   .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -64,9 +76,6 @@ const printTrainerAssistantSanad = ({ trainer, assignment, attendance = [] }) =>
     return;
   }
 
-  // Slice attendance to the chance window. If the assignment has no
-  // startAt/endAt (legacy chanceDate only), we include only rows that
-  // match chanceDate.
   const startYmd = assignment.startAt
     ? String(assignment.startAt).slice(0, 10)
     : (assignment.chanceDate ? String(assignment.chanceDate).slice(0, 10) : null);
@@ -74,11 +83,9 @@ const printTrainerAssistantSanad = ({ trainer, assignment, attendance = [] }) =>
     ? String(assignment.endAt).slice(0, 10)
     : (assignment.chanceDate ? String(assignment.chanceDate).slice(0, 10) : null);
 
-  // Prefer the manually-filled attendanceDays (with task descriptions
-  // + per-day hours) over the raw QR log. Normalize both into a
-  // uniform { date, complete, hours, checkInAt?, checkOutAt?, task? }
-  // shape so the rendering below is single-path.
-  const manualDays = Array.isArray(assignment.attendanceDays) ? assignment.attendanceDays.filter(d => d && d.date) : [];
+  const manualDays = Array.isArray(assignment.attendanceDays)
+    ? assignment.attendanceDays.filter(d => d && d.date)
+    : [];
   let unified;
   let usingManual = false;
   if (manualDays.length > 0) {
@@ -118,16 +125,23 @@ const printTrainerAssistantSanad = ({ trainer, assignment, attendance = [] }) =>
 
   const ref = refFor(assignment);
   const dateStr = fmtDate(new Date().toISOString());
+  const rangeStr = (startYmd || endYmd)
+    ? `${fmtDate(startYmd)} ← ${fmtDate(endYmd)}`
+    : '—';
 
-  // Two column layouts depending on the source. Manual attendance
-  // gives us the richer "task done" column; QR-derived attendance
-  // gives us actual clock-in/clock-out times.
-  const dayRows = unified.length ? unified.map((r, i) => {
+  // Chunk the rows across days pages so a long chance never clips.
+  const rowChunks = [];
+  for (let i = 0; i < unified.length; i += ROWS_PER_PAGE) {
+    rowChunks.push(unified.slice(i, i + ROWS_PER_PAGE));
+  }
+  if (rowChunks.length === 0) rowChunks.push([]); // one empty page
+
+  const buildRow = (r, absoluteIdx) => {
     const rowCost = r.complete ? RATE_PER_DAY_SAR : 0;
     if (usingManual) {
       return `
         <tr class="${r.complete ? 'row-ok' : 'row-partial'}">
-          <td class="c-idx">${i + 1}</td>
+          <td class="c-idx">${absoluteIdx + 1}</td>
           <td class="c-day">${esc(fmtDay(r.date))}</td>
           <td class="c-num">${r.hours ? r.hours.toFixed(2) : '—'}</td>
           <td class="c-num">${rowCost}</td>
@@ -137,7 +151,7 @@ const printTrainerAssistantSanad = ({ trainer, assignment, attendance = [] }) =>
     }
     return `
       <tr class="${r.complete ? 'row-ok' : 'row-partial'}">
-        <td class="c-idx">${i + 1}</td>
+        <td class="c-idx">${absoluteIdx + 1}</td>
         <td class="c-day">${esc(fmtDay(r.date))}</td>
         <td class="c-t">${esc(fmtTime(r.checkInAt))}</td>
         <td class="c-t">${esc(fmtTime(r.checkOutAt))}</td>
@@ -145,14 +159,66 @@ const printTrainerAssistantSanad = ({ trainer, assignment, attendance = [] }) =>
         <td class="c-num">${rowCost}</td>
         <td class="c-status">${r.complete ? '✓' : '—'}</td>
       </tr>`;
-  }).join('') : `
-    <tr>
-      <td colspan="${usingManual ? 6 : 7}" style="text-align:center; padding: 4mm; color: #94a3b8;">لا توجد سجلات حضور ضمن فترة الفرصة</td>
-    </tr>`;
+  };
 
-  const rangeStr = (startYmd || endYmd)
-    ? `${fmtDate(startYmd)} ← ${fmtDate(endYmd)}`
-    : '—';
+  const headHtml = `
+    <tr>
+      <th style="width:8mm">#</th>
+      <th>اليوم</th>
+      ${usingManual ? '' : '<th>الدخول</th><th>الخروج</th>'}
+      <th>الساعات</th>
+      <th>الأجرة (ريال)</th>
+      ${usingManual ? '<th>المهمة المنجزة</th>' : ''}
+      <th>مكتمل</th>
+    </tr>`;
+  const tfootHtml = `
+    <tfoot>
+      <tr>
+        <td colspan="2" style="text-align:right">الإجماليات</td>
+        <td>${totalHours.toFixed(2)}</td>
+        <td>${totalCost}</td>
+        ${usingManual ? '<td></td>' : '<td></td><td></td>'}
+        <td>${countedDays}</td>
+      </tr>
+    </tfoot>`;
+
+  const daysPages = rowChunks.map((chunk, pageIdx) => {
+    const startAbs = pageIdx * ROWS_PER_PAGE;
+    const chunkHtml = chunk.length
+      ? chunk.map((r, i) => buildRow(r, startAbs + i)).join('')
+      : `<tr><td colspan="${usingManual ? 6 : 7}" style="text-align:center; padding: 4mm; color: #94a3b8;">لا توجد سجلات حضور ضمن فترة الفرصة</td></tr>`;
+    const isLast = pageIdx === rowChunks.length - 1;
+    const pageLabel = rowChunks.length > 1
+      ? ` — صفحة ${pageIdx + 1} / ${rowChunks.length}`
+      : '';
+    return `
+      <div class="page">
+        <div class="content">
+          <div class="doc-title" style="font-size:16pt; margin-bottom:1mm">سند مدرب معاون · ${esc(ref)}</div>
+          <div class="section-heading">📅 ${usingManual ? 'سجل الحضور والمهام المنجزة' : 'سجل الحضور والأيام'}${pageLabel}</div>
+          <table class="days-table">
+            <thead>${headHtml}</thead>
+            <tbody>${chunkHtml}</tbody>
+            ${isLast ? tfootHtml : ''}
+          </table>
+          ${isLast ? `
+            <div class="summary-cards">
+              <div class="summary-card">
+                <div class="label">أيام معتمدة</div>
+                <div class="value">${countedDays}</div>
+              </div>
+              <div class="summary-card">
+                <div class="label">إجمالي الساعات</div>
+                <div class="value">${totalHours.toFixed(2)}</div>
+              </div>
+              <div class="summary-card cost">
+                <div class="label">الإجمالي (ريال)</div>
+                <div class="value">${totalCost}</div>
+              </div>
+            </div>` : ''}
+        </div>
+      </div>`;
+  }).join('');
 
   const html = `<!DOCTYPE html>
 <html lang="ar" dir="rtl">
@@ -185,10 +251,6 @@ const printTrainerAssistantSanad = ({ trainer, assignment, attendance = [] }) =>
   .content {
     position: absolute;
     top: 16%;
-    /* Widened bottom safe zone (was 18%) — the letterhead's footer
-       decoration on receipt-bg.png needs about 24% of the page free
-       so the signature lines don't land ON TOP of the footer graphics
-       when printed. */
     bottom: 24%;
     left: 14mm;
     right: 14mm;
@@ -196,10 +258,7 @@ const printTrainerAssistantSanad = ({ trainer, assignment, attendance = [] }) =>
     flex-direction: column;
     overflow: hidden;
   }
-  /* On the signatures page we pull the safe zone up even further so
-     there is a clean, unencumbered white band for the manager's ink
-     signature. */
-  .page.sig-page .content { bottom: 28%; }
+  .page.sig-page .content { bottom: 26%; }
 
   .doc-title { text-align: center; font-size: 20pt; font-weight: 800; letter-spacing: 3px; margin: 0 0 2mm; color: #0f172a; }
   .doc-sub   { text-align: center; font-size: 11pt; color: #6d28d9; font-weight: 700; margin-bottom: 3mm; }
@@ -250,7 +309,7 @@ const printTrainerAssistantSanad = ({ trainer, assignment, attendance = [] }) =>
 
   .summary-cards {
     display: grid; grid-template-columns: repeat(3, 1fr);
-    gap: 3mm; margin-top: 3mm;
+    gap: 3mm; margin-top: 4mm;
   }
   .summary-card {
     background: rgba(255,255,255,0.92);
@@ -273,42 +332,52 @@ const printTrainerAssistantSanad = ({ trainer, assignment, attendance = [] }) =>
   }
   .summary-card.cost .value { color: #6d28d9; }
 
-  /* Second page — signatures */
+  /* Signature page — the signatures live INSIDE a fully opaque white
+     panel that MASKS whatever letterhead footer graphics happen to sit
+     underneath, guaranteeing a clean band the manager can sign in ink.
+     The panel has its own subtle purple border + drop shadow so it
+     doesn't look like a bug — it looks intentional, like a signature
+     card laid on top of the letterhead. */
   .sig-page { display: flex; align-items: flex-start; justify-content: center; }
-  .sig-wrap { width: 100%; max-width: 165mm; }
-  .sig-heading { text-align: center; font-size: 16pt; font-weight: 800; color: #0f172a; margin-bottom: 5mm; letter-spacing: 2px; }
+  .sig-wrap { width: 100%; max-width: 175mm; }
+  .sig-heading { text-align: center; font-size: 16pt; font-weight: 800; color: #0f172a; margin-bottom: 4mm; letter-spacing: 2px; }
   .sig-approved-badge {
     display: inline-block; padding: 2mm 8mm;
     background: rgba(109, 40, 217, 0.1);
     border: 2px solid #6d28d9;
     color: #5b21b6; font-weight: 800; font-size: 12pt;
-    border-radius: 20mm; margin-bottom: 8mm;
+    border-radius: 20mm; margin-bottom: 6mm;
   }
   .sig-heading-wrap { text-align: center; margin-bottom: 4mm; }
   .sig-info {
-    margin: 0 auto 5mm; max-width: 150mm;
+    margin: 0 auto 5mm; max-width: 160mm;
     padding: 3mm 6mm;
-    background: rgba(255, 255, 255, 0.9);
+    background: rgba(255, 255, 255, 0.95);
     border: 1px solid #cbd5e1;
     border-radius: 3mm;
     font-size: 10pt; color: #334155; text-align: center; line-height: 1.6;
   }
   .sig-info b { color: #0f172a; }
-  .sig-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8mm; margin-top: 3mm; }
-  /* The sig-cell padding+margin values are tuned so the signature
-     LINES themselves sit inside the letterhead's white band, not on
-     top of the footer graphics. Do not shrink the line height — the
-     manager needs the room to actually sign. */
+  /* THE opaque panel. Fully white (no rgba) so the letterhead footer
+     graphics below are completely hidden. */
+  .sig-panel {
+    background: #ffffff;
+    border: 1.5px solid #c7b3f2;
+    border-radius: 3mm;
+    padding: 6mm 6mm 5mm;
+    box-shadow: 0 3mm 10mm -2mm rgba(109, 40, 217, 0.20);
+  }
+  .sig-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10mm; }
   .sig-cell { text-align: center; font-size: 10.5pt; padding: 2mm 2mm; }
   .sig-cell .sig-role { color: #475569; font-weight: 700; margin-bottom: 2mm; font-size: 10pt; }
   .sig-cell .sig-name { font-weight: 800; color: #0f172a; font-size: 12pt; margin-bottom: 6mm; }
-  .sig-cell .sig-line { border-bottom: 2px solid #1f2937; height: 20mm; margin: 0 3mm 2mm; }
+  .sig-cell .sig-line { border-bottom: 2px solid #1f2937; height: 22mm; margin: 0 3mm 2mm; background: #fff; }
   .sig-cell .sig-hint { color: #64748b; font-size: 9pt; }
   .sig-cell.manager .sig-line { border-bottom-color: #6d28d9; border-bottom-width: 2.5px; }
   .sig-cell.manager .sig-role { color: #5b21b6; }
   .sig-cell.manager .sig-name { color: #5b21b6; }
   .sig-date-row {
-    margin-top: 6mm; padding-top: 3mm;
+    margin-top: 5mm; padding-top: 3mm;
     border-top: 1px dashed #94a3b8;
     display: flex; justify-content: space-around;
     font-size: 10pt; color: #475569;
@@ -328,7 +397,7 @@ const printTrainerAssistantSanad = ({ trainer, assignment, attendance = [] }) =>
     <button class="ghost" onclick="window.close()">إغلاق</button>
   </div>
 
-  <!-- PAGE 1: trainer + chance details + per-day attendance table -->
+  <!-- PAGE 1: trainer + chance details (no big table here) -->
   <div class="page">
     <div class="content">
       <div class="doc-title">سند مدرب معاون</div>
@@ -344,34 +413,9 @@ const printTrainerAssistantSanad = ({ trainer, assignment, attendance = [] }) =>
           <tr><th>الجهة / المكان</th><td>${esc(assignment.destination) || '—'}</td></tr>
           <tr><th>الفترة</th><td>${esc(rangeStr)}</td></tr>
           <tr><th>الأجرة اليومية</th><td><b>${RATE_PER_DAY_SAR} ريال / يوم عمل مكتمل</b></td></tr>
+          <tr><th>عدد الأيام المعتمدة</th><td><b>${countedDays} يوم</b></td></tr>
+          <tr><th>الإجمالي</th><td><b style="color:#6d28d9">${totalCost} ريال</b></td></tr>
         </tbody>
-      </table>
-
-      <div class="section-heading">📅 ${usingManual ? 'سجل الحضور والمهام المنجزة' : 'سجل الحضور والأيام'}</div>
-      <table class="days-table">
-        <thead>
-          <tr>
-            <th>#</th>
-            <th>اليوم</th>
-            ${usingManual ? '' : '<th>الدخول</th><th>الخروج</th>'}
-            <th>الساعات</th>
-            <th>الأجرة (ريال)</th>
-            ${usingManual ? '<th>المهمة المنجزة</th>' : ''}
-            <th>مكتمل</th>
-          </tr>
-        </thead>
-        <tbody>
-          ${dayRows}
-        </tbody>
-        <tfoot>
-          <tr>
-            <td colspan="2" style="text-align:right">الإجماليات</td>
-            <td>${totalHours.toFixed(2)}</td>
-            <td>${totalCost}</td>
-            ${usingManual ? '<td></td>' : '<td></td><td></td>'}
-            <td>${countedDays}</td>
-          </tr>
-        </tfoot>
       </table>
 
       <div class="summary-cards">
@@ -391,7 +435,10 @@ const printTrainerAssistantSanad = ({ trainer, assignment, attendance = [] }) =>
     </div>
   </div>
 
-  <!-- PAGE 2: signature page -->
+  <!-- PAGES 2..N: attendance table pages (chunked, ${rowChunks.length} page(s)) -->
+  ${daysPages}
+
+  <!-- LAST PAGE: signature page — opaque white panel masks the letterhead footer -->
   <div class="page sig-page">
     <div class="content sig-wrap">
       <div class="sig-heading-wrap">
@@ -404,24 +451,26 @@ const printTrainerAssistantSanad = ({ trainer, assignment, attendance = [] }) =>
         المدرب: <b>${esc(trainer.name || '')}</b> · الإجمالي: <b>${totalCost} ريال</b>
       </div>
 
-      <div class="sig-grid">
-        <div class="sig-cell">
-          <div class="sig-role">المدرب المعاون</div>
-          <div class="sig-name">${esc(trainer.name) || '&nbsp;'}</div>
-          <div class="sig-line"></div>
-          <div class="sig-hint">الاسم والتوقيع (استلام)</div>
+      <div class="sig-panel">
+        <div class="sig-grid">
+          <div class="sig-cell">
+            <div class="sig-role">المدرب المعاون</div>
+            <div class="sig-name">${esc(trainer.name) || '&nbsp;'}</div>
+            <div class="sig-line"></div>
+            <div class="sig-hint">الاسم والتوقيع (استلام)</div>
+          </div>
+          <div class="sig-cell manager">
+            <div class="sig-role">✓ المسؤول التنفيذي</div>
+            <div class="sig-name">أ. زكي اللويم</div>
+            <div class="sig-line"></div>
+            <div class="sig-hint">التوقيع والختم</div>
+          </div>
         </div>
-        <div class="sig-cell manager">
-          <div class="sig-role">✓ المسؤول التنفيذي</div>
-          <div class="sig-name">أ. زكي اللويم</div>
-          <div class="sig-line"></div>
-          <div class="sig-hint">التوقيع والختم</div>
-        </div>
-      </div>
 
-      <div class="sig-date-row">
-        <div>تاريخ الإصدار: <b>${esc(dateStr)}</b></div>
-        <div>مرجع السند: <b>${esc(ref)}</b></div>
+        <div class="sig-date-row">
+          <div>تاريخ الإصدار: <b>${esc(dateStr)}</b></div>
+          <div>مرجع السند: <b>${esc(ref)}</b></div>
+        </div>
       </div>
     </div>
   </div>

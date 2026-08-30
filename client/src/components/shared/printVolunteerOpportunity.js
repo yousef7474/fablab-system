@@ -183,10 +183,20 @@ const printVolunteerOpportunity = (r) => {
     gap: 10mm;
     margin-top: 4mm;
   }
+  /* The opaque signature panel — fully white so it MASKS whatever
+     letterhead footer graphics happen to sit underneath and gives the
+     manager a clean band to sign in ink. */
+  .sig-panel {
+    background: #ffffff;
+    border: 1.5px solid #b7e2c8;
+    border-radius: 3mm;
+    padding: 6mm 6mm 5mm;
+    box-shadow: 0 3mm 10mm -2mm rgba(22, 163, 74, 0.20);
+  }
   .sig-cell { text-align: center; font-size: 10.5pt; padding: 2mm 2mm; }
   .sig-cell .sig-role { color: #475569; font-weight: 700; margin-bottom: 2mm; font-size: 10pt; letter-spacing: 0.5px; }
   .sig-cell .sig-name { font-weight: 800; color: #0f172a; font-size: 12pt; margin-bottom: 6mm; }
-  .sig-cell .sig-line { border-bottom: 2px solid #1f2937; height: 20mm; margin: 0 3mm 2mm; }
+  .sig-cell .sig-line { border-bottom: 2px solid #1f2937; height: 22mm; margin: 0 3mm 2mm; background: #fff; }
   .sig-cell .sig-hint { color: #64748b; font-size: 9pt; letter-spacing: 0.5px; }
   .sig-cell.manager .sig-line { border-bottom-color: #16a34a; border-bottom-width: 2.5px; }
   .sig-cell.manager .sig-role { color: #15803d; }
@@ -269,24 +279,26 @@ const printVolunteerOpportunity = (r) => {
         ${r.coordinatorName ? `منسق الفرصة: <b>${esc(r.coordinatorName)}</b>` : ''}
       </div>
 
-      <div class="sig-grid">
-        <div class="sig-cell">
-          <div class="sig-role">منسق الفرصة</div>
-          <div class="sig-name">${esc(r.coordinatorName) || '&nbsp;'}</div>
-          <div class="sig-line"></div>
-          <div class="sig-hint">الاسم والتوقيع</div>
+      <div class="sig-panel">
+        <div class="sig-grid">
+          <div class="sig-cell">
+            <div class="sig-role">منسق الفرصة</div>
+            <div class="sig-name">${esc(r.coordinatorName) || '&nbsp;'}</div>
+            <div class="sig-line"></div>
+            <div class="sig-hint">الاسم والتوقيع</div>
+          </div>
+          <div class="sig-cell manager">
+            <div class="sig-role">✓ المدير المعتمد</div>
+            <div class="sig-name">${esc(managerNameStr)}</div>
+            <div class="sig-line"></div>
+            <div class="sig-hint">التوقيع اليدوي</div>
+          </div>
         </div>
-        <div class="sig-cell manager">
-          <div class="sig-role">✓ المدير المعتمد</div>
-          <div class="sig-name">${esc(managerNameStr)}</div>
-          <div class="sig-line"></div>
-          <div class="sig-hint">التوقيع اليدوي</div>
-        </div>
-      </div>
 
-      <div class="sig-date-row">
-        <div>تاريخ الإصدار: <b>${esc(dateStr)}</b></div>
-        <div>تاريخ الاعتماد: <b>${esc(approvedStr)}</b></div>
+        <div class="sig-date-row">
+          <div>تاريخ الإصدار: <b>${esc(dateStr)}</b></div>
+          <div>تاريخ الاعتماد: <b>${esc(approvedStr)}</b></div>
+        </div>
       </div>
     </div>
   </div>
