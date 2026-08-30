@@ -52,6 +52,10 @@ const VolunteerOpportunityRequestModal = ({ onClose }) => {
 
   const [tab, setTab] = useState('new'); // 'new' | 'list'
   const [form, setForm] = useState(emptyForm());
+  // When set, we're editing an existing request (PUT instead of POST).
+  // The row object is kept so we can flag "this is an approved edit"
+  // and offer a direct reprint button after saving.
+  const [editing, setEditing] = useState(null);
   const [saving, setSaving] = useState(false);
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -76,15 +80,64 @@ const VolunteerOpportunityRequestModal = ({ onClose }) => {
     form.coordinatorName.trim() && form.coordinatorPhone.trim() && form.title.trim()
   ), [form]);
 
+  // Load an existing request into the form for editing. Works for
+  // approved / rejected rows (pending is blocked server-side because
+  // the manager is looking at that snapshot).
+  const openEdit = (row) => {
+    setEditing(row);
+    setForm({
+      coordinatorName:     row.coordinatorName || '',
+      coordinatorPhone:    row.coordinatorPhone || '',
+      title:               row.title || '',
+      location:            row.location || '',
+      mode:                row.mode || 'onsite',
+      description:         row.description || '',
+      responsibilities:    row.responsibilities || '',
+      volunteersNeeded:    row.volunteersNeeded || 1,
+      genderPreference:    row.genderPreference || 'any',
+      minAge:              row.minAge ?? '',
+      maxAge:              row.maxAge ?? '',
+      programStartTime:    row.programStartTime || '',
+      programEndTime:      row.programEndTime || '',
+      requiredSkills:      row.requiredSkills || '',
+      educationLevel:      row.educationLevel || '',
+      supportProvided:     row.supportProvided || '',
+      risksAndChallenges:  row.risksAndChallenges || '',
+      startDate:           (row.startDate || '').slice(0, 10),
+      endDate:             (row.endDate || '').slice(0, 10)
+    });
+    setTab('new');
+  };
+
+  const cancelEdit = () => {
+    setEditing(null);
+    setForm(emptyForm());
+  };
+
   const save = async ({ thenSend } = {}) => {
     if (!canSave) return toast.error(isRTL ? 'الحقول الأساسية مطلوبة' : 'Core fields required');
     setSaving(true);
     try {
-      const { data } = await api.post('/volunteer-opportunity-requests', form);
-      toast.success(isRTL ? '✅ تم حفظ الطلب' : '✅ Request saved');
-      if (thenSend) {
+      let data;
+      if (editing) {
+        const res = await api.put(`/volunteer-opportunity-requests/${editing.requestId}`, form);
+        data = res.data;
+        toast.success(isRTL
+          ? (editing.approvalStatus === 'approved'
+              ? '✅ تم تحديث البيانات — يمكنك إعادة الطباعة الآن'
+              : '✅ تم حفظ التعديلات')
+          : (editing.approvalStatus === 'approved'
+              ? '✅ Updated — you can reprint now'
+              : '✅ Changes saved'));
+      } else {
+        const res = await api.post('/volunteer-opportunity-requests', form);
+        data = res.data;
+        toast.success(isRTL ? '✅ تم حفظ الطلب' : '✅ Request saved');
+      }
+      if (thenSend && !editing) {
         await sendForApproval(data.requestId, false);
       }
+      setEditing(null);
       setForm(emptyForm());
       setTab('list');
       await loadList();
@@ -192,7 +245,11 @@ const VolunteerOpportunityRequestModal = ({ onClose }) => {
                 cursor: 'pointer',
                 borderBottom: tab === 'new' ? '3px solid #16a34a' : '3px solid transparent'
               }}
-            >➕ {isRTL ? 'طلب جديد' : 'New request'}</button>
+            >
+              {editing
+                ? (isRTL ? '✏️ تعديل الطلب' : '✏️ Edit request')
+                : (isRTL ? '➕ طلب جديد' : '➕ New request')}
+            </button>
             <button
               onClick={() => setTab('list')}
               style={{
@@ -209,18 +266,54 @@ const VolunteerOpportunityRequestModal = ({ onClose }) => {
           {/* Body */}
           <div style={{ overflowY: 'auto', padding: 22, flex: 1 }}>
             {tab === 'new' ? (
-              <FormBody form={form} patch={patch} isRTL={isRTL} />
+              <>
+                {editing && (
+                  <div style={{
+                    marginBottom: 14,
+                    padding: '10px 14px',
+                    background: editing.approvalStatus === 'approved' ? '#f0fdf4' : '#fef2f2',
+                    border: `1px solid ${editing.approvalStatus === 'approved' ? '#86efac' : '#fecaca'}`,
+                    borderInlineStart: `4px solid ${editing.approvalStatus === 'approved' ? '#16a34a' : '#dc2626'}`,
+                    borderRadius: 10,
+                    display: 'flex', gap: 10, alignItems: 'center',
+                    flexWrap: 'wrap', justifyContent: 'space-between'
+                  }}>
+                    <div style={{ fontSize: 13, color: editing.approvalStatus === 'approved' ? '#166534' : '#991b1b' }}>
+                      <b>{isRTL ? 'وضع التعديل:' : 'Editing:'}</b>{' '}
+                      {fmtRequestNo(editing.requestNumber)} — {editing.title}
+                      {editing.approvalStatus === 'approved' && (
+                        <div style={{ fontSize: 11.5, marginTop: 3, opacity: 0.85 }}>
+                          {isRTL
+                            ? '📌 هذا طلب معتمد — التعديلات ستظهر عند إعادة الطباعة، ولن يُرسل للمدير مجدداً.'
+                            : '📌 This is an approved request — changes appear on reprint. Not resent to the manager.'}
+                        </div>
+                      )}
+                    </div>
+                    <button
+                      onClick={cancelEdit}
+                      style={{
+                        padding: '6px 14px', borderRadius: 8,
+                        border: '1px solid #cbd5e1', background: '#fff',
+                        color: '#334155', fontFamily: 'inherit',
+                        fontWeight: 700, fontSize: 12, cursor: 'pointer'
+                      }}
+                    >{isRTL ? 'إلغاء التعديل' : 'Cancel edit'}</button>
+                  </div>
+                )}
+                <FormBody form={form} patch={patch} isRTL={isRTL} />
+              </>
             ) : (
               <ListBody
                 rows={rows} loading={loading} isRTL={isRTL}
                 managerEmail={managerEmail} setManagerEmail={setManagerEmail}
                 onSend={sendForApproval} sendingId={sendingId}
                 onDelete={deleteRow}
+                onEdit={openEdit}
               />
             )}
           </div>
 
-          {/* Footer — only for the New form */}
+          {/* Footer — only for the New/Edit form */}
           {tab === 'new' && (
             <div style={{
               padding: '14px 22px',
@@ -229,47 +322,97 @@ const VolunteerOpportunityRequestModal = ({ onClose }) => {
               display: 'flex', gap: 10, justifyContent: 'space-between',
               flexWrap: 'wrap', alignItems: 'center'
             }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, color: '#475569' }}>
-                <span>📧 {isRTL ? 'يُرسل إلى:' : 'Sends to:'}</span>
-                <input
-                  type="email"
-                  value={managerEmail}
-                  dir="ltr"
-                  onChange={(e) => setManagerEmail(e.target.value)}
-                  style={{
-                    padding: '7px 12px', border: '1px solid #cbd5e1',
-                    borderRadius: 8, fontFamily: 'monospace', fontSize: 12,
-                    minWidth: 220
-                  }}
-                />
-                <span style={{ fontSize: 11, color: '#94a3b8' }}>({DEFAULT_MANAGER.name})</span>
-              </div>
+              {!editing ? (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, color: '#475569' }}>
+                  <span>📧 {isRTL ? 'يُرسل إلى:' : 'Sends to:'}</span>
+                  <input
+                    type="email"
+                    value={managerEmail}
+                    dir="ltr"
+                    onChange={(e) => setManagerEmail(e.target.value)}
+                    style={{
+                      padding: '7px 12px', border: '1px solid #cbd5e1',
+                      borderRadius: 8, fontFamily: 'monospace', fontSize: 12,
+                      minWidth: 220
+                    }}
+                  />
+                  <span style={{ fontSize: 11, color: '#94a3b8' }}>({DEFAULT_MANAGER.name})</span>
+                </div>
+              ) : (
+                <div style={{ fontSize: 12, color: '#64748b' }}>
+                  {isRTL
+                    ? 'التعديلات تحفظ فوراً دون إرسال بريد جديد.'
+                    : 'Edits save immediately without sending a new email.'}
+                </div>
+              )}
               <div style={{ display: 'flex', gap: 8 }}>
-                <button
-                  onClick={() => save({ thenSend: false })}
-                  disabled={saving || !canSave}
-                  style={{
-                    padding: '11px 18px', borderRadius: 10, border: '1px solid #cbd5e1',
-                    background: '#fff', color: '#0f172a',
-                    fontFamily: 'inherit', fontWeight: 700, fontSize: 13.5,
-                    cursor: (saving || !canSave) ? 'not-allowed' : 'pointer',
-                    opacity: (saving || !canSave) ? 0.5 : 1
-                  }}
-                >💾 {isRTL ? 'حفظ كمسودة' : 'Save draft'}</button>
-                <button
-                  onClick={() => save({ thenSend: true })}
-                  disabled={saving || !canSave}
-                  style={{
-                    padding: '11px 22px', borderRadius: 10, border: 'none',
-                    background: 'linear-gradient(135deg, #16a34a, #15803d)',
-                    color: '#fff', fontFamily: 'inherit', fontWeight: 800, fontSize: 14,
-                    cursor: (saving || !canSave) ? 'not-allowed' : 'pointer',
-                    opacity: (saving || !canSave) ? 0.5 : 1,
-                    boxShadow: '0 8px 22px -8px rgba(22,163,74,0.5)'
-                  }}
-                >{saving
-                  ? (isRTL ? 'جاري الإرسال...' : 'Sending...')
-                  : (isRTL ? '📧 حفظ وإرسال للمدير' : '📧 Save & send to manager')}</button>
+                {editing ? (
+                  <>
+                    <button
+                      onClick={() => save({ thenSend: false })}
+                      disabled={saving || !canSave}
+                      style={{
+                        padding: '11px 22px', borderRadius: 10, border: 'none',
+                        background: 'linear-gradient(135deg, #16a34a, #15803d)',
+                        color: '#fff', fontFamily: 'inherit', fontWeight: 800, fontSize: 14,
+                        cursor: (saving || !canSave) ? 'not-allowed' : 'pointer',
+                        opacity: (saving || !canSave) ? 0.5 : 1,
+                        boxShadow: '0 8px 22px -8px rgba(22,163,74,0.5)'
+                      }}
+                    >{saving
+                      ? (isRTL ? 'جاري الحفظ...' : 'Saving...')
+                      : (isRTL ? '💾 حفظ التعديلات' : '💾 Save changes')}</button>
+                    {editing.approvalStatus === 'approved' && (
+                      <button
+                        onClick={async () => {
+                          // Save first, then reprint the fresh version.
+                          await save({ thenSend: false });
+                          // After save the state resets, so we reprint from
+                          // the form data merged with the editing snapshot.
+                          const merged = { ...editing, ...form };
+                          printVolunteerOpportunity(merged);
+                        }}
+                        disabled={saving || !canSave}
+                        style={{
+                          padding: '11px 22px', borderRadius: 10, border: 'none',
+                          background: 'linear-gradient(135deg, #0ea5e9, #2563eb)',
+                          color: '#fff', fontFamily: 'inherit', fontWeight: 800, fontSize: 14,
+                          cursor: (saving || !canSave) ? 'not-allowed' : 'pointer',
+                          opacity: (saving || !canSave) ? 0.5 : 1,
+                          boxShadow: '0 8px 22px -8px rgba(14,165,233,0.5)'
+                        }}
+                      >{isRTL ? '💾 حفظ وطباعة' : '💾 Save & Print'}</button>
+                    )}
+                  </>
+                ) : (
+                  <>
+                    <button
+                      onClick={() => save({ thenSend: false })}
+                      disabled={saving || !canSave}
+                      style={{
+                        padding: '11px 18px', borderRadius: 10, border: '1px solid #cbd5e1',
+                        background: '#fff', color: '#0f172a',
+                        fontFamily: 'inherit', fontWeight: 700, fontSize: 13.5,
+                        cursor: (saving || !canSave) ? 'not-allowed' : 'pointer',
+                        opacity: (saving || !canSave) ? 0.5 : 1
+                      }}
+                    >💾 {isRTL ? 'حفظ كمسودة' : 'Save draft'}</button>
+                    <button
+                      onClick={() => save({ thenSend: true })}
+                      disabled={saving || !canSave}
+                      style={{
+                        padding: '11px 22px', borderRadius: 10, border: 'none',
+                        background: 'linear-gradient(135deg, #16a34a, #15803d)',
+                        color: '#fff', fontFamily: 'inherit', fontWeight: 800, fontSize: 14,
+                        cursor: (saving || !canSave) ? 'not-allowed' : 'pointer',
+                        opacity: (saving || !canSave) ? 0.5 : 1,
+                        boxShadow: '0 8px 22px -8px rgba(22,163,74,0.5)'
+                      }}
+                    >{saving
+                      ? (isRTL ? 'جاري الإرسال...' : 'Sending...')
+                      : (isRTL ? '📧 حفظ وإرسال للمدير' : '📧 Save & send to manager')}</button>
+                  </>
+                )}
               </div>
             </div>
           )}
@@ -395,7 +538,7 @@ const SectionHeader = ({ color, step, title }) => (
 );
 
 // ---------- List body ----------
-const ListBody = ({ rows, loading, isRTL, managerEmail, setManagerEmail, onSend, sendingId, onDelete }) => {
+const ListBody = ({ rows, loading, isRTL, managerEmail, setManagerEmail, onSend, sendingId, onDelete, onEdit }) => {
   if (loading) return <div style={{ padding: 30, textAlign: 'center', color: '#64748b' }}>{isRTL ? 'جارٍ التحميل...' : 'Loading...'}</div>;
   if (rows.length === 0) return (
     <div style={{ padding: 40, textAlign: 'center', color: '#94a3b8', border: '1px dashed #e2e8f0', borderRadius: 12 }}>
@@ -470,6 +613,25 @@ const ListBody = ({ rows, loading, isRTL, managerEmail, setManagerEmail, onSend,
               )}
 
               <div style={{ marginTop: 12, display: 'flex', gap: 8, justifyContent: 'flex-end', flexWrap: 'wrap' }}>
+                {/* Edit — available on everything except a pending
+                    request (the manager might be reviewing that
+                    exact snapshot). Approved rows can be edited to
+                    fix typos before reprinting. */}
+                {r.approvalStatus !== 'pending' && onEdit && (
+                  <button
+                    onClick={() => onEdit(r)}
+                    style={{
+                      padding: '8px 14px', borderRadius: 8,
+                      border: '1px solid #cbd5e1', background: '#fff',
+                      color: '#0f172a', fontFamily: 'inherit',
+                      fontWeight: 700, fontSize: 12.5, cursor: 'pointer',
+                      display: 'inline-flex', alignItems: 'center', gap: 5
+                    }}
+                    title={isRTL ? 'تعديل المعلومات لإعادة الطباعة' : 'Edit info for reprint'}
+                  >
+                    ✏️ {isRTL ? 'تعديل' : 'Edit'}
+                  </button>
+                )}
                 {r.approvalStatus === 'approved' && (
                   <button
                     onClick={() => printVolunteerOpportunity(r)}

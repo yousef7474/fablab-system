@@ -105,10 +105,15 @@ exports.update = async (req, res) => {
     const row = await VolunteerOpportunityRequest.findByPk(req.params.id);
     if (!row) return res.status(404).json({ message: 'Not found' });
 
-    if (row.approvalStatus === 'pending' || row.approvalStatus === 'approved') {
+    // Only block edits while the request is out for approval (the
+    // manager might be reviewing that exact snapshot). Once decided
+    // — approved OR rejected — admin can edit and reprint. The
+    // approval status is preserved so the printed doc still carries
+    // the manager's signature line intact.
+    if (row.approvalStatus === 'pending') {
       return res.status(409).json({
-        message: 'Request is out for approval or already approved — cannot edit',
-        messageAr: 'الطلب في مرحلة الاعتماد أو معتمد — لا يمكن التعديل'
+        message: 'Request is out for approval — recall or wait for the decision before editing',
+        messageAr: 'الطلب قيد الاعتماد — اسحب الطلب أو انتظر القرار قبل التعديل'
       });
     }
 
