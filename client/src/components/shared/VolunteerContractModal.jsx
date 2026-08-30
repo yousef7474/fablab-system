@@ -163,10 +163,7 @@ const VolunteerContractModal = ({ open, onClose, recipient }) => {
   .contract-content {
     position: absolute;
     top: 17%;
-    /* Bottom safe zone widened (was 22%) so the signature panel below
-       lands inside the letterhead's clean white band, not on top of
-       the footer graphics on receipt-bg.png. */
-    bottom: 26%;
+    bottom: 22%;
     left: 14mm;
     right: 14mm;
     display: flex;
@@ -319,54 +316,112 @@ const VolunteerContractModal = ({ open, onClose, recipient }) => {
     letter-spacing: 1px;
   }
 
-  /* Fully-opaque signature panel — masks the letterhead footer
-     graphics on receipt-bg.png so the volunteer + manager always have
-     a clean, unobstructed white band to sign in ink. The subtle red
-     border + drop shadow makes it read as an intentional signature
-     card, not a rendering glitch. */
-  .sig-panel {
-    background: #ffffff;
-    border: 1.5px solid #fecaca;
-    border-radius: 3mm;
-    padding: 5mm 5mm 4mm;
-    margin-top: auto;
-    box-shadow: 0 3mm 10mm -2mm rgba(185, 28, 28, 0.18);
+  /* -------- Dedicated signature page (page 2) --------
+     The contract body page 1 is too dense to also carry signatures
+     inside the letterhead's safe zone, so we hand signatures their
+     own page — same approach as every sanad file. On this page the
+     safe zone is pulled way in from the bottom so signature lines
+     land well above the letterhead's footer decoration. */
+  .page.sig-page {
+    /* No rotated stamp on page 2 — just the letterhead + signatures. */
   }
+  .sig-content {
+    position: absolute;
+    top: 18%;
+    bottom: 26%;
+    left: 14mm;
+    right: 14mm;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+  .sig-heading {
+    text-align: center;
+    font-size: 18pt;
+    font-weight: 800;
+    color: #0f172a;
+    letter-spacing: 3px;
+    margin-bottom: 4mm;
+  }
+  .sig-badge {
+    display: inline-block;
+    padding: 2mm 8mm;
+    background: rgba(185, 28, 28, 0.08);
+    border: 2px solid #b91c1c;
+    color: #7f1d1d;
+    font-weight: 800;
+    font-size: 12pt;
+    border-radius: 20mm;
+    margin-bottom: 6mm;
+  }
+  .sig-info {
+    width: 100%;
+    max-width: 165mm;
+    padding: 4mm 6mm;
+    background: rgba(255, 255, 255, 0.92);
+    border: 1px solid #cbd5e1;
+    border-radius: 3mm;
+    font-size: 10pt;
+    color: #334155;
+    text-align: center;
+    line-height: 1.8;
+    margin-bottom: 8mm;
+  }
+  .sig-info b { color: #0f172a; }
   .signers-row {
     display: flex;
-    gap: 6mm;
+    gap: 10mm;
     justify-content: space-between;
+    width: 100%;
+    max-width: 165mm;
   }
   .signer {
     flex: 1;
     text-align: center;
-    font-size: 9.5pt;
+    font-size: 10.5pt;
     display: flex;
     flex-direction: column;
   }
   .signer .signer-title {
     color: #475569;
     font-weight: 700;
-    margin-bottom: 2mm;
-    min-height: 7mm;
-    line-height: 1.35;
+    margin-bottom: 3mm;
+    font-size: 10pt;
+    letter-spacing: 0.5px;
   }
   .signer .signature-space {
-    height: 20mm;
-    border-bottom: 1.5px solid #1f2937;
-    margin: 0 4mm 2mm 4mm;
-    background: #fff;
+    height: 22mm;
+    border-bottom: 2px solid #1f2937;
+    margin: 0 3mm 3mm 3mm;
+  }
+  .signer.manager .signature-space {
+    border-bottom-color: #b91c1c;
+    border-bottom-width: 2.5px;
   }
   .signer .signer-name {
     font-weight: 800;
     color: #0f172a;
-    font-size: 10pt;
+    font-size: 12pt;
+    margin-bottom: 1mm;
   }
+  .signer.manager .signer-name { color: #7f1d1d; }
   .signer .signer-sub {
     color: #64748b;
-    font-size: 8.5pt;
+    font-size: 9pt;
     margin-top: 0.5mm;
   }
+  .sig-date-row {
+    margin-top: 8mm;
+    padding-top: 4mm;
+    border-top: 1px dashed #94a3b8;
+    width: 100%;
+    max-width: 165mm;
+    display: flex;
+    justify-content: space-around;
+    font-size: 10pt;
+    color: #475569;
+  }
+  .sig-date-row b { color: #0f172a; font-weight: 700; }
 
   @media print {
     body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
@@ -438,24 +493,45 @@ const VolunteerContractModal = ({ open, onClose, recipient }) => {
         <span class="warn-label">⚠ تنبيه هام:</span>${safe(PHOTO_UPLOAD_CONSEQUENCE_AR)}
       </div>
 
-      <div class="sig-panel">
-        <div class="signers-row">
-          <div class="signer">
-            <div class="signer-title">الطرف الثاني — المتطوع</div>
-            <div class="signature-space"></div>
-            <div class="signer-name">${safe(form.name)}</div>
-            <div class="signer-sub">التوقيع</div>
-          </div>
-          <div class="signer">
-            <div class="signer-title">المسؤول التنفيذي لفاب لاب الأحساء</div>
-            <div class="signature-space"></div>
-            <div class="signer-name">أ. زكي اللويم</div>
-            <div class="signer-sub">التوقيع والختم</div>
-          </div>
+    </div>
+  </div>
+
+  <!-- PAGE 2: dedicated signature page — signature lines sit inside a
+       wide safe zone so they land above the letterhead's footer decoration
+       on receipt-bg.png, giving both signers a clean unobstructed band. -->
+  <div class="page sig-page">
+    <div class="sig-content">
+      <div class="sig-heading">التوقيع والاعتماد</div>
+      <div class="sig-badge">✍ عقد تطوع</div>
+
+      <div class="sig-info">
+        بتاريخ <b>${safe(contractDate)}</b> — بين <b>فاب لاب الأحساء</b> (الطرف الأول) و
+        <b>${safe(form.name)}</b> (الطرف الثاني — المتطوع).
+        ${form.title ? `<br/>نوع التطوع: <b>${safe(form.title)}</b>` : ''}
+      </div>
+
+      <div class="signers-row">
+        <div class="signer">
+          <div class="signer-title">الطرف الثاني — المتطوع</div>
+          <div class="signature-space"></div>
+          <div class="signer-name">${safe(form.name) || '&nbsp;'}</div>
+          <div class="signer-sub">الاسم والتوقيع</div>
         </div>
+        <div class="signer manager">
+          <div class="signer-title">المسؤول التنفيذي لفاب لاب الأحساء</div>
+          <div class="signature-space"></div>
+          <div class="signer-name">أ. زكي اللويم</div>
+          <div class="signer-sub">التوقيع والختم</div>
+        </div>
+      </div>
+
+      <div class="sig-date-row">
+        <div>تاريخ العقد: <b>${safe(contractDate)}</b></div>
+        ${form.startDate ? `<div>يبدأ التطوع: <b>${safe(fmtDate(form.startDate))}</b></div>` : ''}
       </div>
     </div>
   </div>
+
   <script>
     const bg = new Image();
     bg.src = '${window.location.origin}/receipt-bg.png';
