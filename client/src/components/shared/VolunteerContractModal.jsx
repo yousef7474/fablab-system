@@ -19,8 +19,14 @@ const DEFAULT_TERMS_AR = [
   'يلتزم المتطوع بتنفيذ المهام الموكلة إليه على أكمل وجه وبالجودة المطلوبة.',
   'يلتزم المتطوع بالحفاظ على ممتلكات فاب لاب والأجهزة والمعدات المستخدمة.',
   'يلتزم المتطوع بارتداء الزي المخصص واتباع الأنظمة الداخلية للمكان.',
+  'يلتزم المتطوع برفع صور وتوثيق أعماله (بحد أدنى 5 صور لكل فرصة) إلى مجلد Google Drive المخصص لفرصته التطوعية.',
   'يحق لإدارة فاب لاب إنهاء هذا العقد في حال الإخلال بأي من الشروط أعلاه.'
 ];
+
+// Standalone, extra-emphasized clause printed as its own red-bordered
+// block right above the signature row so it can't be missed.
+const PHOTO_UPLOAD_CONSEQUENCE_AR =
+  'في حال عدم الالتزام بالأنظمة والتعليمات، وعدم رفع الصور والوثائق المطلوبة إلى مجلد Google Drive المخصص للفرصة التطوعية (بحد أدنى 5 صور)، لن يستحق المتطوع أياً من حقوقه، سواء الشهادة أو المكافأة المالية أو أي دعم آخر من فاب لاب الأحساء.';
 
 const daysBetween = (start, end) => {
   if (!start || !end) return 0;
@@ -286,6 +292,30 @@ const VolunteerContractModal = ({ open, onClose, recipient }) => {
     letter-spacing: 1px;
   }
 
+  /* Extra-emphasized consequence clause — sits above the signature row
+     so the volunteer sees it right before signing. Red-double border
+     and warning icon make it visually distinct from the ordinary
+     transfer-note box above. */
+  .consequence-box {
+    margin-top: 2mm;
+    padding: 2mm 4mm;
+    background: rgba(254, 226, 226, 0.75);
+    border: 2px double #b91c1c;
+    border-radius: 2mm;
+    font-size: 9pt;
+    line-height: 1.45;
+    color: #7f1d1d;
+    font-weight: 600;
+  }
+  .consequence-box .warn-label {
+    display: inline-block;
+    font-size: 9pt;
+    font-weight: 900;
+    color: #b91c1c;
+    margin-left: 3mm;
+    letter-spacing: 1px;
+  }
+
   .signers-row {
     margin-top: auto;
     display: flex;
@@ -388,6 +418,10 @@ const VolunteerContractModal = ({ open, onClose, recipient }) => {
       <div class="section-heading">الشروط والالتزامات</div>
       <div class="terms-box">
         <ol class="terms-list">${termsHtml}</ol>
+      </div>
+
+      <div class="consequence-box">
+        <span class="warn-label">⚠ تنبيه هام:</span>${safe(PHOTO_UPLOAD_CONSEQUENCE_AR)}
       </div>
 
       <div class="signers-row">

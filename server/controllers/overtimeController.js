@@ -2,7 +2,13 @@ const { OvertimeRequest } = require('../models');
 const { Op } = require('sequelize');
 const crypto = require('crypto');
 const sgMail = require('@sendgrid/mail');
+const { archiveSentApproval, markArchiveDecided } = require('./approvalArchiveController');
 if (process.env.SENDGRID_API_KEY) sgMail.setApiKey(process.env.SENDGRID_API_KEY);
+
+// Short display id for the archive — overtime rows don't have a
+// sequential number yet, so we use the UUID prefix as a stable
+// reference.
+const overtimeRef = (row) => `OT-${String(row.overtimeId || '').slice(0, 8).toUpperCase()}`;
 
 // Compute totalHours from the days array if the client didn't send one.
 const sumDayHours = (days) => (Array.isArray(days) ? days : []).reduce(
@@ -250,9 +256,13 @@ exports.sendForApproval = async (req, res) => {
 
     // Send the email (non-blocking on failure — the row is still
     // marked pending, admin can resend).
+    let archivedEmailHtml = null;
+    let archivedSubject = null;
     if (process.env.SENDGRID_API_KEY) {
       try {
         const mail = _buildApprovalEmail({ row, token, origin: _publicOrigin() });
+        archivedEmailHtml = mail.html;
+        archivedSubject = mail.subject;
         await sgMail.send({
           from: {
             email: process.env.SENDGRID_FROM_EMAIL,
@@ -265,6 +275,21 @@ exports.sendForApproval = async (req, res) => {
         });
       } catch (mailErr) {
         console.error('overtime approval email failed:', mailErr?.response?.body || mailErr);
+        // Still archive the attempt so the admin can retry from the
+        // archive page. Silent no-op if the archive insert also fails.
+        if (archivedEmailHtml) {
+          archiveSentApproval({
+            type: 'overtime',
+            sourceId: row.overtimeId,
+            requestNumber: overtimeRef(row),
+            title: row.employeeName || 'Overtime request',
+            managerEmail,
+            subject: archivedSubject,
+            emailHtml: archivedEmailHtml,
+            payloadSnapshot: row.toJSON(),
+            sentById: req.admin?.adminId || null
+          });
+        }
         // Still return success — admin can hit "Resend" to retry.
         return res.json({
           message: 'Marked pending — email delivery failed, try resending',
@@ -273,6 +298,20 @@ exports.sendForApproval = async (req, res) => {
           emailFailed: true
         });
       }
+    }
+
+    if (archivedEmailHtml) {
+      archiveSentApproval({
+        type: 'overtime',
+        sourceId: row.overtimeId,
+        requestNumber: overtimeRef(row),
+        title: row.employeeName || 'Overtime request',
+        managerEmail,
+        subject: archivedSubject,
+        emailHtml: archivedEmailHtml,
+        payloadSnapshot: row.toJSON(),
+        sentById: req.admin?.adminId || null
+      });
     }
 
     res.json({ message: 'Sent for approval', row });
@@ -297,6 +336,12 @@ exports.approveOvertime = async (req, res) => {
       managerNote: req.body?.note ? String(req.body.note).trim() : row.managerNote,
       approvedBy: req.body?.approvedBy || req.admin?.fullName || row.approvedBy
     });
+    markArchiveDecided({
+      type: 'overtime',
+      sourceId: row.overtimeId,
+      status: 'approved',
+      managerName: row.approvedBy
+    });
     res.json({ message: 'Approved', row });
   } catch (err) {
     console.error('approveOvertime:', err);
@@ -314,6 +359,12 @@ exports.rejectOvertime = async (req, res) => {
       rejectedAt: new Date(),
       approvedAt: null,
       managerNote: req.body?.note ? String(req.body.note).trim() : row.managerNote
+    });
+    markArchiveDecided({
+      type: 'overtime',
+      sourceId: row.overtimeId,
+      status: 'rejected',
+      managerName: req.admin?.fullName || null
     });
     res.json({ message: 'Rejected', row });
   } catch (err) {
@@ -392,6 +443,13 @@ exports.publicDecide = async (req, res) => {
     }
     // Token is single-use — clear it so the same link can't flip back later.
     await row.update({ approvalToken: null });
+
+    markArchiveDecided({
+      type: 'overtime',
+      sourceId: row.overtimeId,
+      status: decision === 'approve' ? 'approved' : 'rejected',
+      managerName: row.approvedBy || (req.body?.approvedBy || null)
+    });
 
     res.json({ message: decision === 'approve' ? 'Approved' : 'Rejected', row });
   } catch (err) {

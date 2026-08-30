@@ -2,6 +2,7 @@ const crypto = require('crypto');
 const { VolunteerOpportunityRequest } = require('../models');
 const { sequelize } = require('../config/database');
 const sgMail = require('@sendgrid/mail');
+const { archiveSentApproval, markArchiveDecided } = require('./approvalArchiveController');
 if (process.env.SENDGRID_API_KEY) sgMail.setApiKey(process.env.SENDGRID_API_KEY);
 
 const _publicOrigin = () =>
@@ -248,9 +249,13 @@ exports.sendForApproval = async (req, res) => {
       managerName: null
     });
 
+    let archivedEmailHtml = null;
+    let archivedSubject = null;
     if (process.env.SENDGRID_API_KEY) {
       try {
         const mail = _buildApprovalEmail({ row, token, origin: _publicOrigin() });
+        archivedEmailHtml = mail.html;
+        archivedSubject = mail.subject;
         await sgMail.send({
           from: {
             email: process.env.SENDGRID_FROM_EMAIL,
@@ -263,6 +268,21 @@ exports.sendForApproval = async (req, res) => {
         });
       } catch (mailErr) {
         console.error('vor approval email failed:', mailErr?.response?.body || mailErr);
+        // Still archive the attempt so the admin can retry from the
+        // archive page. Silent no-op if the archive insert also fails.
+        if (archivedEmailHtml) {
+          archiveSentApproval({
+            type: 'volunteer_opportunity',
+            sourceId: row.requestId,
+            requestNumber: fmtRequestNumber(row.requestNumber),
+            title: row.title,
+            managerEmail,
+            subject: archivedSubject,
+            emailHtml: archivedEmailHtml,
+            payloadSnapshot: row.toJSON(),
+            sentById: req.admin?.adminId || null
+          });
+        }
         return res.json({
           message: 'Marked pending — email delivery failed, try resending',
           messageAr: 'تم إرسال الطلب للاعتماد — فشل إرسال البريد، حاول إعادة الإرسال',
@@ -270,6 +290,21 @@ exports.sendForApproval = async (req, res) => {
           emailFailed: true
         });
       }
+    }
+
+    // Fire-and-forget archive write — never blocks the response.
+    if (archivedEmailHtml) {
+      archiveSentApproval({
+        type: 'volunteer_opportunity',
+        sourceId: row.requestId,
+        requestNumber: fmtRequestNumber(row.requestNumber),
+        title: row.title,
+        managerEmail,
+        subject: archivedSubject,
+        emailHtml: archivedEmailHtml,
+        payloadSnapshot: row.toJSON(),
+        sentById: req.admin?.adminId || null
+      });
     }
 
     res.json({ message: 'Sent for approval', row });
@@ -316,6 +351,12 @@ exports.managerApprove = async (req, res) => {
         : (row.managerName || DEFAULT_MANAGER_NAME),
       approvalToken: null
     });
+    markArchiveDecided({
+      type: 'volunteer_opportunity',
+      sourceId: row.requestId,
+      status: 'approved',
+      managerName: row.managerName
+    });
     res.json({ message: 'Approved', row });
   } catch (err) {
     console.error('vor managerApprove:', err);
@@ -336,6 +377,12 @@ exports.managerReject = async (req, res) => {
         ? String(req.body.managerName).trim()
         : (row.managerName || DEFAULT_MANAGER_NAME),
       approvalToken: null
+    });
+    markArchiveDecided({
+      type: 'volunteer_opportunity',
+      sourceId: row.requestId,
+      status: 'rejected',
+      managerName: row.managerName
     });
     res.json({ message: 'Rejected', row });
   } catch (err) {
@@ -392,6 +439,13 @@ exports.publicDecide = async (req, res) => {
       });
     }
     await row.update({ approvalToken: null });
+
+    markArchiveDecided({
+      type: 'volunteer_opportunity',
+      sourceId: row.requestId,
+      status: decision === 'approve' ? 'approved' : 'rejected',
+      managerName: row.managerName
+    });
 
     res.json({ message: decision === 'approve' ? 'Approved' : 'Rejected', row });
   } catch (err) {

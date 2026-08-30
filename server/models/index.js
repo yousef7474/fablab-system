@@ -75,6 +75,7 @@ const SummerSeason = require('./SummerSeason');
 const Print3DRequest = require('./Print3DRequest');
 const InstitutionProject = require('./InstitutionProject');
 const VolunteerOpportunityRequest = require('./VolunteerOpportunityRequest');
+const ApprovalArchive = require('./ApprovalArchive');
 
 MawhbaAttendance.belongsTo(MawhbaStudent, { foreignKey: 'studentId', as: 'student', constraints: false });
 MawhbaStudent.hasMany(MawhbaAttendance, { foreignKey: 'studentId', as: 'attendance', constraints: false });
@@ -1039,5 +1040,6 @@ module.exports = {
   Print3DRequest,
   InstitutionProject,
   VolunteerOpportunityRequest,
+  ApprovalArchive,
   syncDatabase
 };

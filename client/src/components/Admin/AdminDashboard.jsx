@@ -22,6 +22,7 @@ import ContractsManagement from '../Contracts/ContractsManagement';
 import FablabStaffManagement from '../FablabStaff/FablabStaffManagement';
 import OvertimeManagement from '../Overtime/OvertimeManagement';
 import TrainerAssistantManagement from '../TrainerAssistant/TrainerAssistantManagement';
+import ApprovalArchiveTab from './ApprovalArchiveTab';
 import CustomersManagement from '../Customers/CustomersManagement';
 import QuickMessages from './QuickMessages';
 import UnifiedAttendancePage from '../shared/UnifiedAttendancePage';
@@ -4861,6 +4862,7 @@ const AdminDashboard = () => {
     { id: 'fablab-staff', icon: 'fablab-staff', labelEn: 'FabLab Staff', labelAr: 'موظفو فاب لاب' },
     { id: 'overtime', icon: 'overtime', labelEn: 'Overtime', labelAr: 'الساعات الإضافية' },
     { id: 'trainer-assistants', icon: 'trainer-assistants', labelEn: 'Assistant Trainers', labelAr: 'مدرب معاون' },
+    { id: 'approvals-archive', icon: 'approvals-archive', labelEn: 'Approvals Archive', labelAr: 'أرشيف الاعتمادات' },
     { id: 'summer', icon: 'summer', labelEn: 'Summer FabLab', labelAr: 'صيف فاب لاب' },
     { id: 'mawhba', icon: 'mawhba', labelEn: 'Mawhba', labelAr: 'موهبة' },
     { id: 'contracts', icon: 'contracts', labelEn: 'Contracts', labelAr: 'العقود' },
@@ -4891,6 +4893,7 @@ const AdminDashboard = () => {
       'fablab-staff': <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>,
       overtime: <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>,
       'trainer-assistants': <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/></svg>,
+      'approvals-archive': <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 8v13H3V8"/><path d="M1 3h22v5H1z"/><line x1="10" y1="12" x2="14" y2="12"/></svg>,
       summer: <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg>,
       mawhba: <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 2l2.4 7.4H22l-6.2 4.5 2.4 7.4L12 16.8 5.8 21.3l2.4-7.4L2 9.4h7.6z"/></svg>,
       customers: <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>,
@@ -9323,6 +9326,12 @@ const AdminDashboard = () => {
             {activeTab === 'trainer-assistants' && (
               <div data-page="manager">
                 <TrainerAssistantManagement />
+              </div>
+            )}
+
+            {activeTab === 'approvals-archive' && (
+              <div data-page="manager">
+                <ApprovalArchiveTab />
               </div>
             )}
 

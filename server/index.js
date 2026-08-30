@@ -35,6 +35,7 @@ const print3DRoutes = require('./routes/print3DRoutes');
 const institutionSupportRoutes = require('./routes/institutionSupportRoutes');
 const aiRoutes = require('./routes/aiRoutes');
 const volunteerOpportunityRequestRoutes = require('./routes/volunteerOpportunityRequestRoutes');
+const approvalArchiveRoutes = require('./routes/approvalArchiveRoutes');
 const trainerAssistantRoutes = require('./routes/trainerAssistantRoutes');
 const customerRoutes = require('./routes/customerRoutes');
 const contractRoutes = require('./routes/contractRoutes');
@@ -89,6 +90,7 @@ app.use('/api/institution-support', institutionSupportRoutes);
 // every resource in the system to answer questions.
 app.use('/api/ai', aiRoutes);
 app.use('/api/volunteer-opportunity-requests', volunteerOpportunityRequestRoutes);
+app.use('/api/approval-archive', approvalArchiveRoutes);
 app.use('/api/trainer-assistants', trainerAssistantRoutes);
 app.use('/api/customers', customerRoutes);
 app.use('/api/contracts', contractRoutes);

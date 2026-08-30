@@ -1,8 +1,9 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'react-toastify';
 import { useTranslation } from 'react-i18next';
 import api from '../../config/api';
+import printTrainerAssistantSanad, { RATE_PER_DAY_SAR } from '../shared/printTrainerAssistantSanad';
 import '../Mawhba/Mawhba.css';
 
 // Predefined FabLab sections used as the skills picker. Admin can
@@ -117,6 +118,13 @@ const TrainerAssistantManagement = () => {
   const [showAssignmentsFor, setShowAssignmentsFor] = useState(null);
   const [assignmentForm, setAssignmentForm] = useState(emptyAssignment());
   const [editingAssignmentId, setEditingAssignmentId] = useState(null);
+  // Segmented tabs inside the chances modal — 'new' (add / edit form) or
+  // 'history' (past chances list). Refactoring the two adjacent form-
+  // sections into a real tab strip declutters a heavy modal.
+  const [assignmentTab, setAssignmentTab] = useState('new');
+  // Ref used by the "Evaluate now" shortcut so we can scroll the eval
+  // block into view after prefilling the form.
+  const evalBlockRef = useRef(null);
 
   const [emailTarget, setEmailTarget] = useState(null);
   const [emailForm, setEmailForm] = useState(emptyEmail());
@@ -573,10 +581,14 @@ const TrainerAssistantManagement = () => {
     setShowAssignmentsFor(t);
     setAssignmentForm(emptyAssignment());
     setEditingAssignmentId(null);
+    // Default to the history tab when there are existing chances — the
+    // typical action is to review + evaluate, not add another one.
+    setAssignmentTab((Array.isArray(t.assignments) && t.assignments.length > 0) ? 'history' : 'new');
   };
   const closeAssignments = () => {
     setShowAssignmentsFor(null); setEditingAssignmentId(null);
     setAssignmentForm(emptyAssignment());
+    setAssignmentTab('new');
   };
 
   const setCrit = (key, value) => setAssignmentForm(prev => ({
@@ -623,6 +635,47 @@ const TrainerAssistantManagement = () => {
       criteria: a.criteria || {},
       notes: a.notes || ''
     });
+    setAssignmentTab('new');
+  };
+
+  // Prefill the edit form for `a`, jump to the New/Edit tab, and scroll
+  // the evaluation block into view. This is the "chance done —
+  // evaluate now" button on each chance card. Reuses editAssignment
+  // so we don't duplicate form-loading logic.
+  const evaluateAssignment = (a) => {
+    editAssignment(a);
+    // Wait one tick for React to render the tab + form, then scroll.
+    setTimeout(() => {
+      if (evalBlockRef.current) {
+        evalBlockRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+    }, 60);
+  };
+
+  // Fetch the trainer's attendance rows and open the printable
+  // per-day sanad. The printer will filter down to the chance's date
+  // window itself.
+  const printSanadForAssignment = async (assignment) => {
+    if (!showAssignmentsFor) return;
+    try {
+      const { data } = await api.get(`/trainer-assistants/${showAssignmentsFor.trainerId}/attendance`);
+      const attendance = Array.isArray(data) ? data : [];
+      printTrainerAssistantSanad({
+        trainer: showAssignmentsFor,
+        assignment,
+        attendance
+      });
+    } catch (err) {
+      console.error('sanad fetch attendance error:', err);
+      // Fall back to printing with no attendance — the sanad will show
+      // the empty-days message but the header + signature block are
+      // still useful.
+      printTrainerAssistantSanad({
+        trainer: showAssignmentsFor,
+        assignment,
+        attendance: []
+      });
+    }
   };
 
   // Open a browser print window with a completion certificate for a
@@ -1384,6 +1437,51 @@ const TrainerAssistantManagement = () => {
                 </button>
               </div>
               <div className="modern-modal-body">
+                {/* Segmented tab strip — clarifies the two sub-flows
+                    of this modal (add/edit a chance vs. review past
+                    chances + evaluate). */}
+                <div style={{
+                  display: 'flex',
+                  gap: 4,
+                  padding: 4,
+                  background: 'linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%)',
+                  border: '1px solid #e2e8f0',
+                  borderRadius: 12,
+                  marginBottom: 14
+                }}>
+                  {[
+                    { id: 'new',     labelAr: editingAssignmentId ? 'تعديل الفرصة' : 'فرصة جديدة', labelEn: editingAssignmentId ? 'Edit Chance' : 'New Chance', icon: '➕' },
+                    { id: 'history', labelAr: `سجل الفرص (${Array.isArray(showAssignmentsFor.assignments) ? showAssignmentsFor.assignments.length : 0})`, labelEn: `Chances (${Array.isArray(showAssignmentsFor.assignments) ? showAssignmentsFor.assignments.length : 0})`, icon: '📋' }
+                  ].map(t => {
+                    const active = assignmentTab === t.id;
+                    return (
+                      <button
+                        key={t.id}
+                        onClick={() => setAssignmentTab(t.id)}
+                        style={{
+                          flex: 1,
+                          padding: '10px 14px',
+                          borderRadius: 9,
+                          border: 'none',
+                          background: active ? 'linear-gradient(135deg, #6d28d9, #a855f7)' : 'transparent',
+                          color: active ? '#fff' : '#475569',
+                          fontWeight: 800,
+                          fontSize: 13.5,
+                          fontFamily: 'inherit',
+                          cursor: 'pointer',
+                          boxShadow: active ? '0 4px 12px rgba(109, 40, 217, 0.28)' : 'none',
+                          transition: 'all .2s ease',
+                          display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6
+                        }}
+                      >
+                        <span style={{ fontSize: 15 }}>{t.icon}</span>
+                        {isRTL ? t.labelAr : t.labelEn}
+                      </button>
+                    );
+                  })}
+                </div>
+
+                {assignmentTab === 'new' && (
                 <div className="form-section">
                   <div className="section-header">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
@@ -1408,10 +1506,10 @@ const TrainerAssistantManagement = () => {
                     </div>
                   </div>
 
-                  <div style={{ marginTop: 14, background: 'linear-gradient(135deg, #faf5ff 0%, #fdf2f8 100%)', border: '1px solid #f5d0fe', borderRadius: 10, padding: 14 }}>
+                  <div ref={evalBlockRef} style={{ marginTop: 14, background: 'linear-gradient(135deg, #faf5ff 0%, #fdf2f8 100%)', border: '1px solid #f5d0fe', borderRadius: 10, padding: 14, scrollMarginTop: 20 }}>
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
                       <div style={{ fontWeight: 800, color: '#6d28d9', fontSize: 14 }}>
-                        {isRTL ? 'تقييم أداء المدرب بعد الفرصة' : 'Post-chance performance evaluation'}
+                        ⭐ {isRTL ? 'تقييم أداء المدرب بعد انتهاء الفرصة' : 'Post-chance performance evaluation'}
                       </div>
                       <div style={{ fontWeight: 800, color: '#6d28d9' }}>
                         {isRTL ? 'المتوسط' : 'Avg'}: {avgOfCriteria(assignmentForm.criteria)} / 5
@@ -1442,7 +1540,9 @@ const TrainerAssistantManagement = () => {
                     )}
                   </div>
                 </div>
+                )}
 
+                {assignmentTab === 'history' && (
                 <div className="form-section">
                   <div className="section-header">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 3h18v18H3z"/><path d="M3 9h18"/><path d="M9 21V9"/></svg>
@@ -1454,11 +1554,33 @@ const TrainerAssistantManagement = () => {
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                       {showAssignmentsFor.assignments.map(a => {
                         const critAvg = a.rating || avgOfCriteria(a.criteria);
+                        const isEvaluated = critAvg > 0;
+                        const now = new Date();
+                        const endedAt = a.endAt || (a.chanceDate ? `${a.chanceDate}T23:59` : null);
+                        const isFinished = endedAt ? new Date(endedAt) < now : false;
+                        // Status = evaluated | pending-eval (done, no rating) | upcoming (not finished yet)
+                        const statusMeta = isEvaluated
+                          ? { text: isRTL ? 'مُقيَّم' : 'Evaluated', bg: '#dcfce7', color: '#166534', dot: '#16a34a' }
+                          : isFinished
+                            ? { text: isRTL ? 'بانتظار التقييم' : 'Awaiting evaluation', bg: '#fef3c7', color: '#92400e', dot: '#f59e0b' }
+                            : { text: isRTL ? 'قادم' : 'Upcoming', bg: '#e0f2fe', color: '#0369a1', dot: '#0ea5e9' };
                         return (
-                          <div key={a.assignmentId} style={{ padding: '12px 14px', background: '#faf8ff', border: '1px solid #e9d5ff', borderRadius: 10 }}>
+                          <div key={a.assignmentId} style={{
+                            padding: '12px 14px',
+                            background: 'linear-gradient(135deg, #faf8ff 0%, #ffffff 100%)',
+                            border: `1px solid ${isEvaluated ? '#c4b5fd' : '#e9d5ff'}`,
+                            borderInlineStart: `4px solid ${statusMeta.dot}`,
+                            borderRadius: 10
+                          }}>
                             <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 12 }}>
                               <div style={{ flex: '1 1 220px', minWidth: 0 }}>
-                                <div style={{ fontWeight: 800, color: '#0f172a', fontSize: 14 }}>{a.chanceName}</div>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                                  <div style={{ fontWeight: 800, color: '#0f172a', fontSize: 14 }}>{a.chanceName}</div>
+                                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '2px 9px', borderRadius: 999, background: statusMeta.bg, color: statusMeta.color, fontSize: 10.5, fontWeight: 800, border: `1px solid ${statusMeta.dot}30` }}>
+                                    <span style={{ width: 6, height: 6, borderRadius: '50%', background: statusMeta.dot }} />
+                                    {statusMeta.text}
+                                  </span>
+                                </div>
                                 <div style={{ fontSize: 12, color: '#64748b', marginTop: 2 }}>
                                   {a.destination ? `📍 ${a.destination}` : ''}
                                   {a.destination && fmtRange(a) ? ' • ' : ''}
@@ -1469,6 +1591,24 @@ const TrainerAssistantManagement = () => {
                                 <Stars value={critAvg} onChange={null} size={16} />
                                 <span style={{ fontSize: 12, fontWeight: 800, color: '#6d28d9' }}>{critAvg || 0}</span>
                               </div>
+                              {/* "Evaluate now" — jumps to the form + scrolls to the eval block */}
+                              {!isEvaluated && (
+                                <button
+                                  onClick={() => evaluateAssignment(a)}
+                                  title={isRTL ? 'تقييم الأداء الآن' : 'Evaluate performance now'}
+                                  style={{ padding: '6px 12px', borderRadius: 6, border: 'none', background: 'linear-gradient(135deg, #f59e0b, #ea580c)', color: 'white', cursor: 'pointer', fontWeight: 800, fontSize: 12, display: 'inline-flex', alignItems: 'center', gap: 4, fontFamily: 'inherit' }}
+                                >
+                                  ⭐ {isRTL ? 'تقييم' : 'Rate'}
+                                </button>
+                              )}
+                              {/* سند — per-day attendance + cost sheet (75 SAR/day) */}
+                              <button
+                                onClick={() => printSanadForAssignment(a)}
+                                title={isRTL ? `طباعة سند مدرب معاون (${RATE_PER_DAY_SAR} ريال/يوم)` : `Print sanad (${RATE_PER_DAY_SAR} SAR/day)`}
+                                style={{ padding: '6px 12px', borderRadius: 6, border: 'none', background: 'linear-gradient(135deg, #0ea5e9, #2563eb)', color: 'white', cursor: 'pointer', fontWeight: 800, fontSize: 12, display: 'inline-flex', alignItems: 'center', gap: 4, fontFamily: 'inherit' }}
+                              >
+                                🧾 {isRTL ? 'سند' : 'Sanad'}
+                              </button>
                               <button
                                 onClick={() => handlePrintChanceCertificate(showAssignmentsFor, a)}
                                 title={isRTL ? 'طباعة شهادة' : 'Print certificate'}
@@ -1501,6 +1641,7 @@ const TrainerAssistantManagement = () => {
                     </div>
                   )}
                 </div>
+                )}
               </div>
               <div className="modern-modal-footer">
                 <button onClick={closeAssignments} style={{ padding: '10px 20px', border: '1px solid #cbd5e1', background: '#fff', borderRadius: 10, cursor: 'pointer', fontWeight: 700, fontFamily: 'inherit', color: '#334155' }}>{isRTL ? 'إغلاق' : 'Close'}</button>

@@ -2,7 +2,85 @@ const { Volunteer, VolunteerOpportunity, VolunteerRating, VolunteerReceipt, Volu
 const { Op } = require('sequelize');
 const crypto = require('crypto');
 const QRCode = require('qrcode');
+const sgMail = require('@sendgrid/mail');
 const { buildQrPayload, requireRole } = require('../utils/qrPayload');
+
+if (process.env.SENDGRID_API_KEY) {
+  sgMail.setApiKey(process.env.SENDGRID_API_KEY);
+}
+
+// Fire-and-forget reminder to a volunteer to upload the day's photos
+// into their Google Drive folder for the given chance. Called from the
+// QR check-in handler. Does not throw — attendance must still succeed
+// even if SendGrid, DNS, or the volunteer's mailbox misbehaves.
+const _sendPhotoUploadReminder = async ({ volunteer, opportunity }) => {
+  try {
+    if (!process.env.SENDGRID_API_KEY || !process.env.SENDGRID_FROM_EMAIL) return;
+    if (!volunteer?.email) return;
+
+    const safe = (s) => String(s ?? '').replace(/[&<>"']/g, c =>
+      ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+    const chanceName = opportunity?.title || 'الفرصة التطوعية';
+    const driveUrl = volunteer.driveUrl || '';
+    const folderNote = driveUrl
+      ? `<p style="margin: 10px 0 0; font-size: 14px;">🔗 <strong>مجلد Google Drive الخاص بك:</strong><br>
+           <a href="${safe(driveUrl)}" style="color:#dc2626; word-break:break-all;">${safe(driveUrl)}</a>
+         </p>`
+      : `<p style="margin: 10px 0 0; font-size: 14px; color:#7f1d1d; background:#fef2f2; padding:10px; border-radius:8px;">
+           ⚠️ لم يتم ربط مجلد Google Drive بحسابك بعد — يرجى مراجعة إدارة فاب لاب لتزويدك برابط المجلد.
+         </p>`;
+
+    const html = `
+      <div style="font-family:'Tajawal','Segoe UI',Tahoma,sans-serif; background:#f8fafc; padding:24px 0;" dir="rtl">
+        <div style="max-width:640px; margin:0 auto; background:#fff; border-radius:14px; overflow:hidden; box-shadow:0 6px 24px rgba(220,38,38,0.10);">
+          <div style="background:linear-gradient(135deg, #ee2329, #dc2626); color:#fff; padding:22px 28px;">
+            <h2 style="margin:0; font-size:20px;">تذكير — رفع صور فرصتك التطوعية</h2>
+            <p style="margin:4px 0 0; font-size:13px; opacity:.92;">FABLAB Al-Ahsa — Volunteer Reminder</p>
+          </div>
+          <div style="padding:24px 28px; color:#0f172a;">
+            <p style="margin:0 0 12px; font-size:15px;">مرحباً <strong>${safe(volunteer.name || '')}</strong>،</p>
+            <p style="margin:0 0 12px; font-size:14px; line-height:1.85;">
+              تم تسجيل حضورك اليوم لفرصة <strong>"${safe(chanceName)}"</strong>. نرجو منك عدم نسيان توثيق أعمالك ورفع الصور إلى مجلد Google Drive الخاص بفرصتك التطوعية.
+            </p>
+
+            <div style="background:#fff7ed; border-inline-start:4px solid #ea580c; padding:14px 18px; border-radius:8px; margin:16px 0;">
+              <div style="font-weight:800; color:#9a3412; margin-bottom:6px;">📸 التعليمات:</div>
+              <ul style="margin:0; padding-inline-start:20px; font-size:13.5px; line-height:1.9; color:#7c2d12;">
+                <li>ارفع <strong>5 صور على الأقل</strong> لأعمالك اليومية.</li>
+                <li>أنشئ مجلداً داخل Drive باسم فرصتك التطوعية: <strong>"${safe(chanceName)}"</strong>.</li>
+                <li>حاول أن تكون الصور واضحة وتُظهر تفاصيل ما أنجزته اليوم.</li>
+              </ul>
+              ${folderNote}
+            </div>
+
+            <div style="background:#fef2f2; border:2px double #b91c1c; padding:14px 18px; border-radius:8px; margin:16px 0;">
+              <div style="font-weight:900; color:#b91c1c; margin-bottom:6px;">⚠️ تنبيه هام:</div>
+              <p style="margin:0; font-size:13.5px; line-height:1.75; color:#7f1d1d;">
+                في حال عدم الالتزام بالأنظمة والتعليمات، وعدم رفع الصور والوثائق المطلوبة إلى مجلد Google Drive المخصص لفرصتك التطوعية،
+                <strong>لن تستحق أياً من حقوقك</strong> — سواء الشهادة أو المكافأة المالية أو أي دعم آخر من فاب لاب الأحساء.
+              </p>
+            </div>
+
+            <p style="margin:20px 0 0; color:#64748b; font-size:12.5px;">شكراً لعطائك — إدارة فاب لاب الأحساء</p>
+          </div>
+        </div>
+      </div>
+    `;
+
+    await sgMail.send({
+      to: volunteer.email,
+      from: {
+        email: process.env.SENDGRID_FROM_EMAIL,
+        name: process.env.SENDGRID_FROM_NAME || 'FABLAB Al-Ahsa'
+      },
+      subject: `📸 تذكير: رفع صور فرصتك "${chanceName}" — FABLAB`,
+      html
+    });
+  } catch (err) {
+    console.error('photo-upload reminder email failed:', err?.response?.body || err.message);
+  }
+};
 
 // ============== VOLUNTEER PROFILE MANAGEMENT ==============
 
@@ -930,6 +1008,26 @@ exports.scanAttendance = async (req, res) => {
         checkInAt: now
       });
       action = 'checkin';
+
+      // Send the photo-upload reminder on check-in only (not on
+      // check-out) so each attended day generates exactly one email.
+      // Look up the volunteer's active opportunity whose date range
+      // covers today — that's the "chance" mentioned in the message.
+      try {
+        const todayOpp = await VolunteerOpportunity.findOne({
+          where: {
+            volunteerId: volunteer.volunteerId,
+            status: 'active',
+            startDate: { [Op.lte]: date },
+            endDate:   { [Op.gte]: date }
+          },
+          order: [['startDate', 'DESC']]
+        });
+        // Fire-and-forget: don't await, don't block the response.
+        _sendPhotoUploadReminder({ volunteer, opportunity: todayOpp });
+      } catch (mailErr) {
+        console.error('photo reminder lookup failed:', mailErr.message);
+      }
     } else if (!record.checkOutAt) {
       const since = now.getTime() - new Date(record.checkInAt).getTime();
       if (since < 15 * 60 * 1000) {
