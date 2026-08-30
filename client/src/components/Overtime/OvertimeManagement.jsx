@@ -69,6 +69,10 @@ const OvertimeManagement = () => {
   const [loading, setLoading] = useState(false);
   const [showModal, setShowModal] = useState(false);
   const [editingId, setEditingId] = useState(null);
+  // Preserve the full row being edited so we know its approvalStatus
+  // (approved → offer "Save & Reprint" so admin can regenerate the
+  // sanad after fixing typos).
+  const [editingRow, setEditingRow] = useState(null);
   const [form, setForm] = useState(emptyForm());
   const [search, setSearch] = useState('');
   // Existing FabLab staff — pulled on first modal open so admin can
@@ -233,6 +237,7 @@ const OvertimeManagement = () => {
 
   const openCreate = () => {
     setEditingId(null);
+    setEditingRow(null);
     setForm(emptyForm());
     setSelectedStaffId('');
     setShowModal(true);
@@ -240,6 +245,7 @@ const OvertimeManagement = () => {
 
   const openEdit = (row) => {
     setEditingId(row.overtimeId);
+    setEditingRow(row);
     setSelectedStaffId('');
     setForm({
       employeeName: row.employeeName || '',
@@ -263,6 +269,7 @@ const OvertimeManagement = () => {
   // row; the source is untouched.
   const openDuplicate = (row) => {
     setEditingId(null);
+    setEditingRow(null);
     setSelectedStaffId('');
     setForm({
       // Identity — blank so admin picks a new employee from the
@@ -306,7 +313,7 @@ const OvertimeManagement = () => {
   const addDay = () => setForm(prev => ({ ...prev, days: [...(prev.days || []), { date: '', startTime: '', endTime: '', hours: '', task: '' }] }));
   const removeDay = (i) => setForm(prev => ({ ...prev, days: (prev.days || []).filter((_, idx) => idx !== i) }));
 
-  const save = async () => {
+  const save = async ({ thenPrint = false } = {}) => {
     if (!form.employeeName.trim()) {
       toast.error(isRTL ? 'اسم الموظف مطلوب' : 'Employee name is required');
       return;
@@ -326,18 +333,38 @@ const OvertimeManagement = () => {
       totalHours: cleanDays.reduce((s, d) => s + d.hours, 0)
     };
     try {
+      let savedRow = null;
       if (editingId) {
-        await api.put(`/overtime/${editingId}`, payload);
-        toast.success(isRTL ? 'تم التحديث' : 'Updated');
+        const res = await api.put(`/overtime/${editingId}`, payload);
+        savedRow = res.data;
+        toast.success(isRTL
+          ? (editingRow?.approvalStatus === 'approved'
+              ? '✅ تم تحديث البيانات — يمكنك إعادة طباعة السند'
+              : 'تم التحديث')
+          : (editingRow?.approvalStatus === 'approved'
+              ? '✅ Updated — you can reprint the sanad now'
+              : 'Updated'));
       } else {
-        await api.post('/overtime', payload);
+        const res = await api.post('/overtime', payload);
+        savedRow = res.data;
         toast.success(isRTL ? 'تم الحفظ' : 'Saved');
+      }
+      // Auto-reprint the sanad when the admin explicitly clicked
+      // "Save & Print" on an approved-request edit. Merge the fresh
+      // form data onto the original row so the printout has the
+      // preserved manager approval + the updated fields.
+      if (thenPrint && editingRow?.approvalStatus === 'approved') {
+        const forPrint = { ...editingRow, ...payload };
+        setTimeout(() => { try { printOne(forPrint); } catch {} }, 300);
       }
       closeModal();
       load();
     } catch (err) {
       console.error(err);
-      toast.error(err.response?.data?.detail || (isRTL ? 'خطأ في الحفظ' : 'Save failed'));
+      toast.error(err.response?.data?.detail
+        || err.response?.data?.messageAr
+        || err.response?.data?.message
+        || (isRTL ? 'خطأ في الحفظ' : 'Save failed'));
     }
   };
 
@@ -646,14 +673,16 @@ const OvertimeManagement = () => {
                 )}
                 <button
                   onClick={() => openEdit(row)}
-                  disabled={status === 'approved' || status === 'pending'}
-                  title={status === 'approved' || status === 'pending'
-                    ? (isRTL ? 'لا يمكن التعديل بعد الإرسال' : 'Cannot edit once sent')
-                    : (isRTL ? 'تعديل' : 'Edit')}
+                  disabled={status === 'pending'}
+                  title={status === 'pending'
+                    ? (isRTL ? 'الطلب قيد اعتماد المدير — لا يمكن التعديل حالياً' : 'Awaiting manager approval — cannot edit right now')
+                    : status === 'approved'
+                      ? (isRTL ? 'تعديل البيانات ثم إعادة طباعة السند' : 'Edit info and reprint the sanad')
+                      : (isRTL ? 'تعديل' : 'Edit')}
                   style={{
                     padding: '8px 14px', borderRadius: 8, border: '1px solid #cbd5e1',
-                    background: '#fff', color: (status === 'approved' || status === 'pending') ? '#94a3b8' : '#334155',
-                    cursor: (status === 'approved' || status === 'pending') ? 'not-allowed' : 'pointer',
+                    background: '#fff', color: status === 'pending' ? '#94a3b8' : '#334155',
+                    cursor: status === 'pending' ? 'not-allowed' : 'pointer',
                     fontWeight: 700, fontSize: 13, fontFamily: 'inherit'
                   }}
                 >
@@ -709,6 +738,64 @@ const OvertimeManagement = () => {
               </div>
 
               <div className="modern-modal-body">
+                {editingRow && (
+                  <div style={{
+                    marginBottom: 14,
+                    padding: '12px 16px',
+                    background: editingRow.approvalStatus === 'approved'
+                      ? 'linear-gradient(135deg, #f0fdf4 0%, #ecfdf5 100%)'
+                      : editingRow.approvalStatus === 'rejected'
+                        ? 'linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%)'
+                        : 'linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%)',
+                    border: `1px solid ${editingRow.approvalStatus === 'approved' ? '#86efac' : editingRow.approvalStatus === 'rejected' ? '#fecaca' : '#e2e8f0'}`,
+                    borderInlineStart: `4px solid ${editingRow.approvalStatus === 'approved' ? '#16a34a' : editingRow.approvalStatus === 'rejected' ? '#dc2626' : '#64748b'}`,
+                    borderRadius: 10,
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'flex-start',
+                    gap: 12,
+                    flexWrap: 'wrap'
+                  }}>
+                    <div style={{ flex: 1, minWidth: 240 }}>
+                      <div style={{ fontSize: 13, color: '#0f172a', fontWeight: 700, marginBottom: 4 }}>
+                        {isRTL ? '✏️ وضع التعديل:' : '✏️ Editing:'} {editingRow.employeeName}
+                        {editingRow.position ? ` — ${editingRow.position}` : ''}
+                      </div>
+                      {editingRow.approvalStatus === 'approved' && (
+                        <div style={{ fontSize: 12, color: '#166534', lineHeight: 1.6 }}>
+                          📌 {isRTL
+                            ? 'هذا طلب معتمد من المدير — التعديلات ستظهر عند إعادة طباعة السند، ولن يُعاد إرسال الطلب للمدير.'
+                            : 'This request is already manager-approved — your edits will show on reprint, and the manager will not be re-notified.'}
+                        </div>
+                      )}
+                      {editingRow.approvalStatus === 'rejected' && (
+                        <div style={{ fontSize: 12, color: '#991b1b', lineHeight: 1.6 }}>
+                          ⚠️ {isRTL
+                            ? 'هذا طلب مرفوض — يمكنك تعديله ثم إعادة إرساله للمدير من قائمة الإجراءات.'
+                            : 'This request was rejected — you can edit it and re-send for approval from the actions menu.'}
+                        </div>
+                      )}
+                    </div>
+                    <button
+                      type="button"
+                      onClick={closeModal}
+                      style={{
+                        padding: '6px 12px',
+                        border: '1px solid #cbd5e1',
+                        background: '#fff',
+                        borderRadius: 8,
+                        cursor: 'pointer',
+                        fontWeight: 600,
+                        fontSize: 12,
+                        fontFamily: 'inherit',
+                        color: '#475569',
+                        whiteSpace: 'nowrap'
+                      }}
+                    >
+                      {isRTL ? '← إلغاء التعديل' : 'Cancel edit ×'}
+                    </button>
+                  </div>
+                )}
                 {!editingId && (
                   <div className="form-section" style={{ background: 'linear-gradient(135deg, #faf5ff 0%, #ede9fe 100%)', border: '1px solid #ddd6fe', borderRadius: 10, padding: 14 }}>
                     <div className="section-header">
@@ -972,9 +1059,28 @@ const OvertimeManagement = () => {
                 <button onClick={closeModal} style={{ padding: '10px 20px', border: '1px solid #cbd5e1', background: '#fff', borderRadius: 10, cursor: 'pointer', fontWeight: 700, fontFamily: 'inherit', color: '#334155' }}>
                   {isRTL ? 'إلغاء' : 'Cancel'}
                 </button>
-                <button onClick={save} style={{ padding: '10px 24px', border: 'none', background: 'linear-gradient(135deg, #6d28d9, #8b5cf6)', color: 'white', borderRadius: 10, cursor: 'pointer', fontWeight: 800, fontFamily: 'inherit' }}>
+                <button onClick={() => save()} style={{ padding: '10px 24px', border: 'none', background: 'linear-gradient(135deg, #6d28d9, #8b5cf6)', color: 'white', borderRadius: 10, cursor: 'pointer', fontWeight: 800, fontFamily: 'inherit' }}>
                   {editingId ? (isRTL ? 'حفظ التعديل' : 'Save changes') : (isRTL ? 'إنشاء' : 'Create')}
                 </button>
+                {editingRow?.approvalStatus === 'approved' && (
+                  <button
+                    onClick={() => save({ thenPrint: true })}
+                    style={{
+                      padding: '10px 24px',
+                      border: 'none',
+                      background: 'linear-gradient(135deg, #0ea5e9, #2563eb)',
+                      color: 'white',
+                      borderRadius: 10,
+                      cursor: 'pointer',
+                      fontWeight: 800,
+                      fontFamily: 'inherit',
+                      boxShadow: '0 4px 12px rgba(37, 99, 235, 0.25)'
+                    }}
+                    title={isRTL ? 'حفظ التعديلات وإعادة طباعة السند مباشرة' : 'Save changes and reprint the sanad immediately'}
+                  >
+                    {isRTL ? '💾 حفظ وطباعة السند' : '💾 Save & Print sanad'}
+                  </button>
+                )}
               </div>
             </motion.div>
           </div>

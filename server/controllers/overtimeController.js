@@ -97,12 +97,15 @@ exports.updateOvertime = async (req, res) => {
     const row = await OvertimeRequest.findByPk(req.params.id);
     if (!row) return res.status(404).json({ message: 'Not found' });
 
-    // Once the request is out for approval or approved, only the
-    // manager can modify status — admin can no longer edit content.
-    if (row.approvalStatus === 'pending' || row.approvalStatus === 'approved') {
+    // Only block edits while the request is out for approval (the
+    // manager might be looking at that snapshot). Once decided
+    // — approved OR rejected — admin can fix typos and reprint
+    // the sanad. approvalStatus is preserved so the printed doc
+    // still carries the manager signature line intact.
+    if (row.approvalStatus === 'pending') {
       return res.status(409).json({
-        message: 'Request is out for approval or already approved — cannot edit content',
-        messageAr: 'الطلب في مرحلة الاعتماد أو معتمد — لا يمكن التعديل'
+        message: 'Request is out for approval — recall or wait for the decision before editing',
+        messageAr: 'الطلب قيد الاعتماد — اسحب الطلب أو انتظر القرار قبل التعديل'
       });
     }
 
