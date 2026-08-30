@@ -163,7 +163,10 @@ const VolunteerContractModal = ({ open, onClose, recipient }) => {
   .contract-content {
     position: absolute;
     top: 17%;
-    bottom: 22%;
+    /* Bottom safe zone widened (was 22%) so the signature panel below
+       lands inside the letterhead's clean white band, not on top of
+       the footer graphics on receipt-bg.png. */
+    bottom: 26%;
     left: 14mm;
     right: 14mm;
     display: flex;
@@ -316,13 +319,23 @@ const VolunteerContractModal = ({ open, onClose, recipient }) => {
     letter-spacing: 1px;
   }
 
-  .signers-row {
+  /* Fully-opaque signature panel — masks the letterhead footer
+     graphics on receipt-bg.png so the volunteer + manager always have
+     a clean, unobstructed white band to sign in ink. The subtle red
+     border + drop shadow makes it read as an intentional signature
+     card, not a rendering glitch. */
+  .sig-panel {
+    background: #ffffff;
+    border: 1.5px solid #fecaca;
+    border-radius: 3mm;
+    padding: 5mm 5mm 4mm;
     margin-top: auto;
+    box-shadow: 0 3mm 10mm -2mm rgba(185, 28, 28, 0.18);
+  }
+  .signers-row {
     display: flex;
     gap: 6mm;
     justify-content: space-between;
-    padding-top: 3mm;
-    border-top: 1.5px dashed #475569;
   }
   .signer {
     flex: 1;
@@ -334,14 +347,15 @@ const VolunteerContractModal = ({ open, onClose, recipient }) => {
   .signer .signer-title {
     color: #475569;
     font-weight: 700;
-    margin-bottom: 1mm;
+    margin-bottom: 2mm;
     min-height: 7mm;
     line-height: 1.35;
   }
   .signer .signature-space {
-    height: 11mm;
+    height: 20mm;
     border-bottom: 1.5px solid #1f2937;
-    margin: 0 4mm 1mm 4mm;
+    margin: 0 4mm 2mm 4mm;
+    background: #fff;
   }
   .signer .signer-name {
     font-weight: 800;
@@ -424,18 +438,20 @@ const VolunteerContractModal = ({ open, onClose, recipient }) => {
         <span class="warn-label">⚠ تنبيه هام:</span>${safe(PHOTO_UPLOAD_CONSEQUENCE_AR)}
       </div>
 
-      <div class="signers-row">
-        <div class="signer">
-          <div class="signer-title">الطرف الثاني — المتطوع</div>
-          <div class="signature-space"></div>
-          <div class="signer-name">${safe(form.name)}</div>
-          <div class="signer-sub">التوقيع</div>
-        </div>
-        <div class="signer">
-          <div class="signer-title">المسؤول التنفيذي لفاب لاب الأحساء</div>
-          <div class="signature-space"></div>
-          <div class="signer-name">أ. زكي اللويم</div>
-          <div class="signer-sub">التوقيع والختم</div>
+      <div class="sig-panel">
+        <div class="signers-row">
+          <div class="signer">
+            <div class="signer-title">الطرف الثاني — المتطوع</div>
+            <div class="signature-space"></div>
+            <div class="signer-name">${safe(form.name)}</div>
+            <div class="signer-sub">التوقيع</div>
+          </div>
+          <div class="signer">
+            <div class="signer-title">المسؤول التنفيذي لفاب لاب الأحساء</div>
+            <div class="signature-space"></div>
+            <div class="signer-name">أ. زكي اللويم</div>
+            <div class="signer-sub">التوقيع والختم</div>
+          </div>
         </div>
       </div>
     </div>
