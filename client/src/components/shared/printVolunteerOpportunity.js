@@ -179,9 +179,46 @@ const printVolunteerOpportunity = (r) => {
   .sig-request-info b { color: #0f172a; }
   .sig-grid {
     display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 10mm;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 6mm;
     margin-top: 4mm;
+  }
+  /* Prominent note reminding the coordinator that after approval they
+     still need to fill the Google form to formally submit the chance.
+     Sits on page 1 above the decision box so it can't be missed. */
+  .form-notice {
+    margin: 3mm 0;
+    padding: 3mm 4mm;
+    background: linear-gradient(135deg, #fef3c7 0%, #fef9c3 100%);
+    border: 2px solid #f59e0b;
+    border-inline-start: 4px solid #d97706;
+    border-radius: 3mm;
+    font-size: 10pt;
+    color: #78350f;
+    line-height: 1.65;
+  }
+  .form-notice .fn-label {
+    display: inline-block;
+    font-size: 10.5pt;
+    font-weight: 900;
+    color: #92400e;
+    margin-left: 3mm;
+    letter-spacing: 0.5px;
+  }
+  /* Same notice, sized for the signature page — placed under the sig
+     panel so both the manager sees it while approving and the
+     coordinator sees it when receiving the signed sanad. */
+  .form-notice-sig {
+    margin-top: 6mm;
+    padding: 3mm 4mm;
+    background: rgba(254, 243, 199, 0.95);
+    border: 2px solid #f59e0b;
+    border-inline-start: 4px solid #d97706;
+    border-radius: 3mm;
+    font-size: 10pt;
+    color: #78350f;
+    line-height: 1.65;
+    text-align: center;
   }
   /* The opaque signature panel — fully white so it MASKS whatever
      letterhead footer graphics happen to sit underneath and gives the
@@ -261,6 +298,11 @@ const printVolunteerOpportunity = (r) => {
           <h4>📝 ملاحظة المدير</h4>
           <div class="decision-note">${esc(r.managerNote)}</div>
         </div>` : ''}
+
+      <div class="form-notice">
+        <span class="fn-label">📌 ملاحظة للموظف:</span>
+        بعد اعتماد هذه الفرصة، يجب على منسق الفرصة تعبئة النموذج الإلكتروني (Google Form) الخاص بتسجيل الفرصة التطوعية لإدراجها رسمياً ضمن قائمة الفرص المفتوحة للمتطوعين. لا تُعتبر الفرصة منشورة إلا بعد إتمام تعبئة النموذج.
+      </div>
     </div>
   </div>
 
@@ -287,6 +329,12 @@ const printVolunteerOpportunity = (r) => {
             <div class="sig-line"></div>
             <div class="sig-hint">الاسم والتوقيع</div>
           </div>
+          <div class="sig-cell">
+            <div class="sig-role">مديرة التطوع</div>
+            <div class="sig-name">أ. منيرة الصالح</div>
+            <div class="sig-line"></div>
+            <div class="sig-hint">التوقيع</div>
+          </div>
           <div class="sig-cell manager">
             <div class="sig-role">✓ المدير المعتمد</div>
             <div class="sig-name">${esc(managerNameStr)}</div>
@@ -299,6 +347,10 @@ const printVolunteerOpportunity = (r) => {
           <div>تاريخ الإصدار: <b>${esc(dateStr)}</b></div>
           <div>تاريخ الاعتماد: <b>${esc(approvedStr)}</b></div>
         </div>
+      </div>
+
+      <div class="form-notice-sig">
+        <b>📌 تذكير:</b> على منسق الفرصة تعبئة نموذج Google Form الخاص بتسجيل الفرصة التطوعية بعد الاعتماد؛ لا تُنشر الفرصة للمتطوعين إلا بعد إتمام تعبئة النموذج.
       </div>
     </div>
   </div>
