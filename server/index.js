@@ -206,6 +206,15 @@ const startServer = async () => {
     app.listen(PORT, () => {
       console.log(`🚀 Server is running on port ${PORT}`);
       console.log(`📍 API: http://localhost:${PORT}/api`);
+      // Announce whether the AI read-only API is armed. This makes it
+      // obvious in pm2 logs after a restart whether the AI_API_KEY
+      // env var was picked up successfully.
+      const aiKey = process.env.AI_API_KEY;
+      if (aiKey && String(aiKey).length >= 8) {
+        console.log(`🤖 AI API armed — /api/ai/* (key length ${String(aiKey).length})`);
+      } else {
+        console.log(`🤖 AI API DISABLED — set AI_API_KEY (>=8 chars) in .env and restart to enable /api/ai/*`);
+      }
     });
   } catch (error) {
     console.error('Failed to start server:', error);
