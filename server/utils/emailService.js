@@ -1,6 +1,7 @@
 const sgMail = require('@sendgrid/mail');
+const path = require('path');
 const { Employee } = require('../models');
-require('dotenv').config();
+require('dotenv').config({ path: path.join(__dirname, '..', '.env') });
 
 sgMail.setApiKey(process.env.SENDGRID_API_KEY);
 

@@ -1,7 +1,11 @@
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
-require('dotenv').config();
+// Load .env with an ABSOLUTE path so it works regardless of what
+// cwd pm2 (or `node index.js`) was launched from. Without the
+// explicit path, dotenv reads from process.cwd() which silently
+// misses server/.env if the process was started from the repo root.
+require('dotenv').config({ path: path.join(__dirname, '.env') });
 
 const { testConnection, syncDatabase } = require('./models');
 const registrationRoutes = require('./routes/registrationRoutes');
