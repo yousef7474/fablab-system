@@ -151,8 +151,53 @@ const InstitutionSupportTab = () => {
     }
   };
 
+  // Hard client-side upload cap. Server (Express) allows 50MB and
+  // nginx should be raised to 60M to accommodate base64 inflation
+  // (base64 adds ~33%), so the practical raw-file limit is ~40MB.
+  // Below that we let the request through; above, we short-circuit
+  // with a friendly Arabic message instead of a mysterious 413.
+  const MAX_UPLOAD_BYTES = 40 * 1024 * 1024;
+  const fmtBytes = (n) => {
+    if (!Number.isFinite(n) || n < 0) return '';
+    if (n < 1024) return `${n} B`;
+    if (n < 1024 * 1024) return `${(n / 1024).toFixed(1)} KB`;
+    return `${(n / (1024 * 1024)).toFixed(1)} MB`;
+  };
+  // Extract a useful error message from an upload failure — recognises
+  // 413 explicitly and tells the user which limit they hit.
+  const explainUploadError = (err, fileName) => {
+    const status = err?.response?.status;
+    const size = fileName ? '' : '';
+    if (status === 413) {
+      return isRTL
+        ? `⚠️ الملف كبير جداً للرفع (الحد الأقصى ${fmtBytes(MAX_UPLOAD_BYTES)}). قم بضغطه أو تقسيمه ثم أعد المحاولة.`
+        : `⚠️ File too large (max ${fmtBytes(MAX_UPLOAD_BYTES)}). Compress or split it and retry.`;
+    }
+    const msg = err?.response?.data?.messageAr
+      || err?.response?.data?.message
+      || err?.message;
+    return (isRTL ? 'تعذّر رفع الملف' : 'Upload failed') + (msg ? ` — ${msg}` : '');
+  };
+  // Preflight — returns true if the file/list is within the size cap.
+  // Toasts the user on failure and returns false so the caller can
+  // bail cleanly without any request going out.
+  const passesSizeCheck = (files) => {
+    const list = Array.isArray(files) ? files : [files];
+    const oversized = list.filter(f => f && f.size > MAX_UPLOAD_BYTES);
+    if (oversized.length === 0) return true;
+    const names = oversized.map(f => `${f.name} (${fmtBytes(f.size)})`).join('، ');
+    toast.error(
+      isRTL
+        ? `⚠️ الملف كبير جداً: ${names}. الحد الأقصى ${fmtBytes(MAX_UPLOAD_BYTES)}.`
+        : `⚠️ File too large: ${names}. Max ${fmtBytes(MAX_UPLOAD_BYTES)}.`,
+      { autoClose: 8000 }
+    );
+    return false;
+  };
+
   // ---------- Reports (ar/en/patent) ----------
   const uploadReport = async (kind, file) => {
+    if (!passesSizeCheck(file)) return;
     try {
       const payload = await readAsFilePayload(file);
       const { data } = await api.put(`/institution-support/${selected.projectId}/report/${kind}`, { file: payload });
@@ -160,7 +205,7 @@ const InstitutionSupportTab = () => {
       setRows(prev => prev.map(r => r.projectId === data.projectId ? { ...r, ...data } : r));
       toast.success(isRTL ? '📄 تم رفع الملف' : '📄 File uploaded');
     } catch (err) {
-      toast.error(isRTL ? 'تعذّر رفع الملف' : 'Upload failed');
+      toast.error(explainUploadError(err), { autoClose: 8000 });
     }
   };
   const clearReport = async (kind) => {
@@ -184,6 +229,7 @@ const InstitutionSupportTab = () => {
       return toast.warning(isRTL ? `تم بلوغ الحد الأقصى (${MAX_IMAGES} صورة)` : `Reached max (${MAX_IMAGES} images)`);
     }
     const toSend = list.slice(0, slots);
+    if (!passesSizeCheck(toSend)) return;
     try {
       const payloads = await Promise.all(toSend.map(readAsFilePayload));
       const { data } = await api.post(`/institution-support/${selected.projectId}/images`, { images: payloads });
@@ -191,7 +237,7 @@ const InstitutionSupportTab = () => {
       setRows(prev => prev.map(r => r.projectId === data.projectId ? { ...r, ...data, imageCount: data.images?.length ?? r.imageCount } : r));
       toast.success(isRTL ? `📸 تمت إضافة ${toSend.length} صورة` : `📸 Added ${toSend.length} image(s)`);
     } catch (err) {
-      toast.error(isRTL ? 'تعذّر رفع الصور' : 'Upload failed');
+      toast.error(explainUploadError(err), { autoClose: 8000 });
     }
   };
   const removeImage = async (index) => {
@@ -209,6 +255,7 @@ const InstitutionSupportTab = () => {
   const uploadRegistrationFiles = async (fileList) => {
     const list = Array.from(fileList || []);
     if (!list.length) return;
+    if (!passesSizeCheck(list)) return;
     try {
       const payloads = await Promise.all(list.map(readAsFilePayload));
       const { data } = await api.post(`/institution-support/${selected.projectId}/registration-files`, { files: payloads });
@@ -216,7 +263,7 @@ const InstitutionSupportTab = () => {
       setRows(prev => prev.map(r => r.projectId === data.projectId ? { ...r, ...data, registrationFileCount: data.registrationFiles?.length ?? r.registrationFileCount } : r));
       toast.success(isRTL ? `📎 تمت إضافة ${list.length} ملف` : `📎 Added ${list.length} file(s)`);
     } catch (err) {
-      toast.error(isRTL ? 'تعذّر رفع الملفات' : 'Upload failed');
+      toast.error(explainUploadError(err), { autoClose: 8000 });
     }
   };
   const removeRegistrationFile = async (index) => {
@@ -234,6 +281,7 @@ const InstitutionSupportTab = () => {
   const uploadChatScreenshots = async (fileList) => {
     const list = Array.from(fileList || []);
     if (!list.length) return;
+    if (!passesSizeCheck(list)) return;
     try {
       const payloads = await Promise.all(list.map(readAsFilePayload));
       const { data } = await api.post(`/institution-support/${selected.projectId}/chat-screenshots`, { files: payloads });
@@ -241,7 +289,7 @@ const InstitutionSupportTab = () => {
       setRows(prev => prev.map(r => r.projectId === data.projectId ? { ...r, ...data, chatScreenshotCount: data.chatScreenshots?.length ?? r.chatScreenshotCount } : r));
       toast.success(isRTL ? `💬 تمت إضافة ${list.length} لقطة` : `💬 Added ${list.length} screenshot(s)`);
     } catch (err) {
-      toast.error(isRTL ? 'تعذّر رفع اللقطات' : 'Upload failed');
+      toast.error(explainUploadError(err), { autoClose: 8000 });
     }
   };
   const removeChatScreenshot = async (index) => {
@@ -259,6 +307,7 @@ const InstitutionSupportTab = () => {
   const uploadGoogleFormResults = async (fileList) => {
     const list = Array.from(fileList || []);
     if (!list.length) return;
+    if (!passesSizeCheck(list)) return;
     try {
       const payloads = await Promise.all(list.map(readAsFilePayload));
       const { data } = await api.post(`/institution-support/${selected.projectId}/google-form-results`, { files: payloads });
@@ -266,7 +315,7 @@ const InstitutionSupportTab = () => {
       setRows(prev => prev.map(r => r.projectId === data.projectId ? { ...r, ...data, googleFormResultCount: data.googleFormResults?.length ?? r.googleFormResultCount } : r));
       toast.success(isRTL ? `📊 تمت إضافة ${list.length} نتيجة` : `📊 Added ${list.length} result(s)`);
     } catch (err) {
-      toast.error(isRTL ? 'تعذّر رفع الملفات' : 'Upload failed');
+      toast.error(explainUploadError(err), { autoClose: 8000 });
     }
   };
   const removeGoogleFormResult = async (index) => {
