@@ -212,15 +212,36 @@ const PublicVolunteerReport = () => {
                   </span>
                 </div>
               )}
-              {(range.from || range.to) && (
-                <div className="pub-period-line">
-                  <span className="pub-period-icon">📅</span>
-                  {'الفترة: '}
-                  <b dir="ltr">{range.from || '…'}</b>
-                  <span> → </span>
-                  <b dir="ltr">{range.to || '…'}</b>
-                </div>
-              )}
+              {(() => {
+                // Show ONLY currently-active chances (the server has
+                // already promoted past-endDate ones to 'completed').
+                // Was previously rendering the volunteer's shareRange
+                // — which is the linked summer program's window and
+                // has nothing to do with any specific chance.
+                const activeOpps = allOpps.filter(o => o.status === 'active');
+                if (activeOpps.length === 0) return null;
+                return (
+                  <div className="pub-active-opps">
+                    <span className="pub-active-opps-label">
+                      {activeOpps.length === 1 ? 'الفرصة النشطة:' : `الفرص النشطة (${activeOpps.length}):`}
+                    </span>
+                    <div className="pub-active-opps-list">
+                      {activeOpps.map(o => (
+                        <span key={o.opportunityId} className="pub-active-opp-chip">
+                          <b>{o.title}</b>
+                          {(o.startDate || o.endDate) && (
+                            <span className="pub-active-opp-range">
+                              <span dir="ltr">{o.startDate || '…'}</span>
+                              {' → '}
+                              <span dir="ltr">{o.endDate || '…'}</span>
+                            </span>
+                          )}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })()}
             </div>
             <span className="pub-badge">
               <span className="pub-badge-dot" />
