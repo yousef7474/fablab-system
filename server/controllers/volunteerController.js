@@ -152,14 +152,19 @@ exports.getAllVolunteers = async (req, res) => {
     }
 
     // Calculate total stats for each volunteer
+    const today = _riyadhToday();
     const volunteersWithStats = volunteers.map(v => {
       const volunteer = v.toJSON();
       // Overwrite each opportunity's attendanceDays with the QR-
       // derived version so downstream code (ReceiptModal cost calc,
       // public URL day counts, etc.) sees a single source of truth.
+      // Also promote 'active' → 'completed' when endDate has passed
+      // so status badges everywhere reflect reality without an
+      // admin having to flip the status manually.
       const rawAtt = attByVolunteer.get(volunteer.volunteerId) || [];
       volunteer.opportunities = (volunteer.opportunities || []).map(opp => ({
         ...opp,
+        status: _effectiveOppStatus(opp, today),
         attendanceDays: _shapeOpportunityDays(opp, rawAtt)
       }));
       const completedOpps = volunteer.opportunities.filter(o => o.status === 'completed');
@@ -220,14 +225,17 @@ exports.getVolunteerById = async (req, res) => {
 
     // Same QR-derived attendanceDays enrichment as getAllVolunteers,
     // so anyone loading a single volunteer (ReceiptModal etc.) sees
-    // the correct attended days.
+    // the correct attended days. Also flips 'active' → 'completed'
+    // for chances whose endDate is past.
     const rawAtt = await VolunteerAttendance.findAll({
       where: { volunteerId: volunteer.volunteerId },
       order: [['date', 'DESC']]
     });
+    const today = _riyadhToday();
     const shaped = volunteer.toJSON();
     shaped.opportunities = (shaped.opportunities || []).map(opp => ({
       ...opp,
+      status: _effectiveOppStatus(opp, today),
       attendanceDays: _shapeOpportunityDays(opp, rawAtt)
     }));
 
@@ -1512,6 +1520,31 @@ const _resolveShareRange = (volunteer) => {
   return { from, to };
 };
 
+// Today in Asia/Riyadh (YYYY-MM-DD) — used to promote 'active' chances
+// past their endDate to 'completed' on the way out. The DB stores whatever
+// the admin last set; we compute the effective status at serialization
+// time so the public URL and admin lists always show reality.
+const _riyadhToday = () => {
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Asia/Riyadh',
+    year: 'numeric', month: '2-digit', day: '2-digit'
+  }).formatToParts(new Date());
+  const y = parts.find(p => p.type === 'year').value;
+  const m = parts.find(p => p.type === 'month').value;
+  const d = parts.find(p => p.type === 'day').value;
+  return `${y}-${m}-${d}`;
+};
+
+// 'cancelled' + 'completed' pass through as-is. 'active' with an
+// endDate in the past becomes 'completed'. Everything else stays.
+const _effectiveOppStatus = (opp, today) => {
+  const s = opp?.status || 'active';
+  if (s !== 'active') return s;
+  const end = _isoDate(opp?.endDate);
+  if (end && end < today) return 'completed';
+  return s;
+};
+
 // Derive one opportunity's per-day attendance from the shared
 // VolunteerAttendance QR log — the single source of truth. Each
 // eligible day yields { date, attended:true, hours, checkInAt,
@@ -1669,6 +1702,7 @@ exports.publicGetVolunteerByToken = async (req, res) => {
     // newly-created chances outside the volunteer's original share
     // window (or their linked summer program's window) to vanish
     // from the public report.
+    const today = _riyadhToday();
     const opps = (volunteer.opportunities || [])
       .map(o => ({
         opportunityId: o.opportunityId,
@@ -1681,7 +1715,8 @@ exports.publicGetVolunteerByToken = async (req, res) => {
         dailyHours: o.dailyHours,
         totalHours: o.totalHours,
         hoursAdjustment: o.hoursAdjustment,
-        status: o.status,
+        // Promote 'active' → 'completed' when endDate is past.
+        status: _effectiveOppStatus(o, today),
         // The shaper already scopes to the opportunity's own
         // start/end so passing the full attendance list is safe.
         attendanceDays: _shapeOpportunityDays(o, attendance)
@@ -1799,6 +1834,7 @@ exports.publicGetMasterReport = async (req, res) => {
 
       // Show ALL non-cancelled opportunities regardless of share
       // window (same rationale as the single-volunteer endpoint).
+      const today = _riyadhToday();
       const opps = (v.opportunities || [])
         .map(o => ({
           opportunityId: o.opportunityId,
@@ -1809,7 +1845,7 @@ exports.publicGetMasterReport = async (req, res) => {
           dailyEndTime: o.dailyEndTime,
           totalHours: o.totalHours,
           hoursAdjustment: o.hoursAdjustment,
-          status: o.status,
+          status: _effectiveOppStatus(o, today),
           attendanceDays: _shapeOpportunityDays(o, rangedRawAtt)
         }))
         .sort((a, b) => (b.startDate || '').localeCompare(a.startDate || ''));

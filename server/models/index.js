@@ -959,6 +959,36 @@ const syncDatabase = async () => {
       console.log('volunteer_opportunities.totalHours backfill note:', backfillErr.message);
     }
 
+    // Auto-complete volunteer opportunities whose endDate has passed
+    // (in Asia/Riyadh — matches server elsewhere). Response shapers
+    // already promote 'active' → 'completed' on the fly, but keeping
+    // the DB in sync means filters / joins / raw queries also see the
+    // correct state. Runs on every boot; idempotent.
+    try {
+      const riyadhToday = (() => {
+        const parts = new Intl.DateTimeFormat('en-CA', {
+          timeZone: 'Asia/Riyadh',
+          year: 'numeric', month: '2-digit', day: '2-digit'
+        }).formatToParts(new Date());
+        const y = parts.find(p => p.type === 'year').value;
+        const m = parts.find(p => p.type === 'month').value;
+        const d = parts.find(p => p.type === 'day').value;
+        return `${y}-${m}-${d}`;
+      })();
+      const [, meta] = await sequelize.query(
+        `UPDATE volunteer_opportunities
+            SET status = 'completed'
+          WHERE status = 'active' AND "endDate" < :today`,
+        { replacements: { today: riyadhToday } }
+      );
+      const rowCount = meta?.rowCount ?? 0;
+      if (rowCount > 0) {
+        console.log(`✅ Auto-completed ${rowCount} volunteer opportunit${rowCount === 1 ? 'y' : 'ies'} past endDate.`);
+      }
+    } catch (autoErr) {
+      console.log('volunteer_opportunities auto-complete note:', autoErr.message);
+    }
+
     // Ensure every Mawhba deployment has at least one season. If no
     // seasons exist we create the first season as active and back-fill
     // every existing student to it so nothing loses its roster context
