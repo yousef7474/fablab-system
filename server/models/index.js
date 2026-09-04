@@ -928,6 +928,37 @@ const syncDatabase = async () => {
     // Seed default settings
     await Settings.seedDefaults();
 
+    // Recompute totalHours for existing volunteer opportunities using
+    // the new working-days-only rule (Sun-Thu, skip Fri/Sat). Old rows
+    // still have totalHours calculated from the full 7-day calendar
+    // span, which made the "attended vs expected" ratio look broken.
+    // Idempotent: recomputes every row on every boot but only fires
+    // when there's a delta to commit (Sequelize .update() no-ops
+    // otherwise). Wraps in try/catch so a bad row can't crash boot.
+    try {
+      const opps = await VolunteerOpportunity.findAll({
+        attributes: ['opportunityId', 'startDate', 'endDate', 'dailyHours', 'totalHours']
+      });
+      let fixed = 0;
+      for (const o of opps) {
+        if (!o.startDate || !o.endDate || !o.dailyHours) continue;
+        const workingDays = VolunteerOpportunity.countWorkingDays(o.startDate, o.endDate);
+        const expected = workingDays * o.dailyHours;
+        if (Math.abs((o.totalHours || 0) - expected) > 0.001) {
+          await sequelize.query(
+            `UPDATE volunteer_opportunities SET "totalHours" = :v WHERE "opportunityId" = :id`,
+            { replacements: { v: expected, id: o.opportunityId } }
+          );
+          fixed++;
+        }
+      }
+      if (fixed > 0) {
+        console.log(`🗓 Recalculated totalHours (working days only) for ${fixed} volunteer opportunit${fixed === 1 ? 'y' : 'ies'}.`);
+      }
+    } catch (backfillErr) {
+      console.log('volunteer_opportunities.totalHours backfill note:', backfillErr.message);
+    }
+
     // Ensure every Mawhba deployment has at least one season. If no
     // seasons exist we create the first season as active and back-fill
     // every existing student to it so nothing loses its roster context

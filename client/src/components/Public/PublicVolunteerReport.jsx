@@ -341,15 +341,24 @@ const PublicVolunteerReport = () => {
                 const days = (o.attendanceDays || []).filter(d => d.attended);
                 const attendedHours = days.reduce((s, d) => s + (d.hours || 0), 0);
                 const totalWithAdj = (o.totalHours || 0) + (o.hoursAdjustment || 0);
-                // Calendar span of the opportunity (inclusive), so even a
-                // brand-new chance with zero attendance still shows how
-                // many days it covers — useful for planning + reviewers.
+                // Working-day count for the chance — Sun–Thu only, since
+                // FabLab's operating week excludes Fri/Sat. Counting the
+                // raw calendar span would make the attended-vs-expected
+                // ratio look artificially bad because nobody scans on
+                // the weekend. Matches the server's countWorkingDays.
                 const spanDays = (() => {
                   if (!o.startDate || !o.endDate) return null;
                   const s = new Date(o.startDate);
                   const e = new Date(o.endDate);
                   if (isNaN(s.getTime()) || isNaN(e.getTime()) || e < s) return null;
-                  return Math.floor((e - s) / 86400000) + 1;
+                  let count = 0;
+                  const cur = new Date(s);
+                  while (cur <= e) {
+                    const dow = cur.getDay(); // 0=Sun ... 5=Fri, 6=Sat
+                    if (dow !== 5 && dow !== 6) count++;
+                    cur.setDate(cur.getDate() + 1);
+                  }
+                  return count;
                 })();
                 return (
                   <div key={o.opportunityId} className="pub-opp-card">
@@ -364,8 +373,8 @@ const PublicVolunteerReport = () => {
                         من <b dir="ltr">{o.startDate}</b> إلى <b dir="ltr">{o.endDate}</b>
                       </span>
                       {spanDays != null && (
-                        <span>
-                          مدة الفرصة: <b>{spanDays}</b> يوم
+                        <span title="أيام العمل فقط (الأحد – الخميس)">
+                          أيام العمل: <b>{spanDays}</b> يوم
                         </span>
                       )}
                       {o.dailyStartTime && o.dailyEndTime && (

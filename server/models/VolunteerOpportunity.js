@@ -106,24 +106,42 @@ const VolunteerOpportunity = sequelize.define('VolunteerOpportunity', {
       if (opportunity.ratingNotes === '') opportunity.ratingNotes = null;
     },
     beforeCreate: (opportunity) => {
-      // Calculate total hours
       if (opportunity.startDate && opportunity.endDate && opportunity.dailyHours) {
-        const start = new Date(opportunity.startDate);
-        const end = new Date(opportunity.endDate);
-        const days = Math.ceil((end - start) / (1000 * 60 * 60 * 24)) + 1;
+        const days = countWorkingDays(opportunity.startDate, opportunity.endDate);
         opportunity.totalHours = days * opportunity.dailyHours;
       }
     },
     beforeUpdate: (opportunity) => {
-      // Recalculate total hours if dates or daily hours changed
       if (opportunity.changed('startDate') || opportunity.changed('endDate') || opportunity.changed('dailyHours')) {
-        const start = new Date(opportunity.startDate);
-        const end = new Date(opportunity.endDate);
-        const days = Math.ceil((end - start) / (1000 * 60 * 60 * 24)) + 1;
+        const days = countWorkingDays(opportunity.startDate, opportunity.endDate);
         opportunity.totalHours = days * opportunity.dailyHours;
       }
     }
   }
 });
+
+// Weekend in Saudi Arabia is Fri (5) + Sat (6) — Sun–Thu are the
+// operating days at FabLab, so an opportunity spanning a full week
+// only has 5 working days, not 7. Counting the full calendar span
+// makes attended-days / expected-days look artificially bad because
+// nobody scans on Fri/Sat.
+function countWorkingDays(start, end) {
+  if (!start || !end) return 0;
+  const s = new Date(start);
+  const e = new Date(end);
+  if (isNaN(s.getTime()) || isNaN(e.getTime()) || e < s) return 0;
+  let count = 0;
+  const cur = new Date(s);
+  while (cur <= e) {
+    const dow = cur.getDay(); // 0=Sun ... 5=Fri, 6=Sat
+    if (dow !== 5 && dow !== 6) count++;
+    cur.setDate(cur.getDate() + 1);
+  }
+  return count;
+}
+
+// Exported so a boot-time backfill can recompute totalHours on
+// existing rows without duplicating the logic.
+VolunteerOpportunity.countWorkingDays = countWorkingDays;
 
 module.exports = VolunteerOpportunity;
