@@ -270,6 +270,10 @@ const PrintServicePage = () => {
 
   return (
     <div className="p3d" dir={isRTL ? 'rtl' : 'ltr'}>
+      {/* Everything under .p3d-inner gets blurred when the service is
+          closed, mirroring the store's pattern. The overlay + card
+          then sit ABOVE it so the notice is always clearly visible. */}
+      <div className={`p3d-inner ${closureStatus.effectiveClosed ? 'is-blurred' : ''}`}>
       {/* Topbar */}
       <header className="p3d-topbar">
         <button type="button" className="p3d-brand" onClick={() => navigate('/register')}>
@@ -305,58 +309,6 @@ const PrintServicePage = () => {
         </div>
       </div>
 
-      {/* Service-closed banner — replaces the whole form until admin
-          reopens the service so the user doesn't waste time filling
-          fields that will be rejected by the server. */}
-      {closureStatus.effectiveClosed && (
-        <div style={{
-          maxWidth: 780, margin: '30px auto', padding: '28px 32px',
-          background: 'linear-gradient(135deg, #fef3c7 0%, #fde68a 100%)',
-          border: '3px solid #d97706',
-          borderRadius: 16,
-          boxShadow: '0 20px 40px -12px rgba(217, 119, 6, 0.25)',
-          textAlign: 'center', color: '#78350f'
-        }}>
-          <div style={{ fontSize: 56, marginBottom: 12 }}>🔒</div>
-          <h2 style={{ margin: '0 0 12px', fontSize: 24, fontWeight: 900, color: '#92400e' }}>
-            {isRTL ? 'الخدمة مغلقة مؤقتاً' : 'Service Temporarily Closed'}
-          </h2>
-          {closureStatus.reason && (
-            <p style={{ margin: '0 0 16px', fontSize: 15, lineHeight: 1.7, fontWeight: 600 }}>
-              {closureStatus.reason}
-            </p>
-          )}
-          {(closureStatus.from || closureStatus.to) && (
-            <div style={{
-              display: 'inline-block', padding: '10px 20px',
-              background: '#fff', borderRadius: 999,
-              fontWeight: 800, color: '#92400e', fontSize: 14,
-              border: '2px solid #d97706'
-            }}>
-              📅 {isRTL ? 'فترة الإغلاق:' : 'Closure period:'}{' '}
-              {closureStatus.from || (isRTL ? 'من الآن' : 'now')} → {closureStatus.to || (isRTL ? 'غير محدد' : 'open-ended')}
-            </div>
-          )}
-          <p style={{ margin: '20px 0 0', fontSize: 13, color: '#78350f' }}>
-            {isRTL
-              ? 'شكراً لتفهمكم — يرجى المحاولة لاحقاً بعد إعادة تشغيل الخدمة.'
-              : 'Thank you for your patience — please try again once the service reopens.'}
-          </p>
-          <button
-            type="button"
-            onClick={() => navigate('/register')}
-            style={{
-              marginTop: 20, padding: '12px 28px', border: 'none',
-              background: '#78350f', color: '#fff',
-              borderRadius: 10, fontWeight: 800, cursor: 'pointer'
-            }}
-          >
-            {isRTL ? 'العودة للرئيسية' : 'Back to Home'}
-          </button>
-        </div>
-      )}
-
-      {!closureStatus.effectiveClosed && (
       <form onSubmit={submit} className="p3d-form">
         {/* SECTION: Personal Info */}
         <motion.section
@@ -709,7 +661,67 @@ const PrintServicePage = () => {
           </button>
         </motion.section>
       </form>
-      )}
+      </div>{/* /.p3d-inner */}
+
+      {/* Full-page closure overlay — mirrors the store pattern
+          (StorePage.st-closed-overlay). Sits above the blurred form
+          so users see a clear notice they can't dismiss just by
+          scrolling past. */}
+      <AnimatePresence>
+        {closureStatus.effectiveClosed && (
+          <motion.div
+            className="p3d-closed-overlay"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+          >
+            <motion.div
+              className="p3d-closed-card"
+              initial={{ scale: 0.9, y: 20, opacity: 0 }}
+              animate={{ scale: 1, y: 0, opacity: 1 }}
+              exit={{ scale: 0.9, y: 20, opacity: 0 }}
+              transition={{ type: 'spring', damping: 22, stiffness: 220 }}
+            >
+              <div className="p3d-closed-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+                  <rect x="4" y="10" width="16" height="12" rx="2"/>
+                  <path d="M8 10V6a4 4 0 0 1 8 0v4"/>
+                </svg>
+              </div>
+              <h2>{isRTL ? 'خدمة الطباعة ثلاثية الأبعاد مغلقة مؤقتاً' : '3D Printing Service Temporarily Closed'}</h2>
+              <p className="p3d-closed-reason">
+                {closureStatus.reason
+                  || (isRTL
+                      ? 'الطلبات الجديدة معطّلة حالياً — سنعود قريباً'
+                      : 'New requests are disabled — we will be back soon')}
+              </p>
+              {(closureStatus.from || closureStatus.to) && (
+                <div className="p3d-closed-window">
+                  📅 {isRTL ? 'فترة الإغلاق:' : 'Closure period:'}{' '}
+                  <b>{closureStatus.from || (isRTL ? 'من الآن' : 'now')}</b>
+                  {' → '}
+                  <b>{closureStatus.to || (isRTL ? 'غير محدد' : 'open-ended')}</b>
+                </div>
+              )}
+              <div className="p3d-closed-actions">
+                <button type="button" onClick={() => navigate('/register')}>
+                  {isRTL ? 'العودة للصفحة الرئيسية' : 'Back to home'}
+                </button>
+              </div>
+              <div className="p3d-closed-hint">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/>
+                </svg>
+                <span>
+                  {isRTL
+                    ? 'ستُستأنف الطلبات فور فتح الخدمة مجدداً'
+                    : 'Requests will resume as soon as the service re-opens'}
+                </span>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Terms modal */}
       <AnimatePresence>
