@@ -25,6 +25,12 @@
   color: var(--st-ink);
   font-family: var(--st-font-body);
   font-size: 15px;
+  /* Prevent the off-canvas sidebar / drawer (position: fixed with a
+     translateX() slide-out) from exposing horizontal scroll — the
+     bug manifested only in RTL because the drawer anchors to the
+     right edge there. */
+  overflow-x: hidden;
+  max-width: 100vw;
 }
 
 /* ---------- Topbar ---------- */
@@ -322,7 +328,10 @@
     position: fixed;
     top: 0; bottom: 0;
     inset-inline-start: 0;
-    width: 280px;
+    /* Never wider than the viewport minus a peek — otherwise on
+       narrow RTL phones the sidebar's fixed 280px overlaps content
+       when open and pushes horizontal scroll when closed. */
+    width: min(280px, 88vw);
     max-height: 100vh;
     z-index: 1200;
     transform: translateX(-100%);

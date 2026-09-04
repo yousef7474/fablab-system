@@ -2015,18 +2015,31 @@
 }
 
 @media (max-width: 768px) {
+  /* Root layout must never expose horizontal overflow — fixed
+     drawers below use translateX() to slide off screen and if any
+     wrapper allows overflow the mobile viewport gets a scrollbar
+     ONLY in RTL (because the drawer anchors to right: 0 there). */
+  .admin-layout { overflow-x: hidden; max-width: 100vw; }
+
   .admin-sidebar {
     transform: translateX(-100%);
-    width: 260px;
+    /* Cap the drawer so it never exceeds the viewport width on
+       narrow phones (< 260px still exists on some feature phones,
+       but even at 360px an over-wide drawer looks broken in RTL). */
+    width: min(260px, 85vw);
     position: fixed;
   }
 
   [dir="rtl"] .admin-sidebar {
     transform: translateX(100%);
+    /* Explicitly re-anchor in case another rule overrode it. In RTL
+       the base rule sets right: 0 but we make it doubly safe here. */
+    left: auto;
+    right: 0;
   }
 
   .admin-sidebar.open {
-    transform: translateX(0);
+    transform: translateX(0) !important;
   }
 
   .admin-sidebar .sidebar-title,
