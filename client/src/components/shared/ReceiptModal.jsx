@@ -499,34 +499,77 @@ const ReceiptModal = ({ open, onClose, recipient, personType = 'volunteer', onSa
           املأ البيانات ثم اطبع. الصفحة الثانية ستحوي صورة الهوية المحفوظة.
         </p>
 
-        {Array.isArray(recipient?.opportunities) && recipient.opportunities.length > 0 && (
-          <div style={{
-            background: '#f0fdf4', border: '1.5px solid #86efac',
-            padding: '0.75rem 1rem', borderRadius: 10, marginBottom: '0.75rem'
-          }}>
-            <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 700, marginBottom: 6, color: '#166534' }}>
-              {personType === 'worker' ? 'تعبئة المبلغ من فرصة عمل' : 'تعبئة المبلغ من فرصة تطوعية'}
-            </label>
-            <select
-              defaultValue=""
-              onChange={(e) => handlePickOpportunity(e.target.value)}
-              style={{
-                width: '100%', padding: '0.5rem', borderRadius: 8,
-                border: '1.5px solid #86efac', fontFamily: 'inherit', background: 'white'
-              }}
-            >
-              <option value="">— اختر فرصة لاستخراج المبلغ تلقائياً —</option>
-              {recipient.opportunities.map(opp => {
-                const cost = sumOpportunityCost(opp, personType);
-                return (
-                  <option key={opp.opportunityId} value={opp.opportunityId}>
-                    {opp.title} ({String(opp.startDate).slice(0,10)} → {String(opp.endDate).slice(0,10)}) — {cost.toFixed(2)} ر.س
-                  </option>
-                );
-              })}
-            </select>
-          </div>
-        )}
+        {Array.isArray(recipient?.opportunities) && recipient.opportunities.length > 0 && (() => {
+          const pickedOpp = recipient.opportunities.find(o => o.opportunityId === form.opportunityId);
+          const days = Array.isArray(pickedOpp?.attendanceDays) ? pickedOpp.attendanceDays : [];
+          const attendedDays = days.filter(d => d && d.attended);
+          const totalHours = attendedDays.reduce((s, d) => s + (Number(d.hours) || 0), 0);
+          const cost = pickedOpp ? sumOpportunityCost(pickedOpp, personType) : 0;
+          const rateLabel = personType === 'worker'
+            ? `${WORKER_HOURLY_RATE} ر.س/ساعة`
+            : `${VOLUNTEER_DAY_RATE} ر.س/يوم حضور`;
+          return (
+            <div style={{
+              background: '#f0fdf4', border: '1.5px solid #86efac',
+              padding: '0.75rem 1rem', borderRadius: 10, marginBottom: '0.75rem'
+            }}>
+              <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 700, marginBottom: 6, color: '#166534' }}>
+                🔗 {personType === 'worker' ? 'ربط السند بفرصة عمل' : 'ربط السند بفرصة تطوعية'}
+                <span style={{ fontWeight: 500, color: '#15803d', marginInlineStart: 6 }}>
+                  ({rateLabel})
+                </span>
+              </label>
+              <select
+                value={form.opportunityId}
+                onChange={(e) => handlePickOpportunity(e.target.value)}
+                style={{
+                  width: '100%', padding: '0.5rem', borderRadius: 8,
+                  border: '1.5px solid #86efac', fontFamily: 'inherit', background: 'white'
+                }}
+              >
+                <option value="">— اختر فرصة لتعبئة المبلغ تلقائياً —</option>
+                {recipient.opportunities.map(opp => {
+                  const oppDays = Array.isArray(opp.attendanceDays) ? opp.attendanceDays : [];
+                  const oppAttended = oppDays.filter(d => d && d.attended).length;
+                  const oppCost = sumOpportunityCost(opp, personType);
+                  return (
+                    <option key={opp.opportunityId} value={opp.opportunityId}>
+                      {opp.title} · {String(opp.startDate).slice(0,10)} → {String(opp.endDate).slice(0,10)} · {oppAttended} يوم · {oppCost.toFixed(2)} ر.س
+                    </option>
+                  );
+                })}
+              </select>
+
+              {pickedOpp && (
+                <div style={{
+                  marginTop: 10, padding: '10px 12px',
+                  background: '#ffffff', border: '1px dashed #86efac',
+                  borderRadius: 8, fontSize: '0.85rem', color: '#065f46',
+                  display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8, textAlign: 'center'
+                }}>
+                  <div>
+                    <div style={{ fontSize: '0.7rem', color: '#15803d', fontWeight: 700 }}>أيام الحضور</div>
+                    <div style={{ fontSize: '1.05rem', fontWeight: 800, color: '#065f46', fontFamily: 'JetBrains Mono, monospace' }}>
+                      {attendedDays.length}
+                    </div>
+                  </div>
+                  <div>
+                    <div style={{ fontSize: '0.7rem', color: '#15803d', fontWeight: 700 }}>إجمالي الساعات</div>
+                    <div style={{ fontSize: '1.05rem', fontWeight: 800, color: '#065f46', fontFamily: 'JetBrains Mono, monospace' }}>
+                      {totalHours.toFixed(1)}
+                    </div>
+                  </div>
+                  <div>
+                    <div style={{ fontSize: '0.7rem', color: '#15803d', fontWeight: 700 }}>المبلغ المستحق</div>
+                    <div style={{ fontSize: '1.05rem', fontWeight: 800, color: '#dc2626', fontFamily: 'JetBrains Mono, monospace' }}>
+                      {cost.toFixed(2)} ر.س
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          );
+        })()}
 
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
           <div>

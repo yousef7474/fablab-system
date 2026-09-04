@@ -341,6 +341,16 @@ const PublicVolunteerReport = () => {
                 const days = (o.attendanceDays || []).filter(d => d.attended);
                 const attendedHours = days.reduce((s, d) => s + (d.hours || 0), 0);
                 const totalWithAdj = (o.totalHours || 0) + (o.hoursAdjustment || 0);
+                // Calendar span of the opportunity (inclusive), so even a
+                // brand-new chance with zero attendance still shows how
+                // many days it covers — useful for planning + reviewers.
+                const spanDays = (() => {
+                  if (!o.startDate || !o.endDate) return null;
+                  const s = new Date(o.startDate);
+                  const e = new Date(o.endDate);
+                  if (isNaN(s.getTime()) || isNaN(e.getTime()) || e < s) return null;
+                  return Math.floor((e - s) / 86400000) + 1;
+                })();
                 return (
                   <div key={o.opportunityId} className="pub-opp-card">
                     <div className="pub-opp-head">
@@ -353,13 +363,19 @@ const PublicVolunteerReport = () => {
                       <span>
                         من <b dir="ltr">{o.startDate}</b> إلى <b dir="ltr">{o.endDate}</b>
                       </span>
+                      {spanDays != null && (
+                        <span>
+                          مدة الفرصة: <b>{spanDays}</b> يوم
+                        </span>
+                      )}
                       {o.dailyStartTime && o.dailyEndTime && (
                         <span className="pub-opp-window">
                           الوقت اليومي: <b dir="ltr">{o.dailyStartTime}–{o.dailyEndTime}</b>
                         </span>
                       )}
                       <span>
-                        عدد الأيام: <b>{days.length}</b>
+                        أيام الحضور: <b>{days.length}</b>
+                        {spanDays != null && <span className="pub-cell-empty"> / {spanDays}</span>}
                       </span>
                       <span>
                         الساعات المسجّلة: <b>{attendedHours.toFixed(2)}</b>

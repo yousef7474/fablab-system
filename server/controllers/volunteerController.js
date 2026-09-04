@@ -131,9 +131,37 @@ exports.getAllVolunteers = async (req, res) => {
       order: [['name', 'ASC']]
     });
 
+    // Batch-load every volunteer's QR attendance in ONE query so we
+    // can derive per-opportunity attendanceDays from the QR log —
+    // matching what the public-share endpoint returns. This is what
+    // the ReceiptModal reads when auto-calculating the "سند" amount,
+    // so the receipt now uses actual attended days instead of the
+    // stale attendanceDays JSON that used to live on the opportunity.
+    let attByVolunteer = new Map();
+    if (volunteers.length > 0) {
+      const ids = volunteers.map(v => v.volunteerId);
+      const allAtt = await VolunteerAttendance.findAll({
+        where: { volunteerId: { [Op.in]: ids } },
+        order: [['date', 'DESC']]
+      });
+      for (const rec of allAtt) {
+        const arr = attByVolunteer.get(rec.volunteerId) || [];
+        arr.push(rec);
+        attByVolunteer.set(rec.volunteerId, arr);
+      }
+    }
+
     // Calculate total stats for each volunteer
     const volunteersWithStats = volunteers.map(v => {
       const volunteer = v.toJSON();
+      // Overwrite each opportunity's attendanceDays with the QR-
+      // derived version so downstream code (ReceiptModal cost calc,
+      // public URL day counts, etc.) sees a single source of truth.
+      const rawAtt = attByVolunteer.get(volunteer.volunteerId) || [];
+      volunteer.opportunities = (volunteer.opportunities || []).map(opp => ({
+        ...opp,
+        attendanceDays: _shapeOpportunityDays(opp, rawAtt)
+      }));
       const completedOpps = volunteer.opportunities.filter(o => o.status === 'completed');
       volunteer.totalOpportunities = volunteer.opportunities.length;
       volunteer.completedOpportunities = completedOpps.length;
@@ -190,7 +218,20 @@ exports.getVolunteerById = async (req, res) => {
       return res.status(404).json({ message: 'Volunteer not found' });
     }
 
-    res.json(volunteer);
+    // Same QR-derived attendanceDays enrichment as getAllVolunteers,
+    // so anyone loading a single volunteer (ReceiptModal etc.) sees
+    // the correct attended days.
+    const rawAtt = await VolunteerAttendance.findAll({
+      where: { volunteerId: volunteer.volunteerId },
+      order: [['date', 'DESC']]
+    });
+    const shaped = volunteer.toJSON();
+    shaped.opportunities = (shaped.opportunities || []).map(opp => ({
+      ...opp,
+      attendanceDays: _shapeOpportunityDays(opp, rawAtt)
+    }));
+
+    res.json(shaped);
   } catch (error) {
     console.error('Error fetching volunteer:', error);
     res.status(500).json({ message: 'Error fetching volunteer', error: error.message });

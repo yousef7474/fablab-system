@@ -8,7 +8,11 @@ import UnifiedAttendancePage from '../shared/UnifiedAttendancePage';
 import ReceiptModal from '../shared/ReceiptModal';
 import ReceiptArchiveModal from '../shared/ReceiptArchiveModal';
 import VolunteerContractModal from '../shared/VolunteerContractModal';
-import AttendanceLog from '../shared/AttendanceLog';
+// AttendanceLog (per-day manual editor) has been intentionally
+// removed from this file. Volunteer attendance is now driven purely
+// by the QR-scan log — admins edit hours through the standalone
+// "سجل الحضور" modal, not inline per-opportunity. If you need the
+// legacy component back, `import AttendanceLog from '../shared/AttendanceLog';`.
 import VolunteerShareControls from '../shared/VolunteerShareControls';
 import MasterShareBar from '../shared/MasterShareBar';
 import VolunteerOpportunityRequestModal from './VolunteerOpportunityRequestModal';
@@ -1973,22 +1977,35 @@ const VolunteerManagement = () => {
                       </div>
                     )}
                     <div className="volunteer-card-actions">
-                      {/* Single entry point per volunteer — "View" opens
-                          the detail modal which now hosts BOTH the volunteer
-                          profile / stats / opportunities AND a shortcut to
-                          the rich QR-attendance log (was previously a
-                          separate "سجل الحضور" button — removed to end the
-                          near-duplicate UI). */}
                       <button
                         className="view-volunteer-btn"
                         onClick={() => handleViewVolunteer(volunteer)}
-                        title={isRTL ? 'عرض تفاصيل المتطوع — الحضور والفرص والتقييمات' : 'View details — attendance, opportunities, ratings'}
+                        title={isRTL ? 'عرض التفاصيل — الملف الشخصي والتقييمات والفرص' : 'View details — profile, ratings, opportunities'}
                       >
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                           <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
                           <circle cx="12" cy="12" r="3"/>
                         </svg>
                         {isRTL ? 'عرض' : 'View'}
+                      </button>
+                      {/* Standalone attendance-log entry — QR-scanned rows
+                          are the single source of truth for hours. The
+                          "View" modal is intentionally read-only for
+                          attendance; all manual editing happens here. */}
+                      <button
+                        className="rate-volunteer-btn"
+                        onClick={() => openVolunteerLog(volunteer)}
+                        title={isRTL ? 'سجل الحضور الكامل — تعديل والإضافة اليدوية' : 'Full attendance log — manual add / edit'}
+                        style={{ background: '#dcfce7', color: '#166534' }}
+                      >
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                          <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+                          <line x1="16" y1="2" x2="16" y2="6"/>
+                          <line x1="8" y1="2" x2="8" y2="6"/>
+                          <line x1="3" y1="10" x2="21" y2="10"/>
+                          <path d="M8 14h.01M12 14h.01M16 14h.01M8 18h.01M12 18h.01M16 18h.01"/>
+                        </svg>
+                        {isRTL ? 'سجل الحضور' : 'History'}
                       </button>
                       <button
                         className="rate-volunteer-btn"
@@ -2774,41 +2791,49 @@ const VolunteerManagement = () => {
                   </div>
                 )}
 
-                {/* Quick jump to the full QR-attendance page for this
-                    volunteer. Replaces the removed standalone "سجل الحضور"
-                    button — same rich modal, one entry point now. */}
-                <div style={{
-                  display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                  gap: 12, padding: '14px 16px', margin: '16px 0',
-                  background: 'linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%)',
-                  border: '1.5px solid #86efac', borderRadius: 12
-                }}>
-                  <div>
-                    <div style={{ fontWeight: 800, color: '#166534', fontSize: 14 }}>
-                      📅 {isRTL ? 'سجل الحضور الكامل (QR)' : 'Full QR Attendance Log'}
+                {/* Public share URL — one-click preview so admin can send
+                    the same link the reviewer sees, without hunting for it.
+                    The full chance history + attendance breakdown live on
+                    that page, not in this modal. */}
+                {selectedVolunteer.shareEnabled && selectedVolunteer.shareToken && (
+                  <div style={{
+                    display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                    gap: 12, padding: '12px 16px', margin: '16px 0',
+                    background: 'linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%)',
+                    border: '1.5px solid #93c5fd', borderRadius: 12
+                  }}>
+                    <div>
+                      <div style={{ fontWeight: 800, color: '#1e3a8a', fontSize: 14 }}>
+                        🔗 {isRTL ? 'رابط المتطوع العام' : 'Public volunteer URL'}
+                      </div>
+                      <div style={{ fontSize: 12, color: '#1e40af', marginTop: 2 }}>
+                        {isRTL
+                          ? 'يعرض جميع الفرص التطوعية وسجل الحضور اليومي — استخدمه لمشاركة النشاط مع الجهات الداعمة.'
+                          : 'Shows every chance + per-day attendance — share with sponsors / reviewers.'}
+                      </div>
                     </div>
-                    <div style={{ fontSize: 12, color: '#15803d', marginTop: 2 }}>
-                      {isRTL
-                        ? 'كل سجلات الدخول والخروج المسجّلة عبر رمز الحضور — قابلة للتعديل والتصفية.'
-                        : 'Every check-in/check-out logged via the QR scanner — editable and filterable.'}
-                    </div>
+                    <a
+                      href={`/public/volunteer/${selectedVolunteer.shareToken}`}
+                      target="_blank" rel="noreferrer"
+                      style={{
+                        padding: '9px 20px', border: 'none',
+                        background: 'linear-gradient(135deg, #2563eb, #1e40af)',
+                        color: '#fff', borderRadius: 10, cursor: 'pointer',
+                        fontWeight: 800, fontSize: 13, whiteSpace: 'nowrap',
+                        textDecoration: 'none',
+                        boxShadow: '0 4px 12px rgba(37, 99, 235, 0.30)'
+                      }}
+                    >
+                      {isRTL ? 'فتح الرابط ←' : 'Open URL →'}
+                    </a>
                   </div>
-                  <button
-                    onClick={() => { setShowVolunteerDetailModal(false); openVolunteerLog(selectedVolunteer); }}
-                    style={{
-                      padding: '9px 20px', border: 'none',
-                      background: 'linear-gradient(135deg, #16a34a, #15803d)',
-                      color: '#fff', borderRadius: 10, cursor: 'pointer',
-                      fontWeight: 800, fontSize: 13, whiteSpace: 'nowrap',
-                      boxShadow: '0 4px 12px rgba(22, 163, 74, 0.30)',
-                      fontFamily: 'inherit'
-                    }}
-                  >
-                    {isRTL ? 'فتح السجل الكامل ←' : 'Open full log →'}
-                  </button>
-                </div>
+                )}
 
-                {/* Opportunities History */}
+                {/* Opportunities History — READ-ONLY list. Inline per-day
+                    attendance editor was removed because it duplicated
+                    the QR log (which is now the single source of truth
+                    for hours). Chance breakdown + attendance visualization
+                    live on the volunteer's public URL. */}
                 <div className="volunteer-history-section">
                   <h4>{isRTL ? 'سجل التطوع' : 'Volunteering History'}</h4>
                   {(!selectedVolunteer.opportunities || selectedVolunteer.opportunities.length === 0) ? (
@@ -2839,13 +2864,37 @@ const VolunteerManagement = () => {
                               {opp.startDate} → {opp.endDate}
                             </span>
                           </div>
-                          <AttendanceLog
-                            opportunity={opp}
-                            isRTL={isRTL}
-                            onSaved={fetchVolunteers}
-                            apiPath="/volunteers/opportunities"
-                            dayRate={50}
-                          />
+                          {/* Compact chance summary — total hours + status.
+                              Full per-day breakdown is on the public URL. */}
+                          <div style={{
+                            display: 'flex', gap: 8, flexWrap: 'wrap',
+                            margin: '10px 0', fontSize: 12
+                          }}>
+                            {opp.dailyStartTime && opp.dailyEndTime && (
+                              <span style={{
+                                padding: '3px 10px', borderRadius: 999,
+                                background: '#eff6ff', color: '#1e40af',
+                                fontWeight: 700, fontFamily: 'JetBrains Mono, monospace'
+                              }}>
+                                🕒 {opp.dailyStartTime} – {opp.dailyEndTime}
+                              </span>
+                            )}
+                            <span style={{
+                              padding: '3px 10px', borderRadius: 999,
+                              background: '#f0fdf4', color: '#166534',
+                              fontWeight: 700
+                            }}>
+                              ⏱ {Number(opp.totalHours || 0)} {isRTL ? 'ساعة' : 'h'} · {Number(opp.dailyHours || 0)} {isRTL ? 'س/يوم' : 'h/day'}
+                            </span>
+                            {opp.hoursAdjustment ? (
+                              <span style={{
+                                padding: '3px 10px', borderRadius: 999,
+                                background: '#fef3c7', color: '#92400e', fontWeight: 700
+                              }}>
+                                ± {opp.hoursAdjustment}h
+                              </span>
+                            ) : null}
+                          </div>
                           <div className="history-actions">
                             <button
                               className="adjust-hours-btn"
