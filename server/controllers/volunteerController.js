@@ -1530,6 +1530,19 @@ const _shapeOpportunityDays = (opp, attendanceRows) => {
   const chTo = _hhmmToMin(opp.dailyEndTime);
   const timeWindowed = chFrom != null && chTo != null && chTo > chFrom;
 
+  // Build a lookup of persisted task descriptions from the opportunity's
+  // own attendanceDays JSON so the QR-derived days carry the admin's
+  // "المهمة المنجزة" text through. Otherwise every write path (receipt
+  // print, public URL, admin fetch) would lose the task on every reload.
+  const taskByDate = new Map();
+  const persistedDays = Array.isArray(opp?.attendanceDays) ? opp.attendanceDays : [];
+  for (const d of persistedDays) {
+    if (!d || !d.date) continue;
+    const key = _isoDate(d.date);
+    if (!key) continue;
+    if (d.task) taskByDate.set(key, String(d.task));
+  }
+
   const days = [];
   for (const rec of (attendanceRows || [])) {
     const d = _isoDate(rec.date);
@@ -1559,6 +1572,7 @@ const _shapeOpportunityDays = (opp, attendanceRows) => {
       hours: Math.round((overlapMin / 60) * 100) / 100,
       checkInAt: rec.checkInAt || null,
       checkOutAt: rec.checkOutAt || null,
+      task: taskByDate.get(d) || '',
       source: 'qr'
     });
   }

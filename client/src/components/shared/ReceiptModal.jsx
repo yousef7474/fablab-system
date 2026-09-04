@@ -43,6 +43,11 @@ const ReceiptModal = ({ open, onClose, recipient, personType = 'volunteer', onSa
     opportunityId: ''
   });
 
+  // Editable per-day tasks for the currently-picked opportunity. Keyed
+  // by ISO date so we can round-trip against the QR-derived attendance
+  // days without losing the admin's task text between renders.
+  const [taskByDate, setTaskByDate] = useState({});
+
   // Pre-fill from the record whenever the modal opens
   useEffect(() => {
     if (!open) return;
@@ -56,6 +61,7 @@ const ReceiptModal = ({ open, onClose, recipient, personType = 'volunteer', onSa
       recipientPhone: recipient?.phone || '',
       opportunityId: ''
     });
+    setTaskByDate({});
   }, [open, recipient]);
 
   if (!open) return null;
@@ -67,6 +73,7 @@ const ReceiptModal = ({ open, onClose, recipient, personType = 'volunteer', onSa
   const handlePickOpportunity = (opportunityId) => {
     if (!opportunityId) {
       setForm(prev => ({ ...prev, opportunityId: '' }));
+      setTaskByDate({});
       return;
     }
     const opp = (recipient?.opportunities || []).find(o => o.opportunityId === opportunityId);
@@ -78,6 +85,14 @@ const ReceiptModal = ({ open, onClose, recipient, personType = 'volunteer', onSa
       amount: totalCost ? String(totalCost.toFixed(2).replace(/\.00$/, '')) : prev.amount,
       purpose: opp.title || prev.purpose
     }));
+    // Seed the task-per-day editor with whatever text is already
+    // persisted on this opp's attendanceDays (server merges these in
+    // for us), so admin can keep editing across sessions.
+    const seed = {};
+    for (const d of (opp.attendanceDays || [])) {
+      if (d?.date && d?.task) seed[String(d.date).slice(0, 10)] = d.task;
+    }
+    setTaskByDate(seed);
   };
 
   // Builds the tasks-per-day page appended to the receipt when the
@@ -103,11 +118,18 @@ const ReceiptModal = ({ open, onClose, recipient, personType = 'volunteer', onSa
         ? safe(d.date)
         : dt.toLocaleDateString('ar-SA-u-ca-gregory-nu-latn', { weekday: 'short', day: '2-digit', month: 'long', year: 'numeric' });
       const h = hoursFor(d);
+      // Prefer the just-edited task text from the modal (taskByDate
+      // captures unsaved edits too) over whatever's persisted on the
+      // opp so the printed سند always reflects what admin just typed.
+      const key = String(d.date).slice(0, 10);
+      const taskText = (taskByDate[key] != null && taskByDate[key] !== '')
+        ? taskByDate[key]
+        : (d.task || '');
       return `
         <tr>
           <td>${dateFmt}</td>
           <td class="hours">${h > 0 ? h + ' س' : '—'}</td>
-          <td class="task">${safe(d.task || '')}</td>
+          <td class="task">${safe(taskText)}</td>
         </tr>`;
     }).join('');
     const totalHours = attended.reduce((s, d) => s + hoursFor(d), 0);
@@ -134,11 +156,53 @@ const ReceiptModal = ({ open, onClose, recipient, personType = 'volunteer', onSa
     `;
   };
 
+  // Persist the admin's per-day task edits back onto the picked
+  // opportunity so they show up on the next reload + on the public
+  // URL. Merges into the opp's attendanceDays JSON without touching
+  // hours (which come from the QR log). No-op if no chance is picked.
+  const persistTasksIfNeeded = async () => {
+    if (!form.opportunityId) return;
+    const opp = (recipient?.opportunities || []).find(o => o.opportunityId === form.opportunityId);
+    if (!opp) return;
+    const attended = (opp.attendanceDays || []).filter(d => d && d.attended);
+    if (attended.length === 0) return;
+
+    // Build a fresh attendanceDays payload: keep every QR-derived
+    // field, overlay the admin-typed task text. Only ships if
+    // anything actually changed to save on writes.
+    let dirty = false;
+    const merged = attended.map(d => {
+      const key = String(d.date).slice(0, 10);
+      const newTask = taskByDate[key] != null ? String(taskByDate[key]) : (d.task || '');
+      if ((d.task || '') !== newTask) dirty = true;
+      return {
+        date: key,
+        attended: true,
+        hours: Number(d.hours) || 0,
+        task: newTask
+      };
+    });
+    if (!dirty) return;
+
+    try {
+      await api.put(`/${personType === 'worker' ? 'workers' : 'volunteers'}/opportunities/${form.opportunityId}`, {
+        attendanceDays: merged
+      });
+    } catch (err) {
+      console.warn('Failed to persist task edits (printing anyway):', err);
+    }
+  };
+
   const handlePrint = async () => {
     if (!form.recipientName.trim() || !form.amount.trim()) {
       alert('يرجى تعبئة اسم المستلم والمبلغ');
       return;
     }
+
+    // Save per-day tasks BEFORE printing so what admin sees on the
+    // printed سند is guaranteed to match what's persisted for the
+    // next reload / public URL.
+    await persistTasksIfNeeded();
 
     // Archive the receipt snapshot under the person before printing.
     // The print itself doesn't depend on the network call succeeding, so
@@ -541,31 +605,98 @@ const ReceiptModal = ({ open, onClose, recipient, personType = 'volunteer', onSa
               </select>
 
               {pickedOpp && (
-                <div style={{
-                  marginTop: 10, padding: '10px 12px',
-                  background: '#ffffff', border: '1px dashed #86efac',
-                  borderRadius: 8, fontSize: '0.85rem', color: '#065f46',
-                  display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8, textAlign: 'center'
-                }}>
-                  <div>
-                    <div style={{ fontSize: '0.7rem', color: '#15803d', fontWeight: 700 }}>أيام الحضور</div>
-                    <div style={{ fontSize: '1.05rem', fontWeight: 800, color: '#065f46', fontFamily: 'JetBrains Mono, monospace' }}>
-                      {attendedDays.length}
+                <>
+                  <div style={{
+                    marginTop: 10, padding: '10px 12px',
+                    background: '#ffffff', border: '1px dashed #86efac',
+                    borderRadius: 8, fontSize: '0.85rem', color: '#065f46',
+                    display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8, textAlign: 'center'
+                  }}>
+                    <div>
+                      <div style={{ fontSize: '0.7rem', color: '#15803d', fontWeight: 700 }}>أيام الحضور</div>
+                      <div style={{ fontSize: '1.05rem', fontWeight: 800, color: '#065f46', fontFamily: 'JetBrains Mono, monospace' }}>
+                        {attendedDays.length}
+                      </div>
+                    </div>
+                    <div>
+                      <div style={{ fontSize: '0.7rem', color: '#15803d', fontWeight: 700 }}>إجمالي الساعات</div>
+                      <div style={{ fontSize: '1.05rem', fontWeight: 800, color: '#065f46', fontFamily: 'JetBrains Mono, monospace' }}>
+                        {totalHours.toFixed(1)}
+                      </div>
+                    </div>
+                    <div>
+                      <div style={{ fontSize: '0.7rem', color: '#15803d', fontWeight: 700 }}>المبلغ المستحق</div>
+                      <div style={{ fontSize: '1.05rem', fontWeight: 800, color: '#dc2626', fontFamily: 'JetBrains Mono, monospace' }}>
+                        {cost.toFixed(2)} ر.س
+                      </div>
                     </div>
                   </div>
-                  <div>
-                    <div style={{ fontSize: '0.7rem', color: '#15803d', fontWeight: 700 }}>إجمالي الساعات</div>
-                    <div style={{ fontSize: '1.05rem', fontWeight: 800, color: '#065f46', fontFamily: 'JetBrains Mono, monospace' }}>
-                      {totalHours.toFixed(1)}
+
+                  {/* Per-day task editor — one row per attended day.
+                      Text lands on the printed سند's "المهمة المنجزة"
+                      column and is auto-saved back to the opportunity
+                      on print so it persists across sessions. */}
+                  {attendedDays.length > 0 && (
+                    <div style={{ marginTop: 12 }}>
+                      <div style={{
+                        display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                        marginBottom: 6
+                      }}>
+                        <div style={{ fontSize: '0.82rem', fontWeight: 800, color: '#166534' }}>
+                          📝 المهام المنجزة يومياً — ستُطبع على السند
+                        </div>
+                        <div style={{ fontSize: '0.72rem', color: '#15803d' }}>
+                          يُحفظ تلقائياً عند الطباعة
+                        </div>
+                      </div>
+                      <div style={{
+                        background: '#ffffff', border: '1px solid #86efac',
+                        borderRadius: 8, overflow: 'hidden', maxHeight: 260, overflowY: 'auto'
+                      }}>
+                        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.83rem' }}>
+                          <thead style={{ background: '#f0fdf4', position: 'sticky', top: 0, zIndex: 1 }}>
+                            <tr>
+                              <th style={{ padding: '6px 8px', textAlign: 'right', color: '#166534', fontWeight: 700, borderBottom: '1px solid #86efac', width: '32%' }}>التاريخ</th>
+                              <th style={{ padding: '6px 8px', textAlign: 'center', color: '#166534', fontWeight: 700, borderBottom: '1px solid #86efac', width: '12%' }}>ساعات</th>
+                              <th style={{ padding: '6px 8px', textAlign: 'right', color: '#166534', fontWeight: 700, borderBottom: '1px solid #86efac' }}>المهمة المنجزة</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {attendedDays.slice().sort((a, b) => String(a.date).localeCompare(String(b.date))).map(d => {
+                              const key = String(d.date).slice(0, 10);
+                              const dt = new Date(d.date);
+                              const dateFmt = isNaN(dt.getTime())
+                                ? key
+                                : dt.toLocaleDateString('ar-SA-u-ca-gregory-nu-latn', { weekday: 'short', day: '2-digit', month: 'short', year: 'numeric' });
+                              const val = taskByDate[key] != null ? taskByDate[key] : (d.task || '');
+                              return (
+                                <tr key={key} style={{ borderTop: '1px solid #dcfce7' }}>
+                                  <td style={{ padding: '6px 8px', color: '#0f172a', fontWeight: 600, whiteSpace: 'nowrap' }}>{dateFmt}</td>
+                                  <td style={{ padding: '6px 8px', textAlign: 'center', color: '#166534', fontFamily: 'JetBrains Mono, monospace', fontWeight: 700 }}>
+                                    {Number(d.hours) > 0 ? Number(d.hours).toFixed(1) : '—'}
+                                  </td>
+                                  <td style={{ padding: '4px 6px' }}>
+                                    <input
+                                      type="text"
+                                      value={val}
+                                      onChange={(e) => setTaskByDate(prev => ({ ...prev, [key]: e.target.value }))}
+                                      placeholder="اكتب المهمة التي أنجزها المتطوع في هذا اليوم..."
+                                      style={{
+                                        width: '100%', padding: '5px 8px',
+                                        border: '1px solid #cbd5e1', borderRadius: 6,
+                                        fontFamily: 'inherit', fontSize: '0.82rem'
+                                      }}
+                                    />
+                                  </td>
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                        </table>
+                      </div>
                     </div>
-                  </div>
-                  <div>
-                    <div style={{ fontSize: '0.7rem', color: '#15803d', fontWeight: 700 }}>المبلغ المستحق</div>
-                    <div style={{ fontSize: '1.05rem', fontWeight: 800, color: '#dc2626', fontFamily: 'JetBrains Mono, monospace' }}>
-                      {cost.toFixed(2)} ر.س
-                    </div>
-                  </div>
-                </div>
+                  )}
+                </>
               )}
             </div>
           );
