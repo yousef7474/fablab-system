@@ -45,6 +45,13 @@ const PrintServicePage = () => {
 
   const [supported, setSupported] = useState(['stl','obj','3mf','step','stp','ply','gcode','zip']);
 
+  // Public service-closure status — polled once on mount so we can
+  // hide the form and show a friendly notice instead of letting the
+  // user fill everything out before being rejected server-side.
+  const [closureStatus, setClosureStatus] = useState({
+    effectiveClosed: false, from: '', to: '', reason: ''
+  });
+
   const [form, setForm] = useState({
     customerName: '',
     customerPhone: '',
@@ -70,6 +77,17 @@ const PrintServicePage = () => {
   // supported list is on print3d settings, but there's no public
   // rates endpoint (admin-only). Fall back to the safe default above.
   useEffect(() => { /* no-op for now */ }, []);
+
+  // Check whether admin has closed the service — done once on mount.
+  // Failure = default to open, so a settings-endpoint issue never
+  // blocks legitimate submissions.
+  useEffect(() => {
+    let alive = true;
+    axios.get(`${API_URL}/settings/print3d-status`)
+      .then(res => { if (alive) setClosureStatus(res.data || { effectiveClosed: false }); })
+      .catch(() => {});
+    return () => { alive = false; };
+  }, []);
 
   const patch = (k, v) => setForm(f => ({ ...f, [k]: v }));
 
@@ -287,6 +305,58 @@ const PrintServicePage = () => {
         </div>
       </div>
 
+      {/* Service-closed banner — replaces the whole form until admin
+          reopens the service so the user doesn't waste time filling
+          fields that will be rejected by the server. */}
+      {closureStatus.effectiveClosed && (
+        <div style={{
+          maxWidth: 780, margin: '30px auto', padding: '28px 32px',
+          background: 'linear-gradient(135deg, #fef3c7 0%, #fde68a 100%)',
+          border: '3px solid #d97706',
+          borderRadius: 16,
+          boxShadow: '0 20px 40px -12px rgba(217, 119, 6, 0.25)',
+          textAlign: 'center', color: '#78350f'
+        }}>
+          <div style={{ fontSize: 56, marginBottom: 12 }}>🔒</div>
+          <h2 style={{ margin: '0 0 12px', fontSize: 24, fontWeight: 900, color: '#92400e' }}>
+            {isRTL ? 'الخدمة مغلقة مؤقتاً' : 'Service Temporarily Closed'}
+          </h2>
+          {closureStatus.reason && (
+            <p style={{ margin: '0 0 16px', fontSize: 15, lineHeight: 1.7, fontWeight: 600 }}>
+              {closureStatus.reason}
+            </p>
+          )}
+          {(closureStatus.from || closureStatus.to) && (
+            <div style={{
+              display: 'inline-block', padding: '10px 20px',
+              background: '#fff', borderRadius: 999,
+              fontWeight: 800, color: '#92400e', fontSize: 14,
+              border: '2px solid #d97706'
+            }}>
+              📅 {isRTL ? 'فترة الإغلاق:' : 'Closure period:'}{' '}
+              {closureStatus.from || (isRTL ? 'من الآن' : 'now')} → {closureStatus.to || (isRTL ? 'غير محدد' : 'open-ended')}
+            </div>
+          )}
+          <p style={{ margin: '20px 0 0', fontSize: 13, color: '#78350f' }}>
+            {isRTL
+              ? 'شكراً لتفهمكم — يرجى المحاولة لاحقاً بعد إعادة تشغيل الخدمة.'
+              : 'Thank you for your patience — please try again once the service reopens.'}
+          </p>
+          <button
+            type="button"
+            onClick={() => navigate('/register')}
+            style={{
+              marginTop: 20, padding: '12px 28px', border: 'none',
+              background: '#78350f', color: '#fff',
+              borderRadius: 10, fontWeight: 800, cursor: 'pointer'
+            }}
+          >
+            {isRTL ? 'العودة للرئيسية' : 'Back to Home'}
+          </button>
+        </div>
+      )}
+
+      {!closureStatus.effectiveClosed && (
       <form onSubmit={submit} className="p3d-form">
         {/* SECTION: Personal Info */}
         <motion.section
@@ -639,6 +709,7 @@ const PrintServicePage = () => {
           </button>
         </motion.section>
       </form>
+      )}
 
       {/* Terms modal */}
       <AnimatePresence>

@@ -1578,29 +1578,43 @@ exports.publicGetVolunteerByToken = async (req, res) => {
     // Effective attendance window: explicit override → linked program's
     // dates → unbounded. Applied as a WHERE on the attendance query so
     // the reviewer only sees hours from the relevant volunteering period.
+    //
+    // Widened so opportunities added AFTER shareToDate (or before
+    // shareFromDate) still contribute their attendance rows. Without
+    // this, a chance created outside the original window would appear
+    // in the opportunities list but have zero attendance days.
     const range = _resolveShareRange(volunteer);
+    let effFrom = range.from;
+    let effTo   = range.to;
+    for (const o of (volunteer.opportunities || [])) {
+      const os = _isoDate(o.startDate);
+      const oe = _isoDate(o.endDate);
+      if (os && (!effFrom || os < effFrom)) effFrom = os;
+      if (oe && (!effTo   || oe > effTo))   effTo   = oe;
+    }
     const attWhere = { volunteerId: volunteer.volunteerId };
-    if (range.from && range.to) attWhere.date = { [Op.between]: [range.from, range.to] };
-    else if (range.from) attWhere.date = { [Op.gte]: range.from };
-    else if (range.to) attWhere.date = { [Op.lte]: range.to };
+    if (effFrom && effTo) attWhere.date = { [Op.between]: [effFrom, effTo] };
+    else if (effFrom) attWhere.date = { [Op.gte]: effFrom };
+    else if (effTo) attWhere.date = { [Op.lte]: effTo };
 
     const attendance = await VolunteerAttendance.findAll({
       where: attWhere,
       order: [['date', 'DESC'], ['checkInAt', 'DESC']]
     });
 
-    // Shape opportunities: keep only those that overlap the effective
-    // period, and derive attendanceDays dynamically from the QR log
-    // (VolunteerAttendance) so admin QR scans + manual edits are the
-    // ONE source of truth — no more parallel attendanceDays JSON drift.
+    // Shape opportunities: return ALL non-cancelled ones (the SQL
+    // include above already excludes 'cancelled'), regardless of
+    // whether they fall inside the shareRange. Historical + newly-
+    // added chances all appear on the public URL so admins never have
+    // to touch shareFromDate/shareToDate every time they add a new
+    // opportunity. The date range is still applied to the per-day
+    // attendance rows below, so unrelated raw QR scans don't leak in.
+    //
+    // Was previously filtering opportunities by range which caused
+    // newly-created chances outside the volunteer's original share
+    // window (or their linked summer program's window) to vanish
+    // from the public report.
     const opps = (volunteer.opportunities || [])
-      .filter(o => {
-        const os = _isoDate(o.startDate);
-        const oe = _isoDate(o.endDate);
-        if (range.from && oe && oe < range.from) return false;
-        if (range.to && os && os > range.to) return false;
-        return true;
-      })
       .map(o => ({
         opportunityId: o.opportunityId,
         title: o.title,
@@ -1613,8 +1627,12 @@ exports.publicGetVolunteerByToken = async (req, res) => {
         totalHours: o.totalHours,
         hoursAdjustment: o.hoursAdjustment,
         status: o.status,
+        // The shaper already scopes to the opportunity's own
+        // start/end so passing the full attendance list is safe.
         attendanceDays: _shapeOpportunityDays(o, attendance)
-      }));
+      }))
+      // Show newest chances first — recently-added always at the top.
+      .sort((a, b) => (b.startDate || '').localeCompare(a.startDate || ''));
 
     res.json({
       volunteer: {
@@ -1690,11 +1708,23 @@ exports.publicGetMasterReport = async (req, res) => {
 
     const shaped = volunteers.map(v => {
       const range = _resolveShareRange(v);
+      // Widen the effective range to cover all opportunity date spans
+      // so newly-added chances (past shareToDate or before
+      // shareFromDate) still contribute their attendance days. Same
+      // fix as the single-volunteer endpoint.
+      let effFrom = range.from;
+      let effTo   = range.to;
+      for (const o of (v.opportunities || [])) {
+        const os = _isoDate(o.startDate);
+        const oe = _isoDate(o.endDate);
+        if (os && (!effFrom || os < effFrom)) effFrom = os;
+        if (oe && (!effTo   || oe > effTo))   effTo   = oe;
+      }
       const inRange = (isoDate) => {
         if (!isoDate) return false;
         const d = _isoDate(isoDate);
-        if (range.from && d < range.from) return false;
-        if (range.to && d > range.to) return false;
+        if (effFrom && d < effFrom) return false;
+        if (effTo && d > effTo) return false;
         return true;
       };
 
@@ -1712,14 +1742,9 @@ exports.publicGetMasterReport = async (req, res) => {
       const rangedRawAtt = (v.attendance || [])
         .filter(r => inRange(r.date));
 
+      // Show ALL non-cancelled opportunities regardless of share
+      // window (same rationale as the single-volunteer endpoint).
       const opps = (v.opportunities || [])
-        .filter(o => {
-          const os = _isoDate(o.startDate);
-          const oe = _isoDate(o.endDate);
-          if (range.from && oe && oe < range.from) return false;
-          if (range.to && os && os > range.to) return false;
-          return true;
-        })
         .map(o => ({
           opportunityId: o.opportunityId,
           title: o.title,
@@ -1731,7 +1756,8 @@ exports.publicGetMasterReport = async (req, res) => {
           hoursAdjustment: o.hoursAdjustment,
           status: o.status,
           attendanceDays: _shapeOpportunityDays(o, rangedRawAtt)
-        }));
+        }))
+        .sort((a, b) => (b.startDate || '').localeCompare(a.startDate || ''));
 
       return {
         volunteerId: v.volunteerId,

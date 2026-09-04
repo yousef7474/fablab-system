@@ -147,6 +147,98 @@ const updateStoreStatus = async (req, res) => {
   }
 };
 
+// -------------------- 3D PRINTING CLOSURE --------------------
+// Same pattern as store closure but with an optional date window so
+// admin can schedule a maintenance window in advance. The service is
+// treated as CLOSED when disabled=true AND today is inside
+// [from, to] (or either bound is empty — empty = open-ended).
+
+const _todayYmd = () => {
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Asia/Riyadh',
+    year: 'numeric', month: '2-digit', day: '2-digit'
+  }).formatToParts(new Date());
+  const y = parts.find(p => p.type === 'year').value;
+  const m = parts.find(p => p.type === 'month').value;
+  const d = parts.find(p => p.type === 'day').value;
+  return `${y}-${m}-${d}`;
+};
+
+// Returns the same shape used by /api/settings/print3d-status so both
+// the public GET and the enforcement code in print3DController stay
+// in lock-step. `effectiveClosed` is what the client should check:
+// it folds in the date-window logic so consumers don't reimplement it.
+const _computePrint3dStatus = async () => {
+  const disabledRow = await Settings.findByPk('print3d_disabled');
+  const fromRow    = await Settings.findByPk('print3d_disabled_from');
+  const toRow      = await Settings.findByPk('print3d_disabled_to');
+  const reasonRow  = await Settings.findByPk('print3d_disabled_reason');
+
+  const disabled = !!(disabledRow && disabledRow.value);
+  const from = fromRow?.value || '';
+  const to   = toRow?.value || '';
+  const reason = reasonRow?.value || '';
+  const today = _todayYmd();
+
+  // Effective-closed logic:
+  //   disabled=false                         → OPEN
+  //   disabled=true, no dates                → CLOSED (open-ended)
+  //   disabled=true, before `from`           → OPEN (scheduled future)
+  //   disabled=true, after `to`              → OPEN (window ended)
+  //   disabled=true, inside/at window edges  → CLOSED
+  let effectiveClosed = false;
+  if (disabled) {
+    const beforeFrom = from && today < from;
+    const afterTo    = to   && today > to;
+    effectiveClosed = !beforeFrom && !afterTo;
+  }
+  return { disabled, from, to, reason, today, effectiveClosed };
+};
+
+// Exposed so the print3D submission handler can share the same logic.
+exports.computePrint3dStatus = _computePrint3dStatus;
+
+// GET /api/settings/print3d-status (public — read by the print3D landing page)
+const getPrint3dStatus = async (req, res) => {
+  try {
+    res.json(await _computePrint3dStatus());
+  } catch (err) {
+    console.error('Error fetching print3d status:', err);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+// PUT /api/settings/print3d-status (admin-protected)
+// Body: { disabled: bool, from?: 'YYYY-MM-DD', to?: 'YYYY-MM-DD', reason?: string }
+const updatePrint3dStatus = async (req, res) => {
+  try {
+    const { disabled, from, to, reason } = req.body || {};
+    const isDateOrEmpty = (v) => !v || /^\d{4}-\d{2}-\d{2}$/.test(String(v));
+    if (!isDateOrEmpty(from) || !isDateOrEmpty(to)) {
+      return res.status(400).json({
+        message: 'from/to must be YYYY-MM-DD',
+        messageAr: 'صيغة التاريخ يجب أن تكون YYYY-MM-DD'
+      });
+    }
+    if (from && to && String(to) < String(from)) {
+      return res.status(400).json({
+        message: 'to must be on or after from',
+        messageAr: 'تاريخ النهاية يجب أن يكون بعد أو مساوٍ لتاريخ البداية'
+      });
+    }
+    await Settings.upsert({ key: 'print3d_disabled', value: !!disabled });
+    // When re-enabling the service, clear the schedule fields so
+    // stale dates from the last closure don't linger and re-trigger.
+    await Settings.upsert({ key: 'print3d_disabled_from',   value: disabled ? (from || '')   : '' });
+    await Settings.upsert({ key: 'print3d_disabled_to',     value: disabled ? (to || '')     : '' });
+    await Settings.upsert({ key: 'print3d_disabled_reason', value: disabled ? (reason || '') : '' });
+    res.json(await _computePrint3dStatus());
+  } catch (err) {
+    console.error('Error updating print3d status:', err);
+    res.status(500).json({ message: 'Server error', detail: err.message });
+  }
+};
+
 // GET /api/settings/calendar-prefs (admin-protected)
 // Universal admin preference for the Year Calendar. When
 // showScheduleOverlay is false the calendar hides the auto-generated
@@ -299,6 +391,9 @@ module.exports = {
   updateRegistrationStatus,
   getStoreStatus,
   updateStoreStatus,
+  getPrint3dStatus,
+  updatePrint3dStatus,
+  computePrint3dStatus: exports.computePrint3dStatus,
   getCalendarPrefs,
   updateCalendarPrefs,
   getQuickMessages,

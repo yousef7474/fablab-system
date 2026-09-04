@@ -206,6 +206,13 @@ const AdminDashboard = () => {
   const [storeCloseReason, setStoreCloseReason] = useState('');
   const [savingStoreClose, setSavingStoreClose] = useState(false);
 
+  // 3D printing closure (temporary, with optional date window)
+  const [p3dStatus, setP3dStatus] = useState({
+    disabled: false, from: '', to: '', reason: '', effectiveClosed: false
+  });
+  const [p3dForm, setP3dForm] = useState({ from: '', to: '', reason: '' });
+  const [savingP3d, setSavingP3d] = useState(false);
+
   // Registration closures (date-range, all sections)
   const [closures, setClosures] = useState([]);
   const [closureForm, setClosureForm] = useState({ startDate: '', endDate: '', reasonEn: '', reasonAr: '' });
@@ -720,6 +727,45 @@ const AdminDashboard = () => {
     }
   };
 
+  // 3D printing closure — mirrors store but adds an optional date
+  // window so admin can schedule a maintenance period in advance.
+  const fetchPrint3dStatus = async () => {
+    try {
+      const res = await api.get('/settings/print3d-status');
+      setP3dStatus(res.data);
+      // Prefill the form with the current schedule so admin can edit
+      // it without re-typing.
+      setP3dForm({
+        from: res.data.from || '',
+        to:   res.data.to   || '',
+        reason: res.data.reason || ''
+      });
+    } catch (err) {
+      console.error('Error fetching print3d status:', err);
+    }
+  };
+
+  const handleTogglePrint3d = async () => {
+    setSavingP3d(true);
+    try {
+      const newDisabled = !p3dStatus.disabled;
+      const payload = newDisabled
+        ? { disabled: true, from: p3dForm.from || '', to: p3dForm.to || '', reason: p3dForm.reason || '' }
+        : { disabled: false };
+      const res = await api.put('/settings/print3d-status', payload);
+      setP3dStatus(res.data);
+      if (!newDisabled) setP3dForm({ from: '', to: '', reason: '' });
+      toast.success(isRTL
+        ? (newDisabled ? 'تم إغلاق خدمة الطباعة 3D' : 'تم فتح خدمة الطباعة 3D')
+        : (newDisabled ? '3D printing closed' : '3D printing open'));
+    } catch (err) {
+      const msg = err?.response?.data?.messageAr || err?.response?.data?.message;
+      toast.error(msg || (isRTL ? 'خطأ في تحديث حالة الخدمة' : 'Error updating status'));
+    } finally {
+      setSavingP3d(false);
+    }
+  };
+
   const fetchClosures = async () => {
     try {
       const res = await api.get('/closures/all');
@@ -850,6 +896,7 @@ const AdminDashboard = () => {
       fetchSectionAvailability();
       fetchRegistrationStatus();
       fetchStoreStatus();
+      fetchPrint3dStatus();
       fetchClosures();
     } else if (activeTab === 'borrowing') {
       fetchBorrowings();
@@ -9560,6 +9607,115 @@ const AdminDashboard = () => {
                         {storeClosed && storeCloseReason && (
                           <p style={{ margin: '6px 0 0', fontSize: '12px', color: '#b45309' }}>
                             {isRTL ? 'لتعديل السبب، افتح المتجر أولاً ثم أغلقه بسبب جديد' : 'To change the reason, open the store first then close again with a new reason'}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* 3D printing closure — mirrors the store card but with
+                      an optional date window (from/to) so admin can schedule
+                      a maintenance period in advance instead of remembering
+                      to reopen it manually. Effective-closed = disabled AND
+                      today is inside [from,to] (empty bounds = open-ended). */}
+                  <div className="settings-card" style={{ gridColumn: '1 / -1', border: p3dStatus.effectiveClosed ? '2px solid #f59e0b' : '2px solid #22c55e', background: p3dStatus.effectiveClosed ? 'rgba(245,158,11,0.03)' : 'rgba(34,197,94,0.03)' }}>
+                    <h3 style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={p3dStatus.effectiveClosed ? '#f59e0b' : '#22c55e'} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <polyline points="6 9 6 2 18 2 18 9"/>
+                        <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/>
+                        <rect x="6" y="14" width="12" height="8"/>
+                      </svg>
+                      {isRTL ? 'حالة خدمة الطباعة ثلاثية الأبعاد' : '3D Printing Service Status'}
+                    </h3>
+                    <div className="settings-form">
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', background: p3dStatus.effectiveClosed ? '#fffbeb' : '#f0fdf4', borderRadius: '10px', marginBottom: '12px', flexWrap: 'wrap', gap: 10 }}>
+                        <div>
+                          <p style={{ margin: 0, fontWeight: '700', fontSize: '15px', color: p3dStatus.effectiveClosed ? '#b45309' : '#16a34a' }}>
+                            {p3dStatus.effectiveClosed
+                              ? (isRTL ? '🔒 الخدمة مغلقة حالياً' : '🔒 Service is CLOSED now')
+                              : p3dStatus.disabled
+                                ? (isRTL ? '⏳ الإغلاق مُجدوَل (خارج فترته حالياً)' : '⏳ Closure scheduled (outside its window)')
+                                : (isRTL ? '✓ الخدمة مفتوحة' : '✓ Service is OPEN')}
+                          </p>
+                          <p style={{ margin: '4px 0 0 0', fontSize: '13px', color: 'var(--text-secondary, #64748b)' }}>
+                            {p3dStatus.disabled && (p3dStatus.from || p3dStatus.to)
+                              ? (isRTL
+                                  ? `فترة الإغلاق: ${p3dStatus.from || 'من الآن'} → ${p3dStatus.to || 'مفتوح'}`
+                                  : `Closure window: ${p3dStatus.from || 'now'} → ${p3dStatus.to || 'open-ended'}`)
+                              : (isRTL
+                                  ? 'أوقف استلام طلبات الطباعة ثلاثية الأبعاد مؤقتاً — يمكنك تحديد فترة زمنية.'
+                                  : 'Temporarily stop 3D printing submissions — optional date window.')}
+                          </p>
+                        </div>
+                        <button
+                          onClick={() => {
+                            if (p3dStatus.disabled) {
+                              handleTogglePrint3d();
+                            } else if (!p3dForm.reason.trim()) {
+                              toast.error(isRTL ? 'يرجى إدخال سبب الإغلاق أولاً' : 'Please enter a reason first');
+                            } else {
+                              handleTogglePrint3d();
+                            }
+                          }}
+                          disabled={savingP3d}
+                          style={{
+                            padding: '10px 24px', borderRadius: '10px', border: 'none',
+                            fontWeight: '700', fontSize: '14px',
+                            cursor: savingP3d ? 'not-allowed' : 'pointer',
+                            background: p3dStatus.disabled ? '#22c55e' : '#f59e0b',
+                            color: 'white', opacity: savingP3d ? 0.7 : 1
+                          }}
+                        >
+                          {savingP3d
+                            ? (isRTL ? 'جاري الحفظ...' : 'Saving...')
+                            : p3dStatus.disabled
+                              ? (isRTL ? 'فتح الخدمة' : 'Open service')
+                              : (isRTL ? 'إغلاق الخدمة' : 'Close service')}
+                        </button>
+                      </div>
+
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
+                        <div className="form-group">
+                          <label style={{ fontWeight: '600' }}>
+                            {isRTL ? 'من تاريخ (اختياري)' : 'From date (optional)'}
+                          </label>
+                          <input
+                            type="date"
+                            value={p3dForm.from}
+                            onChange={(e) => setP3dForm(f => ({ ...f, from: e.target.value }))}
+                            disabled={p3dStatus.disabled}
+                            style={{ width: '100%', padding: '10px 14px', borderRadius: '8px', border: '1px solid var(--border-color, #e2e8f0)', fontSize: '14px', fontFamily: 'inherit' }}
+                          />
+                        </div>
+                        <div className="form-group">
+                          <label style={{ fontWeight: '600' }}>
+                            {isRTL ? 'إلى تاريخ (اختياري)' : 'To date (optional)'}
+                          </label>
+                          <input
+                            type="date"
+                            value={p3dForm.to}
+                            onChange={(e) => setP3dForm(f => ({ ...f, to: e.target.value }))}
+                            disabled={p3dStatus.disabled}
+                            style={{ width: '100%', padding: '10px 14px', borderRadius: '8px', border: '1px solid var(--border-color, #e2e8f0)', fontSize: '14px', fontFamily: 'inherit' }}
+                          />
+                        </div>
+                      </div>
+
+                      <div className="form-group">
+                        <label style={{ fontWeight: '600' }}>
+                          {isRTL ? 'سبب الإغلاق (سيظهر للعملاء)' : 'Closure reason (shown to customers)'}
+                        </label>
+                        <textarea
+                          value={p3dForm.reason}
+                          onChange={(e) => setP3dForm(f => ({ ...f, reason: e.target.value }))}
+                          placeholder={isRTL ? 'مثال: صيانة دورية للطابعات — نعود في 2026-09-10' : 'e.g., Scheduled printer maintenance — back on 2026-09-10'}
+                          rows={2}
+                          disabled={p3dStatus.disabled}
+                          style={{ width: '100%', padding: '10px 14px', borderRadius: '8px', border: '1px solid var(--border-color, #e2e8f0)', resize: 'vertical', fontSize: '14px', fontFamily: 'inherit' }}
+                        />
+                        {p3dStatus.disabled && (
+                          <p style={{ margin: '6px 0 0', fontSize: '12px', color: '#b45309' }}>
+                            {isRTL ? 'لتعديل الفترة أو السبب، افتح الخدمة أولاً ثم أغلقها بإعدادات جديدة.' : 'To change the window or reason, reopen the service first then close again with new settings.'}
                           </p>
                         )}
                       </div>

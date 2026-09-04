@@ -3,6 +3,7 @@ const { Op } = require('sequelize');
 const { Print3DRequest, Settings } = require('../models');
 const { sequelize } = require('../config/database');
 const sgMail = require('@sendgrid/mail');
+const { computePrint3dStatus } = require('./settingsController');
 if (process.env.SENDGRID_API_KEY) sgMail.setApiKey(process.env.SENDGRID_API_KEY);
 
 const PRINT3D_NOTIFY_EMAIL = 'fablabspec@fablabsahsa.com';
@@ -115,6 +116,27 @@ exports.publicCreate = async (req, res) => {
       material, colorMode, singleColor, multiColorParts,
       termsAccepted
     } = req.body || {};
+
+    // Reject new submissions while admin has the service temporarily
+    // closed. Runs BEFORE any other validation so the caller gets a
+    // clean 503 with the admin-set reason instead of a misleading 400
+    // about missing fields.
+    try {
+      const status = await computePrint3dStatus();
+      if (status.effectiveClosed) {
+        return res.status(503).json({
+          message: 'The 3D printing service is temporarily closed',
+          messageAr: status.reason
+            || 'خدمة الطباعة ثلاثية الأبعاد مغلقة مؤقتاً — يرجى المحاولة لاحقاً',
+          print3dClosed: true,
+          from: status.from || null,
+          to: status.to || null
+        });
+      }
+    } catch (statusErr) {
+      // Never let a settings-check failure block real submissions.
+      console.error('print3d status check failed:', statusErr.message);
+    }
 
     if (!customerName || !customerPhone || !customerEmail) {
       return res.status(400).json({
