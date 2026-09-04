@@ -430,6 +430,110 @@
   margin-top: 12px;
 }
 
+/* --- Master report grid view -------------------------------------
+   Volunteers are shown as compact cards in a responsive grid. Full
+   per-day attendance moved to the individual profile URL — this
+   view is a summary + call-to-action layer only. */
+.pub-vgrid {
+  display: grid;
+  gap: 16px;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+}
+.pub-vcard--grid {
+  margin-bottom: 0;
+  padding: 18px 18px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
+}
+.pub-vcard--grid:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 30px -12px rgba(15, 23, 42, 0.15);
+  border-color: var(--program-color, var(--pub-brand));
+}
+.pub-vcard--grid .pub-vcard-name {
+  font-size: 16px;
+  line-height: 1.35;
+  gap: 8px;
+}
+.pub-vcard-name-text {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.pub-vcard-meta--grid {
+  margin-top: 0;
+  gap: 10px;
+  font-size: 12.5px;
+  padding-bottom: 10px;
+  border-bottom: 1px dashed var(--pub-line);
+}
+.pub-vcard-meta--grid span {
+  display: inline-flex; gap: 4px; align-items: baseline;
+  white-space: nowrap;
+}
+.pub-vcard-stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+.pub-vcard-stat {
+  padding: 8px 6px;
+  background: var(--pub-surface-alt, #f8fafc);
+  border-radius: 8px;
+  text-align: center;
+}
+.pub-vcard-stat-label {
+  font-size: 10.5px;
+  color: var(--pub-muted);
+  font-weight: 700;
+  letter-spacing: 0.3px;
+  margin-bottom: 2px;
+}
+.pub-vcard-stat-value {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 18px;
+  font-weight: 800;
+  color: var(--pub-text);
+}
+.pub-vcard-opps {
+  display: flex; gap: 6px; flex-wrap: wrap;
+}
+.pub-active-opp-chip--sm {
+  padding: 4px 10px;
+  font-size: 11.5px;
+}
+.pub-vcard-opps-more {
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: #f1f5f9;
+  color: #64748b;
+  font-size: 11.5px;
+  font-weight: 700;
+}
+.pub-vcard-actions--grid {
+  gap: 6px;
+  margin-top: auto;
+}
+.pub-vcard-actions--grid .pub-btn {
+  flex: 1;
+  min-width: 0;
+  justify-content: center;
+  padding: 8px 10px;
+  font-size: 12.5px;
+  white-space: nowrap;
+}
+.pub-vcard-actions--grid .pub-btn.brand { flex: 2; }
+
+@media (max-width: 720px) {
+  .pub-vgrid { grid-template-columns: 1fr; }
+  .pub-vcard-actions--grid { flex-wrap: wrap; }
+  .pub-vcard-actions--grid .pub-btn.brand { flex-basis: 100%; }
+}
+
 .pub-search {
   width: 100%;
   padding: 12px 16px;

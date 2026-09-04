@@ -129,7 +129,10 @@ const PublicAttendanceReport = () => {
     );
   }
 
-  const today = todayISO();
+  // Per-day attendance table was moved to the individual profile URL,
+  // so `today` / `dayOfWeekAr` / `fmtTime` / `fmtDuration` are no
+  // longer referenced in the render. Left the helpers in the file in
+  // case a future feature needs them; harmless dead code.
 
   return (
     <div className="pub-shell">
@@ -209,81 +212,63 @@ const PublicAttendanceReport = () => {
             <div className="pub-cell-empty">لا توجد نتائج مطابقة.</div>
           </div>
         ) : (
-          filtered.map(v => {
-            const programColor = v.summerProgram?.color || null;
-            const style = programColor ? { '--program-color': programColor } : {};
-            return (
-              <div className="pub-vcard" key={v.volunteerId} style={style}>
-                <div className="pub-vcard-head">
-                  <div>
-                    <div className="pub-vcard-name">
-                      <span className="pub-vcard-dot" />
-                      {v.name}
-                      {v.summerProgram && (
-                        <span
-                          className="pub-program-chip"
-                          style={programColor ? { borderColor: programColor + '55', color: programColor } : {}}
-                        >
-                          {v.summerProgram.name}
-                        </span>
-                      )}
-                    </div>
-                    <div className="pub-vcard-meta">
-                      <span>الهوية: <b>{v.nationalId}</b></span>
-                      <span>الجوال: <b>{v.phone}</b></span>
-                      <span>الأيام: <b>{v.totalDays}</b></span>
-                      <span>الساعات: <b>{(v.totalMinutes / 60).toFixed(1)}</b></span>
-                      {(v.shareRange?.from || v.shareRange?.to) && (
-                        <span>
-                          الفترة: <b dir="ltr">{v.shareRange.from || '…'}</b>
-                          <span> → </span>
-                          <b dir="ltr">{v.shareRange.to || '…'}</b>
-                        </span>
-                      )}
-                    </div>
-                    {v.opportunities && v.opportunities.length > 0 && (
-                      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 6 }}>
-                        <span style={{ fontSize: 12, color: 'var(--pub-muted)', fontWeight: 600 }}>
-                          الفرص:
-                        </span>
-                        {v.opportunities.map(o => (
-                          <span
-                            key={o.opportunityId}
-                            className="pub-program-chip"
-                            title={o.dailyStartTime && o.dailyEndTime
-                              ? `${o.dailyStartTime}–${o.dailyEndTime}`
-                              : undefined}
-                          >
-                            {o.title}
-                            {o.dailyStartTime && o.dailyEndTime && (
-                              <span dir="ltr" style={{ marginInlineStart: 6, opacity: 0.7 }}>
-                                {o.dailyStartTime}–{o.dailyEndTime}
-                              </span>
-                            )}
-                          </span>
-                        ))}
-                      </div>
+          <div className="pub-vgrid">
+            {filtered.map(v => {
+              const programColor = v.summerProgram?.color || null;
+              const style = programColor ? { '--program-color': programColor } : {};
+              const activeOpps = (v.opportunities || []).filter(o => o.status === 'active');
+              // Preview keeps only the essentials — the full per-day
+              // attendance table lives on the individual profile URL
+              // (accessible via the "عرض التقرير الفردي" button below).
+              return (
+                <div className="pub-vcard pub-vcard--grid" key={v.volunteerId} style={style}>
+                  <div className="pub-vcard-name">
+                    <span className="pub-vcard-dot" />
+                    <span className="pub-vcard-name-text">{v.name}</span>
+                    {v.summerProgram && (
+                      <span
+                        className="pub-program-chip"
+                        style={programColor ? { borderColor: programColor + '55', color: programColor } : {}}
+                      >
+                        {v.summerProgram.name}
+                      </span>
                     )}
                   </div>
-                  <div className="pub-vcard-actions">
-                    {v.driveUrl && (
-                      <a
-                        href={v.driveUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="pub-btn drive"
-                      >
-                        فتح مجلد Drive
-                      </a>
-                    )}
-                    <button
-                      type="button"
-                      className="pub-btn"
-                      onClick={() => exportVolunteerReport(v, v.attendance || [], v.shareRange)}
-                      title="تحميل ملف Excel لهذا المتطوع"
-                    >
-                      تحميل Excel
-                    </button>
+
+                  <div className="pub-vcard-meta pub-vcard-meta--grid">
+                    <span>الهوية: <b dir="ltr">{v.nationalId}</b></span>
+                    <span>الجوال: <b dir="ltr">{v.phone}</b></span>
+                  </div>
+
+                  <div className="pub-vcard-stats">
+                    <div className="pub-vcard-stat">
+                      <div className="pub-vcard-stat-label">أيام الحضور</div>
+                      <div className="pub-vcard-stat-value">{v.totalDays || 0}</div>
+                    </div>
+                    <div className="pub-vcard-stat">
+                      <div className="pub-vcard-stat-label">إجمالي الساعات</div>
+                      <div className="pub-vcard-stat-value">{((v.totalMinutes || 0) / 60).toFixed(1)}</div>
+                    </div>
+                    <div className="pub-vcard-stat">
+                      <div className="pub-vcard-stat-label">الفرص النشطة</div>
+                      <div className="pub-vcard-stat-value">{activeOpps.length}</div>
+                    </div>
+                  </div>
+
+                  {activeOpps.length > 0 && (
+                    <div className="pub-vcard-opps">
+                      {activeOpps.slice(0, 3).map(o => (
+                        <span key={o.opportunityId} className="pub-active-opp-chip pub-active-opp-chip--sm">
+                          <b>{o.title}</b>
+                        </span>
+                      ))}
+                      {activeOpps.length > 3 && (
+                        <span className="pub-vcard-opps-more">+{activeOpps.length - 3}</span>
+                      )}
+                    </div>
+                  )}
+
+                  <div className="pub-vcard-actions pub-vcard-actions--grid">
                     <a
                       href={`/public/volunteer/${v.shareToken}`}
                       target="_blank"
@@ -292,43 +277,29 @@ const PublicAttendanceReport = () => {
                     >
                       عرض التقرير الفردي
                     </a>
+                    {v.driveUrl && (
+                      <a
+                        href={v.driveUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="pub-btn drive"
+                      >
+                        مجلد Drive
+                      </a>
+                    )}
+                    <button
+                      type="button"
+                      className="pub-btn"
+                      onClick={() => exportVolunteerReport(v, v.attendance || [], v.shareRange)}
+                      title="تحميل ملف Excel لهذا المتطوع"
+                    >
+                      Excel
+                    </button>
                   </div>
                 </div>
-
-                {v.attendance && v.attendance.length > 0 && (
-                  <div className="pub-vcard-atttable">
-                    <div className="pub-table-wrap">
-                      <table className="pub-table">
-                        <thead>
-                          <tr>
-                            <th>اليوم</th>
-                            <th>التاريخ</th>
-                            <th>وقت الدخول</th>
-                            <th>وقت الخروج</th>
-                            <th>المدة (س:د)</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {v.attendance.map(r => (
-                            <tr key={r.date}>
-                              <td>
-                                {r.date === today && <span className="pub-today-mark">اليوم</span>}
-                                {dayOfWeekAr(r.date)}
-                              </td>
-                              <td className="pub-num">{r.date}</td>
-                              <td className="pub-time">{fmtTime(r.checkInAt) || '—'}</td>
-                              <td className="pub-time">{fmtTime(r.checkOutAt) || <span className="pub-cell-empty">جارٍ الآن</span>}</td>
-                              <td className="pub-num">{fmtDuration(r.minutes)}</td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  </div>
-                )}
-              </div>
-            );
-          })
+              );
+            })}
+          </div>
         )}
 
         <div className="pub-footer">
