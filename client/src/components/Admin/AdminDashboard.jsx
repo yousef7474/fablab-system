@@ -304,6 +304,10 @@ const AdminDashboard = () => {
   const [workspaceLoading, setWorkspaceLoading] = useState(false);
   const [workspaceForm, setWorkspaceForm] = useState({ tableNumber: '', projectName: '', numberOfUsers: 1, personName: '', personPhone: '', personEmail: '', startDate: '', startTime: '', endDate: '', endTime: '', photoBefore: '', notes: '' });
   const [workspaceRatingForm, setWorkspaceRatingForm] = useState({ type: 'award', points: 1, criteria: '', notes: '', ratingDate: new Date().toISOString().split('T')[0], photoAfter: '' });
+  // Extend-period modal state — { workspace, endDate, endTime, saving }
+  // or null when the modal is closed. Replaces the earlier
+  // window.prompt fallback with a proper in-app dialog.
+  const [extendWorkspaceState, setExtendWorkspaceState] = useState(null);
 
   const workspaceCriteriaOptions = [
     { value: 'cleanliness', label: isRTL ? 'النظافة' : 'Cleanliness' },
@@ -1747,6 +1751,44 @@ const AdminDashboard = () => {
       fetchWorkspaceStats();
     } catch (error) {
       toast.error(isRTL ? 'خطأ في تحديث مساحة العمل' : 'Error updating workspace');
+    }
+  };
+
+  // Extend a workspace's period through a proper in-app modal — was
+  // previously done via a browser `prompt` which felt hacky. Opens
+  // the dialog pre-filled with (current end + 24h) so the common
+  // "one more day" case is one click away.
+  const openExtendWorkspaceModal = (workspace) => {
+    const curEnd = workspace.endDate && workspace.endTime
+      ? new Date(`${workspace.endDate}T${String(workspace.endTime).slice(0, 5)}:00`)
+      : new Date();
+    const nextEnd = new Date(curEnd.getTime() + 24 * 60 * 60 * 1000);
+    const pad = (n) => String(n).padStart(2, '0');
+    setExtendWorkspaceState({
+      workspace,
+      endDate: `${nextEnd.getFullYear()}-${pad(nextEnd.getMonth() + 1)}-${pad(nextEnd.getDate())}`,
+      endTime: `${pad(nextEnd.getHours())}:${pad(nextEnd.getMinutes())}`,
+      saving: false
+    });
+  };
+
+  const submitExtendWorkspace = async () => {
+    if (!extendWorkspaceState) return;
+    const { workspace, endDate, endTime } = extendWorkspaceState;
+    if (!endDate || !endTime) {
+      return toast.error(isRTL ? 'أدخل التاريخ والوقت' : 'Enter date and time');
+    }
+    setExtendWorkspaceState(s => ({ ...s, saving: true }));
+    try {
+      await api.patch(`/workspaces/${workspace.workspaceId}/extend`, { endDate, endTime });
+      toast.success(isRTL ? '✅ تم تمديد فترة المساحة' : '✅ Workspace period extended');
+      setExtendWorkspaceState(null);
+      fetchWorkspaces();
+      fetchWorkspaceStats();
+    } catch (err) {
+      const msg = err?.response?.data?.messageAr || err?.response?.data?.message;
+      toast.error(msg || (isRTL ? 'تعذّر التمديد' : 'Extend failed'));
+      setExtendWorkspaceState(s => ({ ...s, saving: false }));
     }
   };
 
@@ -8003,6 +8045,20 @@ const AdminDashboard = () => {
                               </button>
                             </>
                           )}
+                          {/* Extend button — active AND completed. Completed
+                              workspaces get auto-marked when their end period
+                              passes; this button re-opens them for the same
+                              person without recreating the row. */}
+                          {(workspace.status === 'active' || workspace.status === 'completed') && (
+                            <button
+                              className="action-btn"
+                              onClick={() => openExtendWorkspaceModal(workspace)}
+                              title={isRTL ? 'تمديد فترة المساحة' : 'Extend period'}
+                              style={{ background: 'linear-gradient(135deg, #f59e0b, #d97706)', color: '#fff' }}
+                            >
+                              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                            </button>
+                          )}
                           <button className="action-btn edit" onClick={() => openWorkspaceModal(workspace)} title={isRTL ? 'تعديل' : 'Edit'}>
                             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
                           </button>
@@ -8144,6 +8200,120 @@ const AdminDashboard = () => {
                     <button className="btn-cancel" onClick={() => setShowWorkspaceModal(false)}>{isRTL ? 'إلغاء' : 'Cancel'}</button>
                     <button className="btn-submit workspace-submit" onClick={selectedWorkspace ? handleUpdateWorkspace : handleCreateWorkspace} disabled={workspaceLoading || !workspaceForm.tableNumber.trim() || !workspaceForm.personName.trim()}>
                       {workspaceLoading ? <><span className="spinner"></span>{isRTL ? 'جاري الحفظ...' : 'Saving...'}</> : <><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="20 6 9 17 4 12"/></svg>{selectedWorkspace ? (isRTL ? 'تحديث' : 'Update') : (isRTL ? 'إضافة مساحة العمل' : 'Add Workspace')}</>}
+                    </button>
+                  </div>
+                </motion.div>
+              </div>
+            )}
+
+            {/* Extend workspace period modal — proper in-app dialog
+                with real date+time pickers. Replaces the earlier
+                window.prompt fallback. */}
+            {extendWorkspaceState && (
+              <div
+                className="modal-overlay"
+                data-page="manager"
+                onClick={() => extendWorkspaceState.saving ? null : setExtendWorkspaceState(null)}
+              >
+                <motion.div
+                  className="modal-content modern-modal"
+                  initial={{ opacity: 0, scale: 0.94, y: 12 }}
+                  animate={{ opacity: 1, scale: 1, y: 0 }}
+                  transition={{ type: 'spring', damping: 24, stiffness: 260 }}
+                  onClick={(e) => e.stopPropagation()}
+                  style={{ maxWidth: 460 }}
+                >
+                  <div
+                    className="modern-modal-header"
+                    style={{ background: 'linear-gradient(135deg, #f59e0b, #d97706)', color: '#fff' }}
+                  >
+                    <div className="modal-header-icon">
+                      <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                    </div>
+                    <div className="modal-header-text">
+                      <h2>{isRTL ? 'تمديد فترة مساحة العمل' : 'Extend Workspace Period'}</h2>
+                      <p style={{ opacity: 0.9 }}>
+                        {isRTL ? 'طاولة' : 'Table'} {extendWorkspaceState.workspace.tableNumber} · {extendWorkspaceState.workspace.personName}
+                      </p>
+                    </div>
+                    <button
+                      className="modal-close-modern"
+                      onClick={() => setExtendWorkspaceState(null)}
+                      disabled={extendWorkspaceState.saving}
+                    >
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                    </button>
+                  </div>
+                  <div className="modern-modal-body">
+                    <div style={{
+                      background: '#fffbeb',
+                      border: '1px solid #fde68a',
+                      borderRadius: 10,
+                      padding: '10px 14px',
+                      marginBottom: 14,
+                      fontSize: 13,
+                      color: '#92400e',
+                      lineHeight: 1.7
+                    }}>
+                      <div style={{ fontWeight: 800, marginBottom: 4 }}>
+                        📅 {isRTL ? 'الفترة الحالية' : 'Current period'}
+                      </div>
+                      <div>
+                        {isRTL ? 'من' : 'From'} <b dir="ltr">{extendWorkspaceState.workspace.startDate} {String(extendWorkspaceState.workspace.startTime || '').slice(0, 5)}</b>
+                        <br/>
+                        {isRTL ? 'إلى' : 'To'} <b dir="ltr">{extendWorkspaceState.workspace.endDate} {String(extendWorkspaceState.workspace.endTime || '').slice(0, 5)}</b>
+                      </div>
+                    </div>
+
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                      <div className="form-group modern-input">
+                        <label>{isRTL ? 'تاريخ النهاية الجديد' : 'New end date'}</label>
+                        <input
+                          type="date"
+                          className="modern-input-field"
+                          value={extendWorkspaceState.endDate}
+                          onChange={(e) => setExtendWorkspaceState(s => ({ ...s, endDate: e.target.value }))}
+                        />
+                      </div>
+                      <div className="form-group modern-input">
+                        <label>{isRTL ? 'وقت النهاية الجديد' : 'New end time'}</label>
+                        <input
+                          type="time"
+                          className="modern-input-field"
+                          value={extendWorkspaceState.endTime}
+                          onChange={(e) => setExtendWorkspaceState(s => ({ ...s, endTime: e.target.value }))}
+                        />
+                      </div>
+                    </div>
+
+                    <p style={{ fontSize: 12, color: '#64748b', marginTop: 10 }}>
+                      {isRTL
+                        ? 'ملاحظة: التمديد سيُعيد فتح المساحة إذا كانت مكتملة، ويحدّث تاريخ ووقت النهاية.'
+                        : 'Note: extending re-opens a completed workspace and updates the end date/time.'}
+                    </p>
+                  </div>
+                  <div className="modern-modal-footer">
+                    <button
+                      className="btn-cancel"
+                      onClick={() => setExtendWorkspaceState(null)}
+                      disabled={extendWorkspaceState.saving}
+                    >
+                      {isRTL ? 'إلغاء' : 'Cancel'}
+                    </button>
+                    <button
+                      onClick={submitExtendWorkspace}
+                      disabled={extendWorkspaceState.saving}
+                      style={{
+                        padding: '10px 24px', border: 'none', borderRadius: 10,
+                        background: 'linear-gradient(135deg, #f59e0b, #d97706)',
+                        color: '#fff', fontWeight: 800, fontFamily: 'inherit',
+                        cursor: extendWorkspaceState.saving ? 'not-allowed' : 'pointer',
+                        opacity: extendWorkspaceState.saving ? 0.6 : 1
+                      }}
+                    >
+                      {extendWorkspaceState.saving
+                        ? (isRTL ? 'جاري التمديد...' : 'Extending...')
+                        : (isRTL ? '⏰ تمديد الفترة' : '⏰ Extend period')}
                     </button>
                   </div>
                 </motion.div>
