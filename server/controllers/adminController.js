@@ -125,17 +125,25 @@ exports.getAllRegistrations = async (req, res) => {
     if (entity) userWhereClause.entityName = entity;
     if (sex) userWhereClause.sex = sex.charAt(0).toUpperCase() + sex.slice(1).toLowerCase();
 
-    // Date range filter
+    // Date range filter — anchored to Asia/Riyadh (UTC+3) so a filter
+    // for "2026-09-04" matches records created between 00:00 and 23:59
+    // Riyadh time. Was previously `new Date('2026-09-04')` which parses
+    // as UTC midnight → excludes the first 3 hours of that day in
+    // Riyadh (they show as 2026-09-03 21:00-23:59 UTC) and over-
+    // includes the equivalent chunk of the next day. Net effect:
+    // registrations made "today morning" silently vanished from the
+    // filtered list.
     if (dateFrom || dateTo) {
       whereClause.createdAt = {};
       if (dateFrom) {
-        whereClause.createdAt[Op.gte] = new Date(dateFrom);
+        // Start of the picked day in Riyadh timezone.
+        whereClause.createdAt[Op.gte] = new Date(`${dateFrom}T00:00:00.000+03:00`);
       }
       if (dateTo) {
-        // Add one day to include the end date fully
-        const endDate = new Date(dateTo);
-        endDate.setDate(endDate.getDate() + 1);
-        whereClause.createdAt[Op.lt] = endDate;
+        // End of the picked day in Riyadh timezone. Op.lte with an
+        // inclusive .999ms end matches the intuitive "everything on
+        // that date" without shifting into the next day.
+        whereClause.createdAt[Op.lte] = new Date(`${dateTo}T23:59:59.999+03:00`);
       }
     }
 
@@ -1131,15 +1139,17 @@ exports.getEnhancedAnalytics = async (req, res) => {
   try {
     const { period = 'month', startDate: customStartDate, endDate: customEndDate } = req.query;
 
-    // Calculate date range
+    // Calculate date range — same Riyadh-anchored parsing as the
+    // registrations list, so an admin's YYYY-MM-DD picker covers the
+    // full day in local time regardless of server timezone.
     const now = new Date();
     let startDate;
-    let endDate = customEndDate ? new Date(customEndDate + 'T23:59:59') : now;
+    let endDate = customEndDate ? new Date(`${customEndDate}T23:59:59.999+03:00`) : now;
     let groupBy;
 
     // Use custom dates if provided
     if (customStartDate) {
-      startDate = new Date(customStartDate);
+      startDate = new Date(`${customStartDate}T00:00:00.000+03:00`);
     } else {
       switch (period) {
         case 'week':
@@ -1289,11 +1299,12 @@ exports.exportToCSV = async (req, res) => {
     if (section) whereClause.fablabSection = section;
     if (applicationType) userWhereClause.applicationType = applicationType;
 
-    // Date range filter
+    // Date range filter — Riyadh-anchored (see getAllRegistrations
+    // comment for the timezone rationale).
     if (startDate || endDate) {
       whereClause.createdAt = {};
-      if (startDate) whereClause.createdAt[Op.gte] = new Date(startDate);
-      if (endDate) whereClause.createdAt[Op.lte] = new Date(endDate + 'T23:59:59');
+      if (startDate) whereClause.createdAt[Op.gte] = new Date(`${startDate}T00:00:00.000+03:00`);
+      if (endDate) whereClause.createdAt[Op.lte] = new Date(`${endDate}T23:59:59.999+03:00`);
     }
 
     const registrations = await Registration.findAll({
