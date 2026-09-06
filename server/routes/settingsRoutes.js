@@ -18,6 +18,9 @@ router.get('/calendar-prefs', authMiddleware, settingsController.getCalendarPref
 router.put('/calendar-prefs', authMiddleware, settingsController.updateCalendarPrefs);
 router.get('/quick-messages', authMiddleware, settingsController.getQuickMessages);
 router.put('/quick-messages', authMiddleware, settingsController.updateQuickMessages);
+router.get('/quick-forms', authMiddleware, settingsController.getQuickForms);
+router.put('/quick-forms', authMiddleware, settingsController.updateQuickForms);
+router.get('/quick-forms/:id/download', authMiddleware, settingsController.downloadQuickForm);
 router.get('/store-categories', authMiddleware, settingsController.getStoreCategories);
 router.put('/store-categories', authMiddleware, settingsController.updateStoreCategories);
 

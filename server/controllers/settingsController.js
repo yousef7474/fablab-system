@@ -337,6 +337,99 @@ const updateQuickMessages = async (req, res) => {
   }
 };
 
+// ─── Quick Forms (الفورم الجاهز) ───────────────────────────────
+// Same shape as Quick Messages but each entry carries a downloadable
+// file (base64-encoded) instead of a body/URL. Kept in the Settings
+// table under the `quick_forms` key so admins can add / replace /
+// delete forms without a deploy. Employees hit GET (admin-auth) to
+// browse the library and download whichever form they need.
+//
+// Per-form size cap ~10 MB (base64 inflates raw file by ~33%, so a
+// ~7.5 MB raw file is safely below the express.json 50 MB limit
+// even with several forms in the same payload on save).
+
+const MAX_FORM_BYTES = 10 * 1024 * 1024; // 10 MB base64-encoded
+
+const getQuickForms = async (req, res) => {
+  try {
+    const row = await Settings.findByPk('quick_forms');
+    const forms = row && Array.isArray(row.value) ? row.value : [];
+    res.json({ forms });
+  } catch (err) {
+    console.error('Error fetching quick forms:', err);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+const updateQuickForms = async (req, res) => {
+  try {
+    const { forms } = req.body || {};
+    if (!Array.isArray(forms)) {
+      return res.status(400).json({ message: 'forms must be an array' });
+    }
+    const cleaned = [];
+    for (let i = 0; i < forms.length; i++) {
+      const f = forms[i] || {};
+      const fileData = f.fileData ? String(f.fileData) : '';
+      if (fileData && fileData.length > MAX_FORM_BYTES * 1.4) {
+        return res.status(413).json({
+          message: `Form "${f.title || 'untitled'}" exceeds the ${Math.round(MAX_FORM_BYTES / (1024 * 1024))} MB per-file cap`,
+          messageAr: `الملف "${f.title || 'بدون عنوان'}" أكبر من الحد الأقصى ${Math.round(MAX_FORM_BYTES / (1024 * 1024))} MB`
+        });
+      }
+      cleaned.push({
+        id: (f.id && String(f.id).trim()) || `form-${Date.now()}-${i}`,
+        title: String(f.title || '').trim(),
+        description: String(f.description || '').trim(),
+        tag: String(f.tag || '').trim(),
+        color: String(f.color || '#8b5cf6').trim(),
+        fileName: String(f.fileName || '').trim().slice(0, 250),
+        fileType: String(f.fileType || '').trim().toLowerCase().replace(/^\./, ''),
+        fileSize: Math.max(0, Number(f.fileSize) || 0),
+        fileData,
+        updatedAt: f.updatedAt || new Date().toISOString()
+      });
+    }
+    // Keep any form with either a title OR a file — dropping the
+    // truly empty rows.
+    const finalList = cleaned.filter(f => f.title || f.fileData);
+    await Settings.upsert({ key: 'quick_forms', value: finalList });
+    // Return WITHOUT fileData to keep the response light — the client
+    // holds the state locally after uploads anyway.
+    res.json({
+      forms: finalList.map(f => ({ ...f, fileData: undefined, hasFile: !!f.fileData }))
+    });
+  } catch (err) {
+    console.error('Error updating quick forms:', err);
+    res.status(500).json({ message: 'Server error', detail: err.message });
+  }
+};
+
+// GET /api/settings/quick-forms/:id/download — streams one file's
+// base64 back so the client can trigger a browser download without
+// pulling every form's blob into the list response.
+const downloadQuickForm = async (req, res) => {
+  try {
+    const row = await Settings.findByPk('quick_forms');
+    const list = row && Array.isArray(row.value) ? row.value : [];
+    const form = list.find(f => f.id === req.params.id);
+    if (!form || !form.fileData) {
+      return res.status(404).json({ message: 'Form not found' });
+    }
+    res.json({
+      id: form.id,
+      title: form.title,
+      fileName: form.fileName,
+      fileType: form.fileType,
+      fileSize: form.fileSize,
+      fileData: form.fileData
+    });
+  } catch (err) {
+    console.error('Error downloading form:', err);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
 // GET /api/settings/store-categories (admin-protected)
 // Returns the persisted category library merged with any categories
 // already used by existing store items — so admins always see every
@@ -398,6 +491,9 @@ module.exports = {
   updateCalendarPrefs,
   getQuickMessages,
   updateQuickMessages,
+  getQuickForms,
+  updateQuickForms,
+  downloadQuickForm,
   getStoreCategories,
   updateStoreCategories
 };

@@ -24,6 +24,7 @@ import OvertimeManagement from '../Overtime/OvertimeManagement';
 import TrainerAssistantManagement from '../TrainerAssistant/TrainerAssistantManagement';
 import CustomersManagement from '../Customers/CustomersManagement';
 import QuickMessages from './QuickMessages';
+import QuickForms from './QuickForms';
 import UnifiedAttendancePage from '../shared/UnifiedAttendancePage';
 import FablabVisitsTab from './FablabVisitsTab';
 import FablabVisitOverrideCodeCard from './FablabVisitOverrideCodeCard';
@@ -91,7 +92,7 @@ const AdminDashboard = () => {
   const isRTL = i18n.language === 'ar';
 
   // Valid tabs for URL persistence
-  const validTabs = ['dashboard', 'registrations', 'users', 'employees', 'schedule', 'analytics', 'borrowing', 'education', 'workshops', 'workspaces', 'volunteers', 'workers', 'fablab-staff', 'summer', 'mawhba', 'overtime', 'trainer-assistants', 'contracts', 'customers', 'fablab-visits', 'store', 'print3d', 'institution-support', 'year-calendar', 'attendance-station', 'quick-messages', 'settings'];
+  const validTabs = ['dashboard', 'registrations', 'users', 'employees', 'schedule', 'analytics', 'borrowing', 'education', 'workshops', 'workspaces', 'volunteers', 'workers', 'fablab-staff', 'summer', 'mawhba', 'overtime', 'trainer-assistants', 'contracts', 'customers', 'fablab-visits', 'store', 'print3d', 'institution-support', 'year-calendar', 'attendance-station', 'quick-messages', 'quick-forms', 'settings'];
 
   // Get initial tab from URL, localStorage, or default to 'dashboard'
   const getInitialTab = () => {
@@ -4919,6 +4920,7 @@ const AdminDashboard = () => {
     { id: 'year-calendar', icon: 'year-calendar', labelEn: 'Year Calendar', labelAr: 'التقويم السنوي' },
     { id: 'attendance-station', icon: 'attendance-station', labelEn: 'Attendance Station', labelAr: 'محطة الحضور' },
     { id: 'quick-messages', icon: 'quick-messages', labelEn: 'Quick Messages', labelAr: 'رسائل جاهزة' },
+    { id: 'quick-forms', icon: 'quick-forms', labelEn: 'Ready Forms', labelAr: 'الفورم الجاهز' },
     { id: 'settings', icon: 'settings', labelEn: 'Settings', labelAr: 'الإعدادات' }
   ];
 
@@ -4943,6 +4945,7 @@ const AdminDashboard = () => {
       customers: <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>,
       contracts: <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="9" y1="13" x2="15" y2="13"/><line x1="9" y1="17" x2="15" y2="17"/></svg>,
       'quick-messages': <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>,
+      'quick-forms': <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="9" y1="15" x2="15" y2="15"/><line x1="9" y1="18" x2="12" y2="18"/></svg>,
       'fablab-visits': <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/><path d="M8 14h.01M12 14h.01M16 14h.01M8 18h.01M12 18h.01"/></svg>,
       'year-calendar': <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/><rect x="7" y="13" width="3" height="3"/><rect x="14" y="13" width="3" height="3"/></svg>,
       'store': <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>,
@@ -9452,6 +9455,17 @@ const AdminDashboard = () => {
                 transition={{ duration: 0.3 }}
               >
                 <QuickMessages />
+              </motion.div>
+            )}
+
+            {activeTab === 'quick-forms' && (
+              <motion.div
+                key="quick-forms"
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.3 }}
+              >
+                <QuickForms />
               </motion.div>
             )}
 
