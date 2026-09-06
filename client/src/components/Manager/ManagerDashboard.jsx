@@ -746,6 +746,47 @@ const ManagerDashboard = () => {
     }
   };
 
+  // Extend a workspace's end period instead of creating a new row —
+  // handy when a table booking runs longer than planned or a
+  // completed workspace needs to be re-opened for the same person.
+  const handleExtendWorkspace = async (workspace) => {
+    // Default the picker to a sensible "24 hours from the current end"
+    // so the manager doesn't have to type anything for the common case.
+    const curEnd = workspace.endDate && workspace.endTime
+      ? new Date(`${workspace.endDate}T${String(workspace.endTime).slice(0, 5)}:00`)
+      : new Date();
+    const nextEnd = new Date(curEnd.getTime() + 24 * 60 * 60 * 1000);
+    const pad = (n) => String(n).padStart(2, '0');
+    const dateStr = `${nextEnd.getFullYear()}-${pad(nextEnd.getMonth() + 1)}-${pad(nextEnd.getDate())}`;
+    const timeStr = `${pad(nextEnd.getHours())}:${pad(nextEnd.getMinutes())}`;
+
+    const newDate = window.prompt(
+      isRTL
+        ? 'تاريخ النهاية الجديد (YYYY-MM-DD):'
+        : 'New end date (YYYY-MM-DD):',
+      dateStr
+    );
+    if (!newDate) return;
+    const newTime = window.prompt(
+      isRTL ? 'وقت النهاية الجديد (HH:MM):' : 'New end time (HH:MM):',
+      timeStr
+    );
+    if (!newTime) return;
+
+    try {
+      await api.patch(`/workspaces/${workspace.workspaceId}/extend`, {
+        endDate: newDate,
+        endTime: newTime
+      });
+      toast.success(isRTL ? '✅ تم تمديد فترة المساحة' : '✅ Workspace period extended');
+      fetchWorkspaces();
+      fetchWorkspaceStats();
+    } catch (err) {
+      const msg = err?.response?.data?.messageAr || err?.response?.data?.message;
+      toast.error(msg || (isRTL ? 'تعذّر التمديد' : 'Extend failed'));
+    }
+  };
+
   const openWorkspaceModal = (workspace = null) => {
     if (workspace) {
       setSelectedWorkspace(workspace);
@@ -7153,6 +7194,23 @@ const ManagerDashboard = () => {
                             </svg>
                           </button>
                         </>
+                      )}
+                      {/* Extend button — available on active AND completed
+                          workspaces so the manager can re-open a station
+                          for the same person without recreating the whole
+                          row (auto-close by end date makes this common). */}
+                      {(workspace.status === 'active' || workspace.status === 'completed') && (
+                        <button
+                          className="action-btn"
+                          onClick={() => handleExtendWorkspace(workspace)}
+                          title={isRTL ? 'تمديد فترة المساحة' : 'Extend period'}
+                          style={{ background: 'linear-gradient(135deg, #f59e0b, #d97706)', color: '#fff' }}
+                        >
+                          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <circle cx="12" cy="12" r="10"/>
+                            <polyline points="12 6 12 12 16 14"/>
+                          </svg>
+                        </button>
                       )}
                       <button className="action-btn edit" onClick={() => openWorkspaceModal(workspace)} title={isRTL ? 'تعديل' : 'Edit'}>
                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">

@@ -258,6 +258,9 @@ exports.sendForApproval = async (req, res) => {
     // marked pending, admin can resend).
     let archivedEmailHtml = null;
     let archivedSubject = null;
+    if (!process.env.SENDGRID_API_KEY) {
+      console.warn(`⚠️  overtime approval: SENDGRID_API_KEY not set — manager ${managerEmail} will NOT receive the email`);
+    }
     if (process.env.SENDGRID_API_KEY) {
       try {
         const mail = _buildApprovalEmail({ row, token, origin: _publicOrigin() });
@@ -273,8 +276,9 @@ exports.sendForApproval = async (req, res) => {
           html: mail.html,
           text: mail.text
         });
+        console.log(`✉️  overtime approval email sent to ${managerEmail} (overtime ${row.overtimeId})`);
       } catch (mailErr) {
-        console.error('overtime approval email failed:', mailErr?.response?.body || mailErr);
+        console.error(`❌ overtime approval email FAILED for ${managerEmail}:`, mailErr?.response?.body || mailErr.message);
         // Still archive the attempt so the admin can retry from the
         // archive page. Silent no-op if the archive insert also fails.
         if (archivedEmailHtml) {

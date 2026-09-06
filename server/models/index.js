@@ -964,17 +964,17 @@ const syncDatabase = async () => {
     // already promote 'active' → 'completed' on the fly, but keeping
     // the DB in sync means filters / joins / raw queries also see the
     // correct state. Runs on every boot; idempotent.
+    const riyadhToday = (() => {
+      const parts = new Intl.DateTimeFormat('en-CA', {
+        timeZone: 'Asia/Riyadh',
+        year: 'numeric', month: '2-digit', day: '2-digit'
+      }).formatToParts(new Date());
+      const y = parts.find(p => p.type === 'year').value;
+      const m = parts.find(p => p.type === 'month').value;
+      const d = parts.find(p => p.type === 'day').value;
+      return `${y}-${m}-${d}`;
+    })();
     try {
-      const riyadhToday = (() => {
-        const parts = new Intl.DateTimeFormat('en-CA', {
-          timeZone: 'Asia/Riyadh',
-          year: 'numeric', month: '2-digit', day: '2-digit'
-        }).formatToParts(new Date());
-        const y = parts.find(p => p.type === 'year').value;
-        const m = parts.find(p => p.type === 'month').value;
-        const d = parts.find(p => p.type === 'day').value;
-        return `${y}-${m}-${d}`;
-      })();
       const [, meta] = await sequelize.query(
         `UPDATE volunteer_opportunities
             SET status = 'completed'
@@ -987,6 +987,28 @@ const syncDatabase = async () => {
       }
     } catch (autoErr) {
       console.log('volunteer_opportunities auto-complete note:', autoErr.message);
+    }
+
+    // Same auto-complete for workspaces — a table booking whose
+    // (endDate, endTime) is already in the past is treated as
+    // completed. Response shapers do this on-the-fly too, but
+    // keeping the DB in sync means raw queries / count endpoints
+    // also see reality.
+    try {
+      const [, wsMeta] = await sequelize.query(
+        `UPDATE workspaces
+            SET status = 'completed'
+          WHERE status = 'active'
+            AND ("endDate" < :today
+              OR ("endDate" = :today AND "endTime" <= (NOW() AT TIME ZONE 'Asia/Riyadh')::time))`,
+        { replacements: { today: riyadhToday } }
+      );
+      const wsCount = wsMeta?.rowCount ?? 0;
+      if (wsCount > 0) {
+        console.log(`✅ Auto-completed ${wsCount} workspace${wsCount === 1 ? '' : 's'} past end period.`);
+      }
+    } catch (autoErr) {
+      console.log('workspaces auto-complete note:', autoErr.message);
     }
 
     // Ensure every Mawhba deployment has at least one season. If no

@@ -1,6 +1,104 @@
 const { Task, Employee, Admin, Rating } = require('../models');
 const { Op } = require('sequelize');
+const path = require('path');
+const sgMail = require('@sendgrid/mail');
 const { sendTaskRatingEmail } = require('../utils/emailService');
+
+// Absolute-path .env load — matches the pattern used elsewhere so
+// SENDGRID_API_KEY is definitely picked up regardless of pm2 cwd.
+require('dotenv').config({ path: path.join(__dirname, '..', '.env') });
+if (process.env.SENDGRID_API_KEY) sgMail.setApiKey(process.env.SENDGRID_API_KEY);
+
+// Fire-and-forget: email an employee that a new task has been
+// assigned to them. Never blocks task creation, never throws — a
+// misconfigured SendGrid must not break the manager's workflow.
+const _sendTaskAssignedEmail = async ({ task, employee, creator }) => {
+  try {
+    if (!process.env.SENDGRID_API_KEY || !process.env.SENDGRID_FROM_EMAIL) return;
+    if (!employee?.email) return;
+
+    const safe = (v) => String(v == null ? '' : v)
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+
+    const priorityAr = task.priority === 'high' ? '🔴 مرتفعة'
+      : task.priority === 'low' ? '🟢 منخفضة' : '🟡 متوسطة';
+    const priorityColor = task.priority === 'high' ? '#dc2626'
+      : task.priority === 'low' ? '#16a34a' : '#f59e0b';
+
+    const dueRange = task.dueDateEnd && task.dueDateEnd !== task.dueDate
+      ? `${task.dueDate} → ${task.dueDateEnd}`
+      : task.dueDate;
+    const timeRange = task.dueTimeEnd && task.dueTime
+      ? `${String(task.dueTime).slice(0, 5)} – ${String(task.dueTimeEnd).slice(0, 5)}`
+      : task.dueTime ? String(task.dueTime).slice(0, 5) : '';
+
+    const html = `
+<div style="font-family: 'Tajawal','Segoe UI',Tahoma,sans-serif; background:#f5f7fa; padding:24px 0;" dir="rtl">
+  <div style="max-width:640px; margin:0 auto; background:#fff; border-radius:14px; overflow:hidden; box-shadow:0 6px 24px rgba(15,23,42,0.10);">
+    <div style="background:linear-gradient(135deg, ${priorityColor}, #0f172a); color:#fff; padding:22px 28px;">
+      <div style="font-size:12px; letter-spacing:1.2px; opacity:0.85">FABLAB الأحساء · مهمة جديدة</div>
+      <h1 style="margin:6px 0 0; font-size:20px; font-weight:800">📋 تم تعيين مهمة جديدة لك</h1>
+    </div>
+    <div style="padding:24px 28px; color:#0f172a;">
+      <p style="margin:0 0 14px; font-size:14px; line-height:1.75">
+        مرحباً <strong>${safe(employee.name)}</strong>،<br>
+        قام <strong>${safe(creator?.fullName || 'المدير')}</strong> بإسناد مهمة جديدة لك بالتفاصيل التالية:
+      </p>
+      <div style="background:#f8fafc; border-inline-start:4px solid ${priorityColor}; padding:14px 18px; border-radius:8px; margin-bottom:16px">
+        <div style="font-size:16px; font-weight:800; color:#0f172a; margin-bottom:6px">${safe(task.title)}</div>
+        ${task.description ? `<div style="font-size:13px; color:#475569; line-height:1.7; white-space:pre-wrap">${safe(task.description)}</div>` : ''}
+      </div>
+
+      <table style="width:100%; font-size:13px; border-collapse:collapse; margin-bottom:16px">
+        <tr>
+          <td style="padding:8px 0; color:#64748b; width:150px">📅 تاريخ الاستحقاق:</td>
+          <td style="padding:8px 0; font-weight:800; direction:ltr; text-align:right">${safe(dueRange)}</td>
+        </tr>
+        ${timeRange ? `
+        <tr>
+          <td style="padding:8px 0; color:#64748b">🕒 الوقت:</td>
+          <td style="padding:8px 0; font-weight:700; direction:ltr; text-align:right">${safe(timeRange)}</td>
+        </tr>` : ''}
+        <tr>
+          <td style="padding:8px 0; color:#64748b">⚡ الأولوية:</td>
+          <td style="padding:8px 0; font-weight:800; color:${priorityColor}">${priorityAr}</td>
+        </tr>
+        ${task.section ? `
+        <tr>
+          <td style="padding:8px 0; color:#64748b">🏷 القسم:</td>
+          <td style="padding:8px 0; font-weight:700">${safe(task.section)}</td>
+        </tr>` : ''}
+      </table>
+
+      ${task.notes ? `
+        <div style="background:#eff6ff; border-inline-start:4px solid #3b82f6; padding:12px 16px; border-radius:8px; margin-bottom:16px">
+          <div style="font-size:12px; font-weight:800; color:#1e40af; margin-bottom:4px">📝 ملاحظات المدير</div>
+          <div style="font-size:13px; color:#1e3a8a; white-space:pre-wrap; line-height:1.7">${safe(task.notes)}</div>
+        </div>` : ''}
+
+      <p style="margin:20px 0 0; color:#64748b; font-size:12.5px">
+        يمكنك متابعة وتحديث حالة المهمة من لوحة الموظف.<br>
+        فريق فاب لاب الأحساء
+      </p>
+    </div>
+  </div>
+</div>`;
+
+    await sgMail.send({
+      to: employee.email,
+      from: {
+        email: process.env.SENDGRID_FROM_EMAIL,
+        name: process.env.SENDGRID_FROM_NAME || 'FABLAB Al-Ahsa'
+      },
+      subject: `📋 مهمة جديدة: ${task.title}`,
+      html
+    });
+    console.log(`✉️  Task assigned email sent to ${employee.email} for task "${task.title}"`);
+  } catch (err) {
+    console.error('task-assigned email failed:', err?.response?.body || err.message);
+  }
+};
 
 /**
  * Get all tasks with optional filters
@@ -261,6 +359,15 @@ exports.createTask = async (req, res) => {
         { model: Admin, as: 'creator', attributes: ['adminId', 'fullName', 'role'] }
       ]
     });
+
+    // Fire-and-forget: email the assignee about their new task. The
+    // client calls this endpoint in a loop when a manager assigns to
+    // multiple employees, so each employee gets their own email.
+    _sendTaskAssignedEmail({
+      task: createdTask,
+      employee: createdTask?.assignee,
+      creator: createdTask?.creator
+    }).catch(() => {});
 
     res.status(201).json(createdTask);
   } catch (error) {

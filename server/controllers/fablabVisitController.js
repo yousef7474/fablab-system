@@ -497,28 +497,39 @@ exports.sendForApproval = async (req, res) => {
       managerName: null
     });
 
-    if (process.env.SENDGRID_API_KEY) {
-      try {
-        const mail = _buildManagerEmail({ row, token, origin: _publicOrigin() });
-        await sgMail.send({
-          from: {
-            email: process.env.SENDGRID_FROM_EMAIL,
-            name: process.env.SENDGRID_FROM_NAME || 'FABLAB Al-Ahsa'
-          },
-          to: managerEmail,
-          subject: mail.subject,
-          html: mail.html,
-          text: mail.text
-        });
-      } catch (mailErr) {
-        console.error('visit approval email failed:', mailErr?.response?.body || mailErr);
-        return res.json({
-          message: 'Marked pending — email delivery failed, try resending',
-          messageAr: 'تم إرسال الطلب — فشل إرسال البريد، حاول إعادة الإرسال',
-          row,
-          emailFailed: true
-        });
-      }
+    if (!process.env.SENDGRID_API_KEY) {
+      console.warn(`⚠️  visit approval: SENDGRID_API_KEY not set — manager ${managerEmail} will NOT receive the email`);
+      return res.json({
+        message: 'Marked pending — email service not configured on server',
+        messageAr: 'تم حفظ الطلب — لكن خدمة البريد غير مفعّلة على السيرفر',
+        row,
+        emailFailed: true,
+        emailFailReason: 'not-configured'
+      });
+    }
+
+    try {
+      const mail = _buildManagerEmail({ row, token, origin: _publicOrigin() });
+      await sgMail.send({
+        from: {
+          email: process.env.SENDGRID_FROM_EMAIL,
+          name: process.env.SENDGRID_FROM_NAME || 'FABLAB Al-Ahsa'
+        },
+        to: managerEmail,
+        subject: mail.subject,
+        html: mail.html,
+        text: mail.text
+      });
+      console.log(`✉️  visit approval email sent to ${managerEmail} (visit ${row.visitId})`);
+    } catch (mailErr) {
+      console.error(`❌ visit approval email FAILED for ${managerEmail}:`, mailErr?.response?.body || mailErr.message);
+      return res.json({
+        message: 'Marked pending — email delivery failed, try resending',
+        messageAr: 'تم حفظ الطلب — فشل إرسال البريد، حاول إعادة الإرسال',
+        row,
+        emailFailed: true,
+        emailFailReason: 'send-failed'
+      });
     }
 
     res.json({ message: 'Sent for approval', row });

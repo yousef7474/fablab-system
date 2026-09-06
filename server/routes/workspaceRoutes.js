@@ -26,6 +26,10 @@ router.put('/:id', workspaceController.updateWorkspace);
 // Complete workspace
 router.patch('/:id/complete', workspaceController.completeWorkspace);
 
+// Extend a workspace's period — pushes endDate/endTime out and
+// re-activates a completed one instead of forcing a new record.
+router.patch('/:id/extend', workspaceController.extendWorkspace);
+
 // Delete workspace
 router.delete('/:id', workspaceController.deleteWorkspace);
 

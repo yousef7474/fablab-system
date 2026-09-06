@@ -1,5 +1,33 @@
 const { Workspace, WorkspaceRating, Admin } = require('../models');
 const { Op } = require('sequelize');
+const { sequelize } = require('../config/database');
+
+// Riyadh "now" as YYYY-MM-DD + HH:mm, used to auto-promote 'active'
+// workspaces whose end period has passed to 'completed' on the way
+// out. DB stays whatever the admin last set — we compute the effective
+// status at response time so it always reflects the wall clock.
+const _riyadhNow = () => {
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Asia/Riyadh',
+    year: 'numeric', month: '2-digit', day: '2-digit',
+    hour: '2-digit', minute: '2-digit', hour12: false
+  }).formatToParts(new Date());
+  const g = (t) => parts.find(p => p.type === t).value;
+  return { date: `${g('year')}-${g('month')}-${g('day')}`, time: `${g('hour')}:${g('minute')}` };
+};
+
+// 'cancelled' + 'completed' pass through as-is. 'active' with a
+// past end-of-period becomes 'completed'.
+const _effectiveWorkspaceStatus = (ws, now) => {
+  const s = ws?.status || 'active';
+  if (s !== 'active') return s;
+  const endDate = ws?.endDate ? String(ws.endDate).slice(0, 10) : null;
+  const endTime = ws?.endTime ? String(ws.endTime).slice(0, 5) : '23:59';
+  if (!endDate) return s;
+  if (endDate < now.date) return 'completed';
+  if (endDate === now.date && endTime <= now.time) return 'completed';
+  return s;
+};
 
 /**
  * Get all workspaces
@@ -26,7 +54,16 @@ exports.getAllWorkspaces = async (req, res) => {
       order: [['createdAt', 'DESC']]
     });
 
-    res.json(workspaces);
+    // Promote 'active' past-end rows to 'completed' at response time
+    // so the UI always shows current reality. DB row untouched unless
+    // client posts /complete or /extend or the boot backfill runs.
+    const now = _riyadhNow();
+    const shaped = workspaces.map(w => {
+      const json = w.toJSON();
+      json.status = _effectiveWorkspaceStatus(json, now);
+      return json;
+    });
+    res.json(shaped);
   } catch (error) {
     console.error('Error fetching workspaces:', error);
     res.status(500).json({ message: 'Server error', error: error.message });
@@ -58,9 +95,87 @@ exports.getWorkspaceById = async (req, res) => {
       });
     }
 
-    res.json(workspace);
+    const now = _riyadhNow();
+    const shaped = workspace.toJSON();
+    shaped.status = _effectiveWorkspaceStatus(shaped, now);
+    res.json(shaped);
   } catch (error) {
     console.error('Error fetching workspace:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+};
+
+/**
+ * Extend an existing workspace's period — pushes endDate/endTime out
+ * so the admin doesn't have to create a brand-new row when a table
+ * is re-booked or an active session runs long. Also flips status
+ * back to 'active' if the workspace was auto-completed by an
+ * already-passed end date.
+ *
+ * PATCH /workspaces/:id/extend  body: { endDate, endTime }
+ */
+exports.extendWorkspace = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { endDate, endTime } = req.body || {};
+
+    if (!endDate || !endTime) {
+      return res.status(400).json({
+        message: 'endDate and endTime are required',
+        messageAr: 'تاريخ ووقت النهاية الجديدين مطلوبان'
+      });
+    }
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(String(endDate)) || !/^\d{2}:\d{2}(:\d{2})?$/.test(String(endTime))) {
+      return res.status(400).json({
+        message: 'Invalid date/time format',
+        messageAr: 'صيغة التاريخ أو الوقت غير صحيحة'
+      });
+    }
+
+    const workspace = await Workspace.findByPk(id);
+    if (!workspace) {
+      return res.status(404).json({
+        message: 'Workspace not found',
+        messageAr: 'مساحة العمل غير موجودة'
+      });
+    }
+    if (workspace.status === 'cancelled') {
+      return res.status(409).json({
+        message: 'Cannot extend a cancelled workspace',
+        messageAr: 'لا يمكن تمديد مساحة ملغاة'
+      });
+    }
+
+    // Sanity: the new end must be strictly after the existing start.
+    const startKey = `${String(workspace.startDate).slice(0, 10)}T${String(workspace.startTime).slice(0, 5)}`;
+    const endKey   = `${endDate}T${String(endTime).slice(0, 5)}`;
+    if (endKey <= startKey) {
+      return res.status(400).json({
+        message: 'New end must be after the workspace start',
+        messageAr: 'نهاية التمديد يجب أن تكون بعد بداية المساحة'
+      });
+    }
+
+    // Extending also RE-OPENS the workspace: sets status back to
+    // 'active' so it stops rendering as completed in the UI.
+    await workspace.update({
+      endDate,
+      endTime: String(endTime).length === 5 ? `${endTime}:00` : endTime,
+      status: 'active'
+    });
+
+    // Return shaped so the client sees the effective status right
+    // away (should be 'active' — the new endTime is in the future).
+    const now = _riyadhNow();
+    const shaped = workspace.toJSON();
+    shaped.status = _effectiveWorkspaceStatus(shaped, now);
+    res.json({
+      message: 'Workspace extended',
+      messageAr: 'تم تمديد فترة مساحة العمل',
+      workspace: shaped
+    });
+  } catch (error) {
+    console.error('Error extending workspace:', error);
     res.status(500).json({ message: 'Server error', error: error.message });
   }
 };

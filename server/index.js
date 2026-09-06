@@ -219,6 +219,19 @@ const startServer = async () => {
       } else {
         console.log(`🤖 AI API DISABLED — set AI_API_KEY (>=8 chars) in .env and restart to enable /api/ai/*`);
       }
+
+      // SendGrid readiness — critical for every approval-email flow
+      // (visits, overtime, volunteer opportunities, task assignment,
+      // 3d quotes, etc.). If this line says DISABLED, the manager
+      // won't receive ANY notification emails until it's configured.
+      const sgKey = process.env.SENDGRID_API_KEY;
+      const sgFrom = process.env.SENDGRID_FROM_EMAIL;
+      if (sgKey && sgFrom) {
+        console.log(`✉️  SendGrid ARMED — from: ${sgFrom} (key len ${String(sgKey).length})`);
+      } else {
+        console.log(`✉️  SendGrid DISABLED — set SENDGRID_API_KEY + SENDGRID_FROM_EMAIL in server/.env`);
+        console.log(`    Every approval / notification email will silently no-op until fixed.`);
+      }
     });
   } catch (error) {
     console.error('Failed to start server:', error);
