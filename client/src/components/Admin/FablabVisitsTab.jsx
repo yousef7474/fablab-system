@@ -780,20 +780,26 @@ const FablabVisitsTab = () => {
                   </button>
                 )}
 
-                {/* Notify visitor buttons — only after manager approves */}
-                {openVisit.approvalStatus === 'approved' && openVisit.visitorDecision === 'pending' && (
+                {/* Manual visitor-notify — available for BOTH approved and
+                    rejected requests. Manager decisions already auto-notify
+                    with the manager's note attached; these buttons are for
+                    admin follow-ups with a custom message (accept override,
+                    re-send with different wording, etc.). */}
+                {(openVisit.approvalStatus === 'approved' || openVisit.approvalStatus === 'rejected') && (
                   <>
                     <button
                       onClick={() => openNotifyModal(openVisit, 'reject')}
                       style={{ padding: '10px 18px', borderRadius: 10, border: '1px solid #fecaca', background: '#fff', color: '#b91c1c', cursor: 'pointer', fontWeight: 700, fontSize: 13 }}
+                      title="إرسال بريد رفض للزائر مع ملاحظات مخصصة"
                     >
-                      ✕ رفض وإشعار الزائر
+                      ✕ {openVisit.visitorEmailSentAt ? 'إعادة إرسال رفض' : 'رفض وإشعار الزائر'}
                     </button>
                     <button
                       onClick={() => openNotifyModal(openVisit, 'accept')}
                       style={{ padding: '10px 18px', borderRadius: 10, border: 'none', background: '#16a34a', color: '#fff', cursor: 'pointer', fontWeight: 700, fontSize: 13 }}
+                      title="إرسال بريد قبول للزائر مع ملاحظات مخصصة"
                     >
-                      ✓ قبول وإشعار الزائر
+                      ✓ {openVisit.visitorEmailSentAt ? 'إعادة إرسال قبول' : 'قبول وإشعار الزائر'}
                     </button>
                   </>
                 )}
@@ -919,23 +925,53 @@ const FablabVisitsTab = () => {
               <h3 style={{ margin: '0 0 6px', fontSize: 20, fontWeight: 800, color: notifyModal.decision === 'accept' ? '#16a34a' : '#b91c1c' }}>
                 {notifyModal.decision === 'accept' ? 'قبول الزيارة وإشعار الزائر' : 'رفض الزيارة وإشعار الزائر'}
               </h3>
-              <p style={{ margin: '0 0 14px', color: '#64748b', fontSize: 13 }}>
+              <p style={{ margin: '0 0 12px', color: '#64748b', fontSize: 13 }}>
                 سيتم إرسال بريد إلكتروني للزائر <b dir="ltr">{notifyModal.visit.email}</b> بهذا القرار.
               </p>
 
+              {/* Manager decision context — shown at the top of the modal
+                  so admin knows what status the visitor will see + can
+                  reference the manager's note when writing their own. */}
+              <div style={{
+                padding: '10px 14px', marginBottom: 12,
+                background: notifyModal.visit.approvalStatus === 'approved' ? '#ecfdf5' : '#fef2f2',
+                border: `1px solid ${notifyModal.visit.approvalStatus === 'approved' ? '#86efac' : '#fecaca'}`,
+                borderInlineStart: `4px solid ${notifyModal.visit.approvalStatus === 'approved' ? '#16a34a' : '#dc2626'}`,
+                borderRadius: 10, fontSize: 12.5, lineHeight: 1.7,
+                color: notifyModal.visit.approvalStatus === 'approved' ? '#166534' : '#991b1b'
+              }}>
+                <div style={{ fontWeight: 800, fontSize: 13, marginBottom: 3 }}>
+                  {notifyModal.visit.approvalStatus === 'approved' ? '✓ قرار المدير: تمت الموافقة' : '✕ قرار المدير: مرفوض'}
+                  {notifyModal.visit.managerName && ` — ${notifyModal.visit.managerName}`}
+                </div>
+                {notifyModal.visit.managerNote && (
+                  <div style={{ marginTop: 4 }}>
+                    <span style={{ fontWeight: 700 }}>ملاحظة المدير:</span> {notifyModal.visit.managerNote}
+                  </div>
+                )}
+                {notifyModal.visit.visitorEmailSentAt && (
+                  <div style={{ marginTop: 6, fontSize: 11.5, opacity: 0.85 }}>
+                    ℹ️ سبق إرسال بريد للزائر تلقائياً بعد قرار المدير — هذا الإرسال إضافي/متابعة.
+                  </div>
+                )}
+              </div>
+
               <label style={{ display: 'block', marginBottom: 14 }}>
                 <div style={{ fontSize: 12, fontWeight: 700, color: '#334155', marginBottom: 4 }}>
-                  رسالة اختيارية {notifyModal.decision === 'reject' ? '(مطلوبة كسبب رفض)' : ''}
+                  📝 ملاحظات مرفقة بالبريد {notifyModal.decision === 'reject' ? '(مطلوبة كسبب رفض)' : '(اختيارية)'}
                 </div>
                 <textarea
                   value={notifyMessage}
                   onChange={(e) => setNotifyMessage(e.target.value)}
-                  rows={4}
+                  rows={5}
                   placeholder={notifyModal.decision === 'accept'
-                    ? 'مثال: يرجى الحضور قبل الموعد بـ 10 دقائق...'
-                    : 'مثال: نعتذر — الموعد المطلوب غير متاح...'}
+                    ? 'مثال: يرجى الحضور قبل الموعد بـ 10 دقائق مع إحضار الهوية الشخصية...'
+                    : 'مثال: نعتذر — الموعد المطلوب غير متاح، نرحب باقتراح موعد بديل...'}
                   style={{ width: '100%', padding: '10px 12px', borderRadius: 10, border: '1px solid #cbd5e1', fontFamily: 'inherit', fontSize: 14, resize: 'vertical' }}
                 />
+                <div style={{ fontSize: 11, color: '#64748b', marginTop: 4 }}>
+                  ستظهر هذه الملاحظات في البريد داخل مربع مميّز بعنوان "📝 ملاحظات مرفقة".
+                </div>
               </label>
 
               <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>

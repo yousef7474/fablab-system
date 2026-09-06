@@ -595,6 +595,14 @@ exports.publicDecide = async (req, res) => {
     }
     await row.update({ approvalToken: null });
 
+    // Same auto-notify as the dashboard path — the manager decided
+    // via the emailed token link, so the visitor gets an email too.
+    _sendVisitorDecisionEmail(row, {
+      accepted: decision === 'approve',
+      customMessage: row.managerNote || null,
+      actor: `manager:${row.managerName || 'email-link'}`
+    }).catch(() => {});
+
     res.json({ message: decision === 'approve' ? 'Approved' : 'Rejected', row });
   } catch (err) {
     console.error('publicDecide visit:', err);
@@ -636,6 +644,14 @@ exports.managerApprove = async (req, res) => {
         : (req.admin?.fullName || row.managerName),
       approvalToken: null // once decided from the dashboard, invalidate the email link
     });
+    // Auto-notify the visitor — pass the manager's note as the
+    // custom message so the visitor sees the reasoning. Fire-and-
+    // forget: never blocks the response and never fails the decision.
+    _sendVisitorDecisionEmail(row, {
+      accepted: true,
+      customMessage: row.managerNote || null,
+      actor: `manager:${row.managerName || 'dashboard'}`
+    }).catch(() => {});
     res.json({ message: 'Approved', row });
   } catch (err) {
     console.error('managerApprove visit:', err);
@@ -658,6 +674,11 @@ exports.managerReject = async (req, res) => {
         : (req.admin?.fullName || row.managerName),
       approvalToken: null
     });
+    _sendVisitorDecisionEmail(row, {
+      accepted: false,
+      customMessage: row.managerNote || null,
+      actor: `manager:${row.managerName || 'dashboard'}`
+    }).catch(() => {});
     res.json({ message: 'Rejected', row });
   } catch (err) {
     console.error('managerReject visit:', err);
@@ -705,9 +726,15 @@ const _buildVisitorEmail = ({ row, accepted, customMessage }) => {
       <tr><td style="padding:10px 14px;color:#64748b">عدد الزوار:</td><td style="padding:10px 14px">${row.visitorsCount || 1}</td></tr>
     </table>
 
+    <div style="background:${accepted ? '#ecfdf5' : '#fef2f2'};padding:12px 14px;border-radius:8px;font-size:13px;color:${accepted ? '#166534' : '#991b1b'};margin-bottom:12px;border-inline-start:3px solid ${brand}">
+      <div style="font-weight:800;margin-bottom:2px">قرار المدير</div>
+      <div style="font-size:14px;font-weight:700">${accepted ? '✓ تمت الموافقة' : '✕ لم تتم الموافقة'}</div>
+      ${row.managerName ? `<div style="font-size:12px;margin-top:4px;opacity:0.85">المعتمد: ${row.managerName}</div>` : ''}
+    </div>
+
     ${customMessage ? `
       <div style="background:#eff6ff;padding:12px 14px;border-radius:8px;font-size:13px;color:#1e3a8a;margin-bottom:16px;border-inline-start:3px solid #3b82f6">
-        <div style="font-weight:700;margin-bottom:4px">رسالة من الإدارة</div>
+        <div style="font-weight:700;margin-bottom:4px">📝 ملاحظات مرفقة</div>
         <div style="white-space:pre-wrap">${customMessage}</div>
       </div>
     ` : ''}
@@ -745,8 +772,45 @@ ${customMessage ? '\nرسالة من الإدارة:\n' + customMessage + '\n' :
   };
 };
 
+// Shared visitor-notify helper — sends the email + persists tracking
+// fields. Callers pick between auto-fire (manager decision hooks
+// below) and manual admin-triggered (notifyVisitor endpoint).
+// Returns { sent: bool, reason: string } — never throws.
+const _sendVisitorDecisionEmail = async (row, { accepted, customMessage, actor = 'system' }) => {
+  if (!row?.email) return { sent: false, reason: 'no-email' };
+  if (!process.env.SENDGRID_API_KEY || !process.env.SENDGRID_FROM_EMAIL) {
+    return { sent: false, reason: 'not-configured' };
+  }
+  try {
+    const mail = _buildVisitorEmail({ row, accepted, customMessage });
+    await sgMail.send({
+      from: {
+        email: process.env.SENDGRID_FROM_EMAIL,
+        name: process.env.SENDGRID_FROM_NAME || 'FABLAB Al-Ahsa'
+      },
+      to: row.email,
+      subject: mail.subject,
+      html: mail.html,
+      text: mail.text
+    });
+    await row.update({
+      visitorDecision: accepted ? 'accepted' : 'rejected',
+      visitorDecisionAt: new Date(),
+      visitorDecisionBy: actor,
+      visitorMessage: customMessage || row.visitorMessage,
+      visitorEmailSentAt: new Date()
+    });
+    return { sent: true, reason: 'ok' };
+  } catch (err) {
+    console.error('visitor decision email failed:', err?.response?.body || err.message);
+    return { sent: false, reason: 'send-failed' };
+  }
+};
+
 // POST /fablab-visits/:id/notify-visitor — body { decision: 'accept'|'reject', message? }
-// Admin-only. Requires manager approval already granted (approvalStatus === 'approved').
+// Admin-only. Manual re-send / follow-up notification. Works whether
+// the manager approved OR rejected (auto-notify fires either way,
+// but admin may want to add a customized message afterwards).
 exports.notifyVisitor = async (req, res) => {
   try {
     const row = await FablabVisit.findByPk(req.params.id);
@@ -757,50 +821,38 @@ exports.notifyVisitor = async (req, res) => {
       return res.status(400).json({ message: 'decision must be accept or reject' });
     }
 
-    if (row.approvalStatus !== 'approved') {
+    // Allow manual notify for BOTH approved and rejected requests —
+    // admin may want to add a follow-up message with custom notes
+    // regardless of what the manager decided. Blocks only drafts /
+    // still-pending requests so the visitor never gets a decision
+    // email before the manager actually decides.
+    if (row.approvalStatus !== 'approved' && row.approvalStatus !== 'rejected') {
       return res.status(409).json({
-        message: 'Manager approval is required before notifying the visitor',
-        messageAr: 'يجب الحصول على اعتماد المدير قبل إرسال القرار للزائر'
+        message: 'Manager decision is required before notifying the visitor',
+        messageAr: 'يجب الحصول على قرار المدير (قبول أو رفض) قبل إرسال الإشعار للزائر'
       });
     }
 
     const accepted = decision === 'accept';
     const customMessage = req.body?.message ? String(req.body.message).trim() : null;
-    let emailFailed = false;
 
-    if (process.env.SENDGRID_API_KEY && row.email) {
-      try {
-        const mail = _buildVisitorEmail({ row, accepted, customMessage });
-        await sgMail.send({
-          from: {
-            email: process.env.SENDGRID_FROM_EMAIL,
-            name: process.env.SENDGRID_FROM_NAME || 'FABLAB Al-Ahsa'
-          },
-          to: row.email,
-          subject: mail.subject,
-          html: mail.html,
-          text: mail.text
-        });
-      } catch (mailErr) {
-        console.error('visitor decision email failed:', mailErr?.response?.body || mailErr);
-        emailFailed = true;
-      }
-    }
-
-    await row.update({
-      visitorDecision: accepted ? 'accepted' : 'rejected',
-      visitorDecisionAt: new Date(),
-      visitorDecisionBy: req.admin?.fullName || req.admin?.username || req.user?.username || null,
-      visitorMessage: customMessage,
-      visitorEmailSentAt: emailFailed ? null : new Date()
+    const result = await _sendVisitorDecisionEmail(row, {
+      accepted,
+      customMessage,
+      actor: req.admin?.fullName || req.admin?.username || req.user?.username || 'admin'
     });
 
     res.json({
-      message: emailFailed
-        ? 'Decision saved — email delivery failed'
+      message: !result.sent
+        ? (result.reason === 'no-email'
+            ? 'Decision saved — visitor has no email on file'
+            : result.reason === 'not-configured'
+              ? 'Decision saved — email service is not configured'
+              : 'Decision saved — email delivery failed')
         : (accepted ? 'Visitor notified — accepted' : 'Visitor notified — rejected'),
       row,
-      emailFailed
+      emailFailed: !result.sent,
+      emailFailReason: result.reason
     });
   } catch (err) {
     console.error('notifyVisitor:', err);
