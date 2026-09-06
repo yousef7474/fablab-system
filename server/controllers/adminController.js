@@ -125,29 +125,40 @@ exports.getAllRegistrations = async (req, res) => {
     if (entity) userWhereClause.entityName = entity;
     if (sex) userWhereClause.sex = sex.charAt(0).toUpperCase() + sex.slice(1).toLowerCase();
 
-    // Date range filter — anchored to Asia/Riyadh (UTC+3) so a filter
-    // for "2026-09-04" matches records created between 00:00 and 23:59
-    // Riyadh time. Was previously `new Date('2026-09-04')` which parses
-    // as UTC midnight → excludes the first 3 hours of that day in
-    // Riyadh (they show as 2026-09-03 21:00-23:59 UTC) and over-
-    // includes the equivalent chunk of the next day. Net effect:
-    // registrations made "today morning" silently vanished from the
-    // filtered list.
+    // Date range filter — matches the APPOINTMENT date (الموعد), not
+    // the submission timestamp. Every registration has exactly ONE of
+    // these three date fields set based on applicationType:
+    //   appointmentDate → beneficiaries, general appointments
+    //   visitDate       → FabLab visit requests
+    //   startDate       → volunteers (their volunteering starts here)
+    // We OR across all three so the filter works for every type
+    // without the admin having to pick which "date" they mean.
+    //
+    // These columns are DATEONLY, so YYYY-MM-DD string comparison is
+    // exact — no timezone shift, no midnight-cutoff bugs.
+    //
+    // Combined with `search` below via Op.and so both filters apply
+    // at once (previously each was assigning whereClause[Op.or] and
+    // the second one silently overrode the first).
+    const andConditions = [];
+
     if (dateFrom || dateTo) {
-      whereClause.createdAt = {};
-      if (dateFrom) {
-        // Start of the picked day in Riyadh timezone.
-        whereClause.createdAt[Op.gte] = new Date(`${dateFrom}T00:00:00.000+03:00`);
-      }
-      if (dateTo) {
-        // End of the picked day in Riyadh timezone. Op.lte with an
-        // inclusive .999ms end matches the intuitive "everything on
-        // that date" without shifting into the next day.
-        whereClause.createdAt[Op.lte] = new Date(`${dateTo}T23:59:59.999+03:00`);
-      }
+      const bounds = {};
+      if (dateFrom) bounds[Op.gte] = dateFrom;
+      if (dateTo)   bounds[Op.lte] = dateTo;
+      andConditions.push({
+        [Op.or]: [
+          { appointmentDate: bounds },
+          { visitDate: bounds },
+          { startDate: bounds }
+        ]
+      });
     }
 
-    // Time period filter (only if date range not specified)
+    // Time period filter (only if date range not specified) — still
+    // anchored to createdAt because "last week / month" means when
+    // the request was submitted, not the appointment. Left unchanged
+    // per the "date filter → الموعد" ask.
     if (timePeriod && !dateFrom && !dateTo) {
       const now = new Date();
       let startDate;
@@ -183,15 +194,21 @@ exports.getAllRegistrations = async (req, res) => {
 
     // Search by name, ID, phone, etc.
     if (search) {
-      whereClause[Op.or] = [
-        { registrationId: { [Op.like]: `%${search}%` } },
-        { '$user.userId$': { [Op.like]: `%${search}%` } },
-        { '$user.firstName$': { [Op.like]: `%${search}%` } },
-        { '$user.lastName$': { [Op.like]: `%${search}%` } },
-        { '$user.name$': { [Op.like]: `%${search}%` } },
-        { '$user.nationalId$': { [Op.like]: `%${search}%` } },
-        { '$user.phoneNumber$': { [Op.like]: `%${search}%` } }
-      ];
+      andConditions.push({
+        [Op.or]: [
+          { registrationId: { [Op.like]: `%${search}%` } },
+          { '$user.userId$': { [Op.like]: `%${search}%` } },
+          { '$user.firstName$': { [Op.like]: `%${search}%` } },
+          { '$user.lastName$': { [Op.like]: `%${search}%` } },
+          { '$user.name$': { [Op.like]: `%${search}%` } },
+          { '$user.nationalId$': { [Op.like]: `%${search}%` } },
+          { '$user.phoneNumber$': { [Op.like]: `%${search}%` } }
+        ]
+      });
+    }
+
+    if (andConditions.length > 0) {
+      whereClause[Op.and] = andConditions;
     }
 
     // Get registrations with pagination
@@ -1299,12 +1316,20 @@ exports.exportToCSV = async (req, res) => {
     if (section) whereClause.fablabSection = section;
     if (applicationType) userWhereClause.applicationType = applicationType;
 
-    // Date range filter — Riyadh-anchored (see getAllRegistrations
-    // comment for the timezone rationale).
+    // Date range filter — matches by APPOINTMENT date (الموعد) so
+    // the CSV export mirrors the on-screen registrations list.
+    // ORs across the three date columns because a registration only
+    // has one set based on its type. See getAllRegistrations for
+    // the full rationale.
     if (startDate || endDate) {
-      whereClause.createdAt = {};
-      if (startDate) whereClause.createdAt[Op.gte] = new Date(`${startDate}T00:00:00.000+03:00`);
-      if (endDate) whereClause.createdAt[Op.lte] = new Date(`${endDate}T23:59:59.999+03:00`);
+      const bounds = {};
+      if (startDate) bounds[Op.gte] = startDate;
+      if (endDate)   bounds[Op.lte] = endDate;
+      whereClause[Op.or] = [
+        { appointmentDate: bounds },
+        { visitDate: bounds },
+        { startDate: bounds }
+      ];
     }
 
     const registrations = await Registration.findAll({
