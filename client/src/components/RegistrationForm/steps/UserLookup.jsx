@@ -267,6 +267,36 @@ const UserLookup = ({ onUserFound, onNewUser }) => {
           <div className="service-card-arrow" aria-hidden="true">{isRTL ? '←' : '→'}</div>
         </button>
 
+        {/* Project Support Request — a new open-ended channel for
+            people asking for funding, tech help, mentorship, or any
+            other kind of support that doesn't fit the beneficiary /
+            visitor / volunteer buckets. Own standalone page because
+            the form needs description + up to 10 file attachments. */}
+        <button
+          type="button"
+          className="service-card service-card--support"
+          onClick={() => navigate('/project-support')}
+          style={{
+            borderColor: '#c4b5fd',
+            background: 'linear-gradient(135deg, rgba(139, 92, 246, 0.04), rgba(109, 40, 217, 0.02))'
+          }}
+        >
+          <div className="service-card-icon" style={{ background: 'linear-gradient(135deg, #8b5cf6, #6d28d9)' }}>
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
+            </svg>
+          </div>
+          <div className="service-card-body">
+            <div className="service-card-title">{isRTL ? 'طلب دعم للمشروع' : 'Project Support Request'}</div>
+            <div className="service-card-description">
+              {isRTL
+                ? 'قدّم طلبك للحصول على دعم مالي، تقني، أو استشاري لمشروعك — أرفق الملفات وستصلك الإجابة خلال 5 أيام عمل'
+                : 'Request funding, technical, or advisory support for your project — attach files and get a decision within 5 working days'}
+            </div>
+          </div>
+          <div className="service-card-arrow" aria-hidden="true">{isRTL ? '←' : '→'}</div>
+        </button>
+
         {/* Workshops */}
         <button
           type="button"

@@ -29,6 +29,8 @@ const PublicAttendanceReport = lazy(() => import('./components/Public/PublicAtte
 const PublicOvertimeApproval = lazy(() => import('./components/Public/PublicOvertimeApproval'));
 const FablabVisitForm = lazy(() => import('./components/FablabVisit/FablabVisitForm'));
 const PublicFablabVisitApproval = lazy(() => import('./components/Public/PublicFablabVisitApproval'));
+const ProjectSupportForm = lazy(() => import('./components/ProjectSupport/ProjectSupportForm'));
+const PublicProjectSupportApproval = lazy(() => import('./components/Public/PublicProjectSupportApproval'));
 const StorePage = lazy(() => import('./components/Store/StorePage'));
 const MyOrdersPage = lazy(() => import('./components/Store/MyOrdersPage'));
 const PrintServicePage = lazy(() => import('./components/Print3D/PrintServicePage'));
@@ -56,7 +58,7 @@ const RouteFallback = () => (
 // Wrapper to conditionally show LanguageSelector (hide on admin/manager/elite pages)
 const ConditionalLanguageSelector = () => {
   const location = useLocation();
-  if (location.pathname === '/admin/login' || location.pathname.startsWith('/manager') || location.pathname.startsWith('/elite') || location.pathname.startsWith('/employee') || location.pathname.startsWith('/workshop') || location.pathname.startsWith('/public/') || location.pathname.startsWith('/fablab-visit') || location.pathname.startsWith('/store') || location.pathname.startsWith('/print-service') || location.pathname.startsWith('/print-quote')) return null;
+  if (location.pathname === '/admin/login' || location.pathname.startsWith('/manager') || location.pathname.startsWith('/elite') || location.pathname.startsWith('/employee') || location.pathname.startsWith('/workshop') || location.pathname.startsWith('/public/') || location.pathname.startsWith('/fablab-visit') || location.pathname.startsWith('/project-support') || location.pathname.startsWith('/store') || location.pathname.startsWith('/print-service') || location.pathname.startsWith('/print-quote')) return null;
   return <LanguageSelector />;
 };
 
@@ -88,6 +90,8 @@ const AppContent = () => {
           <Route path="/public/overtime/:token" element={<PublicOvertimeApproval />} />
           <Route path="/fablab-visit" element={<FablabVisitForm />} />
           <Route path="/public/fablab-visit/:token" element={<PublicFablabVisitApproval />} />
+          <Route path="/project-support" element={<ProjectSupportForm />} />
+          <Route path="/public/project-support/:token" element={<PublicProjectSupportApproval />} />
           <Route path="/store" element={<StorePage />} />
           <Route path="/store/my-orders" element={<MyOrdersPage />} />
           <Route path="/print-service" element={<PrintServicePage />} />

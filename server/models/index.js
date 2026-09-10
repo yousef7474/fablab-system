@@ -76,6 +76,7 @@ const Print3DRequest = require('./Print3DRequest');
 const InstitutionProject = require('./InstitutionProject');
 const VolunteerOpportunityRequest = require('./VolunteerOpportunityRequest');
 const ApprovalArchive = require('./ApprovalArchive');
+const ProjectSupportRequest = require('./ProjectSupportRequest');
 
 MawhbaAttendance.belongsTo(MawhbaStudent, { foreignKey: 'studentId', as: 'student', constraints: false });
 MawhbaStudent.hasMany(MawhbaAttendance, { foreignKey: 'studentId', as: 'attendance', constraints: false });
@@ -842,6 +843,34 @@ const syncDatabase = async () => {
       }
     }
 
+    // Project support requests: sequential number + unique index +
+    // backfill for any legacy rows.
+    try {
+      await sequelize.query(
+        `ALTER TABLE project_support_requests ADD COLUMN IF NOT EXISTS "requestNumber" INTEGER`
+      );
+      await sequelize.query(
+        `UPDATE project_support_requests psr
+            SET "requestNumber" = sub.rn
+           FROM (
+             SELECT "requestId",
+                    ROW_NUMBER() OVER (ORDER BY "createdAt") AS rn
+               FROM project_support_requests
+              WHERE "requestNumber" IS NULL
+           ) sub
+          WHERE psr."requestId" = sub."requestId"`
+      );
+      try {
+        await sequelize.query(
+          `CREATE UNIQUE INDEX IF NOT EXISTS psr_number_uniq ON project_support_requests ("requestNumber")`
+        );
+      } catch (_) { /* index may already exist */ }
+    } catch (migrationError) {
+      if (!/does not exist/i.test(migrationError.message)) {
+        console.log('project_support_requests migration note:', migrationError.message);
+      }
+    }
+
     // Volunteer opportunity requests: sequential number + unique index.
     try {
       await sequelize.query(
@@ -1137,5 +1166,6 @@ module.exports = {
   InstitutionProject,
   VolunteerOpportunityRequest,
   ApprovalArchive,
+  ProjectSupportRequest,
   syncDatabase
 };

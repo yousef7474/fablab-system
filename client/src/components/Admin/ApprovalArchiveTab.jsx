@@ -11,8 +11,10 @@ import api from '../../config/api';
 // server/controllers/approvalArchiveController.js.
 
 const TYPE_LABELS = {
-  volunteer_opportunity: { ar: 'فرصة تطوعية', en: 'Volunteer Opportunity', color: '#16a34a', bg: '#f0fdf4' },
-  overtime:              { ar: 'ساعات إضافية', en: 'Overtime',              color: '#6d28d9', bg: '#faf5ff' }
+  volunteer_opportunity: { ar: 'فرصة تطوعية',    en: 'Volunteer Opportunity', color: '#16a34a', bg: '#f0fdf4' },
+  overtime:              { ar: 'ساعات إضافية',   en: 'Overtime',              color: '#6d28d9', bg: '#faf5ff' },
+  fablab_visit:          { ar: 'زيارة فاب لاب',  en: 'FabLab Visit',          color: '#0ea5e9', bg: '#f0f9ff' },
+  project_support:       { ar: 'طلب دعم مشروع', en: 'Project Support',       color: '#8b5cf6', bg: '#f5f3ff' }
 };
 
 const STATUS_LABELS = {

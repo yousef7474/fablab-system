@@ -9,6 +9,7 @@ const discountCouponController = require('../controllers/discountCouponControlle
 const storeCustomerController = require('../controllers/storeCustomerController');
 const print3DController = require('../controllers/print3DController');
 const vorController = require('../controllers/volunteerOpportunityRequestController');
+const psrController = require('../controllers/projectSupportRequestController');
 const customerAuth = require('../middleware/customerAuth');
 
 // PUBLIC — no auth middleware, no login required.
@@ -57,5 +58,13 @@ router.get('/print3d/:id/invoice',         print3DController.publicInvoiceHtml);
 // Volunteer opportunity request — manager approval via emailed link.
 router.get('/volunteer-opportunity/:token',        vorController.publicGetByToken);
 router.post('/volunteer-opportunity/:token/decide', vorController.publicDecide);
+
+// Project Support Request — public submit + manager approval via
+// emailed token. Also a per-file download route so the manager can
+// pull attached files from the review page without pre-loading them.
+router.post('/project-support/submit',                     psrController.publicCreate);
+router.get('/project-support/:token',                      psrController.publicGetByToken);
+router.get('/project-support/:token/file/:index',          psrController.publicDownloadFile);
+router.post('/project-support/:token/decide',              psrController.publicDecide);
 
 module.exports = router;

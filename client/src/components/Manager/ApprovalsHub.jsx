@@ -5,6 +5,7 @@ import OvertimeApprovals from './OvertimeApprovals';
 import FablabVisitApprovals from './FablabVisitApprovals';
 import VolunteerOpportunityApprovals from './VolunteerOpportunityApprovals';
 import ApprovalArchiveTab from '../Admin/ApprovalArchiveTab';
+import ProjectSupportApprovals from './ProjectSupportApprovals';
 import './Approvals.css';
 
 // Segmented switcher for the manager's Approvals tab. Instead of
@@ -18,6 +19,7 @@ const TABS = [
   { id: 'overtime',  ar: 'الساعات الإضافية',  en: 'Overtime',           icon: '🕓', color: '#d97706', endpoint: '/overtime/pending' },
   { id: 'visit',     ar: 'زيارات فاب لاب',    en: 'FabLab Visits',      icon: '🏢', color: '#0ea5e9', endpoint: '/fablab-visits/pending' },
   { id: 'volunteer', ar: 'الفرص التطوعية',    en: 'Volunteer',          icon: '🤝', color: '#16a34a', endpoint: '/volunteer-opportunity-requests/pending' },
+  { id: 'support',   ar: 'طلبات الدعم',       en: 'Support Requests',   icon: '💜', color: '#8b5cf6', endpoint: '/project-support/pending' },
   // Archive isn't a "queue" — it's the audit trail of every request
   // ever sent to the manager, so no pending-count endpoint. Rendered
   // as an ordinary tab that shows the historical list w/ reprint.
@@ -113,6 +115,7 @@ const ApprovalsHub = () => {
         {active === 'overtime'  && <OvertimeApprovals />}
         {active === 'visit'     && <FablabVisitApprovals />}
         {active === 'volunteer' && <VolunteerOpportunityApprovals />}
+        {active === 'support'   && <ProjectSupportApprovals />}
         {active === 'archive'   && <ApprovalArchiveTab />}
       </div>
     </div>
