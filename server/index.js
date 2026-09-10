@@ -51,7 +51,7 @@ const { seedInitialCustomers } = require('./utils/seedCustomers');
 const { backfillApprovalArchive } = require('./utils/backfillApprovalArchive');
 const { startTaskReminderScheduler } = require('./utils/taskReminderScheduler');
 const { startEliteCourseScheduler } = require('./utils/eliteCourseScheduler');
-const { processWeeklyCredits } = require('./controllers/activityController');
+const { processWeeklyCredits, reconcileEvaluationCriterion } = require('./controllers/activityController');
 
 const app = express();
 
@@ -192,7 +192,23 @@ const startServer = async () => {
     startTaskReminderScheduler();
     startEliteCourseScheduler();
 
-    // Weekly activity credit scheduler - runs every Sunday at 23:00
+    // Boot-time catch-up: award any missed weekly credits (server may
+    // have been down over a Sunday) and reconcile the cat9_c1
+    // evaluation criterion against actual credit counts. Both are
+    // idempotent so running on every boot is safe.
+    setTimeout(async () => {
+      try {
+        const credited = await processWeeklyCredits({ weeksBack: 6 });
+        const reconciled = await reconcileEvaluationCriterion();
+        console.log(`📊 Boot weekly-credit catch-up: ${credited} awarded, ${reconciled} evaluations reconciled`);
+      } catch (e) {
+        console.warn('Boot weekly-credit catch-up skipped:', e.message);
+      }
+    }, 15_000);
+
+    // Weekly activity credit scheduler - runs every Sunday at 23:00.
+    // processWeeklyCredits looks 4 weeks back on each call, so a
+    // single missed run gets caught up on the next tick.
     const scheduleWeeklyCredits = () => {
       const now = new Date();
       const nextSunday = new Date(now);

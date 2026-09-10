@@ -301,31 +301,42 @@ exports.getAllEmployeeStats = async (req, res) => {
   }
 };
 
-// Weekly auto-credit: award 1 point to employees who reached 60% (14 hours)
-// Called by scheduler every Sunday
-exports.processWeeklyCredits = async () => {
+// Weekly auto-credit: award 1 point to employees who reached the
+// weekly target hours. Called by the Sunday-23:00 scheduler AND at
+// boot (to catch up any weeks the server was down). Also mirrors
+// each credit into the evaluation's cat9_c1 criterion — that used to
+// only happen when the employee visited their dashboard, so credits
+// awarded here would silently miss the evaluation update.
+exports.processWeeklyCredits = async ({ weeksBack = 4 } = {}) => {
   try {
-    const today = new Date();
-    const weekAgo = new Date(today);
-    weekAgo.setDate(weekAgo.getDate() - 6);
-    const weekStart = weekAgo.toISOString().split('T')[0];
-    const weekEnd = today.toISOString().split('T')[0];
-
     const employees = await Employee.findAll({ where: { isActive: true } });
+    const today = new Date();
+    let totalCredited = 0;
 
-    let credited = 0;
-    for (const emp of employees) {
-      const activities = await EmployeeActivity.findAll({
-        where: {
-          employeeId: emp.employeeId,
-          date: { [Op.between]: [weekStart, weekEnd] }
-        }
-      });
+    // Walk the last `weeksBack` calendar weeks (Sun→Sat). Each iter
+    // computes bounds independently so a downed server can catch up.
+    for (let offset = 0; offset < weeksBack; offset++) {
+      const anchor = new Date(today);
+      anchor.setDate(today.getDate() - offset * 7);
+      const day = anchor.getDay();          // 0=Sun
+      const start = new Date(anchor);
+      start.setDate(anchor.getDate() - day);
+      start.setHours(0, 0, 0, 0);
+      const end = new Date(start);
+      end.setDate(start.getDate() + 6);
+      const weekStart = start.toISOString().split('T')[0];
+      const weekEnd = end.toISOString().split('T')[0];
 
-      const totalMinutes = activities.reduce((sum, a) => sum + a.totalMinutes, 0);
+      for (const emp of employees) {
+        const activities = await EmployeeActivity.findAll({
+          where: {
+            employeeId: emp.employeeId,
+            date: { [Op.between]: [weekStart, weekEnd] }
+          }
+        });
+        const totalMinutes = activities.reduce((sum, a) => sum + a.totalMinutes, 0);
+        if (totalMinutes < WEEKLY_TARGET_MINUTES) continue;
 
-      if (totalMinutes >= WEEKLY_TARGET_MINUTES) {
-        // Check if already credited this week
         const existingCredit = await Rating.findOne({
           where: {
             employeeId: emp.employeeId,
@@ -333,27 +344,110 @@ exports.processWeeklyCredits = async () => {
             ratingDate: { [Op.between]: [weekStart, weekEnd] }
           }
         });
+        if (existingCredit) continue;
 
-        if (!existingCredit) {
-          await Rating.create({
-            employeeId: emp.employeeId,
-            createdById: null,
-            type: 'award',
-            points: 1,
-            criteria: 'Weekly Dashboard Activity',
-            notes: `Auto-awarded: ${(totalMinutes / 60).toFixed(1)} hours on dashboard (target: ${WEEKLY_TARGET_HOURS}h)`,
-            ratingDate: today
-          });
-          credited++;
-          console.log(`Auto-credited 1 point to ${emp.name} for weekly dashboard activity (${(totalMinutes / 60).toFixed(1)}h)`);
-        }
+        await Rating.create({
+          employeeId: emp.employeeId,
+          createdById: null,
+          type: 'award',
+          points: 1,
+          criteria: 'Weekly Dashboard Activity',
+          notes: `Auto-awarded: ${(totalMinutes / 60).toFixed(1)} hours on dashboard (target: ${WEEKLY_TARGET_HOURS}h, week: ${weekStart}→${weekEnd})`,
+          ratingDate: end  // stamp to the end of the credited week
+        });
+        // Mirror into the evaluation criterion. Skipped previously —
+        // that was the whole reason cat9_c1 stayed at 0 for people
+        // getting credited by the scheduler.
+        await syncEvaluationCriterion(emp.employeeId);
+        totalCredited++;
+        console.log(`Auto-credited 1 point to ${emp.name} for weekly dashboard activity (${(totalMinutes / 60).toFixed(1)}h, week ${weekStart}→${weekEnd})`);
       }
     }
 
-    console.log(`Weekly activity credits processed: ${credited} employees credited`);
-    return credited;
+    if (totalCredited > 0) {
+      console.log(`📊 Weekly activity credits processed: ${totalCredited} credited (looked back ${weeksBack} weeks)`);
+    }
+    return totalCredited;
   } catch (error) {
     console.error('Process weekly credits error:', error);
+    return 0;
+  }
+};
+
+// Boot-time reconciliation: make sure every employee's cat9_c1
+// evaluation score is at least equal to their earned
+// "Weekly Dashboard Activity" credit count. Fixes historical rows
+// where the credit was created (via the old scheduler path) but the
+// evaluation criterion was never incremented.
+exports.reconcileEvaluationCriterion = async () => {
+  try {
+    const employees = await Employee.findAll({ where: { isActive: true } });
+    let updated = 0;
+    for (const emp of employees) {
+      const creditCount = await Rating.count({
+        where: {
+          employeeId: emp.employeeId,
+          criteria: 'Weekly Dashboard Activity',
+          type: 'award'
+        }
+      });
+      if (creditCount === 0) continue;
+
+      const evaluation = await EmployeeEvaluation.findOne({ where: { employeeId: emp.employeeId } });
+      const currentScore = evaluation ? (parseFloat(evaluation.scores?.cat9_c1) || 0) : 0;
+      if (creditCount <= currentScore) continue;
+
+      if (evaluation) {
+        const scores = { ...(evaluation.scores || {}) };
+        scores.cat9_c1 = Math.min(50, creditCount);
+        evaluation.scores = scores;
+        const WEIGHTS = {
+          cat1: { c1: 2, c2: 2, c3: 2, c4: 2 },
+          cat2: { c1: 4, c2: 4, c3: 4, c4: 4 },
+          cat3: { c1: 2, c2: 2, c3: 2, c4: 2 },
+          cat4: { c1: 6, c2: 6 },
+          cat5: { c1: 4 },
+          cat6: { c1: 3, c2: 3, c3: 3, c4: 3 },
+          cat7: { c1: 4, c2: 4, c3: 4, c4: 4 },
+          cat8: { c1: 3, c2: 3, c3: 3, c4: 3 },
+          cat9: { c1: 3, c2: 3, c3: 3, c4: 3 },
+        };
+        let total = 0, bonus = 0;
+        for (const [catKey, criteria] of Object.entries(WEIGHTS)) {
+          for (const [critKey, weight] of Object.entries(criteria)) {
+            const raw = parseFloat(scores[`${catKey}_${critKey}`]) || 0;
+            total += (Math.min(raw, 50) / 50) * weight;
+            if (raw > 50) bonus += raw - 50;
+          }
+        }
+        evaluation.totalScore = parseFloat(total.toFixed(2));
+        evaluation.grade = parseFloat(((total / 100) * 5).toFixed(2));
+        evaluation.bonusPoints = parseFloat(bonus.toFixed(2));
+        await evaluation.save();
+      } else {
+        const capped = Math.min(50, creditCount);
+        const total = (Math.min(capped, 50) / 50) * 3;
+        await EmployeeEvaluation.create({
+          employeeId: emp.employeeId,
+          createdById: null,
+          scores: { cat9_c1: capped },
+          qualitative: {},
+          totalScore: parseFloat(total.toFixed(2)),
+          grade: parseFloat(((total / 100) * 5).toFixed(2)),
+          bonusPoints: 0,
+          period: null,
+          notes: 'Auto-generated from weekly activity backfill',
+          evaluationDate: new Date()
+        });
+      }
+      updated++;
+    }
+    if (updated > 0) {
+      console.log(`🔁 Evaluation cat9_c1 reconciled for ${updated} employee(s)`);
+    }
+    return updated;
+  } catch (error) {
+    console.error('Reconcile evaluation criterion error:', error);
     return 0;
   }
 };
