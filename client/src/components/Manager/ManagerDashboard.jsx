@@ -4399,7 +4399,7 @@ const ManagerDashboard = () => {
                         <p>{isRTL ? 'لا توجد مهام قادمة' : 'No upcoming tasks'}</p>
                       </div>
                     ) : (
-                      <div className="sv2-feed">
+                      <div className="sv2-feed-list">
                         {getUpcomingTasks().map(task => (
                           <div
                             key={task.id}
@@ -4457,7 +4457,7 @@ const ManagerDashboard = () => {
                     >×</button>
                   </div>
                   <div className="sv2-panel-body">
-                    <div className="sv2-feed">
+                    <div className="sv2-feed-list">
                       {getEventsForDay(selectedCalendarDay).map(event => (
                         <div
                           key={event.id}
