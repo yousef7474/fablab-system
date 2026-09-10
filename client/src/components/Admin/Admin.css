@@ -6704,12 +6704,43 @@
 }
 .sv2-selday-close:hover { background: var(--sv2-red); color: #fff; }
 
-/* Fully-featured feed item (for selected day: shows everything) */
+/* Fully-featured feed item (selected-day + upcoming feeds). The
+   compact 4px+1fr grid used by the base .sv2-feed-item clamped
+   the body's width and hid meta chips + action controls. The
+   .detailed variant opts out of the grid and lets the body render
+   naturally at full width. Duplicated from ScheduleV2.css because
+   AdminDashboard.jsx doesn't import that file. */
 .sv2-feed-item.detailed {
+  display: block;
   padding: 14px 16px;
+  border-inline-start-width: 4px;
+  border-inline-start-style: solid;
+  overflow: visible;
 }
+.sv2-feed-item.detailed .sv2-feed-accent { display: none; }
 .sv2-feed-item.detailed .sv2-feed-body {
-  gap: 6px;
+  gap: 8px;
+  min-width: 0;
+}
+.sv2-feed-item.detailed .sv2-feed-title {
+  white-space: normal;
+  text-overflow: unset;
+  overflow: visible;
+  font-size: 1rem;
+}
+.sv2-feed-item.detailed .sv2-feed-meta {
+  font-size: 0.78rem;
+}
+.sv2-feed-item.detailed .sv2-feed-meta .sv2-chip {
+  background: var(--card-bg-secondary, rgba(148,163,184,0.10));
+  color: var(--text-primary);
+  padding: 4px 10px;
+  font-size: 0.72rem;
+}
+.sv2-feed-item.detailed .sv2-feed-actions {
+  padding-top: 6px;
+  border-top: 1px dashed var(--border-color);
+  margin-top: 4px !important;
 }
 
 /* ---------- Responsive ---------- */
