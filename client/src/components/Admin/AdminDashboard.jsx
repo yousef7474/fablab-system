@@ -4243,50 +4243,37 @@ const AdminDashboard = () => {
     try {
       const selectedEmployee = employees.find(e => e.employeeId === employeeTaskForm.employeeId);
 
-      // Generate array of dates if multiple days selected
-      const dates = [];
+      // Validate multi-day range if the "range" toggle is on.
+      let dueDateEnd = null;
       if (employeeTaskForm.isMultipleDays && employeeTaskForm.dueDateEnd) {
         const startDate = new Date(employeeTaskForm.dueDate);
         const endDate = new Date(employeeTaskForm.dueDateEnd);
-
-        // Validate date range
         if (endDate < startDate) {
           toast.error(isRTL ? 'تاريخ النهاية يجب أن يكون بعد تاريخ البداية' : 'End date must be after start date');
           setIsSubmittingTask(false);
           return;
         }
-
-        // Generate all dates in range
-        const currentDate = new Date(startDate);
-        while (currentDate <= endDate) {
-          dates.push(currentDate.toISOString().split('T')[0]);
-          currentDate.setDate(currentDate.getDate() + 1);
-        }
-      } else {
-        dates.push(employeeTaskForm.dueDate);
+        dueDateEnd = employeeTaskForm.dueDateEnd;
       }
 
-      // Create task for each date
-      const taskPromises = dates.map(date =>
-        api.post('/tasks', {
-          title: employeeTaskForm.title,
-          description: employeeTaskForm.description,
-          employeeId: employeeTaskForm.employeeId,
-          dueDate: date,
-          dueTime: employeeTaskForm.dueTime || null,
-          dueTimeEnd: employeeTaskForm.dueTimeEnd || null,
-          priority: employeeTaskForm.priority,
-          blocksCalendar: employeeTaskForm.blocksCalendar,
-          section: selectedEmployee?.section || ''
-        })
-      );
+      // ONE task per employee — the server stores the range as
+      // dueDate + dueDateEnd, so the employee sees a single mission
+      // spanning the period and receives a single assignment email
+      // (not one per calendar day).
+      await api.post('/tasks', {
+        title: employeeTaskForm.title,
+        description: employeeTaskForm.description,
+        employeeId: employeeTaskForm.employeeId,
+        dueDate: employeeTaskForm.dueDate,
+        dueDateEnd,
+        dueTime: employeeTaskForm.dueTime || null,
+        dueTimeEnd: employeeTaskForm.dueTimeEnd || null,
+        priority: employeeTaskForm.priority,
+        blocksCalendar: employeeTaskForm.blocksCalendar,
+        section: selectedEmployee?.section || ''
+      });
 
-      await Promise.all(taskPromises);
-
-      const successMsg = dates.length > 1
-        ? (isRTL ? `تم إضافة ${dates.length} مهام بنجاح` : `${dates.length} tasks added successfully`)
-        : (isRTL ? 'تم إضافة المهمة بنجاح' : 'Task added successfully');
-      toast.success(successMsg);
+      toast.success(isRTL ? 'تم إضافة المهمة بنجاح' : 'Task added successfully');
 
       // Reset form
       setEmployeeTaskForm({
