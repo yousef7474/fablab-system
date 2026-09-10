@@ -923,3 +923,8 @@ exports.notifyVisitor = async (req, res) => {
     res.status(500).json({ message: 'Server error', detail: err.message });
   }
 };
+
+// Exposed for the archive backfill (server/utils/backfillApprovalArchive.js).
+exports._buildManagerEmail = _buildManagerEmail;
+exports._formatVisitNumber = formatVisitNumber;
+exports._publicOrigin = _publicOrigin;

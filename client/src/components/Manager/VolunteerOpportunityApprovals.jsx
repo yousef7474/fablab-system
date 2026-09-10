@@ -20,8 +20,10 @@ const VolunteerOpportunityApprovals = () => {
   const [loading, setLoading] = useState(false);
   const [expanded, setExpanded] = useState(() => new Set());
   const [busy, setBusy] = useState(() => new Set());
-  const [rejectingId, setRejectingId] = useState(null);
-  const [rejectNote, setRejectNote] = useState('');
+  // Shared decision panel — approve and reject both capture an
+  // optional / required note. Approve keeps the auto-print behavior.
+  const [deciding, setDeciding] = useState(null); // { id, mode: 'approve' | 'reject' }
+  const [note, setNote] = useState('');
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -42,25 +44,6 @@ const VolunteerOpportunityApprovals = () => {
     return n;
   });
 
-  const approve = async (row) => {
-    setBusy(prev => new Set(prev).add(row.requestId));
-    try {
-      const { data } = await api.post(`/volunteer-opportunity-requests/${row.requestId}/manager-approve`);
-      toast.success(isRTL
-        ? '✅ تم الاعتماد — سيتم فتح صفحة الطباعة'
-        : '✅ Approved — opening the printable document');
-      // Auto-open the printable document with the manager's signature
-      // line so the manager can print/save-PDF right away.
-      const approvedRow = data?.row || { ...row, approvalStatus: 'approved', approvedAt: new Date().toISOString() };
-      setTimeout(() => { try { printVolunteerOpportunity(approvedRow); } catch {} }, 400);
-      setRows(prev => prev.filter(r => r.requestId !== row.requestId));
-    } catch (err) {
-      toast.error(err?.response?.data?.message || (isRTL ? 'فشل الاعتماد' : 'Approve failed'));
-    } finally {
-      setBusy(prev => { const n = new Set(prev); n.delete(row.requestId); return n; });
-    }
-  };
-
   // Manual print — useful if the manager blocks the popup on the
   // first attempt and needs to retry.
   const reprint = (row) => printVolunteerOpportunity({
@@ -69,20 +52,59 @@ const VolunteerOpportunityApprovals = () => {
     approvedAt: row.approvedAt || new Date().toISOString()
   });
 
-  const openReject = (row) => { setRejectingId(row.requestId); setRejectNote(''); };
-  const doReject = async () => {
-    if (!rejectNote.trim()) return toast.error(isRTL ? 'سبب الرفض مطلوب' : 'Reason required');
-    setBusy(prev => new Set(prev).add(rejectingId));
+  const openDecide = (row, mode) => { setDeciding({ id: row.requestId, mode }); setNote(''); };
+  const cancelDecide = () => { setDeciding(null); setNote(''); };
+
+  const submitDecision = async () => {
+    if (!deciding) return;
+    const trimmed = note.trim();
+    if (deciding.mode === 'reject' && !trimmed) {
+      return toast.error(isRTL ? 'سبب الرفض مطلوب' : 'Reason required');
+    }
+    setBusy(prev => new Set(prev).add(deciding.id));
+    const currentRow = rows.find(r => r.requestId === deciding.id);
     try {
-      await api.post(`/volunteer-opportunity-requests/${rejectingId}/manager-reject`, { note: rejectNote.trim() });
-      toast.success(isRTL ? 'تم رفض الفرصة التطوعية' : 'Opportunity rejected');
-      setRows(prev => prev.filter(r => r.requestId !== rejectingId));
-      setRejectingId(null);
-      setRejectNote('');
+      const endpoint = deciding.mode === 'approve' ? 'manager-approve' : 'manager-reject';
+      const { data } = await api.post(
+        `/volunteer-opportunity-requests/${deciding.id}/${endpoint}`,
+        { note: trimmed || undefined }
+      );
+      if (deciding.mode === 'approve') {
+        toast.success(isRTL
+          ? '✅ تم الاعتماد — سيتم فتح صفحة الطباعة'
+          : '✅ Approved — opening the printable document');
+        const approvedRow = data?.row || {
+          ...(currentRow || {}),
+          approvalStatus: 'approved',
+          approvedAt: new Date().toISOString(),
+          managerNote: trimmed || null
+        };
+        setTimeout(() => { try { printVolunteerOpportunity(approvedRow); } catch {} }, 400);
+      } else {
+        toast.success(isRTL ? 'تم رفض الفرصة التطوعية' : 'Opportunity rejected');
+      }
+      setRows(prev => prev.filter(r => r.requestId !== deciding.id));
+      cancelDecide();
     } catch (err) {
-      toast.error(err?.response?.data?.message || (isRTL ? 'فشل الرفض' : 'Reject failed'));
+      toast.error(err?.response?.data?.message || (isRTL ? 'تعذّر حفظ القرار' : 'Failed to save'));
     } finally {
-      setBusy(prev => { const n = new Set(prev); n.delete(rejectingId); return n; });
+      setBusy(prev => { const n = new Set(prev); n.delete(deciding.id); return n; });
+    }
+  };
+
+  const deleteRow = async (row) => {
+    if (!window.confirm(isRTL
+      ? `حذف الفرصة التطوعية "${row.title || ''}" نهائياً؟`
+      : `Delete volunteer opportunity "${row.title || ''}" permanently?`)) return;
+    setBusy(prev => new Set(prev).add(row.requestId));
+    try {
+      await api.delete(`/volunteer-opportunity-requests/${row.requestId}`);
+      toast.success(isRTL ? 'تم حذف الطلب' : 'Request deleted');
+      setRows(prev => prev.filter(x => x.requestId !== row.requestId));
+    } catch (err) {
+      toast.error(err?.response?.data?.message || (isRTL ? 'تعذّر الحذف' : 'Delete failed'));
+    } finally {
+      setBusy(prev => { const n = new Set(prev); n.delete(row.requestId); return n; });
     }
   };
 
@@ -112,6 +134,7 @@ const VolunteerOpportunityApprovals = () => {
           {rows.map(r => {
             const isExpanded = expanded.has(r.requestId);
             const isBusy = busy.has(r.requestId);
+            const isDeciding = deciding?.id === r.requestId;
             return (
               <div key={r.requestId} className="ap-card" style={{ borderInlineStartColor: '#16a34a' }}>
                 <div className="ap-card-top">
@@ -215,26 +238,50 @@ const VolunteerOpportunityApprovals = () => {
                   </div>
                 )}
 
-                {rejectingId === r.requestId ? (
-                  <div className="ap-reject-panel">
-                    <div className="ap-reject-label">{isRTL ? 'سبب الرفض *' : 'Rejection reason *'}</div>
+                {isDeciding ? (
+                  <div className="ap-reject-panel" style={{
+                    background: deciding.mode === 'approve' ? '#ecfdf5' : '#fef2f2',
+                    borderColor: deciding.mode === 'approve' ? '#a7f3d0' : '#fecaca'
+                  }}>
+                    <div className="ap-reject-label" style={{ color: deciding.mode === 'approve' ? '#065f46' : '#991b1b' }}>
+                      {deciding.mode === 'approve'
+                        ? (isRTL ? 'ملاحظة على الاعتماد (اختيارية)' : 'Approval note (optional)')
+                        : (isRTL ? 'سبب الرفض *' : 'Rejection reason *')}
+                    </div>
                     <textarea
-                      value={rejectNote}
-                      onChange={(e) => setRejectNote(e.target.value)}
-                      rows={2}
-                      placeholder={isRTL ? 'اذكر سبب رفض الفرصة التطوعية بوضوح...' : 'Explain why this opportunity is being rejected...'}
+                      value={note}
+                      onChange={(e) => setNote(e.target.value)}
+                      rows={3}
+                      placeholder={deciding.mode === 'approve'
+                        ? (isRTL ? 'ملاحظة تسجل مع اعتماد الفرصة...' : 'A note recorded with the approval...')
+                        : (isRTL ? 'اذكر سبب الرفض بوضوح...' : 'Explain why...')}
                     />
                     <div className="ap-reject-actions">
-                      <button className="ap-btn ap-btn--ghost" onClick={() => { setRejectingId(null); setRejectNote(''); }}>
+                      <button className="ap-btn ap-btn--ghost" onClick={cancelDecide}>
                         {isRTL ? 'إلغاء' : 'Cancel'}
                       </button>
-                      <button className="ap-btn ap-btn--danger" onClick={doReject} disabled={isBusy}>
-                        {isBusy ? '…' : (isRTL ? 'تأكيد الرفض' : 'Confirm reject')}
+                      <button
+                        className={`ap-btn ${deciding.mode === 'approve' ? 'ap-btn--approve' : 'ap-btn--danger'}`}
+                        onClick={submitDecision}
+                        disabled={isBusy}
+                      >
+                        {isBusy ? '…' : (deciding.mode === 'approve'
+                          ? (isRTL ? '✓ اعتماد وطباعة' : '✓ Approve & Print')
+                          : (isRTL ? 'تأكيد الرفض' : 'Confirm reject'))}
                       </button>
                     </div>
                   </div>
                 ) : (
                   <div className="ap-actions">
+                    <button
+                      className="ap-btn"
+                      style={{ background: '#f1f5f9', color: '#475569', borderColor: '#cbd5e1' }}
+                      onClick={() => deleteRow(r)}
+                      disabled={isBusy}
+                      title={isRTL ? 'حذف الطلب نهائياً' : 'Delete permanently'}
+                    >
+                      🗑 {isRTL ? 'حذف' : 'Delete'}
+                    </button>
                     <button
                       className="ap-btn ap-btn--ghost"
                       onClick={() => reprint(r)}
@@ -242,10 +289,10 @@ const VolunteerOpportunityApprovals = () => {
                     >
                       👁 {isRTL ? 'معاينة الوثيقة' : 'Preview doc'}
                     </button>
-                    <button className="ap-btn ap-btn--reject" onClick={() => openReject(r)} disabled={isBusy}>
+                    <button className="ap-btn ap-btn--reject" onClick={() => openDecide(r, 'reject')} disabled={isBusy}>
                       ✕ {isRTL ? 'رفض' : 'Reject'}
                     </button>
-                    <button className="ap-btn ap-btn--approve" onClick={() => approve(r)} disabled={isBusy}>
+                    <button className="ap-btn ap-btn--approve" onClick={() => openDecide(r, 'approve')} disabled={isBusy}>
                       {isBusy ? '…' : (isRTL ? '✓ اعتماد وطباعة' : '✓ Approve & Print')}
                     </button>
                   </div>

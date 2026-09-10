@@ -267,6 +267,44 @@
   border-top: 1px solid var(--border-color, #f1f5f9);
 }
 
+/* Detail-cards wrapper — each request field group lives inside a
+   labelled card for clarity. Cards stack on narrow screens. */
+.ap-detail-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 12px;
+  margin: 14px 0 12px;
+}
+.ap-detail-card {
+  background: #fff;
+  border: 1px solid var(--border-color, #e5e7eb);
+  border-radius: 12px;
+  padding: 14px 16px 12px;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+}
+.ap-detail-card-title {
+  font-size: 11px;
+  font-weight: 800;
+  color: #0ea5e9;
+  letter-spacing: 1.2px;
+  text-transform: uppercase;
+  margin-bottom: 10px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid #f1f5f9;
+}
+.ap-detail-card .ap-kv-grid {
+  margin: 0;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 8px;
+}
+.ap-detail-card .ap-kv {
+  background: #f8fafc;
+  border-color: #e2e8f0;
+  padding: 10px 12px;
+}
+.ap-detail-card .ap-kv-label { margin-bottom: 3px; }
+.ap-detail-card .ap-kv-value { font-size: 13.5px; }
+
 /* KV grid */
 .ap-kv-grid {
   display: grid;

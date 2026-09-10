@@ -125,6 +125,23 @@ const ProjectSupportApprovals = () => {
     setDeciding({ id: row.requestId, mode });
     setResponse('');
   };
+
+  const deleteRow = async (row) => {
+    const label = row.projectTitle || `${row.firstName || ''} ${row.lastName || ''}`.trim();
+    if (!window.confirm(isRTL
+      ? `حذف طلب الدعم "${label}" نهائياً؟ لا يمكن التراجع.`
+      : `Delete support request "${label}" permanently? This cannot be undone.`)) return;
+    setBusy(prev => new Set(prev).add(row.requestId));
+    try {
+      await api.delete(`/project-support/${row.requestId}`);
+      toast.success(isRTL ? 'تم حذف الطلب' : 'Request deleted');
+      setRows(prev => prev.filter(x => x.requestId !== row.requestId));
+    } catch (err) {
+      toast.error(err?.response?.data?.message || (isRTL ? 'تعذّر الحذف' : 'Delete failed'));
+    } finally {
+      setBusy(prev => { const n = new Set(prev); n.delete(row.requestId); return n; });
+    }
+  };
   const submitDecide = async () => {
     if (!deciding) return;
     if (!response.trim()) {
@@ -215,14 +232,41 @@ const ProjectSupportApprovals = () => {
 
                 {isExpanded && (
                   <div className="ap-body">
-                    <div className="ap-kv-grid">
-                      <div className="ap-kv">
-                        <div className="ap-kv-label">{isRTL ? 'رقم الهوية' : 'National ID'}</div>
-                        <div className="ap-kv-value" dir="ltr">{r.nationalId || '—'}</div>
+                    {/* Detail cards — every field, grouped */}
+                    <div className="ap-detail-cards">
+                      <div className="ap-detail-card">
+                        <div className="ap-detail-card-title" style={{ color: '#8b5cf6' }}>
+                          {isRTL ? 'بيانات مقدم الطلب' : 'Requester'}
+                        </div>
+                        <div className="ap-kv-grid">
+                          <div className="ap-kv"><div className="ap-kv-label">{isRTL ? 'الاسم' : 'Name'}</div><div className="ap-kv-value">{r.firstName} {r.lastName || ''}</div></div>
+                          <div className="ap-kv"><div className="ap-kv-label">{isRTL ? 'رقم الهوية' : 'National ID'}</div><div className="ap-kv-value" dir="ltr">{r.nationalId || '—'}</div></div>
+                          {r.age && <div className="ap-kv"><div className="ap-kv-label">{isRTL ? 'العمر' : 'Age'}</div><div className="ap-kv-value">{r.age}</div></div>}
+                          {r.city && <div className="ap-kv"><div className="ap-kv-label">{isRTL ? 'المدينة' : 'City'}</div><div className="ap-kv-value">{r.city}</div></div>}
+                          {r.nationality && <div className="ap-kv"><div className="ap-kv-label">{isRTL ? 'الجنسية' : 'Nationality'}</div><div className="ap-kv-value">{r.nationality}</div></div>}
+                        </div>
                       </div>
-                      {r.age && <div className="ap-kv"><div className="ap-kv-label">{isRTL ? 'العمر' : 'Age'}</div><div className="ap-kv-value">{r.age}</div></div>}
-                      {r.city && <div className="ap-kv"><div className="ap-kv-label">{isRTL ? 'المدينة' : 'City'}</div><div className="ap-kv-value">{r.city}</div></div>}
-                      {r.nationality && <div className="ap-kv"><div className="ap-kv-label">{isRTL ? 'الجنسية' : 'Nationality'}</div><div className="ap-kv-value">{r.nationality}</div></div>}
+
+                      <div className="ap-detail-card">
+                        <div className="ap-detail-card-title" style={{ color: '#8b5cf6' }}>
+                          {isRTL ? 'التواصل' : 'Contact'}
+                        </div>
+                        <div className="ap-kv-grid">
+                          <div className="ap-kv"><div className="ap-kv-label">{isRTL ? 'الجوال' : 'Phone'}</div><div className="ap-kv-value" dir="ltr">{r.phoneNumber || '—'}</div></div>
+                          <div className="ap-kv"><div className="ap-kv-label">{isRTL ? 'البريد' : 'Email'}</div><div className="ap-kv-value" dir="ltr">{r.email || '—'}</div></div>
+                        </div>
+                      </div>
+
+                      <div className="ap-detail-card">
+                        <div className="ap-detail-card-title" style={{ color: '#8b5cf6' }}>
+                          {isRTL ? 'سجل الطلب' : 'Request Log'}
+                        </div>
+                        <div className="ap-kv-grid">
+                          <div className="ap-kv"><div className="ap-kv-label">{isRTL ? 'رقم الطلب' : 'Number'}</div><div className="ap-kv-value">{fmtReqNo(r.requestNumber)}</div></div>
+                          <div className="ap-kv"><div className="ap-kv-label">{isRTL ? 'أُنشئ في' : 'Created'}</div><div className="ap-kv-value" dir="ltr">{fmtWhen(r.createdAt)}</div></div>
+                          <div className="ap-kv"><div className="ap-kv-label">{isRTL ? 'أُرسل للاعتماد' : 'Sent'}</div><div className="ap-kv-value" dir="ltr">{fmtWhen(r.sentForApprovalAt)}</div></div>
+                        </div>
+                      </div>
                     </div>
 
                     <div className="ap-block">
@@ -310,6 +354,15 @@ const ProjectSupportApprovals = () => {
                   </div>
                 ) : (
                   <div className="ap-actions">
+                    <button
+                      className="ap-btn"
+                      style={{ background: '#f1f5f9', color: '#475569', borderColor: '#cbd5e1' }}
+                      onClick={() => deleteRow(r)}
+                      disabled={isBusy}
+                      title={isRTL ? 'حذف الطلب نهائياً' : 'Delete permanently'}
+                    >
+                      🗑 {isRTL ? 'حذف' : 'Delete'}
+                    </button>
                     <button className="ap-btn ap-btn--reject" onClick={() => openDecide(r, 'reject')} disabled={isBusy}>
                       ✕ {isRTL ? 'رفض مع رد' : 'Reject w/ response'}
                     </button>
