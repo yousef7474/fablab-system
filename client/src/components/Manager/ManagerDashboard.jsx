@@ -4407,6 +4407,14 @@ const ManagerDashboard = () => {
                             style={{ cursor: 'pointer' }}
                             onClick={() => openEditTaskModal(task)}
                           >
+                            {/* The 4px accent bar the grid template
+                                reserves as its first column. Without
+                                it the body collapses to 4px wide and
+                                the card looks empty. */}
+                            <div
+                              className="sv2-feed-accent"
+                              style={{ background: PRIORITY_COLORS[task.priority] || '#EE2329' }}
+                            />
                             <div className="sv2-feed-body">
                               <div className="sv2-feed-title">
                                 {task.title}
@@ -4458,12 +4466,18 @@ const ManagerDashboard = () => {
                   </div>
                   <div className="sv2-panel-body">
                     <div className="sv2-feed-list">
-                      {getEventsForDay(selectedCalendarDay).map(event => (
+                      {getEventsForDay(selectedCalendarDay).map(event => {
+                        const accent = SECTION_COLORS[event.section] || '#EE2329';
+                        return (
                         <div
                           key={event.id}
                           className="sv2-feed-item detailed"
-                          style={{ borderInlineStartColor: SECTION_COLORS[event.section] || '#EE2329' }}
+                          style={{ borderInlineStartColor: accent }}
                         >
+                          {/* Accent bar fills the 4px grid column
+                              reserved by .sv2-feed-item — omitting it
+                              collapses the body to 4px wide. */}
+                          <div className="sv2-feed-accent" style={{ background: accent }} />
                           <div className="sv2-feed-body">
                             <div className="sv2-feed-title">
                               {event.title}
@@ -4528,7 +4542,8 @@ const ManagerDashboard = () => {
                             )}
                           </div>
                         </div>
-                      ))}
+                        );
+                      })}
                     </div>
                     <button
                       onClick={() => openCreateTaskModal(selectedCalendarDay)}
