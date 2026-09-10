@@ -882,12 +882,42 @@
 }
 .sv2-selday-close:hover { background: var(--sv2-red); color: #fff; }
 
-/* Fully-featured feed item (for selected day: shows everything) */
+/* Fully-featured feed item (for selected day: shows everything).
+   The compact grid template (4px + 1fr) squeezed the action row and
+   meta chips out of view; override to a plain block that lets the
+   body render at natural height, and use the border-inline-start
+   for the color stripe instead of an inline accent bar. */
 .sv2-feed-item.detailed {
-  padding: 14px 16px;
+  display: block;
+  padding: 14px 16px 14px 16px;
+  border-inline-start-width: 4px;
+  border-inline-start-style: solid;
+  overflow: visible;
 }
+.sv2-feed-item.detailed .sv2-feed-accent { display: none; }
 .sv2-feed-item.detailed .sv2-feed-body {
-  gap: 6px;
+  gap: 8px;
+  min-width: 0;
+}
+.sv2-feed-item.detailed .sv2-feed-title {
+  white-space: normal;
+  text-overflow: unset;
+  overflow: visible;
+  font-size: 1rem;
+}
+.sv2-feed-item.detailed .sv2-feed-meta {
+  font-size: 0.78rem;
+}
+.sv2-feed-item.detailed .sv2-feed-meta .sv2-chip {
+  background: var(--card-bg-secondary, rgba(148,163,184,0.10));
+  color: var(--text-primary);
+  padding: 4px 10px;
+  font-size: 0.72rem;
+}
+.sv2-feed-item.detailed .sv2-feed-actions {
+  padding-top: 6px;
+  border-top: 1px dashed var(--border-color);
+  margin-top: 4px !important;
 }
 
 /* ---------- Responsive ---------- */
