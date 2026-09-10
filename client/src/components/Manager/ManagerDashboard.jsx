@@ -4273,10 +4273,15 @@ const ManagerDashboard = () => {
                       const isSelected = selectedCalendarDay && isSameDay(day, selectedCalendarDay);
                       const eventDots = events.slice(0, 3);
                       const extra = events.length - eventDots.length;
+                      // A ranged task appears on every day in its span
+                      // via getEventsForDay, so marking the single row
+                      // completed already covers every day. Flag the
+                      // cell so it reads visually as "all done".
+                      const allCompleted = events.length > 0 && events.every(e => e.status === 'completed');
                       return (
                         <motion.div
                           key={day.toISOString()}
-                          className={`sv2-cal-day ${isTodayDay ? 'today' : ''} ${events.length > 0 ? 'has-events' : ''} ${isSelected ? 'selected' : ''}`}
+                          className={`sv2-cal-day ${isTodayDay ? 'today' : ''} ${events.length > 0 ? 'has-events' : ''} ${allCompleted ? 'all-completed' : ''} ${isSelected ? 'selected' : ''}`}
                           onClick={() => events.length > 0 && setSelectedCalendarDay(day)}
                           style={{ cursor: events.length > 0 ? 'pointer' : 'default' }}
                           whileHover={events.length > 0 ? { scale: 1.04 } : {}}
@@ -4291,8 +4296,9 @@ const ManagerDashboard = () => {
                               {eventDots.map((ev, i) => (
                                 <span
                                   key={i}
-                                  className="sv2-cal-day-dot"
+                                  className={`sv2-cal-day-dot ${ev.status === 'completed' ? 'completed' : ''}`}
                                   style={{ background: SECTION_COLORS[ev.section] || '#EE2329' }}
+                                  title={ev.status === 'completed' ? (isRTL ? 'مكتمل' : 'Completed') : ''}
                                 />
                               ))}
                               {extra > 0 && <span className="sv2-cal-day-dot more">+{extra}</span>}

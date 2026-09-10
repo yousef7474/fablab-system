@@ -407,6 +407,38 @@
 .sv2-cal-day.selected .sv2-cal-day-dot { background: #fff !important; box-shadow: 0 0 6px rgba(255,255,255,0.7); }
 .sv2-cal-day.selected .sv2-cal-day-dot.more { background: transparent !important; color: #fff; }
 
+/* Completed-mission cues. A range task is a single row on the
+   server, so marking it "completed" already covers every day in the
+   span — these styles just make it read that way at a glance. */
+.sv2-cal-day-dot.completed {
+  position: relative;
+  opacity: 0.55;
+  box-shadow: none;
+}
+.sv2-cal-day-dot.completed::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  border: 1.5px solid #16a34a;
+  box-sizing: border-box;
+}
+.sv2-cal-day.all-completed {
+  background: rgba(34, 197, 94, 0.10);
+  border-color: rgba(34, 197, 94, 0.35);
+}
+.sv2-cal-day.all-completed .sv2-cal-day-num { color: #16a34a; }
+.sv2-cal-day.all-completed::before {
+  content: '✓';
+  position: absolute;
+  top: 4px;
+  inset-inline-end: 6px;
+  font-size: 0.7rem;
+  font-weight: 900;
+  color: #16a34a;
+  line-height: 1;
+}
+
 /* ---------- Roster ---------- */
 .sv2-roster-strip {
   display: flex;
