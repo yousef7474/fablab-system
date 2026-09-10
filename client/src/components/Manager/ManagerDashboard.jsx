@@ -4409,21 +4409,24 @@ const ManagerDashboard = () => {
                         {getUpcomingTasks().map(task => (
                           <div
                             key={task.id}
-                            className="sv2-feed-item"
-                            style={{ cursor: 'pointer' }}
+                            className="sv2-feed-item detailed"
+                            style={{
+                              cursor: 'pointer',
+                              borderInlineStartColor: PRIORITY_COLORS[task.priority] || '#EE2329'
+                            }}
                             onClick={() => openEditTaskModal(task)}
                           >
-                            {/* The 4px accent bar the grid template
-                                reserves as its first column. Without
-                                it the body collapses to 4px wide and
-                                the card looks empty. */}
+                            {/* .detailed variant uses block layout so
+                                the title + meta chips render at full
+                                width instead of getting clipped by
+                                the compact grid template. */}
                             <div
                               className="sv2-feed-accent"
                               style={{ background: PRIORITY_COLORS[task.priority] || '#EE2329' }}
                             />
                             <div className="sv2-feed-body">
-                              <div className="sv2-feed-title">
-                                {task.title}
+                              <div className="sv2-feed-head">
+                                <span className="sv2-feed-title">{task.title}</span>
                                 <span className={`sv2-feed-tasktag ${task.priority}`}>
                                   {task.priority === 'high'   ? (isRTL ? 'عالية' : 'High')
                                   : task.priority === 'medium' ? (isRTL ? 'متوسطة' : 'Med')

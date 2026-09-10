@@ -6767,144 +6767,6 @@ const AdminDashboard = () => {
                       </div>
                     </motion.div>
 
-                    {/* ─── Selected Day Panel ─── */}
-                    <AnimatePresence>
-                      {selectedCalendarDay && (
-                        <motion.div
-                          key="sv2-selday"
-                          className="sv2-panel"
-                          initial={{ opacity: 0, y: -6, height: 0 }}
-                          animate={{ opacity: 1, y: 0, height: 'auto' }}
-                          exit={{ opacity: 0, y: -6, height: 0 }}
-                          transition={{ type: 'spring', stiffness: 260, damping: 26 }}
-                        >
-                          <div className="sv2-selday-head">
-                            <div className="sv2-selday-title">
-                              <span className="kicker">{isRTL ? 'اليوم المحدد' : 'Selected Day'}</span>
-                              <h3>
-                                {format(selectedCalendarDay, isRTL ? 'dd MMMM yyyy' : 'MMM dd, yyyy', { locale: isRTL ? ar : enUS })}
-                              </h3>
-                            </div>
-                            <button
-                              className="sv2-selday-close"
-                              onClick={() => setSelectedCalendarDay(null)}
-                              title={isRTL ? 'إغلاق' : 'Close'}
-                            >
-                              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                <line x1="18" y1="6" x2="6" y2="18"/>
-                                <line x1="6" y1="6" x2="18" y2="18"/>
-                              </svg>
-                            </button>
-                          </div>
-                          <div className="sv2-panel-body">
-                            <div className="sv2-feed-list">
-                              {getEventsForDay(selectedCalendarDay).length === 0 ? (
-                                <div className="sv2-empty">
-                                  {isRTL ? '— لا توجد أحداث لهذا اليوم —' : '— No events for this day —'}
-                                </div>
-                              ) : getEventsForDay(selectedCalendarDay).map((apt, i) => {
-                                const accentColor = apt.type === 'task'
-                                  ? (apt.employeeId ? getEmployeeColor(employees, apt.employeeId) : PRIORITY_COLORS[apt.priority] || '#f59e0b')
-                                  : SECTION_COLORS[apt.section] || '#EE2329';
-                                return (
-                                  <motion.div
-                                    key={apt.id}
-                                    className="sv2-feed-item detailed"
-                                    initial={{ opacity: 0, x: isRTL ? -10 : 10 }}
-                                    animate={{ opacity: 1, x: 0 }}
-                                    transition={{ delay: i * 0.03 }}
-                                  >
-                                    <div className="sv2-feed-accent" style={{ background: accentColor }} />
-                                    <div className="sv2-feed-body">
-                                      <div className="sv2-feed-head">
-                                        <span className="sv2-feed-title">
-                                          {apt.type === 'task' && (
-                                            <span className={`sv2-feed-tasktag ${apt.priority || 'medium'}`}>
-                                              {isRTL ? 'مهمة' : 'TASK'}
-                                            </span>
-                                          )}
-                                          {apt.title}
-                                        </span>
-                                        <span className="sv2-feed-time">
-                                          {formatTimeAMPM(apt.startTime)}{apt.endTime && ` — ${formatTimeAMPM(apt.endTime)}`}
-                                          {apt.duration && ` (${apt.duration}${isRTL ? 'د' : 'm'})`}
-                                        </span>
-                                      </div>
-                                      <div className="sv2-feed-meta">
-                                        {apt.section && (
-                                          <span className="sv2-chip" style={{ background: SECTION_COLORS[apt.section] || '#6366f1' }}>
-                                            {sectionLabels[apt.section] || apt.section}
-                                          </span>
-                                        )}
-                                        {apt.type === 'task' && apt.assignee && (
-                                          <span className="sv2-feed-detail-row">
-                                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
-                                              <circle cx="12" cy="7" r="4"/>
-                                            </svg>
-                                            {apt.assignee}
-                                          </span>
-                                        )}
-                                        {apt.phone && (
-                                          <span className="sv2-feed-detail-row" dir="ltr">
-                                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                              <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/>
-                                            </svg>
-                                            {apt.phone}
-                                          </span>
-                                        )}
-                                        {apt.type === 'task' && (
-                                          <select
-                                            className="sv2-status-select"
-                                            value={apt.status || 'pending'}
-                                            onChange={(e) => handleUpdateTaskStatus(apt.id, e.target.value)}
-                                            onClick={(e) => e.stopPropagation()}
-                                            style={{
-                                              background: apt.status === 'completed' ? 'rgba(34, 197, 94, 0.15)' :
-                                                         apt.status === 'in_progress' ? 'rgba(59, 130, 246, 0.15)' :
-                                                         apt.status === 'pending' ? 'rgba(245, 158, 11, 0.15)' :
-                                                         'rgba(107, 114, 128, 0.15)',
-                                              color: apt.status === 'completed' ? '#16a34a' :
-                                                     apt.status === 'in_progress' ? '#2563eb' :
-                                                     apt.status === 'pending' ? '#d97706' : '#6b7280'
-                                            }}
-                                          >
-                                            <option value="pending">{isRTL ? 'قيد الانتظار' : 'Pending'}</option>
-                                            <option value="in_progress">{isRTL ? 'قيد التنفيذ' : 'In Progress'}</option>
-                                            <option value="completed">{isRTL ? 'مكتمل' : 'Completed'}</option>
-                                            <option value="cancelled">{isRTL ? 'ملغى' : 'Cancelled'}</option>
-                                          </select>
-                                        )}
-                                      </div>
-                                      {apt.type === 'task' && apt.description && (
-                                        <div className="sv2-feed-detail-row">
-                                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                            <line x1="17" y1="10" x2="3" y2="10"/>
-                                            <line x1="21" y1="6" x2="3" y2="6"/>
-                                            <line x1="21" y1="14" x2="3" y2="14"/>
-                                            <line x1="17" y1="18" x2="3" y2="18"/>
-                                          </svg>
-                                          <span>{apt.description}</span>
-                                        </div>
-                                      )}
-                                      {apt.services && apt.services.length > 0 && (
-                                        <div className="sv2-feed-detail-row">
-                                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                            <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/>
-                                          </svg>
-                                          <span>{translateServices(apt.services)}</span>
-                                        </div>
-                                      )}
-                                    </div>
-                                  </motion.div>
-                                );
-                              })}
-                            </div>
-                          </div>
-                        </motion.div>
-                      )}
-                    </AnimatePresence>
-
                     {/* ─── Intel Feed (Upcoming Appointments) ─── */}
                     <motion.div
                       className="sv2-panel"
@@ -6944,7 +6806,8 @@ const AdminDashboard = () => {
                                 animate={{ opacity: 1, x: 0 }}
                                 exit={{ opacity: 0, x: -8, transition: { duration: 0.15 } }}
                                 transition={{ delay: i * 0.03, type: 'spring', stiffness: 280, damping: 24 }}
-                                className="sv2-feed-item"
+                                className="sv2-feed-item detailed"
+                                style={{ borderInlineStartColor: SECTION_COLORS[apt.section] || '#EE2329' }}
                               >
                                 <div className="sv2-feed-accent" style={{ background: SECTION_COLORS[apt.section] || '#EE2329' }} />
                                 <div className="sv2-feed-body">
@@ -6989,6 +6852,146 @@ const AdminDashboard = () => {
                     </motion.div>
                   </div>
                 </div>
+
+                {/* ─── Selected Day Panel (full width, under the grid) ─── */}
+                <AnimatePresence>
+                  {selectedCalendarDay && (
+                    <motion.div
+                      key="sv2-selday"
+                      className="sv2-panel"
+                      style={{ marginTop: 16 }}
+                      initial={{ opacity: 0, y: 12 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -8 }}
+                      transition={{ type: 'spring', stiffness: 260, damping: 26 }}
+                    >
+                      <div className="sv2-selday-head">
+                        <div className="sv2-selday-title">
+                          <span className="kicker">{isRTL ? 'اليوم المحدد' : 'Selected Day'}</span>
+                          <h3>
+                            {format(selectedCalendarDay, isRTL ? 'dd MMMM yyyy' : 'MMM dd, yyyy', { locale: isRTL ? ar : enUS })}
+                          </h3>
+                        </div>
+                        <button
+                          className="sv2-selday-close"
+                          onClick={() => setSelectedCalendarDay(null)}
+                          title={isRTL ? 'إغلاق' : 'Close'}
+                        >
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                            <line x1="18" y1="6" x2="6" y2="18"/>
+                            <line x1="6" y1="6" x2="18" y2="18"/>
+                          </svg>
+                        </button>
+                      </div>
+                      <div className="sv2-panel-body">
+                        <div className="sv2-feed-list">
+                          {getEventsForDay(selectedCalendarDay).length === 0 ? (
+                            <div className="sv2-empty">
+                              {isRTL ? '— لا توجد أحداث لهذا اليوم —' : '— No events for this day —'}
+                            </div>
+                          ) : getEventsForDay(selectedCalendarDay).map((apt, i) => {
+                            const accentColor = apt.type === 'task'
+                              ? (apt.employeeId ? getEmployeeColor(employees, apt.employeeId) : PRIORITY_COLORS[apt.priority] || '#f59e0b')
+                              : SECTION_COLORS[apt.section] || '#EE2329';
+                            return (
+                              <motion.div
+                                key={apt.id}
+                                className="sv2-feed-item detailed"
+                                style={{ borderInlineStartColor: accentColor }}
+                                initial={{ opacity: 0, x: isRTL ? -10 : 10 }}
+                                animate={{ opacity: 1, x: 0 }}
+                                transition={{ delay: i * 0.03 }}
+                              >
+                                <div className="sv2-feed-accent" style={{ background: accentColor }} />
+                                <div className="sv2-feed-body">
+                                  <div className="sv2-feed-head">
+                                    <span className="sv2-feed-title">
+                                      {apt.type === 'task' && (
+                                        <span className={`sv2-feed-tasktag ${apt.priority || 'medium'}`}>
+                                          {isRTL ? 'مهمة' : 'TASK'}
+                                        </span>
+                                      )}
+                                      {apt.title}
+                                    </span>
+                                    <span className="sv2-feed-time">
+                                      {formatTimeAMPM(apt.startTime)}{apt.endTime && ` — ${formatTimeAMPM(apt.endTime)}`}
+                                      {apt.duration && ` (${apt.duration}${isRTL ? 'د' : 'm'})`}
+                                    </span>
+                                  </div>
+                                  <div className="sv2-feed-meta">
+                                    {apt.section && (
+                                      <span className="sv2-chip" style={{ background: SECTION_COLORS[apt.section] || '#6366f1' }}>
+                                        {sectionLabels[apt.section] || apt.section}
+                                      </span>
+                                    )}
+                                    {apt.type === 'task' && apt.assignee && (
+                                      <span className="sv2-feed-detail-row">
+                                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                          <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+                                          <circle cx="12" cy="7" r="4"/>
+                                        </svg>
+                                        {apt.assignee}
+                                      </span>
+                                    )}
+                                    {apt.phone && (
+                                      <span className="sv2-feed-detail-row" dir="ltr">
+                                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                          <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/>
+                                        </svg>
+                                        {apt.phone}
+                                      </span>
+                                    )}
+                                    {apt.type === 'task' && (
+                                      <select
+                                        className="sv2-status-select"
+                                        value={apt.status || 'pending'}
+                                        onChange={(e) => handleUpdateTaskStatus(apt.id, e.target.value)}
+                                        onClick={(e) => e.stopPropagation()}
+                                        style={{
+                                          background: apt.status === 'completed' ? 'rgba(34, 197, 94, 0.15)' :
+                                                     apt.status === 'in_progress' ? 'rgba(59, 130, 246, 0.15)' :
+                                                     apt.status === 'pending' ? 'rgba(245, 158, 11, 0.15)' :
+                                                     'rgba(107, 114, 128, 0.15)',
+                                          color: apt.status === 'completed' ? '#16a34a' :
+                                                 apt.status === 'in_progress' ? '#2563eb' :
+                                                 apt.status === 'pending' ? '#d97706' : '#6b7280'
+                                        }}
+                                      >
+                                        <option value="pending">{isRTL ? 'قيد الانتظار' : 'Pending'}</option>
+                                        <option value="in_progress">{isRTL ? 'قيد التنفيذ' : 'In Progress'}</option>
+                                        <option value="completed">{isRTL ? 'مكتمل' : 'Completed'}</option>
+                                        <option value="cancelled">{isRTL ? 'ملغى' : 'Cancelled'}</option>
+                                      </select>
+                                    )}
+                                  </div>
+                                  {apt.type === 'task' && apt.description && (
+                                    <div className="sv2-feed-detail-row">
+                                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                        <line x1="17" y1="10" x2="3" y2="10"/>
+                                        <line x1="21" y1="6" x2="3" y2="6"/>
+                                        <line x1="21" y1="14" x2="3" y2="14"/>
+                                        <line x1="17" y1="18" x2="3" y2="18"/>
+                                      </svg>
+                                      <span>{apt.description}</span>
+                                    </div>
+                                  )}
+                                  {apt.services && apt.services.length > 0 && (
+                                    <div className="sv2-feed-detail-row">
+                                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                        <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/>
+                                      </svg>
+                                      <span>{translateServices(apt.services)}</span>
+                                    </div>
+                                  )}
+                                </div>
+                              </motion.div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
               </motion.div>
               );
             })()}

@@ -6572,8 +6572,8 @@
   text-overflow: ellipsis;
   white-space: nowrap;
   min-width: 0;
-  flex: 1;
 }
+.sv2-feed-head > .sv2-feed-title { flex: 1; }
 .sv2-feed-time {
   font-family: var(--sv2-font-mono);
   font-size: 0.72rem;
