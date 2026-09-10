@@ -423,6 +423,7 @@ const ProjectSupportTab = () => {
                 <th style={{ padding: '12px 14px', textAlign: 'start', fontSize: 12, fontWeight: 700, color: '#334155', borderBottom: '1px solid var(--border-color, #e2e8f0)' }}>{isRTL ? 'الحالة' : 'Status'}</th>
                 <th style={{ padding: '12px 14px', textAlign: 'start', fontSize: 12, fontWeight: 700, color: '#334155', borderBottom: '1px solid var(--border-color, #e2e8f0)' }}>{isRTL ? 'ملفات' : 'Files'}</th>
                 <th style={{ padding: '12px 14px', textAlign: 'start', fontSize: 12, fontWeight: 700, color: '#334155', borderBottom: '1px solid var(--border-color, #e2e8f0)' }}>{isRTL ? 'الاستلام' : 'Received'}</th>
+                <th style={{ padding: '12px 14px', textAlign: 'center', fontSize: 12, fontWeight: 700, color: '#334155', borderBottom: '1px solid var(--border-color, #e2e8f0)', width: 80 }}>{isRTL ? 'إجراء' : 'Action'}</th>
               </tr>
             </thead>
             <tbody>
@@ -458,6 +459,28 @@ const ProjectSupportTab = () => {
                       {r.fileCount || 0}
                     </td>
                     <td style={{ padding: '12px 14px', fontSize: 12, color: '#64748b' }}>{fmtWhen(r.createdAt)}</td>
+                    <td
+                      style={{ padding: '12px 14px', textAlign: 'center' }}
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <button
+                        onClick={() => deleteRequest(r)}
+                        title={isRTL ? 'حذف الطلب نهائياً' : 'Delete permanently'}
+                        style={{
+                          background: '#fff',
+                          border: '1px solid #fecaca',
+                          color: '#b91c1c',
+                          padding: '5px 10px',
+                          borderRadius: 6,
+                          fontSize: 12,
+                          fontWeight: 700,
+                          fontFamily: 'inherit',
+                          cursor: 'pointer'
+                        }}
+                      >
+                        🗑
+                      </button>
+                    </td>
                   </tr>
                 );
               })}

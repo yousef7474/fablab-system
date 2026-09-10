@@ -5,16 +5,34 @@ import api from '../../config/api';
 import printVolunteerOpportunity from '../shared/printVolunteerOpportunity';
 import './Approvals.css';
 
-const fmtWhen = (iso) => {
-  if (!iso) return '';
-  try { return new Date(iso).toLocaleString(undefined, { dateStyle: 'short', timeStyle: 'short' }); }
-  catch { return ''; }
+// Include the day-of-week (السبت / Sunday) for at-a-glance clarity.
+const fmtWhen = (iso, locale) => {
+  if (!iso) return '—';
+  try {
+    const d = new Date(iso);
+    if (isNaN(d.getTime())) return '—';
+    return d.toLocaleString(locale || undefined, {
+      weekday: 'long', day: '2-digit', month: 'short', year: 'numeric',
+      hour: '2-digit', minute: '2-digit'
+    });
+  } catch { return '—'; }
+};
+const fmtDate = (v, locale) => {
+  if (!v) return '—';
+  try {
+    const d = new Date(v);
+    if (isNaN(d.getTime())) return String(v).slice(0, 10);
+    return d.toLocaleDateString(locale || undefined, {
+      weekday: 'long', year: 'numeric', month: 'short', day: '2-digit'
+    });
+  } catch { return String(v).slice(0, 10); }
 };
 const fmtRequestNo = (n) => n == null ? '—' : `VOR-${String(n).padStart(3, '0')}`;
 
 const VolunteerOpportunityApprovals = () => {
   const { i18n } = useTranslation();
   const isRTL = i18n.language === 'ar';
+  const locale = isRTL ? 'ar-SA' : undefined;
 
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -149,7 +167,7 @@ const VolunteerOpportunityApprovals = () => {
                       <span dir="ltr">📞 {r.coordinatorPhone}</span>
                     </div>
                     {r.sentForApprovalAt && (
-                      <div className="ap-when">📤 {isRTL ? 'أرسل:' : 'sent'} {fmtWhen(r.sentForApprovalAt)}</div>
+                      <div className="ap-when">📤 {isRTL ? 'أرسل:' : 'sent'} {fmtWhen(r.sentForApprovalAt, locale)}</div>
                     )}
                   </div>
                   <div className="ap-card-right">
@@ -194,7 +212,7 @@ const VolunteerOpportunityApprovals = () => {
                       {(r.startDate || r.endDate) && (
                         <div className="ap-kv">
                           <div className="ap-kv-label">{isRTL ? 'الفترة' : 'Period'}</div>
-                          <div className="ap-kv-value" dir="ltr">{r.startDate || '—'} → {r.endDate || '—'}</div>
+                          <div className="ap-kv-value" dir="ltr">{r.startDate ? fmtDate(r.startDate, locale) : '—'} → {r.endDate ? fmtDate(r.endDate, locale) : '—'}</div>
                         </div>
                       )}
                       {r.educationLevel && (

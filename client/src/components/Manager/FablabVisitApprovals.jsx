@@ -8,20 +8,28 @@ import './Approvals.css';
 // same decision panel so both can carry a note that gets emailed to
 // the visitor. Delete removes the request entirely (irreversible).
 
-const fmtWhen = (iso) => {
+// Dates always render with the day-of-week (السبت / Sunday) so a
+// manager scanning the queue can tell at a glance which weekday the
+// visit lands on.
+const fmtWhen = (iso, locale) => {
   if (!iso) return '—';
   try {
     const d = new Date(iso);
     if (isNaN(d.getTime())) return '—';
-    return d.toLocaleString(undefined, { dateStyle: 'short', timeStyle: 'short' });
+    return d.toLocaleString(locale || undefined, {
+      weekday: 'long', day: '2-digit', month: 'short', year: 'numeric',
+      hour: '2-digit', minute: '2-digit'
+    });
   } catch { return '—'; }
 };
-const fmtDate = (iso) => {
+const fmtDate = (iso, locale) => {
   if (!iso) return '—';
   try {
     const d = new Date(iso);
     if (isNaN(d.getTime())) return String(iso).slice(0, 10);
-    return d.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: '2-digit' });
+    return d.toLocaleDateString(locale || undefined, {
+      weekday: 'long', year: 'numeric', month: 'short', day: '2-digit'
+    });
   } catch { return String(iso).slice(0, 10); }
 };
 const fmtTime = (t) => t ? String(t).slice(0, 5) : '—';
@@ -30,6 +38,9 @@ const fmtVisitNo = (n) => n == null ? '—' : `V-${String(n).padStart(3, '0')}`;
 const FablabVisitApprovals = () => {
   const { i18n } = useTranslation();
   const isRTL = i18n.language === 'ar';
+  // Explicit locale so the weekday reads Arabic even on non-Arabic
+  // OS/browser settings.
+  const locale = isRTL ? 'ar-SA' : undefined;
 
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -141,12 +152,12 @@ const FablabVisitApprovals = () => {
                     <div className="ap-sub">
                       <b>{r.personInCharge}</b>
                       {' · '}
-                      <span dir="ltr">{fmtDate(r.visitDate)}</span>
+                      <span dir="ltr">{fmtDate(r.visitDate, locale)}</span>
                       {' · '}
                       <span dir="ltr">{fmtTime(r.visitStartTime)} → {fmtTime(r.visitEndTime)}</span>
                     </div>
                     {r.sentForApprovalAt && (
-                      <div className="ap-when">📤 {isRTL ? 'أرسل:' : 'sent'} {fmtWhen(r.sentForApprovalAt)}</div>
+                      <div className="ap-when">📤 {isRTL ? 'أرسل:' : 'sent'} {fmtWhen(r.sentForApprovalAt, locale)}</div>
                     )}
                   </div>
                   <div className="ap-card-right">
@@ -179,7 +190,7 @@ const FablabVisitApprovals = () => {
                       <div className="ap-detail-card">
                         <div className="ap-detail-card-title">{isRTL ? 'موعد الزيارة' : 'Visit Schedule'}</div>
                         <div className="ap-kv-grid">
-                          <div className="ap-kv"><div className="ap-kv-label">{isRTL ? 'التاريخ' : 'Date'}</div><div className="ap-kv-value" dir="ltr">{fmtDate(r.visitDate)}</div></div>
+                          <div className="ap-kv"><div className="ap-kv-label">{isRTL ? 'التاريخ' : 'Date'}</div><div className="ap-kv-value" dir="ltr">{fmtDate(r.visitDate, locale)}</div></div>
                           <div className="ap-kv"><div className="ap-kv-label">{isRTL ? 'من الساعة' : 'From'}</div><div className="ap-kv-value" dir="ltr">{fmtTime(r.visitStartTime)}</div></div>
                           <div className="ap-kv"><div className="ap-kv-label">{isRTL ? 'إلى الساعة' : 'To'}</div><div className="ap-kv-value" dir="ltr">{fmtTime(r.visitEndTime)}</div></div>
                           <div className="ap-kv"><div className="ap-kv-label">{isRTL ? 'عدد الزوار' : 'Visitors'}</div><div className="ap-kv-value">👥 {r.visitorsCount || 1}</div></div>
@@ -189,8 +200,8 @@ const FablabVisitApprovals = () => {
                       <div className="ap-detail-card">
                         <div className="ap-detail-card-title">{isRTL ? 'سجل الطلب' : 'Request Log'}</div>
                         <div className="ap-kv-grid">
-                          <div className="ap-kv"><div className="ap-kv-label">{isRTL ? 'أُرسل للاعتماد' : 'Sent'}</div><div className="ap-kv-value" dir="ltr">{fmtWhen(r.sentForApprovalAt)}</div></div>
-                          <div className="ap-kv"><div className="ap-kv-label">{isRTL ? 'أُنشئ في' : 'Created'}</div><div className="ap-kv-value" dir="ltr">{fmtWhen(r.createdAt)}</div></div>
+                          <div className="ap-kv"><div className="ap-kv-label">{isRTL ? 'أُرسل للاعتماد' : 'Sent'}</div><div className="ap-kv-value" dir="ltr">{fmtWhen(r.sentForApprovalAt, locale)}</div></div>
+                          <div className="ap-kv"><div className="ap-kv-label">{isRTL ? 'أُنشئ في' : 'Created'}</div><div className="ap-kv-value" dir="ltr">{fmtWhen(r.createdAt, locale)}</div></div>
                           {r.managerEmail && (
                             <div className="ap-kv"><div className="ap-kv-label">{isRTL ? 'مدير المراجعة' : 'Reviewer'}</div><div className="ap-kv-value" dir="ltr">{r.managerEmail}</div></div>
                           )}

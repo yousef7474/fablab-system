@@ -8,10 +8,18 @@ import './Approvals.css';
 // Same shape as FablabVisitApprovals but the decision requires a
 // written response — that text is what gets emailed to the user.
 
-const fmtWhen = (iso) => {
-  if (!iso) return '';
-  try { return new Date(iso).toLocaleString(undefined, { dateStyle: 'short', timeStyle: 'short' }); }
-  catch { return ''; }
+// Dates render with the day-of-week (السبت / Sunday) for at-a-glance
+// clarity in the queue.
+const fmtWhen = (iso, locale) => {
+  if (!iso) return '—';
+  try {
+    const d = new Date(iso);
+    if (isNaN(d.getTime())) return '—';
+    return d.toLocaleString(locale || undefined, {
+      weekday: 'long', day: '2-digit', month: 'short', year: 'numeric',
+      hour: '2-digit', minute: '2-digit'
+    });
+  } catch { return '—'; }
 };
 const fmtReqNo = (n) => n == null ? '—' : `PSR-${String(n).padStart(3, '0')}`;
 
@@ -50,6 +58,7 @@ const supportTypeList = (r) => {
 const ProjectSupportApprovals = () => {
   const { i18n } = useTranslation();
   const isRTL = i18n.language === 'ar';
+  const locale = isRTL ? 'ar-SA' : undefined;
 
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -211,7 +220,7 @@ const ProjectSupportApprovals = () => {
                       <span dir="ltr">{r.email}</span>
                     </div>
                     {r.sentForApprovalAt && (
-                      <div className="ap-when">📤 {isRTL ? 'أرسل:' : 'sent'} {fmtWhen(r.sentForApprovalAt)}</div>
+                      <div className="ap-when">📤 {isRTL ? 'أرسل:' : 'sent'} {fmtWhen(r.sentForApprovalAt, locale)}</div>
                     )}
                   </div>
                   <div className="ap-card-right">
@@ -263,8 +272,8 @@ const ProjectSupportApprovals = () => {
                         </div>
                         <div className="ap-kv-grid">
                           <div className="ap-kv"><div className="ap-kv-label">{isRTL ? 'رقم الطلب' : 'Number'}</div><div className="ap-kv-value">{fmtReqNo(r.requestNumber)}</div></div>
-                          <div className="ap-kv"><div className="ap-kv-label">{isRTL ? 'أُنشئ في' : 'Created'}</div><div className="ap-kv-value" dir="ltr">{fmtWhen(r.createdAt)}</div></div>
-                          <div className="ap-kv"><div className="ap-kv-label">{isRTL ? 'أُرسل للاعتماد' : 'Sent'}</div><div className="ap-kv-value" dir="ltr">{fmtWhen(r.sentForApprovalAt)}</div></div>
+                          <div className="ap-kv"><div className="ap-kv-label">{isRTL ? 'أُنشئ في' : 'Created'}</div><div className="ap-kv-value" dir="ltr">{fmtWhen(r.createdAt, locale)}</div></div>
+                          <div className="ap-kv"><div className="ap-kv-label">{isRTL ? 'أُرسل للاعتماد' : 'Sent'}</div><div className="ap-kv-value" dir="ltr">{fmtWhen(r.sentForApprovalAt, locale)}</div></div>
                         </div>
                       </div>
                     </div>

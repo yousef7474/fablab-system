@@ -8,19 +8,34 @@ import './Approvals.css';
 // carry a note recorded against the request. Delete permanently
 // removes the request (irreversible).
 
-const fmtDate = (v) => v ? String(v).slice(0, 10) : '—';
-const fmtWhen = (iso) => {
+// Dates include the day-of-week (السبت / Sunday) so a manager can
+// tell at a glance which weekday(s) the overtime lands on.
+const fmtDate = (v, locale) => {
+  if (!v) return '—';
+  try {
+    const d = new Date(v);
+    if (isNaN(d.getTime())) return String(v).slice(0, 10);
+    return d.toLocaleDateString(locale || undefined, {
+      weekday: 'long', year: 'numeric', month: 'short', day: '2-digit'
+    });
+  } catch { return String(v).slice(0, 10); }
+};
+const fmtWhen = (iso, locale) => {
   if (!iso) return '—';
   try {
     const d = new Date(iso);
     if (isNaN(d.getTime())) return '—';
-    return d.toLocaleString(undefined, { dateStyle: 'short', timeStyle: 'short' });
+    return d.toLocaleString(locale || undefined, {
+      weekday: 'long', day: '2-digit', month: 'short', year: 'numeric',
+      hour: '2-digit', minute: '2-digit'
+    });
   } catch { return '—'; }
 };
 
 const OvertimeApprovals = () => {
   const { i18n } = useTranslation();
   const isRTL = i18n.language === 'ar';
+  const locale = isRTL ? 'ar-SA' : undefined;
 
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -125,10 +140,10 @@ const OvertimeApprovals = () => {
                     <div className="ap-sub">
                       <b>{r.position || (isRTL ? 'غير محدد' : 'Unspecified')}</b>
                       {' · '}
-                      <span dir="ltr">{fmtDate(r.periodStart)} → {fmtDate(r.periodEnd)}</span>
+                      <span dir="ltr">{fmtDate(r.periodStart, locale)} → {fmtDate(r.periodEnd, locale)}</span>
                     </div>
                     {r.sentForApprovalAt && (
-                      <div className="ap-when">📤 {isRTL ? 'أرسل:' : 'sent'} {fmtWhen(r.sentForApprovalAt)}</div>
+                      <div className="ap-when">📤 {isRTL ? 'أرسل:' : 'sent'} {fmtWhen(r.sentForApprovalAt, locale)}</div>
                     )}
                   </div>
                   <div className="ap-card-right">
@@ -160,8 +175,8 @@ const OvertimeApprovals = () => {
                           {isRTL ? 'الفترة والساعات' : 'Period & Hours'}
                         </div>
                         <div className="ap-kv-grid">
-                          <div className="ap-kv"><div className="ap-kv-label">{isRTL ? 'من' : 'From'}</div><div className="ap-kv-value" dir="ltr">{fmtDate(r.periodStart)}</div></div>
-                          <div className="ap-kv"><div className="ap-kv-label">{isRTL ? 'إلى' : 'To'}</div><div className="ap-kv-value" dir="ltr">{fmtDate(r.periodEnd)}</div></div>
+                          <div className="ap-kv"><div className="ap-kv-label">{isRTL ? 'من' : 'From'}</div><div className="ap-kv-value" dir="ltr">{fmtDate(r.periodStart, locale)}</div></div>
+                          <div className="ap-kv"><div className="ap-kv-label">{isRTL ? 'إلى' : 'To'}</div><div className="ap-kv-value" dir="ltr">{fmtDate(r.periodEnd, locale)}</div></div>
                           <div className="ap-kv"><div className="ap-kv-label">{isRTL ? 'إجمالي الساعات' : 'Total hours'}</div><div className="ap-kv-value">{Number(r.totalHours || 0).toFixed(2)}</div></div>
                           <div className="ap-kv"><div className="ap-kv-label">{isRTL ? 'عدد الأيام' : 'Days'}</div><div className="ap-kv-value">{(r.days || []).length}</div></div>
                         </div>
@@ -172,8 +187,8 @@ const OvertimeApprovals = () => {
                           {isRTL ? 'سجل الطلب' : 'Request Log'}
                         </div>
                         <div className="ap-kv-grid">
-                          <div className="ap-kv"><div className="ap-kv-label">{isRTL ? 'أُنشئ في' : 'Created'}</div><div className="ap-kv-value" dir="ltr">{fmtWhen(r.createdAt)}</div></div>
-                          <div className="ap-kv"><div className="ap-kv-label">{isRTL ? 'أُرسل للاعتماد' : 'Sent'}</div><div className="ap-kv-value" dir="ltr">{fmtWhen(r.sentForApprovalAt)}</div></div>
+                          <div className="ap-kv"><div className="ap-kv-label">{isRTL ? 'أُنشئ في' : 'Created'}</div><div className="ap-kv-value" dir="ltr">{fmtWhen(r.createdAt, locale)}</div></div>
+                          <div className="ap-kv"><div className="ap-kv-label">{isRTL ? 'أُرسل للاعتماد' : 'Sent'}</div><div className="ap-kv-value" dir="ltr">{fmtWhen(r.sentForApprovalAt, locale)}</div></div>
                           {r.managerEmail && (
                             <div className="ap-kv"><div className="ap-kv-label">{isRTL ? 'مدير المراجعة' : 'Reviewer'}</div><div className="ap-kv-value" dir="ltr">{r.managerEmail}</div></div>
                           )}
