@@ -1,5 +1,6 @@
 const { EmployeeActivity, Employee, Rating, EmployeeEvaluation } = require('../models');
 const { Op } = require('sequelize');
+const { sendWeeklyActivityCreditEmail } = require('../utils/emailService');
 
 // Auto-update the "متابعة المنصة والجدول اليومي" criterion (cat9_c1) in evaluation
 // Increments by 1 (preserves manual edits if higher)
@@ -205,6 +206,16 @@ exports.getMyWeeklyStats = async (req, res) => {
         creditedNow = true;
         console.log(`Auto-credited 1 point to ${employee.name} for weekly activity (${totalHours}h)`);
         await syncEvaluationCriterion(employee.employeeId);
+        // Fire-and-forget email to the employee celebrating the credit.
+        sendWeeklyActivityCreditEmail({
+          employeeEmail: employee.email,
+          employeeName: employee.name,
+          hoursOnDashboard: totalHours,
+          targetHours: WEEKLY_TARGET_HOURS,
+          weekStart: week.start,
+          weekEnd: week.end,
+          totalCredits: totalCredits + 1
+        }).catch(() => {});
       } catch (e) {
         console.error('Auto-credit error:', e);
       }
@@ -359,6 +370,24 @@ exports.processWeeklyCredits = async ({ weeksBack = 4 } = {}) => {
         // that was the whole reason cat9_c1 stayed at 0 for people
         // getting credited by the scheduler.
         await syncEvaluationCriterion(emp.employeeId);
+        // Count total earned credits so the email can quote the
+        // running tally, and fire-and-forget the notification.
+        const totalForEmp = await Rating.count({
+          where: {
+            employeeId: emp.employeeId,
+            criteria: 'Weekly Dashboard Activity',
+            type: 'award'
+          }
+        });
+        sendWeeklyActivityCreditEmail({
+          employeeEmail: emp.email,
+          employeeName: emp.name,
+          hoursOnDashboard: (totalMinutes / 60).toFixed(1),
+          targetHours: WEEKLY_TARGET_HOURS,
+          weekStart,
+          weekEnd,
+          totalCredits: totalForEmp
+        }).catch(() => {});
         totalCredited++;
         console.log(`Auto-credited 1 point to ${emp.name} for weekly dashboard activity (${(totalMinutes / 60).toFixed(1)}h, week ${weekStart}→${weekEnd})`);
       }

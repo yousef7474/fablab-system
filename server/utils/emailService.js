@@ -1066,6 +1066,88 @@ body{font-family:'Segoe UI',Tahoma,Arial,sans-serif;background:linear-gradient(1
   }
 };
 
+/**
+ * Fire-and-forget: notify an employee that they earned a weekly
+ * activity credit (cat9_c1 — متابعة المنصة والجدول اليومي). Called
+ * whenever processWeeklyCredits/getMyWeeklyStats mints a "Weekly
+ * Dashboard Activity" Rating. Never throws — a mail failure must not
+ * block the credit being awarded.
+ */
+const sendWeeklyActivityCreditEmail = async ({
+  employeeEmail,
+  employeeName,
+  hoursOnDashboard,
+  targetHours,
+  weekStart,
+  weekEnd,
+  totalCredits
+}) => {
+  try {
+    if (!process.env.SENDGRID_API_KEY || !process.env.SENDGRID_FROM_EMAIL) return;
+    if (!employeeEmail) return;
+
+    const brand = '#16a34a';
+    const period = `${weekStart} → ${weekEnd}`;
+    const msg = {
+      to: employeeEmail,
+      from: {
+        email: process.env.SENDGRID_FROM_EMAIL,
+        name: process.env.SENDGRID_FROM_NAME || 'FABLAB Al-Ahsa'
+      },
+      subject: `🎯 حصلت على نقطة أسبوعية — متابعة المنصة والجدول اليومي`,
+      html: `
+<div dir="rtl" style="font-family:'Segoe UI',Tahoma,Arial,sans-serif;max-width:640px;margin:0 auto;background:#f4f6fb;padding:24px">
+  <div style="background:#fff;border-radius:14px;overflow:hidden;box-shadow:0 6px 24px rgba(15,23,42,0.10)">
+    <div style="background:linear-gradient(135deg,${brand},#065f46);color:#fff;padding:26px 28px;text-align:center">
+      <div style="font-size:44px;line-height:1;margin-bottom:6px">🎯</div>
+      <div style="font-size:12px;letter-spacing:1.2px;opacity:0.9">FABLAB الأحساء · تقييم الأداء</div>
+      <h1 style="margin:8px 0 0;font-size:22px;font-weight:800">حصلت على نقطة أسبوعية جديدة</h1>
+    </div>
+    <div style="padding:26px 28px;color:#0f172a;font-size:14px;line-height:1.75">
+      <p style="margin:0 0 14px">مرحباً <strong>${employeeName || ''}</strong>،</p>
+      <p style="margin:0 0 14px">
+        تم منحك <strong style="color:${brand}">نقطة واحدة (+1)</strong> على معيار
+        <strong>«متابعة المنصة والجدول اليومي»</strong> لأنك تجاوزت الحد الأسبوعي
+        المطلوب من الوقت على لوحة الموظف.
+      </p>
+      <table style="width:100%;font-size:13px;border-collapse:collapse;background:#f8fafc;border-radius:10px;overflow:hidden;margin:14px 0">
+        <tr>
+          <td style="padding:10px 14px;color:#64748b;width:150px">الأسبوع:</td>
+          <td style="padding:10px 14px;font-weight:700;direction:ltr;text-align:right">${period}</td>
+        </tr>
+        <tr>
+          <td style="padding:10px 14px;color:#64748b">وقتك على اللوحة:</td>
+          <td style="padding:10px 14px;font-weight:800;color:${brand}">${hoursOnDashboard} ساعة</td>
+        </tr>
+        <tr>
+          <td style="padding:10px 14px;color:#64748b">الحد الأسبوعي المطلوب:</td>
+          <td style="padding:10px 14px;font-weight:700">${targetHours} ساعة</td>
+        </tr>
+        ${totalCredits ? `
+        <tr>
+          <td style="padding:10px 14px;color:#64748b">إجمالي النقاط المكتسبة:</td>
+          <td style="padding:10px 14px;font-weight:800;color:${brand}">${totalCredits}</td>
+        </tr>` : ''}
+      </table>
+      <p style="margin:16px 0 0;color:#64748b;font-size:12.5px">
+        استمر بالمحافظة على نشاطك الأسبوعي على المنصة لتحصيل المزيد من النقاط في هذا المعيار.<br>
+        فريق فاب لاب الأحساء
+      </p>
+    </div>
+    <div style="background:#f8fafc;padding:12px 24px;font-size:11px;color:#94a3b8;text-align:center">
+      فاب لاب الأحساء · مؤسسة عبدالمنعم الراشد الإنسانية
+    </div>
+  </div>
+</div>`
+    };
+
+    await sgMail.send(msg);
+    console.log(`✉️  Weekly activity credit email sent to ${employeeEmail}`);
+  } catch (err) {
+    console.error(`❌ Weekly activity credit email failed for ${employeeEmail}:`, err?.response?.body || err.message);
+  }
+};
+
 module.exports = {
   sendRegistrationConfirmation,
   sendEngineerNotification,
@@ -1078,5 +1160,6 @@ module.exports = {
   sendAttendanceIdEmail,
   sendWorkshopCustomEmail,
   generateAttendanceIdHtml,
-  sendCertificateEmail
+  sendCertificateEmail,
+  sendWeeklyActivityCreditEmail
 };
