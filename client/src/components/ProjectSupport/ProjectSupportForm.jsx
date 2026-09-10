@@ -79,7 +79,9 @@ const ProjectSupportForm = () => {
     age: '',
     city: '',
     projectTitle: '',
-    supportType: '',
+    // Multiple support types can be selected — many requesters need
+    // help across categories (e.g. funding + mentorship).
+    supportTypes: [],
     description: ''
   });
   const [files, setFiles] = useState([]); // [{ fileName, fileType, fileSize, fileData }]
@@ -188,7 +190,7 @@ const ProjectSupportForm = () => {
                   setForm({
                     firstName: '', lastName: '', sex: '', nationality: '',
                     nationalId: '', phoneNumber: '', email: '', age: '', city: '',
-                    projectTitle: '', supportType: '', description: ''
+                    projectTitle: '', supportTypes: [], description: ''
                   });
                   setFiles([]);
                   setTerms(false);
@@ -322,17 +324,32 @@ const ProjectSupportForm = () => {
             <label className="psr-field" style={{ gridColumn: 'span 2' }}>
               <span>{isRTL ? 'نوع الدعم المطلوب' : 'Support type'}</span>
               <div className="psr-support-types">
-                {SUPPORT_TYPES.map(st => (
-                  <button
-                    type="button"
-                    key={st.value}
-                    className={`psr-support-chip ${form.supportType === st.value ? 'active' : ''}`}
-                    onClick={() => patch('supportType', form.supportType === st.value ? '' : st.value)}
-                  >
-                    {isRTL ? st.ar : st.en}
-                  </button>
-                ))}
+                {SUPPORT_TYPES.map(st => {
+                  const selected = form.supportTypes.includes(st.value);
+                  return (
+                    <button
+                      type="button"
+                      key={st.value}
+                      className={`psr-support-chip ${selected ? 'active' : ''}`}
+                      aria-pressed={selected}
+                      onClick={() => setForm(f => ({
+                        ...f,
+                        supportTypes: selected
+                          ? f.supportTypes.filter(v => v !== st.value)
+                          : [...f.supportTypes, st.value]
+                      }))}
+                    >
+                      {selected && <span aria-hidden="true" style={{ marginInlineEnd: 6 }}>✓</span>}
+                      {isRTL ? st.ar : st.en}
+                    </button>
+                  );
+                })}
               </div>
+              <span className="psr-hint">
+                {isRTL
+                  ? `اختر جميع الأنواع التي تحتاجها (يمكنك اختيار أكثر من نوع) — تم اختيار ${form.supportTypes.length}.`
+                  : `Pick every kind you need (multi-select) — ${form.supportTypes.length} selected.`}
+              </span>
             </label>
             <label className="psr-field" style={{ gridColumn: 'span 2' }}>
               <span>{isRTL ? 'وصف الطلب * — تفاصيل المشروع، الأهداف، وما تحتاجه من فاب لاب' : 'Description * — project details, goals, and what you need from FabLab'}</span>

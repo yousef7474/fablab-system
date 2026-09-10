@@ -35,6 +35,21 @@ const esc = (v) => String(v == null ? '' : v)
   .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
   .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 
+const SUPPORT_TYPE_LABELS = {
+  funding:    '💰 دعم مالي',
+  tech:       '🛠 دعم فني',
+  materials:  '📦 مواد وأدوات',
+  mentorship: '👨‍🏫 إرشاد وتوجيه',
+  other:      '🎯 أخرى'
+};
+const labelSupportType = (v) => SUPPORT_TYPE_LABELS[v] || v;
+// Coalesce new JSON array + legacy string.
+const supportTypeList = (r) => {
+  if (Array.isArray(r?.supportTypes)) return r.supportTypes;
+  if (r?.supportType) return [r.supportType];
+  return [];
+};
+
 // Suggested approver emails — same convention as fablab visits.
 // Free-text override always available.
 const APPROVER_EMAILS = [
@@ -284,7 +299,7 @@ const ProjectSupportTab = () => {
     <div class="section-title">📋 تفاصيل المشروع</div>
     <table class="info-table" style="margin-bottom:3mm">
       ${r.projectTitle ? `<tr><th>اسم المشروع</th><td>${esc(r.projectTitle)}</td></tr>` : ''}
-      ${r.supportType ? `<tr><th>نوع الدعم المطلوب</th><td>${esc(r.supportType)}</td></tr>` : ''}
+      ${supportTypeList(r).length > 0 ? `<tr><th>نوع الدعم المطلوب</th><td>${esc(supportTypeList(r).map(labelSupportType).join('، '))}</td></tr>` : ''}
       <tr><th>عدد المرفقات</th><td><b>${Array.isArray(r.files) ? r.files.length : 0}</b> ملف</td></tr>
     </table>
     <div class="desc-box"><b style="color:#6d28d9">وصف الطلب:</b><br>${esc(r.description)}</div>
@@ -428,7 +443,11 @@ const ProjectSupportTab = () => {
                     </td>
                     <td style={{ padding: '12px 14px', fontSize: 13, color: '#334155' }}>
                       {r.projectTitle || <span style={{ color: '#94a3b8', fontStyle: 'italic' }}>—</span>}
-                      {r.supportType && <div style={{ fontSize: 11, color: '#6d28d9', marginTop: 2 }}>{r.supportType}</div>}
+                      {supportTypeList(r).length > 0 && (
+                        <div style={{ fontSize: 11, color: '#6d28d9', marginTop: 2 }}>
+                          {supportTypeList(r).map(labelSupportType).join(' · ')}
+                        </div>
+                      )}
                     </td>
                     <td style={{ padding: '12px 14px' }}>
                       <span style={{ display: 'inline-block', padding: '3px 10px', borderRadius: 999, background: st.bg, color: st.color, fontSize: 11.5, fontWeight: 700 }}>
@@ -481,7 +500,22 @@ const ProjectSupportTab = () => {
                   <div><div style={{ fontSize: 11, fontWeight: 700, color: '#64748b', letterSpacing: 0.6, textTransform: 'uppercase', marginBottom: 2 }}>البريد</div><div style={{ fontSize: 14, fontWeight: 700 }} dir="ltr">{openReq.email}</div></div>
                   {openReq.age && <div><div style={{ fontSize: 11, fontWeight: 700, color: '#64748b', letterSpacing: 0.6, textTransform: 'uppercase', marginBottom: 2 }}>العمر</div><div style={{ fontSize: 14, fontWeight: 700 }}>{openReq.age}</div></div>}
                   {openReq.city && <div><div style={{ fontSize: 11, fontWeight: 700, color: '#64748b', letterSpacing: 0.6, textTransform: 'uppercase', marginBottom: 2 }}>المدينة</div><div style={{ fontSize: 14, fontWeight: 700 }}>{openReq.city}</div></div>}
-                  {openReq.supportType && <div><div style={{ fontSize: 11, fontWeight: 700, color: '#64748b', letterSpacing: 0.6, textTransform: 'uppercase', marginBottom: 2 }}>نوع الدعم</div><div style={{ fontSize: 14, fontWeight: 700, color: '#6d28d9' }}>{openReq.supportType}</div></div>}
+                  {supportTypeList(openReq).length > 0 && (
+                    <div style={{ gridColumn: '1 / -1' }}>
+                      <div style={{ fontSize: 11, fontWeight: 700, color: '#64748b', letterSpacing: 0.6, textTransform: 'uppercase', marginBottom: 4 }}>نوع الدعم المطلوب</div>
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                        {supportTypeList(openReq).map(v => (
+                          <span key={v} style={{
+                            fontSize: 12, fontWeight: 700, color: '#6d28d9',
+                            background: '#f5f3ff', border: '1px solid #ede9fe',
+                            padding: '4px 10px', borderRadius: 999
+                          }}>
+                            {labelSupportType(v)}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 <div style={{ marginBottom: 16 }}>

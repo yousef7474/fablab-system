@@ -2,6 +2,7 @@ const { FablabVisit, Settings, RegistrationClosure } = require('../models');
 const { sequelize } = require('../config/database');
 const crypto = require('crypto');
 const sgMail = require('@sendgrid/mail');
+const { archiveSentApproval, markArchiveDecided } = require('./approvalArchiveController');
 if (process.env.SENDGRID_API_KEY) sgMail.setApiKey(process.env.SENDGRID_API_KEY);
 
 // Format the sequential visit number for display: 12 → "V-012"
@@ -508,8 +509,12 @@ exports.sendForApproval = async (req, res) => {
       });
     }
 
+    let archivedSubject = null;
+    let archivedEmailHtml = null;
     try {
       const mail = _buildManagerEmail({ row, token, origin: _publicOrigin() });
+      archivedSubject = mail.subject;
+      archivedEmailHtml = mail.html;
       await sgMail.send({
         from: {
           email: process.env.SENDGRID_FROM_EMAIL,
@@ -523,12 +528,41 @@ exports.sendForApproval = async (req, res) => {
       console.log(`✉️  visit approval email sent to ${managerEmail} (visit ${row.visitId})`);
     } catch (mailErr) {
       console.error(`❌ visit approval email FAILED for ${managerEmail}:`, mailErr?.response?.body || mailErr.message);
+      // Archive the attempt so it's visible in the archive with a
+      // "pending" status; admin can hit Resend from there.
+      if (archivedEmailHtml) {
+        archiveSentApproval({
+          type: 'fablab_visit',
+          sourceId: row.visitId,
+          requestNumber: row.visitNumber != null ? formatVisitNumber(row.visitNumber) : null,
+          title: row.entityName || row.personInCharge || 'FabLab Visit',
+          managerEmail,
+          subject: archivedSubject,
+          emailHtml: archivedEmailHtml,
+          payloadSnapshot: row.toJSON(),
+          sentById: req.admin?.adminId || null
+        });
+      }
       return res.json({
         message: 'Marked pending — email delivery failed, try resending',
         messageAr: 'تم حفظ الطلب — فشل إرسال البريد، حاول إعادة الإرسال',
         row,
         emailFailed: true,
         emailFailReason: 'send-failed'
+      });
+    }
+
+    if (archivedEmailHtml) {
+      archiveSentApproval({
+        type: 'fablab_visit',
+        sourceId: row.visitId,
+        requestNumber: row.visitNumber != null ? formatVisitNumber(row.visitNumber) : null,
+        title: row.entityName || row.personInCharge || 'FabLab Visit',
+        managerEmail,
+        subject: archivedSubject,
+        emailHtml: archivedEmailHtml,
+        payloadSnapshot: row.toJSON(),
+        sentById: req.admin?.adminId || null
       });
     }
 
@@ -606,6 +640,13 @@ exports.publicDecide = async (req, res) => {
     }
     await row.update({ approvalToken: null });
 
+    markArchiveDecided({
+      type: 'fablab_visit',
+      sourceId: row.visitId,
+      status: decision === 'approve' ? 'approved' : 'rejected',
+      managerName: row.managerName
+    });
+
     // Same auto-notify as the dashboard path — the manager decided
     // via the emailed token link, so the visitor gets an email too.
     _sendVisitorDecisionEmail(row, {
@@ -655,6 +696,12 @@ exports.managerApprove = async (req, res) => {
         : (req.admin?.fullName || row.managerName),
       approvalToken: null // once decided from the dashboard, invalidate the email link
     });
+    markArchiveDecided({
+      type: 'fablab_visit',
+      sourceId: row.visitId,
+      status: 'approved',
+      managerName: row.managerName
+    });
     // Auto-notify the visitor — pass the manager's note as the
     // custom message so the visitor sees the reasoning. Fire-and-
     // forget: never blocks the response and never fails the decision.
@@ -684,6 +731,12 @@ exports.managerReject = async (req, res) => {
         ? String(req.body.managerName).trim()
         : (req.admin?.fullName || row.managerName),
       approvalToken: null
+    });
+    markArchiveDecided({
+      type: 'fablab_visit',
+      sourceId: row.visitId,
+      status: 'rejected',
+      managerName: row.managerName
     });
     _sendVisitorDecisionEmail(row, {
       accepted: false,

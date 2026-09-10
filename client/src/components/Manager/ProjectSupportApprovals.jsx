@@ -32,6 +32,21 @@ const humanBytes = (n) => {
   return `${(b / (1024 * 1024)).toFixed(1)} MB`;
 };
 
+// Support-type label map (mirrors the whitelist on the server).
+const SUPPORT_TYPE_LABELS = {
+  funding:    '💰 دعم مالي',
+  tech:       '🛠 دعم فني',
+  materials:  '📦 مواد وأدوات',
+  mentorship: '👨‍🏫 إرشاد وتوجيه',
+  other:      '🎯 أخرى'
+};
+const labelSupportType = (v) => SUPPORT_TYPE_LABELS[v] || v;
+const supportTypeList = (r) => {
+  if (Array.isArray(r?.supportTypes)) return r.supportTypes;
+  if (r?.supportType) return [r.supportType];
+  return [];
+};
+
 const ProjectSupportApprovals = () => {
   const { i18n } = useTranslation();
   const isRTL = i18n.language === 'ar';
@@ -183,10 +198,14 @@ const ProjectSupportApprovals = () => {
                     )}
                   </div>
                   <div className="ap-card-right">
-                    {r.supportType && (
-                      <span className="ap-pill" style={{ background: '#f5f3ff', color: '#6d28d9' }}>
-                        {r.supportType}
-                      </span>
+                    {supportTypeList(r).length > 0 && (
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, justifyContent: 'flex-end' }}>
+                        {supportTypeList(r).map(v => (
+                          <span key={v} className="ap-pill" style={{ background: '#f5f3ff', color: '#6d28d9' }}>
+                            {labelSupportType(v)}
+                          </span>
+                        ))}
+                      </div>
                     )}
                     <button className="ap-toggle" onClick={() => toggle(r.requestId)}>
                       {isExpanded ? (isRTL ? 'إخفاء' : 'Hide') : (isRTL ? 'التفاصيل' : 'Details')}

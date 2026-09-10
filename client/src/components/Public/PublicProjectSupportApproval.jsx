@@ -29,6 +29,23 @@ const humanBytes = (n) => {
   return `${(b / (1024 * 1024)).toFixed(1)} MB`;
 };
 
+// Same whitelist the server enforces — kept client-side so an older
+// row (legacy string `supportType`) still renders the Arabic label.
+const SUPPORT_TYPE_LABELS = {
+  funding:    '💰 دعم مالي',
+  tech:       '🛠 دعم فني / تقني',
+  materials:  '📦 مواد وأدوات',
+  mentorship: '👨‍🏫 إرشاد وتوجيه',
+  other:      '🎯 أخرى'
+};
+const labelSupportType = (v) => SUPPORT_TYPE_LABELS[v] || v;
+// Rows may be brand-new (JSON array) OR legacy (single string) — coalesce.
+const supportTypeList = (r) => {
+  if (Array.isArray(r?.supportTypes)) return r.supportTypes;
+  if (r?.supportType) return [r.supportType];
+  return [];
+};
+
 const PublicProjectSupportApproval = () => {
   const { token } = useParams();
   const [searchParams] = useSearchParams();
@@ -203,7 +220,22 @@ const PublicProjectSupportApproval = () => {
               <div className="pub-info-value">{r.email}</div>
             </div>
             {r.city && <div className="pub-info"><div className="pub-info-label">المدينة</div><div className="pub-info-value text">{r.city}</div></div>}
-            {r.supportType && <div className="pub-info"><div className="pub-info-label">نوع الدعم</div><div className="pub-info-value text">{r.supportType}</div></div>}
+            {supportTypeList(r).length > 0 && (
+              <div className="pub-info" style={{ gridColumn: '1 / -1' }}>
+                <div className="pub-info-label">نوع الدعم المطلوب</div>
+                <div className="pub-info-value text" style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                  {supportTypeList(r).map(v => (
+                    <span key={v} style={{
+                      fontSize: 12, fontWeight: 700, color: '#6d28d9',
+                      background: '#f5f3ff', border: '1px solid #ede9fe',
+                      padding: '4px 10px', borderRadius: 999
+                    }}>
+                      {labelSupportType(v)}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         </div>
 

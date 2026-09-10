@@ -41,7 +41,14 @@ const ProjectSupportRequest = sequelize.define('ProjectSupportRequest', {
 
   // ────────── Request content ──────────
   projectTitle:   { type: DataTypes.STRING(500), allowNull: true },
-  supportType:    { type: DataTypes.STRING(64),  allowNull: true }, // 'funding' | 'tech' | 'materials' | 'mentorship' | 'other'
+  // One or more of: 'funding' | 'tech' | 'materials' | 'mentorship' | 'other'.
+  // Requesters often need help across categories (e.g. funding + mentorship),
+  // so this is a JSON array — the old single-value STRING was too limiting.
+  supportTypes: {
+    type: DataTypes.JSON,
+    allowNull: false,
+    defaultValue: []
+  },
   description:    { type: DataTypes.TEXT, allowNull: false },
   // [{ fileName, fileType, fileSize, fileData (base64) }, ...] — max 10
   files: {

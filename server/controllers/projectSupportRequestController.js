@@ -21,6 +21,38 @@ const RESPONSE_SLA_DAYS = 5;
 const MAX_FILES = 10;
 const MAX_FILE_BYTES = 12 * 1024 * 1024; // 12 MB base64 per file
 
+// Whitelist of support types the form offers. Unknown values are
+// dropped at ingest — keeps the JSON column honest for reporting.
+const SUPPORT_TYPE_LABELS_AR = {
+  funding:    'دعم مالي',
+  tech:       'دعم فني / تقني',
+  materials:  'مواد وأدوات',
+  mentorship: 'إرشاد وتوجيه',
+  other:      'أخرى'
+};
+const SUPPORT_TYPE_KEYS = Object.keys(SUPPORT_TYPE_LABELS_AR);
+
+// Normalise whatever the client sent — array, single string, or the
+// legacy `supportType` field — into an array of known keys.
+const _normSupportTypes = (raw) => {
+  const arr = Array.isArray(raw)
+    ? raw
+    : (raw == null ? [] : [raw]);
+  const out = [];
+  for (const v of arr) {
+    const k = String(v || '').trim().toLowerCase();
+    if (SUPPORT_TYPE_KEYS.includes(k) && !out.includes(k)) out.push(k);
+  }
+  return out;
+};
+
+// Human-readable joined string for emails / plain-text contexts.
+const _labelSupportTypes = (arr) => {
+  const list = Array.isArray(arr) ? arr : [];
+  if (list.length === 0) return '';
+  return list.map(k => SUPPORT_TYPE_LABELS_AR[k] || k).join('، ');
+};
+
 const _publicOrigin = () =>
   process.env.PUBLIC_APP_URL ||
   (process.env.NODE_ENV === 'production' ? 'https://fablabsahsa.com' : 'http://localhost:3000');
@@ -91,7 +123,7 @@ const _buildUserReceivedEmail = (row) => {
     <table style="width:100%;font-size:13px;border-collapse:collapse;background:#f8fafc;border-radius:10px;margin:12px 0;overflow:hidden">
       <tr><td style="padding:8px 14px;color:#64748b;width:150px">رقم الطلب:</td><td style="padding:8px 14px;font-weight:800;font-family:monospace;color:${brand}">${_esc(reqNo)}</td></tr>
       ${row.projectTitle ? `<tr><td style="padding:8px 14px;color:#64748b">المشروع:</td><td style="padding:8px 14px;font-weight:600">${_esc(row.projectTitle)}</td></tr>` : ''}
-      ${row.supportType ? `<tr><td style="padding:8px 14px;color:#64748b">نوع الدعم:</td><td style="padding:8px 14px">${_esc(row.supportType)}</td></tr>` : ''}
+      ${_labelSupportTypes(row.supportTypes) ? `<tr><td style="padding:8px 14px;color:#64748b">نوع الدعم:</td><td style="padding:8px 14px">${_esc(_labelSupportTypes(row.supportTypes))}</td></tr>` : ''}
       <tr><td style="padding:8px 14px;color:#64748b">عدد الملفات المرفقة:</td><td style="padding:8px 14px">${Array.isArray(row.files) ? row.files.length : 0}</td></tr>
     </table>
     <div style="background:#fef3c7;border-inline-start:4px solid #f59e0b;padding:14px 18px;border-radius:8px;margin:16px 0">
@@ -133,7 +165,7 @@ const _buildOpsReceivedEmail = (row) => {
       <tr><td style="padding:6px 0;color:#64748b">الجوال:</td><td style="padding:6px 0" dir="ltr">${_esc(row.phoneNumber)}</td></tr>
       <tr><td style="padding:6px 0;color:#64748b">البريد:</td><td style="padding:6px 0" dir="ltr">${_esc(row.email)}</td></tr>
       ${row.projectTitle ? `<tr><td style="padding:6px 0;color:#64748b">المشروع:</td><td style="padding:6px 0;font-weight:600">${_esc(row.projectTitle)}</td></tr>` : ''}
-      ${row.supportType ? `<tr><td style="padding:6px 0;color:#64748b">نوع الدعم:</td><td style="padding:6px 0">${_esc(row.supportType)}</td></tr>` : ''}
+      ${_labelSupportTypes(row.supportTypes) ? `<tr><td style="padding:6px 0;color:#64748b">نوع الدعم:</td><td style="padding:6px 0">${_esc(_labelSupportTypes(row.supportTypes))}</td></tr>` : ''}
       <tr><td style="padding:6px 0;color:#64748b;vertical-align:top">الوصف:</td><td style="padding:6px 0;white-space:pre-wrap">${_esc(row.description)}</td></tr>
       <tr><td style="padding:6px 0;color:#64748b">مرفقات:</td><td style="padding:6px 0"><b>${fileCount}</b> ملف</td></tr>
     </table>
@@ -171,7 +203,7 @@ const _buildManagerEmail = ({ row, token, origin }) => {
       <tr><td style="padding:8px 14px;color:#64748b;width:150px">مقدم الطلب:</td><td style="padding:8px 14px;font-weight:700">${_esc(row.firstName)} ${_esc(row.lastName || '')}</td></tr>
       <tr><td style="padding:8px 14px;color:#64748b">الجوال / البريد:</td><td style="padding:8px 14px" dir="ltr">${_esc(row.phoneNumber)} · ${_esc(row.email)}</td></tr>
       ${row.projectTitle ? `<tr><td style="padding:8px 14px;color:#64748b">المشروع:</td><td style="padding:8px 14px;font-weight:600">${_esc(row.projectTitle)}</td></tr>` : ''}
-      ${row.supportType ? `<tr><td style="padding:8px 14px;color:#64748b">نوع الدعم:</td><td style="padding:8px 14px">${_esc(row.supportType)}</td></tr>` : ''}
+      ${_labelSupportTypes(row.supportTypes) ? `<tr><td style="padding:8px 14px;color:#64748b">نوع الدعم:</td><td style="padding:8px 14px">${_esc(_labelSupportTypes(row.supportTypes))}</td></tr>` : ''}
       <tr><td style="padding:8px 14px;color:#64748b;vertical-align:top">الوصف:</td><td style="padding:8px 14px;white-space:pre-wrap">${_esc(row.description)}</td></tr>
       <tr><td style="padding:8px 14px;color:#64748b">مرفقات:</td><td style="padding:8px 14px"><b>${fileCount}</b> ملف — يمكن تنزيلها من صفحة المراجعة</td></tr>
     </table>
@@ -266,7 +298,7 @@ exports.publicCreate = async (req, res) => {
     const {
       firstName, lastName, sex, nationality, nationalId,
       phoneNumber, email, age, city,
-      projectTitle, supportType, description,
+      projectTitle, supportType, supportTypes, description,
       files
     } = req.body || {};
 
@@ -312,7 +344,7 @@ exports.publicCreate = async (req, res) => {
       age: age ? Number(age) || null : null,
       city: city ? String(city).trim() : null,
       projectTitle: projectTitle ? String(projectTitle).trim() : null,
-      supportType: supportType ? String(supportType).trim() : null,
+      supportTypes: _normSupportTypes(supportTypes ?? supportType),
       description: String(description).trim(),
       files: cleanFiles,
       approvalStatus: 'draft'

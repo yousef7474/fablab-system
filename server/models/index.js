@@ -871,6 +871,36 @@ const syncDatabase = async () => {
       }
     }
 
+    // Project support requests: single-value supportType column →
+    // multi-select supportTypes JSON array. Requesters can now pick
+    // several support categories (funding + mentorship, etc.). Legacy
+    // string rows get wrapped into a 1-item array so no data is lost.
+    try {
+      await sequelize.query(
+        `ALTER TABLE project_support_requests ADD COLUMN IF NOT EXISTS "supportTypes" JSON DEFAULT '[]'::json`
+      );
+      // Backfill from the old string column only when the new array is
+      // still empty/null AND the old column exists with a value.
+      try {
+        await sequelize.query(
+          `UPDATE project_support_requests
+              SET "supportTypes" = json_build_array("supportType")
+            WHERE "supportType" IS NOT NULL
+              AND trim("supportType") <> ''
+              AND ("supportTypes" IS NULL OR "supportTypes"::text = '[]')`
+        );
+      } catch (_) { /* old column may not exist on fresh installs */ }
+      try {
+        await sequelize.query(
+          `ALTER TABLE project_support_requests DROP COLUMN IF EXISTS "supportType"`
+        );
+      } catch (_) { /* fine if already gone */ }
+    } catch (migrationError) {
+      if (!/does not exist/i.test(migrationError.message)) {
+        console.log('project_support_requests supportTypes migration note:', migrationError.message);
+      }
+    }
+
     // Volunteer opportunity requests: sequential number + unique index.
     try {
       await sequelize.query(
