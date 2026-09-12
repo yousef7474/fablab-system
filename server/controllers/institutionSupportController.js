@@ -987,13 +987,13 @@ exports.generateSummary = async (req, res) => {
     const p = await InstitutionProject.findByPk(req.params.id);
     if (!p) return res.status(404).json({ message: 'Project not found' });
 
-    const { summary, model, stats } = await generateProjectSummary(p);
+    const { summary, model, stats, truncated } = await generateProjectSummary(p);
     p.aiSummary = summary;
     p.aiSummaryGeneratedAt = new Date();
     p.aiSummaryModel = model;
     await p.save();
 
-    console.log(`[institution/summary] ${p.projectId} generated in ${Date.now() - t0}ms — ${stats.textChars}c / ${stats.inlineImages}img / ${stats.listedImages} listed`);
+    console.log(`[institution/summary] ${p.projectId} generated in ${Date.now() - t0}ms — ${stats.textChars}c / ${stats.inlineImages}img / ${stats.listedImages} listed${truncated ? ' [TRUNCATED]' : ''}`);
     res.json({
       projectId: p.projectId,
       projectName: p.projectName,
@@ -1001,6 +1001,7 @@ exports.generateSummary = async (req, res) => {
       summary,
       generatedAt: p.aiSummaryGeneratedAt,
       model,
+      truncated,
       stats
     });
   } catch (err) {

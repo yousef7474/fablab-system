@@ -234,7 +234,13 @@ async function callGemini({ meta, textBlocks, inlineImages, listedImages }) {
 ## 8) التوصية
 جملة أو جملتان بتوصية واضحة (مثال: يُوصى بالاعتماد / يحتاج مزيد من المراجعة / …).
 
-قيّد الطول الإجمالي بحيث يُطبع في صفحة A4 واحدة. لا تختلق أرقاماً أو معلومات لم ترد في المصادر. إذا كانت المعلومات ناقصة في قسم ما، اذكر ذلك بصراحة.`;
+قواعد صارمة عليك الالتزام بها:
+- قيّد الطول الإجمالي بحيث يُطبع في صفحة A4 واحدة (حوالي 400-550 كلمة إجمالاً).
+- لا يزيد كل قسم عن 3–5 أسطر (ما عدا القسم 4 يمكنه الوصول إلى 6 أسطر).
+- استخدم جملاً قصيرة مباشرة. تجنّب الحشو.
+- **أخرج جميع الأقسام الثمانية بلا استثناء** حتى لو اضطررت لتقصير المحتوى.
+- ابدأ مباشرة بـ "## 1) الطلب الرسمي من الطالب" دون أي تمهيد أو مقدمة.
+- لا تختلق أرقاماً أو معلومات لم ترد في المصادر. إذا نقصت المعلومات في قسم ما، اذكر ذلك بصراحة.`;
 
   const parts = [
     { text: instruction },
@@ -251,14 +257,26 @@ async function callGemini({ meta, textBlocks, inlineImages, listedImages }) {
     try {
       const model = client.getGenerativeModel({
         model: modelName,
-        generationConfig: { temperature: 0.35, maxOutputTokens: 2048 }
+        generationConfig: {
+          temperature: 0.35,
+          // Enough room for all 8 sections in Arabic (verbose script).
+          // Previous 2048 was truncating after section 2.
+          maxOutputTokens: 8192,
+          // Disable "thinking" budget on 2.5+ models so it doesn't
+          // eat the output token allowance producing hidden reasoning.
+          thinkingConfig: { thinkingBudget: 0 }
+        }
       });
       const result = await model.generateContent({ contents: [{ role: 'user', parts }] });
       const text = result?.response?.text?.() || '';
+      const finishReason = result?.response?.candidates?.[0]?.finishReason || '';
       if (!text.trim()) {
         throw new Error('empty response');
       }
-      return { text: text.trim(), model: modelName };
+      // If the model still hit the ceiling, note it so the caller
+      // and the UI can flag the summary as incomplete.
+      const truncated = finishReason === 'MAX_TOKENS';
+      return { text: text.trim(), model: modelName, truncated };
     } catch (err) {
       lastErr = err;
       const msg = err?.message || String(err);
@@ -276,10 +294,11 @@ async function callGemini({ meta, textBlocks, inlineImages, listedImages }) {
 // ─────────────── Public API ───────────────
 async function generateProjectSummary(row) {
   const ctx = await assembleContext(row);
-  const { text, model } = await callGemini(ctx);
+  const { text, model, truncated } = await callGemini(ctx);
   return {
     summary: text,
     model,
+    truncated: !!truncated,
     stats: {
       textChars: ctx.totalChars,
       inlineImages: ctx.inlineImageCount,
