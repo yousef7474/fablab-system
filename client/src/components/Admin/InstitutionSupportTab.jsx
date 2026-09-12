@@ -428,6 +428,120 @@ const InstitutionSupportTab = () => {
     }
   };
 
+  // ---------- AI summary (Gemini) ----------
+  const [summaryOpen, setSummaryOpen] = useState(false);
+  const [summaryLoading, setSummaryLoading] = useState(false);
+  const [summaryText, setSummaryText] = useState('');
+  const [summaryMeta, setSummaryMeta] = useState(null); // { generatedAt, model, apiKeyConfigured }
+
+  // Fetch any cached summary the moment a project is opened, so the
+  // manager can see it without paying for a fresh generation.
+  useEffect(() => {
+    let alive = true;
+    if (!selected?.projectId) return;
+    setSummaryText('');
+    setSummaryMeta(null);
+    (async () => {
+      try {
+        const { data } = await api.get(`/institution-support/${selected.projectId}/summary`);
+        if (!alive) return;
+        setSummaryText(data?.summary || '');
+        setSummaryMeta({
+          generatedAt: data?.generatedAt || null,
+          model: data?.model || null,
+          apiKeyConfigured: !!data?.apiKeyConfigured
+        });
+      } catch { /* silent — button will still work */ }
+    })();
+    return () => { alive = false; };
+  }, [selected?.projectId]);
+
+  const generateSummary = async () => {
+    if (!selected) return;
+    setSummaryLoading(true);
+    try {
+      const { data } = await api.post(`/institution-support/${selected.projectId}/summary`);
+      setSummaryText(data?.summary || '');
+      setSummaryMeta({
+        generatedAt: data?.generatedAt || new Date().toISOString(),
+        model: data?.model || null,
+        apiKeyConfigured: true
+      });
+      setSummaryOpen(true);
+      toast.success(isRTL ? '✅ تم توليد الملخص' : '✅ Summary generated');
+    } catch (err) {
+      const msg = err?.response?.data?.messageAr
+        || err?.response?.data?.message
+        || err?.message
+        || (isRTL ? 'تعذر توليد الملخص' : 'Summary failed');
+      toast.error(msg, { autoClose: 8000 });
+    } finally {
+      setSummaryLoading(false);
+    }
+  };
+
+  const printSummary = () => {
+    if (!summaryText || !selected) return;
+    const title = `${selected.projectName || ''} — ${fmtProjectNo(selected.projectNumber)}`;
+    const generatedLine = summaryMeta?.generatedAt
+      ? new Date(summaryMeta.generatedAt).toLocaleString('ar-SA', { dateStyle: 'long', timeStyle: 'short' })
+      : '';
+    // Turn markdown headings (## …) into styled section titles.
+    const bodyHtml = summaryText
+      .split(/\n{2,}/)
+      .map(block => {
+        const m = block.match(/^\s*##\s+(.+?)\n?([\s\S]*)$/);
+        if (m) {
+          const heading = m[1].trim();
+          const body = m[2].trim().replace(/\n/g, '<br>');
+          return `<section class="s"><h3>${heading}</h3><p>${body}</p></section>`;
+        }
+        return `<p>${block.replace(/\n/g, '<br>')}</p>`;
+      })
+      .join('');
+
+    const w = window.open('', '_blank');
+    if (!w) return;
+    w.document.write(`<!doctype html><html dir="rtl" lang="ar"><head><meta charset="utf-8">
+<title>${title}</title>
+<style>
+  @page { size: A4; margin: 15mm; }
+  html, body { margin: 0; padding: 0; font-family: 'Segoe UI', 'Tahoma', 'Arial', sans-serif; color: #0f172a; background: #fff; }
+  .wrap { max-width: 180mm; margin: 0 auto; }
+  header { display: flex; justify-content: space-between; align-items: flex-end; border-bottom: 3px solid #EE2329; padding-bottom: 8mm; margin-bottom: 8mm; }
+  header .brand { font-size: 12pt; letter-spacing: 1.4px; color: #EE2329; font-weight: 800; text-transform: uppercase; }
+  header .brand small { display: block; color: #475569; font-size: 8pt; font-weight: 600; letter-spacing: 0.4px; margin-top: 2mm; }
+  header .no { font-family: 'JetBrains Mono', monospace; font-size: 10pt; color: #64748b; }
+  h1 { font-size: 16pt; margin: 0 0 3mm; color: #0f172a; }
+  .meta { color: #64748b; font-size: 9pt; margin-bottom: 6mm; }
+  section.s { margin-bottom: 5mm; page-break-inside: avoid; }
+  section.s h3 { font-size: 11pt; color: #b91c1c; border-inline-start: 3px solid #EE2329; padding-inline-start: 3mm; margin: 0 0 2mm; }
+  section.s p { font-size: 10.5pt; line-height: 1.75; margin: 0; white-space: pre-wrap; }
+  footer { margin-top: 8mm; padding-top: 4mm; border-top: 1px dashed #cbd5e1; font-size: 8pt; color: #94a3b8; text-align: center; }
+  .sign { display: flex; justify-content: space-between; margin-top: 12mm; gap: 20mm; }
+  .sign .box { flex: 1; text-align: center; }
+  .sign .box .line { border-bottom: 1px solid #94a3b8; height: 12mm; }
+  .sign .box .lbl { font-size: 9pt; color: #475569; margin-top: 2mm; }
+</style></head><body>
+<div class="wrap">
+  <header>
+    <div class="brand">FABLAB الأحساء<small>ملخص تنفيذي — مشروع مدعوم</small></div>
+    <div class="no">${fmtProjectNo(selected.projectNumber)}</div>
+  </header>
+  <h1>${title}</h1>
+  <div class="meta">تم التوليد آلياً بواسطة <b>${summaryMeta?.model || 'Gemini'}</b>${generatedLine ? ` · ${generatedLine}` : ''}</div>
+  ${bodyHtml}
+  <div class="sign">
+    <div class="box"><div class="line"></div><div class="lbl">توقيع المدير</div></div>
+    <div class="box"><div class="line"></div><div class="lbl">التاريخ</div></div>
+  </div>
+  <footer>فاب لاب الأحساء · مؤسسة عبدالمنعم الراشد الإنسانية</footer>
+</div>
+<script>window.addEventListener('load', () => setTimeout(() => window.print(), 400));</script>
+</body></html>`);
+    w.document.close();
+  };
+
   // ---------- Student editor ----------
   // Each student is { name, phone, nationalId }. Old rows that carry
   // plain strings are normalized to that shape on render.
@@ -582,6 +696,22 @@ const InstitutionSupportTab = () => {
                       >
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
                         {isRTL ? 'معاينة' : 'Preview'}
+                      </button>
+                      <button
+                        className="isp-btn isp-btn--print"
+                        style={{ background: 'linear-gradient(135deg, #6366f1, #4338ca)', color: '#fff', borderColor: 'transparent' }}
+                        onClick={summaryText ? () => setSummaryOpen(true) : generateSummary}
+                        disabled={summaryLoading}
+                        title={summaryText
+                          ? (isRTL ? 'عرض ملخص Gemini المخزّن' : 'View cached Gemini summary')
+                          : (isRTL ? 'قراءة كل الملفات وتوليد ملخص تنفيذي' : 'Read all files and generate an executive summary')}
+                      >
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2v4M4.93 4.93l2.83 2.83M2 12h4M4.93 19.07l2.83-2.83M12 22v-4M19.07 19.07l-2.83-2.83M22 12h-4M19.07 4.93l-2.83 2.83"/><circle cx="12" cy="12" r="4"/></svg>
+                        {summaryLoading
+                          ? (isRTL ? 'جاري القراءة...' : 'Reading files...')
+                          : summaryText
+                            ? (isRTL ? 'عرض الملخص' : 'View Summary')
+                            : (isRTL ? 'توليد ملخص AI' : 'Generate Summary')}
                       </button>
                     </>
                   )}
@@ -1017,6 +1147,114 @@ const InstitutionSupportTab = () => {
                   )}
                 </div>
               )}
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* AI executive summary modal — reads all uploaded files via
+          Gemini and presents a one-page overview with print action. */}
+      <AnimatePresence>
+        {summaryOpen && (
+          <motion.div
+            className="isp-modal-overlay"
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            onClick={() => setSummaryOpen(false)}
+          >
+            <motion.div
+              className="isp-modal"
+              style={{ maxWidth: 780 }}
+              initial={{ opacity: 0, scale: 0.94, y: 12 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.94, y: 12 }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="isp-modal-head" style={{ background: 'linear-gradient(135deg, #6366f1, #4338ca)', color: '#fff' }}>
+                <div className="isp-modal-head-lead">
+                  <div className="isp-modal-icon" style={{ background: 'rgba(255,255,255,0.2)' }}>✨</div>
+                  <div>
+                    <div className="isp-modal-kicker" style={{ color: 'rgba(255,255,255,0.9)' }}>
+                      {isRTL ? 'ملخص تنفيذي — مولّد بواسطة Gemini' : 'Executive Summary — Generated by Gemini'}
+                    </div>
+                    <h2 style={{ color: '#fff', margin: 0 }}>
+                      {selected?.projectName || ''}
+                    </h2>
+                    {selected && (
+                      <div className="isp-modal-no" style={{ color: 'rgba(255,255,255,0.85)' }}>
+                        {fmtProjectNo(selected.projectNumber)}
+                      </div>
+                    )}
+                  </div>
+                </div>
+                <div className="isp-modal-head-actions">
+                  <button
+                    className="isp-btn isp-btn--print"
+                    style={{ background: 'rgba(255,255,255,0.2)', color: '#fff', borderColor: 'transparent' }}
+                    onClick={generateSummary}
+                    disabled={summaryLoading}
+                    title={isRTL ? 'إعادة القراءة بعد رفع ملفات جديدة' : 'Re-read files (after uploads)'}
+                  >
+                    {summaryLoading ? '…' : (isRTL ? '↻ إعادة التوليد' : '↻ Regenerate')}
+                  </button>
+                  <button
+                    className="isp-btn isp-btn--print"
+                    style={{ background: '#fff', color: '#4338ca' }}
+                    onClick={printSummary}
+                    disabled={!summaryText}
+                  >
+                    🖨 {isRTL ? 'طباعة A4' : 'Print A4'}
+                  </button>
+                  <button
+                    className="isp-modal-close"
+                    style={{ background: 'rgba(255,255,255,0.2)', color: '#fff' }}
+                    onClick={() => setSummaryOpen(false)}
+                  >✕</button>
+                </div>
+              </div>
+              <div className="isp-modal-body" style={{ padding: 24, background: '#fafbff' }}>
+                {summaryLoading ? (
+                  <div style={{ padding: 40, textAlign: 'center', color: '#4338ca', fontWeight: 700 }}>
+                    {isRTL
+                      ? '⏳ يقرأ Gemini جميع الملفات المرفوعة ويحلّلها — قد يستغرق دقيقة...'
+                      : '⏳ Gemini is reading and analyzing every uploaded file — this can take a minute...'}
+                  </div>
+                ) : summaryText ? (
+                  <>
+                    {summaryMeta?.generatedAt && (
+                      <div style={{ marginBottom: 14, padding: '8px 14px', background: '#eef2ff', border: '1px solid #c7d2fe', borderRadius: 8, fontSize: 12, color: '#4338ca' }}>
+                        {isRTL ? 'تم التوليد:' : 'Generated:'} {new Date(summaryMeta.generatedAt).toLocaleString(isRTL ? 'ar-SA' : undefined, { dateStyle: 'medium', timeStyle: 'short' })}
+                        {summaryMeta.model && (
+                          <span style={{ marginInlineStart: 12, opacity: 0.7 }}>· {summaryMeta.model}</span>
+                        )}
+                      </div>
+                    )}
+                    <div style={{ background: '#fff', padding: 22, borderRadius: 12, border: '1px solid #e0e7ff', lineHeight: 1.85, fontSize: 14.5, color: '#0f172a', whiteSpace: 'pre-wrap' }}>
+                      {summaryText.split(/\n{2,}/).map((block, i) => {
+                        const m = block.match(/^\s*##\s+(.+?)\n?([\s\S]*)$/);
+                        if (m) {
+                          return (
+                            <section key={i} style={{ marginBottom: 14 }}>
+                              <h3 style={{
+                                fontSize: 13.5, fontWeight: 800, color: '#4338ca',
+                                borderInlineStart: '3px solid #6366f1',
+                                paddingInlineStart: 10, margin: '0 0 6px'
+                              }}>{m[1].trim()}</h3>
+                              <div style={{ fontSize: 14, color: '#334155' }}>{m[2].trim()}</div>
+                            </section>
+                          );
+                        }
+                        return <p key={i} style={{ margin: '0 0 10px' }}>{block}</p>;
+                      })}
+                    </div>
+                  </>
+                ) : (
+                  <div style={{ padding: 40, textAlign: 'center', color: '#64748b' }}>
+                    {isRTL
+                      ? 'لا يوجد ملخص بعد. اضغط "إعادة التوليد" لبدء القراءة.'
+                      : 'No summary yet — click "Regenerate" to start.'}
+                  </div>
+                )}
+              </div>
             </motion.div>
           </motion.div>
         )}

@@ -1,0 +1,236 @@
+// One-page executive summary generator for "دعم مؤسسة" projects.
+//
+// Reads every text-bearing file uploaded to the project (reports,
+// invoices, registration paperwork, Google form results) and hands
+// the extracted text + project metadata to Gemini, which returns an
+// Arabic executive summary structured so the manager can decide
+// without reading each file individually.
+//
+// Image / screenshot handling: the first N images are attached to
+// the Gemini request as multimodal content so their contents can be
+// described. Additional images fall back to a filename listing to
+// keep prompt size (and API cost) bounded.
+
+const { GoogleGenerativeAI } = require('@google/generative-ai');
+const path = require('path');
+
+// ─────────────── Config ───────────────
+const MODEL_NAME = process.env.GEMINI_MODEL || 'gemini-1.5-pro-latest';
+const MAX_TEXT_CHARS_PER_FILE = 20_000;   // hard cap per file post-extraction
+const MAX_TOTAL_TEXT_CHARS    = 120_000;  // guard against runaway prompts
+const MAX_IMAGES_INLINE       = 6;        // vision inputs (rest are named-only)
+const MAX_IMAGE_BYTES         = 4 * 1024 * 1024; // ~4 MB per image sent inline
+
+// ─────────────── File-type helpers ───────────────
+const _ext = (name) => (path.extname(String(name || '')).replace('.', '').toLowerCase());
+const _kind = (file) => {
+  const ext = _ext(file?.fileName) || String(file?.fileType || '').toLowerCase();
+  if (['pdf'].includes(ext)) return 'pdf';
+  if (['doc', 'docx'].includes(ext)) return 'docx';
+  if (['xls', 'xlsx', 'csv'].includes(ext)) return 'xlsx';
+  if (['txt', 'md'].includes(ext)) return 'text';
+  if (['png', 'jpg', 'jpeg', 'webp', 'gif'].includes(ext)) return 'image';
+  return 'other';
+};
+const _mime = (file) => {
+  const ext = _ext(file?.fileName);
+  const map = {
+    png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg',
+    webp: 'image/webp', gif: 'image/gif'
+  };
+  return map[ext] || file?.fileType || 'application/octet-stream';
+};
+
+// ─────────────── Text extraction ───────────────
+async function extractText(file) {
+  if (!file?.fileData) return '';
+  const buf = Buffer.from(String(file.fileData), 'base64');
+  try {
+    switch (_kind(file)) {
+      case 'pdf': {
+        const pdfParse = require('pdf-parse');
+        const out = await pdfParse(buf);
+        return (out.text || '').slice(0, MAX_TEXT_CHARS_PER_FILE);
+      }
+      case 'docx': {
+        const mammoth = require('mammoth');
+        const { value } = await mammoth.extractRawText({ buffer: buf });
+        return (value || '').slice(0, MAX_TEXT_CHARS_PER_FILE);
+      }
+      case 'xlsx': {
+        const XLSX = require('xlsx');
+        const wb = XLSX.read(buf, { type: 'buffer' });
+        const sheets = wb.SheetNames.map(name => {
+          const csv = XLSX.utils.sheet_to_csv(wb.Sheets[name]);
+          return `# ${name}\n${csv}`;
+        });
+        return sheets.join('\n\n').slice(0, MAX_TEXT_CHARS_PER_FILE);
+      }
+      case 'text':
+        return buf.toString('utf8').slice(0, MAX_TEXT_CHARS_PER_FILE);
+      default:
+        return ''; // images and other binary types return via listing / vision
+    }
+  } catch (err) {
+    console.warn(`institutionSummary: extract failed for ${file?.fileName}: ${err.message}`);
+    return '';
+  }
+}
+
+// ─────────────── Payload assembly ───────────────
+async function assembleContext(row) {
+  const groups = [
+    { label: 'التقرير النهائي (عربي)', files: row.reportAr ? [row.reportAr] : [] },
+    { label: 'التقرير النهائي (إنجليزي)', files: row.reportEn ? [row.reportEn] : [] },
+    { label: 'براءة الاختراع', files: row.patentFile ? [row.patentFile] : [] },
+    { label: 'الفواتير', files: Array.isArray(row.invoices) ? row.invoices : [] },
+    { label: 'ملفات التسجيل', files: Array.isArray(row.registrationFiles) ? row.registrationFiles : [] },
+    { label: 'نتائج نموذج التقييم', files: Array.isArray(row.googleFormResults) ? row.googleFormResults : [] }
+  ];
+
+  const textBlocks = [];
+  let totalChars = 0;
+
+  for (const g of groups) {
+    for (const f of g.files) {
+      if (!f) continue;
+      if (totalChars >= MAX_TOTAL_TEXT_CHARS) break;
+      const text = await extractText(f);
+      if (text) {
+        const chunk = text.slice(0, MAX_TOTAL_TEXT_CHARS - totalChars);
+        textBlocks.push(`### ${g.label} — ${f.fileName || 'ملف'}\n${chunk}`);
+        totalChars += chunk.length;
+      } else {
+        // Non-text file (e.g. an image invoice) — still note it exists.
+        textBlocks.push(`### ${g.label} — ${f.fileName || 'ملف'} (نوع غير نصي)`);
+      }
+    }
+  }
+
+  // Image + screenshot inventory. First N images become inline vision
+  // inputs; the rest get a filename-only listing to keep costs sane.
+  const images = Array.isArray(row.images) ? row.images : [];
+  const screenshots = Array.isArray(row.chatScreenshots) ? row.chatScreenshots : [];
+  const allImages = [...images, ...screenshots].filter(f => _kind(f) === 'image');
+  const inlineImages = [];
+  const listedImages = [];
+  for (const f of allImages) {
+    if (inlineImages.length < MAX_IMAGES_INLINE
+        && f?.fileData
+        && Buffer.byteLength(f.fileData, 'base64') <= MAX_IMAGE_BYTES) {
+      inlineImages.push({
+        inlineData: {
+          data: String(f.fileData),
+          mimeType: _mime(f)
+        }
+      });
+    } else {
+      listedImages.push(f?.fileName || 'صورة');
+    }
+  }
+
+  // Invoice amount totals (best-effort — invoice objects may carry
+  // `amount` numeric or a string with currency).
+  const invoiceLine = groups
+    .find(g => g.label === 'الفواتير').files
+    .map(f => f?.amount != null ? Number(f.amount) : null)
+    .filter(n => Number.isFinite(n))
+    .reduce((sum, n) => sum + n, 0);
+
+  const meta = [
+    `اسم المشروع: ${row.projectName || '—'}`,
+    row.projectNumber != null ? `رقم المشروع: ISP-${String(row.projectNumber).padStart(4, '0')}` : null,
+    row.supervisorName ? `المشرف: ${row.supervisorName}` : null,
+    Array.isArray(row.studentNames) && row.studentNames.length ? `الطلاب: ${row.studentNames.join('، ')}` : null,
+    row.startDate ? `تاريخ البدء: ${row.startDate}` : null,
+    row.approvedBy ? `المعتمد: ${row.approvedBy}` : null,
+    row.evaluation ? `تقييم داخلي: ${row.evaluation}` : null,
+    row.notes ? `ملاحظات مسجلة: ${row.notes}` : null,
+    invoiceLine > 0 ? `إجمالي مبالغ الفواتير المسجلة: ${invoiceLine.toLocaleString('ar-SA')} ريال` : null,
+    `عدد الصور المرفقة: ${images.length}${screenshots.length ? ` + ${screenshots.length} لقطة محادثة` : ''}`
+  ].filter(Boolean).join('\n');
+
+  return {
+    meta,
+    textBlocks,
+    inlineImages,
+    listedImages,
+    totalChars,
+    inlineImageCount: inlineImages.length
+  };
+}
+
+// ─────────────── Gemini call ───────────────
+async function callGemini({ meta, textBlocks, inlineImages, listedImages }) {
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey) {
+    throw new Error('GEMINI_API_KEY not set on the server. Add it to server .env and restart pm2.');
+  }
+  const client = new GoogleGenerativeAI(apiKey);
+  const model = client.getGenerativeModel({
+    model: MODEL_NAME,
+    generationConfig: {
+      temperature: 0.35,
+      maxOutputTokens: 2048
+    }
+  });
+
+  const instruction = `أنت محرر تقارير تنفيذية لدى فاب لاب الأحساء. مهمتك: إعداد ملخص تنفيذي من صفحة واحدة عن مشروع مدعوم بحيث يستطيع المدير اتخاذ قرار دون الرجوع لكامل الملفات.
+
+اكتب الملخص بالعربية الفصحى، بأسلوب مباشر ومنظم في الأقسام التالية بالضبط، مع استخدام عناوين ماركداون (##) قبل كل قسم:
+
+## 1) نظرة عامة
+جملة أو جملتان تصف فكرة المشروع وهدفه بوضوح.
+
+## 2) الفريق والنطاق
+الطلاب، المشرف، القسم المسؤول، والفترة الزمنية.
+
+## 3) الملفات المرفقة والمخرجات
+تلخيص محتوى التقارير والملفات (بما فيها الصور إن كانت متاحة) بشكل يوضح ما تم إنجازه.
+
+## 4) الجانب المالي
+إن ذُكرت مبالغ في الفواتير أو التقارير، لخّصها. إن لم تُذكر، قل ذلك بوضوح.
+
+## 5) التقييم ونتائج التقييم النهائي
+ما الذي تشير إليه نتائج نموذج التقييم؟ هل حقق المشروع أهدافه؟
+
+## 6) المخاطر أو الملاحظات الحرجة
+أي شيء يستدعي انتباه المدير (تأخير، مشكلات، ملاحظات المشرف، إلخ). إن لم يوجد، اذكر "لا توجد ملاحظات حرجة ظاهرة".
+
+## 7) التوصية
+جملة أو جملتان بتوصية واضحة (مثال: يُوصى بالاعتماد / يحتاج مزيد من المراجعة / …).
+
+قيّد الطول الإجمالي بحيث يُطبع في صفحة A4 واحدة. لا تختلق أرقاماً أو معلومات لم ترد في المصادر. إذا كانت المعلومات ناقصة في قسم ما، اذكر ذلك بصراحة.`;
+
+  const parts = [
+    { text: instruction },
+    { text: `\n---\n\n### بيانات المشروع (البيانات المُدخلة يدوياً)\n${meta}` },
+    ...(textBlocks.length ? [{ text: `\n\n### محتوى الملفات المرفوعة\n\n${textBlocks.join('\n\n')}` }] : []),
+    ...(listedImages.length ? [{ text: `\n\n### صور إضافية لم تُرسل للنموذج (بأسمائها فقط)\n- ${listedImages.slice(0, 40).join('\n- ')}${listedImages.length > 40 ? `\n… وعدد ${listedImages.length - 40} صورة أخرى` : ''}` }] : []),
+    ...inlineImages
+  ];
+
+  const result = await model.generateContent({ contents: [{ role: 'user', parts }] });
+  const text = result?.response?.text?.() || '';
+  if (!text.trim()) {
+    throw new Error('Gemini returned an empty response.');
+  }
+  return { text: text.trim(), model: MODEL_NAME };
+}
+
+// ─────────────── Public API ───────────────
+async function generateProjectSummary(row) {
+  const ctx = await assembleContext(row);
+  const { text, model } = await callGemini(ctx);
+  return {
+    summary: text,
+    model,
+    stats: {
+      textChars: ctx.totalChars,
+      inlineImages: ctx.inlineImageCount,
+      listedImages: ctx.listedImages.length
+    }
+  };
+}
+
+module.exports = { generateProjectSummary };

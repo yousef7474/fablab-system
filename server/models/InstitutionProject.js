@@ -48,6 +48,12 @@ const InstitutionProject = sequelize.define('InstitutionProject', {
   // from Google Forms; images are also allowed.
   googleFormResults: { type: DataTypes.JSON, allowNull: false, defaultValue: [] },
 
+  // AI-generated one-page executive summary — cached so re-opens
+  // don't re-bill the AI API. Regenerated on demand from the tab.
+  aiSummary:            { type: DataTypes.TEXT, allowNull: true },
+  aiSummaryGeneratedAt: { type: DataTypes.DATE, allowNull: true },
+  aiSummaryModel:       { type: DataTypes.STRING(64), allowNull: true },
+
   createdById: { type: DataTypes.UUID, allowNull: true },
   isActive:    { type: DataTypes.BOOLEAN, allowNull: false, defaultValue: true }
 }, {

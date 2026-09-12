@@ -837,6 +837,16 @@ const syncDatabase = async () => {
       await sequelize.query(
         `ALTER TABLE institution_projects ADD COLUMN IF NOT EXISTS "googleFormResults" JSON NOT NULL DEFAULT '[]'::json`
       );
+      // AI-generated executive summary cache columns.
+      await sequelize.query(
+        `ALTER TABLE institution_projects ADD COLUMN IF NOT EXISTS "aiSummary" TEXT`
+      );
+      await sequelize.query(
+        `ALTER TABLE institution_projects ADD COLUMN IF NOT EXISTS "aiSummaryGeneratedAt" TIMESTAMP WITH TIME ZONE`
+      );
+      await sequelize.query(
+        `ALTER TABLE institution_projects ADD COLUMN IF NOT EXISTS "aiSummaryModel" VARCHAR(64)`
+      );
     } catch (migrationError) {
       if (!/does not exist/i.test(migrationError.message)) {
         console.log('institution_projects file-array migrations note:', migrationError.message);

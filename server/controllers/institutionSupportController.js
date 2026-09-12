@@ -2,6 +2,7 @@ const { InstitutionProject } = require('../models');
 const { sequelize } = require('../config/database');
 const { PDFDocument } = require('pdf-lib');
 const { generatePdfFromHtml } = require('../utils/pdfGenerator');
+const { generateProjectSummary } = require('../utils/institutionSummary');
 
 const MAX_IMAGES = 50;
 
@@ -941,6 +942,72 @@ exports.exportPdf = async (req, res) => {
     res.status(500).json({
       message: 'PDF export failed',
       stage,
+      detail: err && err.message ? err.message : String(err)
+    });
+  }
+};
+
+// ─────────────── AI executive summary ───────────────
+
+// GET /:id/summary — return the cached summary (if any).
+exports.getSummary = async (req, res) => {
+  try {
+    const p = await InstitutionProject.findByPk(req.params.id, {
+      attributes: ['projectId', 'projectName', 'projectNumber', 'aiSummary', 'aiSummaryGeneratedAt', 'aiSummaryModel']
+    });
+    if (!p) return res.status(404).json({ message: 'Project not found' });
+    res.json({
+      projectId: p.projectId,
+      projectName: p.projectName,
+      projectNumber: p.projectNumber,
+      summary: p.aiSummary,
+      generatedAt: p.aiSummaryGeneratedAt,
+      model: p.aiSummaryModel,
+      apiKeyConfigured: !!process.env.GEMINI_API_KEY
+    });
+  } catch (err) {
+    console.error('institution/getSummary:', err);
+    res.status(500).json({ message: 'Server error', detail: err.message });
+  }
+};
+
+// POST /:id/summary — (re)generate the executive summary. Reads the
+// full project row with all file blobs, hands it to the Gemini
+// utility, caches the result on the row so re-opens don't re-bill.
+exports.generateSummary = async (req, res) => {
+  const t0 = Date.now();
+  try {
+    if (!process.env.GEMINI_API_KEY) {
+      return res.status(503).json({
+        message: 'AI summary not configured on this server',
+        messageAr: 'خدمة الملخص التلقائي غير مفعلة على السيرفر',
+        hint: 'Add GEMINI_API_KEY to server/.env and restart pm2.'
+      });
+    }
+    const p = await InstitutionProject.findByPk(req.params.id);
+    if (!p) return res.status(404).json({ message: 'Project not found' });
+
+    const { summary, model, stats } = await generateProjectSummary(p);
+    p.aiSummary = summary;
+    p.aiSummaryGeneratedAt = new Date();
+    p.aiSummaryModel = model;
+    await p.save();
+
+    console.log(`[institution/summary] ${p.projectId} generated in ${Date.now() - t0}ms — ${stats.textChars}c / ${stats.inlineImages}img / ${stats.listedImages} listed`);
+    res.json({
+      projectId: p.projectId,
+      projectName: p.projectName,
+      projectNumber: p.projectNumber,
+      summary,
+      generatedAt: p.aiSummaryGeneratedAt,
+      model,
+      stats
+    });
+  } catch (err) {
+    console.error(`[institution/summary] failed after ${Date.now() - t0}ms:`, err);
+    res.status(500).json({
+      message: 'AI summary generation failed',
+      messageAr: 'تعذر توليد الملخص التلقائي',
       detail: err && err.message ? err.message : String(err)
     });
   }

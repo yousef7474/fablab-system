@@ -45,4 +45,8 @@ router.delete('/:id/chat-screenshots/:index',     requireManager, ctrl.removeCha
 router.post('/:id/google-form-results',           requireManager, ctrl.addGoogleFormResults);
 router.delete('/:id/google-form-results/:index',  requireManager, ctrl.removeGoogleFormResult);
 
+// AI-generated executive summary (reads all uploaded files → Gemini)
+router.get('/:id/summary',                        ctrl.getSummary);
+router.post('/:id/summary',                       requireManager, ctrl.generateSummary);
+
 module.exports = router;
