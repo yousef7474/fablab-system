@@ -2,7 +2,7 @@ const { InstitutionProject } = require('../models');
 const { sequelize } = require('../config/database');
 const { PDFDocument } = require('pdf-lib');
 const { generatePdfFromHtml } = require('../utils/pdfGenerator');
-const { generateProjectSummary } = require('../utils/institutionSummary');
+const { generateProjectSummary, listGeminiModels } = require('../utils/institutionSummary');
 
 const MAX_IMAGES = 50;
 
@@ -1010,5 +1010,26 @@ exports.generateSummary = async (req, res) => {
       messageAr: 'تعذر توليد الملخص التلقائي',
       detail: err && err.message ? err.message : String(err)
     });
+  }
+};
+
+// GET /institution-support/gemini/models — diagnostic. Returns the
+// list of model names + supported methods the current GEMINI_API_KEY
+// can call. Auth-gated (any authed admin/manager can hit it).
+exports.listAvailableModels = async (req, res) => {
+  try {
+    if (!process.env.GEMINI_API_KEY) {
+      return res.status(503).json({ message: 'GEMINI_API_KEY not set' });
+    }
+    const models = await listGeminiModels();
+    const genContentModels = models.filter(m => m.supported.includes('generateContent'));
+    res.json({
+      keyLength: process.env.GEMINI_API_KEY.length,
+      totalModels: models.length,
+      generateContentModels: genContentModels.map(m => m.name),
+      allModels: models
+    });
+  } catch (err) {
+    res.status(500).json({ message: 'ListModels failed', detail: err.message });
   }
 };

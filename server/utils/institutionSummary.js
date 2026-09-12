@@ -20,7 +20,20 @@ const path = require('path');
 // falls through to a working one automatically.
 const MODEL_CANDIDATES = process.env.GEMINI_MODEL
   ? [process.env.GEMINI_MODEL]
-  : ['gemini-2.5-flash', 'gemini-2.5-pro', 'gemini-1.5-flash', 'gemini-1.5-pro'];
+  : [
+      // Current generation (v1beta 2026)
+      'gemini-2.0-flash-exp',
+      'gemini-2.0-flash-001',
+      'gemini-2.0-flash',
+      'gemini-2.0-pro-exp',
+      // Older generation — some keys still have these enabled
+      'gemini-1.5-flash-002',
+      'gemini-1.5-pro-002',
+      'gemini-1.5-flash-latest',
+      'gemini-1.5-pro-latest',
+      'gemini-2.5-flash',
+      'gemini-2.5-pro'
+    ];
 const MAX_TEXT_CHARS_PER_FILE = 20_000;   // hard cap per file post-extraction
 const MAX_TOTAL_TEXT_CHARS    = 120_000;  // guard against runaway prompts
 const MAX_IMAGES_INLINE       = 6;        // vision inputs (rest are named-only)
@@ -53,18 +66,31 @@ async function extractText(file) {
   try {
     switch (_kind(file)) {
       case 'pdf': {
-        // pdf-parse v2 changed the export shape — resolve either the
-        // legacy default-function form or the new named export.
+        // Handle both pdf-parse APIs:
+        //  - v1.x: `require('pdf-parse')` is a function returning
+        //          { text, numpages, … }.
+        //  - v2.x: exports a `PDFParse` CLASS you instantiate with
+        //          `{ data: buffer }` then call `.getText()`.
         const mod = require('pdf-parse');
-        const pdfParse = typeof mod === 'function'
-          ? mod
-          : (mod?.pdf || mod?.default || mod?.parse);
-        if (typeof pdfParse !== 'function') {
-          console.warn('institutionSummary: pdf-parse export shape unknown', Object.keys(mod || {}));
-          return '';
+        // v1 function form
+        if (typeof mod === 'function') {
+          const out = await mod(buf);
+          return (out?.text || '').slice(0, MAX_TEXT_CHARS_PER_FILE);
         }
-        const out = await pdfParse(buf);
-        return (out?.text || '').slice(0, MAX_TEXT_CHARS_PER_FILE);
+        // v2 class form
+        if (typeof mod?.PDFParse === 'function') {
+          const parser = new mod.PDFParse({ data: buf });
+          const out = await parser.getText();
+          return (out?.text || '').slice(0, MAX_TEXT_CHARS_PER_FILE);
+        }
+        // Legacy default / named function forms
+        const fn = mod?.pdf || mod?.default || mod?.parse;
+        if (typeof fn === 'function') {
+          const out = await fn(buf);
+          return (out?.text || '').slice(0, MAX_TEXT_CHARS_PER_FILE);
+        }
+        console.warn('institutionSummary: pdf-parse export shape unknown', Object.keys(mod || {}));
+        return '';
       }
       case 'docx': {
         const mammoth = require('mammoth');
@@ -261,4 +287,23 @@ async function generateProjectSummary(row) {
   };
 }
 
-module.exports = { generateProjectSummary };
+// Diagnostic: hit Google's ListModels endpoint to see EXACTLY which
+// model names this API key is allowed to call. Useful when the
+// fallback list keeps 404ing.
+async function listGeminiModels() {
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey) throw new Error('GEMINI_API_KEY not set');
+  const url = `https://generativelanguage.googleapis.com/v1beta/models?key=${encodeURIComponent(apiKey)}`;
+  const res = await fetch(url);
+  if (!res.ok) {
+    const body = await res.text().catch(() => '');
+    throw new Error(`ListModels HTTP ${res.status}: ${body.slice(0, 400)}`);
+  }
+  const data = await res.json();
+  return (data?.models || []).map(m => ({
+    name: m.name,
+    supported: m.supportedGenerationMethods || []
+  }));
+}
+
+module.exports = { generateProjectSummary, listGeminiModels };

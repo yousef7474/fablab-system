@@ -49,4 +49,7 @@ router.delete('/:id/google-form-results/:index',  requireManager, ctrl.removeGoo
 router.get('/:id/summary',                        ctrl.getSummary);
 router.post('/:id/summary',                       requireManager, ctrl.generateSummary);
 
+// Diagnostic — which models can THIS GEMINI_API_KEY call?
+router.get('/gemini/models',                      ctrl.listAvailableModels);
+
 module.exports = router;
