@@ -1067,6 +1067,89 @@ body{font-family:'Segoe UI',Tahoma,Arial,sans-serif;background:linear-gradient(1
 };
 
 /**
+ * Fire-and-forget: notify the assigning manager when the employee
+ * updates the status of a task the manager gave them. Never throws.
+ */
+const sendTaskStatusChangedEmail = async ({
+  managerEmail,
+  managerName,
+  employeeName,
+  taskTitle,
+  previousStatus,
+  newStatus,
+  dueDate,
+  dueDateEnd
+}) => {
+  try {
+    if (!process.env.SENDGRID_API_KEY || !process.env.SENDGRID_FROM_EMAIL) return;
+    if (!managerEmail) return;
+
+    const statusLabel = {
+      pending:        { ar: 'قيد الانتظار', color: '#f59e0b' },
+      in_progress:    { ar: 'قيد التنفيذ',  color: '#2563eb' },
+      completed:      { ar: 'مكتمل',        color: '#16a34a' },
+      uncompleted:    { ar: 'غير مكتمل',    color: '#dc2626' },
+      cancelled:      { ar: 'ملغى',         color: '#64748b' },
+      pending_review: { ar: 'بانتظار المراجعة', color: '#7c3aed' }
+    };
+    const prev = statusLabel[previousStatus] || { ar: previousStatus, color: '#64748b' };
+    const next = statusLabel[newStatus] || { ar: newStatus, color: '#64748b' };
+    const dueRange = dueDateEnd && dueDateEnd !== dueDate
+      ? `${dueDate} → ${dueDateEnd}`
+      : dueDate;
+
+    const msg = {
+      to: managerEmail,
+      from: {
+        email: process.env.SENDGRID_FROM_EMAIL,
+        name: process.env.SENDGRID_FROM_NAME || 'FABLAB Al-Ahsa'
+      },
+      subject: `📋 تحديث حالة مهمة — ${employeeName}: ${next.ar}`,
+      html: `
+<div dir="rtl" style="font-family:'Segoe UI',Tahoma,Arial,sans-serif;max-width:640px;margin:0 auto;background:#f4f6fb;padding:24px">
+  <div style="background:#fff;border-radius:14px;overflow:hidden;box-shadow:0 6px 24px rgba(15,23,42,0.10)">
+    <div style="background:linear-gradient(135deg,${next.color},#0f172a);color:#fff;padding:22px 26px">
+      <div style="font-size:12px;letter-spacing:1.2px;opacity:0.85">FABLAB الأحساء · تحديث حالة</div>
+      <h1 style="margin:6px 0 0;font-size:20px;font-weight:800">📋 تحديث حالة مهمة موظف</h1>
+    </div>
+    <div style="padding:22px 26px;color:#0f172a;font-size:14px;line-height:1.75">
+      <p style="margin:0 0 14px">مرحباً <strong>${managerName || ''}</strong>،</p>
+      <p style="margin:0 0 14px">
+        قام الموظف <strong>${employeeName}</strong> بتحديث حالة إحدى المهام التي أسندتها له.
+      </p>
+      <div style="background:#f8fafc;border-inline-start:4px solid ${next.color};padding:14px 18px;border-radius:8px;margin:14px 0">
+        <div style="font-size:16px;font-weight:800;color:#0f172a;margin-bottom:6px">${taskTitle}</div>
+        ${dueRange ? `<div style="font-size:12.5px;color:#64748b;direction:ltr;text-align:right">📅 ${dueRange}</div>` : ''}
+      </div>
+      <table style="width:100%;font-size:13px;border-collapse:collapse;margin:6px 0 14px">
+        <tr>
+          <td style="padding:8px 0;color:#64748b;width:150px">الحالة السابقة:</td>
+          <td style="padding:8px 0;font-weight:700;color:${prev.color}">${prev.ar}</td>
+        </tr>
+        <tr>
+          <td style="padding:8px 0;color:#64748b">الحالة الجديدة:</td>
+          <td style="padding:8px 0;font-weight:800;color:${next.color}">${next.ar}</td>
+        </tr>
+      </table>
+      <p style="margin:14px 0 0;color:#64748b;font-size:12.5px">
+        فريق فاب لاب الأحساء
+      </p>
+    </div>
+    <div style="background:#f8fafc;padding:12px 24px;font-size:11px;color:#94a3b8;text-align:center">
+      فاب لاب الأحساء · مؤسسة عبدالمنعم الراشد الإنسانية
+    </div>
+  </div>
+</div>`
+    };
+
+    await sgMail.send(msg);
+    console.log(`✉️  Task status change email sent to ${managerEmail} (${previousStatus} → ${newStatus})`);
+  } catch (err) {
+    console.error(`❌ Task status change email failed for ${managerEmail}:`, err?.response?.body || err.message);
+  }
+};
+
+/**
  * Fire-and-forget: notify an employee that they earned a weekly
  * activity credit (cat9_c1 — متابعة المنصة والجدول اليومي). Called
  * whenever processWeeklyCredits/getMyWeeklyStats mints a "Weekly
@@ -1161,5 +1244,6 @@ module.exports = {
   sendWorkshopCustomEmail,
   generateAttendanceIdHtml,
   sendCertificateEmail,
-  sendWeeklyActivityCreditEmail
+  sendWeeklyActivityCreditEmail,
+  sendTaskStatusChangedEmail
 };

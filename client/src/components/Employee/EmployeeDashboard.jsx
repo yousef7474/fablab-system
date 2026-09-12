@@ -187,7 +187,21 @@ const EmployeeDashboard = () => {
   const fetchTasks = useCallback(async () => {
     try {
       const response = await employeeApi.get('/employee/my-tasks');
-      setTasks(response.data || []);
+      const list = Array.isArray(response.data) ? response.data : [];
+      // Sort by due date ascending (soonest first) — tasks without a
+      // date sink to the bottom. Tie-break on createdAt so items on
+      // the same day render in the order they were assigned.
+      list.sort((a, b) => {
+        const ad = a.startDate || a.dueDate || '';
+        const bd = b.startDate || b.dueDate || '';
+        if (ad && !bd) return -1;
+        if (!ad && bd) return 1;
+        if (ad !== bd) return ad < bd ? -1 : 1;
+        const ac = a.createdAt || '';
+        const bc = b.createdAt || '';
+        return ac < bc ? -1 : ac > bc ? 1 : 0;
+      });
+      setTasks(list);
     } catch (error) {
       console.error('Error fetching tasks:', error);
     }
@@ -837,20 +851,24 @@ const EmployeeDashboard = () => {
                             : task.creator && <span className="emp-assigned-by">{isRTL ? 'من المدير:' : 'ASSIGNED BY:'} {task.creator.fullName}</span>
                           }
                         </div>
-                        {task.selfCreated ? (
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                            <select
-                              className="emp-status-select"
-                              value={task.status}
-                              onChange={(e) => handleUpdateTaskStatus(task.taskId, e.target.value)}
-                            >
-                              <option value="pending">{isRTL ? 'قيد الانتظار' : 'Pending'}</option>
-                              <option value="in_progress">{isRTL ? 'قيد التنفيذ' : 'In Progress'}</option>
-                              <option value="completed">{isRTL ? 'مكتمل' : 'Completed'}</option>
-                              <option value="uncompleted">{isRTL ? 'غير مكتمل' : 'Uncompleted'}</option>
-                              <option value="cancelled">{isRTL ? 'ملغى' : 'Cancelled'}</option>
-                            </select>
-                            {task.status !== 'pending_review' ? (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                          <select
+                            className="emp-status-select"
+                            value={task.status}
+                            onChange={(e) => handleUpdateTaskStatus(task.taskId, e.target.value)}
+                          >
+                            <option value="pending">{isRTL ? 'قيد الانتظار' : 'Pending'}</option>
+                            <option value="in_progress">{isRTL ? 'قيد التنفيذ' : 'In Progress'}</option>
+                            <option value="completed">{isRTL ? 'مكتمل' : 'Completed'}</option>
+                            <option value="uncompleted">{isRTL ? 'غير مكتمل' : 'Uncompleted'}</option>
+                            <option value="cancelled">{isRTL ? 'ملغى' : 'Cancelled'}</option>
+                          </select>
+                          {/* "Submit for review" is only relevant for
+                              self-created tasks — that's how the
+                              employee asks a manager to grade their
+                              own work. Manager-assigned tasks skip it. */}
+                          {task.selfCreated && (
+                            task.status !== 'pending_review' ? (
                               <button
                                 className="emp-review-btn"
                                 onClick={() => handleUpdateTaskStatus(task.taskId, 'pending_review')}
@@ -861,11 +879,9 @@ const EmployeeDashboard = () => {
                               <span className="emp-review-pill">
                                 {isRTL ? '⏳ مراجعة' : '⏳ Reviewing'}
                               </span>
-                            )}
-                          </div>
-                        ) : (
-                          <span className={`emp-status-badge ${task.status}`}>{statusLabels[task.status]}</span>
-                        )}
+                            )
+                          )}
+                        </div>
                       </div>
                       {task.description && <p className="emp-task-desc">{task.description}</p>}
                       <div className="emp-task-card-footer">
@@ -968,7 +984,7 @@ const EmployeeDashboard = () => {
                             {event.type === 'appointment' && <span style={{ color: '#4ade80', marginInlineEnd: 6 }}>●</span>}
                             {event.title}
                           </span>
-                          {event.type === 'task' && event.selfCreated ? (
+                          {event.type === 'task' ? (
                             <select
                               className="emp-status-select small"
                               value={event.status}
@@ -980,8 +996,6 @@ const EmployeeDashboard = () => {
                               <option value="uncompleted">{isRTL ? 'غير مكتمل' : 'Uncompleted'}</option>
                               <option value="cancelled">{isRTL ? 'ملغى' : 'Cancelled'}</option>
                             </select>
-                          ) : event.type === 'task' ? (
-                            <span className={`emp-status-badge ${event.status}`}>{statusLabels[event.status]}</span>
                           ) : (
                             <span className="emp-status-badge completed">
                               {isRTL ? 'موعد' : 'Appointment'}

@@ -210,21 +210,42 @@ exports.updateMyTaskStatus = async (req, res) => {
     }
 
     const task = await Task.findOne({
-      where: { taskId: id, employeeId: employee.employeeId }
+      where: { taskId: id, employeeId: employee.employeeId },
+      include: [
+        { model: Admin, as: 'creator', attributes: ['adminId', 'fullName', 'email'] }
+      ]
     });
 
     if (!task) {
       return res.status(404).json({ message: 'Task not found or not assigned to you' });
     }
 
-    // Only allow status change on self-created tasks
-    if (task.createdByEmployeeId !== employee.employeeId) {
-      return res.status(403).json({ message: 'You can only change the status of tasks you created yourself' });
-    }
+    // Employees can now change the status of BOTH their self-created
+    // tasks AND tasks the manager assigned to them — the manager
+    // gets notified so they can track progress in real time.
 
     const previousStatus = task.status;
     task.status = status;
     await task.save();
+
+    // Notify the assigning manager on any status change of a
+    // manager-assigned task (fire-and-forget). Skipped for self-created
+    // tasks and for no-op status changes.
+    if (task.createdByEmployeeId !== employee.employeeId
+        && previousStatus !== status
+        && task.creator?.email) {
+      const { sendTaskStatusChangedEmail } = require('../utils/emailService');
+      sendTaskStatusChangedEmail({
+        managerEmail: task.creator.email,
+        managerName: task.creator.fullName,
+        employeeName: employee.name,
+        taskTitle: task.title,
+        previousStatus,
+        newStatus: status,
+        dueDate: task.dueDate,
+        dueDateEnd: task.dueDateEnd
+      }).catch(() => {});
+    }
 
     // Auto-award point when completed
     let ratingMessage = null;
