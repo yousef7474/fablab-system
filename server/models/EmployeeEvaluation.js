@@ -12,8 +12,11 @@ const EmployeeEvaluation = sequelize.define('EmployeeEvaluation', {
     allowNull: false
   },
   createdById: {
+    // Nullable so system-generated rows (weekly dashboard-activity
+    // catch-up, auto-award, etc.) can be persisted without a fake
+    // admin id.
     type: DataTypes.UUID,
-    allowNull: false
+    allowNull: true
   },
   scores: {
     type: DataTypes.JSON,

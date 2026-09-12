@@ -853,6 +853,24 @@ const syncDatabase = async () => {
       }
     }
 
+    // Employee evaluations: same NOT NULL fix as ratings — system
+    // catch-up code creates evaluation rows without an admin id.
+    try {
+      const [rows] = await sequelize.query(
+        `SELECT is_nullable FROM information_schema.columns
+          WHERE table_name = 'employee_evaluations' AND column_name = 'createdById'`
+      );
+      if (rows?.[0]?.is_nullable === 'NO') {
+        console.log('🔧 employee_evaluations.createdById is NOT NULL — dropping constraint…');
+        await sequelize.query(
+          `ALTER TABLE employee_evaluations ALTER COLUMN "createdById" DROP NOT NULL`
+        );
+        console.log('✅ employee_evaluations.createdById is now nullable.');
+      }
+    } catch (migrationError) {
+      console.log('employee_evaluations.createdById nullability migration ERROR:', migrationError.message);
+    }
+
     // Ratings.createdById: was NOT NULL in older versions of the
     // schema, but the model now allows null so that system-generated
     // ratings (weekly dashboard-activity credits, auto-award on task
