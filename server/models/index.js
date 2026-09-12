@@ -857,16 +857,27 @@ const syncDatabase = async () => {
     // schema, but the model now allows null so that system-generated
     // ratings (weekly dashboard-activity credits, auto-award on task
     // completion, etc.) can be inserted without a fake admin id.
-    // Drop the NOT NULL constraint if it still exists. Idempotent.
+    // Check the current constraint state and drop it if still NOT
+    // NULL. Verbose so we can see the state in pm2 logs.
     try {
-      await sequelize.query(
-        `ALTER TABLE ratings ALTER COLUMN "createdById" DROP NOT NULL`
+      const [rows] = await sequelize.query(
+        `SELECT is_nullable FROM information_schema.columns
+          WHERE table_name = 'ratings' AND column_name = 'createdById'`
       );
-    } catch (migrationError) {
-      // Already nullable, or column missing — either way, nothing to do.
-      if (!/does not exist|is already/i.test(migrationError.message)) {
-        console.log('ratings.createdById nullability migration note:', migrationError.message);
+      const isNullable = rows?.[0]?.is_nullable;
+      if (isNullable === 'NO') {
+        console.log('🔧 ratings.createdById is NOT NULL — dropping constraint…');
+        await sequelize.query(
+          `ALTER TABLE ratings ALTER COLUMN "createdById" DROP NOT NULL`
+        );
+        console.log('✅ ratings.createdById is now nullable.');
+      } else if (isNullable === 'YES') {
+        // Already nullable — nothing to do (idempotent boot).
+      } else {
+        console.log('ratings.createdById: column lookup returned unexpected value', rows);
       }
+    } catch (migrationError) {
+      console.log('ratings.createdById nullability migration ERROR:', migrationError.message);
     }
 
     // Project support requests: sequential number + unique index +
