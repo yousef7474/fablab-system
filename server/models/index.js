@@ -853,6 +853,22 @@ const syncDatabase = async () => {
       }
     }
 
+    // Ratings.createdById: was NOT NULL in older versions of the
+    // schema, but the model now allows null so that system-generated
+    // ratings (weekly dashboard-activity credits, auto-award on task
+    // completion, etc.) can be inserted without a fake admin id.
+    // Drop the NOT NULL constraint if it still exists. Idempotent.
+    try {
+      await sequelize.query(
+        `ALTER TABLE ratings ALTER COLUMN "createdById" DROP NOT NULL`
+      );
+    } catch (migrationError) {
+      // Already nullable, or column missing — either way, nothing to do.
+      if (!/does not exist|is already/i.test(migrationError.message)) {
+        console.log('ratings.createdById nullability migration note:', migrationError.message);
+      }
+    }
+
     // Project support requests: sequential number + unique index +
     // backfill for any legacy rows.
     try {
