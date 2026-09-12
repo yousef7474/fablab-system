@@ -18,20 +18,18 @@ const path = require('path');
 // Order matters — first model that succeeds wins. Kept a mix of
 // current flash + pro variants so a decommissioned or gated model
 // falls through to a working one automatically.
+// Only names ACTUALLY exposed by the current v1beta model catalog
+// (verified against ListModels output on the production key on
+// 2026-09-12). Order: cheapest/latest first, upgrade if it fails.
+// Override the whole list with GEMINI_MODEL env if you want to pin.
 const MODEL_CANDIDATES = process.env.GEMINI_MODEL
   ? [process.env.GEMINI_MODEL]
   : [
-      // Current generation (v1beta 2026)
-      'gemini-2.0-flash-exp',
-      'gemini-2.0-flash-001',
-      'gemini-2.0-flash',
-      'gemini-2.0-pro-exp',
-      // Older generation — some keys still have these enabled
-      'gemini-1.5-flash-002',
-      'gemini-1.5-pro-002',
-      'gemini-1.5-flash-latest',
-      'gemini-1.5-pro-latest',
-      'gemini-2.5-flash',
+      'gemini-flash-latest',       // Google-maintained "latest flash" alias
+      'gemini-2.5-flash',          // Explicit stable flash (June 2025)
+      'gemini-2.5-flash-lite',     // Cheaper fallback
+      'gemini-flash-lite-latest',
+      'gemini-pro-latest',
       'gemini-2.5-pro'
     ];
 const MAX_TEXT_CHARS_PER_FILE = 20_000;   // hard cap per file post-extraction
