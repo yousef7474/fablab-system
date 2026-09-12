@@ -15,7 +15,12 @@ const { GoogleGenerativeAI } = require('@google/generative-ai');
 const path = require('path');
 
 // ─────────────── Config ───────────────
-const MODEL_NAME = process.env.GEMINI_MODEL || 'gemini-1.5-pro-latest';
+// Order matters — first model that succeeds wins. Kept a mix of
+// current flash + pro variants so a decommissioned or gated model
+// falls through to a working one automatically.
+const MODEL_CANDIDATES = process.env.GEMINI_MODEL
+  ? [process.env.GEMINI_MODEL]
+  : ['gemini-2.5-flash', 'gemini-2.5-pro', 'gemini-1.5-flash', 'gemini-1.5-pro'];
 const MAX_TEXT_CHARS_PER_FILE = 20_000;   // hard cap per file post-extraction
 const MAX_TOTAL_TEXT_CHARS    = 120_000;  // guard against runaway prompts
 const MAX_IMAGES_INLINE       = 6;        // vision inputs (rest are named-only)
@@ -48,9 +53,18 @@ async function extractText(file) {
   try {
     switch (_kind(file)) {
       case 'pdf': {
-        const pdfParse = require('pdf-parse');
+        // pdf-parse v2 changed the export shape — resolve either the
+        // legacy default-function form or the new named export.
+        const mod = require('pdf-parse');
+        const pdfParse = typeof mod === 'function'
+          ? mod
+          : (mod?.pdf || mod?.default || mod?.parse);
+        if (typeof pdfParse !== 'function') {
+          console.warn('institutionSummary: pdf-parse export shape unknown', Object.keys(mod || {}));
+          return '';
+        }
         const out = await pdfParse(buf);
-        return (out.text || '').slice(0, MAX_TEXT_CHARS_PER_FILE);
+        return (out?.text || '').slice(0, MAX_TEXT_CHARS_PER_FILE);
       }
       case 'docx': {
         const mammoth = require('mammoth');
@@ -167,13 +181,6 @@ async function callGemini({ meta, textBlocks, inlineImages, listedImages }) {
     throw new Error('GEMINI_API_KEY not set on the server. Add it to server .env and restart pm2.');
   }
   const client = new GoogleGenerativeAI(apiKey);
-  const model = client.getGenerativeModel({
-    model: MODEL_NAME,
-    generationConfig: {
-      temperature: 0.35,
-      maxOutputTokens: 2048
-    }
-  });
 
   const instruction = `أنت محرر تقارير تنفيذية لدى فاب لاب الأحساء. مهمتك: إعداد ملخص تنفيذي من صفحة واحدة عن مشروع مدعوم بحيث يستطيع المدير اتخاذ قرار دون الرجوع لكامل الملفات.
 
@@ -210,12 +217,33 @@ async function callGemini({ meta, textBlocks, inlineImages, listedImages }) {
     ...inlineImages
   ];
 
-  const result = await model.generateContent({ contents: [{ role: 'user', parts }] });
-  const text = result?.response?.text?.() || '';
-  if (!text.trim()) {
-    throw new Error('Gemini returned an empty response.');
+  // Try each model candidate; a 404 on one just means Google
+  // renamed / deprecated it, so we fall through to the next.
+  let lastErr = null;
+  for (const modelName of MODEL_CANDIDATES) {
+    try {
+      const model = client.getGenerativeModel({
+        model: modelName,
+        generationConfig: { temperature: 0.35, maxOutputTokens: 2048 }
+      });
+      const result = await model.generateContent({ contents: [{ role: 'user', parts }] });
+      const text = result?.response?.text?.() || '';
+      if (!text.trim()) {
+        throw new Error('empty response');
+      }
+      return { text: text.trim(), model: modelName };
+    } catch (err) {
+      lastErr = err;
+      const msg = err?.message || String(err);
+      // Only fall through on 404 / not-found / model errors — auth
+      // and quota errors should surface immediately.
+      if (!/not found|is not supported|404|does not exist/i.test(msg)) {
+        throw err;
+      }
+      console.warn(`institutionSummary: model ${modelName} unavailable, trying next — ${msg.slice(0, 200)}`);
+    }
   }
-  return { text: text.trim(), model: MODEL_NAME };
+  throw new Error(`All Gemini model candidates failed. Last error: ${lastErr?.message || 'unknown'}`);
 }
 
 // ─────────────── Public API ───────────────
