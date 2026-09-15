@@ -28,6 +28,11 @@ const OvertimeRequest = sequelize.define('OvertimeRequest', {
   sanadDetails:   { type: DataTypes.TEXT, allowNull: true },
   days:           { type: DataTypes.JSON, allowNull: false, defaultValue: [] },
   createdById:    { type: DataTypes.UUID, allowNull: true },
+  // When the request originated from an employee-side submission
+  // (Employee Dashboard → "الساعات الإضافية"), this is populated so
+  // we can scope "my overtime" queries per-employee. Admin-created
+  // rows leave it null.
+  createdByEmployeeId: { type: DataTypes.UUID, allowNull: true },
   // Approval workflow — admin creates as 'draft', sends for approval
   // (→ 'pending' with a token + emailed link), manager approves or
   // rejects. Printing سند is only allowed once 'approved'.

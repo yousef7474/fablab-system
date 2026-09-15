@@ -898,6 +898,18 @@ const syncDatabase = async () => {
       console.log('ratings.createdById nullability migration ERROR:', migrationError.message);
     }
 
+    // Overtime: createdByEmployeeId lets us scope employee-side "my
+    // overtime" queries. Legacy admin-created rows leave it null.
+    try {
+      await sequelize.query(
+        `ALTER TABLE overtime_requests ADD COLUMN IF NOT EXISTS "createdByEmployeeId" UUID`
+      );
+    } catch (migrationError) {
+      if (!/does not exist/i.test(migrationError.message)) {
+        console.log('overtime_requests.createdByEmployeeId migration note:', migrationError.message);
+      }
+    }
+
     // VAT retirement: zero out taxRate/taxAmount on historical store
     // orders and 3D-print requests, and recompute the grand total so
     // customers don't see two different numbers on old vs new

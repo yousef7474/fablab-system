@@ -468,3 +468,65 @@ exports.publicDecide = async (req, res) => {
 exports._buildApprovalEmail = _buildApprovalEmail;
 exports._overtimeRef = overtimeRef;
 exports._publicOrigin = _publicOrigin;
+exports._sumDayHours = sumDayHours;
+
+// Shared helper: send an overtime row to the manager. Mirrors the
+// admin `sendForApproval` flow so the employee-side endpoint doesn't
+// have to duplicate the token+email+archive dance. Returns the
+// updated row and an `emailFailed` flag (never throws).
+exports._dispatchOvertimeForApproval = async ({ row, managerEmail, sentById }) => {
+  const token = crypto.randomUUID();
+  await row.update({
+    approvalStatus: 'pending',
+    approvalToken: token,
+    managerEmail,
+    sentForApprovalAt: new Date(),
+    approvedAt: null,
+    rejectedAt: null,
+    managerNote: null
+  });
+
+  let archivedEmailHtml = null;
+  let archivedSubject = null;
+  let emailFailed = false;
+
+  if (process.env.SENDGRID_API_KEY) {
+    try {
+      const mail = _buildApprovalEmail({ row, token, origin: _publicOrigin() });
+      archivedEmailHtml = mail.html;
+      archivedSubject = mail.subject;
+      await sgMail.send({
+        from: {
+          email: process.env.SENDGRID_FROM_EMAIL,
+          name: process.env.SENDGRID_FROM_NAME || 'FABLAB Al-Ahsa'
+        },
+        to: managerEmail,
+        subject: mail.subject,
+        html: mail.html,
+        text: mail.text
+      });
+      console.log(`✉️  overtime approval email sent to ${managerEmail} (overtime ${row.overtimeId})`);
+    } catch (mailErr) {
+      console.error(`❌ overtime approval email FAILED for ${managerEmail}:`, mailErr?.response?.body || mailErr.message);
+      emailFailed = true;
+    }
+  } else {
+    console.warn(`⚠️  overtime approval: SENDGRID_API_KEY not set — manager ${managerEmail} will NOT receive the email`);
+  }
+
+  if (archivedEmailHtml) {
+    archiveSentApproval({
+      type: 'overtime',
+      sourceId: row.overtimeId,
+      requestNumber: overtimeRef(row),
+      title: row.employeeName || 'Overtime request',
+      managerEmail,
+      subject: archivedSubject,
+      emailHtml: archivedEmailHtml,
+      payloadSnapshot: row.toJSON(),
+      sentById: sentById || null
+    });
+  }
+
+  return { row, emailFailed };
+};

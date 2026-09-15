@@ -125,6 +125,26 @@ const EmployeeDashboard = () => {
   const [loading, setLoading] = useState(true);
   const [taskStatusFilter, setTaskStatusFilter] = useState('all');
 
+  // Employee-owned overtime requests
+  const [myOvertime, setMyOvertime] = useState([]);
+  const [otStatusFilter, setOtStatusFilter] = useState('all');
+  const [otFormOpen, setOtFormOpen] = useState(false);
+  const [otEditingId, setOtEditingId] = useState(null);
+  const [otForm, setOtForm] = useState({
+    employeeName: '', nationalId: '', phone: '', email: '', position: '',
+    periodStart: '', periodEnd: '', note: '', sanadDetails: '',
+    days: [{ date: '', startTime: '', endTime: '', hours: '', task: '' }]
+  });
+  const [otBusy, setOtBusy] = useState(false);
+  const [otSendModal, setOtSendModal] = useState(null); // { id, managerEmail }
+  // Preset approver dropdown — same list the admin sees.
+  const OT_APPROVERS = [
+    { name: 'أ. زكي اللويم',        email: 'zakiallwoaim@gmail.com' },
+    { name: 'م. نوف البوعبيد',      email: '' },
+    { name: 'أ. عبدالله الصفي',     email: '' },
+    { name: 'أ. عبدالمحسن السلطان', email: '' }
+  ].filter(a => a.email);
+
   // Section-scoped registration requests
   const [registrations, setRegistrations] = useState([]);
   const [regStatusFilter, setRegStatusFilter] = useState('pending');
@@ -233,6 +253,179 @@ const EmployeeDashboard = () => {
       console.error('Error fetching schedule:', error);
     }
   }, []);
+
+  // Overtime — my own submissions only.
+  const fetchMyOvertime = useCallback(async () => {
+    try {
+      const { data } = await employeeApi.get('/employee/my-overtime');
+      setMyOvertime(Array.isArray(data) ? data : []);
+    } catch (error) {
+      console.error('Error fetching my overtime:', error);
+    }
+  }, []);
+
+  const otResetForm = useCallback((prof) => {
+    setOtEditingId(null);
+    setOtForm({
+      employeeName: prof?.name || '',
+      nationalId: '',
+      phone: '',
+      email: prof?.email || '',
+      position: prof?.section || '',
+      periodStart: '',
+      periodEnd: '',
+      note: '',
+      sanadDetails: '',
+      days: [{ date: '', startTime: '', endTime: '', hours: '', task: '' }]
+    });
+  }, []);
+
+  // Auto-compute hours for a day from start/end times.
+  const otRecomputeDayHours = (day) => {
+    if (!day.startTime || !day.endTime) return day;
+    try {
+      const [sh, sm] = String(day.startTime).split(':').map(n => Number(n));
+      const [eh, em] = String(day.endTime).split(':').map(n => Number(n));
+      let mins = (eh * 60 + em) - (sh * 60 + sm);
+      if (mins < 0) mins += 24 * 60;
+      const h = +(mins / 60).toFixed(2);
+      return { ...day, hours: h > 0 ? String(h) : day.hours };
+    } catch { return day; }
+  };
+
+  const otUpdateDay = (idx, patch) => {
+    setOtForm(f => ({
+      ...f,
+      days: f.days.map((d, i) => i === idx ? otRecomputeDayHours({ ...d, ...patch }) : d)
+    }));
+  };
+  const otAddDay = () => setOtForm(f => ({
+    ...f,
+    days: [...f.days, { date: '', startTime: '', endTime: '', hours: '', task: '' }]
+  }));
+  const otRemoveDay = (idx) => setOtForm(f => ({
+    ...f,
+    days: f.days.length > 1 ? f.days.filter((_, i) => i !== idx) : f.days
+  }));
+
+  const otTotalHours = otForm.days.reduce((s, d) => s + (Number(d.hours) || 0), 0);
+
+  const otOpenCreate = () => {
+    otResetForm(profile);
+    setOtFormOpen(true);
+  };
+
+  const otOpenEdit = (row) => {
+    setOtEditingId(row.overtimeId);
+    setOtForm({
+      employeeName: row.employeeName || '',
+      nationalId: row.nationalId || '',
+      phone: row.phone || '',
+      email: row.email || '',
+      position: row.position || '',
+      periodStart: row.periodStart || '',
+      periodEnd: row.periodEnd || '',
+      note: row.note || '',
+      sanadDetails: row.sanadDetails || '',
+      days: (row.days && row.days.length ? row.days : [{ date: '', startTime: '', endTime: '', hours: '', task: '' }])
+        .map(d => ({
+          date: d.date || '',
+          startTime: d.startTime || '',
+          endTime: d.endTime || '',
+          hours: d.hours != null ? String(d.hours) : '',
+          task: d.task || ''
+        }))
+    });
+    setOtFormOpen(true);
+  };
+
+  const otCloseForm = () => { setOtFormOpen(false); setOtEditingId(null); };
+
+  const otSubmitForm = async () => {
+    if (!otForm.employeeName.trim()) return toast.error(isRTL ? 'اسم الموظف مطلوب' : 'Name required');
+    if (otTotalHours <= 0) return toast.error(isRTL ? 'أضف أياماً بساعات صحيحة' : 'Add day(s) with hours');
+    setOtBusy(true);
+    try {
+      const payload = {
+        ...otForm,
+        totalHours: otTotalHours,
+        days: otForm.days.map(d => ({
+          date: d.date || null,
+          startTime: d.startTime || null,
+          endTime: d.endTime || null,
+          hours: Number(d.hours) || 0,
+          task: d.task || ''
+        })).filter(d => d.date || d.hours > 0)
+      };
+      if (otEditingId) {
+        await employeeApi.put(`/employee/my-overtime/${otEditingId}`, payload);
+        toast.success(isRTL ? 'تم تحديث الطلب' : 'Request updated');
+      } else {
+        await employeeApi.post('/employee/my-overtime', payload);
+        toast.success(isRTL ? 'تم حفظ المسودة' : 'Draft saved');
+      }
+      otCloseForm();
+      fetchMyOvertime();
+    } catch (err) {
+      const msg = err?.response?.data?.messageAr || err?.response?.data?.message
+        || (isRTL ? 'تعذّر الحفظ' : 'Save failed');
+      toast.error(msg);
+    } finally {
+      setOtBusy(false);
+    }
+  };
+
+  const otDelete = async (row) => {
+    if (!window.confirm(isRTL
+      ? 'حذف هذه المسودة نهائياً؟'
+      : 'Delete this draft permanently?')) return;
+    try {
+      await employeeApi.delete(`/employee/my-overtime/${row.overtimeId}`);
+      toast.success(isRTL ? 'تم الحذف' : 'Deleted');
+      fetchMyOvertime();
+    } catch (err) {
+      const msg = err?.response?.data?.messageAr || err?.response?.data?.message
+        || (isRTL ? 'تعذّر الحذف' : 'Delete failed');
+      toast.error(msg);
+    }
+  };
+
+  const otOpenSend = (row) => {
+    setOtSendModal({
+      id: row.overtimeId,
+      managerEmail: row.managerEmail || OT_APPROVERS[0]?.email || ''
+    });
+  };
+  const otCloseSend = () => setOtSendModal(null);
+  const otSubmitSend = async () => {
+    if (!otSendModal) return;
+    const email = String(otSendModal.managerEmail || '').trim();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      return toast.error(isRTL ? 'بريد المدير غير صحيح' : 'Invalid manager email');
+    }
+    setOtBusy(true);
+    try {
+      const { data } = await employeeApi.post(
+        `/employee/my-overtime/${otSendModal.id}/send-for-approval`,
+        { managerEmail: email }
+      );
+      if (data?.emailFailed) {
+        toast.warn(isRTL
+          ? 'تم إرسال الطلب — لكن فشل تسليم البريد للمدير'
+          : 'Marked pending — email delivery failed');
+      } else {
+        toast.success(isRTL ? '✅ أُرسل الطلب للمدير للاعتماد' : '✅ Sent to manager for approval');
+      }
+      otCloseSend();
+      fetchMyOvertime();
+    } catch (err) {
+      const msg = err?.response?.data?.messageAr || err?.response?.data?.message
+        || (isRTL ? 'تعذّر الإرسال' : 'Send failed');
+      toast.error(msg);
+    } finally {
+      setOtBusy(false);
+    }
+  };
 
   // Registrations for the employee's own sections. The server does
   // the section filter; we just take what comes.
@@ -410,7 +603,7 @@ const EmployeeDashboard = () => {
       // Record login
       employeeApi.post('/employee/activity/login').catch(() => {});
 
-      Promise.all([fetchProfile(), fetchTasks(), fetchRatings(), fetchSchedule(), fetchEvaluations(), fetchActivityStats(), fetchMyWorkshops(), fetchRegistrations()])
+      Promise.all([fetchProfile(), fetchTasks(), fetchRatings(), fetchSchedule(), fetchEvaluations(), fetchActivityStats(), fetchMyWorkshops(), fetchRegistrations(), fetchMyOvertime()])
         .finally(() => setLoading(false));
 
       // Heartbeat every 5 minutes
@@ -420,7 +613,7 @@ const EmployeeDashboard = () => {
 
       return () => clearInterval(heartbeatInterval);
     }
-  }, [employeeData, fetchProfile, fetchTasks, fetchRatings, fetchSchedule, fetchEvaluations, fetchActivityStats, fetchMyWorkshops, fetchRegistrations]);
+  }, [employeeData, fetchProfile, fetchTasks, fetchRatings, fetchSchedule, fetchEvaluations, fetchActivityStats, fetchMyWorkshops, fetchRegistrations, fetchMyOvertime]);
 
   const handleUpdateTaskStatus = async (taskId, newStatus) => {
     try {
@@ -550,6 +743,7 @@ const EmployeeDashboard = () => {
     { key: 'overview',      label: isRTL ? 'نظرة عامة' : 'Overview',       icon: '◈' },
     { key: 'tasks',         label: isRTL ? 'المهام' : 'Tasks',              icon: '⬢' },
     { key: 'registrations', label: isRTL ? 'طلبات التسجيل' : 'Registrations', icon: '✎' },
+    { key: 'overtime',      label: isRTL ? 'ساعات إضافية' : 'Overtime',      icon: '🕓' },
     { key: 'schedule',      label: isRTL ? 'الجدول' : 'Schedule',           icon: '◱' },
     { key: 'year-calendar', label: isRTL ? 'التقويم السنوي' : 'Year Calendar', icon: '▦' },
     { key: 'ratings',       label: isRTL ? 'التقييمات' : 'Ratings',         icon: '★' },
@@ -1221,6 +1415,315 @@ const EmployeeDashboard = () => {
                           : regDecideModal.mode === 'approve'
                             ? (isRTL ? '✓ اعتماد وإرسال' : '✓ Approve & email')
                             : (isRTL ? '✕ رفض وإرسال' : '✕ Reject & email')}
+                      </button>
+                    </div>
+                  </div>
+                </motion.div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          {/* ═══════════════════════════════════════════════════ OVERTIME */}
+          {activeTab === 'overtime' && (
+            <motion.div
+              key="overtime"
+              className="emp-tasks-tab"
+              variants={containerVariants}
+              initial="hidden"
+              animate="visible"
+              exit={{ opacity: 0 }}
+            >
+              <motion.div variants={itemVariants} className="emp-tasks-tab-head">
+                <div>
+                  <h2 style={{ margin: 0 }}>{isRTL ? '🕓 ساعاتي الإضافية' : '🕓 My Overtime'}</h2>
+                  <p style={{ margin: '4px 0 0', color: '#94a3b8', fontSize: 13 }}>
+                    {isRTL
+                      ? 'أنشئ طلب ساعات إضافية، أرسله للمدير للاعتماد، وتابع حالته.'
+                      : 'Create an overtime request, send it to the manager, and track its status.'}
+                  </p>
+                </div>
+                <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+                  <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                    {[
+                      { key: 'all',      ar: 'الكل',     en: 'All',      color: '#64748b' },
+                      { key: 'draft',    ar: 'مسودات',   en: 'Drafts',   color: '#94a3b8' },
+                      { key: 'pending',  ar: 'قيد الاعتماد', en: 'Pending', color: '#f59e0b' },
+                      { key: 'approved', ar: 'معتمدة',   en: 'Approved', color: '#16a34a' },
+                      { key: 'rejected', ar: 'مرفوضة',   en: 'Rejected', color: '#dc2626' }
+                    ].map(f => {
+                      const active = otStatusFilter === f.key;
+                      const count = f.key === 'all'
+                        ? myOvertime.length
+                        : myOvertime.filter(r => r.approvalStatus === f.key).length;
+                      return (
+                        <button
+                          key={f.key}
+                          onClick={() => setOtStatusFilter(f.key)}
+                          style={{
+                            padding: '6px 14px', borderRadius: 999,
+                            border: active ? 'none' : '1px solid var(--emp-border, #334155)',
+                            background: active ? f.color : 'transparent',
+                            color: active ? '#fff' : 'var(--emp-text, #cbd5e1)',
+                            fontFamily: 'inherit', fontWeight: 700, fontSize: 12, cursor: 'pointer'
+                          }}
+                        >
+                          {isRTL ? f.ar : f.en} · {count}
+                        </button>
+                      );
+                    })}
+                  </div>
+                  <button
+                    onClick={otOpenCreate}
+                    style={{ padding: '10px 22px', borderRadius: 10, border: 'none', background: 'linear-gradient(135deg, #d97706, #92400e)', color: '#fff', fontWeight: 800, cursor: 'pointer', fontFamily: 'inherit' }}
+                  >
+                    + {isRTL ? 'طلب جديد' : 'New Request'}
+                  </button>
+                </div>
+              </motion.div>
+
+              <motion.div variants={itemVariants} className="emp-tasks-grid">
+                <AnimatePresence>
+                  {(otStatusFilter === 'all' ? myOvertime : myOvertime.filter(r => r.approvalStatus === otStatusFilter)).length === 0 ? (
+                    <div className="emp-empty" style={{ padding: 40, textAlign: 'center', color: '#94a3b8' }}>
+                      {isRTL ? '— لا توجد طلبات —' : '— No requests —'}
+                    </div>
+                  ) : (otStatusFilter === 'all' ? myOvertime : myOvertime.filter(r => r.approvalStatus === otStatusFilter)).map((r, i) => {
+                    const statusColor = r.approvalStatus === 'approved' ? '#16a34a'
+                      : r.approvalStatus === 'rejected' ? '#dc2626'
+                      : r.approvalStatus === 'pending' ? '#f59e0b'
+                      : '#94a3b8';
+                    const statusLabel = r.approvalStatus === 'approved' ? (isRTL ? 'معتمد' : 'Approved')
+                      : r.approvalStatus === 'rejected' ? (isRTL ? 'مرفوض' : 'Rejected')
+                      : r.approvalStatus === 'pending' ? (isRTL ? 'قيد الاعتماد' : 'Pending')
+                      : (isRTL ? 'مسودة' : 'Draft');
+                    return (
+                      <motion.div
+                        key={r.overtimeId}
+                        layout
+                        initial={{ opacity: 0, y: 12 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -8, transition: { duration: 0.15 } }}
+                        transition={{ delay: i * 0.03, type: 'spring', stiffness: 260, damping: 22 }}
+                        className="emp-task-card"
+                        style={{ borderInlineStart: `4px solid ${statusColor}`, padding: 16 }}
+                      >
+                        <div className="emp-task-card-header">
+                          <div>
+                            <h4 style={{ margin: 0 }}>{r.employeeName}</h4>
+                            <div style={{ fontSize: 12, color: '#94a3b8', marginTop: 4 }}>
+                              {r.periodStart && r.periodEnd ? `${r.periodStart} → ${r.periodEnd}` : (r.periodStart || '—')}
+                            </div>
+                          </div>
+                          <span style={{ background: `${statusColor}25`, color: statusColor, padding: '3px 10px', borderRadius: 999, fontWeight: 800, fontSize: 12 }}>
+                            {statusLabel}
+                          </span>
+                        </div>
+
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 10, margin: '12px 0' }}>
+                          <div><div style={{ fontSize: 10.5, color: '#94a3b8', fontWeight: 700, letterSpacing: 0.6 }}>{isRTL ? 'إجمالي الساعات' : 'TOTAL HOURS'}</div><div style={{ fontFamily: 'JetBrains Mono, monospace', fontWeight: 800, fontSize: 15, color: statusColor }}>{Number(r.totalHours || 0).toFixed(2)}</div></div>
+                          <div><div style={{ fontSize: 10.5, color: '#94a3b8', fontWeight: 700, letterSpacing: 0.6 }}>{isRTL ? 'عدد الأيام' : 'DAYS'}</div><div style={{ fontSize: 14 }}>{(r.days || []).length}</div></div>
+                          {r.sentForApprovalAt && (
+                            <div><div style={{ fontSize: 10.5, color: '#94a3b8', fontWeight: 700, letterSpacing: 0.6 }}>{isRTL ? 'أُرسل' : 'SENT'}</div><div style={{ fontSize: 12 }} dir="ltr">{new Date(r.sentForApprovalAt).toLocaleString(isRTL ? 'ar-SA' : undefined, { dateStyle: 'short', timeStyle: 'short' })}</div></div>
+                          )}
+                        </div>
+
+                        {r.sanadDetails && (
+                          <div style={{ background: 'rgba(148,163,184,0.08)', padding: '10px 14px', borderRadius: 8, fontSize: 13, marginBottom: 10, whiteSpace: 'pre-wrap' }}>
+                            <b>{isRTL ? 'تفاصيل السند: ' : 'Sanad details: '}</b>{r.sanadDetails}
+                          </div>
+                        )}
+                        {r.managerNote && (
+                          <div style={{ background: `${statusColor}12`, border: `1px solid ${statusColor}44`, padding: '10px 14px', borderRadius: 8, fontSize: 13, marginBottom: 10, color: statusColor }}>
+                            <b>{isRTL ? 'ملاحظة المدير: ' : 'Manager note: '}</b>{r.managerNote}
+                          </div>
+                        )}
+
+                        <div style={{ display: 'flex', gap: 8, marginTop: 4, flexWrap: 'wrap' }}>
+                          {(r.approvalStatus === 'draft' || r.approvalStatus === 'rejected') && (
+                            <>
+                              <button
+                                onClick={() => otOpenEdit(r)}
+                                style={{ padding: '7px 14px', borderRadius: 8, border: '1px solid #334155', background: 'transparent', color: 'inherit', cursor: 'pointer', fontFamily: 'inherit', fontWeight: 700, fontSize: 12 }}
+                              >
+                                ✎ {isRTL ? 'تعديل' : 'Edit'}
+                              </button>
+                              <button
+                                onClick={() => otDelete(r)}
+                                style={{ padding: '7px 14px', borderRadius: 8, border: '1px solid #dc2626', background: 'transparent', color: '#dc2626', cursor: 'pointer', fontFamily: 'inherit', fontWeight: 700, fontSize: 12 }}
+                              >
+                                🗑 {isRTL ? 'حذف' : 'Delete'}
+                              </button>
+                              <button
+                                onClick={() => otOpenSend(r)}
+                                style={{ padding: '7px 16px', borderRadius: 8, border: 'none', background: '#f59e0b', color: '#fff', cursor: 'pointer', fontFamily: 'inherit', fontWeight: 800, fontSize: 12 }}
+                              >
+                                📤 {isRTL ? 'إرسال للمدير' : 'Send to Manager'}
+                              </button>
+                            </>
+                          )}
+                        </div>
+                      </motion.div>
+                    );
+                  })}
+                </AnimatePresence>
+              </motion.div>
+            </motion.div>
+          )}
+
+          {/* Overtime form modal */}
+          <AnimatePresence>
+            {otFormOpen && (
+              <motion.div
+                initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                onClick={otCloseForm}
+                style={{ position: 'fixed', inset: 0, background: 'rgba(15,23,42,0.7)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}
+              >
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.94, y: 12 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.94, y: 12 }}
+                  onClick={(e) => e.stopPropagation()}
+                  style={{ background: 'var(--emp-card, #0f172a)', color: 'var(--emp-text, #e2e8f0)', borderRadius: 14, maxWidth: 780, width: '100%', maxHeight: '92vh', display: 'flex', flexDirection: 'column', border: '1px solid var(--emp-border, #334155)' }}
+                >
+                  <div style={{ padding: '18px 22px', borderBottom: '1px solid var(--emp-border, #334155)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <div>
+                      <div style={{ fontSize: 11, letterSpacing: 1.2, color: '#f59e0b', textTransform: 'uppercase', fontWeight: 800 }}>
+                        {otEditingId ? (isRTL ? 'تعديل طلب' : 'Edit Request') : (isRTL ? 'طلب ساعات إضافية' : 'New Overtime Request')}
+                      </div>
+                      <div style={{ fontSize: 12, color: '#94a3b8', marginTop: 3 }}>
+                        {isRTL ? `إجمالي الساعات: ${otTotalHours.toFixed(2)}` : `Total hours: ${otTotalHours.toFixed(2)}`}
+                      </div>
+                    </div>
+                    <button onClick={otCloseForm} style={{ background: 'rgba(148,163,184,0.16)', border: 'none', color: 'inherit', width: 32, height: 32, borderRadius: 8, cursor: 'pointer', fontSize: 18 }}>×</button>
+                  </div>
+                  <div style={{ padding: 22, overflowY: 'auto', flex: 1 }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 10, marginBottom: 14 }}>
+                      <label style={{ fontSize: 12 }}>
+                        {isRTL ? 'الاسم *' : 'Name *'}
+                        <input value={otForm.employeeName} onChange={(e) => setOtForm(f => ({ ...f, employeeName: e.target.value }))} style={{ width: '100%', marginTop: 4, padding: 9, borderRadius: 8, border: '1px solid #334155', background: 'var(--emp-bg, #020617)', color: 'inherit', fontFamily: 'inherit' }} />
+                      </label>
+                      <label style={{ fontSize: 12 }}>
+                        {isRTL ? 'الوظيفة / القسم' : 'Position'}
+                        <input value={otForm.position} onChange={(e) => setOtForm(f => ({ ...f, position: e.target.value }))} style={{ width: '100%', marginTop: 4, padding: 9, borderRadius: 8, border: '1px solid #334155', background: 'var(--emp-bg, #020617)', color: 'inherit', fontFamily: 'inherit' }} />
+                      </label>
+                      <label style={{ fontSize: 12 }}>
+                        {isRTL ? 'رقم الهوية' : 'National ID'}
+                        <input dir="ltr" value={otForm.nationalId} onChange={(e) => setOtForm(f => ({ ...f, nationalId: e.target.value }))} style={{ width: '100%', marginTop: 4, padding: 9, borderRadius: 8, border: '1px solid #334155', background: 'var(--emp-bg, #020617)', color: 'inherit', fontFamily: 'inherit' }} />
+                      </label>
+                      <label style={{ fontSize: 12 }}>
+                        {isRTL ? 'الجوال' : 'Phone'}
+                        <input dir="ltr" value={otForm.phone} onChange={(e) => setOtForm(f => ({ ...f, phone: e.target.value }))} style={{ width: '100%', marginTop: 4, padding: 9, borderRadius: 8, border: '1px solid #334155', background: 'var(--emp-bg, #020617)', color: 'inherit', fontFamily: 'inherit' }} />
+                      </label>
+                      <label style={{ fontSize: 12 }}>
+                        {isRTL ? 'من تاريخ' : 'Period start'}
+                        <input type="date" value={otForm.periodStart} onChange={(e) => setOtForm(f => ({ ...f, periodStart: e.target.value }))} style={{ width: '100%', marginTop: 4, padding: 9, borderRadius: 8, border: '1px solid #334155', background: 'var(--emp-bg, #020617)', color: 'inherit', fontFamily: 'inherit' }} />
+                      </label>
+                      <label style={{ fontSize: 12 }}>
+                        {isRTL ? 'إلى تاريخ' : 'Period end'}
+                        <input type="date" value={otForm.periodEnd} onChange={(e) => setOtForm(f => ({ ...f, periodEnd: e.target.value }))} style={{ width: '100%', marginTop: 4, padding: 9, borderRadius: 8, border: '1px solid #334155', background: 'var(--emp-bg, #020617)', color: 'inherit', fontFamily: 'inherit' }} />
+                      </label>
+                    </div>
+
+                    <div style={{ marginTop: 10, marginBottom: 6, fontSize: 11.5, fontWeight: 800, letterSpacing: 1, color: '#f59e0b' }}>
+                      {isRTL ? 'الأيام والساعات' : 'DAYS & HOURS'}
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                      {otForm.days.map((d, idx) => (
+                        <div key={idx} style={{ display: 'grid', gridTemplateColumns: '150px 1fr 1fr 1fr 2fr auto', gap: 6, alignItems: 'center', background: 'rgba(148,163,184,0.06)', padding: 8, borderRadius: 8 }}>
+                          <input type="date" value={d.date} onChange={(e) => otUpdateDay(idx, { date: e.target.value })} style={{ padding: 7, borderRadius: 6, border: '1px solid #334155', background: 'var(--emp-bg, #020617)', color: 'inherit', fontSize: 12, fontFamily: 'inherit' }} />
+                          <input type="time" value={d.startTime} onChange={(e) => otUpdateDay(idx, { startTime: e.target.value })} style={{ padding: 7, borderRadius: 6, border: '1px solid #334155', background: 'var(--emp-bg, #020617)', color: 'inherit', fontSize: 12, fontFamily: 'inherit' }} />
+                          <input type="time" value={d.endTime} onChange={(e) => otUpdateDay(idx, { endTime: e.target.value })} style={{ padding: 7, borderRadius: 6, border: '1px solid #334155', background: 'var(--emp-bg, #020617)', color: 'inherit', fontSize: 12, fontFamily: 'inherit' }} />
+                          <input type="number" step="0.25" min="0" placeholder="hrs" value={d.hours} onChange={(e) => otUpdateDay(idx, { hours: e.target.value })} style={{ padding: 7, borderRadius: 6, border: '1px solid #334155', background: 'var(--emp-bg, #020617)', color: 'inherit', fontSize: 12, fontFamily: 'JetBrains Mono, monospace' }} />
+                          <input type="text" placeholder={isRTL ? 'المهمة المنجزة' : 'Task performed'} value={d.task} onChange={(e) => otUpdateDay(idx, { task: e.target.value })} style={{ padding: 7, borderRadius: 6, border: '1px solid #334155', background: 'var(--emp-bg, #020617)', color: 'inherit', fontSize: 12, fontFamily: 'inherit' }} />
+                          <button type="button" onClick={() => otRemoveDay(idx)} disabled={otForm.days.length <= 1} style={{ padding: '7px 10px', borderRadius: 6, border: '1px solid #dc2626', background: 'transparent', color: '#dc2626', cursor: otForm.days.length <= 1 ? 'not-allowed' : 'pointer', fontSize: 12, opacity: otForm.days.length <= 1 ? 0.5 : 1 }}>×</button>
+                        </div>
+                      ))}
+                    </div>
+                    <button type="button" onClick={otAddDay} style={{ marginTop: 8, padding: '7px 14px', borderRadius: 8, border: '1px dashed #334155', background: 'transparent', color: '#f59e0b', cursor: 'pointer', fontWeight: 700, fontSize: 13, fontFamily: 'inherit' }}>
+                      + {isRTL ? 'إضافة يوم' : 'Add day'}
+                    </button>
+
+                    <div style={{ marginTop: 14 }}>
+                      <label style={{ fontSize: 12 }}>
+                        {isRTL ? 'تفاصيل السند (اختياري)' : 'Sanad details (optional)'}
+                        <textarea rows={2} value={otForm.sanadDetails} onChange={(e) => setOtForm(f => ({ ...f, sanadDetails: e.target.value }))} style={{ width: '100%', marginTop: 4, padding: 9, borderRadius: 8, border: '1px solid #334155', background: 'var(--emp-bg, #020617)', color: 'inherit', fontFamily: 'inherit', resize: 'vertical' }} />
+                      </label>
+                    </div>
+                    <div style={{ marginTop: 10 }}>
+                      <label style={{ fontSize: 12 }}>
+                        {isRTL ? 'ملاحظات (اختياري)' : 'Notes (optional)'}
+                        <textarea rows={2} value={otForm.note} onChange={(e) => setOtForm(f => ({ ...f, note: e.target.value }))} style={{ width: '100%', marginTop: 4, padding: 9, borderRadius: 8, border: '1px solid #334155', background: 'var(--emp-bg, #020617)', color: 'inherit', fontFamily: 'inherit', resize: 'vertical' }} />
+                      </label>
+                    </div>
+                  </div>
+                  <div style={{ padding: '14px 22px', borderTop: '1px solid var(--emp-border, #334155)', display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+                    <button onClick={otCloseForm} disabled={otBusy} style={{ padding: '9px 18px', borderRadius: 8, border: '1px solid #334155', background: 'transparent', color: 'inherit', cursor: 'pointer', fontFamily: 'inherit', fontWeight: 700 }}>
+                      {isRTL ? 'إلغاء' : 'Cancel'}
+                    </button>
+                    <button onClick={otSubmitForm} disabled={otBusy} style={{ padding: '9px 22px', borderRadius: 8, border: 'none', background: '#f59e0b', color: '#fff', cursor: 'pointer', fontFamily: 'inherit', fontWeight: 800 }}>
+                      {otBusy ? '…' : otEditingId ? (isRTL ? '✓ حفظ التعديلات' : '✓ Save changes') : (isRTL ? '✓ حفظ كمسودة' : '✓ Save draft')}
+                    </button>
+                  </div>
+                </motion.div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          {/* Send-for-approval modal */}
+          <AnimatePresence>
+            {otSendModal && (
+              <motion.div
+                initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                onClick={otCloseSend}
+                style={{ position: 'fixed', inset: 0, background: 'rgba(15,23,42,0.7)', zIndex: 1001, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}
+              >
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.94, y: 12 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.94, y: 12 }}
+                  onClick={(e) => e.stopPropagation()}
+                  style={{ background: 'var(--emp-card, #0f172a)', color: 'var(--emp-text, #e2e8f0)', borderRadius: 14, maxWidth: 480, width: '100%', border: '1px solid var(--emp-border, #334155)' }}
+                >
+                  <div style={{ padding: '18px 22px', borderBottom: '1px solid var(--emp-border, #334155)' }}>
+                    <div style={{ fontSize: 11, letterSpacing: 1.2, color: '#f59e0b', textTransform: 'uppercase', fontWeight: 800 }}>
+                      {isRTL ? 'إرسال للاعتماد' : 'Send for approval'}
+                    </div>
+                    <div style={{ fontSize: 12, color: '#94a3b8', marginTop: 4 }}>
+                      {isRTL
+                        ? 'سيتم إرسال الطلب لبريد المدير للمراجعة والاعتماد.'
+                        : 'The request will be emailed to the manager for review and approval.'}
+                    </div>
+                  </div>
+                  <div style={{ padding: 22 }}>
+                    <label style={{ fontSize: 12, fontWeight: 700, color: '#94a3b8', letterSpacing: 0.6, textTransform: 'uppercase' }}>
+                      {isRTL ? 'بريد المدير *' : 'Manager email *'}
+                    </label>
+                    {OT_APPROVERS.length > 0 && (
+                      <select
+                        value={OT_APPROVERS.some(a => a.email === otSendModal.managerEmail) ? otSendModal.managerEmail : '__custom__'}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          if (val === '__custom__') return;
+                          setOtSendModal(s => ({ ...s, managerEmail: val }));
+                        }}
+                        style={{ width: '100%', marginTop: 6, padding: 10, borderRadius: 8, border: '1px solid #334155', background: 'var(--emp-bg, #020617)', color: 'inherit', fontFamily: 'inherit', fontSize: 13 }}
+                      >
+                        {OT_APPROVERS.map(a => (
+                          <option key={a.email} value={a.email}>{a.name} · {a.email}</option>
+                        ))}
+                        <option value="__custom__">{isRTL ? 'بريد آخر...' : 'Other email...'}</option>
+                      </select>
+                    )}
+                    <input
+                      type="email"
+                      dir="ltr"
+                      value={otSendModal.managerEmail}
+                      onChange={(e) => setOtSendModal(s => ({ ...s, managerEmail: e.target.value }))}
+                      placeholder="manager@example.com"
+                      style={{ width: '100%', marginTop: 8, padding: 10, borderRadius: 8, border: '1px solid #334155', background: 'var(--emp-bg, #020617)', color: 'inherit', fontFamily: 'JetBrains Mono, monospace', fontSize: 13 }}
+                    />
+                    <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 18 }}>
+                      <button onClick={otCloseSend} disabled={otBusy} style={{ padding: '9px 18px', borderRadius: 8, border: '1px solid #334155', background: 'transparent', color: 'inherit', cursor: 'pointer', fontFamily: 'inherit', fontWeight: 700 }}>
+                        {isRTL ? 'إلغاء' : 'Cancel'}
+                      </button>
+                      <button onClick={otSubmitSend} disabled={otBusy} style={{ padding: '9px 22px', borderRadius: 8, border: 'none', background: '#f59e0b', color: '#fff', cursor: 'pointer', fontFamily: 'inherit', fontWeight: 800 }}>
+                        {otBusy ? '…' : (isRTL ? '📤 إرسال للمدير' : '📤 Send to Manager')}
                       </button>
                     </div>
                   </div>

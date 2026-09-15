@@ -21,6 +21,15 @@ router.patch('/my-tasks/:id/status', employeeAuth, employeeController.updateMyTa
 // update the shared row so admin sees the outcome.
 router.get('/my-registrations',              employeeAuth, employeeController.getMyRegistrations);
 router.patch('/my-registrations/:id/status', employeeAuth, employeeController.updateMyRegistrationStatus);
+
+// Employee-owned overtime requests. Row lives in the shared
+// overtime_requests table so the manager Approvals hub already sees
+// it once sent; here we just let the employee CRUD their own drafts.
+router.get('/my-overtime',                        employeeAuth, employeeController.getMyOvertime);
+router.post('/my-overtime',                       employeeAuth, employeeController.createMyOvertime);
+router.put('/my-overtime/:id',                    employeeAuth, employeeController.updateMyOvertime);
+router.delete('/my-overtime/:id',                 employeeAuth, employeeController.deleteMyOvertime);
+router.post('/my-overtime/:id/send-for-approval', employeeAuth, employeeController.sendMyOvertimeForApproval);
 router.get('/my-ratings', employeeAuth, employeeController.getMyRatings);
 router.get('/my-evaluations', employeeAuth, employeeController.getMyEvaluations);
 router.get('/my-schedule', employeeAuth, employeeController.getMySchedule);

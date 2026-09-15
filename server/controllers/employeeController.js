@@ -632,4 +632,175 @@ exports.updateMyRegistrationStatus = async (req, res) => {
   }
 };
 
+// ─────────────── Overtime — employee-owned rows ───────────────
+//
+// Employees create their own overtime requests from the dashboard.
+// The row lives in the same `overtime_requests` table admin uses;
+// createdByEmployeeId scopes what "my overtime" returns. Once sent
+// for approval, it flows through the manager's Approvals hub
+// identically to admin-created rows.
+
+const { OvertimeRequest } = require('../models');
+
+const _scrubOvertimeInput = (body, employee) => {
+  const days = Array.isArray(body?.days) ? body.days : [];
+  return {
+    employeeName: (body?.employeeName || employee?.name || '').trim(),
+    nationalId:   body?.nationalId   ? String(body.nationalId).trim()   : null,
+    phone:        body?.phone        ? String(body.phone).trim()        : null,
+    email:        body?.email        ? String(body.email).trim()        : (employee?.email || null),
+    position:     body?.position     ? String(body.position).trim()     : (employee?.section || null),
+    periodStart:  body?.periodStart  || null,
+    periodEnd:    body?.periodEnd    || null,
+    approvedBy:   body?.approvedBy   ? String(body.approvedBy).trim()   : null,
+    note:         body?.note         ? String(body.note).trim()         : null,
+    sanadDetails: body?.sanadDetails ? String(body.sanadDetails).trim() : null,
+    days
+  };
+};
+
+// GET /employee/my-overtime
+exports.getMyOvertime = async (req, res) => {
+  try {
+    const employee = req.employee;
+    const rows = await OvertimeRequest.findAll({
+      where: { createdByEmployeeId: employee.employeeId },
+      order: [['createdAt', 'DESC']]
+    });
+    res.json(rows);
+  } catch (error) {
+    console.error('getMyOvertime:', error);
+    res.status(500).json({ message: 'Server error', detail: error.message });
+  }
+};
+
+// POST /employee/my-overtime
+exports.createMyOvertime = async (req, res) => {
+  try {
+    const employee = req.employee;
+    const overtimeCtrl = require('./overtimeController');
+    const clean = _scrubOvertimeInput(req.body, employee);
+    if (!clean.employeeName) {
+      return res.status(400).json({ message: 'Employee name required', messageAr: 'اسم الموظف مطلوب' });
+    }
+    const totalHours = Number(req.body?.totalHours) > 0
+      ? Number(req.body.totalHours)
+      : overtimeCtrl._sumDayHours(clean.days);
+
+    const row = await OvertimeRequest.create({
+      ...clean,
+      totalHours,
+      approvalStatus: 'draft',
+      createdByEmployeeId: employee.employeeId
+    });
+    res.status(201).json(row);
+  } catch (error) {
+    console.error('createMyOvertime:', error);
+    res.status(500).json({ message: 'Server error', detail: error.message });
+  }
+};
+
+// PUT /employee/my-overtime/:id
+exports.updateMyOvertime = async (req, res) => {
+  try {
+    const employee = req.employee;
+    const overtimeCtrl = require('./overtimeController');
+    const row = await OvertimeRequest.findByPk(req.params.id);
+    if (!row) return res.status(404).json({ message: 'Not found' });
+    if (row.createdByEmployeeId !== employee.employeeId) {
+      return res.status(403).json({ message: 'Not your request' });
+    }
+    // Same rule as admin path: block edits while out for approval.
+    if (row.approvalStatus === 'pending') {
+      return res.status(409).json({
+        message: 'Out for approval — cannot edit',
+        messageAr: 'الطلب قيد الاعتماد — لا يمكن التعديل الآن'
+      });
+    }
+    // Once approved, employees can't reopen (audit trail). Rejected
+    // rows are editable so they can fix and re-submit.
+    if (row.approvalStatus === 'approved') {
+      return res.status(409).json({
+        message: 'Already approved — cannot edit',
+        messageAr: 'الطلب معتمد — لا يمكن التعديل'
+      });
+    }
+
+    const clean = _scrubOvertimeInput(req.body, employee);
+    const totalHours = Number(req.body?.totalHours) > 0
+      ? Number(req.body.totalHours)
+      : overtimeCtrl._sumDayHours(clean.days);
+    await row.update({ ...clean, totalHours });
+    res.json(row);
+  } catch (error) {
+    console.error('updateMyOvertime:', error);
+    res.status(500).json({ message: 'Server error', detail: error.message });
+  }
+};
+
+// DELETE /employee/my-overtime/:id
+exports.deleteMyOvertime = async (req, res) => {
+  try {
+    const employee = req.employee;
+    const row = await OvertimeRequest.findByPk(req.params.id);
+    if (!row) return res.status(404).json({ message: 'Not found' });
+    if (row.createdByEmployeeId !== employee.employeeId) {
+      return res.status(403).json({ message: 'Not your request' });
+    }
+    // Only draft or rejected requests can be deleted by the employee.
+    if (!['draft', 'rejected'].includes(row.approvalStatus)) {
+      return res.status(409).json({
+        message: 'Cannot delete a pending or approved request',
+        messageAr: 'لا يمكن حذف طلب قيد الاعتماد أو معتمد'
+      });
+    }
+    await row.destroy();
+    res.json({ message: 'Deleted' });
+  } catch (error) {
+    console.error('deleteMyOvertime:', error);
+    res.status(500).json({ message: 'Server error', detail: error.message });
+  }
+};
+
+// POST /employee/my-overtime/:id/send-for-approval
+// body: { managerEmail }
+exports.sendMyOvertimeForApproval = async (req, res) => {
+  try {
+    const employee = req.employee;
+    const overtimeCtrl = require('./overtimeController');
+    const row = await OvertimeRequest.findByPk(req.params.id);
+    if (!row) return res.status(404).json({ message: 'Not found' });
+    if (row.createdByEmployeeId !== employee.employeeId) {
+      return res.status(403).json({ message: 'Not your request' });
+    }
+    if (row.approvalStatus === 'approved') {
+      return res.status(409).json({ message: 'Already approved', messageAr: 'الطلب معتمد مسبقاً' });
+    }
+
+    const managerEmail = String(req.body?.managerEmail || '').trim();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(managerEmail)) {
+      return res.status(400).json({ message: 'Valid manager email required', messageAr: 'بريد المدير مطلوب' });
+    }
+
+    const { row: updated, emailFailed } = await overtimeCtrl._dispatchOvertimeForApproval({
+      row,
+      managerEmail,
+      sentById: null // employee-side; no admin id
+    });
+
+    if (emailFailed) {
+      return res.json({
+        message: 'Marked pending — email delivery failed, try resending',
+        messageAr: 'تم إرسال الطلب — فشل تسليم البريد، حاول إعادة الإرسال',
+        row: updated,
+        emailFailed: true
+      });
+    }
+    res.json({ message: 'Sent for approval', messageAr: 'تم إرسال الطلب للاعتماد', row: updated });
+  } catch (error) {
+    console.error('sendMyOvertimeForApproval:', error);
+    res.status(500).json({ message: 'Server error', detail: error.message });
+  }
+};
+
 module.exports = exports;
