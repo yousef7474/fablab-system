@@ -660,16 +660,138 @@ const _scrubOvertimeInput = (body, employee) => {
 };
 
 // GET /employee/my-overtime
+// Returns not only the requests the employee submitted themselves
+// (createdByEmployeeId match) but also any legacy rows an admin
+// created on their behalf — matched by email or by name so history
+// doesn't disappear once employees start owning the flow themselves.
 exports.getMyOvertime = async (req, res) => {
   try {
     const employee = req.employee;
+    const orClauses = [{ createdByEmployeeId: employee.employeeId }];
+    if (employee.email) orClauses.push({ email: employee.email });
+    if (employee.name)  orClauses.push({ employeeName: employee.name });
     const rows = await OvertimeRequest.findAll({
-      where: { createdByEmployeeId: employee.employeeId },
+      where: { [Op.or]: orClauses },
       order: [['createdAt', 'DESC']]
     });
     res.json(rows);
   } catch (error) {
     console.error('getMyOvertime:', error);
+    res.status(500).json({ message: 'Server error', detail: error.message });
+  }
+};
+
+// Helper: find the FabLab-staff row that matches this employee, so
+// the QR-scan attendance / auto-overtime records can be surfaced.
+// Match order: exact email → case-insensitive email → exact name.
+async function _findLinkedStaff(employee) {
+  const { FablabStaff } = require('../models');
+  if (!employee) return null;
+  let row = null;
+  if (employee.email) {
+    row = await FablabStaff.findOne({ where: { email: employee.email } });
+    if (!row) {
+      row = await FablabStaff.findOne({
+        where: { email: { [Op.iLike]: employee.email } }
+      });
+    }
+  }
+  if (!row && employee.name) {
+    row = await FablabStaff.findOne({ where: { name: employee.name } });
+  }
+  return row;
+}
+
+// GET /employee/my-staff-overtime — auto-computed overtime rows the
+// employee can import into their overtime request form. Mirrors the
+// admin path /fablab-staff/:id/overtime but scoped to the caller.
+exports.getMyStaffOvertime = async (req, res) => {
+  try {
+    const employee = req.employee;
+    const staff = await _findLinkedStaff(employee);
+    if (!staff) {
+      return res.json({
+        linked: false,
+        rows: [],
+        totals: { count: 0, overtimeMin: 0 },
+        message: 'No linked FabLab staff record found',
+        messageAr: 'لا يوجد ربط بين حسابك وسجل حضور فاب لاب'
+      });
+    }
+    // Delegate to the FablabStaff controller's shape helper by
+    // hitting its logic — we replicate rather than import to avoid
+    // Express req/res coupling.
+    const { FablabStaffAttendance } = require('../models');
+    const fablabStaffCtrl = require('./fablabStaffController');
+    const OFFICIAL_HOURS = fablabStaffCtrl.OFFICIAL_HOURS || null;
+    const shape = fablabStaffCtrl._shapeOvertimeRow;
+    const records = await FablabStaffAttendance.findAll({
+      where: { staffId: staff.staffId },
+      order: [['date', 'DESC'], ['checkInAt', 'DESC']]
+    });
+    let rows;
+    if (typeof shape === 'function') {
+      rows = records
+        .map(r => shape({ ...r.toJSON(), staff }))
+        .filter(r => r && r.overtimeMinutes > 0);
+    } else {
+      // Fallback shape (matches the admin endpoint's contract) if
+      // the helper isn't exported yet.
+      rows = records
+        .filter(r => r.checkInAt && r.checkOutAt)
+        .map(r => {
+          const inMs  = new Date(r.checkInAt).getTime();
+          const outMs = new Date(r.checkOutAt).getTime();
+          const diffMin = Math.max(0, Math.round((outMs - inMs) / 60000));
+          // Everyone accrues overtime beyond 8h (480m); tune here if needed.
+          const overtimeMinutes = Math.max(0, diffMin - 480);
+          return {
+            attendanceId: r.attendanceId,
+            date: r.date,
+            checkInAt: r.checkInAt,
+            checkOutAt: r.checkOutAt,
+            overtimeMinutes,
+            reason: r.reason || null
+          };
+        })
+        .filter(r => r.overtimeMinutes > 0);
+    }
+    const totals = rows.reduce((acc, r) => {
+      acc.count += 1;
+      acc.overtimeMin += r.overtimeMinutes;
+      return acc;
+    }, { count: 0, overtimeMin: 0 });
+    res.json({ linked: true, staff, rows, totals, officialHours: OFFICIAL_HOURS });
+  } catch (error) {
+    console.error('getMyStaffOvertime:', error);
+    res.status(500).json({ message: 'Server error', detail: error.message });
+  }
+};
+
+// GET /employee/my-attendance — the employee's own QR-scan
+// attendance history. Same shape the admin sees under
+// /fablab-staff/:id/attendance.
+exports.getMyAttendance = async (req, res) => {
+  try {
+    const employee = req.employee;
+    const staff = await _findLinkedStaff(employee);
+    if (!staff) {
+      return res.json({
+        linked: false,
+        records: [],
+        message: 'No linked FabLab staff record found',
+        messageAr: 'لا يوجد ربط بين حسابك وسجل حضور فاب لاب'
+      });
+    }
+    const { FablabStaffAttendance } = require('../models');
+    const records = await FablabStaffAttendance.findAll({
+      where: { staffId: staff.staffId },
+      order: [['date', 'DESC'], ['checkInAt', 'DESC']],
+      limit: 400
+    });
+    res.json({ linked: true, staff, records });
+  } catch (error) {
+    console.error('getMyAttendance:', error);
     res.status(500).json({ message: 'Server error', detail: error.message });
   }
 };

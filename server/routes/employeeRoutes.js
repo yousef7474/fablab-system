@@ -30,6 +30,10 @@ router.post('/my-overtime',                       employeeAuth, employeeControll
 router.put('/my-overtime/:id',                    employeeAuth, employeeController.updateMyOvertime);
 router.delete('/my-overtime/:id',                 employeeAuth, employeeController.deleteMyOvertime);
 router.post('/my-overtime/:id/send-for-approval', employeeAuth, employeeController.sendMyOvertimeForApproval);
+// Auto-computed overtime rows (from QR-scan attendance) + full
+// attendance history for the employee's linked FabLab-staff record.
+router.get('/my-staff-overtime',                  employeeAuth, employeeController.getMyStaffOvertime);
+router.get('/my-attendance',                      employeeAuth, employeeController.getMyAttendance);
 router.get('/my-ratings', employeeAuth, employeeController.getMyRatings);
 router.get('/my-evaluations', employeeAuth, employeeController.getMyEvaluations);
 router.get('/my-schedule', employeeAuth, employeeController.getMySchedule);

@@ -137,6 +137,15 @@ const EmployeeDashboard = () => {
   });
   const [otBusy, setOtBusy] = useState(false);
   const [otSendModal, setOtSendModal] = useState(null); // { id, managerEmail }
+  // Auto-overtime rows fetched from FabLab staff attendance so the
+  // employee can import them into the days grid instead of retyping.
+  const [otAutoRows, setOtAutoRows] = useState([]);
+  const [otAutoPicked, setOtAutoPicked] = useState(() => new Set());
+  const [otAutoLinked, setOtAutoLinked] = useState(true);
+
+  // My attendance records (staff QR scans)
+  const [myAttendance, setMyAttendance] = useState([]);
+  const [myAttendanceLinked, setMyAttendanceLinked] = useState(true);
   // Preset approver dropdown — same list the admin sees.
   const OT_APPROVERS = [
     { name: 'أ. زكي اللويم',        email: 'zakiallwoaim@gmail.com' },
@@ -264,6 +273,82 @@ const EmployeeDashboard = () => {
     }
   }, []);
 
+  // Auto-overtime rows (from linked FabLab staff attendance).
+  const fetchMyStaffOvertime = useCallback(async () => {
+    try {
+      const { data } = await employeeApi.get('/employee/my-staff-overtime');
+      setOtAutoLinked(!!data?.linked);
+      setOtAutoRows(Array.isArray(data?.rows) ? data.rows : []);
+    } catch (error) {
+      console.error('Error fetching staff overtime:', error);
+      setOtAutoRows([]);
+    }
+  }, []);
+
+  // My attendance history (staff QR scans).
+  const fetchMyAttendance = useCallback(async () => {
+    try {
+      const { data } = await employeeApi.get('/employee/my-attendance');
+      setMyAttendanceLinked(!!data?.linked);
+      setMyAttendance(Array.isArray(data?.records) ? data.records : []);
+    } catch (error) {
+      console.error('Error fetching my attendance:', error);
+      setMyAttendance([]);
+    }
+  }, []);
+
+  const otToggleAutoPick = (attId) => {
+    setOtAutoPicked(prev => {
+      const next = new Set(prev);
+      if (next.has(attId)) next.delete(attId); else next.add(attId);
+      return next;
+    });
+  };
+  const otPickAllAuto = () => setOtAutoPicked(new Set(otAutoRows.map(r => r.attendanceId)));
+  const otClearAutoPick = () => setOtAutoPicked(new Set());
+
+  // Merge selected auto rows into the days grid — dates already
+  // present are skipped so we don't duplicate.
+  const otImportAutoPicked = () => {
+    if (otAutoPicked.size === 0) return;
+    const picked = otAutoRows.filter(r => otAutoPicked.has(r.attendanceId));
+    const iso = (v) => v ? String(v).slice(0, 10) : '';
+    const fmtHM = (iso2) => {
+      if (!iso2) return '';
+      const d = new Date(iso2);
+      if (isNaN(d.getTime())) return '';
+      const pad = (n) => String(n).padStart(2, '0');
+      return `${pad(d.getHours())}:${pad(d.getMinutes())}`;
+    };
+    setOtForm(prev => {
+      const existingDates = new Set((prev.days || []).map(d => iso(d.date)));
+      const additions = picked
+        .filter(r => !existingDates.has(iso(r.date)))
+        .map(r => ({
+          date: iso(r.date),
+          startTime: fmtHM(r.checkInAt),
+          endTime: fmtHM(r.checkOutAt),
+          hours: (r.overtimeMinutes / 60).toFixed(2),
+          task: r.reason || ''
+        }));
+      const filteredExisting = (prev.days || []).filter(
+        d => d.date || d.hours || d.task || d.startTime || d.endTime
+      );
+      const nextDays = [...filteredExisting, ...additions];
+      const dates = nextDays.map(d => d.date).filter(Boolean).sort();
+      return {
+        ...prev,
+        days: nextDays.length ? nextDays : [{ date: '', hours: '', task: '' }],
+        periodStart: prev.periodStart || (dates[0] || ''),
+        periodEnd:   prev.periodEnd   || (dates[dates.length - 1] || '')
+      };
+    });
+    toast.success(isRTL
+      ? `تم استيراد ${picked.length} يوم`
+      : `Imported ${picked.length} day(s)`);
+    setOtAutoPicked(new Set());
+  };
+
   const otResetForm = useCallback((prof) => {
     setOtEditingId(null);
     setOtForm({
@@ -312,10 +397,14 @@ const EmployeeDashboard = () => {
 
   const otOpenCreate = () => {
     otResetForm(profile);
+    setOtAutoPicked(new Set());
+    fetchMyStaffOvertime();
     setOtFormOpen(true);
   };
 
   const otOpenEdit = (row) => {
+    setOtAutoPicked(new Set());
+    fetchMyStaffOvertime();
     setOtEditingId(row.overtimeId);
     setOtForm({
       employeeName: row.employeeName || '',
@@ -603,7 +692,7 @@ const EmployeeDashboard = () => {
       // Record login
       employeeApi.post('/employee/activity/login').catch(() => {});
 
-      Promise.all([fetchProfile(), fetchTasks(), fetchRatings(), fetchSchedule(), fetchEvaluations(), fetchActivityStats(), fetchMyWorkshops(), fetchRegistrations(), fetchMyOvertime()])
+      Promise.all([fetchProfile(), fetchTasks(), fetchRatings(), fetchSchedule(), fetchEvaluations(), fetchActivityStats(), fetchMyWorkshops(), fetchRegistrations(), fetchMyOvertime(), fetchMyAttendance()])
         .finally(() => setLoading(false));
 
       // Heartbeat every 5 minutes
@@ -613,7 +702,7 @@ const EmployeeDashboard = () => {
 
       return () => clearInterval(heartbeatInterval);
     }
-  }, [employeeData, fetchProfile, fetchTasks, fetchRatings, fetchSchedule, fetchEvaluations, fetchActivityStats, fetchMyWorkshops, fetchRegistrations, fetchMyOvertime]);
+  }, [employeeData, fetchProfile, fetchTasks, fetchRatings, fetchSchedule, fetchEvaluations, fetchActivityStats, fetchMyWorkshops, fetchRegistrations, fetchMyOvertime, fetchMyAttendance]);
 
   const handleUpdateTaskStatus = async (taskId, newStatus) => {
     try {
@@ -744,6 +833,7 @@ const EmployeeDashboard = () => {
     { key: 'tasks',         label: isRTL ? 'المهام' : 'Tasks',              icon: '⬢' },
     { key: 'registrations', label: isRTL ? 'طلبات التسجيل' : 'Registrations', icon: '✎' },
     { key: 'overtime',      label: isRTL ? 'ساعات إضافية' : 'Overtime',      icon: '🕓' },
+    { key: 'attendance',    label: isRTL ? 'الحضور' : 'Attendance',          icon: '✅' },
     { key: 'schedule',      label: isRTL ? 'الجدول' : 'Schedule',           icon: '◱' },
     { key: 'year-calendar', label: isRTL ? 'التقويم السنوي' : 'Year Calendar', icon: '▦' },
     { key: 'ratings',       label: isRTL ? 'التقييمات' : 'Ratings',         icon: '★' },
@@ -1622,6 +1712,80 @@ const EmployeeDashboard = () => {
                       </label>
                     </div>
 
+                    {/* Import from staff attendance (QR scans). Only
+                        shown when the employee has a linked FabLab-
+                        staff record with detected overtime. */}
+                    {otAutoLinked && otAutoRows.length > 0 && (
+                      <div style={{ marginTop: 10, padding: 12, borderRadius: 10, background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.30)' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
+                          <div>
+                            <div style={{ fontSize: 11.5, fontWeight: 800, letterSpacing: 1, color: '#f59e0b' }}>
+                              {isRTL ? '📥 استيراد من الحضور التلقائي (QR)' : '📥 IMPORT FROM ATTENDANCE (QR)'}
+                            </div>
+                            <div style={{ fontSize: 11.5, color: '#94a3b8', marginTop: 2 }}>
+                              {isRTL
+                                ? `${otAutoRows.length} يوم مسجل تجاوز الوقت الرسمي`
+                                : `${otAutoRows.length} scanned day(s) with overtime detected`}
+                            </div>
+                          </div>
+                          <div style={{ display: 'flex', gap: 6 }}>
+                            <button type="button" onClick={otPickAllAuto} style={{ padding: '5px 10px', borderRadius: 6, border: '1px solid #334155', background: 'transparent', color: '#f59e0b', fontSize: 11, cursor: 'pointer', fontFamily: 'inherit' }}>
+                              {isRTL ? 'اختر الكل' : 'Pick all'}
+                            </button>
+                            <button type="button" onClick={otClearAutoPick} disabled={otAutoPicked.size === 0} style={{ padding: '5px 10px', borderRadius: 6, border: '1px solid #334155', background: 'transparent', color: 'inherit', fontSize: 11, cursor: 'pointer', fontFamily: 'inherit', opacity: otAutoPicked.size === 0 ? 0.5 : 1 }}>
+                              {isRTL ? 'مسح' : 'Clear'}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={otImportAutoPicked}
+                              disabled={otAutoPicked.size === 0}
+                              style={{ padding: '5px 14px', borderRadius: 6, border: 'none', background: '#f59e0b', color: '#fff', fontSize: 11.5, cursor: otAutoPicked.size === 0 ? 'not-allowed' : 'pointer', fontFamily: 'inherit', fontWeight: 800, opacity: otAutoPicked.size === 0 ? 0.5 : 1 }}
+                            >
+                              📥 {isRTL ? `استيراد (${otAutoPicked.size})` : `Import (${otAutoPicked.size})`}
+                            </button>
+                          </div>
+                        </div>
+                        <div style={{ marginTop: 10, maxHeight: 180, overflowY: 'auto', border: '1px solid #334155', borderRadius: 8 }}>
+                          {otAutoRows.map(r => {
+                            const picked = otAutoPicked.has(r.attendanceId);
+                            const hrs = (r.overtimeMinutes / 60).toFixed(2);
+                            const fmtT = (iso) => {
+                              if (!iso) return '—';
+                              const d = new Date(iso);
+                              if (isNaN(d.getTime())) return '—';
+                              return `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
+                            };
+                            return (
+                              <div
+                                key={r.attendanceId}
+                                onClick={() => otToggleAutoPick(r.attendanceId)}
+                                style={{
+                                  display: 'grid',
+                                  gridTemplateColumns: '24px 1fr 1fr 1fr 80px',
+                                  gap: 8, alignItems: 'center',
+                                  padding: '7px 10px',
+                                  background: picked ? 'rgba(245,158,11,0.15)' : 'transparent',
+                                  borderBottom: '1px solid rgba(148,163,184,0.1)',
+                                  cursor: 'pointer', fontSize: 12
+                                }}
+                              >
+                                <input type="checkbox" checked={picked} onChange={() => otToggleAutoPick(r.attendanceId)} onClick={(e) => e.stopPropagation()} />
+                                <span dir="ltr">{String(r.date).slice(0, 10)}</span>
+                                <span dir="ltr" style={{ fontFamily: 'JetBrains Mono, monospace' }}>{fmtT(r.checkInAt)} → {fmtT(r.checkOutAt)}</span>
+                                <span style={{ color: '#94a3b8', fontSize: 11.5 }}>{r.reason || (isRTL ? '—' : '—')}</span>
+                                <span style={{ fontFamily: 'JetBrains Mono, monospace', fontWeight: 800, color: '#f59e0b', textAlign: 'end' }}>{hrs} h</span>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
+                    {otAutoLinked && otAutoRows.length === 0 && (
+                      <div style={{ marginTop: 10, padding: 10, borderRadius: 8, background: 'rgba(148,163,184,0.05)', fontSize: 12, color: '#94a3b8', textAlign: 'center' }}>
+                        {isRTL ? 'لا يوجد ساعات إضافية مسجلة من الحضور بعد.' : 'No overtime detected from QR attendance yet.'}
+                      </div>
+                    )}
+
                     <div style={{ marginTop: 10, marginBottom: 6, fontSize: 11.5, fontWeight: 800, letterSpacing: 1, color: '#f59e0b' }}>
                       {isRTL ? 'الأيام والساعات' : 'DAYS & HOURS'}
                     </div>
@@ -1731,6 +1895,96 @@ const EmployeeDashboard = () => {
               </motion.div>
             )}
           </AnimatePresence>
+
+          {/* ═══════════════════════════════════════════════════ ATTENDANCE */}
+          {activeTab === 'attendance' && (
+            <motion.div
+              key="attendance"
+              className="emp-tasks-tab"
+              variants={containerVariants}
+              initial="hidden"
+              animate="visible"
+              exit={{ opacity: 0 }}
+            >
+              <motion.div variants={itemVariants} className="emp-tasks-tab-head">
+                <div>
+                  <h2 style={{ margin: 0 }}>{isRTL ? '✅ سجل الحضور' : '✅ Attendance Log'}</h2>
+                  <p style={{ margin: '4px 0 0', color: '#94a3b8', fontSize: 13 }}>
+                    {isRTL
+                      ? 'حضورك المُسجّل عبر QR في محطة الحضور. يتم إحتساب الساعات الإضافية تلقائياً بعد 9 ساعات.'
+                      : 'Your QR-scanned attendance history from the check-in station. Overtime accrues after 9 hours.'}
+                  </p>
+                </div>
+                {!myAttendanceLinked && (
+                  <div style={{ padding: '6px 12px', background: 'rgba(220,38,38,0.15)', color: '#dc2626', borderRadius: 6, fontSize: 11.5, fontWeight: 700 }}>
+                    {isRTL
+                      ? 'لا يوجد ربط بسجل حضور فاب لاب — راجع المدير'
+                      : 'No linked FabLab-staff record — contact your manager'}
+                  </div>
+                )}
+              </motion.div>
+
+              <motion.div variants={itemVariants}>
+                {myAttendance.length === 0 ? (
+                  <div className="emp-empty" style={{ padding: 40, textAlign: 'center', color: '#94a3b8' }}>
+                    {myAttendanceLinked
+                      ? (isRTL ? '— لا توجد سجلات حضور بعد —' : '— No attendance records yet —')
+                      : (isRTL ? '— لا يوجد ربط بحساب حضور —' : '— No linked staff record —')}
+                  </div>
+                ) : (
+                  <div style={{ background: 'var(--emp-card, #0f172a)', border: '1px solid var(--emp-border, #334155)', borderRadius: 12, overflow: 'hidden' }}>
+                    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+                      <thead>
+                        <tr style={{ background: 'rgba(148,163,184,0.06)' }}>
+                          <th style={{ padding: '10px 12px', textAlign: 'start', fontSize: 11, fontWeight: 800, color: '#94a3b8', letterSpacing: 0.6 }}>{isRTL ? 'التاريخ' : 'DATE'}</th>
+                          <th style={{ padding: '10px 12px', textAlign: 'start', fontSize: 11, fontWeight: 800, color: '#94a3b8', letterSpacing: 0.6 }}>{isRTL ? 'دخول' : 'CHECK-IN'}</th>
+                          <th style={{ padding: '10px 12px', textAlign: 'start', fontSize: 11, fontWeight: 800, color: '#94a3b8', letterSpacing: 0.6 }}>{isRTL ? 'خروج' : 'CHECK-OUT'}</th>
+                          <th style={{ padding: '10px 12px', textAlign: 'center', fontSize: 11, fontWeight: 800, color: '#94a3b8', letterSpacing: 0.6 }}>{isRTL ? 'المدة' : 'DURATION'}</th>
+                          <th style={{ padding: '10px 12px', textAlign: 'start', fontSize: 11, fontWeight: 800, color: '#94a3b8', letterSpacing: 0.6 }}>{isRTL ? 'ملاحظة' : 'REASON'}</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {myAttendance.map(r => {
+                          const fmtT = (iso) => {
+                            if (!iso) return '—';
+                            const d = new Date(iso);
+                            if (isNaN(d.getTime())) return '—';
+                            return `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
+                          };
+                          let dur = '—';
+                          if (r.checkInAt && r.checkOutAt) {
+                            const mins = Math.max(0, Math.round((new Date(r.checkOutAt) - new Date(r.checkInAt)) / 60000));
+                            const h = Math.floor(mins / 60);
+                            const m = mins % 60;
+                            dur = `${h}h ${String(m).padStart(2, '0')}m`;
+                          } else if (r.checkInAt && !r.checkOutAt) {
+                            dur = isRTL ? 'لم يخرج' : 'Open';
+                          }
+                          const dayName = (() => {
+                            try {
+                              return new Date(r.date).toLocaleDateString(isRTL ? 'ar-SA' : undefined, { weekday: 'long' });
+                            } catch { return ''; }
+                          })();
+                          return (
+                            <tr key={r.attendanceId} style={{ borderTop: '1px solid rgba(148,163,184,0.08)' }}>
+                              <td style={{ padding: '10px 12px' }}>
+                                <div dir="ltr" style={{ fontFamily: 'JetBrains Mono, monospace', fontWeight: 700 }}>{String(r.date).slice(0, 10)}</div>
+                                <div style={{ fontSize: 11, color: '#94a3b8' }}>{dayName}</div>
+                              </td>
+                              <td style={{ padding: '10px 12px', fontFamily: 'JetBrains Mono, monospace' }} dir="ltr">{fmtT(r.checkInAt)}</td>
+                              <td style={{ padding: '10px 12px', fontFamily: 'JetBrains Mono, monospace' }} dir="ltr">{fmtT(r.checkOutAt)}</td>
+                              <td style={{ padding: '10px 12px', textAlign: 'center', fontFamily: 'JetBrains Mono, monospace', fontWeight: 800, color: r.checkOutAt ? '#16a34a' : '#f59e0b' }}>{dur}</td>
+                              <td style={{ padding: '10px 12px', fontSize: 12, color: '#94a3b8' }}>{r.reason || '—'}</td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </motion.div>
+            </motion.div>
+          )}
 
           {/* ═══════════════════════════════════════════════════ SCHEDULE */}
           {activeTab === 'schedule' && (

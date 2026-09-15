@@ -543,4 +543,10 @@ exports.annotateAttendance = async (req, res) => {
   }
 };
 
+// Exports for other controllers that want to reuse the shape logic
+// (e.g. the employee dashboard's "my staff overtime" endpoint).
+exports._shapeOvertimeRow = shapeOvertimeRow;
+exports.OFFICIAL_HOURS = OFFICIAL_HOURS;
+exports.OVERTIME_GRACE_MIN = OVERTIME_GRACE_MIN;
+
 module.exports = exports;
