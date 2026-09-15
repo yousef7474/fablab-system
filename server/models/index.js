@@ -905,30 +905,39 @@ const syncDatabase = async () => {
     // first run. Runs before any DDL below so a failure here doesn't
     // block the rest of the migration chain.
     try {
-      const [storeRes] = await sequelize.query(
-        `UPDATE store_orders
-            SET "taxRate" = 0,
-                "taxAmount" = 0,
-                total = ROUND(subtotal - "discountAmount", 2)
-          WHERE "taxAmount" > 0`
+      // Count first so we can log a meaningful number regardless of
+      // sequelize's return shape.
+      const [[storeStat]] = await sequelize.query(
+        `SELECT COUNT(*)::int AS c FROM store_orders WHERE "taxAmount" > 0`
       );
-      if (storeRes && typeof storeRes.rowCount === 'number' && storeRes.rowCount > 0) {
-        console.log(`🧾 VAT retirement: stripped from ${storeRes.rowCount} store_orders`);
+      const storeCount = storeStat?.c || 0;
+      if (storeCount > 0) {
+        await sequelize.query(
+          `UPDATE store_orders
+              SET "taxRate" = 0,
+                  "taxAmount" = 0,
+                  total = ROUND(subtotal - "discountAmount", 2)
+            WHERE "taxAmount" > 0`
+        );
+        console.log(`🧾 VAT retirement: stripped from ${storeCount} store_orders`);
       }
     } catch (migrationError) {
       console.log('store_orders VAT retirement note:', migrationError.message);
     }
     try {
-      // Print3D grand total lives on `estimatedCost`, not `total`.
-      const [p3dRes] = await sequelize.query(
-        `UPDATE print3d_requests
-            SET "taxRate" = 0,
-                "taxAmount" = 0,
-                "estimatedCost" = subtotal
-          WHERE "taxAmount" > 0`
+      const [[p3dStat]] = await sequelize.query(
+        `SELECT COUNT(*)::int AS c FROM print3d_requests WHERE "taxAmount" > 0`
       );
-      if (p3dRes && typeof p3dRes.rowCount === 'number' && p3dRes.rowCount > 0) {
-        console.log(`🧾 VAT retirement: stripped from ${p3dRes.rowCount} print3d_requests`);
+      const p3dCount = p3dStat?.c || 0;
+      if (p3dCount > 0) {
+        await sequelize.query(
+          `UPDATE print3d_requests
+              SET "taxRate" = 0,
+                  "taxAmount" = 0,
+                  "estimatedCost" = subtotal
+            WHERE "taxAmount" > 0`
+        );
+        console.log(`🧾 VAT retirement: stripped from ${p3dCount} print3d_requests`);
       }
     } catch (migrationError) {
       console.log('print3d_requests VAT retirement note:', migrationError.message);

@@ -243,7 +243,7 @@ const _buildCustomerInvoiceEmail = (order, subjectOrMeta, headlineArg, detailArg
   </div>
 </div>
 </body></html>`,
-    text: `${headline} — ${orderNo}\n\nالإجمالي: ${SAR(order.total)}`
+    text: `${meta.headline} — ${orderNo}\n\nالإجمالي: ${SAR(order.total)}`
   };
 };
 
