@@ -1275,7 +1275,7 @@ const EmployeeDashboard = () => {
                   <h2 style={{ margin: 0 }}>
                     {isRTL ? 'طلبات التسجيل — أقسامي' : 'Registration Requests — My Sections'}
                   </h2>
-                  <p style={{ margin: '4px 0 0', color: 'var(--emp-text-muted, #94a3b8)', fontSize: 13 }}>
+                  <p style={{ margin: '4px 0 0', color: 'var(--ink-muted, #94a3b8)', fontSize: 13 }}>
                     {isRTL
                       ? 'تظهر هنا طلبات المستفيدين الخاصة بأقسامك فقط. الموافقة أو الرفض ترسل رسالة تلقائية للمستفيد بالبريد.'
                       : 'Requests for your assigned sections. Approving or rejecting emails the beneficiary automatically.'}
@@ -1299,7 +1299,7 @@ const EmployeeDashboard = () => {
                         onClick={() => setRegStatusFilter(f.key)}
                         style={{
                           padding: '6px 14px', borderRadius: 999,
-                          border: active ? 'none' : '1px solid var(--emp-border, #334155)',
+                          border: active ? 'none' : '1px solid var(--term-divider, #334155)',
                           background: active ? f.color : 'transparent',
                           color: active ? '#fff' : 'var(--emp-text, #cbd5e1)',
                           fontFamily: 'inherit', fontWeight: 700, fontSize: 12,
@@ -1440,14 +1440,14 @@ const EmployeeDashboard = () => {
               <motion.div
                 initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
                 onClick={closeRegDecide}
-                style={{ position: 'fixed', inset: 0, background: 'rgba(15,23,42,0.6)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}
+                style={{ position: 'fixed', inset: 0, background: 'var(--term-modal-scrim, rgba(15,23,42,0.6))', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}
               >
                 <motion.div
                   initial={{ opacity: 0, scale: 0.94, y: 12 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.94, y: 12 }}
                   onClick={(e) => e.stopPropagation()}
-                  style={{ background: 'var(--emp-card, #0f172a)', color: 'var(--emp-text, #e2e8f0)', borderRadius: 14, maxWidth: 520, width: '100%', border: '1px solid var(--emp-border, #334155)' }}
+                  style={{ background: 'var(--term-panel-solid, #0f172a)', color: 'var(--ink-primary, #e2e8f0)', borderRadius: 14, maxWidth: 520, width: '100%', border: '1px solid var(--term-divider, #334155)' }}
                 >
-                  <div style={{ padding: '18px 22px', borderBottom: '1px solid var(--emp-border, #334155)' }}>
+                  <div style={{ padding: '18px 22px', borderBottom: '1px solid var(--term-divider, #334155)' }}>
                     <div style={{ fontSize: 11, letterSpacing: 1.2, color: regDecideModal.mode === 'approve' ? '#16a34a' : '#dc2626', textTransform: 'uppercase', fontWeight: 800 }}>
                       {regDecideModal.mode === 'approve'
                         ? (isRTL ? 'اعتماد الطلب' : 'Approve Registration')
@@ -1467,7 +1467,7 @@ const EmployeeDashboard = () => {
                           onChange={(e) => setRegRejectReason(e.target.value)}
                           rows={2}
                           placeholder={isRTL ? 'اذكر سبب الرفض بوضوح للمستفيد' : 'Explain the rejection clearly'}
-                          style={{ width: '100%', marginTop: 6, padding: 10, borderRadius: 8, border: '1px solid var(--emp-border, #334155)', background: 'var(--emp-bg, #020617)', color: 'inherit', fontFamily: 'inherit', resize: 'vertical' }}
+                          style={{ width: '100%', marginTop: 6, padding: 10, borderRadius: 8, border: '1px solid var(--term-divider, #334155)', background: 'var(--term-inline-panel, #020617)', color: 'inherit', fontFamily: 'inherit', resize: 'vertical' }}
                         />
                       </div>
                     )}
@@ -1482,7 +1482,7 @@ const EmployeeDashboard = () => {
                         onChange={(e) => setRegNote(e.target.value)}
                         rows={3}
                         placeholder={isRTL ? 'رسالة تظهر في بريد المستفيد إن اخترت إرسالها' : 'Message shown in the beneficiary email if enabled'}
-                        style={{ width: '100%', marginTop: 6, padding: 10, borderRadius: 8, border: '1px solid var(--emp-border, #334155)', background: 'var(--emp-bg, #020617)', color: 'inherit', fontFamily: 'inherit', resize: 'vertical' }}
+                        style={{ width: '100%', marginTop: 6, padding: 10, borderRadius: 8, border: '1px solid var(--term-divider, #334155)', background: 'var(--term-inline-panel, #020617)', color: 'inherit', fontFamily: 'inherit', resize: 'vertical' }}
                       />
                     </div>
                     {regNote.trim() && (
@@ -1492,7 +1492,7 @@ const EmployeeDashboard = () => {
                       </label>
                     )}
                     <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-                      <button onClick={closeRegDecide} disabled={regDecideBusy} style={{ padding: '9px 18px', borderRadius: 8, border: '1px solid var(--emp-border, #334155)', background: 'transparent', color: 'inherit', cursor: 'pointer', fontFamily: 'inherit', fontWeight: 700 }}>
+                      <button onClick={closeRegDecide} disabled={regDecideBusy} style={{ padding: '9px 18px', borderRadius: 8, border: '1px solid var(--term-divider, #334155)', background: 'transparent', color: 'inherit', cursor: 'pointer', fontFamily: 'inherit', fontWeight: 700 }}>
                         {isRTL ? 'إلغاء' : 'Cancel'}
                       </button>
                       <button
@@ -1551,7 +1551,7 @@ const EmployeeDashboard = () => {
                           onClick={() => setOtStatusFilter(f.key)}
                           style={{
                             padding: '6px 14px', borderRadius: 999,
-                            border: active ? 'none' : '1px solid var(--emp-border, #334155)',
+                            border: active ? 'none' : '1px solid var(--term-divider, #334155)',
                             background: active ? f.color : 'transparent',
                             color: active ? '#fff' : 'var(--emp-text, #cbd5e1)',
                             fontFamily: 'inherit', fontWeight: 700, fontSize: 12, cursor: 'pointer'
@@ -1633,7 +1633,7 @@ const EmployeeDashboard = () => {
                             <>
                               <button
                                 onClick={() => otOpenEdit(r)}
-                                style={{ padding: '7px 14px', borderRadius: 8, border: '1px solid #334155', background: 'transparent', color: 'inherit', cursor: 'pointer', fontFamily: 'inherit', fontWeight: 700, fontSize: 12 }}
+                                style={{ padding: '7px 14px', borderRadius: 8, border: '1px solid var(--term-divider, #334155)', background: 'transparent', color: 'inherit', cursor: 'pointer', fontFamily: 'inherit', fontWeight: 700, fontSize: 12 }}
                               >
                                 ✎ {isRTL ? 'تعديل' : 'Edit'}
                               </button>
@@ -1666,14 +1666,14 @@ const EmployeeDashboard = () => {
               <motion.div
                 initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
                 onClick={otCloseForm}
-                style={{ position: 'fixed', inset: 0, background: 'rgba(15,23,42,0.7)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}
+                style={{ position: 'fixed', inset: 0, background: 'var(--term-modal-scrim, rgba(15,23,42,0.7))', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}
               >
                 <motion.div
                   initial={{ opacity: 0, scale: 0.94, y: 12 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.94, y: 12 }}
                   onClick={(e) => e.stopPropagation()}
-                  style={{ background: 'var(--emp-card, #0f172a)', color: 'var(--emp-text, #e2e8f0)', borderRadius: 14, maxWidth: 780, width: '100%', maxHeight: '92vh', display: 'flex', flexDirection: 'column', border: '1px solid var(--emp-border, #334155)' }}
+                  style={{ background: 'var(--term-panel-solid, #0f172a)', color: 'var(--ink-primary, #e2e8f0)', borderRadius: 14, maxWidth: 780, width: '100%', maxHeight: '92vh', display: 'flex', flexDirection: 'column', border: '1px solid var(--term-divider, #334155)' }}
                 >
-                  <div style={{ padding: '18px 22px', borderBottom: '1px solid var(--emp-border, #334155)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <div style={{ padding: '18px 22px', borderBottom: '1px solid var(--term-divider, #334155)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <div>
                       <div style={{ fontSize: 11, letterSpacing: 1.2, color: '#f59e0b', textTransform: 'uppercase', fontWeight: 800 }}>
                         {otEditingId ? (isRTL ? 'تعديل طلب' : 'Edit Request') : (isRTL ? 'طلب ساعات إضافية' : 'New Overtime Request')}
@@ -1688,27 +1688,27 @@ const EmployeeDashboard = () => {
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 10, marginBottom: 14 }}>
                       <label style={{ fontSize: 12 }}>
                         {isRTL ? 'الاسم *' : 'Name *'}
-                        <input value={otForm.employeeName} onChange={(e) => setOtForm(f => ({ ...f, employeeName: e.target.value }))} style={{ width: '100%', marginTop: 4, padding: 9, borderRadius: 8, border: '1px solid #334155', background: 'var(--emp-bg, #020617)', color: 'inherit', fontFamily: 'inherit' }} />
+                        <input value={otForm.employeeName} onChange={(e) => setOtForm(f => ({ ...f, employeeName: e.target.value }))} style={{ width: '100%', marginTop: 4, padding: 9, borderRadius: 8, border: '1px solid var(--term-divider, #334155)', background: 'var(--term-inline-panel, #020617)', color: 'inherit', fontFamily: 'inherit' }} />
                       </label>
                       <label style={{ fontSize: 12 }}>
                         {isRTL ? 'الوظيفة / القسم' : 'Position'}
-                        <input value={otForm.position} onChange={(e) => setOtForm(f => ({ ...f, position: e.target.value }))} style={{ width: '100%', marginTop: 4, padding: 9, borderRadius: 8, border: '1px solid #334155', background: 'var(--emp-bg, #020617)', color: 'inherit', fontFamily: 'inherit' }} />
+                        <input value={otForm.position} onChange={(e) => setOtForm(f => ({ ...f, position: e.target.value }))} style={{ width: '100%', marginTop: 4, padding: 9, borderRadius: 8, border: '1px solid var(--term-divider, #334155)', background: 'var(--term-inline-panel, #020617)', color: 'inherit', fontFamily: 'inherit' }} />
                       </label>
                       <label style={{ fontSize: 12 }}>
                         {isRTL ? 'رقم الهوية' : 'National ID'}
-                        <input dir="ltr" value={otForm.nationalId} onChange={(e) => setOtForm(f => ({ ...f, nationalId: e.target.value }))} style={{ width: '100%', marginTop: 4, padding: 9, borderRadius: 8, border: '1px solid #334155', background: 'var(--emp-bg, #020617)', color: 'inherit', fontFamily: 'inherit' }} />
+                        <input dir="ltr" value={otForm.nationalId} onChange={(e) => setOtForm(f => ({ ...f, nationalId: e.target.value }))} style={{ width: '100%', marginTop: 4, padding: 9, borderRadius: 8, border: '1px solid var(--term-divider, #334155)', background: 'var(--term-inline-panel, #020617)', color: 'inherit', fontFamily: 'inherit' }} />
                       </label>
                       <label style={{ fontSize: 12 }}>
                         {isRTL ? 'الجوال' : 'Phone'}
-                        <input dir="ltr" value={otForm.phone} onChange={(e) => setOtForm(f => ({ ...f, phone: e.target.value }))} style={{ width: '100%', marginTop: 4, padding: 9, borderRadius: 8, border: '1px solid #334155', background: 'var(--emp-bg, #020617)', color: 'inherit', fontFamily: 'inherit' }} />
+                        <input dir="ltr" value={otForm.phone} onChange={(e) => setOtForm(f => ({ ...f, phone: e.target.value }))} style={{ width: '100%', marginTop: 4, padding: 9, borderRadius: 8, border: '1px solid var(--term-divider, #334155)', background: 'var(--term-inline-panel, #020617)', color: 'inherit', fontFamily: 'inherit' }} />
                       </label>
                       <label style={{ fontSize: 12 }}>
                         {isRTL ? 'من تاريخ' : 'Period start'}
-                        <input type="date" value={otForm.periodStart} onChange={(e) => setOtForm(f => ({ ...f, periodStart: e.target.value }))} style={{ width: '100%', marginTop: 4, padding: 9, borderRadius: 8, border: '1px solid #334155', background: 'var(--emp-bg, #020617)', color: 'inherit', fontFamily: 'inherit' }} />
+                        <input type="date" value={otForm.periodStart} onChange={(e) => setOtForm(f => ({ ...f, periodStart: e.target.value }))} style={{ width: '100%', marginTop: 4, padding: 9, borderRadius: 8, border: '1px solid var(--term-divider, #334155)', background: 'var(--term-inline-panel, #020617)', color: 'inherit', fontFamily: 'inherit' }} />
                       </label>
                       <label style={{ fontSize: 12 }}>
                         {isRTL ? 'إلى تاريخ' : 'Period end'}
-                        <input type="date" value={otForm.periodEnd} onChange={(e) => setOtForm(f => ({ ...f, periodEnd: e.target.value }))} style={{ width: '100%', marginTop: 4, padding: 9, borderRadius: 8, border: '1px solid #334155', background: 'var(--emp-bg, #020617)', color: 'inherit', fontFamily: 'inherit' }} />
+                        <input type="date" value={otForm.periodEnd} onChange={(e) => setOtForm(f => ({ ...f, periodEnd: e.target.value }))} style={{ width: '100%', marginTop: 4, padding: 9, borderRadius: 8, border: '1px solid var(--term-divider, #334155)', background: 'var(--term-inline-panel, #020617)', color: 'inherit', fontFamily: 'inherit' }} />
                       </label>
                     </div>
 
@@ -1729,10 +1729,10 @@ const EmployeeDashboard = () => {
                             </div>
                           </div>
                           <div style={{ display: 'flex', gap: 6 }}>
-                            <button type="button" onClick={otPickAllAuto} style={{ padding: '5px 10px', borderRadius: 6, border: '1px solid #334155', background: 'transparent', color: '#f59e0b', fontSize: 11, cursor: 'pointer', fontFamily: 'inherit' }}>
+                            <button type="button" onClick={otPickAllAuto} style={{ padding: '5px 10px', borderRadius: 6, border: '1px solid var(--term-divider, #334155)', background: 'transparent', color: '#f59e0b', fontSize: 11, cursor: 'pointer', fontFamily: 'inherit' }}>
                               {isRTL ? 'اختر الكل' : 'Pick all'}
                             </button>
-                            <button type="button" onClick={otClearAutoPick} disabled={otAutoPicked.size === 0} style={{ padding: '5px 10px', borderRadius: 6, border: '1px solid #334155', background: 'transparent', color: 'inherit', fontSize: 11, cursor: 'pointer', fontFamily: 'inherit', opacity: otAutoPicked.size === 0 ? 0.5 : 1 }}>
+                            <button type="button" onClick={otClearAutoPick} disabled={otAutoPicked.size === 0} style={{ padding: '5px 10px', borderRadius: 6, border: '1px solid var(--term-divider, #334155)', background: 'transparent', color: 'inherit', fontSize: 11, cursor: 'pointer', fontFamily: 'inherit', opacity: otAutoPicked.size === 0 ? 0.5 : 1 }}>
                               {isRTL ? 'مسح' : 'Clear'}
                             </button>
                             <button
@@ -1745,7 +1745,7 @@ const EmployeeDashboard = () => {
                             </button>
                           </div>
                         </div>
-                        <div style={{ marginTop: 10, maxHeight: 180, overflowY: 'auto', border: '1px solid #334155', borderRadius: 8 }}>
+                        <div style={{ marginTop: 10, maxHeight: 180, overflowY: 'auto', border: '1px solid var(--term-divider, #334155)', borderRadius: 8 }}>
                           {otAutoRows.map(r => {
                             const picked = otAutoPicked.has(r.attendanceId);
                             const hrs = (r.overtimeMinutes / 60).toFixed(2);
@@ -1799,34 +1799,34 @@ const EmployeeDashboard = () => {
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                       {otForm.days.map((d, idx) => (
                         <div key={idx} style={{ display: 'grid', gridTemplateColumns: '150px 1fr 1fr 1fr 2fr auto', gap: 6, alignItems: 'center', background: 'rgba(148,163,184,0.06)', padding: 8, borderRadius: 8 }}>
-                          <input type="date" value={d.date} onChange={(e) => otUpdateDay(idx, { date: e.target.value })} style={{ padding: 7, borderRadius: 6, border: '1px solid #334155', background: 'var(--emp-bg, #020617)', color: 'inherit', fontSize: 12, fontFamily: 'inherit' }} />
-                          <input type="time" value={d.startTime} onChange={(e) => otUpdateDay(idx, { startTime: e.target.value })} style={{ padding: 7, borderRadius: 6, border: '1px solid #334155', background: 'var(--emp-bg, #020617)', color: 'inherit', fontSize: 12, fontFamily: 'inherit' }} />
-                          <input type="time" value={d.endTime} onChange={(e) => otUpdateDay(idx, { endTime: e.target.value })} style={{ padding: 7, borderRadius: 6, border: '1px solid #334155', background: 'var(--emp-bg, #020617)', color: 'inherit', fontSize: 12, fontFamily: 'inherit' }} />
-                          <input type="number" step="0.25" min="0" placeholder="hrs" value={d.hours} onChange={(e) => otUpdateDay(idx, { hours: e.target.value })} style={{ padding: 7, borderRadius: 6, border: '1px solid #334155', background: 'var(--emp-bg, #020617)', color: 'inherit', fontSize: 12, fontFamily: 'JetBrains Mono, monospace' }} />
-                          <input type="text" placeholder={isRTL ? 'المهمة المنجزة' : 'Task performed'} value={d.task} onChange={(e) => otUpdateDay(idx, { task: e.target.value })} style={{ padding: 7, borderRadius: 6, border: '1px solid #334155', background: 'var(--emp-bg, #020617)', color: 'inherit', fontSize: 12, fontFamily: 'inherit' }} />
+                          <input type="date" value={d.date} onChange={(e) => otUpdateDay(idx, { date: e.target.value })} style={{ padding: 7, borderRadius: 6, border: '1px solid var(--term-divider, #334155)', background: 'var(--term-inline-panel, #020617)', color: 'inherit', fontSize: 12, fontFamily: 'inherit' }} />
+                          <input type="time" value={d.startTime} onChange={(e) => otUpdateDay(idx, { startTime: e.target.value })} style={{ padding: 7, borderRadius: 6, border: '1px solid var(--term-divider, #334155)', background: 'var(--term-inline-panel, #020617)', color: 'inherit', fontSize: 12, fontFamily: 'inherit' }} />
+                          <input type="time" value={d.endTime} onChange={(e) => otUpdateDay(idx, { endTime: e.target.value })} style={{ padding: 7, borderRadius: 6, border: '1px solid var(--term-divider, #334155)', background: 'var(--term-inline-panel, #020617)', color: 'inherit', fontSize: 12, fontFamily: 'inherit' }} />
+                          <input type="number" step="0.25" min="0" placeholder="hrs" value={d.hours} onChange={(e) => otUpdateDay(idx, { hours: e.target.value })} style={{ padding: 7, borderRadius: 6, border: '1px solid var(--term-divider, #334155)', background: 'var(--term-inline-panel, #020617)', color: 'inherit', fontSize: 12, fontFamily: 'JetBrains Mono, monospace' }} />
+                          <input type="text" placeholder={isRTL ? 'المهمة المنجزة' : 'Task performed'} value={d.task} onChange={(e) => otUpdateDay(idx, { task: e.target.value })} style={{ padding: 7, borderRadius: 6, border: '1px solid var(--term-divider, #334155)', background: 'var(--term-inline-panel, #020617)', color: 'inherit', fontSize: 12, fontFamily: 'inherit' }} />
                           <button type="button" onClick={() => otRemoveDay(idx)} disabled={otForm.days.length <= 1} style={{ padding: '7px 10px', borderRadius: 6, border: '1px solid #dc2626', background: 'transparent', color: '#dc2626', cursor: otForm.days.length <= 1 ? 'not-allowed' : 'pointer', fontSize: 12, opacity: otForm.days.length <= 1 ? 0.5 : 1 }}>×</button>
                         </div>
                       ))}
                     </div>
-                    <button type="button" onClick={otAddDay} style={{ marginTop: 8, padding: '7px 14px', borderRadius: 8, border: '1px dashed #334155', background: 'transparent', color: '#f59e0b', cursor: 'pointer', fontWeight: 700, fontSize: 13, fontFamily: 'inherit' }}>
+                    <button type="button" onClick={otAddDay} style={{ marginTop: 8, padding: '7px 14px', borderRadius: 8, border: '1px dashed var(--term-divider, #334155)', background: 'transparent', color: '#f59e0b', cursor: 'pointer', fontWeight: 700, fontSize: 13, fontFamily: 'inherit' }}>
                       + {isRTL ? 'إضافة يوم' : 'Add day'}
                     </button>
 
                     <div style={{ marginTop: 14 }}>
                       <label style={{ fontSize: 12 }}>
                         {isRTL ? 'تفاصيل السند (اختياري)' : 'Sanad details (optional)'}
-                        <textarea rows={2} value={otForm.sanadDetails} onChange={(e) => setOtForm(f => ({ ...f, sanadDetails: e.target.value }))} style={{ width: '100%', marginTop: 4, padding: 9, borderRadius: 8, border: '1px solid #334155', background: 'var(--emp-bg, #020617)', color: 'inherit', fontFamily: 'inherit', resize: 'vertical' }} />
+                        <textarea rows={2} value={otForm.sanadDetails} onChange={(e) => setOtForm(f => ({ ...f, sanadDetails: e.target.value }))} style={{ width: '100%', marginTop: 4, padding: 9, borderRadius: 8, border: '1px solid var(--term-divider, #334155)', background: 'var(--term-inline-panel, #020617)', color: 'inherit', fontFamily: 'inherit', resize: 'vertical' }} />
                       </label>
                     </div>
                     <div style={{ marginTop: 10 }}>
                       <label style={{ fontSize: 12 }}>
                         {isRTL ? 'ملاحظات (اختياري)' : 'Notes (optional)'}
-                        <textarea rows={2} value={otForm.note} onChange={(e) => setOtForm(f => ({ ...f, note: e.target.value }))} style={{ width: '100%', marginTop: 4, padding: 9, borderRadius: 8, border: '1px solid #334155', background: 'var(--emp-bg, #020617)', color: 'inherit', fontFamily: 'inherit', resize: 'vertical' }} />
+                        <textarea rows={2} value={otForm.note} onChange={(e) => setOtForm(f => ({ ...f, note: e.target.value }))} style={{ width: '100%', marginTop: 4, padding: 9, borderRadius: 8, border: '1px solid var(--term-divider, #334155)', background: 'var(--term-inline-panel, #020617)', color: 'inherit', fontFamily: 'inherit', resize: 'vertical' }} />
                       </label>
                     </div>
                   </div>
-                  <div style={{ padding: '14px 22px', borderTop: '1px solid var(--emp-border, #334155)', display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-                    <button onClick={otCloseForm} disabled={otBusy} style={{ padding: '9px 18px', borderRadius: 8, border: '1px solid #334155', background: 'transparent', color: 'inherit', cursor: 'pointer', fontFamily: 'inherit', fontWeight: 700 }}>
+                  <div style={{ padding: '14px 22px', borderTop: '1px solid var(--term-divider, #334155)', display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+                    <button onClick={otCloseForm} disabled={otBusy} style={{ padding: '9px 18px', borderRadius: 8, border: '1px solid var(--term-divider, #334155)', background: 'transparent', color: 'inherit', cursor: 'pointer', fontFamily: 'inherit', fontWeight: 700 }}>
                       {isRTL ? 'إلغاء' : 'Cancel'}
                     </button>
                     <button onClick={otSubmitForm} disabled={otBusy} style={{ padding: '9px 22px', borderRadius: 8, border: 'none', background: '#f59e0b', color: '#fff', cursor: 'pointer', fontFamily: 'inherit', fontWeight: 800 }}>
@@ -1844,14 +1844,14 @@ const EmployeeDashboard = () => {
               <motion.div
                 initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
                 onClick={otCloseSend}
-                style={{ position: 'fixed', inset: 0, background: 'rgba(15,23,42,0.7)', zIndex: 1001, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}
+                style={{ position: 'fixed', inset: 0, background: 'var(--term-modal-scrim, rgba(15,23,42,0.7))', zIndex: 1001, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}
               >
                 <motion.div
                   initial={{ opacity: 0, scale: 0.94, y: 12 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.94, y: 12 }}
                   onClick={(e) => e.stopPropagation()}
-                  style={{ background: 'var(--emp-card, #0f172a)', color: 'var(--emp-text, #e2e8f0)', borderRadius: 14, maxWidth: 480, width: '100%', border: '1px solid var(--emp-border, #334155)' }}
+                  style={{ background: 'var(--term-panel-solid, #0f172a)', color: 'var(--ink-primary, #e2e8f0)', borderRadius: 14, maxWidth: 480, width: '100%', border: '1px solid var(--term-divider, #334155)' }}
                 >
-                  <div style={{ padding: '18px 22px', borderBottom: '1px solid var(--emp-border, #334155)' }}>
+                  <div style={{ padding: '18px 22px', borderBottom: '1px solid var(--term-divider, #334155)' }}>
                     <div style={{ fontSize: 11, letterSpacing: 1.2, color: '#f59e0b', textTransform: 'uppercase', fontWeight: 800 }}>
                       {isRTL ? 'إرسال للاعتماد' : 'Send for approval'}
                     </div>
@@ -1873,7 +1873,7 @@ const EmployeeDashboard = () => {
                           if (val === '__custom__') return;
                           setOtSendModal(s => ({ ...s, managerEmail: val }));
                         }}
-                        style={{ width: '100%', marginTop: 6, padding: 10, borderRadius: 8, border: '1px solid #334155', background: 'var(--emp-bg, #020617)', color: 'inherit', fontFamily: 'inherit', fontSize: 13 }}
+                        style={{ width: '100%', marginTop: 6, padding: 10, borderRadius: 8, border: '1px solid var(--term-divider, #334155)', background: 'var(--term-inline-panel, #020617)', color: 'inherit', fontFamily: 'inherit', fontSize: 13 }}
                       >
                         {OT_APPROVERS.map(a => (
                           <option key={a.email} value={a.email}>{a.name} · {a.email}</option>
@@ -1887,10 +1887,10 @@ const EmployeeDashboard = () => {
                       value={otSendModal.managerEmail}
                       onChange={(e) => setOtSendModal(s => ({ ...s, managerEmail: e.target.value }))}
                       placeholder="manager@example.com"
-                      style={{ width: '100%', marginTop: 8, padding: 10, borderRadius: 8, border: '1px solid #334155', background: 'var(--emp-bg, #020617)', color: 'inherit', fontFamily: 'JetBrains Mono, monospace', fontSize: 13 }}
+                      style={{ width: '100%', marginTop: 8, padding: 10, borderRadius: 8, border: '1px solid var(--term-divider, #334155)', background: 'var(--term-inline-panel, #020617)', color: 'inherit', fontFamily: 'JetBrains Mono, monospace', fontSize: 13 }}
                     />
                     <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 18 }}>
-                      <button onClick={otCloseSend} disabled={otBusy} style={{ padding: '9px 18px', borderRadius: 8, border: '1px solid #334155', background: 'transparent', color: 'inherit', cursor: 'pointer', fontFamily: 'inherit', fontWeight: 700 }}>
+                      <button onClick={otCloseSend} disabled={otBusy} style={{ padding: '9px 18px', borderRadius: 8, border: '1px solid var(--term-divider, #334155)', background: 'transparent', color: 'inherit', cursor: 'pointer', fontFamily: 'inherit', fontWeight: 700 }}>
                         {isRTL ? 'إلغاء' : 'Cancel'}
                       </button>
                       <button onClick={otSubmitSend} disabled={otBusy} style={{ padding: '9px 22px', borderRadius: 8, border: 'none', background: '#f59e0b', color: '#fff', cursor: 'pointer', fontFamily: 'inherit', fontWeight: 800 }}>
@@ -1939,7 +1939,7 @@ const EmployeeDashboard = () => {
                       : (isRTL ? '— لا يوجد ربط بحساب حضور —' : '— No linked staff record —')}
                   </div>
                 ) : (
-                  <div style={{ background: 'var(--emp-card, #0f172a)', border: '1px solid var(--emp-border, #334155)', borderRadius: 12, overflow: 'hidden' }}>
+                  <div style={{ background: 'var(--term-panel-solid, #0f172a)', border: '1px solid var(--term-divider, #334155)', borderRadius: 12, overflow: 'hidden' }}>
                     <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
                       <thead>
                         <tr style={{ background: 'rgba(148,163,184,0.06)' }}>
