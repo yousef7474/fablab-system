@@ -34,6 +34,7 @@ router.post('/my-overtime/:id/send-for-approval', employeeAuth, employeeControll
 // attendance history for the employee's linked FabLab-staff record.
 router.get('/my-staff-overtime',                  employeeAuth, employeeController.getMyStaffOvertime);
 router.get('/my-attendance',                      employeeAuth, employeeController.getMyAttendance);
+router.get('/staff-link-diagnose',                employeeAuth, employeeController.diagnoseStaffLink);
 router.get('/my-ratings', employeeAuth, employeeController.getMyRatings);
 router.get('/my-evaluations', employeeAuth, employeeController.getMyEvaluations);
 router.get('/my-schedule', employeeAuth, employeeController.getMySchedule);

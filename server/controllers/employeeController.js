@@ -683,21 +683,48 @@ exports.getMyOvertime = async (req, res) => {
 
 // Helper: find the FabLab-staff row that matches this employee, so
 // the QR-scan attendance / auto-overtime records can be surfaced.
-// Match order: exact email → case-insensitive email → exact name.
+//
+// Match progressively looser: exact email → normalized email
+// (trim+lower, both sides) → normalized name (whitespace collapsed).
+// A stray leading space or capitalization used to leave employees
+// unlinked with no explanation.
 async function _findLinkedStaff(employee) {
   const { FablabStaff } = require('../models');
+  const { sequelize } = require('../config/database');
   if (!employee) return null;
+
+  const norm = (v) => String(v || '').trim().replace(/\s+/g, ' ');
+  const email = norm(employee.email).toLowerCase();
+  const name  = norm(employee.name);
+
   let row = null;
-  if (employee.email) {
+  if (email) {
+    // Exact match first (fast index hit).
     row = await FablabStaff.findOne({ where: { email: employee.email } });
     if (!row) {
+      // Case + whitespace insensitive.
       row = await FablabStaff.findOne({
-        where: { email: { [Op.iLike]: employee.email } }
+        where: sequelize.where(
+          sequelize.fn('LOWER', sequelize.fn('TRIM', sequelize.col('email'))),
+          email
+        )
       });
     }
   }
-  if (!row && employee.name) {
+  if (!row && name) {
     row = await FablabStaff.findOne({ where: { name: employee.name } });
+    if (!row) {
+      row = await FablabStaff.findOne({
+        where: sequelize.where(
+          sequelize.fn(
+            'REGEXP_REPLACE',
+            sequelize.fn('TRIM', sequelize.col('name')),
+            '\\s+', ' ', 'g'
+          ),
+          name
+        )
+      });
+    }
   }
   return row;
 }
@@ -764,6 +791,52 @@ exports.getMyStaffOvertime = async (req, res) => {
     res.json({ linked: true, staff, rows, totals, officialHours: OFFICIAL_HOURS });
   } catch (error) {
     console.error('getMyStaffOvertime:', error);
+    res.status(500).json({ message: 'Server error', detail: error.message });
+  }
+};
+
+// GET /employee/staff-link-diagnose — tell the caller EXACTLY what
+// we're matching on and what's close in the DB. Used to debug why
+// an employee looks unlinked when they shouldn't be.
+exports.diagnoseStaffLink = async (req, res) => {
+  try {
+    const employee = req.employee;
+    const { FablabStaff } = require('../models');
+    const norm = (v) => String(v || '').trim().replace(/\s+/g, ' ');
+    const email = norm(employee.email).toLowerCase();
+    const name  = norm(employee.name);
+    const linked = await _findLinkedStaff(employee);
+
+    // Also grab up to 5 name-similar candidates so we can eyeball
+    // near-misses (leading space, punctuation, honorifics, etc.).
+    let candidates = [];
+    if (name) {
+      const firstToken = name.split(' ')[0];
+      const rows = await FablabStaff.findAll({
+        where: { name: { [Op.iLike]: `%${firstToken}%` } },
+        attributes: ['staffId', 'name', 'email', 'phone'],
+        limit: 5
+      });
+      candidates = rows.map(r => r.toJSON());
+    }
+
+    res.json({
+      employee: {
+        employeeId: employee.employeeId,
+        name: employee.name,
+        email: employee.email,
+        normalized: { email, name }
+      },
+      linked: linked ? {
+        staffId: linked.staffId,
+        name: linked.name,
+        email: linked.email,
+        phone: linked.phone
+      } : null,
+      candidates
+    });
+  } catch (error) {
+    console.error('diagnoseStaffLink:', error);
     res.status(500).json({ message: 'Server error', detail: error.message });
   }
 };

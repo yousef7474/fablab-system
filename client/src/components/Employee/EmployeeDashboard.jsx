@@ -1785,6 +1785,13 @@ const EmployeeDashboard = () => {
                         {isRTL ? 'لا يوجد ساعات إضافية مسجلة من الحضور بعد.' : 'No overtime detected from QR attendance yet.'}
                       </div>
                     )}
+                    {!otAutoLinked && (
+                      <div style={{ marginTop: 10, padding: 10, borderRadius: 8, background: 'rgba(220,38,38,0.10)', border: '1px solid rgba(220,38,38,0.25)', fontSize: 12, color: '#dc2626', textAlign: 'center' }}>
+                        {isRTL
+                          ? '⚠️ حسابك غير مربوط بسجل موظف فاب لاب — لن تظهر خيارات الاستيراد من الحضور. راجع المدير لمطابقة البريد الإلكتروني في السجلين.'
+                          : '⚠️ Your account is not linked to a FabLab-staff record — import is unavailable. Ask your manager to align the email between the two records.'}
+                      </div>
+                    )}
 
                     <div style={{ marginTop: 10, marginBottom: 6, fontSize: 11.5, fontWeight: 800, letterSpacing: 1, color: '#f59e0b' }}>
                       {isRTL ? 'الأيام والساعات' : 'DAYS & HOURS'}
