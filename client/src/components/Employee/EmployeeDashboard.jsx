@@ -983,7 +983,7 @@ const EmployeeDashboard = () => {
               className="emp-tasks-tab"
               variants={containerVariants}
               initial="hidden"
-              animate="show"
+              animate="visible"
               exit={{ opacity: 0 }}
             >
               <motion.div variants={itemVariants} className="emp-tasks-tab-head">
