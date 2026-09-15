@@ -125,6 +125,15 @@ const EmployeeDashboard = () => {
   const [loading, setLoading] = useState(true);
   const [taskStatusFilter, setTaskStatusFilter] = useState('all');
 
+  // Section-scoped registration requests
+  const [registrations, setRegistrations] = useState([]);
+  const [regStatusFilter, setRegStatusFilter] = useState('pending');
+  const [regDecideModal, setRegDecideModal] = useState(null); // { id, mode: 'approve'|'reject', name, section }
+  const [regDecideBusy, setRegDecideBusy] = useState(false);
+  const [regNote, setRegNote] = useState('');
+  const [regRejectReason, setRegRejectReason] = useState('');
+  const [regSendMessage, setRegSendMessage] = useState(true);
+
   // Calendar state
   const [calendarDate, setCalendarDate] = useState(new Date());
   const [selectedDay, setSelectedDay] = useState(null);
@@ -224,6 +233,64 @@ const EmployeeDashboard = () => {
       console.error('Error fetching schedule:', error);
     }
   }, []);
+
+  // Registrations for the employee's own sections. The server does
+  // the section filter; we just take what comes.
+  const fetchRegistrations = useCallback(async () => {
+    try {
+      const { data } = await employeeApi.get('/employee/my-registrations');
+      setRegistrations(Array.isArray(data) ? data : []);
+    } catch (error) {
+      console.error('Error fetching registrations:', error);
+    }
+  }, []);
+
+  const openRegDecide = (row, mode) => {
+    setRegDecideModal({
+      id: row.registrationId,
+      mode,
+      name: row.user?.name || `${row.user?.firstName || ''} ${row.user?.lastName || ''}`.trim() || '—',
+      section: row.fablabSection
+    });
+    setRegNote('');
+    setRegRejectReason('');
+    setRegSendMessage(true);
+  };
+  const closeRegDecide = () => {
+    setRegDecideModal(null);
+    setRegNote('');
+    setRegRejectReason('');
+    setRegSendMessage(true);
+  };
+
+  const submitRegDecision = async () => {
+    if (!regDecideModal) return;
+    const { id, mode } = regDecideModal;
+    if (mode === 'reject' && !regRejectReason.trim()) {
+      return toast.error(isRTL ? 'يرجى ذكر سبب الرفض' : 'Reason required for rejection');
+    }
+    setRegDecideBusy(true);
+    try {
+      employeeApi.post('/employee/activity/interaction').catch(() => {});
+      await employeeApi.patch(`/employee/my-registrations/${id}/status`, {
+        status: mode === 'approve' ? 'approved' : 'rejected',
+        rejectionReason: mode === 'reject' ? regRejectReason.trim() : null,
+        adminMessage: regNote.trim() || null,
+        sendMessageInEmail: regSendMessage
+      });
+      toast.success(mode === 'approve'
+        ? (isRTL ? '✅ تم الاعتماد وإرسال البريد للمستفيد' : '✅ Approved — beneficiary emailed')
+        : (isRTL ? '✕ تم الرفض وإرسال البريد للمستفيد' : '✕ Rejected — beneficiary emailed'));
+      closeRegDecide();
+      fetchRegistrations();
+    } catch (err) {
+      const msg = err?.response?.data?.messageAr || err?.response?.data?.message
+        || (isRTL ? 'تعذّر تحديث الحالة' : 'Failed to update status');
+      toast.error(msg);
+    } finally {
+      setRegDecideBusy(false);
+    }
+  };
 
   const fetchEvaluations = useCallback(async () => {
     try {
@@ -343,7 +410,7 @@ const EmployeeDashboard = () => {
       // Record login
       employeeApi.post('/employee/activity/login').catch(() => {});
 
-      Promise.all([fetchProfile(), fetchTasks(), fetchRatings(), fetchSchedule(), fetchEvaluations(), fetchActivityStats(), fetchMyWorkshops()])
+      Promise.all([fetchProfile(), fetchTasks(), fetchRatings(), fetchSchedule(), fetchEvaluations(), fetchActivityStats(), fetchMyWorkshops(), fetchRegistrations()])
         .finally(() => setLoading(false));
 
       // Heartbeat every 5 minutes
@@ -353,7 +420,7 @@ const EmployeeDashboard = () => {
 
       return () => clearInterval(heartbeatInterval);
     }
-  }, [employeeData, fetchProfile, fetchTasks, fetchRatings, fetchSchedule, fetchEvaluations, fetchActivityStats, fetchMyWorkshops]);
+  }, [employeeData, fetchProfile, fetchTasks, fetchRatings, fetchSchedule, fetchEvaluations, fetchActivityStats, fetchMyWorkshops, fetchRegistrations]);
 
   const handleUpdateTaskStatus = async (taskId, newStatus) => {
     try {
@@ -482,6 +549,7 @@ const EmployeeDashboard = () => {
   const tabs = [
     { key: 'overview',      label: isRTL ? 'نظرة عامة' : 'Overview',       icon: '◈' },
     { key: 'tasks',         label: isRTL ? 'المهام' : 'Tasks',              icon: '⬢' },
+    { key: 'registrations', label: isRTL ? 'طلبات التسجيل' : 'Registrations', icon: '✎' },
     { key: 'schedule',      label: isRTL ? 'الجدول' : 'Schedule',           icon: '◱' },
     { key: 'year-calendar', label: isRTL ? 'التقويم السنوي' : 'Year Calendar', icon: '▦' },
     { key: 'ratings',       label: isRTL ? 'التقييمات' : 'Ratings',         icon: '★' },
@@ -907,6 +975,259 @@ const EmployeeDashboard = () => {
               </motion.div>
             </motion.div>
           )}
+
+          {/* ═══════════════════════════════════════════════════ REGISTRATIONS */}
+          {activeTab === 'registrations' && (
+            <motion.div
+              key="registrations"
+              className="emp-tasks-tab"
+              variants={containerVariants}
+              initial="hidden"
+              animate="show"
+              exit={{ opacity: 0 }}
+            >
+              <motion.div variants={itemVariants} className="emp-tasks-tab-head">
+                <div>
+                  <h2 style={{ margin: 0 }}>
+                    {isRTL ? 'طلبات التسجيل — أقسامي' : 'Registration Requests — My Sections'}
+                  </h2>
+                  <p style={{ margin: '4px 0 0', color: 'var(--emp-text-muted, #94a3b8)', fontSize: 13 }}>
+                    {isRTL
+                      ? 'تظهر هنا طلبات المستفيدين الخاصة بأقسامك فقط. الموافقة أو الرفض ترسل رسالة تلقائية للمستفيد بالبريد.'
+                      : 'Requests for your assigned sections. Approving or rejecting emails the beneficiary automatically.'}
+                  </p>
+                </div>
+                <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                  {[
+                    { key: 'pending',  ar: 'قيد المراجعة', en: 'Pending',  color: '#f59e0b' },
+                    { key: 'approved', ar: 'المعتمدة',    en: 'Approved', color: '#16a34a' },
+                    { key: 'rejected', ar: 'المرفوضة',    en: 'Rejected', color: '#dc2626' },
+                    { key: 'on-hold',  ar: 'معلقة',       en: 'On hold',  color: '#0ea5e9' },
+                    { key: 'all',      ar: 'الكل',        en: 'All',      color: '#64748b' }
+                  ].map(f => {
+                    const active = regStatusFilter === f.key;
+                    const count = f.key === 'all'
+                      ? registrations.length
+                      : registrations.filter(r => r.status === f.key).length;
+                    return (
+                      <button
+                        key={f.key}
+                        onClick={() => setRegStatusFilter(f.key)}
+                        style={{
+                          padding: '6px 14px', borderRadius: 999,
+                          border: active ? 'none' : '1px solid var(--emp-border, #334155)',
+                          background: active ? f.color : 'transparent',
+                          color: active ? '#fff' : 'var(--emp-text, #cbd5e1)',
+                          fontFamily: 'inherit', fontWeight: 700, fontSize: 12,
+                          cursor: 'pointer'
+                        }}
+                      >
+                        {isRTL ? f.ar : f.en} · {count}
+                      </button>
+                    );
+                  })}
+                </div>
+              </motion.div>
+
+              <motion.div variants={itemVariants} className="emp-tasks-grid">
+                <AnimatePresence>
+                  {(regStatusFilter === 'all'
+                    ? registrations
+                    : registrations.filter(r => r.status === regStatusFilter)
+                  ).length === 0 ? (
+                    <div className="emp-empty" style={{ padding: 40, textAlign: 'center', color: '#94a3b8' }}>
+                      {isRTL ? '— لا توجد طلبات مطابقة —' : '— No matching requests —'}
+                    </div>
+                  ) : (regStatusFilter === 'all'
+                        ? registrations
+                        : registrations.filter(r => r.status === regStatusFilter)
+                      ).map((r, i) => {
+                        const uName = r.user?.name || `${r.user?.firstName || ''} ${r.user?.lastName || ''}`.trim() || '—';
+                        const appointment = r.appointmentDate || r.visitDate || r.startDate;
+                        const appointmentTime = r.appointmentTime || r.visitStartTime || r.startTime;
+                        const statusColor = r.status === 'approved' ? '#16a34a'
+                          : r.status === 'rejected' ? '#dc2626'
+                          : r.status === 'on-hold' ? '#0ea5e9'
+                          : '#f59e0b';
+                        const services = Array.isArray(r.requiredServices) ? r.requiredServices : [];
+                        return (
+                          <motion.div
+                            key={r.registrationId}
+                            layout
+                            initial={{ opacity: 0, y: 12 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0, y: -8, transition: { duration: 0.15 } }}
+                            transition={{ delay: i * 0.03, type: 'spring', stiffness: 260, damping: 22 }}
+                            className="emp-task-card"
+                            style={{ borderInlineStart: `4px solid ${statusColor}`, padding: 16 }}
+                          >
+                            <div className="emp-task-card-header">
+                              <div>
+                                <h4 style={{ margin: 0 }}>{uName}</h4>
+                                <div style={{ fontSize: 12, color: '#94a3b8', marginTop: 4 }}>
+                                  {r.fablabSection} · {r.registrationId}
+                                </div>
+                              </div>
+                              <span
+                                className={`emp-status-badge`}
+                                style={{ background: `${statusColor}25`, color: statusColor, padding: '3px 10px', borderRadius: 999, fontWeight: 800, fontSize: 12 }}
+                              >
+                                {r.status === 'approved' ? (isRTL ? 'معتمدة' : 'Approved')
+                                : r.status === 'rejected' ? (isRTL ? 'مرفوضة' : 'Rejected')
+                                : r.status === 'on-hold' ? (isRTL ? 'معلقة' : 'On hold')
+                                : (isRTL ? 'قيد المراجعة' : 'Pending')}
+                              </span>
+                            </div>
+
+                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 10, margin: '12px 0' }}>
+                              {r.user?.phoneNumber && (
+                                <div><div style={{ fontSize: 10.5, color: '#94a3b8', fontWeight: 700, letterSpacing: 0.6 }}>{isRTL ? 'الجوال' : 'PHONE'}</div><div dir="ltr" style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 13 }}>{r.user.phoneNumber}</div></div>
+                              )}
+                              {r.user?.email && (
+                                <div><div style={{ fontSize: 10.5, color: '#94a3b8', fontWeight: 700, letterSpacing: 0.6 }}>{isRTL ? 'البريد' : 'EMAIL'}</div><div dir="ltr" style={{ fontSize: 12 }}>{r.user.email}</div></div>
+                              )}
+                              {appointment && (
+                                <div><div style={{ fontSize: 10.5, color: '#94a3b8', fontWeight: 700, letterSpacing: 0.6 }}>{isRTL ? 'الموعد' : 'APPOINTMENT'}</div><div dir="ltr" style={{ fontSize: 13 }}>{appointment}{appointmentTime ? ` · ${String(appointmentTime).slice(0,5)}` : ''}</div></div>
+                              )}
+                            </div>
+
+                            {services.length > 0 && (
+                              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 10 }}>
+                                {services.map((s, si) => (
+                                  <span key={si} style={{ fontSize: 11.5, background: 'rgba(148,163,184,0.15)', padding: '3px 10px', borderRadius: 999 }}>
+                                    {s}
+                                  </span>
+                                ))}
+                              </div>
+                            )}
+
+                            {r.serviceDetails && (
+                              <div style={{ background: 'rgba(148,163,184,0.08)', padding: '10px 14px', borderRadius: 8, fontSize: 13, whiteSpace: 'pre-wrap', marginBottom: 10 }}>
+                                {r.serviceDetails}
+                              </div>
+                            )}
+
+                            {r.rejectionReason && (
+                              <div style={{ background: 'rgba(220,38,38,0.10)', border: '1px solid rgba(220,38,38,0.25)', padding: '10px 14px', borderRadius: 8, fontSize: 13, marginBottom: 10, color: '#dc2626' }}>
+                                <b>{isRTL ? 'سبب الرفض: ' : 'Rejection reason: '}</b>{r.rejectionReason}
+                              </div>
+                            )}
+                            {r.adminNotes && (
+                              <div style={{ background: 'rgba(14,165,233,0.10)', border: '1px solid rgba(14,165,233,0.25)', padding: '10px 14px', borderRadius: 8, fontSize: 13, marginBottom: 10, color: '#0ea5e9' }}>
+                                <b>{isRTL ? 'ملاحظات: ' : 'Notes: '}</b>{r.adminNotes}
+                              </div>
+                            )}
+
+                            {(r.status === 'pending' || r.status === 'on-hold') && (
+                              <div style={{ display: 'flex', gap: 8, marginTop: 6 }}>
+                                <button
+                                  className="emp-review-btn"
+                                  style={{ background: '#dc2626', color: '#fff', border: 'none', padding: '8px 16px', borderRadius: 8, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}
+                                  onClick={() => openRegDecide(r, 'reject')}
+                                >
+                                  ✕ {isRTL ? 'رفض' : 'Reject'}
+                                </button>
+                                <button
+                                  className="emp-review-btn"
+                                  style={{ background: '#16a34a', color: '#fff', border: 'none', padding: '8px 16px', borderRadius: 8, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}
+                                  onClick={() => openRegDecide(r, 'approve')}
+                                >
+                                  ✓ {isRTL ? 'اعتماد' : 'Approve'}
+                                </button>
+                              </div>
+                            )}
+                            {r.approvedBy && (
+                              <div style={{ marginTop: 8, fontSize: 11.5, color: '#94a3b8' }}>
+                                {isRTL ? 'اتخذ القرار: ' : 'Decided by: '}<b>{r.approvedBy}</b>
+                                {r.approvedAt && <> · {new Date(r.approvedAt).toLocaleString(isRTL ? 'ar-SA' : undefined, { dateStyle: 'short', timeStyle: 'short' })}</>}
+                              </div>
+                            )}
+                          </motion.div>
+                        );
+                      })}
+                </AnimatePresence>
+              </motion.div>
+            </motion.div>
+          )}
+
+          {/* Decision modal (approve / reject registration) */}
+          <AnimatePresence>
+            {regDecideModal && (
+              <motion.div
+                initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                onClick={closeRegDecide}
+                style={{ position: 'fixed', inset: 0, background: 'rgba(15,23,42,0.6)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}
+              >
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.94, y: 12 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.94, y: 12 }}
+                  onClick={(e) => e.stopPropagation()}
+                  style={{ background: 'var(--emp-card, #0f172a)', color: 'var(--emp-text, #e2e8f0)', borderRadius: 14, maxWidth: 520, width: '100%', border: '1px solid var(--emp-border, #334155)' }}
+                >
+                  <div style={{ padding: '18px 22px', borderBottom: '1px solid var(--emp-border, #334155)' }}>
+                    <div style={{ fontSize: 11, letterSpacing: 1.2, color: regDecideModal.mode === 'approve' ? '#16a34a' : '#dc2626', textTransform: 'uppercase', fontWeight: 800 }}>
+                      {regDecideModal.mode === 'approve'
+                        ? (isRTL ? 'اعتماد الطلب' : 'Approve Registration')
+                        : (isRTL ? 'رفض الطلب' : 'Reject Registration')}
+                    </div>
+                    <div style={{ fontSize: 16, fontWeight: 800, marginTop: 4 }}>{regDecideModal.name}</div>
+                    <div style={{ fontSize: 12, color: '#94a3b8', marginTop: 2 }}>{regDecideModal.section}</div>
+                  </div>
+                  <div style={{ padding: 22 }}>
+                    {regDecideModal.mode === 'reject' && (
+                      <div style={{ marginBottom: 14 }}>
+                        <label style={{ fontSize: 12, fontWeight: 700, color: '#dc2626', letterSpacing: 0.6, textTransform: 'uppercase' }}>
+                          {isRTL ? 'سبب الرفض *' : 'Rejection reason *'}
+                        </label>
+                        <textarea
+                          value={regRejectReason}
+                          onChange={(e) => setRegRejectReason(e.target.value)}
+                          rows={2}
+                          placeholder={isRTL ? 'اذكر سبب الرفض بوضوح للمستفيد' : 'Explain the rejection clearly'}
+                          style={{ width: '100%', marginTop: 6, padding: 10, borderRadius: 8, border: '1px solid var(--emp-border, #334155)', background: 'var(--emp-bg, #020617)', color: 'inherit', fontFamily: 'inherit', resize: 'vertical' }}
+                        />
+                      </div>
+                    )}
+                    <div style={{ marginBottom: 14 }}>
+                      <label style={{ fontSize: 12, fontWeight: 700, color: '#94a3b8', letterSpacing: 0.6, textTransform: 'uppercase' }}>
+                        {regDecideModal.mode === 'approve'
+                          ? (isRTL ? 'رسالة إضافية (اختياري)' : 'Additional message (optional)')
+                          : (isRTL ? 'ملاحظة داخلية (اختياري)' : 'Internal note (optional)')}
+                      </label>
+                      <textarea
+                        value={regNote}
+                        onChange={(e) => setRegNote(e.target.value)}
+                        rows={3}
+                        placeholder={isRTL ? 'رسالة تظهر في بريد المستفيد إن اخترت إرسالها' : 'Message shown in the beneficiary email if enabled'}
+                        style={{ width: '100%', marginTop: 6, padding: 10, borderRadius: 8, border: '1px solid var(--emp-border, #334155)', background: 'var(--emp-bg, #020617)', color: 'inherit', fontFamily: 'inherit', resize: 'vertical' }}
+                      />
+                    </div>
+                    {regNote.trim() && (
+                      <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, marginBottom: 14 }}>
+                        <input type="checkbox" checked={regSendMessage} onChange={(e) => setRegSendMessage(e.target.checked)} />
+                        {isRTL ? 'إرفاق الرسالة مع بريد المستفيد' : 'Include this message in the email to the beneficiary'}
+                      </label>
+                    )}
+                    <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+                      <button onClick={closeRegDecide} disabled={regDecideBusy} style={{ padding: '9px 18px', borderRadius: 8, border: '1px solid var(--emp-border, #334155)', background: 'transparent', color: 'inherit', cursor: 'pointer', fontFamily: 'inherit', fontWeight: 700 }}>
+                        {isRTL ? 'إلغاء' : 'Cancel'}
+                      </button>
+                      <button
+                        onClick={submitRegDecision}
+                        disabled={regDecideBusy}
+                        style={{ padding: '9px 22px', borderRadius: 8, border: 'none', background: regDecideModal.mode === 'approve' ? '#16a34a' : '#dc2626', color: '#fff', cursor: 'pointer', fontFamily: 'inherit', fontWeight: 800 }}
+                      >
+                        {regDecideBusy
+                          ? '…'
+                          : regDecideModal.mode === 'approve'
+                            ? (isRTL ? '✓ اعتماد وإرسال' : '✓ Approve & email')
+                            : (isRTL ? '✕ رفض وإرسال' : '✕ Reject & email')}
+                      </button>
+                    </div>
+                  </div>
+                </motion.div>
+              </motion.div>
+            )}
+          </AnimatePresence>
 
           {/* ═══════════════════════════════════════════════════ SCHEDULE */}
           {activeTab === 'schedule' && (

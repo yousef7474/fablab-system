@@ -507,4 +507,129 @@ exports.generateCredentials = async (req, res) => {
   }
 };
 
+// ─────────────── Registrations (section-scoped) ───────────────
+//
+// Employees see registration requests only for the FabLab sections
+// they're assigned to. Same underlying rows the admin panel shows —
+// employee actions update the same status so the admin view stays
+// authoritative but reflects whoever acted first. Emails to the
+// beneficiary reuse the admin's sendStatusUpdateEmail template.
+
+// Resolve the section list for an employee — new `sections[]` array
+// wins, but fall back to the legacy `section` string.
+const _employeeSections = (emp) => {
+  if (Array.isArray(emp?.sections) && emp.sections.length > 0) return emp.sections;
+  return emp?.section ? [emp.section] : [];
+};
+
+// GET /employee/my-registrations?status=pending|approved|rejected|on-hold|all
+exports.getMyRegistrations = async (req, res) => {
+  try {
+    const employee = req.employee;
+    const sections = _employeeSections(employee);
+    if (sections.length === 0) {
+      return res.json([]);
+    }
+
+    const where = { fablabSection: { [Op.in]: sections } };
+    const statusFilter = String(req.query.status || 'all').toLowerCase();
+    if (['pending', 'approved', 'rejected', 'on-hold'].includes(statusFilter)) {
+      where.status = statusFilter;
+    }
+
+    const rows = await Registration.findAll({
+      where,
+      include: [{ model: User, as: 'user' }],
+      order: [['createdAt', 'DESC']],
+      limit: 500
+    });
+
+    res.json(rows);
+  } catch (error) {
+    console.error('getMyRegistrations:', error);
+    res.status(500).json({ message: 'Server error', detail: error.message });
+  }
+};
+
+// PATCH /employee/my-registrations/:id/status
+//   body: { status, rejectionReason, adminMessage, sendMessageInEmail }
+exports.updateMyRegistrationStatus = async (req, res) => {
+  try {
+    const employee = req.employee;
+    const sections = _employeeSections(employee);
+    const { id } = req.params;
+    const { status, rejectionReason, adminMessage, sendMessageInEmail } = req.body;
+
+    if (!['approved', 'rejected', 'on-hold', 'pending'].includes(status)) {
+      return res.status(400).json({ message: 'Invalid status' });
+    }
+
+    const registration = await Registration.findByPk(id, {
+      include: [{ model: User, as: 'user' }]
+    });
+    if (!registration) {
+      return res.status(404).json({ message: 'Registration not found' });
+    }
+    // Section gate — employee can only touch registrations from their
+    // own sections. Admin still bypasses via /admin/registrations/*.
+    if (!sections.includes(registration.fablabSection)) {
+      return res.status(403).json({
+        message: 'This registration is not in one of your sections',
+        messageAr: 'هذا الطلب لا يتبع أقسامك'
+      });
+    }
+
+    const previousStatus = registration.status;
+    registration.status = status;
+    registration.rejectionReason = rejectionReason || null;
+    registration.adminNotes = adminMessage || null;
+    if (status === 'approved') {
+      registration.approvedBy = employee.name || 'Employee';
+      registration.approvedAt = new Date();
+    }
+    await registration.save();
+
+    // Fire the same email the admin flow sends — beneficiary sees no
+    // difference whether admin or the section employee acted.
+    try {
+      if (registration.user?.email) {
+        const { sendStatusUpdateEmail } = require('../utils/emailService');
+        const userName = registration.user.firstName && registration.user.lastName
+          ? `${registration.user.firstName} ${registration.user.lastName}`
+          : registration.user.name || 'User';
+        const appointmentDate = registration.appointmentDate || registration.visitDate || registration.startDate;
+        const appointmentTime = registration.appointmentTime || registration.visitStartTime || registration.startTime;
+        await sendStatusUpdateEmail(
+          registration.user.email,
+          userName,
+          registration.registrationId,
+          status,
+          {
+            rejectionReason: rejectionReason || null,
+            adminMessage: adminMessage || null,
+            sendMessage: sendMessageInEmail || false,
+            appointmentDate,
+            appointmentTime,
+            appointmentDuration: registration.appointmentDuration,
+            fablabSection: registration.fablabSection,
+            isStatusChange: previousStatus !== status,
+            previousStatus
+          }
+        );
+      }
+    } catch (emailErr) {
+      console.error('Employee registration status email failed:', emailErr.message);
+    }
+
+    res.json({
+      message: 'Registration status updated',
+      messageAr: 'تم تحديث حالة الطلب',
+      registration
+    });
+  } catch (error) {
+    console.error('updateMyRegistrationStatus:', error);
+    res.status(500).json({ message: 'Server error', detail: error.message });
+  }
+};
+
 module.exports = exports;

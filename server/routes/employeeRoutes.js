@@ -15,6 +15,12 @@ router.post('/change-password', employeeAuth, employeeController.changePassword)
 router.get('/my-tasks', employeeAuth, employeeController.getMyTasks);
 router.post('/my-tasks', employeeAuth, employeeController.createMyTask);
 router.patch('/my-tasks/:id/status', employeeAuth, employeeController.updateMyTaskStatus);
+
+// Section-scoped registration requests — same rows as the admin
+// panel, filtered to the employee's own sections. Employee actions
+// update the shared row so admin sees the outcome.
+router.get('/my-registrations',              employeeAuth, employeeController.getMyRegistrations);
+router.patch('/my-registrations/:id/status', employeeAuth, employeeController.updateMyRegistrationStatus);
 router.get('/my-ratings', employeeAuth, employeeController.getMyRatings);
 router.get('/my-evaluations', employeeAuth, employeeController.getMyEvaluations);
 router.get('/my-schedule', employeeAuth, employeeController.getMySchedule);
