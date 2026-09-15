@@ -898,6 +898,42 @@ const syncDatabase = async () => {
       console.log('ratings.createdById nullability migration ERROR:', migrationError.message);
     }
 
+    // VAT retirement: zero out taxRate/taxAmount on historical store
+    // orders and 3D-print requests, and recompute the grand total so
+    // customers don't see two different numbers on old vs new
+    // invoices. Idempotent — the WHERE clause is a no-op after the
+    // first run. Runs before any DDL below so a failure here doesn't
+    // block the rest of the migration chain.
+    try {
+      const [storeRes] = await sequelize.query(
+        `UPDATE store_orders
+            SET "taxRate" = 0,
+                "taxAmount" = 0,
+                total = ROUND(subtotal - "discountAmount", 2)
+          WHERE "taxAmount" > 0`
+      );
+      if (storeRes && typeof storeRes.rowCount === 'number' && storeRes.rowCount > 0) {
+        console.log(`🧾 VAT retirement: stripped from ${storeRes.rowCount} store_orders`);
+      }
+    } catch (migrationError) {
+      console.log('store_orders VAT retirement note:', migrationError.message);
+    }
+    try {
+      // Print3D grand total lives on `estimatedCost`, not `total`.
+      const [p3dRes] = await sequelize.query(
+        `UPDATE print3d_requests
+            SET "taxRate" = 0,
+                "taxAmount" = 0,
+                "estimatedCost" = subtotal
+          WHERE "taxAmount" > 0`
+      );
+      if (p3dRes && typeof p3dRes.rowCount === 'number' && p3dRes.rowCount > 0) {
+        console.log(`🧾 VAT retirement: stripped from ${p3dRes.rowCount} print3d_requests`);
+      }
+    } catch (migrationError) {
+      console.log('print3d_requests VAT retirement note:', migrationError.message);
+    }
+
     // Project support requests: sequential number + unique index +
     // backfill for any legacy rows.
     try {
