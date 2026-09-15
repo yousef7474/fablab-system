@@ -73,7 +73,7 @@ const _buildAdminOrderEmail = (order) => {
       <tfoot>
         <tr><td colspan="3" style="padding:8px 12px;text-align:end;color:#64748b">المجموع الفرعي</td><td style="padding:8px 12px;text-align:end">${SAR(order.subtotal)}</td></tr>
         ${Number(order.discountAmount) > 0 ? `<tr><td colspan="3" style="padding:8px 12px;text-align:end;color:#16a34a">خصم (${order.couponCode} · ${order.couponPercent}%)</td><td style="padding:8px 12px;text-align:end;color:#16a34a">-${SAR(order.discountAmount)}</td></tr>` : ''}
-        <tr><td colspan="3" style="padding:8px 12px;text-align:end;color:#64748b">ضريبة القيمة المضافة (${Math.round((order.taxRate || 0) * 100)}%)</td><td style="padding:8px 12px;text-align:end">${SAR(order.taxAmount)}</td></tr>
+        ${Number(order.taxAmount) > 0 ? `<tr><td colspan="3" style="padding:8px 12px;text-align:end;color:#64748b">ضريبة القيمة المضافة (${Math.round((order.taxRate || 0) * 100)}%)</td><td style="padding:8px 12px;text-align:end">${SAR(order.taxAmount)}</td></tr>` : ''}
         <tr style="background:#fef2f2"><td colspan="3" style="padding:12px;text-align:end;color:#c41e24;font-weight:800;font-size:14px">الإجمالي الكلي</td><td style="padding:12px;text-align:end;color:#c41e24;font-weight:800;font-size:16px">${SAR(order.total)}</td></tr>
       </tfoot>
     </table>
@@ -219,7 +219,7 @@ const _buildCustomerInvoiceEmail = (order, subjectOrMeta, headlineArg, detailArg
       <tfoot>
         <tr><td colspan="3" style="padding:8px 12px;text-align:end;color:#64748b">المجموع الفرعي</td><td style="padding:8px 12px;text-align:end">${SAR(order.subtotal)}</td></tr>
         ${Number(order.discountAmount) > 0 ? `<tr><td colspan="3" style="padding:8px 12px;text-align:end;color:#16a34a">خصم (${order.couponCode} · ${order.couponPercent}%)</td><td style="padding:8px 12px;text-align:end;color:#16a34a">-${SAR(order.discountAmount)}</td></tr>` : ''}
-        <tr><td colspan="3" style="padding:8px 12px;text-align:end;color:#64748b">ضريبة القيمة المضافة (${Math.round((order.taxRate || 0) * 100)}%)</td><td style="padding:8px 12px;text-align:end">${SAR(order.taxAmount)}</td></tr>
+        ${Number(order.taxAmount) > 0 ? `<tr><td colspan="3" style="padding:8px 12px;text-align:end;color:#64748b">ضريبة القيمة المضافة (${Math.round((order.taxRate || 0) * 100)}%)</td><td style="padding:8px 12px;text-align:end">${SAR(order.taxAmount)}</td></tr>` : ''}
         <tr style="background:#fef2f2"><td colspan="3" style="padding:12px;text-align:end;color:#c41e24;font-weight:800;font-size:14px">الإجمالي الكلي</td><td style="padding:12px;text-align:end;color:#c41e24;font-weight:800;font-size:16px">${SAR(order.total)}</td></tr>
       </tfoot>
     </table>
@@ -350,9 +350,12 @@ exports.publicCreate = async (req, res) => {
     }
 
     const netAfterDiscount = +(subtotal - discountAmount).toFixed(2);
-    const taxRate = 0.15;
-    const taxAmount = +(netAfterDiscount * taxRate).toFixed(2);
-    const total = +(netAfterDiscount + taxAmount).toFixed(2);
+    // VAT retired — store no longer collects the 15% KSA tax. Legacy
+    // orders keep whatever taxRate/taxAmount they were saved with;
+    // new orders record 0 so the invoice reads clean.
+    const taxRate = 0;
+    const taxAmount = 0;
+    const total = netAfterDiscount;
 
     const orderNumber = await _assignNextOrderNumber();
 
@@ -588,7 +591,7 @@ exports.publicInvoiceHtml = async (req, res) => {
       <table class="totals">
         <tr><td class="label">المجموع الفرعي</td><td class="val">${SAR(o.subtotal)}</td></tr>
         ${Number(o.discountAmount) > 0 ? `<tr class="discount"><td class="label">خصم (${esc(o.couponCode)} · ${o.couponPercent}%)</td><td class="val">-${SAR(o.discountAmount)}</td></tr>` : ''}
-        <tr><td class="label">ضريبة القيمة المضافة (${Math.round((o.taxRate || 0) * 100)}%)</td><td class="val">${SAR(o.taxAmount)}</td></tr>
+        ${Number(o.taxAmount) > 0 ? `<tr><td class="label">ضريبة القيمة المضافة (${Math.round((o.taxRate || 0) * 100)}%)</td><td class="val">${SAR(o.taxAmount)}</td></tr>` : ''}
         <tr class="final"><td class="label">الإجمالي المستحق</td><td class="val">${SAR(o.total)}</td></tr>
       </table>
     </div>

@@ -536,14 +536,12 @@ const Print3DTab = () => {
                         const multi = detail.colorMode === 'multi' ? (Number(multiOverride) || (rates?.multiColorFee || 0)) : 0;
                         const preSub = w * rate + setup + multi;
                         const sub = Math.max(preSub, rates?.minCharge || 0);
-                        const tax = sub * 0.15;
-                        const total = sub + tax;
+                        // VAT retired — total equals subtotal.
                         return (
                           <>
                             <span>{isRTL ? 'المعاينة:' : 'Preview:'}</span>
-                            <b>{w} × {SAR(rate)} + {SAR(setup)}{multi > 0 ? ` + ${SAR(multi)}` : ''} = <span style={{ color: '#0ea5e9' }}>{SAR(sub)}</span></b>
-                            <span>+ {SAR(tax)} {isRTL ? 'ضريبة' : 'VAT'} → </span>
-                            <b style={{ fontSize: 15 }}>{SAR(total)}</b>
+                            <b>{w} × {SAR(rate)} + {SAR(setup)}{multi > 0 ? ` + ${SAR(multi)}` : ''} → </b>
+                            <b style={{ fontSize: 15 }}>{SAR(sub)}</b>
                           </>
                         );
                       })()}
@@ -565,7 +563,9 @@ const Print3DTab = () => {
                     {detail.estimatedCost && (
                       <div className="p3t-quote-breakdown">
                         <div><span>{isRTL ? 'المجموع الفرعي' : 'Subtotal'}</span><b>{SAR(detail.subtotal)}</b></div>
-                        <div><span>{isRTL ? `ضريبة (${Math.round((detail.taxRate || 0) * 100)}%)` : `VAT (${Math.round((detail.taxRate || 0) * 100)}%)`}</span><b>{SAR(detail.taxAmount)}</b></div>
+                        {Number(detail.taxAmount) > 0 && (
+                          <div><span>{isRTL ? `ضريبة (${Math.round((detail.taxRate || 0) * 100)}%)` : `VAT (${Math.round((detail.taxRate || 0) * 100)}%)`}</span><b>{SAR(detail.taxAmount)}</b></div>
+                        )}
                         <div className="p3t-quote-total"><span>{isRTL ? 'الإجمالي' : 'Total'}</span><b>{SAR(detail.estimatedCost)}</b></div>
                         {detail.quotedAt && <div className="p3t-quote-when">{isRTL ? 'أُرسل في:' : 'Sent:'} {fmtWhen(detail.quotedAt)}</div>}
                       </div>

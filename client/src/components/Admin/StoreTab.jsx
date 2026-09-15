@@ -699,7 +699,7 @@ const StoreTab = () => {
       <table class="totals">
         <tr><td class="label">المجموع الفرعي</td><td class="val">${SAR(o.subtotal)}</td></tr>
         ${Number(o.discountAmount) > 0 ? `<tr class="discount"><td class="label">خصم (${esc(o.couponCode)} · ${o.couponPercent}%)</td><td class="val">-${SAR(o.discountAmount)}</td></tr>` : ''}
-        <tr><td class="label">ضريبة القيمة المضافة (${Math.round((o.taxRate || 0) * 100)}%)</td><td class="val">${SAR(o.taxAmount)}</td></tr>
+        ${Number(o.taxAmount) > 0 ? `<tr><td class="label">ضريبة القيمة المضافة (${Math.round((o.taxRate || 0) * 100)}%)</td><td class="val">${SAR(o.taxAmount)}</td></tr>` : ''}
         <tr class="final"><td class="label">الإجمالي المستحق</td><td class="val">${SAR(o.total)}</td></tr>
       </table>
     </div>
@@ -1027,7 +1027,9 @@ const StoreTab = () => {
                   </tbody>
                   <tfoot>
                     <tr><td colSpan={3} style={{ textAlign: 'end', color: '#64748b' }}>المجموع الفرعي</td><td style={{ textAlign: 'end', fontFamily: 'JetBrains Mono, monospace' }}>{SAR(orderModal.subtotal)}</td></tr>
-                    <tr><td colSpan={3} style={{ textAlign: 'end', color: '#64748b' }}>ضريبة {Math.round((orderModal.taxRate || 0) * 100)}%</td><td style={{ textAlign: 'end', fontFamily: 'JetBrains Mono, monospace' }}>{SAR(orderModal.taxAmount)}</td></tr>
+                    {Number(orderModal.taxAmount) > 0 && (
+                      <tr><td colSpan={3} style={{ textAlign: 'end', color: '#64748b' }}>ضريبة {Math.round((orderModal.taxRate || 0) * 100)}%</td><td style={{ textAlign: 'end', fontFamily: 'JetBrains Mono, monospace' }}>{SAR(orderModal.taxAmount)}</td></tr>
+                    )}
                     <tr className="stt-order-final"><td colSpan={3} style={{ textAlign: 'end' }}>الإجمالي</td><td style={{ textAlign: 'end' }}>{SAR(orderModal.total)}</td></tr>
                   </tfoot>
                 </table>

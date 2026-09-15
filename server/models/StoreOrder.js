@@ -31,7 +31,7 @@ const StoreOrder = sequelize.define('StoreOrder', {
   couponCode:      { type: DataTypes.STRING(48), allowNull: true },
   couponPercent:   { type: DataTypes.INTEGER, allowNull: true },
   discountAmount:  { type: DataTypes.DECIMAL(10, 2), allowNull: false, defaultValue: 0 },
-  taxRate:     { type: DataTypes.DECIMAL(5, 4),  allowNull: false, defaultValue: 0.15 }, // KSA VAT
+  taxRate:     { type: DataTypes.DECIMAL(5, 4),  allowNull: false, defaultValue: 0 }, // VAT retired (was 0.15 KSA VAT)
   taxAmount:   { type: DataTypes.DECIMAL(10, 2), allowNull: false, defaultValue: 0 },
   total:       { type: DataTypes.DECIMAL(10, 2), allowNull: false, defaultValue: 0 },
 

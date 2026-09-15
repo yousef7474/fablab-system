@@ -302,7 +302,9 @@ const MyOrdersPage = () => {
                     {Number(selectedOrder.discountAmount) > 0 && (
                       <tr><td colSpan={3} style={{ textAlign: 'end', color: '#16a34a' }}>{isRTL ? `خصم (${selectedOrder.couponCode})` : `Discount (${selectedOrder.couponCode})`}</td><td style={{ textAlign: 'end', color: '#16a34a' }}>-{SAR(selectedOrder.discountAmount)}</td></tr>
                     )}
-                    <tr><td colSpan={3} style={{ textAlign: 'end', color: '#64748b' }}>{isRTL ? `ضريبة ${Math.round((selectedOrder.taxRate || 0) * 100)}%` : `VAT ${Math.round((selectedOrder.taxRate || 0) * 100)}%`}</td><td style={{ textAlign: 'end' }}>{SAR(selectedOrder.taxAmount)}</td></tr>
+                    {Number(selectedOrder.taxAmount) > 0 && (
+                      <tr><td colSpan={3} style={{ textAlign: 'end', color: '#64748b' }}>{isRTL ? `ضريبة ${Math.round((selectedOrder.taxRate || 0) * 100)}%` : `VAT ${Math.round((selectedOrder.taxRate || 0) * 100)}%`}</td><td style={{ textAlign: 'end' }}>{SAR(selectedOrder.taxAmount)}</td></tr>
+                    )}
                     <tr className="mo-items-final"><td colSpan={3} style={{ textAlign: 'end' }}>{isRTL ? 'الإجمالي' : 'Total'}</td><td style={{ textAlign: 'end' }}>{SAR(selectedOrder.total)}</td></tr>
                   </tfoot>
                 </table>

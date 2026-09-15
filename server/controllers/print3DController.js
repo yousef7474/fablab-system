@@ -48,8 +48,9 @@ const _loadRates = async () => {
   };
 };
 
-// Cost = max(minCharge, weight × rate + setupFee + (multi ? multiColorFee : 0))
-// Then add 15% VAT on top.
+// Cost = max(minCharge, weight × rate + setupFee + (multi ? multiColorFee : 0)).
+// VAT retired — quote total equals subtotal. Legacy quotes keep the
+// taxRate/taxAmount they were saved with.
 const _computeQuote = (weight, material, colorMode, rates) => {
   const w = Math.max(0, Number(weight) || 0);
   const rate = Number(rates[String(material || '').toUpperCase()]) || 0;
@@ -57,9 +58,9 @@ const _computeQuote = (weight, material, colorMode, rates) => {
   const multi = colorMode === 'multi' ? (Number(rates.multiColorFee) || 0) : 0;
   const raw = +(w * rate + setup + multi).toFixed(2);
   const subtotal = +Math.max(raw, Number(rates.minCharge) || 0).toFixed(2);
-  const taxRate = 0.15;
-  const taxAmount = +(subtotal * taxRate).toFixed(2);
-  const total = +(subtotal + taxAmount).toFixed(2);
+  const taxRate = 0;
+  const taxAmount = 0;
+  const total = subtotal;
   return {
     materialRate: rate,
     setupFee: setup,
@@ -541,7 +542,7 @@ exports.publicInvoiceHtml = async (req, res) => {
       </div>
       <table class="totals">
         <tr><td class="label">المجموع الفرعي</td><td class="val">${SAR(o.subtotal)}</td></tr>
-        <tr><td class="label">ضريبة القيمة المضافة (${Math.round((o.taxRate || 0) * 100)}%)</td><td class="val">${SAR(o.taxAmount)}</td></tr>
+        ${Number(o.taxAmount) > 0 ? `<tr><td class="label">ضريبة القيمة المضافة (${Math.round((o.taxRate || 0) * 100)}%)</td><td class="val">${SAR(o.taxAmount)}</td></tr>` : ''}
         <tr class="final"><td class="label">الإجمالي المستحق</td><td class="val">${SAR(o.estimatedCost)}</td></tr>
       </table>
     </div>
@@ -705,7 +706,7 @@ exports.quote = async (req, res) => {
                   <tr><td style="padding:8px 12px;color:#64748b">رسوم الإعداد:</td><td style="padding:8px 12px">${SAR(q.setupFee)}</td></tr>
                   ${q.multiColorFee > 0 ? `<tr><td style="padding:8px 12px;color:#64748b">رسوم الألوان المتعددة:</td><td style="padding:8px 12px">${SAR(q.multiColorFee)}</td></tr>` : ''}
                   <tr><td style="padding:8px 12px;color:#64748b">المجموع الفرعي:</td><td style="padding:8px 12px">${SAR(q.subtotal)}</td></tr>
-                  <tr><td style="padding:8px 12px;color:#64748b">ضريبة القيمة المضافة (15%):</td><td style="padding:8px 12px">${SAR(q.taxAmount)}</td></tr>
+                  ${Number(q.taxAmount) > 0 ? `<tr><td style="padding:8px 12px;color:#64748b">ضريبة القيمة المضافة (${Math.round((q.taxRate || 0) * 100)}%):</td><td style="padding:8px 12px">${SAR(q.taxAmount)}</td></tr>` : ''}
                   <tr style="background:#0ea5e9;color:#fff"><td style="padding:12px;font-weight:800">الإجمالي:</td><td style="padding:12px;font-weight:800;font-size:16px">${SAR(q.estimatedCost)}</td></tr>
                 </table>
                 <div style="text-align:center;margin:22px 0">

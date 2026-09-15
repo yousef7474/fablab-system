@@ -144,11 +144,12 @@ const StorePage = () => {
 
   const featuredCount = useMemo(() => items.filter(i => i.isFeatured).length, [items]);
 
-  // Recompute totals when cart or coupon changes
+  // Recompute totals when cart or coupon changes. VAT retired —
+  // total equals net-after-discount.
   const discountAmount = couponApplied ? +(cart.subtotal * (couponApplied.percent / 100)).toFixed(2) : 0;
   const netAfterDiscount = +(cart.subtotal - discountAmount).toFixed(2);
-  const tax = +(netAfterDiscount * 0.15).toFixed(2);
-  const total = +(netAfterDiscount + tax).toFixed(2);
+  const tax = 0;
+  const total = netAfterDiscount;
 
   // Auto-clear the coupon if the cart empties
   useEffect(() => {
@@ -543,7 +544,7 @@ const StorePage = () => {
                         <b>-{SAR(discountAmount)}</b>
                       </div>
                     )}
-                    <div><span>{isRTL ? 'ضريبة 15%' : 'VAT 15%'}</span><b>{SAR(tax)}</b></div>
+                    {tax > 0 && (<div><span>{isRTL ? 'ضريبة 15%' : 'VAT 15%'}</span><b>{SAR(tax)}</b></div>)}
                     <div className="st-totals-final"><span>{isRTL ? 'الإجمالي' : 'Total'}</span><b>{SAR(total)}</b></div>
                   </div>
                   <button
@@ -637,7 +638,7 @@ const StorePage = () => {
                         <b>-{SAR(discountAmount)}</b>
                       </div>
                     )}
-                    <div><span>{isRTL ? 'ضريبة 15%' : 'VAT 15%'}</span><b>{SAR(tax)}</b></div>
+                    {tax > 0 && (<div><span>{isRTL ? 'ضريبة 15%' : 'VAT 15%'}</span><b>{SAR(tax)}</b></div>)}
                     <div className="st-totals-final"><span>{isRTL ? 'الإجمالي' : 'Total'}</span><b>{SAR(total)}</b></div>
                   </div>
                   <div className="st-payment-note">

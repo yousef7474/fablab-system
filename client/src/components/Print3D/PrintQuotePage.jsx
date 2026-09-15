@@ -265,10 +265,12 @@ const PrintQuotePage = () => {
                   <span>{isRTL ? 'المجموع الفرعي' : 'Subtotal'}</span>
                   <b style={{ fontFamily: 'monospace' }}>{SAR(request.subtotal)}</b>
                 </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', color: '#94a3b8' }}>
-                  <span>{isRTL ? `ضريبة القيمة المضافة (${Math.round((request.taxRate || 0) * 100)}%)` : `VAT (${Math.round((request.taxRate || 0) * 100)}%)`}</span>
-                  <b style={{ fontFamily: 'monospace' }}>{SAR(request.taxAmount)}</b>
-                </div>
+                {Number(request.taxAmount) > 0 && (
+                  <div style={{ display: 'flex', justifyContent: 'space-between', color: '#94a3b8' }}>
+                    <span>{isRTL ? `ضريبة القيمة المضافة (${Math.round((request.taxRate || 0) * 100)}%)` : `VAT (${Math.round((request.taxRate || 0) * 100)}%)`}</span>
+                    <b style={{ fontFamily: 'monospace' }}>{SAR(request.taxAmount)}</b>
+                  </div>
+                )}
                 <div style={{
                   display: 'flex',
                   justifyContent: 'space-between',

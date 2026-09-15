@@ -49,7 +49,7 @@ const Print3DRequest = sequelize.define('Print3DRequest', {
   setupFee:        { type: DataTypes.DECIMAL(10, 2), allowNull: true },
   multiColorFee:   { type: DataTypes.DECIMAL(10, 2), allowNull: true },
   subtotal:        { type: DataTypes.DECIMAL(10, 2), allowNull: true },
-  taxRate:         { type: DataTypes.DECIMAL(5, 4),  allowNull: false, defaultValue: 0.15 },
+  taxRate:         { type: DataTypes.DECIMAL(5, 4),  allowNull: false, defaultValue: 0 }, // VAT retired (was 0.15)
   taxAmount:       { type: DataTypes.DECIMAL(10, 2), allowNull: true },
   estimatedCost:   { type: DataTypes.DECIMAL(10, 2), allowNull: true }, // grand total
 
