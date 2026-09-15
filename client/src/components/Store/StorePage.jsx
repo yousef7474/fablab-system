@@ -1066,33 +1066,17 @@ const StoreItemCard = ({ item, isRTL, onOpen, onAdd }) => {
   const images = Array.isArray(item.images) ? item.images.filter(Boolean) : [];
   const hasMany = images.length > 1;
 
-  // Random 0..len-1 start so different cards don't show the same
-  // frame at the same time on page load. Random 2.4-3.2s interval
-  // desyncs advances too.
-  const [idx, setIdx] = useState(() =>
-    hasMany ? Math.floor(Math.random() * images.length) : 0
-  );
-  const intervalMs = useRef(2400 + Math.floor(Math.random() * 800));
-  const [paused, setPaused] = useState(false);
-  const timerRef = useRef(null);
-
-  useEffect(() => {
-    if (!hasMany || paused) {
-      clearInterval(timerRef.current);
-      return;
-    }
-    timerRef.current = setInterval(() => {
-      setIdx(i => (i + 1) % images.length);
-    }, intervalMs.current);
-    return () => clearInterval(timerRef.current);
-  }, [hasMany, paused, images.length]);
+  // Cards used to auto-cycle through images every 2.4–3.2s to catch
+  // attention, but a whole grid of cards shuffling at once felt busy
+  // to customers browsing the store. Card now shows the first image
+  // only; the full gallery is available inside the item modal
+  // (arrows + dots + optional auto-play).
+  const idx = 0;
 
   return (
     <div
       className="st-card"
       onClick={onOpen}
-      onMouseEnter={() => setPaused(true)}
-      onMouseLeave={() => setPaused(false)}
     >
       {item.isFeatured && <span className="st-badge">⭐ {isRTL ? 'مميز' : 'Featured'}</span>}
       <div className="st-card-img">
