@@ -50,6 +50,7 @@ const EmployeeEvaluation = require('./EmployeeEvaluation');
 const EmployeeActivity = require('./EmployeeActivity');
 const Workshop = require('./Workshop');
 const WorkshopStudent = require('./WorkshopStudent');
+const WorkshopCoupon = require('./WorkshopCoupon');
 const RegistrationClosure = require('./RegistrationClosure');
 const MawhbaStudent = require('./MawhbaStudent');
 const MawhbaCourseColor = require('./MawhbaCourseColor');
@@ -878,6 +879,19 @@ const syncDatabase = async () => {
       await sequelize.query(
         `ALTER TABLE workshop_students ADD COLUMN IF NOT EXISTS "paymentReviewNote" TEXT`
       );
+      // Coupons + terms
+      await sequelize.query(
+        `ALTER TABLE workshop_students ADD COLUMN IF NOT EXISTS "couponCode" VARCHAR(64)`
+      );
+      await sequelize.query(
+        `ALTER TABLE workshop_students ADD COLUMN IF NOT EXISTS "couponPercent" INTEGER`
+      );
+      await sequelize.query(
+        `ALTER TABLE workshop_students ADD COLUMN IF NOT EXISTS "discountAmount" DECIMAL(10,2) NOT NULL DEFAULT 0`
+      );
+      await sequelize.query(
+        `ALTER TABLE workshop_students ADD COLUMN IF NOT EXISTS "termsAcceptedAt" TIMESTAMP WITH TIME ZONE`
+      );
     } catch (migrationError) {
       if (!/does not exist/i.test(migrationError.message)) {
         console.log('workshop_students payment columns migration note:', migrationError.message);
@@ -1313,6 +1327,7 @@ module.exports = {
   EmployeeActivity,
   Workshop,
   WorkshopStudent,
+  WorkshopCoupon,
   RegistrationClosure,
   MawhbaStudent,
   MawhbaCourseColor,

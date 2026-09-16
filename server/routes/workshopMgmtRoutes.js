@@ -35,11 +35,21 @@ router.get('/active', controller.getActiveWorkshops);
 // Public payment-settings lookup + invoice viewer (no login).
 router.get('/public/:id/payment-settings', controller.getPublicPaymentSettings);
 router.get('/students/:id/invoice-html',   controller.getInvoiceHtml);
+router.get('/public/terms',                controller.getPublicTerms);
+router.get('/public/coupons/validate',     controller.validateCouponPublic);
 
 // Admin payment endpoints
 router.get('/students/:id/payment-proof', adminAuth, controller.downloadPaymentProof);
 router.get('/admin/payment-settings',  adminAuth, controller.getAdminPaymentSettings);
 router.put('/admin/payment-settings',  adminAuth, requireManager, controller.updateAdminPaymentSettings);
+router.get('/admin/terms',             adminAuth, controller.getAdminTerms);
+router.put('/admin/terms',             adminAuth, requireManager, controller.updateAdminTerms);
+
+// Admin coupons CRUD (manager-only for writes; any admin can list).
+router.get('/admin/coupons',          adminAuth, controller.listCoupons);
+router.post('/admin/coupons',         adminAuth, requireManager, controller.createCoupon);
+router.patch('/admin/coupons/:code',  adminAuth, requireManager, controller.updateCoupon);
+router.delete('/admin/coupons/:code', adminAuth, requireManager, controller.deleteCoupon);
 
 // Employee routes (must be before /:id to avoid conflicts)
 router.get('/employee/my-workshops', employeeAuth, controller.getMyWorkshops);

@@ -30,11 +30,18 @@ const WorkshopRegistration = () => {
     paymentMethod: 'bank_transfer' // 'bank_transfer' | 'mada'
   });
 
-  // Payment settings (bank / mada) for the currently selected paid
-  // workshop — fetched when the customer lands on step 2.
-  const [payment, setPayment] = useState({ bank: null, mada: null });
+  // Payment settings (bank / mada / terms) for the currently selected
+  // paid workshop — fetched when the customer lands on step 2.
+  const [payment, setPayment] = useState({ bank: null, mada: null, terms: [] });
   const [proofFile, setProofFile] = useState(null); // { fileName, fileType, fileSize, fileData }
   const [copiedField, setCopiedField] = useState(null);
+  const [termsAgreed, setTermsAgreed] = useState(false);
+  // Coupon workflow — customer types a code, clicks "Apply" → server
+  // returns the discount + net. We keep the response in state so we
+  // can render the discount inline and re-use it in submit.
+  const [couponInput, setCouponInput] = useState('');
+  const [couponApplying, setCouponApplying] = useState(false);
+  const [coupon, setCoupon] = useState(null); // { code, percent, discountAmount, netAmount }
 
   useEffect(() => {
     api.get('/workshops/active').then(res => setWorkshops(res.data || [])).catch(() => {});
@@ -48,19 +55,66 @@ const WorkshopRegistration = () => {
 
   const selectedWorkshopEarly = workshops.find(w => w.workshopId === form.workshopId);
   const workshopIsPaid = selectedWorkshopEarly && Number(selectedWorkshopEarly.price) > 0;
+  // Total after any applied coupon — 0 when coupon covers the whole price.
+  const netAmount = coupon ? Number(coupon.netAmount) : Number(selectedWorkshopEarly?.price || 0);
   const canProceedStep2 = !workshopIsPaid
-    || (form.paymentMethod === 'mada')
-    || (form.paymentMethod === 'bank_transfer' && !!proofFile);
+    ? true
+    : (netAmount <= 0
+        ? termsAgreed
+        : (
+            termsAgreed && (
+              form.paymentMethod === 'mada'
+              || (form.paymentMethod === 'bank_transfer' && !!proofFile)
+            )
+          )
+      );
 
-  // Fetch bank + mada settings on entering step 2 for a paid workshop.
+  // Fetch bank + mada + terms settings on entering step 2 for a
+  // paid workshop. Coupon input resets whenever the workshop changes.
   useEffect(() => {
-    if (step === 2 && workshopIsPaid && form.workshopId && !payment.bank && !payment.mada) {
+    if (step === 2 && workshopIsPaid && form.workshopId) {
       api.get(`/workshops/public/${form.workshopId}/payment-settings`)
-        .then(res => setPayment({ bank: res.data.bank || null, mada: res.data.mada || null }))
+        .then(res => setPayment({
+          bank: res.data.bank || null,
+          mada: res.data.mada || null,
+          terms: Array.isArray(res.data.terms) ? res.data.terms : []
+        }))
         .catch(() => {});
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [step, form.workshopId]);
+
+  // Reset coupon whenever the customer picks a different workshop.
+  useEffect(() => {
+    setCoupon(null);
+    setCouponInput('');
+  }, [form.workshopId]);
+
+  const applyCoupon = async () => {
+    const code = String(couponInput || '').trim().toUpperCase();
+    if (!code) return;
+    setCouponApplying(true);
+    try {
+      const res = await api.get('/workshops/public/coupons/validate', {
+        params: { code, workshopId: form.workshopId }
+      });
+      if (res.data?.ok) {
+        setCoupon(res.data);
+        toast.success(isRTL
+          ? `تم تطبيق الخصم ${res.data.percent}%`
+          : `Coupon applied — ${res.data.percent}% off`);
+      } else {
+        setCoupon(null);
+        toast.error(res.data?.messageAr || res.data?.message || (isRTL ? 'كود غير صالح' : 'Invalid code'));
+      }
+    } catch (err) {
+      const msg = err?.response?.data?.messageAr || err?.response?.data?.message || (isRTL ? 'فشل التحقق' : 'Validation failed');
+      toast.error(msg);
+    } finally {
+      setCouponApplying(false);
+    }
+  };
+  const removeCoupon = () => { setCoupon(null); setCouponInput(''); };
 
   // Read a File into { fileName, fileType, fileSize, fileData (base64) }.
   const readAsFilePayload = (file) => new Promise((resolve, reject) => {
@@ -145,10 +199,18 @@ const WorkshopRegistration = () => {
     setSubmitting(true);
     try {
       const paid = workshopIsPaid;
+      // If a coupon covered the whole amount, treat the registration
+      // as free — no bank/mada required.
+      const priceAfterCoupon = coupon ? Number(coupon.netAmount) : (selectedWorkshopEarly?.price || 0);
+      const effectiveMethod = !paid || priceAfterCoupon <= 0
+        ? 'free'
+        : form.paymentMethod;
       const payload = {
         ...form,
-        paymentMethod: paid ? form.paymentMethod : 'free',
-        paymentProof: paid && form.paymentMethod === 'bank_transfer' ? proofFile : null
+        paymentMethod: effectiveMethod,
+        paymentProof: effectiveMethod === 'bank_transfer' ? proofFile : null,
+        couponCode: coupon?.code || null,
+        termsAccepted: paid ? termsAgreed : true
       };
       const res = await api.post('/workshops/register', payload);
       setResult(res.data);
@@ -382,6 +444,70 @@ const WorkshopRegistration = () => {
 
                 {workshopIsPaid && (
                   <>
+                    {/* Coupon code input — always shown (may bring net to 0). */}
+                    <div style={{ marginBottom: 20, padding: 14, background: '#faf5ff', border: '1px solid #ddd6fe', borderRadius: 12 }}>
+                      <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: 1.2, color: '#6d28d9', textTransform: 'uppercase', marginBottom: 8 }}>
+                        🎟 {isRTL ? 'كود خصم (اختياري)' : 'Coupon code (optional)'}
+                      </div>
+                      {coupon ? (
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
+                          <div style={{ fontSize: 13.5 }}>
+                            <b style={{ color: '#16a34a', fontFamily: "'JetBrains Mono', monospace" }}>{coupon.code}</b>
+                            &nbsp;· {isRTL ? `خصم ${coupon.percent}%` : `${coupon.percent}% off`}
+                            &nbsp;· <b>-{Number(coupon.discountAmount).toFixed(2)} {isRTL ? 'ر.س' : 'SAR'}</b>
+                          </div>
+                          <button type="button" onClick={removeCoupon} style={{ padding: '4px 10px', background: '#fff', border: '1px solid #fecaca', color: '#b91c1c', borderRadius: 6, cursor: 'pointer', fontSize: 12, fontWeight: 700, fontFamily: 'inherit' }}>
+                            ✕ {isRTL ? 'إزالة' : 'Remove'}
+                          </button>
+                        </div>
+                      ) : (
+                        <div style={{ display: 'flex', gap: 8 }}>
+                          <input
+                            dir="ltr"
+                            value={couponInput}
+                            onChange={(e) => setCouponInput(e.target.value.toUpperCase())}
+                            placeholder={isRTL ? 'أدخل الكود' : 'Enter code'}
+                            style={{ flex: 1, padding: 10, borderRadius: 8, border: '1px solid #d8b4fe', background: '#fff', fontFamily: "'JetBrains Mono', monospace", fontSize: 14, letterSpacing: 1.5, textAlign: 'center', textTransform: 'uppercase' }}
+                            onKeyDown={(e) => e.key === 'Enter' && applyCoupon()}
+                          />
+                          <button
+                            type="button"
+                            onClick={applyCoupon}
+                            disabled={couponApplying || !couponInput.trim()}
+                            style={{ padding: '10px 18px', borderRadius: 8, border: 'none', background: '#7c3aed', color: '#fff', fontWeight: 800, cursor: 'pointer', fontFamily: 'inherit', opacity: couponApplying || !couponInput.trim() ? 0.6 : 1 }}
+                          >
+                            {couponApplying ? '…' : (isRTL ? 'تطبيق' : 'Apply')}
+                          </button>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Price summary — shows original price, discount, net. */}
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '14px 18px', background: '#f0fdf4', border: '1px solid #86efac', borderRadius: 10, marginBottom: 20 }}>
+                      <div>
+                        <div style={{ fontSize: 11, color: '#166534', letterSpacing: 0.6, fontWeight: 700, textTransform: 'uppercase' }}>
+                          {isRTL ? 'الإجمالي المستحق' : 'Total due'}
+                        </div>
+                        {coupon && (
+                          <div style={{ fontSize: 11.5, color: '#94a3b8', marginTop: 2 }}>
+                            <span style={{ textDecoration: 'line-through' }}>{Number(coupon.originalPrice).toFixed(2)}</span>
+                            &nbsp;·&nbsp;<b style={{ color: '#16a34a' }}>−{coupon.percent}%</b>
+                          </div>
+                        )}
+                      </div>
+                      <div style={{ fontSize: 22, fontWeight: 900, fontFamily: "'JetBrains Mono', monospace", color: netAmount <= 0 ? '#16a34a' : '#166534' }}>
+                        {netAmount <= 0 ? (isRTL ? 'مجاناً 🎉' : 'FREE 🎉') : `${Number(netAmount).toFixed(2)} ${isRTL ? 'ر.س' : 'SAR'}`}
+                      </div>
+                    </div>
+
+                  </>
+                )}
+                {/* Payment-method picker + bank/mada blocks only make
+                    sense when there's still an amount to pay after any
+                    coupon has been applied. Free coupons skip straight
+                    to the terms checkbox + submit. */}
+                {workshopIsPaid && netAmount > 0 && (
+                  <>
                     <h3 style={{ marginTop: 0 }}>{isRTL ? 'اختر طريقة الدفع' : 'Choose Payment Method'}</h3>
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 12, marginBottom: 22 }}>
                       {[
@@ -528,6 +654,37 @@ const WorkshopRegistration = () => {
                   </>
                 )}
 
+                {/* Terms & conditions — required for paid workshops.
+                    Renders even when a coupon zeroed the price so the
+                    customer still consents. */}
+                {workshopIsPaid && payment.terms.length > 0 && (
+                  <div style={{ marginTop: 16, padding: 16, background: '#fff', border: '1px solid #cbd5e1', borderRadius: 12 }}>
+                    <div style={{ fontSize: 12, fontWeight: 800, letterSpacing: 1.2, color: '#EE2329', textTransform: 'uppercase', marginBottom: 10 }}>
+                      📜 {isRTL ? 'الشروط والأحكام' : 'Terms & Conditions'}
+                    </div>
+                    <div style={{ maxHeight: 190, overflowY: 'auto', border: '1px solid #e2e8f0', borderRadius: 8, padding: '10px 14px', background: '#f8fafc', fontSize: 13.2, lineHeight: 1.85, color: '#334155' }}>
+                      <ol style={{ margin: 0, paddingInlineStart: 18 }}>
+                        {payment.terms.map((t, i) => (
+                          <li key={i} style={{ marginBottom: 6 }}>{t}</li>
+                        ))}
+                      </ol>
+                    </div>
+                    <label style={{ display: 'flex', alignItems: 'flex-start', gap: 8, marginTop: 12, cursor: 'pointer', fontSize: 13.5, color: '#0f172a' }}>
+                      <input
+                        type="checkbox"
+                        checked={termsAgreed}
+                        onChange={(e) => setTermsAgreed(e.target.checked)}
+                        style={{ marginTop: 3, transform: 'scale(1.2)', cursor: 'pointer' }}
+                      />
+                      <span>
+                        {isRTL
+                          ? 'أقرّ بأنني قرأت الشروط والأحكام أعلاه وأوافق عليها بالكامل قبل إتمام التسجيل.'
+                          : 'I have read and agree to all the terms and conditions above.'}
+                      </span>
+                    </label>
+                  </div>
+                )}
+
                 <div className="workshop-actions">
                   <button className="workshop-btn-back" onClick={() => setStep(1)}>{isRTL ? 'السابق' : 'Back'}</button>
                   <button className="workshop-btn-submit" disabled={!canProceedStep2 || submitting} onClick={handleSubmit}>
@@ -606,8 +763,13 @@ const WorkshopRegistration = () => {
                   style={{ margin: '22px auto 0', maxWidth: 480 }}
                 >
                   <strong>{result.workshop?.title || selectedWorkshop?.title}</strong>
+                  {Number(result.discountAmount) > 0 && (
+                    <span>{isRTL ? 'الخصم:' : 'Discount:'} <b style={{ color: '#16a34a' }}>−{Number(result.discountAmount).toFixed(2)} {isRTL ? 'ر.س' : 'SAR'}</b>
+                      {result.couponCode && <> ({result.couponCode} · {result.couponPercent}%)</>}
+                    </span>
+                  )}
                   {result.paymentAmount > 0 && (
-                    <span>{isRTL ? 'قيمة الورشة:' : 'Amount:'} <b style={{ color: '#EE2329' }}>{Number(result.paymentAmount).toFixed(2)} {isRTL ? 'ر.س' : 'SAR'}</b></span>
+                    <span>{isRTL ? 'الإجمالي المستحق:' : 'Amount due:'} <b style={{ color: '#EE2329' }}>{Number(result.paymentAmount).toFixed(2)} {isRTL ? 'ر.س' : 'SAR'}</b></span>
                   )}
                   <span>{isRTL ? 'الحالة:' : 'Status:'} {
                     result.paymentStatus === 'verified'

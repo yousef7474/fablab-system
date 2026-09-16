@@ -70,6 +70,16 @@ const WorkshopStudent = sequelize.define('WorkshopStudent', {
   paymentReviewedBy:   { type: DataTypes.STRING, allowNull: true },
   paymentReviewedAt:   { type: DataTypes.DATE, allowNull: true },
   paymentReviewNote:   { type: DataTypes.TEXT, allowNull: true },
+  // Coupon that reduced the amount owed (if any). couponPercent lets
+  // us reprint history-accurate invoices even if the coupon record
+  // is later deleted.
+  couponCode:      { type: DataTypes.STRING(64), allowNull: true },
+  couponPercent:   { type: DataTypes.INTEGER, allowNull: true },
+  discountAmount:  { type: DataTypes.DECIMAL(10, 2), allowNull: false, defaultValue: 0 },
+  // Timestamp when the customer ticked the "I agree to terms &
+  // conditions" checkbox. NULL means the terms were skipped (legacy
+  // pre-terms registrations).
+  termsAcceptedAt: { type: DataTypes.DATE, allowNull: true },
   attended: {
     type: DataTypes.BOOLEAN,
     defaultValue: false

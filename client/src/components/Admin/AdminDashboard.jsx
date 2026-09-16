@@ -261,6 +261,15 @@ const AdminDashboard = () => {
   const [attendanceEditTarget, setAttendanceEditTarget] = useState(null);
   const [attendanceEditSaving, setAttendanceEditSaving] = useState(false);
   const [showWorkshopModal, setShowWorkshopModal] = useState(false);
+  // Workshop coupons + terms editors (paid-workshop feature).
+  const [showCouponsModal, setShowCouponsModal] = useState(false);
+  const [workshopCoupons, setWorkshopCoupons] = useState([]);
+  const [couponForm, setCouponForm] = useState({ code: '', percent: '', reason: '', approvedBy: '', maxUses: '' });
+  const [couponSaving, setCouponSaving] = useState(false);
+  const [showTermsModal, setShowTermsModal] = useState(false);
+  const [workshopTerms, setWorkshopTerms] = useState([]);
+  const [workshopApprovers, setWorkshopApprovers] = useState([]);
+  const [termsSaving, setTermsSaving] = useState(false);
   const [selectedWorkshop, setSelectedWorkshop] = useState(null);
   const [workshopForm, setWorkshopForm] = useState({
     title: '', description: '', presenter: '', assignedEmployeeId: '',
@@ -1238,6 +1247,80 @@ const AdminDashboard = () => {
       }
     } catch (error) {
       toast.error(isRTL ? 'خطأ' : 'Error');
+    }
+  };
+
+  // ─────────── Workshop coupons + terms (paid-workshop feature) ───────────
+  const fetchWorkshopCoupons = async () => {
+    try {
+      const res = await api.get('/workshops/admin/coupons');
+      setWorkshopCoupons(Array.isArray(res.data) ? res.data : []);
+    } catch { setWorkshopCoupons([]); }
+  };
+  const fetchWorkshopTerms = async () => {
+    try {
+      const res = await api.get('/workshops/admin/terms');
+      setWorkshopTerms(Array.isArray(res.data?.terms) ? res.data.terms : []);
+      setWorkshopApprovers(Array.isArray(res.data?.approvers) ? res.data.approvers : []);
+    } catch {}
+  };
+  useEffect(() => {
+    if (showCouponsModal) { fetchWorkshopCoupons(); fetchWorkshopTerms(); }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [showCouponsModal]);
+  useEffect(() => {
+    if (showTermsModal) fetchWorkshopTerms();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [showTermsModal]);
+
+  const handleCreateCoupon = async () => {
+    const code = String(couponForm.code || '').trim().toUpperCase();
+    const percent = Number(couponForm.percent);
+    if (!code || !(percent > 0 && percent <= 100) || !couponForm.approvedBy) {
+      toast.error(isRTL ? 'الكود والنسبة والمعتمِد مطلوبون' : 'Code, percent, and approver required');
+      return;
+    }
+    setCouponSaving(true);
+    try {
+      await api.post('/workshops/admin/coupons', {
+        code, percent,
+        reason: couponForm.reason || null,
+        approvedBy: couponForm.approvedBy,
+        maxUses: couponForm.maxUses ? Number(couponForm.maxUses) : null
+      });
+      toast.success(isRTL ? 'تم إنشاء الكود' : 'Coupon created');
+      setCouponForm({ code: '', percent: '', reason: '', approvedBy: '', maxUses: '' });
+      fetchWorkshopCoupons();
+    } catch (err) {
+      toast.error(err?.response?.data?.messageAr || err?.response?.data?.message || (isRTL ? 'تعذّر الإنشاء' : 'Create failed'));
+    } finally {
+      setCouponSaving(false);
+    }
+  };
+  const handleToggleCoupon = async (row) => {
+    try {
+      await api.patch(`/workshops/admin/coupons/${encodeURIComponent(row.code)}`, { isActive: !row.isActive });
+      fetchWorkshopCoupons();
+    } catch { toast.error(isRTL ? 'تعذّر التحديث' : 'Update failed'); }
+  };
+  const handleDeleteCoupon = async (row) => {
+    if (!window.confirm(isRTL ? `حذف الكود ${row.code}؟` : `Delete coupon ${row.code}?`)) return;
+    try {
+      await api.delete(`/workshops/admin/coupons/${encodeURIComponent(row.code)}`);
+      toast.success(isRTL ? 'تم الحذف' : 'Deleted');
+      fetchWorkshopCoupons();
+    } catch { toast.error(isRTL ? 'تعذّر الحذف' : 'Delete failed'); }
+  };
+  const handleSaveTerms = async () => {
+    setTermsSaving(true);
+    try {
+      await api.put('/workshops/admin/terms', { terms: workshopTerms, approvers: workshopApprovers });
+      toast.success(isRTL ? 'تم الحفظ' : 'Saved');
+      setShowTermsModal(false);
+    } catch (err) {
+      toast.error(err?.response?.data?.message || (isRTL ? 'فشل الحفظ' : 'Save failed'));
+    } finally {
+      setTermsSaving(false);
     }
   };
 
@@ -8374,6 +8457,20 @@ const AdminDashboard = () => {
                           {isRTL ? 'مسح QR' : 'Scan QR'}
                         </button>
                         <button
+                          className="wsv2-action-btn"
+                          onClick={() => setShowCouponsModal(true)}
+                          title={isRTL ? 'إدارة أكواد الخصم' : 'Manage discount codes'}
+                        >
+                          🎟 {isRTL ? 'أكواد الخصم' : 'Coupons'}
+                        </button>
+                        <button
+                          className="wsv2-action-btn"
+                          onClick={() => setShowTermsModal(true)}
+                          title={isRTL ? 'تعديل الشروط والأحكام' : 'Edit terms & conditions'}
+                        >
+                          📜 {isRTL ? 'الشروط' : 'Terms'}
+                        </button>
+                        <button
                           className="wsv2-action-btn primary"
                           onClick={() => {
                             setSelectedWorkshop(null);
@@ -8851,6 +8948,151 @@ const AdminDashboard = () => {
               </motion.div>
               );
             })()}
+
+            {/* Coupons Manager Modal */}
+            {showCouponsModal && (
+              <div className="modal-overlay" onClick={() => setShowCouponsModal(false)}>
+                <motion.div className="modal-content" onClick={e => e.stopPropagation()} initial={{ opacity: 0, scale: 0.94 }} animate={{ opacity: 1, scale: 1 }}
+                  style={{ maxWidth: 820, width: '92%', maxHeight: '92vh', overflow: 'auto', padding: '1.5rem 1.75rem' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
+                    <h3 style={{ margin: 0 }}>🎟 {isRTL ? 'إدارة أكواد الخصم' : 'Discount Codes'}</h3>
+                    <button onClick={() => setShowCouponsModal(false)} style={{ background: 'transparent', border: 'none', fontSize: 22, cursor: 'pointer', color: '#94a3b8' }}>×</button>
+                  </div>
+
+                  <div style={{ background: '#faf5ff', border: '1px solid #ddd6fe', padding: 14, borderRadius: 10, marginBottom: 18 }}>
+                    <div style={{ fontSize: 11.5, fontWeight: 800, color: '#6d28d9', letterSpacing: 1.2, textTransform: 'uppercase', marginBottom: 10 }}>
+                      {isRTL ? 'إنشاء كود جديد' : 'Create new code'}
+                    </div>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 10 }}>
+                      <div>
+                        <label style={{ fontSize: 11, color: '#64748b', display: 'block', marginBottom: 3 }}>{isRTL ? 'الكود *' : 'Code *'}</label>
+                        <input value={couponForm.code} dir="ltr" onChange={e => setCouponForm(f => ({ ...f, code: e.target.value.toUpperCase() }))} placeholder="SUMMER25" style={{ width: '100%', padding: 8, borderRadius: 6, border: '1px solid #cbd5e1', fontFamily: "'JetBrains Mono', monospace", textTransform: 'uppercase' }} />
+                      </div>
+                      <div>
+                        <label style={{ fontSize: 11, color: '#64748b', display: 'block', marginBottom: 3 }}>{isRTL ? 'نسبة الخصم % *' : 'Percent % *'}</label>
+                        <input type="number" min="1" max="100" value={couponForm.percent} onChange={e => setCouponForm(f => ({ ...f, percent: e.target.value }))} placeholder="25" style={{ width: '100%', padding: 8, borderRadius: 6, border: '1px solid #cbd5e1' }} />
+                      </div>
+                      <div>
+                        <label style={{ fontSize: 11, color: '#64748b', display: 'block', marginBottom: 3 }}>{isRTL ? 'اعتمد بواسطة *' : 'Approved by *'}</label>
+                        <select value={couponForm.approvedBy} onChange={e => setCouponForm(f => ({ ...f, approvedBy: e.target.value }))} style={{ width: '100%', padding: 8, borderRadius: 6, border: '1px solid #cbd5e1' }}>
+                          <option value="">{isRTL ? '— اختر —' : '— select —'}</option>
+                          {workshopApprovers.map(a => <option key={a} value={a}>{a}</option>)}
+                        </select>
+                      </div>
+                      <div>
+                        <label style={{ fontSize: 11, color: '#64748b', display: 'block', marginBottom: 3 }}>{isRTL ? 'حد الاستخدام (اختياري)' : 'Max uses (optional)'}</label>
+                        <input type="number" min="1" value={couponForm.maxUses} onChange={e => setCouponForm(f => ({ ...f, maxUses: e.target.value }))} placeholder="—" style={{ width: '100%', padding: 8, borderRadius: 6, border: '1px solid #cbd5e1' }} />
+                      </div>
+                      <div style={{ gridColumn: '1 / -1' }}>
+                        <label style={{ fontSize: 11, color: '#64748b', display: 'block', marginBottom: 3 }}>{isRTL ? 'سبب / ملاحظات' : 'Reason / notes'}</label>
+                        <input value={couponForm.reason} onChange={e => setCouponForm(f => ({ ...f, reason: e.target.value }))} placeholder={isRTL ? 'مثال: عرض العيد الوطني' : 'e.g. National Day promo'} style={{ width: '100%', padding: 8, borderRadius: 6, border: '1px solid #cbd5e1' }} />
+                      </div>
+                    </div>
+                    <div style={{ marginTop: 12, display: 'flex', justifyContent: 'flex-end' }}>
+                      <button onClick={handleCreateCoupon} disabled={couponSaving} style={{ padding: '9px 22px', background: '#7c3aed', color: '#fff', border: 'none', borderRadius: 8, fontWeight: 800, cursor: 'pointer', fontFamily: 'inherit' }}>
+                        {couponSaving ? '…' : (isRTL ? '+ إنشاء الكود' : '+ Create')}
+                      </button>
+                    </div>
+                  </div>
+
+                  {workshopCoupons.length === 0 ? (
+                    <div style={{ padding: 40, textAlign: 'center', color: '#94a3b8' }}>
+                      {isRTL ? '— لا توجد أكواد بعد —' : '— No coupons yet —'}
+                    </div>
+                  ) : (
+                    <div style={{ border: '1px solid #e2e8f0', borderRadius: 10, overflow: 'hidden' }}>
+                      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+                        <thead>
+                          <tr style={{ background: '#f8fafc' }}>
+                            <th style={{ padding: 8, textAlign: 'start' }}>{isRTL ? 'الكود' : 'Code'}</th>
+                            <th style={{ padding: 8, textAlign: 'center' }}>{isRTL ? 'الخصم' : 'Off'}</th>
+                            <th style={{ padding: 8, textAlign: 'start' }}>{isRTL ? 'اعتمد بواسطة' : 'Approved by'}</th>
+                            <th style={{ padding: 8, textAlign: 'start' }}>{isRTL ? 'السبب' : 'Reason'}</th>
+                            <th style={{ padding: 8, textAlign: 'center' }}>{isRTL ? 'الاستخدام' : 'Uses'}</th>
+                            <th style={{ padding: 8, textAlign: 'center' }}>{isRTL ? 'مفعّل' : 'Active'}</th>
+                            <th style={{ padding: 8, textAlign: 'center' }}></th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {workshopCoupons.map(c => (
+                            <tr key={c.code} style={{ borderTop: '1px solid #e2e8f0' }}>
+                              <td style={{ padding: 8, fontFamily: "'JetBrains Mono', monospace", fontWeight: 800, color: '#7c3aed' }}>{c.code}</td>
+                              <td style={{ padding: 8, textAlign: 'center', fontWeight: 800, color: '#16a34a' }}>{c.percent}%</td>
+                              <td style={{ padding: 8 }}>{c.approvedBy}</td>
+                              <td style={{ padding: 8, color: '#64748b', fontSize: 12 }}>{c.reason || '—'}</td>
+                              <td style={{ padding: 8, textAlign: 'center', fontFamily: "'JetBrains Mono', monospace" }}>
+                                {c.usageCount || 0}{c.maxUses ? ` / ${c.maxUses}` : ''}
+                              </td>
+                              <td style={{ padding: 8, textAlign: 'center' }}>
+                                <label style={{ cursor: 'pointer' }}>
+                                  <input type="checkbox" checked={!!c.isActive} onChange={() => handleToggleCoupon(c)} />
+                                </label>
+                              </td>
+                              <td style={{ padding: 8, textAlign: 'center' }}>
+                                <button onClick={() => handleDeleteCoupon(c)} style={{ padding: '4px 10px', background: '#fff', border: '1px solid #fecaca', color: '#b91c1c', borderRadius: 6, cursor: 'pointer', fontSize: 12, fontWeight: 700 }}>
+                                  🗑
+                                </button>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </motion.div>
+              </div>
+            )}
+
+            {/* Terms & approvers editor */}
+            {showTermsModal && (
+              <div className="modal-overlay" onClick={() => setShowTermsModal(false)}>
+                <motion.div className="modal-content" onClick={e => e.stopPropagation()} initial={{ opacity: 0, scale: 0.94 }} animate={{ opacity: 1, scale: 1 }}
+                  style={{ maxWidth: 700, width: '92%', maxHeight: '92vh', overflow: 'auto', padding: '1.5rem 1.75rem' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
+                    <h3 style={{ margin: 0 }}>📜 {isRTL ? 'الشروط والأحكام + قائمة المعتمدين' : 'Terms & Approvers'}</h3>
+                    <button onClick={() => setShowTermsModal(false)} style={{ background: 'transparent', border: 'none', fontSize: 22, cursor: 'pointer', color: '#94a3b8' }}>×</button>
+                  </div>
+
+                  <div style={{ marginBottom: 20 }}>
+                    <label style={{ fontSize: 11, fontWeight: 800, color: '#EE2329', letterSpacing: 1.2, textTransform: 'uppercase', display: 'block', marginBottom: 8 }}>
+                      {isRTL ? 'الشروط (فقرة واحدة لكل بند)' : 'Terms (one line per bullet)'}
+                    </label>
+                    <textarea
+                      rows={12}
+                      value={workshopTerms.join('\n')}
+                      onChange={e => setWorkshopTerms(e.target.value.split('\n'))}
+                      style={{ width: '100%', padding: 12, borderRadius: 8, border: '1px solid #cbd5e1', fontFamily: 'inherit', fontSize: 13.5, lineHeight: 1.8, resize: 'vertical' }}
+                      placeholder={isRTL ? 'كل سطر يمثل بنداً منفصلاً' : 'One term per line'}
+                    />
+                  </div>
+
+                  <div style={{ marginBottom: 18 }}>
+                    <label style={{ fontSize: 11, fontWeight: 800, color: '#7c3aed', letterSpacing: 1.2, textTransform: 'uppercase', display: 'block', marginBottom: 8 }}>
+                      {isRTL ? 'قائمة المعتمدين للخصومات' : 'Discount approvers list'}
+                    </label>
+                    <textarea
+                      rows={5}
+                      value={workshopApprovers.join('\n')}
+                      onChange={e => setWorkshopApprovers(e.target.value.split('\n'))}
+                      style={{ width: '100%', padding: 12, borderRadius: 8, border: '1px solid #cbd5e1', fontFamily: 'inherit', fontSize: 13.5, lineHeight: 1.8, resize: 'vertical' }}
+                      placeholder={isRTL ? 'اسم واحد في كل سطر' : 'One name per line'}
+                    />
+                    <p style={{ fontSize: 11.5, color: '#94a3b8', margin: '6px 0 0' }}>
+                      {isRTL ? 'ستظهر هذه الأسماء في قائمة "اعتمد بواسطة" عند إنشاء كود خصم.' : 'These names appear in the "Approved by" dropdown when creating a coupon.'}
+                    </p>
+                  </div>
+
+                  <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
+                    <button onClick={() => setShowTermsModal(false)} style={{ padding: '9px 18px', background: 'transparent', border: '1px solid #cbd5e1', borderRadius: 8, cursor: 'pointer', fontWeight: 700, fontFamily: 'inherit' }}>
+                      {isRTL ? 'إلغاء' : 'Cancel'}
+                    </button>
+                    <button onClick={handleSaveTerms} disabled={termsSaving} style={{ padding: '9px 22px', background: '#EE2329', color: '#fff', border: 'none', borderRadius: 8, fontWeight: 800, cursor: 'pointer', fontFamily: 'inherit' }}>
+                      {termsSaving ? '…' : (isRTL ? '💾 حفظ' : '💾 Save')}
+                    </button>
+                  </div>
+                </motion.div>
+              </div>
+            )}
 
             {/* Workshop Create/Edit Modal */}
             {showWorkshopModal && (

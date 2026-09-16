@@ -1,4 +1,4 @@
-const { Workshop, WorkshopStudent, Employee, Admin, Settings } = require('../models');
+const { Workshop, WorkshopStudent, WorkshopCoupon, Employee, Admin, Settings } = require('../models');
 const { Op } = require('sequelize');
 const { sequelize } = require('../config/database');
 const { sendWorkshopRegistrationEmail, sendAttendanceIdEmail, sendWorkshopCustomEmail, generateAttendanceIdHtml, sendCertificateEmail, sendWorkshopPaymentInstructions, sendWorkshopPaymentConfirmed } = require('../utils/emailService');
@@ -45,6 +45,14 @@ async function _getBankAccount() {
 async function _getMadaInfo() {
   const row = await Settings.findByPk('workshop_mada_info');
   return row?.value || null;
+}
+async function _getTerms() {
+  const row = await Settings.findByPk('workshop_terms');
+  return Array.isArray(row?.value) ? row.value : [];
+}
+async function _getApprovers() {
+  const row = await Settings.findByPk('workshop_approvers');
+  return Array.isArray(row?.value) ? row.value : [];
 }
 
 // Create a new workshop (admin)
@@ -371,7 +379,8 @@ exports.registerStudent = async (req, res) => {
     const {
       workshopId, firstName, lastName, phone, email,
       nationalId, gender, age, city, notes,
-      paymentMethod, paymentProof
+      paymentMethod, paymentProof,
+      couponCode, termsAccepted
     } = req.body;
 
     // invoiceNumber is now auto-assigned server-side (WSK-####) so the
@@ -458,6 +467,43 @@ exports.registerStudent = async (req, res) => {
       if (!allowed.includes(method)) {
         throw { status: 400, message: 'Invalid payment method', messageAr: 'طريقة الدفع غير صالحة' };
       }
+
+      // Terms & conditions — paid workshops REQUIRE explicit consent.
+      // Free workshops record consent when provided but don't gate on it.
+      if (price > 0 && !termsAccepted) {
+        throw {
+          status: 400,
+          message: 'You must accept the terms and conditions to register',
+          messageAr: 'يجب الموافقة على الشروط والأحكام قبل التسجيل'
+        };
+      }
+
+      // Coupon — validate and apply BEFORE totals are locked in.
+      let couponRow = null;
+      let couponPercent = null;
+      let discountAmount = 0;
+      const normalizedCoupon = String(couponCode || '').trim().toUpperCase();
+      if (normalizedCoupon && price > 0) {
+        couponRow = await WorkshopCoupon.findByPk(normalizedCoupon, { transaction: t });
+        if (!couponRow || !couponRow.isActive) {
+          throw {
+            status: 400,
+            message: 'Invalid or inactive coupon',
+            messageAr: 'كود الخصم غير صالح أو غير مفعّل'
+          };
+        }
+        if (couponRow.maxUses != null && couponRow.usageCount >= couponRow.maxUses) {
+          throw {
+            status: 400,
+            message: 'Coupon usage limit reached',
+            messageAr: 'تم استنفاد عدد مرات استخدام كود الخصم'
+          };
+        }
+        couponPercent = couponRow.percent;
+        discountAmount = +(price * (couponPercent / 100)).toFixed(2);
+      }
+      const netAmount = +Math.max(0, price - discountAmount).toFixed(2);
+
       const cleanProof = method === 'bank_transfer' ? _sanitizeProof(paymentProof) : null;
       if (method === 'bank_transfer' && !cleanProof) {
         throw {
@@ -466,23 +512,33 @@ exports.registerStudent = async (req, res) => {
           messageAr: 'يرجى رفع إثبات التحويل البنكي (صورة أو PDF)'
         };
       }
-      // Payment status: free = verified immediately; mada + bank
-      // start as pending until admin reviews.
-      const paymentStatus = method === 'free' ? 'verified' : 'pending';
+      // Payment status: free (price=0 OR coupon zeroed it) = verified
+      // immediately; mada + bank start pending until admin reviews.
+      const isFreeAfterDiscount = netAmount <= 0;
+      const paymentStatus = method === 'free' || isFreeAfterDiscount ? 'verified' : 'pending';
       const student = await WorkshopStudent.create({
         workshopId, firstName, lastName, phone, email,
         nationalId, gender, age, city, invoiceNumber, notes,
-        paymentMethod: method,
-        paymentAmount: price,
+        paymentMethod: isFreeAfterDiscount ? 'free' : method,
+        paymentAmount: netAmount,
+        couponCode: couponRow ? couponRow.code : null,
+        couponPercent,
+        discountAmount,
         paymentProof: cleanProof,
         paymentStatus,
-        paidAt: paymentStatus === 'verified' ? new Date() : null
+        paidAt: paymentStatus === 'verified' ? new Date() : null,
+        termsAcceptedAt: termsAccepted ? new Date() : null
       }, { transaction: t });
 
-      return { student, workshop, invoiceNumber, method };
+      if (couponRow) {
+        couponRow.usageCount = (couponRow.usageCount || 0) + 1;
+        await couponRow.save({ transaction: t });
+      }
+
+      return { student, workshop, invoiceNumber, method: student.paymentMethod, netAmount, discountAmount, couponPercent };
     });
 
-    const { student, workshop, invoiceNumber, method } = result;
+    const { student, workshop, invoiceNumber, method, netAmount, discountAmount, couponPercent } = result;
 
     if (email) {
       const fullName = `${firstName || ''} ${lastName || ''}`.trim();
@@ -516,7 +572,11 @@ exports.registerStudent = async (req, res) => {
       student,
       invoiceNumber,
       paymentMethod: method,
-      paymentAmount: Number(workshop.price) || 0,
+      paymentAmount: netAmount,
+      discountAmount,
+      couponPercent,
+      couponCode: student.couponCode,
+      originalPrice: Number(workshop.price) || 0,
       paymentStatus: student.paymentStatus,
       workshop: { title: workshop.title, startDate: workshop.startDate, endDate: workshop.endDate }
     });
@@ -840,11 +900,12 @@ exports.getPublicPaymentSettings = async (req, res) => {
     if (!workshop) return res.status(404).json({ message: 'Workshop not found' });
     const bank = await _getBankAccount();
     const mada = await _getMadaInfo();
+    const terms = await _getTerms();
     res.json({
       workshopId: workshop.workshopId,
       title: workshop.title,
       price: Number(workshop.price) || 0,
-      bank, mada
+      bank, mada, terms
     });
   } catch (error) {
     console.error('getPublicPaymentSettings:', error);
@@ -959,8 +1020,9 @@ table.totals tr.final td { background: linear-gradient(135deg, #EE2329, #c41e24)
   </div>
 
   <table class="totals">
-    <tr><td class="label">قيمة الورشة</td><td class="val">${SAR(student.paymentAmount || w?.price)}</td></tr>
-    <tr class="final"><td class="label" style="color:#fff">الإجمالي المستحق</td><td class="val" style="color:#fff">${SAR(student.paymentAmount || w?.price)}</td></tr>
+    <tr><td class="label">قيمة الورشة</td><td class="val">${SAR((Number(student.paymentAmount) || 0) + (Number(student.discountAmount) || 0))}</td></tr>
+    ${Number(student.discountAmount) > 0 ? `<tr><td class="label" style="color:#16a34a">خصم${student.couponCode ? ` (${esc(student.couponCode)} · ${student.couponPercent || 0}%)` : ''}</td><td class="val" style="color:#16a34a">-${SAR(student.discountAmount)}</td></tr>` : ''}
+    <tr class="final"><td class="label" style="color:#fff">الإجمالي المستحق</td><td class="val" style="color:#fff">${SAR(student.paymentAmount)}</td></tr>
   </table>
 
   <div class="foot">فاب لاب الأحساء · مؤسسة عبدالمنعم الراشد الإنسانية · ${esc(student.invoiceNumber)}</div>
@@ -2601,5 +2663,157 @@ exports.rateStudentEmployee = async (req, res) => {
   } catch (error) {
     console.error('Error rating student (employee):', error);
     res.status(500).json({ message: 'Server error', messageAr: 'خطأ في الخادم' });
+  }
+};
+
+// ─────────────── Terms & conditions (public + admin) ───────────────
+exports.getPublicTerms = async (req, res) => {
+  try {
+    const terms = await _getTerms();
+    res.json({ terms });
+  } catch (error) {
+    console.error('getPublicTerms:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+exports.getAdminTerms = async (req, res) => {
+  try {
+    const terms = await _getTerms();
+    const approvers = await _getApprovers();
+    res.json({ terms, approvers });
+  } catch (error) {
+    console.error('getAdminTerms:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+exports.updateAdminTerms = async (req, res) => {
+  try {
+    const { terms, approvers } = req.body || {};
+    if (Array.isArray(terms)) {
+      await Settings.upsert({ key: 'workshop_terms', value: terms.filter(Boolean).map(String) });
+    }
+    if (Array.isArray(approvers)) {
+      await Settings.upsert({ key: 'workshop_approvers', value: approvers.filter(Boolean).map(String) });
+    }
+    res.json({
+      message: 'Saved',
+      terms: await _getTerms(),
+      approvers: await _getApprovers()
+    });
+  } catch (error) {
+    console.error('updateAdminTerms:', error);
+    res.status(500).json({ message: 'Server error', detail: error.message });
+  }
+};
+
+// ─────────────── Coupons (admin CRUD + public validate) ───────────────
+exports.listCoupons = async (req, res) => {
+  try {
+    const rows = await WorkshopCoupon.findAll({ order: [['createdAt', 'DESC']] });
+    res.json(rows);
+  } catch (error) {
+    console.error('listCoupons:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+exports.createCoupon = async (req, res) => {
+  try {
+    const { code, percent, reason, approvedBy, maxUses, isActive } = req.body || {};
+    if (!code || !percent || !approvedBy) {
+      return res.status(400).json({
+        message: 'code, percent, approvedBy are required',
+        messageAr: 'الكود والنسبة ومعتمِد الخصم مطلوبون'
+      });
+    }
+    const pct = Math.max(1, Math.min(100, Number(percent) || 0));
+    const row = await WorkshopCoupon.create({
+      code: String(code).trim().toUpperCase(),
+      percent: pct,
+      reason: reason ? String(reason).trim() : null,
+      approvedBy: String(approvedBy).trim(),
+      maxUses: maxUses ? Number(maxUses) : null,
+      isActive: isActive !== false,
+      createdById: req.admin?.adminId || null
+    });
+    res.status(201).json(row);
+  } catch (error) {
+    if (String(error?.name || '').includes('UniqueConstraint')) {
+      return res.status(409).json({ message: 'Code already exists', messageAr: 'هذا الكود مستخدم مسبقاً' });
+    }
+    console.error('createCoupon:', error);
+    res.status(500).json({ message: 'Server error', detail: error.message });
+  }
+};
+
+exports.updateCoupon = async (req, res) => {
+  try {
+    const row = await WorkshopCoupon.findByPk(String(req.params.code).toUpperCase());
+    if (!row) return res.status(404).json({ message: 'Coupon not found' });
+    const { percent, reason, approvedBy, maxUses, isActive } = req.body || {};
+    if (percent != null) row.percent = Math.max(1, Math.min(100, Number(percent) || 0));
+    if (reason != null) row.reason = String(reason).trim();
+    if (approvedBy != null) row.approvedBy = String(approvedBy).trim();
+    if (maxUses !== undefined) row.maxUses = maxUses ? Number(maxUses) : null;
+    if (isActive !== undefined) row.isActive = !!isActive;
+    await row.save();
+    res.json(row);
+  } catch (error) {
+    console.error('updateCoupon:', error);
+    res.status(500).json({ message: 'Server error', detail: error.message });
+  }
+};
+
+exports.deleteCoupon = async (req, res) => {
+  try {
+    const row = await WorkshopCoupon.findByPk(String(req.params.code).toUpperCase());
+    if (!row) return res.status(404).json({ message: 'Coupon not found' });
+    await row.destroy();
+    res.json({ message: 'Deleted' });
+  } catch (error) {
+    console.error('deleteCoupon:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+// Public: customer types a code + workshopId, we return the calculated
+// discount so the form can show it before submit. Also enforces
+// isActive + maxUses so a stale code fails obviously.
+exports.validateCouponPublic = async (req, res) => {
+  try {
+    const code = String(req.query.code || req.params.code || '').trim().toUpperCase();
+    const workshopId = req.query.workshopId || req.params.workshopId;
+    if (!code || !workshopId) {
+      return res.status(400).json({ ok: false, messageAr: 'الكود والورشة مطلوبان' });
+    }
+    const [workshop, coupon] = await Promise.all([
+      Workshop.findByPk(workshopId, { attributes: ['workshopId', 'price'] }),
+      WorkshopCoupon.findByPk(code)
+    ]);
+    if (!workshop) return res.status(404).json({ ok: false, messageAr: 'الورشة غير موجودة' });
+    if (!coupon || !coupon.isActive) {
+      return res.json({ ok: false, messageAr: 'كود الخصم غير صالح' });
+    }
+    if (coupon.maxUses != null && coupon.usageCount >= coupon.maxUses) {
+      return res.json({ ok: false, messageAr: 'تم استنفاد عدد مرات استخدام الكود' });
+    }
+    const price = Number(workshop.price) || 0;
+    const discount = +(price * (coupon.percent / 100)).toFixed(2);
+    const net = +Math.max(0, price - discount).toFixed(2);
+    res.json({
+      ok: true,
+      code: coupon.code,
+      percent: coupon.percent,
+      approvedBy: coupon.approvedBy,
+      reason: coupon.reason,
+      originalPrice: price,
+      discountAmount: discount,
+      netAmount: net
+    });
+  } catch (error) {
+    console.error('validateCouponPublic:', error);
+    res.status(500).json({ ok: false, message: 'Server error' });
   }
 };
