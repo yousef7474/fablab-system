@@ -283,21 +283,10 @@ const printVolunteerOpportunity = (r) => {
           ${row('وقت البرنامج', r.programStartTime && r.programEndTime ? `${r.programStartTime} — ${r.programEndTime}` : '')}
           ${row('الفترة', rangeStr)}
           ${row('المؤهل العلمي', r.educationLevel)}
-          ${rowMultiline('المهارات المطلوبة', r.requiredSkills)}
-          ${rowMultiline('وصف الفرصة', r.description)}
-          ${rowMultiline('مهام ومسؤوليات المتطوع', r.responsibilities)}
-          ${rowMultiline('الدعم المقدم للمتطوع', r.supportProvided)}
-          ${rowMultiline('المخاطر والتحديات', r.risksAndChallenges)}
           ${row('تاريخ الإصدار', dateStr)}
           ${row('تاريخ الاعتماد', approvedStr)}
         </tbody>
       </table>
-
-      ${r.managerNote ? `
-        <div class="decision-box">
-          <h4>📝 ملاحظة المدير</h4>
-          <div class="decision-note">${esc(r.managerNote)}</div>
-        </div>` : ''}
 
       <div class="form-notice">
         <span class="fn-label">📌 ملاحظة للموظف:</span>
@@ -306,7 +295,32 @@ const printVolunteerOpportunity = (r) => {
     </div>
   </div>
 
-  <!-- PAGE 2: dedicated signature page — signature lines sit inside
+  ${(r.requiredSkills || r.description || r.responsibilities || r.supportProvided || r.risksAndChallenges || r.managerNote) ? `
+  <!-- PAGE 2: long free-text sections. Broken out onto their own
+       page so a wordy "المهام" or "الدعم المقدم" never gets clipped
+       by the letterhead's safe-zone. -->
+  <div class="page">
+    <div class="content">
+      <div class="doc-title" style="font-size:16pt;margin-bottom:4mm">تفاصيل الفرصة التطوعية</div>
+      <div class="doc-no" style="margin-bottom:3mm">${esc(reqNo)}</div>
+      <table class="info-table">
+        <tbody>
+          ${rowMultiline('المهارات المطلوبة', r.requiredSkills)}
+          ${rowMultiline('وصف الفرصة', r.description)}
+          ${rowMultiline('مهام ومسؤوليات المتطوع', r.responsibilities)}
+          ${rowMultiline('الدعم المقدم للمتطوع', r.supportProvided)}
+          ${rowMultiline('المخاطر والتحديات', r.risksAndChallenges)}
+        </tbody>
+      </table>
+      ${r.managerNote ? `
+        <div class="decision-box">
+          <h4>📝 ملاحظة المدير</h4>
+          <div class="decision-note">${esc(r.managerNote)}</div>
+        </div>` : ''}
+    </div>
+  </div>` : ''}
+
+  <!-- LAST PAGE: dedicated signature page — signature lines sit inside
        the safe zone with plenty of room, never over the letterhead
        footer. -->
   <div class="page sig-page">
