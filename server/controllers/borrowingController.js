@@ -1,6 +1,6 @@
 const { User, Borrowing, Admin } = require('../models');
 const { generateUserId, generateBorrowingId } = require('../utils/idGenerator');
-const { sendBorrowingConfirmation, sendBorrowingStatusUpdate, sendReturnConfirmation } = require('../utils/borrowingEmailService');
+const { sendBorrowingConfirmation, sendBorrowingStatusUpdate, sendReturnConfirmation, sendAdminBorrowingNotification } = require('../utils/borrowingEmailService');
 const { Op } = require('sequelize');
 
 // Check if user exists (reuse pattern from registrationController)
@@ -127,6 +127,9 @@ exports.createBorrowing = async (req, res) => {
     } catch (emailError) {
       console.error('Failed to send borrowing confirmation email:', emailError);
     }
+    // Notify the FabLab ops inbox about the new borrowing request
+    // (mirrors the pattern used for fablab visits + project support).
+    sendAdminBorrowingNotification(borrowing, user).catch(() => {});
 
     res.status(201).json({
       message: 'Borrowing request created successfully',

@@ -386,11 +386,57 @@ const sendAdminOverdueAlert = async (borrowing, user) => {
   }
 };
 
+// Notify the FabLab ops inbox whenever a new borrowing request lands
+// so admin can react in real time (same convention as fablab-visit
+// and project-support new-request pings). Fire-and-forget.
+const BORROW_NOTIFY_EMAIL = 'fablabspec@fablabsahsa.com';
+const sendAdminBorrowingNotification = async (borrowing, user) => {
+  try {
+    if (!process.env.SENDGRID_API_KEY || !process.env.SENDGRID_FROM_EMAIL) return;
+    const userName = getUserName(user);
+    const section = translateSection(borrowing.section);
+    const msg = {
+      to: BORROW_NOTIFY_EMAIL,
+      from: { email: process.env.SENDGRID_FROM_EMAIL, name: process.env.SENDGRID_FROM_NAME || 'FABLAB Al-Ahsa' },
+      subject: `📥 طلب استعارة جديد — ${userName} (${borrowing.borrowingId})`,
+      html: emailWrapper(`
+        <div dir="rtl" style="padding:25px;background:#fff">
+          <div style="background:linear-gradient(135deg,#EE2329,#c41e24);color:#fff;padding:16px 20px;border-radius:10px;margin-bottom:16px">
+            <div style="font-size:12px;letter-spacing:1.2px;opacity:0.9">FABLAB الأحساء · إدارة الاستعارات</div>
+            <h2 style="margin:6px 0 0;font-size:18px">📥 وصل طلب استعارة جديد</h2>
+          </div>
+          <p style="margin:0 0 12px;color:#334155">تم تقديم طلب استعارة جديد بحاجة إلى مراجعتكم من لوحة الإدارة.</p>
+          <table style="width:100%;border-collapse:collapse;font-size:13.5px">
+            <tr><td style="padding:6px 0;color:#64748b;width:140px">رقم الطلب:</td><td style="padding:6px 0;font-weight:800;font-family:'JetBrains Mono',monospace;color:#EE2329">${borrowing.borrowingId}</td></tr>
+            <tr><td style="padding:6px 0;color:#64748b">اسم المستعير:</td><td style="padding:6px 0;font-weight:700">${userName}</td></tr>
+            ${user.email ? `<tr><td style="padding:6px 0;color:#64748b">البريد:</td><td style="padding:6px 0" dir="ltr">${user.email}</td></tr>` : ''}
+            ${user.phoneNumber ? `<tr><td style="padding:6px 0;color:#64748b">الجوال:</td><td style="padding:6px 0" dir="ltr">${user.phoneNumber}</td></tr>` : ''}
+            ${user.nationalId ? `<tr><td style="padding:6px 0;color:#64748b">رقم الهوية:</td><td style="padding:6px 0" dir="ltr">${user.nationalId}</td></tr>` : ''}
+            <tr><td style="padding:6px 0;color:#64748b">القسم:</td><td style="padding:6px 0;font-weight:700">${section}</td></tr>
+            <tr><td style="padding:6px 0;color:#64748b">تاريخ الاستعارة:</td><td style="padding:6px 0" dir="ltr">${formatDateAr(borrowing.borrowDate)}</td></tr>
+            <tr><td style="padding:6px 0;color:#64748b">تاريخ الإرجاع:</td><td style="padding:6px 0" dir="ltr">${formatDateAr(borrowing.expectedReturnDate)}</td></tr>
+            <tr><td style="padding:6px 0;color:#64748b;vertical-align:top">المكونات:</td><td style="padding:6px 0;white-space:pre-wrap">${borrowing.componentDescription || '—'}</td></tr>
+            <tr><td style="padding:6px 0;color:#64748b;vertical-align:top">الغرض:</td><td style="padding:6px 0;white-space:pre-wrap">${borrowing.purpose || '—'}</td></tr>
+          </table>
+          <div style="text-align:center;margin-top:18px">
+            <a href="https://fablabsahsa.com/admin/dashboard?tab=borrowing" style="display:inline-block;background:#EE2329;color:#fff;padding:11px 26px;border-radius:8px;text-decoration:none;font-weight:800">مراجعة الطلب</a>
+          </div>
+        </div>
+      `)
+    };
+    await sgMail.send(msg);
+    console.log(`📥 borrowing notify email sent to ${BORROW_NOTIFY_EMAIL} (${borrowing.borrowingId})`);
+  } catch (error) {
+    console.error(`❌ borrowing notify email FAILED for ${BORROW_NOTIFY_EMAIL}:`, error?.response?.body || error.message);
+  }
+};
+
 module.exports = {
   sendBorrowingConfirmation,
   sendBorrowingStatusUpdate,
   sendReturnConfirmation,
   sendReturnReminder,
   sendOverdueWarning,
+  sendAdminBorrowingNotification,
   sendAdminOverdueAlert
 };
