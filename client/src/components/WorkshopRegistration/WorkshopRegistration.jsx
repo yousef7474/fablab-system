@@ -9,21 +9,49 @@ import './WorkshopRegistration.css';
 const API_URL = process.env.NODE_ENV === 'production' ? '/api' : (process.env.REACT_APP_API_URL || 'http://localhost:5000/api');
 const api = axios.create({ baseURL: API_URL });
 
+// Persist the in-progress form so a refresh doesn't wipe what the
+// customer typed. Cleared once the registration is successfully
+// submitted (step 3). Keyed with a version so we can invalidate the
+// cache when the shape changes.
+const DRAFT_STORAGE_KEY = 'fablab_workshop_reg_draft_v1';
+const _readDraft = () => {
+  try {
+    const raw = localStorage.getItem(DRAFT_STORAGE_KEY);
+    if (!raw) return null;
+    const draft = JSON.parse(raw);
+    if (!draft || typeof draft !== 'object') return null;
+    return draft;
+  } catch { return null; }
+};
+const _clearDraft = () => {
+  try { localStorage.removeItem(DRAFT_STORAGE_KEY); } catch {}
+};
+
 const WorkshopRegistration = () => {
   const navigate = useNavigate();
   const { i18n } = useTranslation();
   const isRTL = i18n.language === 'ar';
 
-  const [step, setStep] = useState(0); // 0=personal info, 1=select workshop, 2=invoice, 3=done
+  // Read any saved draft ONCE on mount so a refresh restores the
+  // exact step + typed fields + selected workshop.
+  const _initialDraft = _readDraft();
+
+  const [step, setStep] = useState(_initialDraft?.step ?? 0);
   const [workshops, setWorkshops] = useState([]);
   const [submitting, setSubmitting] = useState(false);
   const [result, setResult] = useState(null);
 
-  const [lookupMode, setLookupMode] = useState(true);
+  // If the customer already filled personal info, skip the "lookup"
+  // prompt on reload — they clearly aren't a returning-user lookup.
+  const [lookupMode, setLookupMode] = useState(() => {
+    const d = _initialDraft;
+    if (d?.form?.firstName || d?.form?.email || d?.form?.nationalId) return false;
+    return true;
+  });
   const [lookupValue, setLookupValue] = useState('');
   const [lookupLoading, setLookupLoading] = useState(false);
 
-  const [form, setForm] = useState({
+  const [form, setForm] = useState(() => (_initialDraft?.form) || {
     firstName: '', lastName: '', phone: '', email: '',
     nationalId: '', gender: '', age: '', city: '',
     workshopId: '',
@@ -33,15 +61,15 @@ const WorkshopRegistration = () => {
   // Payment settings (bank / mada / terms) for the currently selected
   // paid workshop — fetched when the customer lands on step 2.
   const [payment, setPayment] = useState({ bank: null, mada: null, terms: [] });
-  const [proofFile, setProofFile] = useState(null); // { fileName, fileType, fileSize, fileData }
+  const [proofFile, setProofFile] = useState(() => _initialDraft?.proofFile || null);
   const [copiedField, setCopiedField] = useState(null);
-  const [termsAgreed, setTermsAgreed] = useState(false);
+  const [termsAgreed, setTermsAgreed] = useState(() => !!_initialDraft?.termsAgreed);
   // Coupon workflow — customer types a code, clicks "Apply" → server
   // returns the discount + net. We keep the response in state so we
   // can render the discount inline and re-use it in submit.
-  const [couponInput, setCouponInput] = useState('');
+  const [couponInput, setCouponInput] = useState(() => _initialDraft?.couponInput || '');
   const [couponApplying, setCouponApplying] = useState(false);
-  const [coupon, setCoupon] = useState(null); // { code, percent, discountAmount, netAmount }
+  const [coupon, setCoupon] = useState(() => _initialDraft?.coupon || null); // { code, percent, discountAmount, netAmount }
 
   useEffect(() => {
     api.get('/workshops/active').then(res => setWorkshops(res.data || [])).catch(() => {});
@@ -89,6 +117,30 @@ const WorkshopRegistration = () => {
     setCoupon(null);
     setCouponInput('');
   }, [form.workshopId]);
+
+  // Persist an in-progress draft on every meaningful change. Clears
+  // itself once we hit the success screen (step 3) or when the user
+  // navigates away with an empty form. Try/catch because localStorage
+  // can throw in Safari private mode or when disk is full.
+  useEffect(() => {
+    if (step === 3) { _clearDraft(); return; }
+    try {
+      localStorage.setItem(DRAFT_STORAGE_KEY, JSON.stringify({
+        step,
+        form,
+        coupon,
+        couponInput,
+        termsAgreed,
+        proofFile
+      }));
+    } catch { /* quota exceeded — a large proof file can trigger this; drop the proof from the draft */
+      try {
+        localStorage.setItem(DRAFT_STORAGE_KEY, JSON.stringify({
+          step, form, coupon, couponInput, termsAgreed, proofFile: null
+        }));
+      } catch {}
+    }
+  }, [step, form, coupon, couponInput, termsAgreed, proofFile]);
 
   const applyCoupon = async () => {
     const code = String(couponInput || '').trim().toUpperCase();

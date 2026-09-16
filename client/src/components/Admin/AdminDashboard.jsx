@@ -270,6 +270,10 @@ const AdminDashboard = () => {
   const [workshopTerms, setWorkshopTerms] = useState([]);
   const [workshopApprovers, setWorkshopApprovers] = useState([]);
   const [termsSaving, setTermsSaving] = useState(false);
+  const [showBankModal, setShowBankModal] = useState(false);
+  const [bankForm, setBankForm] = useState({ bankName: '', accountHolder: '', iban: '', additionalInfo: '' });
+  const [madaForm, setMadaForm] = useState({ title: '', instructions: '', address: '' });
+  const [bankSaving, setBankSaving] = useState(false);
   const [selectedWorkshop, setSelectedWorkshop] = useState(null);
   const [workshopForm, setWorkshopForm] = useState({
     title: '', description: '', presenter: '', assignedEmployeeId: '',
@@ -1311,6 +1315,43 @@ const AdminDashboard = () => {
       fetchWorkshopCoupons();
     } catch { toast.error(isRTL ? 'تعذّر الحذف' : 'Delete failed'); }
   };
+  const fetchPaymentSettings = async () => {
+    try {
+      const res = await api.get('/workshops/admin/payment-settings');
+      if (res.data?.bank) setBankForm({
+        bankName: res.data.bank.bankName || '',
+        accountHolder: res.data.bank.accountHolder || '',
+        iban: res.data.bank.iban || '',
+        additionalInfo: res.data.bank.additionalInfo || ''
+      });
+      if (res.data?.mada) setMadaForm({
+        title: res.data.mada.title || '',
+        instructions: res.data.mada.instructions || '',
+        address: res.data.mada.address || ''
+      });
+    } catch {}
+  };
+  useEffect(() => {
+    if (showBankModal) fetchPaymentSettings();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [showBankModal]);
+  const handleSaveBank = async () => {
+    if (!bankForm.iban || !bankForm.bankName || !bankForm.accountHolder) {
+      toast.error(isRTL ? 'اسم البنك واسم الحساب والآيبان مطلوبون' : 'Bank, account holder, and IBAN are required');
+      return;
+    }
+    setBankSaving(true);
+    try {
+      await api.put('/workshops/admin/payment-settings', { bank: bankForm, mada: madaForm });
+      toast.success(isRTL ? 'تم الحفظ' : 'Saved');
+      setShowBankModal(false);
+    } catch (err) {
+      toast.error(err?.response?.data?.messageAr || err?.response?.data?.message || (isRTL ? 'فشل الحفظ' : 'Save failed'));
+    } finally {
+      setBankSaving(false);
+    }
+  };
+
   const handleSaveTerms = async () => {
     setTermsSaving(true);
     try {
@@ -8458,6 +8499,13 @@ const AdminDashboard = () => {
                         </button>
                         <button
                           className="wsv2-action-btn"
+                          onClick={() => setShowBankModal(true)}
+                          title={isRTL ? 'تعديل بيانات الحساب البنكي ومدى' : 'Edit bank account + mada details'}
+                        >
+                          🏦 {isRTL ? 'حساب الدفع' : 'Payment Info'}
+                        </button>
+                        <button
+                          className="wsv2-action-btn"
                           onClick={() => setShowCouponsModal(true)}
                           title={isRTL ? 'إدارة أكواد الخصم' : 'Manage discount codes'}
                         >
@@ -8948,6 +8996,73 @@ const AdminDashboard = () => {
               </motion.div>
               );
             })()}
+
+            {/* Bank + Mada payment info editor */}
+            {showBankModal && (
+              <div className="modal-overlay" onClick={() => setShowBankModal(false)}>
+                <motion.div className="modal-content" onClick={e => e.stopPropagation()} initial={{ opacity: 0, scale: 0.94 }} animate={{ opacity: 1, scale: 1 }}
+                  style={{ maxWidth: 720, width: '92%', maxHeight: '92vh', overflow: 'auto', padding: '1.5rem 1.75rem' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
+                    <h3 style={{ margin: 0 }}>🏦 {isRTL ? 'بيانات الدفع (بنك + مدى)' : 'Payment Details (bank + mada)'}</h3>
+                    <button onClick={() => setShowBankModal(false)} style={{ background: 'transparent', border: 'none', fontSize: 22, cursor: 'pointer', color: '#94a3b8' }}>×</button>
+                  </div>
+
+                  <div style={{ background: '#eff6ff', border: '1px solid #bfdbfe', padding: 14, borderRadius: 10, marginBottom: 18 }}>
+                    <div style={{ fontSize: 11.5, fontWeight: 800, color: '#1d4ed8', letterSpacing: 1.2, textTransform: 'uppercase', marginBottom: 10 }}>
+                      {isRTL ? 'الحساب البنكي (يعرض للعملاء عند اختيار التحويل)' : 'Bank account (shown to bank-transfer customers)'}
+                    </div>
+                    <div style={{ display: 'grid', gap: 10 }}>
+                      <div>
+                        <label style={{ fontSize: 11, color: '#64748b', display: 'block', marginBottom: 3 }}>{isRTL ? 'اسم البنك *' : 'Bank *'}</label>
+                        <input value={bankForm.bankName} onChange={e => setBankForm(f => ({ ...f, bankName: e.target.value }))} style={{ width: '100%', padding: 9, borderRadius: 6, border: '1px solid #cbd5e1', fontFamily: 'inherit' }} />
+                      </div>
+                      <div>
+                        <label style={{ fontSize: 11, color: '#64748b', display: 'block', marginBottom: 3 }}>{isRTL ? 'اسم صاحب الحساب *' : 'Account Holder *'}</label>
+                        <input value={bankForm.accountHolder} onChange={e => setBankForm(f => ({ ...f, accountHolder: e.target.value }))} style={{ width: '100%', padding: 9, borderRadius: 6, border: '1px solid #cbd5e1', fontFamily: 'inherit' }} />
+                      </div>
+                      <div>
+                        <label style={{ fontSize: 11, color: '#64748b', display: 'block', marginBottom: 3 }}>{isRTL ? 'رقم الآيبان (IBAN) *' : 'IBAN *'}</label>
+                        <input dir="ltr" value={bankForm.iban} onChange={e => setBankForm(f => ({ ...f, iban: e.target.value.toUpperCase().replace(/\s+/g, '') }))} placeholder="SA0000000000000000000000" style={{ width: '100%', padding: 9, borderRadius: 6, border: '1px solid #cbd5e1', fontFamily: "'JetBrains Mono', monospace", letterSpacing: 1.2, textAlign: 'end' }} />
+                        <p style={{ margin: '4px 0 0', fontSize: 11, color: '#94a3b8' }}>{isRTL ? '24 خانة، تبدأ بـ SA' : '24 chars, starts with SA'}</p>
+                      </div>
+                      <div>
+                        <label style={{ fontSize: 11, color: '#64748b', display: 'block', marginBottom: 3 }}>{isRTL ? 'ملاحظات إضافية (اختيارية)' : 'Additional info (optional)'}</label>
+                        <textarea rows={2} value={bankForm.additionalInfo} onChange={e => setBankForm(f => ({ ...f, additionalInfo: e.target.value }))} style={{ width: '100%', padding: 9, borderRadius: 6, border: '1px solid #cbd5e1', fontFamily: 'inherit', resize: 'vertical' }} />
+                      </div>
+                    </div>
+                  </div>
+
+                  <div style={{ background: '#f0fdf4', border: '1px solid #86efac', padding: 14, borderRadius: 10, marginBottom: 18 }}>
+                    <div style={{ fontSize: 11.5, fontWeight: 800, color: '#166534', letterSpacing: 1.2, textTransform: 'uppercase', marginBottom: 10 }}>
+                      {isRTL ? 'الدفع بمدى في المقر (يعرض للعملاء عند اختيار مدى)' : 'Mada in-store (shown to mada customers)'}
+                    </div>
+                    <div style={{ display: 'grid', gap: 10 }}>
+                      <div>
+                        <label style={{ fontSize: 11, color: '#64748b', display: 'block', marginBottom: 3 }}>{isRTL ? 'العنوان' : 'Title'}</label>
+                        <input value={madaForm.title} onChange={e => setMadaForm(f => ({ ...f, title: e.target.value }))} style={{ width: '100%', padding: 9, borderRadius: 6, border: '1px solid #cbd5e1', fontFamily: 'inherit' }} />
+                      </div>
+                      <div>
+                        <label style={{ fontSize: 11, color: '#64748b', display: 'block', marginBottom: 3 }}>{isRTL ? 'التعليمات' : 'Instructions'}</label>
+                        <textarea rows={3} value={madaForm.instructions} onChange={e => setMadaForm(f => ({ ...f, instructions: e.target.value }))} style={{ width: '100%', padding: 9, borderRadius: 6, border: '1px solid #cbd5e1', fontFamily: 'inherit', resize: 'vertical' }} />
+                      </div>
+                      <div>
+                        <label style={{ fontSize: 11, color: '#64748b', display: 'block', marginBottom: 3 }}>{isRTL ? 'العنوان الفعلي (اختياري)' : 'Physical address (optional)'}</label>
+                        <input value={madaForm.address} onChange={e => setMadaForm(f => ({ ...f, address: e.target.value }))} style={{ width: '100%', padding: 9, borderRadius: 6, border: '1px solid #cbd5e1', fontFamily: 'inherit' }} />
+                      </div>
+                    </div>
+                  </div>
+
+                  <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
+                    <button onClick={() => setShowBankModal(false)} style={{ padding: '9px 18px', background: 'transparent', border: '1px solid #cbd5e1', borderRadius: 8, cursor: 'pointer', fontWeight: 700, fontFamily: 'inherit' }}>
+                      {isRTL ? 'إلغاء' : 'Cancel'}
+                    </button>
+                    <button onClick={handleSaveBank} disabled={bankSaving} style={{ padding: '9px 22px', background: '#EE2329', color: '#fff', border: 'none', borderRadius: 8, fontWeight: 800, cursor: 'pointer', fontFamily: 'inherit' }}>
+                      {bankSaving ? '…' : (isRTL ? '💾 حفظ' : '💾 Save')}
+                    </button>
+                  </div>
+                </motion.div>
+              </div>
+            )}
 
             {/* Coupons Manager Modal */}
             {showCouponsModal && (
