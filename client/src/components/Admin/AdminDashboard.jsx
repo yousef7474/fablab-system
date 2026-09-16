@@ -33,6 +33,7 @@ import StoreTab from './StoreTab';
 import Print3DTab from './Print3DTab';
 import InstitutionSupportTab from './InstitutionSupportTab';
 import ProjectSupportTab from './ProjectSupportTab';
+import { EDUCATION_SCHEDULE_1448, normalizeArabicTitle } from './educationSchedule1448';
 
 const COLORS = ['#6366f1', '#22c55e', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4', '#ec4899'];
 
@@ -273,6 +274,7 @@ const AdminDashboard = () => {
   const [showBankModal, setShowBankModal] = useState(false);
   const [bankForm, setBankForm] = useState({ bankName: '', accountHolder: '', iban: '', additionalInfo: '' });
   const [madaForm, setMadaForm] = useState({ title: '', instructions: '', address: '' });
+  const [showEduScheduleCompare, setShowEduScheduleCompare] = useState(false);
   const [bankSaving, setBankSaving] = useState(false);
   const [selectedWorkshop, setSelectedWorkshop] = useState(null);
   const [workshopForm, setWorkshopForm] = useState({
@@ -8500,6 +8502,52 @@ const AdminDashboard = () => {
                         ))}
                       </div>
                       <div className="wsv2-actions">
+                        {workshopFilter === 'education' && (
+                          <button
+                            className="wsv2-action-btn"
+                            onClick={() => {
+                              const eduWs = workshopsList.filter(_isEdu);
+                              if (eduWs.length === 0) { toast.info(isRTL ? 'لا توجد ورش تعليمية' : 'No education workshops'); return; }
+                              const origin = window.location.origin;
+                              const fmt = (v) => {
+                                if (v == null) return '';
+                                const s = String(v).replace(/"/g, '""');
+                                return /[",\n]/.test(s) ? `"${s}"` : s;
+                              };
+                              const header = ['Workshop ID','Title','Room','Start Date','End Date','Registration Enabled','Students','Max','Registration URL'];
+                              const rows = eduWs.map(w => [
+                                w.workshopId,
+                                w.title || '',
+                                w.room || '',
+                                w.startDate || '',
+                                w.endDate || '',
+                                w.registrationEnabled === false ? 'No' : 'Yes',
+                                w.studentCount || 0,
+                                w.maxParticipants || '',
+                                `${origin}/workshop/${w.workshopId}`
+                              ]);
+                              const csv = '﻿' + [header, ...rows].map(r => r.map(fmt).join(',')).join('\r\n');
+                              const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+                              const a = document.createElement('a');
+                              a.href = URL.createObjectURL(blob);
+                              a.download = `education-workshops-urls-${new Date().toISOString().slice(0,10)}.csv`;
+                              document.body.appendChild(a); a.click(); document.body.removeChild(a);
+                              toast.success(isRTL ? `تم تصدير ${eduWs.length} ورشة` : `Exported ${eduWs.length} workshops`);
+                            }}
+                            title={isRTL ? 'تنزيل قائمة الورش التعليمية مع الروابط' : 'Download education workshops + URLs'}
+                          >
+                            📥 {isRTL ? 'تنزيل الروابط' : 'Download URLs'}
+                          </button>
+                        )}
+                        {workshopFilter === 'education' && (
+                          <button
+                            className="wsv2-action-btn"
+                            onClick={() => setShowEduScheduleCompare(true)}
+                            title={isRTL ? 'مقارنة مع جدول 1448' : 'Compare with 1448 schedule'}
+                          >
+                            🔍 {isRTL ? 'مقارنة مع الجدول' : 'Compare Schedule'}
+                          </button>
+                        )}
                         <button className="wsv2-action-btn scan" onClick={() => setShowQRScanner(true)}>
                           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                             <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/>
@@ -9257,6 +9305,181 @@ const AdminDashboard = () => {
                 </motion.div>
               </div>
             )}
+
+            {/* Education schedule (1448) compare modal */}
+            {showEduScheduleCompare && (() => {
+              const eduWorkshops = workshopsList.filter(w => !!w.isEducation);
+              const normalizedSchoolsInSystem = eduWorkshops.map(w => normalizeArabicTitle(w.title));
+              const matched = [];
+              const missing = [];
+              EDUCATION_SCHEDULE_1448.forEach(entry => {
+                const key = normalizeArabicTitle(entry.school);
+                // Prefer date-aware match (same normalized school AND same start date)
+                let ws = eduWorkshops.find(w => normalizeArabicTitle(w.title) === key && w.startDate === entry.dateGregorian);
+                if (!ws) {
+                  // Fallback: school in same room + same date (title differs slightly)
+                  ws = eduWorkshops.find(w => w.startDate === entry.dateGregorian && normalizeArabicTitle(w.room || '') === normalizeArabicTitle(entry.room || '') && normalizedSchoolsInSystem.includes(key));
+                }
+                if (ws) matched.push({ entry, workshop: ws });
+                else missing.push(entry);
+              });
+              // Extras: education workshops that don't map to any excel entry.
+              const scheduleKeys = new Set(EDUCATION_SCHEDULE_1448.map(e => `${normalizeArabicTitle(e.school)}|${e.dateGregorian}`));
+              const extras = eduWorkshops.filter(w => !scheduleKeys.has(`${normalizeArabicTitle(w.title)}|${w.startDate}`));
+
+              const exportMissing = () => {
+                if (missing.length === 0) { toast.info(isRTL ? 'لا توجد ورش مفقودة' : 'No missing entries'); return; }
+                const fmt = v => { const s = String(v ?? '').replace(/"/g, '""'); return /[",\n]/.test(s) ? `"${s}"` : s; };
+                const header = ['#','Day','Hijri','Gregorian','School','Room'];
+                const rows = missing.map(m => [m.num, m.day, m.dateHijri, m.dateGregorian, m.school, m.room || '']);
+                const csv = '﻿' + [header, ...rows].map(r => r.map(fmt).join(',')).join('\r\n');
+                const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+                const a = document.createElement('a');
+                a.href = URL.createObjectURL(blob);
+                a.download = `education-schedule-missing-${new Date().toISOString().slice(0,10)}.csv`;
+                document.body.appendChild(a); a.click(); document.body.removeChild(a);
+              };
+
+              return (
+                <div className="modal-overlay" onClick={() => setShowEduScheduleCompare(false)}>
+                  <motion.div className="modal-content" onClick={e => e.stopPropagation()} initial={{ opacity: 0, scale: 0.94 }} animate={{ opacity: 1, scale: 1 }}
+                    style={{ maxWidth: 900, width: '95%', maxHeight: '92vh', overflow: 'auto', padding: '1.5rem 1.75rem' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
+                      <div>
+                        <h3 style={{ margin: 0 }}>🔍 {isRTL ? 'مقارنة مع جدول الفصل الأول 1448ه' : 'Compare with 1448 Term-1 Schedule'}</h3>
+                        <div style={{ fontSize: 12, color: '#64748b', marginTop: 4 }}>
+                          {isRTL
+                            ? `الجدول: ${EDUCATION_SCHEDULE_1448.length} زيارة · في النظام: ${eduWorkshops.length} ورشة تعليمية`
+                            : `Schedule: ${EDUCATION_SCHEDULE_1448.length} visits · System: ${eduWorkshops.length} education workshops`}
+                        </div>
+                      </div>
+                      <button onClick={() => setShowEduScheduleCompare(false)} style={{ background: 'transparent', border: 'none', fontSize: 22, cursor: 'pointer', color: '#94a3b8' }}>×</button>
+                    </div>
+
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10, marginBottom: 18 }}>
+                      <div style={{ background: 'rgba(34,197,94,0.08)', border: '1px solid rgba(34,197,94,0.3)', borderRadius: 10, padding: 14, textAlign: 'center' }}>
+                        <div style={{ fontSize: 32, fontWeight: 800, color: '#16a34a', lineHeight: 1 }}>{matched.length}</div>
+                        <div style={{ fontSize: 12, color: '#166534', fontWeight: 700, marginTop: 4 }}>{isRTL ? 'مطابقة' : 'Matched'}</div>
+                      </div>
+                      <div style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: 10, padding: 14, textAlign: 'center' }}>
+                        <div style={{ fontSize: 32, fontWeight: 800, color: '#dc2626', lineHeight: 1 }}>{missing.length}</div>
+                        <div style={{ fontSize: 12, color: '#991b1b', fontWeight: 700, marginTop: 4 }}>{isRTL ? 'مفقودة من النظام' : 'Missing in system'}</div>
+                      </div>
+                      <div style={{ background: 'rgba(168,139,250,0.08)', border: '1px solid rgba(168,139,250,0.3)', borderRadius: 10, padding: 14, textAlign: 'center' }}>
+                        <div style={{ fontSize: 32, fontWeight: 800, color: '#7c3aed', lineHeight: 1 }}>{extras.length}</div>
+                        <div style={{ fontSize: 12, color: '#5b21b6', fontWeight: 700, marginTop: 4 }}>{isRTL ? 'إضافية (ليست بالجدول)' : 'Extras (not in schedule)'}</div>
+                      </div>
+                    </div>
+
+                    {missing.length > 0 && (
+                      <div style={{ marginBottom: 22 }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+                          <h4 style={{ margin: 0, color: '#dc2626', fontSize: 15 }}>
+                            ❌ {isRTL ? 'مفقودة من النظام' : 'Missing in system'} ({missing.length})
+                          </h4>
+                          <button onClick={exportMissing} style={{ padding: '6px 14px', borderRadius: 8, background: '#dc2626', color: '#fff', border: 'none', fontWeight: 700, fontSize: 12, cursor: 'pointer', fontFamily: 'inherit' }}>
+                            📥 {isRTL ? 'تنزيل CSV' : 'Export CSV'}
+                          </button>
+                        </div>
+                        <div style={{ border: '1px solid #fecaca', borderRadius: 10, overflow: 'hidden' }}>
+                          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12.5 }}>
+                            <thead style={{ background: '#fef2f2' }}>
+                              <tr>
+                                <th style={{ padding: '8px 10px', textAlign: isRTL ? 'right' : 'left', fontWeight: 700, color: '#991b1b' }}>#</th>
+                                <th style={{ padding: '8px 10px', textAlign: isRTL ? 'right' : 'left', fontWeight: 700, color: '#991b1b' }}>{isRTL ? 'التاريخ' : 'Date'}</th>
+                                <th style={{ padding: '8px 10px', textAlign: isRTL ? 'right' : 'left', fontWeight: 700, color: '#991b1b' }}>{isRTL ? 'المدرسة' : 'School'}</th>
+                                <th style={{ padding: '8px 10px', textAlign: isRTL ? 'right' : 'left', fontWeight: 700, color: '#991b1b' }}>{isRTL ? 'القاعة' : 'Room'}</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {missing.map((m, i) => (
+                                <tr key={i} style={{ borderTop: '1px solid #fecaca' }}>
+                                  <td style={{ padding: '7px 10px', color: '#64748b' }}>{m.num}</td>
+                                  <td style={{ padding: '7px 10px', whiteSpace: 'nowrap' }}>{m.dateGregorian}<div style={{ fontSize: 10.5, color: '#94a3b8' }}>{m.day}</div></td>
+                                  <td style={{ padding: '7px 10px', fontWeight: 600 }}>{m.school}</td>
+                                  <td style={{ padding: '7px 10px', color: '#64748b' }}>{m.room || '—'}</td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
+                    )}
+
+                    {extras.length > 0 && (
+                      <div style={{ marginBottom: 22 }}>
+                        <h4 style={{ margin: '0 0 10px', color: '#7c3aed', fontSize: 15 }}>
+                          ✳️ {isRTL ? 'ورش تعليمية إضافية (ليست في الجدول)' : 'Extra education workshops (not in schedule)'} ({extras.length})
+                        </h4>
+                        <div style={{ border: '1px solid #ddd6fe', borderRadius: 10, overflow: 'hidden' }}>
+                          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12.5 }}>
+                            <thead style={{ background: '#f5f3ff' }}>
+                              <tr>
+                                <th style={{ padding: '8px 10px', textAlign: isRTL ? 'right' : 'left', fontWeight: 700, color: '#5b21b6' }}>ID</th>
+                                <th style={{ padding: '8px 10px', textAlign: isRTL ? 'right' : 'left', fontWeight: 700, color: '#5b21b6' }}>{isRTL ? 'التاريخ' : 'Date'}</th>
+                                <th style={{ padding: '8px 10px', textAlign: isRTL ? 'right' : 'left', fontWeight: 700, color: '#5b21b6' }}>{isRTL ? 'الورشة' : 'Title'}</th>
+                                <th style={{ padding: '8px 10px', textAlign: isRTL ? 'right' : 'left', fontWeight: 700, color: '#5b21b6' }}>{isRTL ? 'القاعة' : 'Room'}</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {extras.map(w => (
+                                <tr key={w.workshopId} style={{ borderTop: '1px solid #ddd6fe' }}>
+                                  <td style={{ padding: '7px 10px', color: '#64748b', fontFamily: 'monospace' }}>{w.workshopId}</td>
+                                  <td style={{ padding: '7px 10px', whiteSpace: 'nowrap' }}>{w.startDate || '—'}</td>
+                                  <td style={{ padding: '7px 10px', fontWeight: 600 }}>{w.title}</td>
+                                  <td style={{ padding: '7px 10px', color: '#64748b' }}>{w.room || '—'}</td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
+                    )}
+
+                    {matched.length > 0 && (
+                      <details style={{ marginBottom: 12 }}>
+                        <summary style={{ cursor: 'pointer', color: '#16a34a', fontSize: 14, fontWeight: 700, padding: '8px 0' }}>
+                          ✅ {isRTL ? 'إظهار الورش المطابقة' : 'Show matched'} ({matched.length})
+                        </summary>
+                        <div style={{ marginTop: 10, border: '1px solid #bbf7d0', borderRadius: 10, overflow: 'hidden' }}>
+                          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12.5 }}>
+                            <thead style={{ background: '#f0fdf4' }}>
+                              <tr>
+                                <th style={{ padding: '8px 10px', textAlign: isRTL ? 'right' : 'left', fontWeight: 700, color: '#166534' }}>{isRTL ? 'التاريخ' : 'Date'}</th>
+                                <th style={{ padding: '8px 10px', textAlign: isRTL ? 'right' : 'left', fontWeight: 700, color: '#166534' }}>{isRTL ? 'المدرسة (من الجدول)' : 'School (schedule)'}</th>
+                                <th style={{ padding: '8px 10px', textAlign: isRTL ? 'right' : 'left', fontWeight: 700, color: '#166534' }}>{isRTL ? 'رابط' : 'Link'}</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {matched.map((m, i) => {
+                                const url = `${window.location.origin}/workshop/${m.workshop.workshopId}`;
+                                return (
+                                  <tr key={i} style={{ borderTop: '1px solid #bbf7d0' }}>
+                                    <td style={{ padding: '7px 10px', whiteSpace: 'nowrap' }}>{m.entry.dateGregorian}</td>
+                                    <td style={{ padding: '7px 10px', fontWeight: 600 }}>{m.entry.school}</td>
+                                    <td style={{ padding: '7px 10px' }}>
+                                      <button onClick={() => { navigator.clipboard.writeText(url); toast.success(isRTL ? 'تم النسخ' : 'Copied'); }} style={{ padding: '4px 10px', borderRadius: 6, background: '#16a34a', color: '#fff', border: 'none', fontSize: 11, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>
+                                        📋 {isRTL ? 'نسخ الرابط' : 'Copy URL'}
+                                      </button>
+                                    </td>
+                                  </tr>
+                                );
+                              })}
+                            </tbody>
+                          </table>
+                        </div>
+                      </details>
+                    )}
+
+                    <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 14 }}>
+                      <button onClick={() => setShowEduScheduleCompare(false)} style={{ padding: '9px 22px', background: '#EE2329', color: '#fff', border: 'none', borderRadius: 8, fontWeight: 800, cursor: 'pointer', fontFamily: 'inherit' }}>
+                        {isRTL ? 'إغلاق' : 'Close'}
+                      </button>
+                    </div>
+                  </motion.div>
+                </div>
+              );
+            })()}
 
             {/* Workshop Create/Edit Modal */}
             {showWorkshopModal && (
