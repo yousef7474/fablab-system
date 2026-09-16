@@ -75,6 +75,10 @@ const ProjectSupportTab = () => {
 
   const [openReq, setOpenReq] = useState(null); // full row incl. files (loaded on click)
   const [approveModal, setApproveModal] = useState(null); // { request }
+  // Direct admin response — approve or reject without forwarding to
+  // the manager. { request, decision: 'approved'|'rejected', response }.
+  const [adminRespondModal, setAdminRespondModal] = useState(null);
+  const [adminResponding, setAdminResponding] = useState(false);
   const [approverChoice, setApproverChoice] = useState('');
   const [customEmail, setCustomEmail] = useState('');
   const [sendingApproval, setSendingApproval] = useState(false);
@@ -159,6 +163,35 @@ const ProjectSupportTab = () => {
       toast.error(err?.response?.data?.messageAr || err?.response?.data?.message || (isRTL ? 'تعذر الإرسال' : 'Failed to send'));
     } finally {
       setSendingApproval(false);
+    }
+  };
+
+  const openAdminRespondModal = (request, decision) => {
+    setAdminRespondModal({ request, decision, response: '' });
+  };
+  const submitAdminResponse = async () => {
+    if (!adminRespondModal) return;
+    const { request, decision, response } = adminRespondModal;
+    if (!response.trim()) {
+      toast.error(isRTL ? 'اكتب الرد الذي سيصل للمستفيد' : 'Write the response that will be emailed to the user');
+      return;
+    }
+    setAdminResponding(true);
+    try {
+      await api.post(`/project-support/${request.requestId}/admin-respond`, {
+        decision,
+        response: response.trim()
+      });
+      toast.success(decision === 'approved'
+        ? (isRTL ? '✅ تم الاعتماد وإرسال الرد للمستفيد' : '✅ Approved & user notified')
+        : (isRTL ? '✕ تم الرفض وإرسال الرد للمستفيد' : '✕ Rejected & user notified'));
+      setAdminRespondModal(null);
+      setOpenReq(null);
+      await fetchAll();
+    } catch (err) {
+      toast.error(err?.response?.data?.messageAr || err?.response?.data?.message || (isRTL ? 'تعذّر الحفظ' : 'Failed to save'));
+    } finally {
+      setAdminResponding(false);
     }
   };
 
@@ -597,10 +630,87 @@ const ProjectSupportTab = () => {
                   🗑️ حذف
                 </button>
                 {openReq.approvalStatus !== 'approved' && openReq.approvalStatus !== 'rejected' && (
-                  <button onClick={() => openApprovalModal(openReq)} style={{ padding: '10px 20px', borderRadius: 10, border: 'none', background: 'linear-gradient(135deg, #8b5cf6, #6d28d9)', color: '#fff', cursor: 'pointer', fontWeight: 800, fontSize: 13 }}>
-                    📧 {openReq.approvalStatus === 'pending' ? 'إعادة الإرسال للمدير' : 'إرسال للمدير للاعتماد'}
-                  </button>
+                  <>
+                    <button
+                      onClick={() => openAdminRespondModal(openReq, 'rejected')}
+                      title={isRTL ? 'رفض الطلب مباشرة وإرسال الرد للمستفيد دون الرجوع للمدير' : 'Reject directly and email the user without escalating to the manager'}
+                      style={{ padding: '10px 18px', borderRadius: 10, border: '1px solid #fecaca', background: '#fff', color: '#b91c1c', cursor: 'pointer', fontWeight: 700, fontSize: 13 }}
+                    >
+                      ✕ رفض مباشر
+                    </button>
+                    <button
+                      onClick={() => openAdminRespondModal(openReq, 'approved')}
+                      title={isRTL ? 'اعتماد الطلب مباشرة وإرسال الرد للمستفيد دون الرجوع للمدير' : 'Approve directly and email the user without escalating to the manager'}
+                      style={{ padding: '10px 18px', borderRadius: 10, border: 'none', background: 'linear-gradient(135deg, #16a34a, #065f46)', color: '#fff', cursor: 'pointer', fontWeight: 800, fontSize: 13 }}
+                    >
+                      ✓ اعتماد مباشر
+                    </button>
+                    <button onClick={() => openApprovalModal(openReq)} style={{ padding: '10px 20px', borderRadius: 10, border: 'none', background: 'linear-gradient(135deg, #8b5cf6, #6d28d9)', color: '#fff', cursor: 'pointer', fontWeight: 800, fontSize: 13 }}>
+                      📧 {openReq.approvalStatus === 'pending' ? 'إعادة الإرسال للمدير' : 'إرسال للمدير للاعتماد'}
+                    </button>
+                  </>
                 )}
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Admin direct-response modal (approve/reject without escalating) */}
+      <AnimatePresence>
+        {adminRespondModal && (
+          <motion.div
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            onClick={() => setAdminRespondModal(null)}
+            style={{ position: 'fixed', inset: 0, background: 'rgba(15,23,42,0.6)', zIndex: 1100, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.94 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.94 }}
+              onClick={(e) => e.stopPropagation()}
+              style={{ background: '#fff', borderRadius: 16, padding: 22, maxWidth: 520, width: '100%' }}
+            >
+              <h3 style={{ margin: '0 0 6px', color: adminRespondModal.decision === 'approved' ? '#16a34a' : '#b91c1c', fontSize: 18 }}>
+                {adminRespondModal.decision === 'approved' ? '✓ اعتماد الطلب مباشرةً' : '✕ رفض الطلب مباشرةً'}
+              </h3>
+              <p style={{ margin: '0 0 14px', color: '#64748b', fontSize: 13, lineHeight: 1.7 }}>
+                سيتم إرسال الرد مباشرة للمستفيد على بريده دون الرجوع للمدير.
+                &nbsp;<b>{adminRespondModal.request?.firstName} {adminRespondModal.request?.lastName || ''}</b>
+                {adminRespondModal.request?.email && <> · <span dir="ltr">{adminRespondModal.request.email}</span></>}
+              </p>
+              <label style={{ display: 'block', marginBottom: 14 }}>
+                <div style={{ fontSize: 12, fontWeight: 700, color: '#334155', marginBottom: 4 }}>الرد المرسل للمستفيد *</div>
+                <textarea
+                  value={adminRespondModal.response}
+                  onChange={(e) => setAdminRespondModal(m => ({ ...m, response: e.target.value }))}
+                  rows={5}
+                  placeholder={adminRespondModal.decision === 'approved'
+                    ? 'اذكر تفاصيل الموافقة والخطوات التالية للمستفيد...'
+                    : 'اذكر سبب الرفض واقتراحات بديلة إن أمكن...'}
+                  style={{ width: '100%', padding: 10, borderRadius: 8, border: '1.5px solid #cbd5e1', fontFamily: 'inherit', fontSize: 14, resize: 'vertical' }}
+                  autoFocus
+                />
+              </label>
+              <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+                <button
+                  onClick={() => setAdminRespondModal(null)}
+                  disabled={adminResponding}
+                  style={{ padding: '10px 18px', borderRadius: 10, border: '1px solid #cbd5e1', background: '#fff', cursor: 'pointer', fontWeight: 700, fontSize: 13 }}
+                >
+                  إلغاء
+                </button>
+                <button
+                  onClick={submitAdminResponse}
+                  disabled={adminResponding}
+                  style={{
+                    padding: '10px 22px', borderRadius: 10, border: 'none',
+                    background: adminRespondModal.decision === 'approved'
+                      ? 'linear-gradient(135deg, #16a34a, #065f46)'
+                      : 'linear-gradient(135deg, #dc2626, #991b1b)',
+                    color: '#fff', cursor: 'pointer', fontWeight: 800, fontSize: 13
+                  }}
+                >
+                  {adminResponding ? '…' : (adminRespondModal.decision === 'approved' ? '✓ اعتماد وإرسال' : '✕ رفض وإرسال')}
+                </button>
               </div>
             </motion.div>
           </motion.div>

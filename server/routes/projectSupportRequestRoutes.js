@@ -20,5 +20,7 @@ router.post('/:id/send-for-approval',    requireManager, ctrl.sendForApproval);
 router.post('/:id/manager-approve',      requireManager, ctrl.managerApprove);
 router.post('/:id/manager-reject',       requireManager, ctrl.managerReject);
 router.post('/:id/notify-user',          requireManager, ctrl.notifyUser);
+// Admin decides + emails the user directly (no manager loop).
+router.post('/:id/admin-respond',        ctrl.adminRespond);
 
 module.exports = router;

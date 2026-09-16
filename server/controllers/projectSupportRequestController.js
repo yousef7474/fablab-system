@@ -604,6 +604,60 @@ exports.managerApprove = async (req, res) => {
   }
 };
 
+// Admin decides directly — same effect as managerApprove/Reject but
+// callable by any admin (not just requireManager). Useful for
+// requests the admin can handle without escalating. managerName is
+// stamped with the admin's own fullName so the audit trail shows
+// who acted, and the archive row still reflects the outcome.
+exports.adminRespond = async (req, res) => {
+  try {
+    const row = await ProjectSupportRequest.findByPk(req.params.id);
+    if (!row) return res.status(404).json({ message: 'Not found' });
+
+    const decision = String(req.body?.decision || '').toLowerCase();
+    if (!['approved', 'rejected'].includes(decision)) {
+      return res.status(400).json({ message: 'decision must be approved or rejected', messageAr: 'القرار يجب أن يكون approved أو rejected' });
+    }
+    const response = req.body?.response ? String(req.body.response).trim() : null;
+    if (!response) {
+      return res.status(400).json({
+        message: 'A response is required (it will be emailed to the user)',
+        messageAr: 'يرجى كتابة الرد (سيتم إرساله للمستفيد بالبريد)'
+      });
+    }
+    if (decision === 'approved' && row.approvalStatus === 'approved') {
+      return res.status(409).json({ message: 'Already approved', messageAr: 'الطلب معتمد مسبقاً' });
+    }
+
+    const actorName = req.admin?.fullName || 'الإدارة';
+    await row.update({
+      approvalStatus: decision,
+      approvedAt:  decision === 'approved' ? new Date() : null,
+      rejectedAt:  decision === 'rejected' ? new Date() : null,
+      managerResponse: response,
+      managerName: actorName,
+      approvalToken: null // once decided from the admin panel, invalidate any pending email link
+    });
+
+    _sendUserDecisionEmail(row, { accepted: decision === 'approved', response }).catch(() => {});
+    markArchiveDecided({
+      type: 'project_support',
+      sourceId: row.requestId,
+      status: decision,
+      managerName: actorName
+    });
+
+    res.json({
+      message: decision === 'approved' ? 'Approved' : 'Rejected',
+      messageAr: decision === 'approved' ? 'تم الاعتماد وإرسال الرد للمستفيد' : 'تم الرفض وإرسال الرد للمستفيد',
+      row
+    });
+  } catch (err) {
+    console.error('psr adminRespond:', err);
+    res.status(500).json({ message: 'Server error', detail: err.message });
+  }
+};
+
 exports.managerReject = async (req, res) => {
   try {
     const row = await ProjectSupportRequest.findByPk(req.params.id);
