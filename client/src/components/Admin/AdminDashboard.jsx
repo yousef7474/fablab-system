@@ -8414,8 +8414,14 @@ const AdminDashboard = () => {
 
             {/* Workshops Tab */}
             {activeTab === 'workshops' && (() => {
-              const _activeCount = workshopsList.filter(w => w.isActive && w.status !== 'cancelled' && w.status !== 'completed').length;
-              const _completedCount = workshopsList.filter(w => w.status === 'completed').length;
+              // Split education workshops out of the main queue —
+              // they live under their own "Education" pill so the
+              // primary Active/Completed lists stay focused on the
+              // public workshops the admin runs day-to-day.
+              const _isEdu = (w) => !!w.isEducation;
+              const _activeCount = workshopsList.filter(w => !_isEdu(w) && w.isActive && w.status !== 'cancelled' && w.status !== 'completed').length;
+              const _completedCount = workshopsList.filter(w => !_isEdu(w) && w.status === 'completed').length;
+              const _educationCount = workshopsList.filter(_isEdu).length;
               const _totalStudents = workshopsList.reduce((sum, w) => sum + (w.studentCount || 0), 0);
               const _wsStatusLabels = {
                 upcoming: isRTL ? 'قادمة' : 'Upcoming',
@@ -8479,6 +8485,7 @@ const AdminDashboard = () => {
                         {[
                           { key: 'active',    label: isRTL ? 'النشطة' : 'Active',    count: _activeCount,          color: '#22d3ee' },
                           { key: 'completed', label: isRTL ? 'المكتملة' : 'Completed', count: _completedCount,       color: '#4ade80' },
+                          { key: 'education', label: isRTL ? '🎓 التعليم' : '🎓 Education', count: _educationCount, color: '#a78bfa' },
                           { key: 'all',       label: isRTL ? 'الكل' : 'All',         count: workshopsList.length,  color: '#94a3b8' }
                         ].map(f => (
                           <button
@@ -8547,12 +8554,30 @@ const AdminDashboard = () => {
                       }}
                     >
                       <AnimatePresence mode="popLayout">
-                        {workshopsList.filter(w => workshopFilter === 'all' ? true : workshopFilter === 'active' ? (w.isActive && w.status !== 'cancelled' && w.status !== 'completed') : w.status === 'completed').length === 0 ? (
+                        {workshopsList.filter(w => {
+                          if (workshopFilter === 'all') return true;
+                          if (workshopFilter === 'education') return _isEdu(w);
+                          // Active + Completed exclude education workshops
+                          // so the main queue stays focused.
+                          if (_isEdu(w)) return false;
+                          if (workshopFilter === 'active') return w.isActive && w.status !== 'cancelled' && w.status !== 'completed';
+                          if (workshopFilter === 'completed') return w.status === 'completed';
+                          return true;
+                        }).length === 0 ? (
                           <motion.div key="wsempty" className="wsv2-empty"
                             initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
                             {isRTL ? '— لا توجد ورش —' : '— No workshops in this queue —'}
                           </motion.div>
-                        ) : workshopsList.filter(w => workshopFilter === 'all' ? true : workshopFilter === 'active' ? (w.isActive && w.status !== 'cancelled' && w.status !== 'completed') : w.status === 'completed').map(w => {
+                        ) : workshopsList.filter(w => {
+                          if (workshopFilter === 'all') return true;
+                          if (workshopFilter === 'education') return _isEdu(w);
+                          // Active + Completed exclude education workshops
+                          // so the main queue stays focused.
+                          if (_isEdu(w)) return false;
+                          if (workshopFilter === 'active') return w.isActive && w.status !== 'cancelled' && w.status !== 'completed';
+                          if (workshopFilter === 'completed') return w.status === 'completed';
+                          return true;
+                        }).map(w => {
                           const wsColor = /^#[0-9a-fA-F]{6}$/.test(w.color || '') ? w.color : '#EE2329';
                           let days = 1;
                           if (w.startDate && w.endDate && w.endDate !== w.startDate) {
