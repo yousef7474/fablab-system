@@ -275,6 +275,7 @@ const AdminDashboard = () => {
   const [bankForm, setBankForm] = useState({ bankName: '', accountHolder: '', iban: '', additionalInfo: '' });
   const [madaForm, setMadaForm] = useState({ title: '', instructions: '', address: '' });
   const [showEduScheduleCompare, setShowEduScheduleCompare] = useState(false);
+  const [workshopSort, setWorkshopSort] = useState('date-asc');
   const [bankSaving, setBankSaving] = useState(false);
   const [selectedWorkshop, setSelectedWorkshop] = useState(null);
   const [workshopForm, setWorkshopForm] = useState({
@@ -8425,6 +8426,27 @@ const AdminDashboard = () => {
               const _completedCount = workshopsList.filter(w => !_isEdu(w) && w.status === 'completed').length;
               const _educationCount = workshopsList.filter(_isEdu).length;
               const _totalStudents = workshopsList.reduce((sum, w) => sum + (w.studentCount || 0), 0);
+              const _visibleWorkshops = (() => {
+                const filtered = workshopsList.filter(w => {
+                  if (workshopFilter === 'all') return true;
+                  if (workshopFilter === 'education') return _isEdu(w);
+                  // Active + Completed exclude education workshops
+                  // so the main queue stays focused.
+                  if (_isEdu(w)) return false;
+                  if (workshopFilter === 'active') return w.isActive && w.status !== 'cancelled' && w.status !== 'completed';
+                  if (workshopFilter === 'completed') return w.status === 'completed';
+                  return true;
+                });
+                if (workshopFilter !== 'education') return filtered;
+                // Sort only in the Education view.
+                const arr = [...filtered];
+                const dateVal = w => w.startDate ? new Date(w.startDate).getTime() : (workshopSort === 'date-desc' ? -Infinity : Infinity);
+                if (workshopSort === 'date-desc') arr.sort((a, b) => dateVal(b) - dateVal(a));
+                else if (workshopSort === 'title-asc') arr.sort((a, b) => (a.title || '').localeCompare(b.title || '', 'ar'));
+                else if (workshopSort === 'students-desc') arr.sort((a, b) => (b.studentCount || 0) - (a.studentCount || 0));
+                else arr.sort((a, b) => dateVal(a) - dateVal(b)); // default: date-asc
+                return arr;
+              })();
               const _wsStatusLabels = {
                 upcoming: isRTL ? 'قادمة' : 'Upcoming',
                 in_progress: isRTL ? 'جارية' : 'In Progress',
@@ -8548,6 +8570,20 @@ const AdminDashboard = () => {
                             🔍 {isRTL ? 'مقارنة مع الجدول' : 'Compare Schedule'}
                           </button>
                         )}
+                        {workshopFilter === 'education' && (
+                          <select
+                            className="wsv2-action-btn"
+                            value={workshopSort}
+                            onChange={e => setWorkshopSort(e.target.value)}
+                            title={isRTL ? 'ترتيب الورش' : 'Sort workshops'}
+                            style={{ fontFamily: 'inherit', cursor: 'pointer' }}
+                          >
+                            <option value="date-asc">{isRTL ? '↑ الأقدم أولاً' : '↑ Earliest first'}</option>
+                            <option value="date-desc">{isRTL ? '↓ الأحدث أولاً' : '↓ Latest first'}</option>
+                            <option value="title-asc">{isRTL ? 'أ → ي' : 'A → Z'}</option>
+                            <option value="students-desc">{isRTL ? 'الأكثر طلاباً' : 'Most students'}</option>
+                          </select>
+                        )}
                         <button className="wsv2-action-btn scan" onClick={() => setShowQRScanner(true)}>
                           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                             <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/>
@@ -8602,30 +8638,12 @@ const AdminDashboard = () => {
                       }}
                     >
                       <AnimatePresence mode="popLayout">
-                        {workshopsList.filter(w => {
-                          if (workshopFilter === 'all') return true;
-                          if (workshopFilter === 'education') return _isEdu(w);
-                          // Active + Completed exclude education workshops
-                          // so the main queue stays focused.
-                          if (_isEdu(w)) return false;
-                          if (workshopFilter === 'active') return w.isActive && w.status !== 'cancelled' && w.status !== 'completed';
-                          if (workshopFilter === 'completed') return w.status === 'completed';
-                          return true;
-                        }).length === 0 ? (
+                        {_visibleWorkshops.length === 0 ? (
                           <motion.div key="wsempty" className="wsv2-empty"
                             initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
                             {isRTL ? '— لا توجد ورش —' : '— No workshops in this queue —'}
                           </motion.div>
-                        ) : workshopsList.filter(w => {
-                          if (workshopFilter === 'all') return true;
-                          if (workshopFilter === 'education') return _isEdu(w);
-                          // Active + Completed exclude education workshops
-                          // so the main queue stays focused.
-                          if (_isEdu(w)) return false;
-                          if (workshopFilter === 'active') return w.isActive && w.status !== 'cancelled' && w.status !== 'completed';
-                          if (workshopFilter === 'completed') return w.status === 'completed';
-                          return true;
-                        }).map(w => {
+                        ) : _visibleWorkshops.map(w => {
                           const wsColor = /^#[0-9a-fA-F]{6}$/.test(w.color || '') ? w.color : '#EE2329';
                           let days = 1;
                           if (w.startDate && w.endDate && w.endDate !== w.startDate) {
