@@ -62,7 +62,8 @@ exports.createWorkshop = async (req, res) => {
       title, description, presenter, assignedEmployeeId,
       startDate, endDate, startTime, endTime, totalHours,
       content, objectives, photo, maxParticipants, price,
-      status, isActive, isPublic, notes, color, minAge, maxAge
+      status, isActive, isPublic, notes, color, minAge, maxAge,
+      isEducation, room, registrationEnabled
     } = req.body;
 
     if (!title || !presenter || !startDate) {
@@ -72,13 +73,19 @@ exports.createWorkshop = async (req, res) => {
       });
     }
 
+    const eduFlag = !!isEducation;
     const workshop = await Workshop.create({
       title, description, presenter, assignedEmployeeId,
       startDate, endDate, startTime, endTime, totalHours,
       content, objectives, photo, maxParticipants, price,
       status: status || 'upcoming',
       isActive: isActive !== undefined ? isActive : true,
-      isPublic: isPublic !== undefined ? !!isPublic : true,
+      // Education workshops are ALWAYS hidden from the public picker.
+      // Only the shareable URL /workshop/:id opens them.
+      isPublic: eduFlag ? false : (isPublic !== undefined ? !!isPublic : true),
+      isEducation: eduFlag,
+      room: room || null,
+      registrationEnabled: registrationEnabled !== undefined ? !!registrationEnabled : true,
       notes,
       color: color || '#1a56db',
       minAge: minAge || null,
@@ -203,8 +210,13 @@ exports.updateWorkshop = async (req, res) => {
       title, description, presenter, assignedEmployeeId,
       startDate, endDate, startTime, endTime, totalHours,
       content, objectives, photo, maxParticipants, price,
-      status, isActive, isPublic, notes, color, minAge, maxAge
+      status, isActive, isPublic, notes, color, minAge, maxAge,
+      isEducation, room, registrationEnabled
     } = req.body;
+
+    // Education workshops never appear in the public picker.
+    const nextIsEdu = isEducation !== undefined ? !!isEducation : workshop.isEducation;
+    const nextIsPublic = nextIsEdu ? false : (isPublic !== undefined ? !!isPublic : workshop.isPublic);
 
     await workshop.update({
       title: title !== undefined ? title : workshop.title,
@@ -223,7 +235,10 @@ exports.updateWorkshop = async (req, res) => {
       price: price !== undefined ? price : workshop.price,
       status: status !== undefined ? status : workshop.status,
       isActive: isActive !== undefined ? isActive : workshop.isActive,
-      isPublic: isPublic !== undefined ? !!isPublic : workshop.isPublic,
+      isPublic: nextIsPublic,
+      isEducation: nextIsEdu,
+      room: room !== undefined ? (room || null) : workshop.room,
+      registrationEnabled: registrationEnabled !== undefined ? !!registrationEnabled : workshop.registrationEnabled,
       notes: notes !== undefined ? notes : workshop.notes,
       color: color !== undefined ? color : workshop.color,
       minAge: minAge !== undefined ? (minAge || null) : workshop.minAge,
@@ -418,10 +433,22 @@ exports.registerStudent = async (req, res) => {
       }
 
       // Admin-only workshops are hidden from the public listing and cannot
-      // be registered for via the public form. Guarded here too so a leaked
-      // workshopId can't bypass the visibility flag.
+      // be registered for via the public form.
+      // EXCEPTION: education workshops opt into public-URL registration.
+      // They stay hidden from the picker (isPublic=false) but accept
+      // registrations from anyone with the shareable URL, as long as
+      // registrationEnabled is toggled on.
       if (workshop.isPublic === false) {
-        throw { status: 403, message: 'This workshop is not open for public registration', messageAr: 'هذه الورشة غير متاحة للتسجيل العام' };
+        if (!workshop.isEducation) {
+          throw { status: 403, message: 'This workshop is not open for public registration', messageAr: 'هذه الورشة غير متاحة للتسجيل العام' };
+        }
+        if (workshop.registrationEnabled === false) {
+          throw {
+            status: 403,
+            message: 'Registration for this workshop is currently closed',
+            messageAr: 'التسجيل في هذه الورشة مغلق مؤقتاً'
+          };
+        }
       }
 
       // Duplicate check is by student national ID only. Repeated emails,
@@ -2663,6 +2690,72 @@ exports.rateStudentEmployee = async (req, res) => {
   } catch (error) {
     console.error('Error rating student (employee):', error);
     res.status(500).json({ message: 'Server error', messageAr: 'خطأ في الخادم' });
+  }
+};
+
+// ─────────────── Education workshops (unique shareable URL) ───────────────
+
+// GET /workshops/edu/:id — public, no auth. Returns the education
+// workshop's public-facing details for the /workshop/:id shareable
+// registration page. 404 for non-education workshops so the URL
+// isn't a discovery vector.
+exports.getEducationWorkshop = async (req, res) => {
+  try {
+    const workshop = await Workshop.findByPk(req.params.id, {
+      attributes: [
+        'workshopId', 'title', 'description', 'presenter', 'startDate', 'endDate',
+        'startTime', 'endTime', 'totalHours', 'content', 'objectives', 'photo',
+        'maxParticipants', 'price', 'color', 'minAge', 'maxAge',
+        'isEducation', 'room', 'registrationEnabled', 'status', 'isActive'
+      ],
+      include: [{
+        model: WorkshopStudent, as: 'students', attributes: ['studentId']
+      }]
+    });
+    if (!workshop || !workshop.isEducation) {
+      return res.status(404).json({
+        message: 'Education workshop not found',
+        messageAr: 'الورشة التعليمية غير موجودة'
+      });
+    }
+    const studentCount = (workshop.students || []).length;
+    const spotsRemaining = workshop.maxParticipants
+      ? Math.max(0, workshop.maxParticipants - studentCount)
+      : null;
+
+    const { students, ...rest } = workshop.toJSON();
+    res.json({
+      ...rest,
+      studentCount,
+      spotsRemaining,
+      // Explicit flags so the client can render the right message.
+      isOpen: !!(workshop.isActive
+        && workshop.registrationEnabled
+        && workshop.status !== 'cancelled'
+        && (spotsRemaining === null || spotsRemaining > 0)),
+      closedReason: !workshop.isActive
+        ? 'inactive'
+        : (workshop.status === 'cancelled' ? 'cancelled'
+        : (!workshop.registrationEnabled ? 'disabled'
+        : (spotsRemaining === 0 ? 'full' : null)))
+    });
+  } catch (error) {
+    console.error('getEducationWorkshop:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+// PATCH /workshops/:id/registration-enabled — admin toggle. body: { enabled: bool }
+exports.toggleRegistration = async (req, res) => {
+  try {
+    const workshop = await Workshop.findByPk(req.params.id);
+    if (!workshop) return res.status(404).json({ message: 'Workshop not found' });
+    const enabled = !!req.body?.enabled;
+    await workshop.update({ registrationEnabled: enabled });
+    res.json({ workshopId: workshop.workshopId, registrationEnabled: workshop.registrationEnabled });
+  } catch (error) {
+    console.error('toggleRegistration:', error);
+    res.status(500).json({ message: 'Server error' });
   }
 };
 

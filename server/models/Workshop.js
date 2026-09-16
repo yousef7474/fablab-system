@@ -101,6 +101,30 @@ const Workshop = sequelize.define('Workshop', {
     allowNull: false,
     comment: 'True = shown to public in /workshop registration page; false = admin-only (admin can still add students + issue QR codes)'
   },
+  // Education workshops are for education-tab students. They are
+  // NEVER listed in the public /workshop picker; the admin shares a
+  // unique URL (/workshop/:workshopId) with each customer to register.
+  // Students still land in workshop_students so global attendance,
+  // ratings, export, and certificates work identically.
+  isEducation: {
+    type: DataTypes.BOOLEAN,
+    defaultValue: false,
+    allowNull: false
+  },
+  // Physical room where the workshop is held (education workshops
+  // rely on this — printed on invoices + confirmation email).
+  room: {
+    type: DataTypes.STRING(120),
+    allowNull: true
+  },
+  // Admin can pause registrations on an education workshop without
+  // deleting it — the shareable URL then shows a "registration
+  // temporarily closed" message.
+  registrationEnabled: {
+    type: DataTypes.BOOLEAN,
+    defaultValue: true,
+    allowNull: false
+  },
   createdById: {
     type: DataTypes.UUID,
     allowNull: true,

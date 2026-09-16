@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'react-toastify';
@@ -29,8 +29,15 @@ const _clearDraft = () => {
 
 const WorkshopRegistration = () => {
   const navigate = useNavigate();
+  const { workshopId: routeWorkshopId } = useParams();
   const { i18n } = useTranslation();
   const isRTL = i18n.language === 'ar';
+  // When true, the customer arrived via /workshop/:id — a shareable
+  // education-workshop URL. We fetch just that workshop, skip the
+  // picker step, and show a closed banner if registration is off.
+  const isSingleMode = !!routeWorkshopId;
+  const [singleWorkshopMeta, setSingleWorkshopMeta] = useState(null); // { closedReason, isOpen, ... }
+  const [singleFetchError, setSingleFetchError] = useState(null);
 
   // Read any saved draft ONCE on mount so a refresh restores the
   // exact step + typed fields + selected workshop.
@@ -72,8 +79,30 @@ const WorkshopRegistration = () => {
   const [coupon, setCoupon] = useState(() => _initialDraft?.coupon || null); // { code, percent, discountAmount, netAmount }
 
   useEffect(() => {
+    // Shareable-URL mode: fetch just the education workshop and
+    // pre-select it. Full picker fetch would leak public workshops
+    // into the flow — we want a single-workshop landing page.
+    if (isSingleMode) {
+      api.get(`/workshops/edu/${routeWorkshopId}`)
+        .then(res => {
+          setSingleWorkshopMeta(res.data);
+          setWorkshops([res.data]); // list of one so downstream lookups still work
+          setForm(prev => ({ ...prev, workshopId: res.data.workshopId }));
+          // Skip past the picker step; keep step 0 (personal info)
+          // if the user hasn't filled it yet, otherwise jump to
+          // the payment/confirm step.
+          if (step === 1) setStep(2);
+        })
+        .catch(err => {
+          setSingleFetchError(err?.response?.status === 404
+            ? (isRTL ? 'الورشة غير موجودة أو الرابط منتهي' : 'Workshop not found or link expired')
+            : (isRTL ? 'تعذّر تحميل الورشة' : 'Failed to load workshop'));
+        });
+      return;
+    }
     api.get('/workshops/active').then(res => setWorkshops(res.data || [])).catch(() => {});
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isSingleMode, routeWorkshopId]);
 
   const handleChange = (field, value) => setForm(prev => ({ ...prev, [field]: value }));
 
@@ -315,20 +344,56 @@ const WorkshopRegistration = () => {
             <p>FABLAB Al-Ahsa</p>
           </div>
 
-          {/* Stepper */}
+          {/* Stepper — in single-workshop mode the picker step is
+              hidden entirely (there's nothing to pick). */}
           <div className="workshop-stepper">
-            {[
-              isRTL ? 'البيانات الشخصية' : 'Personal Info',
-              isRTL ? 'اختيار الورشة' : 'Select Workshop',
-              isRTL ? 'الدفع والتأكيد' : 'Payment & Confirm',
-            ].map((label, i) => (
-              <div key={i} className={`workshop-step ${step > i ? 'completed' : step === i ? 'active' : ''}`}>
-                <div className="workshop-step-circle">{step > i ? '✓' : i + 1}</div>
-                <span className="workshop-step-label">{label}</span>
-                {i < 2 && <div className="workshop-step-line" />}
-              </div>
-            ))}
+            {(isSingleMode
+              ? [
+                  isRTL ? 'البيانات الشخصية' : 'Personal Info',
+                  isRTL ? 'الدفع والتأكيد' : 'Payment & Confirm'
+                ]
+              : [
+                  isRTL ? 'البيانات الشخصية' : 'Personal Info',
+                  isRTL ? 'اختيار الورشة' : 'Select Workshop',
+                  isRTL ? 'الدفع والتأكيد' : 'Payment & Confirm'
+                ]
+            ).map((label, i) => {
+              // Map stepper index → actual step number.
+              const stepNum = isSingleMode ? (i === 0 ? 0 : 2) : i;
+              const done = step > stepNum;
+              const active = step === stepNum;
+              return (
+                <div key={i} className={`workshop-step ${done ? 'completed' : active ? 'active' : ''}`}>
+                  <div className="workshop-step-circle">{done ? '✓' : i + 1}</div>
+                  <span className="workshop-step-label">{label}</span>
+                  {i < (isSingleMode ? 1 : 2) && <div className="workshop-step-line" />}
+                </div>
+              );
+            })}
           </div>
+
+          {/* Single-workshop landing banner (registration closed or fetch failed). */}
+          {isSingleMode && singleFetchError && (
+            <div style={{ margin: '20px auto', maxWidth: 640, padding: 22, background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 12, textAlign: 'center', color: '#b91c1c' }}>
+              <div style={{ fontSize: 42, marginBottom: 8 }}>⚠️</div>
+              <h3 style={{ margin: 0, color: '#b91c1c' }}>{singleFetchError}</h3>
+            </div>
+          )}
+          {isSingleMode && singleWorkshopMeta && !singleWorkshopMeta.isOpen && step !== 3 && (
+            <div style={{ margin: '20px auto', maxWidth: 640, padding: 22, background: '#fef3c7', border: '1px solid #fde68a', borderRadius: 12, textAlign: 'center', color: '#92400e' }}>
+              <div style={{ fontSize: 42, marginBottom: 8 }}>⏸️</div>
+              <h3 style={{ margin: 0, color: '#92400e' }}>
+                {isRTL ? 'التسجيل في هذه الورشة مغلق مؤقتاً' : 'Registration for this workshop is currently closed'}
+              </h3>
+              <p style={{ margin: '8px 0 0', fontSize: 13, color: '#78350f' }}>
+                {singleWorkshopMeta.closedReason === 'full'
+                  ? (isRTL ? 'تم اكتمال العدد المسموح به.' : 'The workshop is full.')
+                  : singleWorkshopMeta.closedReason === 'cancelled'
+                  ? (isRTL ? 'تم إلغاء هذه الورشة.' : 'This workshop has been cancelled.')
+                  : (isRTL ? 'يرجى التواصل مع إدارة فاب لاب لمزيد من المعلومات.' : 'Please contact the FabLab admin for more information.')}
+              </p>
+            </div>
+          )}
 
           {/* Step Content */}
           <AnimatePresence mode="wait">
@@ -405,7 +470,11 @@ const WorkshopRegistration = () => {
                     </div>
                     <div className="workshop-actions">
                       <button className="workshop-btn-back" onClick={() => setLookupMode(true)}>{isRTL ? 'رجوع' : 'Back'}</button>
-                      <button className="workshop-btn-next" disabled={!canProceedStep0} onClick={() => setStep(1)}>{isRTL ? 'التالي' : 'Next'}</button>
+                      <button
+                        className="workshop-btn-next"
+                        disabled={!canProceedStep0 || (isSingleMode && singleWorkshopMeta && !singleWorkshopMeta.isOpen)}
+                        onClick={() => setStep(isSingleMode ? 2 : 1)}
+                      >{isRTL ? 'التالي' : 'Next'}</button>
                     </div>
                   </>
                 )}
@@ -478,6 +547,9 @@ const WorkshopRegistration = () => {
                   <div className="workshop-summary" style={{ marginBottom: 22 }}>
                     <strong style={{ fontSize: '1.05rem' }}>{selectedWorkshop.title}</strong>
                     <span>{selectedWorkshop.startDate}{selectedWorkshop.totalHours ? ` • ${selectedWorkshop.totalHours}h` : ''}</span>
+                    {selectedWorkshop.room && (
+                      <span>📍 {isRTL ? 'القاعة:' : 'Room:'} <b>{selectedWorkshop.room}</b></span>
+                    )}
                     <span style={{ fontWeight: 800, color: workshopIsPaid ? '#EE2329' : '#16a34a' }}>
                       {workshopIsPaid ? `${selectedWorkshop.price} ${isRTL ? 'ر.س' : 'SAR'}` : (isRTL ? 'مجاناً' : 'Free')}
                     </span>
@@ -738,7 +810,7 @@ const WorkshopRegistration = () => {
                 )}
 
                 <div className="workshop-actions">
-                  <button className="workshop-btn-back" onClick={() => setStep(1)}>{isRTL ? 'السابق' : 'Back'}</button>
+                  <button className="workshop-btn-back" onClick={() => setStep(isSingleMode ? 0 : 1)}>{isRTL ? 'السابق' : 'Back'}</button>
                   <button className="workshop-btn-submit" disabled={!canProceedStep2 || submitting} onClick={handleSubmit}>
                     {submitting ? (isRTL ? 'جاري التسجيل...' : 'Submitting...') : (isRTL ? '✓ تأكيد التسجيل' : '✓ Confirm Registration')}
                   </button>

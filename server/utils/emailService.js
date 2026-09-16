@@ -766,10 +766,12 @@ ${workshop.presenter ? `<p style="color:#3b82f6;margin:0 0 10px;font-size:13px;"
 ${startDate ? `<tr><td style="padding:5px 0;color:#64748b;">📅 التاريخ</td><td style="padding:5px 0;color:#1e293b;font-weight:700;">${startDate}${endDate}</td></tr>` : ''}
 ${timeText ? `<tr><td style="padding:5px 0;color:#64748b;">🕐 الوقت</td><td style="padding:5px 0;color:#1e293b;font-weight:700;">${timeText}</td></tr>` : ''}
 ${hoursText ? `<tr><td style="padding:5px 0;color:#64748b;">⏱ المدة</td><td style="padding:5px 0;color:#1e293b;font-weight:700;">${hoursText}</td></tr>` : ''}
+${workshop.room ? `<tr><td style="padding:5px 0;color:#64748b;">📍 القاعة</td><td style="padding:5px 0;color:#1e293b;font-weight:700;">${workshop.room}</td></tr>` : ''}
 ${workshop.price ? `<tr><td style="padding:5px 0;color:#64748b;">💰 السعر</td><td style="padding:5px 0;color:#1a56db;font-weight:700;">${workshop.price} ر.س</td></tr>` : ''}
 <tr><td style="padding:5px 0;color:#64748b;">🧾 الفاتورة</td><td style="padding:5px 0;color:#1e293b;font-weight:700;">${invoiceNumber}</td></tr>
 </table>
-${workshop.objectives ? `<p style="margin:10px 0 0;padding:8px;background:#eff6ff;border-radius:6px;color:#1d4ed8;font-size:12px;line-height:1.5;"><b>الأهداف:</b> ${workshop.objectives}</p>` : ''}
+${workshop.content ? `<p style="margin:10px 0 0;padding:8px;background:#f8fafc;border-radius:6px;color:#334155;font-size:12px;line-height:1.5;"><b>محتوى الورشة:</b> ${workshop.content}</p>` : ''}
+${workshop.objectives ? `<p style="margin:8px 0 0;padding:8px;background:#eff6ff;border-radius:6px;color:#1d4ed8;font-size:12px;line-height:1.5;"><b>الأهداف:</b> ${workshop.objectives}</p>` : ''}
 </div>
 <div dir="ltr" style="border-top:1px solid #e2e8f0;padding-top:14px;font-size:13px;color:#475569;">
 <p style="margin:0 0 6px;"><b>Hello ${studentName}</b> — Your registration is <b style="color:#166534;">confirmed</b> for <b>"${workshop.title}"</b></p>

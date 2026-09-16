@@ -854,6 +854,25 @@ const syncDatabase = async () => {
       }
     }
 
+    // Workshops: education flag + room + registration toggle. All
+    // optional so existing rows keep working (isEducation defaults to
+    // false, registrationEnabled defaults to true).
+    try {
+      await sequelize.query(
+        `ALTER TABLE workshops ADD COLUMN IF NOT EXISTS "isEducation" BOOLEAN NOT NULL DEFAULT FALSE`
+      );
+      await sequelize.query(
+        `ALTER TABLE workshops ADD COLUMN IF NOT EXISTS "room" VARCHAR(120)`
+      );
+      await sequelize.query(
+        `ALTER TABLE workshops ADD COLUMN IF NOT EXISTS "registrationEnabled" BOOLEAN NOT NULL DEFAULT TRUE`
+      );
+    } catch (migrationError) {
+      if (!/does not exist/i.test(migrationError.message)) {
+        console.log('workshops education columns migration note:', migrationError.message);
+      }
+    }
+
     // Workshop payment columns — added when paid workshops (bank
     // transfer + mada) went live. All optional so existing free
     // workshops keep working without any change.

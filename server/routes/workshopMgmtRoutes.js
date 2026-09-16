@@ -32,6 +32,12 @@ router.patch('/students/:id/attendance-checkout', adminAuth, controller.setWorks
 router.post('/register', controller.registerStudent);
 router.get('/active', controller.getActiveWorkshops);
 
+// Public education-workshop lookup (single workshop by ID, only if
+// isEducation=true). Used by the shareable /workshop/:id URL.
+router.get('/edu/:id', controller.getEducationWorkshop);
+// Admin toggle for the registrationEnabled flag.
+router.patch('/:id/registration-enabled', adminAuth, requireManager, controller.toggleRegistration);
+
 // Public payment-settings lookup + invoice viewer (no login).
 router.get('/public/:id/payment-settings', controller.getPublicPaymentSettings);
 router.get('/students/:id/invoice-html',   controller.getInvoiceHtml);

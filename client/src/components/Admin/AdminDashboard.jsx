@@ -280,7 +280,7 @@ const AdminDashboard = () => {
     startDate: '', endDate: '', startTime: '', endTime: '',
     totalHours: '', content: '', objectives: '', photo: '',
     maxParticipants: '', price: '', notes: '', color: '#1a56db', minAge: '', maxAge: '',
-    isPublic: true
+    isPublic: true, isEducation: false, room: '', registrationEnabled: true
   });
   const [workshopLoading, setWorkshopLoading] = useState(false);
   const [viewingWorkshopStudents, setViewingWorkshopStudents] = useState(() => {
@@ -1376,7 +1376,10 @@ const AdminDashboard = () => {
       objectives: workshop.objectives || '', photo: workshop.photo || '',
       maxParticipants: workshop.maxParticipants || '', price: workshop.price || '',
       notes: workshop.notes || '', color: workshop.color || '#1a56db', minAge: workshop.minAge || '', maxAge: workshop.maxAge || '',
-      isPublic: workshop.isPublic !== false
+      isPublic: workshop.isPublic !== false,
+      isEducation: !!workshop.isEducation,
+      room: workshop.room || '',
+      registrationEnabled: workshop.registrationEnabled !== false
     });
     setShowWorkshopModal(true);
   };
@@ -8522,7 +8525,7 @@ const AdminDashboard = () => {
                           className="wsv2-action-btn primary"
                           onClick={() => {
                             setSelectedWorkshop(null);
-                            setWorkshopForm({ title: '', description: '', presenter: '', assignedEmployeeId: '', startDate: '', endDate: '', startTime: '', endTime: '', totalHours: '', content: '', objectives: '', photo: '', maxParticipants: '', price: '', notes: '', color: '#1a56db', minAge: '', maxAge: '', isPublic: true });
+                            setWorkshopForm({ title: '', description: '', presenter: '', assignedEmployeeId: '', startDate: '', endDate: '', startTime: '', endTime: '', totalHours: '', content: '', objectives: '', photo: '', maxParticipants: '', price: '', notes: '', color: '#1a56db', minAge: '', maxAge: '', isPublic: true, isEducation: false, room: '', registrationEnabled: true });
                             setShowWorkshopModal(true);
                           }}
                         >
@@ -8579,7 +8582,28 @@ const AdminDashboard = () => {
                                 </h4>
                                 <div className="wsv2-badges">
                                   <span className={`wsv2-status ${w.status}`}>{_wsStatusLabels[w.status] || w.status}</span>
-                                  {w.isPublic === false && (
+                                  {w.isEducation && (
+                                    <span
+                                      title={isRTL ? 'ورشة تعليمية · انقر لنسخ رابط التسجيل' : 'Education workshop · click to copy registration link'}
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        const url = `${window.location.origin}/workshop/${w.workshopId}`;
+                                        navigator.clipboard.writeText(url).then(
+                                          () => toast.success(isRTL ? 'تم نسخ الرابط' : 'Link copied'),
+                                          () => toast.error(isRTL ? 'تعذّر النسخ' : 'Copy failed')
+                                        );
+                                      }}
+                                      style={{ fontSize: 10, fontWeight: 800, padding: '3px 8px', borderRadius: 999, background: '#faf5ff', color: '#6d28d9', border: '1px solid #ddd6fe', cursor: 'pointer', letterSpacing: 0.6 }}
+                                    >
+                                      🎓 {isRTL ? 'تعليم — نسخ الرابط' : 'EDU — copy link'}
+                                    </span>
+                                  )}
+                                  {w.isEducation && w.registrationEnabled === false && (
+                                    <span style={{ fontSize: 10, fontWeight: 800, padding: '3px 8px', borderRadius: 999, background: '#fee2e2', color: '#991b1b', border: '1px solid #fecaca' }}>
+                                      ⏸ {isRTL ? 'التسجيل مغلق' : 'Reg. closed'}
+                                    </span>
+                                  )}
+                                  {!w.isEducation && w.isPublic === false && (
                                     <span className="wsv2-visibility" title={isRTL ? 'مخفية عن الجمهور' : 'Hidden from public'}>
                                       <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                                         <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/>
@@ -9296,6 +9320,97 @@ const AdminDashboard = () => {
                         </button>
                       </div>
                     </div>
+
+                    {/* Education-workshop panel — checkbox flips the
+                        workshop into the shareable-URL flow and reveals
+                        Room + Registration-Enabled controls. */}
+                    <div style={{ gridColumn: '1/-1' }}>
+                      <label style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', padding: '10px 14px', borderRadius: 10, background: workshopForm.isEducation ? 'rgba(124,58,237,0.08)' : '#f8fafc', border: workshopForm.isEducation ? '2px solid #7c3aed' : '1.5px solid #e2e8f0' }}>
+                        <input
+                          type="checkbox"
+                          checked={!!workshopForm.isEducation}
+                          onChange={e => setWorkshopForm({ ...workshopForm, isEducation: e.target.checked, isPublic: e.target.checked ? false : workshopForm.isPublic })}
+                          style={{ transform: 'scale(1.2)' }}
+                        />
+                        <div>
+                          <div style={{ fontWeight: 700, fontSize: '0.9rem', color: workshopForm.isEducation ? '#5b21b6' : '#334155' }}>
+                            🎓 {isRTL ? 'ورشة تعليمية (تُشارك عبر رابط فريد فقط)' : 'Education workshop (accessed only via a unique shareable URL)'}
+                          </div>
+                          <div style={{ fontSize: '0.72rem', color: '#64748b', marginTop: 2 }}>
+                            {isRTL
+                              ? 'لا تظهر في قائمة الورش العامة. الإدارة تشارك رابط التسجيل مع طلاب التعليم يدوياً.'
+                              : "Won't appear in the public listing. Admin shares the registration link with education students manually."}
+                          </div>
+                        </div>
+                      </label>
+                    </div>
+
+                    {workshopForm.isEducation && (
+                      <>
+                        <div style={{ gridColumn: '1/-1', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+                          <div>
+                            <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 600, marginBottom: 4 }}>{isRTL ? 'القاعة / الغرفة' : 'Room'}</label>
+                            <input
+                              value={workshopForm.room}
+                              onChange={e => setWorkshopForm({ ...workshopForm, room: e.target.value })}
+                              placeholder={isRTL ? 'مثال: قاعة التدريب 2' : 'e.g. Training Room 2'}
+                              style={{ width: '100%', padding: '0.5rem', borderRadius: 8, border: '1.5px solid #e2e8f0', fontFamily: 'inherit' }}
+                            />
+                          </div>
+                          <div>
+                            <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 600, marginBottom: 4 }}>{isRTL ? 'حالة التسجيل' : 'Registration'}</label>
+                            <div style={{ display: 'flex', gap: 8 }}>
+                              <button
+                                type="button"
+                                onClick={() => setWorkshopForm({ ...workshopForm, registrationEnabled: true })}
+                                style={{ flex: 1, padding: '0.55rem', borderRadius: 8, cursor: 'pointer', fontFamily: 'inherit', border: workshopForm.registrationEnabled ? '2px solid #16a34a' : '1.5px solid #e2e8f0', background: workshopForm.registrationEnabled ? 'rgba(22,163,74,0.08)' : '#fff', color: workshopForm.registrationEnabled ? '#166534' : '#64748b', fontWeight: 700, fontSize: '0.85rem' }}
+                              >
+                                ✓ {isRTL ? 'مفعّل' : 'Open'}
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => setWorkshopForm({ ...workshopForm, registrationEnabled: false })}
+                                style={{ flex: 1, padding: '0.55rem', borderRadius: 8, cursor: 'pointer', fontFamily: 'inherit', border: !workshopForm.registrationEnabled ? '2px solid #dc2626' : '1.5px solid #e2e8f0', background: !workshopForm.registrationEnabled ? 'rgba(220,38,38,0.08)' : '#fff', color: !workshopForm.registrationEnabled ? '#991b1b' : '#64748b', fontWeight: 700, fontSize: '0.85rem' }}
+                              >
+                                ⏸ {isRTL ? 'مغلق' : 'Closed'}
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                        {selectedWorkshop && (
+                          <div style={{ gridColumn: '1/-1', padding: 12, background: '#faf5ff', border: '1px solid #ddd6fe', borderRadius: 10 }}>
+                            <div style={{ fontSize: 11, fontWeight: 800, color: '#6d28d9', letterSpacing: 1.2, textTransform: 'uppercase', marginBottom: 6 }}>
+                              🔗 {isRTL ? 'رابط التسجيل الفريد' : 'Shareable Registration URL'}
+                            </div>
+                            <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                              <input
+                                readOnly
+                                value={`${window.location.origin}/workshop/${selectedWorkshop.workshopId}`}
+                                onFocus={e => e.target.select()}
+                                dir="ltr"
+                                style={{ flex: 1, padding: '0.5rem', borderRadius: 8, border: '1.5px solid #ddd6fe', fontFamily: "'JetBrains Mono', monospace", fontSize: 12, background: '#fff', letterSpacing: 0.5 }}
+                              />
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  const url = `${window.location.origin}/workshop/${selectedWorkshop.workshopId}`;
+                                  navigator.clipboard.writeText(url).then(
+                                    () => toast.success(isRTL ? 'تم نسخ الرابط' : 'Link copied'),
+                                    () => toast.error(isRTL ? 'تعذّر النسخ' : 'Copy failed')
+                                  );
+                                }}
+                                style={{ padding: '0.5rem 0.9rem', borderRadius: 8, border: 'none', background: '#7c3aed', color: '#fff', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}
+                              >
+                                📋 {isRTL ? 'نسخ' : 'Copy'}
+                              </button>
+                            </div>
+                            <p style={{ margin: '6px 0 0', fontSize: 11.5, color: '#6d28d9' }}>
+                              {isRTL ? 'شارك هذا الرابط مع الطلاب لتمكينهم من التسجيل. لن يظهر في الصفحة العامة.' : 'Share this link with your students. It never appears in the public listing.'}
+                            </p>
+                          </div>
+                        )}
+                      </>
+                    )}
                   </div>
                   <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end', marginTop: '1.5rem' }}>
                     <button onClick={() => setShowWorkshopModal(false)} style={{ padding: '0.6rem 1.5rem', borderRadius: 8, border: 'none', background: '#f1f5f9', cursor: 'pointer', fontWeight: 600, fontFamily: 'inherit' }}>{isRTL ? 'إلغاء' : 'Cancel'}</button>

@@ -82,6 +82,9 @@ const AppContent = () => {
           <Route path="/admin/dashboard/*" element={<AdminDashboard />} />
           <Route path="/manager/dashboard/*" element={<ManagerDashboard />} />
           <Route path="/workshop" element={<WorkshopRegistration />} />
+          {/* Shareable education-workshop URL. Pre-selects the
+              workshop; skips the picker step. */}
+          <Route path="/workshop/:workshopId" element={<WorkshopRegistration />} />
           <Route path="/employee/login" element={<EmployeeLogin />} />
           <Route path="/employee/dashboard" element={<EmployeeDashboard />} />
           {/* Public no-login volunteer report pages (token-gated) */}
