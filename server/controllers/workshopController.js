@@ -1,8 +1,51 @@
-const { Workshop, WorkshopStudent, Employee, Admin } = require('../models');
+const { Workshop, WorkshopStudent, Employee, Admin, Settings } = require('../models');
 const { Op } = require('sequelize');
 const { sequelize } = require('../config/database');
-const { sendWorkshopRegistrationEmail, sendAttendanceIdEmail, sendWorkshopCustomEmail, generateAttendanceIdHtml, sendCertificateEmail } = require('../utils/emailService');
+const { sendWorkshopRegistrationEmail, sendAttendanceIdEmail, sendWorkshopCustomEmail, generateAttendanceIdHtml, sendCertificateEmail, sendWorkshopPaymentInstructions, sendWorkshopPaymentConfirmed } = require('../utils/emailService');
 const { requireRole } = require('../utils/qrPayload');
+
+// ─────────────── Invoice numbering (sequential WSK-####) ───────────────
+// Auto-assigns the next number under a transaction so two concurrent
+// registrations never race to the same invoice.
+async function _assignNextInvoiceNumber(t) {
+  const [rows] = await sequelize.query(
+    `SELECT "invoiceNumber" FROM workshop_students WHERE "invoiceNumber" ~ '^WSK-[0-9]+$' ORDER BY "invoiceNumber" DESC LIMIT 1`,
+    { transaction: t }
+  );
+  const last = rows?.[0]?.invoiceNumber || 'WSK-0000';
+  const n = parseInt(String(last).replace('WSK-', ''), 10) + 1;
+  return `WSK-${String(n).padStart(4, '0')}`;
+}
+
+// Payment proof: reject anything that isn't a real image/pdf, cap
+// the base64 payload at ~10 MB so we don't fill the JSON column with
+// enormous scans.
+const MAX_PROOF_BYTES = 10 * 1024 * 1024;
+function _sanitizeProof(input) {
+  if (!input || typeof input !== 'object') return null;
+  const name = String(input.fileName || '').slice(0, 250);
+  const type = String(input.fileType || '').toLowerCase().replace(/^\./, '').slice(0, 8);
+  const data = input.fileData ? String(input.fileData) : '';
+  if (!name || !data) return null;
+  const ok = ['png', 'jpg', 'jpeg', 'webp', 'pdf'].includes(type);
+  if (!ok) return null;
+  if (data.length > MAX_PROOF_BYTES * 1.4) return null;
+  return {
+    fileName: name,
+    fileType: type,
+    fileSize: Math.max(0, Number(input.fileSize) || 0),
+    fileData: data
+  };
+}
+
+async function _getBankAccount() {
+  const row = await Settings.findByPk('workshop_bank_account');
+  return row?.value || null;
+}
+async function _getMadaInfo() {
+  const row = await Settings.findByPk('workshop_mada_info');
+  return row?.value || null;
+}
 
 // Create a new workshop (admin)
 exports.createWorkshop = async (req, res) => {
@@ -327,10 +370,13 @@ exports.registerStudent = async (req, res) => {
   try {
     const {
       workshopId, firstName, lastName, phone, email,
-      nationalId, gender, age, city, invoiceNumber, notes
+      nationalId, gender, age, city, notes,
+      paymentMethod, paymentProof
     } = req.body;
 
-    if (!workshopId || !firstName || !lastName || !phone || !email || !nationalId || !gender || !age || !city || !invoiceNumber) {
+    // invoiceNumber is now auto-assigned server-side (WSK-####) so the
+    // customer never has to type or invent one. Also stops collisions.
+    if (!workshopId || !firstName || !lastName || !phone || !email || !nationalId || !gender || !age || !city) {
       return res.status(400).json({
         message: 'All fields are required',
         messageAr: 'جميع الحقول مطلوبة'
@@ -402,30 +448,76 @@ exports.registerStudent = async (req, res) => {
         }
       }
 
+      // Auto-assign invoice + normalise payment fields.
+      const invoiceNumber = await _assignNextInvoiceNumber(t);
+      const price = Number(workshop.price) || 0;
+      let method = String(paymentMethod || '').toLowerCase();
+      // Free workshops override the picker — nothing to pay.
+      if (price <= 0) method = 'free';
+      const allowed = ['free', 'bank_transfer', 'mada'];
+      if (!allowed.includes(method)) {
+        throw { status: 400, message: 'Invalid payment method', messageAr: 'طريقة الدفع غير صالحة' };
+      }
+      const cleanProof = method === 'bank_transfer' ? _sanitizeProof(paymentProof) : null;
+      if (method === 'bank_transfer' && !cleanProof) {
+        throw {
+          status: 400,
+          message: 'Payment proof upload required for bank transfer',
+          messageAr: 'يرجى رفع إثبات التحويل البنكي (صورة أو PDF)'
+        };
+      }
+      // Payment status: free = verified immediately; mada + bank
+      // start as pending until admin reviews.
+      const paymentStatus = method === 'free' ? 'verified' : 'pending';
       const student = await WorkshopStudent.create({
         workshopId, firstName, lastName, phone, email,
-        nationalId, gender, age, city, invoiceNumber, notes
+        nationalId, gender, age, city, invoiceNumber, notes,
+        paymentMethod: method,
+        paymentAmount: price,
+        paymentProof: cleanProof,
+        paymentStatus,
+        paidAt: paymentStatus === 'verified' ? new Date() : null
       }, { transaction: t });
 
-      return { student, workshop };
+      return { student, workshop, invoiceNumber, method };
     });
 
-    const { student, workshop } = result;
+    const { student, workshop, invoiceNumber, method } = result;
 
     if (email) {
       const fullName = `${firstName || ''} ${lastName || ''}`.trim();
-      sendWorkshopRegistrationEmail(email, fullName, workshop, invoiceNumber).catch(err => {
-        console.error('Workshop email error (non-blocking):', err.message);
-      });
-      sendAttendanceIdEmail(email, student, workshop).catch(err => {
-        console.error('Attendance ID email error (non-blocking):', err.message);
-      });
+      if (method === 'free') {
+        // Free workshops: keep the historical UX — registration email + attendance ID.
+        sendWorkshopRegistrationEmail(email, fullName, workshop, invoiceNumber).catch(err => {
+          console.error('Workshop email error (non-blocking):', err.message);
+        });
+        sendAttendanceIdEmail(email, student, workshop).catch(err => {
+          console.error('Attendance ID email error (non-blocking):', err.message);
+        });
+      } else {
+        // Paid: send payment instructions email including bank details
+        // or mada instructions. When admin verifies later, they get
+        // the confirmation + attendance ID.
+        (async () => {
+          try {
+            const bank = method === 'bank_transfer' ? await _getBankAccount() : null;
+            const mada = method === 'mada' ? await _getMadaInfo() : null;
+            await sendWorkshopPaymentInstructions(email, fullName, workshop, student, { method, bank, mada });
+          } catch (e) {
+            console.error('Payment instructions email failed:', e.message);
+          }
+        })();
+      }
     }
 
     res.status(201).json({
       message: 'Registration successful',
       messageAr: 'تم التسجيل بنجاح',
       student,
+      invoiceNumber,
+      paymentMethod: method,
+      paymentAmount: Number(workshop.price) || 0,
+      paymentStatus: student.paymentStatus,
       workshop: { title: workshop.title, startDate: workshop.startDate, endDate: workshop.endDate }
     });
   } catch (error) {
@@ -651,13 +743,18 @@ exports.rateStudent = async (req, res) => {
   }
 };
 
-// Verify payment (admin)
+// Verify payment (admin). Records who reviewed + when, dispatches a
+// confirmation or rejection email to the student. Free workshops are
+// verified at registration time so this endpoint is only useful for
+// bank_transfer + mada.
 exports.verifyPayment = async (req, res) => {
   try {
     const { id } = req.params;
-    const { paymentStatus } = req.body;
+    const { paymentStatus, note } = req.body;
 
-    const student = await WorkshopStudent.findByPk(id);
+    const student = await WorkshopStudent.findByPk(id, {
+      include: [{ model: Workshop, as: 'workshop' }]
+    });
     if (!student) {
       return res.status(404).json({
         message: 'Student not found',
@@ -672,12 +769,208 @@ exports.verifyPayment = async (req, res) => {
       });
     }
 
-    await student.update({ paymentStatus });
+    const previousStatus = student.paymentStatus;
+    await student.update({
+      paymentStatus,
+      paymentReviewedBy: req.admin?.fullName || 'Admin',
+      paymentReviewedAt: new Date(),
+      paymentReviewNote: note || null,
+      paidAt: paymentStatus === 'verified' ? (student.paidAt || new Date()) : null
+    });
+
+    // Emails — fire and forget. On verified, also fire the classic
+    // registration email + attendance ID (same UX as free workshops).
+    if (student.email && previousStatus !== paymentStatus) {
+      if (paymentStatus === 'verified') {
+        const fullName = `${student.firstName || ''} ${student.lastName || ''}`.trim();
+        sendWorkshopPaymentConfirmed(student.email, fullName, student.workshop, student).catch(err => {
+          console.error('Payment confirmed email failed:', err.message);
+        });
+        sendWorkshopRegistrationEmail(student.email, fullName, student.workshop, student.invoiceNumber).catch(err => {
+          console.error('Post-verify registration email failed:', err.message);
+        });
+        sendAttendanceIdEmail(student.email, student, student.workshop).catch(err => {
+          console.error('Post-verify attendance ID email failed:', err.message);
+        });
+      }
+      // For rejection we intentionally don't email until the admin
+      // has a chance to fill a reason via a second edit — otherwise
+      // a fat-fingered click would confuse the customer.
+    }
 
     res.json(student);
   } catch (error) {
     console.error('Error verifying payment:', error);
     res.status(500).json({ message: 'Server error', messageAr: 'خطأ في الخادم' });
+  }
+};
+
+// GET /workshops/students/:id/proof — stream the uploaded proof as
+// its native mime so admin can preview inline in the review UI.
+exports.downloadPaymentProof = async (req, res) => {
+  try {
+    const student = await WorkshopStudent.findByPk(req.params.id);
+    if (!student) return res.status(404).send('Not found');
+    const p = student.paymentProof;
+    if (!p?.fileData) return res.status(404).send('No proof uploaded');
+    const type = String(p.fileType || '').toLowerCase();
+    const mime = type === 'pdf' ? 'application/pdf'
+      : type === 'png' ? 'image/png'
+      : type === 'webp' ? 'image/webp'
+      : type === 'jpg' || type === 'jpeg' ? 'image/jpeg'
+      : 'application/octet-stream';
+    const buf = Buffer.from(String(p.fileData), 'base64');
+    res.setHeader('Content-Type', mime);
+    res.setHeader('Content-Disposition', `inline; filename="${(p.fileName || 'proof').replace(/[^\w.\-]/g, '_')}"`);
+    res.send(buf);
+  } catch (error) {
+    console.error('downloadPaymentProof:', error);
+    res.status(500).send('Server error');
+  }
+};
+
+// GET /public/workshops/:id/payment-settings — bank + mada info for
+// the public registration flow. No auth: the details are meant to
+// be shared with paying customers.
+exports.getPublicPaymentSettings = async (req, res) => {
+  try {
+    const workshop = await Workshop.findByPk(req.params.id, {
+      attributes: ['workshopId', 'title', 'price']
+    });
+    if (!workshop) return res.status(404).json({ message: 'Workshop not found' });
+    const bank = await _getBankAccount();
+    const mada = await _getMadaInfo();
+    res.json({
+      workshopId: workshop.workshopId,
+      title: workshop.title,
+      price: Number(workshop.price) || 0,
+      bank, mada
+    });
+  } catch (error) {
+    console.error('getPublicPaymentSettings:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+// GET / PUT /workshops/payment-settings — admin edits the bank
+// account + mada instructions.
+exports.getAdminPaymentSettings = async (req, res) => {
+  try {
+    const bank = await _getBankAccount();
+    const mada = await _getMadaInfo();
+    res.json({ bank, mada });
+  } catch (error) {
+    console.error('getAdminPaymentSettings:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+exports.updateAdminPaymentSettings = async (req, res) => {
+  try {
+    const { bank, mada } = req.body || {};
+    if (bank) {
+      await Settings.upsert({ key: 'workshop_bank_account', value: bank });
+    }
+    if (mada) {
+      await Settings.upsert({ key: 'workshop_mada_info', value: mada });
+    }
+    res.json({ message: 'Saved', bank: await _getBankAccount(), mada: await _getMadaInfo() });
+  } catch (error) {
+    console.error('updateAdminPaymentSettings:', error);
+    res.status(500).json({ message: 'Server error', detail: error.message });
+  }
+};
+
+// GET /workshops/students/:id/invoice — printable A4 HTML invoice
+// mirroring the store's invoice look. Works for verified rows only
+// (unpaid students see a "not yet paid" placeholder). Publicly
+// accessible so the customer can hit their emailed link.
+exports.getInvoiceHtml = async (req, res) => {
+  try {
+    const student = await WorkshopStudent.findByPk(req.params.id, {
+      include: [{ model: Workshop, as: 'workshop' }]
+    });
+    if (!student) return res.status(404).send('Not found');
+    const w = student.workshop;
+    const SAR = (n) => `${Number(n || 0).toFixed(2)} ر.س`;
+    const esc = (v) => String(v == null ? '' : v)
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+    const fmtDate = (d) => {
+      if (!d) return '—';
+      try {
+        return new Date(d).toLocaleDateString('ar-SA-u-ca-gregory-nu-latn', { calendar: 'gregory' });
+      } catch { return String(d).slice(0, 10); }
+    };
+    const paid = student.paymentStatus === 'verified';
+    const methodLabel = {
+      free: 'مجاناً',
+      bank_transfer: 'تحويل بنكي',
+      mada: 'مدى — في مقر فاب لاب'
+    }[student.paymentMethod] || '—';
+
+    const auto = req.query.print === '0' ? '' : `<script>window.addEventListener('load',()=>setTimeout(()=>window.print(),400));</script>`;
+
+    const html = `<!doctype html><html dir="rtl" lang="ar"><head><meta charset="utf-8"><title>${esc(student.invoiceNumber)} · ${esc(w?.title || 'ورشة')}</title>
+<style>
+@page { size: A4; margin: 15mm; }
+html, body { margin: 0; padding: 0; font-family: 'Segoe UI', 'Cairo', sans-serif; color: #0f172a; background: #fff; }
+.invoice { max-width:820px; margin:0 auto; background:#fff; border-radius:16px; box-shadow:0 20px 40px -20px rgba(15,23,42,0.15); padding:28px; position:relative; overflow:hidden; }
+.stripe { height: 6px; background: linear-gradient(90deg, #EE2329, #b91c1c); border-radius: 4px; margin-bottom: 20px; }
+h1 { font-size: 22pt; margin: 0 0 4px; color: #0f172a; }
+.brand { font-size: 11pt; color: #EE2329; font-weight: 800; letter-spacing: 1.4px; text-transform: uppercase; }
+.brand small { display: block; color: #475569; font-size: 8.5pt; font-weight: 600; margin-top: 2mm; }
+.head { display: flex; justify-content: space-between; align-items: flex-start; gap: 24px; margin-bottom: 22px; }
+.no { font-family: 'JetBrains Mono', monospace; font-size: 11pt; color: #64748b; border: 1px dashed #cbd5e1; padding: 6px 14px; border-radius: 8px; }
+.status { display: inline-block; padding: 5px 12px; border-radius: 999px; font-weight: 800; font-size: 10pt; ${paid ? 'background:#dcfce7;color:#166534;' : 'background:#fef3c7;color:#92400e;'} }
+.info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 4mm 12mm; margin: 18px 0; font-size: 11pt; }
+.info-grid .row { display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px dotted #e5e7eb; }
+.info-grid .row .lbl { color: #64748b; font-weight: 700; }
+.info-grid .row .val { font-weight: 800; color: #0f172a; }
+table.totals { width: 100%; border-collapse: collapse; margin-top: 18px; }
+table.totals td { padding: 10px 14px; font-size: 12pt; }
+table.totals td.label { color: #64748b; font-weight: 700; text-align: start; }
+table.totals td.val   { text-align: end; font-family: 'JetBrains Mono', monospace; font-weight: 800; }
+table.totals tr.final td { background: linear-gradient(135deg, #EE2329, #c41e24); color: #fff; font-size: 14pt; border-radius: 8px; }
+.foot { margin-top: 28px; font-size: 8.5pt; color: #94a3b8; text-align: center; border-top: 1px dashed #cbd5e1; padding-top: 10px; }
+</style></head><body>
+<div class="invoice">
+  <div class="stripe"></div>
+  <div class="head">
+    <div>
+      <div class="brand">FABLAB الأحساء<small>فاتورة تسجيل ورشة</small></div>
+      <h1>${esc(w?.title || '—')}</h1>
+      <div style="font-size:10pt;color:#64748b">${w?.startDate ? `من ${fmtDate(w.startDate)}${w.endDate ? ` إلى ${fmtDate(w.endDate)}` : ''}` : ''}</div>
+    </div>
+    <div style="text-align:end">
+      <div class="no">${esc(student.invoiceNumber)}</div>
+      <div style="margin-top:8px" class="status">${paid ? '✓ مدفوع' : 'بانتظار الدفع'}</div>
+    </div>
+  </div>
+
+  <div class="info-grid">
+    <div class="row"><span class="lbl">اسم المتدرب</span><span class="val">${esc(student.firstName)} ${esc(student.lastName || '')}</span></div>
+    <div class="row"><span class="lbl">رقم الهوية</span><span class="val" dir="ltr">${esc(student.nationalId || '—')}</span></div>
+    <div class="row"><span class="lbl">الجوال</span><span class="val" dir="ltr">${esc(student.phone || '—')}</span></div>
+    <div class="row"><span class="lbl">البريد</span><span class="val" dir="ltr">${esc(student.email || '—')}</span></div>
+    <div class="row"><span class="lbl">طريقة الدفع</span><span class="val">${esc(methodLabel)}</span></div>
+    <div class="row"><span class="lbl">تاريخ الفاتورة</span><span class="val" dir="ltr">${fmtDate(student.createdAt)}</span></div>
+    ${paid ? `<div class="row"><span class="lbl">تاريخ الدفع</span><span class="val" dir="ltr">${fmtDate(student.paidAt)}</span></div>` : ''}
+    ${paid && student.paymentReviewedBy ? `<div class="row"><span class="lbl">تم التحقق بواسطة</span><span class="val">${esc(student.paymentReviewedBy)}</span></div>` : ''}
+  </div>
+
+  <table class="totals">
+    <tr><td class="label">قيمة الورشة</td><td class="val">${SAR(student.paymentAmount || w?.price)}</td></tr>
+    <tr class="final"><td class="label" style="color:#fff">الإجمالي المستحق</td><td class="val" style="color:#fff">${SAR(student.paymentAmount || w?.price)}</td></tr>
+  </table>
+
+  <div class="foot">فاب لاب الأحساء · مؤسسة عبدالمنعم الراشد الإنسانية · ${esc(student.invoiceNumber)}</div>
+</div>${auto}</body></html>`;
+
+    res.set('Content-Type', 'text/html; charset=utf-8');
+    res.send(html);
+  } catch (error) {
+    console.error('getInvoiceHtml:', error);
+    res.status(500).send('Server error');
   }
 };
 

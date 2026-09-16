@@ -32,6 +32,15 @@ router.patch('/students/:id/attendance-checkout', adminAuth, controller.setWorks
 router.post('/register', controller.registerStudent);
 router.get('/active', controller.getActiveWorkshops);
 
+// Public payment-settings lookup + invoice viewer (no login).
+router.get('/public/:id/payment-settings', controller.getPublicPaymentSettings);
+router.get('/students/:id/invoice-html',   controller.getInvoiceHtml);
+
+// Admin payment endpoints
+router.get('/students/:id/payment-proof', adminAuth, controller.downloadPaymentProof);
+router.get('/admin/payment-settings',  adminAuth, controller.getAdminPaymentSettings);
+router.put('/admin/payment-settings',  adminAuth, requireManager, controller.updateAdminPaymentSettings);
+
 // Employee routes (must be before /:id to avoid conflicts)
 router.get('/employee/my-workshops', employeeAuth, controller.getMyWorkshops);
 router.patch('/employee/students/:id/attendance', employeeAuth, controller.markAttendanceEmployee);

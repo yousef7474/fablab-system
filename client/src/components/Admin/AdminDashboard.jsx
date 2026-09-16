@@ -8731,6 +8731,25 @@ const AdminDashboard = () => {
                                   : s.paymentStatus === 'rejected' ? (isRTL ? 'مرفوض' : 'Rejected')
                                   : (isRTL ? 'قيد المراجعة' : 'Pending')}
                               </span>
+                              {s.paymentMethod && s.paymentMethod !== 'free' && (
+                                <span style={{ fontSize: 11, padding: '3px 8px', borderRadius: 999, background: s.paymentMethod === 'bank_transfer' ? '#eff6ff' : '#f0fdf4', color: s.paymentMethod === 'bank_transfer' ? '#1d4ed8' : '#166534', fontWeight: 700, border: `1px solid ${s.paymentMethod === 'bank_transfer' ? '#bfdbfe' : '#86efac'}` }}>
+                                  {s.paymentMethod === 'bank_transfer'
+                                    ? (isRTL ? '🏦 تحويل' : '🏦 Transfer')
+                                    : (isRTL ? '💳 مدى' : '💳 Mada')}
+                                </span>
+                              )}
+                              {s.paymentMethod === 'bank_transfer' && s.paymentProof && (
+                                <button
+                                  onClick={() => {
+                                    const token = localStorage.getItem('adminToken') || '';
+                                    window.open(`${api.defaults.baseURL}/workshops/students/${s.studentId}/payment-proof?token=${encodeURIComponent(token)}`, '_blank');
+                                  }}
+                                  title={isRTL ? 'عرض إثبات التحويل' : 'View transfer proof'}
+                                  style={{ padding: '4px 10px', borderRadius: 6, border: '1px solid #cbd5e1', background: '#fff', color: '#334155', cursor: 'pointer', fontSize: 11, fontWeight: 700, fontFamily: 'inherit' }}
+                                >
+                                  📄 {isRTL ? 'الإثبات' : 'Proof'}
+                                </button>
+                              )}
                               <select
                                 className="wsv2-pay-select"
                                 value={s.paymentStatus}

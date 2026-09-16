@@ -1067,6 +1067,138 @@ body{font-family:'Segoe UI',Tahoma,Arial,sans-serif;background:linear-gradient(1
 };
 
 /**
+ * Fire-and-forget: send workshop payment instructions to the
+ * customer right after they submit the paid registration form.
+ * Shows the bank account (with a copyable IBAN) for bank_transfer,
+ * or the mada in-store instructions.
+ */
+const sendWorkshopPaymentInstructions = async (email, name, workshop, student, { method, bank, mada }) => {
+  try {
+    if (!process.env.SENDGRID_API_KEY || !process.env.SENDGRID_FROM_EMAIL) return;
+    if (!email) return;
+    const invoiceNo = student?.invoiceNumber || '—';
+    const amount = Number(student?.paymentAmount || workshop?.price || 0).toFixed(2);
+    const isBank = method === 'bank_transfer';
+    const isMada = method === 'mada';
+    const heading = isBank
+      ? 'تفاصيل التحويل البنكي — طلبك بانتظار المراجعة'
+      : 'الدفع في مقر فاب لاب — طلبك بانتظار المراجعة';
+    const bankBlock = isBank && bank ? `
+<div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:14px 18px;margin:14px 0">
+  <div style="font-size:11.5px;font-weight:800;color:#EE2329;letter-spacing:1.2px">تفاصيل التحويل البنكي</div>
+  <table style="width:100%;font-size:13.5px;border-collapse:collapse;margin-top:8px">
+    <tr><td style="padding:6px 0;color:#64748b;width:120px">البنك:</td><td style="padding:6px 0;font-weight:700">${bank.bankName || ''}</td></tr>
+    <tr><td style="padding:6px 0;color:#64748b">اسم صاحب الحساب:</td><td style="padding:6px 0;font-weight:700">${bank.accountHolder || ''}</td></tr>
+    <tr><td style="padding:6px 0;color:#64748b">رقم الآيبان (IBAN):</td><td style="padding:6px 0;font-family:'JetBrains Mono',monospace;font-weight:800;direction:ltr;text-align:right;user-select:all">${bank.iban || ''}</td></tr>
+    ${bank.additionalInfo ? `<tr><td colspan="2" style="padding:8px 0;color:#475569;font-size:12.5px">${bank.additionalInfo}</td></tr>` : ''}
+  </table>
+</div>` : '';
+    const madaBlock = isMada && mada ? `
+<div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:10px;padding:14px 18px;margin:14px 0">
+  <div style="font-size:11.5px;font-weight:800;color:#1d4ed8;letter-spacing:1.2px">💳 ${mada.title || 'الدفع بمدى'}</div>
+  <p style="font-size:13.5px;color:#1e3a8a;line-height:1.75;margin:8px 0 0">${mada.instructions || ''}</p>
+  ${mada.address ? `<p style="font-size:12.5px;color:#334155;margin:6px 0 0"><b>العنوان:</b> ${mada.address}</p>` : ''}
+</div>` : '';
+
+    const msg = {
+      to: email,
+      from: {
+        email: process.env.SENDGRID_FROM_EMAIL,
+        name: process.env.SENDGRID_FROM_NAME || 'FABLAB Al-Ahsa'
+      },
+      subject: `فاتورة ورشة ${workshop?.title || ''} — ${invoiceNo}`,
+      html: `<div dir="rtl" style="font-family:'Segoe UI','Cairo',Tahoma,sans-serif;background:#f4f6fb;padding:24px">
+<div style="max-width:640px;margin:0 auto;background:#fff;border-radius:14px;overflow:hidden;box-shadow:0 6px 24px rgba(15,23,42,0.10)">
+  <div style="background:linear-gradient(135deg,#EE2329,#c41e24);color:#fff;padding:22px 26px">
+    <div style="font-size:12px;letter-spacing:1.2px;opacity:0.9">FABLAB الأحساء · تسجيل ورشة</div>
+    <h1 style="margin:6px 0 0;font-size:20px;font-weight:800">${heading}</h1>
+  </div>
+  <div style="padding:24px 26px;color:#0f172a;font-size:14px;line-height:1.75">
+    <p style="margin:0 0 12px">مرحباً <b>${name || ''}</b>،</p>
+    <p style="margin:0 0 14px">
+      تم استلام طلب تسجيلك في ورشة <b>${workshop?.title || ''}</b>.
+      رقم الفاتورة: <b style="font-family:'JetBrains Mono',monospace;color:#EE2329">${invoiceNo}</b>
+      · قيمة الورشة: <b>${amount} ر.س</b>.
+    </p>
+    ${bankBlock}
+    ${madaBlock}
+    <p style="margin:14px 0 0;font-size:13px;color:#334155">
+      بمجرد التحقق من الدفع من قبل الإدارة، سيصلك بريد تأكيد نهائي مع رابط الفاتورة وبطاقة الحضور.
+    </p>
+    <p style="margin:14px 0 0;font-size:12.5px;color:#64748b">فريق فاب لاب الأحساء</p>
+  </div>
+  <div style="background:#f8fafc;padding:12px 24px;font-size:11px;color:#94a3b8;text-align:center">
+    فاب لاب الأحساء · مؤسسة عبدالمنعم الراشد الإنسانية
+  </div>
+</div>
+</div>`
+    };
+    await sgMail.send(msg);
+    console.log(`✉️  workshop payment instructions sent to ${email} (${invoiceNo})`);
+  } catch (err) {
+    console.error(`❌ workshop payment instructions email FAILED for ${email}:`, err?.response?.body || err.message);
+  }
+};
+
+/**
+ * Fire-and-forget: notify the customer that their workshop payment
+ * has been verified. Includes the workshop details + a link to the
+ * printable invoice.
+ */
+const sendWorkshopPaymentConfirmed = async (email, name, workshop, student) => {
+  try {
+    if (!process.env.SENDGRID_API_KEY || !process.env.SENDGRID_FROM_EMAIL) return;
+    if (!email) return;
+    const invoiceNo = student?.invoiceNumber || '—';
+    const amount = Number(student?.paymentAmount || workshop?.price || 0).toFixed(2);
+    const origin = process.env.PUBLIC_APP_URL
+      || (process.env.NODE_ENV === 'production' ? 'https://fablabsahsa.com' : 'http://localhost:3000');
+    const invoiceLink = `${origin}/api/workshops/students/${student.studentId}/invoice-html`;
+
+    const msg = {
+      to: email,
+      from: {
+        email: process.env.SENDGRID_FROM_EMAIL,
+        name: process.env.SENDGRID_FROM_NAME || 'FABLAB Al-Ahsa'
+      },
+      subject: `✅ تأكيد الدفع — ${workshop?.title || 'ورشة فاب لاب'}`,
+      html: `<div dir="rtl" style="font-family:'Segoe UI','Cairo',Tahoma,sans-serif;background:#f4f6fb;padding:24px">
+<div style="max-width:640px;margin:0 auto;background:#fff;border-radius:14px;overflow:hidden;box-shadow:0 6px 24px rgba(15,23,42,0.10)">
+  <div style="background:linear-gradient(135deg,#16a34a,#065f46);color:#fff;padding:26px 28px;text-align:center">
+    <div style="font-size:44px;line-height:1;margin-bottom:6px">✅</div>
+    <div style="font-size:12px;letter-spacing:1.2px;opacity:0.9">FABLAB الأحساء · تأكيد الدفع</div>
+    <h1 style="margin:8px 0 0;font-size:22px;font-weight:800">تم تأكيد دفعتك — أهلاً بك في الورشة</h1>
+  </div>
+  <div style="padding:24px 28px;color:#0f172a;font-size:14px;line-height:1.75">
+    <p style="margin:0 0 12px">مرحباً <b>${name || ''}</b>،</p>
+    <p style="margin:0 0 14px">تم تأكيد استلام دفعتك بنجاح. تسجيلك الآن مفعّل في ورشة <b>${workshop?.title || ''}</b>.</p>
+    <table style="width:100%;background:#f8fafc;border-radius:10px;font-size:13.5px;margin:10px 0 16px">
+      <tr><td style="padding:10px 14px;color:#64748b;width:150px">رقم الفاتورة:</td><td style="padding:10px 14px;font-weight:800;color:#16a34a;font-family:'JetBrains Mono',monospace">${invoiceNo}</td></tr>
+      <tr><td style="padding:10px 14px;color:#64748b">الورشة:</td><td style="padding:10px 14px;font-weight:700">${workshop?.title || ''}</td></tr>
+      ${workshop?.startDate ? `<tr><td style="padding:10px 14px;color:#64748b">تاريخ البدء:</td><td style="padding:10px 14px;font-weight:700" dir="ltr">${workshop.startDate}${workshop.endDate ? ` → ${workshop.endDate}` : ''}</td></tr>` : ''}
+      <tr><td style="padding:10px 14px;color:#64748b">قيمة الدفع:</td><td style="padding:10px 14px;font-weight:800">${amount} ر.س</td></tr>
+    </table>
+    <div style="text-align:center;margin:22px 0">
+      <a href="${invoiceLink}" style="display:inline-block;background:#EE2329;color:#fff;padding:12px 28px;border-radius:8px;text-decoration:none;font-weight:800">📄 عرض الفاتورة / طباعة PDF</a>
+    </div>
+    <p style="margin:18px 0 0;font-size:12.5px;color:#64748b">
+      نتطلع لرؤيتك في الورشة.<br>فريق فاب لاب الأحساء
+    </p>
+  </div>
+  <div style="background:#f8fafc;padding:12px 24px;font-size:11px;color:#94a3b8;text-align:center">
+    فاب لاب الأحساء · مؤسسة عبدالمنعم الراشد الإنسانية
+  </div>
+</div>
+</div>`
+    };
+    await sgMail.send(msg);
+    console.log(`✉️  workshop payment confirmed email sent to ${email} (${invoiceNo})`);
+  } catch (err) {
+    console.error(`❌ workshop payment confirmed email FAILED for ${email}:`, err?.response?.body || err.message);
+  }
+};
+
+/**
  * Fire-and-forget: notify the assigning manager when the employee
  * updates the status of a task the manager gave them. Never throws.
  */
@@ -1245,5 +1377,7 @@ module.exports = {
   generateAttendanceIdHtml,
   sendCertificateEmail,
   sendWeeklyActivityCreditEmail,
-  sendTaskStatusChangedEmail
+  sendTaskStatusChangedEmail,
+  sendWorkshopPaymentInstructions,
+  sendWorkshopPaymentConfirmed
 };

@@ -853,6 +853,37 @@ const syncDatabase = async () => {
       }
     }
 
+    // Workshop payment columns — added when paid workshops (bank
+    // transfer + mada) went live. All optional so existing free
+    // workshops keep working without any change.
+    try {
+      await sequelize.query(
+        `ALTER TABLE workshop_students ADD COLUMN IF NOT EXISTS "paymentMethod" VARCHAR(24)`
+      );
+      await sequelize.query(
+        `ALTER TABLE workshop_students ADD COLUMN IF NOT EXISTS "paymentAmount" DECIMAL(10,2)`
+      );
+      await sequelize.query(
+        `ALTER TABLE workshop_students ADD COLUMN IF NOT EXISTS "paymentProof" JSON`
+      );
+      await sequelize.query(
+        `ALTER TABLE workshop_students ADD COLUMN IF NOT EXISTS "paidAt" TIMESTAMP WITH TIME ZONE`
+      );
+      await sequelize.query(
+        `ALTER TABLE workshop_students ADD COLUMN IF NOT EXISTS "paymentReviewedBy" VARCHAR(255)`
+      );
+      await sequelize.query(
+        `ALTER TABLE workshop_students ADD COLUMN IF NOT EXISTS "paymentReviewedAt" TIMESTAMP WITH TIME ZONE`
+      );
+      await sequelize.query(
+        `ALTER TABLE workshop_students ADD COLUMN IF NOT EXISTS "paymentReviewNote" TEXT`
+      );
+    } catch (migrationError) {
+      if (!/does not exist/i.test(migrationError.message)) {
+        console.log('workshop_students payment columns migration note:', migrationError.message);
+      }
+    }
+
     // Employee evaluations: same NOT NULL fix as ratings — system
     // catch-up code creates evaluation rows without an admin id.
     try {

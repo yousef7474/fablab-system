@@ -39,7 +39,23 @@ Settings.seedDefaults = async () => {
     // Year Calendar preference — show the schedule overlay
     // (appointments + employee tasks) or keep it hidden. Universal
     // across all admin logins so any device honors the same choice.
-    { key: 'calendar_show_schedule_overlay', value: true }
+    { key: 'calendar_show_schedule_overlay', value: true },
+    // Bank account details for paid workshops (bank transfer channel).
+    // Admin edits from Settings tab; customers see this on the
+    // payment step and can copy per-line or all at once.
+    { key: 'workshop_bank_account', value: {
+      bankName:       'مصرف الراجحي',
+      accountHolder:  'مؤسسة عبدالمنعم الراشد الإنسانية — فاب لاب الأحساء',
+      iban:           'SA0000000000000000000000',
+      additionalInfo: 'يرجى تحويل قيمة الورشة كاملة ثم رفع صورة إشعار التحويل.'
+    }},
+    // Mada in-store payment instructions (shown when customer picks
+    // that method).
+    { key: 'workshop_mada_info', value: {
+      title:       'الدفع عبر مدى في مقر فاب لاب الأحساء',
+      instructions: 'يمكنك الحضور إلى مقر فاب لاب الأحساء والدفع مباشرةً بواسطة بطاقة مدى، سيقوم فريق الإدارة بتفعيل تسجيلك فور الدفع.',
+      address:     'فاب لاب الأحساء - مؤسسة عبدالمنعم الراشد الإنسانية'
+    }}
   ];
 
   for (const setting of defaults) {

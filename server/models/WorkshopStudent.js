@@ -55,6 +55,21 @@ const WorkshopStudent = sequelize.define('WorkshopStudent', {
     type: DataTypes.ENUM('pending', 'verified', 'rejected'),
     defaultValue: 'pending'
   },
+  // Which channel the customer used to pay. `free` covers workshops
+  // with price = 0; otherwise bank_transfer needs a proof upload,
+  // mada is paid in-person at the FabLab store and the admin
+  // confirms it manually.
+  paymentMethod: {
+    type: DataTypes.STRING(24),
+    allowNull: true
+  },
+  paymentAmount:  { type: DataTypes.DECIMAL(10, 2), allowNull: true },
+  // Uploaded transfer/receipt proof — { fileName, fileType, fileSize, fileData(base64) }.
+  paymentProof:   { type: DataTypes.JSON, allowNull: true },
+  paidAt:         { type: DataTypes.DATE, allowNull: true },
+  paymentReviewedBy:   { type: DataTypes.STRING, allowNull: true },
+  paymentReviewedAt:   { type: DataTypes.DATE, allowNull: true },
+  paymentReviewNote:   { type: DataTypes.TEXT, allowNull: true },
   attended: {
     type: DataTypes.BOOLEAN,
     defaultValue: false
