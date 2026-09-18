@@ -554,7 +554,7 @@ const EmployeeDashboard = () => {
     setRegDecideBusy(true);
     try {
       employeeApi.post('/employee/activity/interaction').catch(() => {});
-      await employeeApi.patch(`/employee/my-registrations/${id}/status`, {
+      await employeeApi.patch(`/employee/my-registrations/${encodeURIComponent(id)}/status`, {
         status: mode === 'approve' ? 'approved' : 'rejected',
         rejectionReason: mode === 'reject' ? regRejectReason.trim() : null,
         adminMessage: regNote.trim() || null,
