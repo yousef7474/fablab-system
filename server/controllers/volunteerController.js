@@ -449,15 +449,11 @@ exports.createOpportunity = async (req, res) => {
       return res.status(404).json({ message: 'Volunteer not found' });
     }
 
-    // Calculate total hours
-    const start = new Date(startDate);
-    const end = new Date(endDate);
-    const days = Math.ceil((end - start) / (1000 * 60 * 60 * 24)) + 1;
-    // Hours come from per-day attendance entered later in the volunteer
-    // profile. Default to 0 so the legacy hours×days field stays
-    // computable but unused as the source of truth.
+    // Calculate expected total hours over WORKING days only —
+    // Saudi weekend (Fri+Sat) is excluded so the ratio of attended
+    // to expected hours reflects the FabLab operating week.
     const hours = dailyHours || 0;
-    const totalHours = days * hours;
+    const totalHours = VolunteerOpportunity.countWorkingDays(startDate, endDate) * hours;
 
     const opportunity = await VolunteerOpportunity.create({
       volunteerId,
@@ -523,10 +519,10 @@ exports.updateOpportunity = async (req, res) => {
     const newDailyHours = dailyHours !== undefined ? dailyHours : opportunity.dailyHours;
 
     if (startDate || endDate || dailyHours !== undefined) {
-      const start = new Date(newStartDate);
-      const end = new Date(newEndDate);
-      const days = Math.ceil((end - start) / (1000 * 60 * 60 * 24)) + 1;
-      totalHours = days * newDailyHours;
+      // Working days only (Sun–Thu) — see VolunteerOpportunity model
+      // hook + boot-time backfill. Same rule applied here so a PATCH
+      // that re-sends unchanged dates still writes the correct value.
+      totalHours = VolunteerOpportunity.countWorkingDays(newStartDate, newEndDate) * newDailyHours;
     }
 
     await opportunity.update({
