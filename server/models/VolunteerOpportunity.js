@@ -106,12 +106,20 @@ const VolunteerOpportunity = sequelize.define('VolunteerOpportunity', {
       if (opportunity.ratingNotes === '') opportunity.ratingNotes = null;
     },
     beforeCreate: (opportunity) => {
+      // If the admin set a daily time window (e.g. 14:00 → 17:00),
+      // the window IS the source of truth for daily hours — the form
+      // has no separate dailyHours input, it just defaults to 8.
+      const windowH = hoursFromTimeWindow(opportunity.dailyStartTime, opportunity.dailyEndTime);
+      if (windowH != null) opportunity.dailyHours = windowH;
       if (opportunity.startDate && opportunity.endDate && opportunity.dailyHours) {
         const days = countWorkingDays(opportunity.startDate, opportunity.endDate);
         opportunity.totalHours = days * opportunity.dailyHours;
       }
     },
     beforeUpdate: (opportunity) => {
+      const timesChanged = opportunity.changed('dailyStartTime') || opportunity.changed('dailyEndTime');
+      const windowH = hoursFromTimeWindow(opportunity.dailyStartTime, opportunity.dailyEndTime);
+      if (windowH != null && timesChanged) opportunity.dailyHours = windowH;
       if (opportunity.changed('startDate') || opportunity.changed('endDate') || opportunity.changed('dailyHours')) {
         const days = countWorkingDays(opportunity.startDate, opportunity.endDate);
         opportunity.totalHours = days * opportunity.dailyHours;
@@ -119,6 +127,22 @@ const VolunteerOpportunity = sequelize.define('VolunteerOpportunity', {
     }
   }
 });
+
+// Parse "HH:MM" → decimal hours. Returns null on bad input. Handles
+// end < start by treating it as a same-day window (which for a real
+// FabLab shift means the admin typo'd the times — we return null so
+// the caller falls back to the stored dailyHours).
+function hoursFromTimeWindow(startHHMM, endHHMM) {
+  if (!startHHMM || !endHHMM) return null;
+  const m = /^(\d{1,2}):(\d{2})$/;
+  const a = m.exec(String(startHHMM));
+  const b = m.exec(String(endHHMM));
+  if (!a || !b) return null;
+  const sMin = parseInt(a[1], 10) * 60 + parseInt(a[2], 10);
+  const eMin = parseInt(b[1], 10) * 60 + parseInt(b[2], 10);
+  if (eMin <= sMin) return null;
+  return (eMin - sMin) / 60;
+}
 
 // Weekend in Saudi Arabia is Fri (5) + Sat (6) — Sun–Thu are the
 // operating days at FabLab, so an opportunity spanning a full week
@@ -143,5 +167,6 @@ function countWorkingDays(start, end) {
 // Exported so a boot-time backfill can recompute totalHours on
 // existing rows without duplicating the logic.
 VolunteerOpportunity.countWorkingDays = countWorkingDays;
+VolunteerOpportunity.hoursFromTimeWindow = hoursFromTimeWindow;
 
 module.exports = VolunteerOpportunity;

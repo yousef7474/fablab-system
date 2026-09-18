@@ -451,8 +451,11 @@ exports.createOpportunity = async (req, res) => {
 
     // Calculate expected total hours over WORKING days only —
     // Saudi weekend (Fri+Sat) is excluded so the ratio of attended
-    // to expected hours reflects the FabLab operating week.
-    const hours = dailyHours || 0;
+    // to expected hours reflects the FabLab operating week. When
+    // both daily times are set, the window IS the source of truth
+    // for per-day hours (form has no explicit dailyHours input).
+    const windowHours = VolunteerOpportunity.hoursFromTimeWindow(dailyStartTime, dailyEndTime);
+    const hours = windowHours != null ? windowHours : (dailyHours || 0);
     const totalHours = VolunteerOpportunity.countWorkingDays(startDate, endDate) * hours;
 
     const opportunity = await VolunteerOpportunity.create({
@@ -512,13 +515,21 @@ exports.updateOpportunity = async (req, res) => {
       return res.status(404).json({ message: 'Opportunity not found' });
     }
 
-    // Recalculate hours if dates or daily hours changed
+    // Recalculate hours if dates, daily hours, or the daily time
+    // window changed.
     let totalHours = opportunity.totalHours;
     const newStartDate = startDate || opportunity.startDate;
     const newEndDate = endDate || opportunity.endDate;
-    const newDailyHours = dailyHours !== undefined ? dailyHours : opportunity.dailyHours;
+    const newDailyStart = dailyStartTime !== undefined ? (dailyStartTime || null) : opportunity.dailyStartTime;
+    const newDailyEnd = dailyEndTime !== undefined ? (dailyEndTime || null) : opportunity.dailyEndTime;
+    // The daily time window is the source of truth when both ends
+    // are set (the admin form has no separate dailyHours input).
+    const windowHours = VolunteerOpportunity.hoursFromTimeWindow(newDailyStart, newDailyEnd);
+    const newDailyHours = windowHours != null
+      ? windowHours
+      : (dailyHours !== undefined ? dailyHours : opportunity.dailyHours);
 
-    if (startDate || endDate || dailyHours !== undefined) {
+    if (startDate || endDate || dailyHours !== undefined || dailyStartTime !== undefined || dailyEndTime !== undefined) {
       // Working days only (Sun–Thu) — see VolunteerOpportunity model
       // hook + boot-time backfill. Same rule applied here so a PATCH
       // that re-sends unchanged dates still writes the correct value.

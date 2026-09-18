@@ -1172,23 +1172,32 @@ const syncDatabase = async () => {
     // otherwise). Wraps in try/catch so a bad row can't crash boot.
     try {
       const opps = await VolunteerOpportunity.findAll({
-        attributes: ['opportunityId', 'startDate', 'endDate', 'dailyHours', 'totalHours']
+        attributes: ['opportunityId', 'startDate', 'endDate', 'dailyHours', 'dailyStartTime', 'dailyEndTime', 'totalHours']
       });
       let fixed = 0;
       for (const o of opps) {
-        if (!o.startDate || !o.endDate || !o.dailyHours) continue;
+        if (!o.startDate || !o.endDate) continue;
+        // If a daily time window is set, IT is the source of truth
+        // for per-day hours (form has no explicit dailyHours input,
+        // so old rows all have dailyHours = 8 default regardless of
+        // window).
+        const windowH = VolunteerOpportunity.hoursFromTimeWindow(o.dailyStartTime, o.dailyEndTime);
+        const effectiveDailyHours = windowH != null ? windowH : o.dailyHours;
+        if (!effectiveDailyHours) continue;
         const workingDays = VolunteerOpportunity.countWorkingDays(o.startDate, o.endDate);
-        const expected = workingDays * o.dailyHours;
-        if (Math.abs((o.totalHours || 0) - expected) > 0.001) {
+        const expectedTotal = workingDays * effectiveDailyHours;
+        const totalDrift = Math.abs((o.totalHours || 0) - expectedTotal) > 0.001;
+        const dailyDrift = windowH != null && Math.abs((o.dailyHours || 0) - windowH) > 0.001;
+        if (totalDrift || dailyDrift) {
           await sequelize.query(
-            `UPDATE volunteer_opportunities SET "totalHours" = :v WHERE "opportunityId" = :id`,
-            { replacements: { v: expected, id: o.opportunityId } }
+            `UPDATE volunteer_opportunities SET "totalHours" = :t, "dailyHours" = :d WHERE "opportunityId" = :id`,
+            { replacements: { t: expectedTotal, d: effectiveDailyHours, id: o.opportunityId } }
           );
           fixed++;
         }
       }
       if (fixed > 0) {
-        console.log(`🗓 Recalculated totalHours (working days only) for ${fixed} volunteer opportunit${fixed === 1 ? 'y' : 'ies'}.`);
+        console.log(`🗓 Recalculated dailyHours/totalHours (window+working days) for ${fixed} volunteer opportunit${fixed === 1 ? 'y' : 'ies'}.`);
       }
     } catch (backfillErr) {
       console.log('volunteer_opportunities.totalHours backfill note:', backfillErr.message);
