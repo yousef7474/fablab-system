@@ -1,0 +1,557 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<title>نموذج تعهد دعم المشاريع — فاب لاب الأحساء</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800;900&family=Amiri:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; background: #eef1f4; font-family: 'Cairo', system-ui, sans-serif; color: #0f172a; }
+  @page { size: A4; margin: 12mm 12mm 14mm 12mm; }
+
+  .page {
+    background: #fff; width: 210mm; min-height: 297mm; margin: 20px auto;
+    padding: 18mm 16mm 22mm 16mm; position: relative;
+    box-shadow: 0 12px 40px rgba(15,23,42,.08);
+  }
+  .page::before {
+    content: ''; position: absolute; inset: 8mm;
+    border: 1.5px solid rgba(238,35,41,.14);
+    border-radius: 4px; pointer-events: none;
+  }
+  .page::after {
+    content: ''; position: absolute; inset: 10mm;
+    border: 0.5px dashed rgba(15,23,42,.08);
+    pointer-events: none;
+  }
+
+  .header {
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 16px; padding-bottom: 12px;
+    border-bottom: 2.5px solid #EE2329; margin-bottom: 18px;
+    position: relative; z-index: 2;
+  }
+  .brand-block {
+    display: flex; flex-direction: column; align-items: center; text-align: center; min-width: 120px;
+  }
+  .logo-plate {
+    width: 80px; height: 80px; border-radius: 12px;
+    background: #fff;
+    display: grid; place-items: center;
+    padding: 5px;
+    overflow: hidden;
+  }
+  .logo-plate img {
+    width: 100%; height: 100%; object-fit: contain; display: block;
+  }
+  .brand-name { margin-top: 5px; font-size: 10.5px; font-weight: 700; color: #334155; line-height: 1.35; max-width: 150px; }
+
+  .doc-title-block { text-align: center; flex: 1; }
+  .doc-kicker { font-size: 10px; letter-spacing: 3px; color: #94a3b8; font-weight: 700; text-transform: uppercase; }
+  .doc-title { font-family: 'Amiri', 'Cairo', serif; font-size: 26px; font-weight: 700; color: #0f172a; margin: 3px 0 2px; line-height: 1.15; }
+  .doc-sub { font-size: 12px; color: #64748b; font-weight: 500; }
+
+  .doc-code-strip {
+    background: linear-gradient(135deg, #0f172a, #1e293b);
+    color: #f8fafc; padding: 8px 16px; border-radius: 8px;
+    font-size: 10.5px; display: flex; justify-content: space-between; gap: 12px;
+    margin-bottom: 14px; position: relative; z-index: 2; font-family: 'JetBrains Mono', monospace, sans-serif;
+    letter-spacing: 0.5px;
+  }
+  .doc-code-strip .code { color: #f87171; font-weight: 700; }
+  .doc-code-strip .sep { color: #475569; }
+  .doc-code-strip .val { color: #e2e8f0; }
+
+  h2.section {
+    font-family: 'Amiri', 'Cairo', serif;
+    font-size: 16px; font-weight: 700; color: #0f172a;
+    margin: 16px 0 8px; padding: 0 0 5px 0;
+    border-bottom: 1px solid rgba(238,35,41,.22);
+    display: flex; align-items: center; gap: 8px;
+    position: relative; z-index: 2;
+  }
+  h2.section::before {
+    content: ''; width: 6px; height: 18px; background: #EE2329; border-radius: 2px;
+  }
+  h2.section .num {
+    background: #EE2329; color: #fff; font-size: 10px; font-weight: 800;
+    padding: 2px 8px; border-radius: 10px; letter-spacing: 1px;
+    font-family: 'Cairo', sans-serif;
+  }
+
+  /* Info grid — fillable fields */
+  .field-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 12px; margin-bottom: 8px; position: relative; z-index: 2; }
+  .field-grid.three { grid-template-columns: 1fr 1fr 1fr; }
+  .field-grid.full { grid-template-columns: 1fr; }
+  .field {
+    display: flex; flex-direction: column; gap: 3px;
+  }
+  .field label {
+    font-size: 10px; font-weight: 800; color: #64748b; letter-spacing: 0.5px;
+    text-transform: uppercase;
+  }
+  .field .input-line {
+    border: 1px solid #cbd5e1;
+    border-radius: 6px;
+    padding: 7px 10px;
+    min-height: 30px;
+    background: linear-gradient(180deg, #ffffff, #fafbfc);
+    font-size: 12.5px; color: #0f172a; font-weight: 500;
+  }
+  .field .input-line.small { min-height: 24px; padding: 5px 10px; font-size: 11.5px; }
+  .field .input-line[contenteditable="true"]:empty::before {
+    content: attr(data-placeholder); color: #cbd5e1; font-weight: 400; font-style: italic;
+  }
+  .field .input-line.tall { min-height: 60px; }
+
+  /* Terms list — compact for signing */
+  .terms-note {
+    font-size: 11.5px; line-height: 1.75; color: #475569;
+    background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px;
+    padding: 10px 14px; margin-bottom: 10px; position: relative; z-index: 2;
+    text-align: justify;
+  }
+
+  ol.clauses-compact {
+    counter-reset: clause; list-style: none;
+    padding: 0; margin: 0 0 10px; position: relative; z-index: 2;
+  }
+  ol.clauses-compact > li {
+    counter-increment: clause;
+    padding: 7px 40px 7px 12px;
+    margin-bottom: 6px;
+    background: #fff;
+    border: 1px solid #e2e8f0; border-radius: 6px;
+    position: relative;
+    font-size: 11.5px; line-height: 1.75; color: #1e293b;
+    text-align: justify;
+  }
+  ol.clauses-compact > li::before {
+    content: counter(clause, arabic-indic);
+    position: absolute; top: 7px; right: 8px;
+    width: 24px; height: 24px; border-radius: 6px;
+    background: linear-gradient(135deg, #EE2329, #b91c1c);
+    color: #fff; font-weight: 800; font-size: 11px;
+    display: grid; place-items: center;
+    box-shadow: 0 1px 4px rgba(238,35,41,.35);
+  }
+
+  .acknowledge-box {
+    background: linear-gradient(135deg, #fff5f5, #fef3f3);
+    border: 1.5px solid rgba(238,35,41,.35);
+    border-radius: 10px;
+    padding: 12px 16px;
+    margin: 12px 0;
+    position: relative; z-index: 2;
+    font-size: 12px; line-height: 1.85; color: #7f1d1d;
+    font-weight: 600;
+  }
+  .acknowledge-box .checkbox-line {
+    display: flex; align-items: flex-start; gap: 10px; margin-top: 8px;
+  }
+  .acknowledge-box .checkbox-line .cbx {
+    width: 18px; height: 18px; border: 2px solid #EE2329; border-radius: 4px;
+    flex-shrink: 0; background: #fff;
+  }
+  .acknowledge-box .checkbox-line .cbx-label {
+    font-size: 12px; color: #7f1d1d; font-weight: 600; line-height: 1.6;
+  }
+
+  /* Signature block */
+  .sig-container {
+    display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px;
+    margin-top: 14px; position: relative; z-index: 2;
+  }
+  .sig-block {
+    border: 1.5px solid #cbd5e1;
+    border-radius: 10px;
+    padding: 12px 14px 60px 14px;
+    background: linear-gradient(180deg, #fff, #fafbfc);
+    position: relative;
+    min-height: 160px;
+  }
+  .sig-role {
+    font-size: 10px; letter-spacing: 1.5px; text-transform: uppercase;
+    font-weight: 800; color: #EE2329; margin-bottom: 3px;
+  }
+  .sig-name {
+    font-size: 13.5px; font-weight: 800; color: #0f172a; margin-bottom: 2px;
+    line-height: 1.3;
+  }
+  .sig-title {
+    font-size: 10.5px; color: #64748b; font-weight: 500; margin-bottom: 10px;
+    line-height: 1.4; min-height: 26px;
+  }
+  .sig-meta {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 4px 8px;
+    font-size: 10px; color: #64748b;
+    margin-bottom: 8px;
+  }
+  .sig-meta div { display: flex; flex-direction: column; gap: 2px; }
+  .sig-meta label { font-weight: 700; color: #94a3b8; font-size: 9.5px; letter-spacing: 0.5px; text-transform: uppercase; }
+  .sig-meta .val {
+    border-bottom: 1px dotted #cbd5e1;
+    min-height: 14px; padding: 1px 2px;
+    font-size: 11px; color: #0f172a; font-weight: 500;
+  }
+  .sig-line-container {
+    position: absolute; bottom: 12px; left: 14px; right: 14px;
+  }
+  .sig-line {
+    border-bottom: 1.5px solid #0f172a;
+    height: 34px;
+    display: flex; align-items: flex-end; justify-content: center;
+    font-family: 'Amiri', serif; color: #94a3b8; font-size: 10px; font-style: italic;
+    padding-bottom: 2px;
+  }
+  .sig-caption {
+    text-align: center; font-size: 9.5px; color: #94a3b8; margin-top: 3px;
+    font-weight: 700; letter-spacing: 0.5px; text-transform: uppercase;
+  }
+
+  .footer {
+    position: absolute; bottom: 6mm; left: 16mm; right: 16mm;
+    display: flex; justify-content: space-between; align-items: center;
+    font-size: 9.5px; color: #94a3b8;
+    border-top: 1px solid #e2e8f0; padding-top: 4px;
+    z-index: 2;
+  }
+  .footer .brand-mark { font-weight: 700; color: #EE2329; }
+
+  @media print {
+    body { background: #fff; }
+    .page { box-shadow: none; margin: 0; page-break-after: always; }
+    .no-print { display: none !important; }
+    .field .input-line[contenteditable="true"]:empty::before { content: ''; }
+  }
+
+  .print-btn {
+    position: fixed; top: 16px; left: 16px;
+    background: #EE2329; color: #fff; border: none;
+    padding: 10px 18px; border-radius: 8px; font-family: inherit;
+    font-weight: 700; cursor: pointer; font-size: 13px;
+    box-shadow: 0 4px 12px rgba(238,35,41,.35);
+    z-index: 999;
+  }
+  .print-btn:hover { background: #b91c1c; }
+  .clear-btn {
+    position: fixed; top: 16px; left: 200px;
+    background: #fff; color: #EE2329; border: 1.5px solid #EE2329;
+    padding: 10px 18px; border-radius: 8px; font-family: inherit;
+    font-weight: 700; cursor: pointer; font-size: 13px; z-index: 999;
+  }
+</style>
+</head>
+<body>
+<button class="print-btn no-print" onclick="window.print()">🖨 طباعة / حفظ PDF</button>
+<button class="clear-btn no-print" onclick="document.querySelectorAll('[contenteditable=true]').forEach(el=>el.innerHTML='');">↺ مسح البيانات</button>
+
+<!-- ═══════ PAGE 1 ═══════ -->
+<div class="page">
+  <div class="header">
+    <div class="brand-block">
+      <div class="logo-plate"><img src="found.png" alt="مؤسسة عبدالمنعم الراشد الإنسانية"></div>
+      <div class="brand-name">مؤسسة عبدالمنعم الراشد الإنسانية</div>
+    </div>
+    <div class="doc-title-block">
+      <div class="doc-kicker">PLEDGE FORM · نموذج تعهد</div>
+      <div class="doc-title">تعهد المستفيد من دعم المشاريع</div>
+      <div class="doc-sub">Project Support Beneficiary Pledge</div>
+    </div>
+    <div class="brand-block">
+      <div class="logo-plate"><img src="fablab.png" alt="فاب لاب الأحساء"></div>
+      <div class="brand-name">فاب لاب الأحساء<br>FabLab Al-Ahsa</div>
+    </div>
+  </div>
+
+  <div class="doc-code-strip">
+    <span><span class="code">FORM:</span> <span class="val">PSR-PLEDGE-01</span></span>
+    <span class="sep">|</span>
+    <span><span class="code">REV:</span> <span class="val">1.0</span></span>
+    <span class="sep">|</span>
+    <span><span class="code">DATE:</span> <span class="val" contenteditable="true" data-placeholder="__/__/____"></span></span>
+    <span class="sep">|</span>
+    <span><span class="code">REF:</span> <span class="val" contenteditable="true" data-placeholder="PSR-______"></span></span>
+  </div>
+
+  <h2 class="section"><span class="num">١</span> بيانات المستفيد</h2>
+  <div class="field-grid">
+    <div class="field">
+      <label>الاسم الرباعي كاملاً</label>
+      <div class="input-line" contenteditable="true" data-placeholder="الاسم الأول — الأب — الجد — العائلة"></div>
+    </div>
+    <div class="field">
+      <label>رقم الهوية / الإقامة</label>
+      <div class="input-line" contenteditable="true" data-placeholder="1XXXXXXXXX"></div>
+    </div>
+    <div class="field">
+      <label>تاريخ الميلاد</label>
+      <div class="input-line small" contenteditable="true" data-placeholder="__/__/____"></div>
+    </div>
+    <div class="field">
+      <label>الجنسية</label>
+      <div class="input-line small" contenteditable="true" data-placeholder="سعودي/ة"></div>
+    </div>
+    <div class="field">
+      <label>رقم الجوال</label>
+      <div class="input-line small" contenteditable="true" data-placeholder="05XXXXXXXX"></div>
+    </div>
+    <div class="field">
+      <label>البريد الإلكتروني</label>
+      <div class="input-line small" contenteditable="true" data-placeholder="example@email.com"></div>
+    </div>
+    <div class="field">
+      <label>الجهة التعليمية / العمل</label>
+      <div class="input-line small" contenteditable="true" data-placeholder="المدرسة / الجامعة / جهة العمل"></div>
+    </div>
+    <div class="field">
+      <label>المرحلة الدراسية / المسمى الوظيفي</label>
+      <div class="input-line small" contenteditable="true" data-placeholder=""></div>
+    </div>
+  </div>
+
+  <div class="field-grid full">
+    <div class="field">
+      <label>العنوان الوطني</label>
+      <div class="input-line small" contenteditable="true" data-placeholder="المدينة، الحي، الرمز البريدي"></div>
+    </div>
+  </div>
+
+  <h2 class="section"><span class="num">٢</span> بيانات المشروع</h2>
+  <div class="field-grid">
+    <div class="field">
+      <label>اسم المشروع</label>
+      <div class="input-line" contenteditable="true" data-placeholder="عنوان المشروع باللغة العربية"></div>
+    </div>
+    <div class="field">
+      <label>Project Title (EN)</label>
+      <div class="input-line" contenteditable="true" data-placeholder="Project title in English"></div>
+    </div>
+    <div class="field">
+      <label>مجال المشروع</label>
+      <div class="input-line small" contenteditable="true" data-placeholder="روبوتات / برمجة / تصنيع رقمي / …"></div>
+    </div>
+    <div class="field">
+      <label>المسابقة أو المحفل المستهدف</label>
+      <div class="input-line small" contenteditable="true" data-placeholder="اسم المسابقة/المؤتمر ومكانها"></div>
+    </div>
+    <div class="field">
+      <label>تاريخ المسابقة</label>
+      <div class="input-line small" contenteditable="true" data-placeholder="__/__/____"></div>
+    </div>
+    <div class="field">
+      <label>نطاق المشاركة</label>
+      <div class="input-line small" contenteditable="true" data-placeholder="محلية / إقليمية / دولية"></div>
+    </div>
+  </div>
+  <div class="field-grid full">
+    <div class="field">
+      <label>وصف مختصر للمشروع</label>
+      <div class="input-line tall" contenteditable="true" data-placeholder="فكرة المشروع في 2–3 أسطر: المشكلة، الحل، النتيجة المتوقعة"></div>
+    </div>
+  </div>
+
+  <h2 class="section"><span class="num">٣</span> نوع الدعم المقدَّم</h2>
+  <div class="field-grid three">
+    <div class="field">
+      <label>الدعم التقني</label>
+      <div class="input-line small" contenteditable="true" data-placeholder="ما هي الخدمات التقنية؟"></div>
+    </div>
+    <div class="field">
+      <label>الدعم المادي</label>
+      <div class="input-line small" contenteditable="true" data-placeholder="القيمة التقديرية بالريال"></div>
+    </div>
+    <div class="field">
+      <label>معدات مُعارة</label>
+      <div class="input-line small" contenteditable="true" data-placeholder="قائمة المعدات"></div>
+    </div>
+    <div class="field">
+      <label>القسم المشرف</label>
+      <div class="input-line small" contenteditable="true" data-placeholder="الإلكترونيات / التصنيع / …"></div>
+    </div>
+    <div class="field">
+      <label>اسم المهندس/ة المشرف/ة</label>
+      <div class="input-line small" contenteditable="true" data-placeholder="اسم المهندس المسؤول"></div>
+    </div>
+    <div class="field">
+      <label>مدة الدعم</label>
+      <div class="input-line small" contenteditable="true" data-placeholder="من __/__/____ إلى __/__/____"></div>
+    </div>
+  </div>
+
+  <div class="footer">
+    <span class="brand-mark">© مؤسسة عبدالمنعم الراشد الإنسانية · فاب لاب الأحساء</span>
+    <span>PSR-PLEDGE-01 · v1.0 · صفحة ١ من ٢</span>
+  </div>
+</div>
+
+<!-- ═══════ PAGE 2 ═══════ -->
+<div class="page">
+  <div class="header">
+    <div class="brand-block">
+      <div class="logo-plate"><img src="found.png" alt="مؤسسة عبدالمنعم الراشد الإنسانية"></div>
+      <div class="brand-name">مؤسسة عبدالمنعم الراشد الإنسانية</div>
+    </div>
+    <div class="doc-title-block">
+      <div class="doc-kicker">PLEDGE FORM · نموذج تعهد</div>
+      <div class="doc-title">التعهدات والتوقيعات</div>
+      <div class="doc-sub">Commitments &amp; Signatures</div>
+    </div>
+    <div class="brand-block">
+      <div class="logo-plate"><img src="fablab.png" alt="فاب لاب الأحساء"></div>
+      <div class="brand-name">فاب لاب الأحساء<br>FabLab Al-Ahsa</div>
+    </div>
+  </div>
+
+  <h2 class="section"><span class="num">٤</span> نص التعهد</h2>
+  <div class="terms-note">
+    أُقرّ أنا الموقّع أدناه، بموجب هذا التعهد الرسمي، بأنني قد اطّلعت على <strong>سياسة دعم المشاريع
+    والمشاركات</strong> الصادرة عن مؤسسة عبدالمنعم الراشد الإنسانية وكيان فاب لاب الأحساء
+    (المرجع: POL-PSR-01)، وفهمت جميع بنودها فهماً كاملاً، وأتعهّد بالالتزام التام بما يلي:
+  </div>
+
+  <ol class="clauses-compact">
+    <li>
+      ذكر <strong>مؤسسة عبدالمنعم الراشد الإنسانية</strong> وكيان <strong>فاب لاب الأحساء</strong>
+      وإشراف <strong>المهندس/ة المسؤول عن القسم</strong> في جميع مخرجات المشروع
+      (التقارير، البوسترات، العروض التقديمية، المخرجات المرئية والمكتوبة).
+    </li>
+    <li>
+      إظهار شعارَي المؤسسة والكيان بوضوح على جميع المواد، وعدم التصرّف بهما بأي شكل يُخلّ
+      بالهوية البصرية الرسمية.
+    </li>
+    <li>
+      ذكر جهات الدعم شفاهةً في العرض التقديمي، وكتابةً في قسم "الشكر والتقدير".
+    </li>
+    <li>
+      منح المؤسسة والكيان <strong>الحق الكامل</strong> في تصوير المشروع، ونشر الصور والمقالات
+      وقصص النجاح المتعلقة به على منصات التواصل الاجتماعي والمواقع الرسمية والبوسترات
+      والتقارير — وتُعدّ موافقتي على هذا التعهد موافقة صريحة على ذلك.
+    </li>
+    <li>
+      إشعار الكيان مسبقاً بأي ظهور إعلامي متعلق بالمشروع، وعدم استخدام الشعارات في أي مادة
+      شخصية أو تجارية غير متصلة بالدعم.
+    </li>
+    <li>
+      تقديم <strong>تقرير نهائي</strong> عن نتيجة المسابقة خلال 14 يوماً من إعلان النتائج،
+      بصرف النظر عن الفوز أو عدمه.
+    </li>
+    <li>
+      إبلاغ المهندس/ة المشرف/ة بأي تعديل جوهري على المشروع أو الفريق أو الجدول الزمني،
+      وحضور الجلسات الإرشادية المحدّدة.
+    </li>
+    <li>
+      إرجاع المعدات المُعارة في الموعد وبنفس الحالة، وتحمّل مسؤولية أي ضرر بسبب سوء الاستخدام.
+    </li>
+    <li>
+      الامتناع التام عن أي شكل من أشكال الاحتيال العلمي: الانتحال، تزوير البيانات،
+      ادّعاء نتائج غير حقيقية، أو التصريح بحجم دعم أكبر مما هو فعلاً.
+    </li>
+    <li>
+      المحافظة على سرية أي معلومات أو أدوات خاصة بالمؤسسة أو الكيان أطّلع عليها خلال فترة الدعم.
+    </li>
+  </ol>
+
+  <div class="acknowledge-box">
+    <strong>الإقرار بالعقوبة:</strong> أُقرّ بأنني اطّلعت على العقوبة المترتّبة على الإخلال بأي بند من
+    البنود أعلاه، وهي <strong>سحب الدعم بشكل كامل</strong> عن المشروع الحالي وحرماني من الدعم في أي
+    مشروع مستقبلي، إلا إذا تقدّمت بأسباب واضحة وكافية تُقبل من قِبل إدارة المؤسسة وإدارة الكيان.
+    <div class="checkbox-line">
+      <div class="cbx"></div>
+      <div class="cbx-label">أوافق على جميع البنود أعلاه وأتحمّل كامل المسؤولية القانونية والأخلاقية.</div>
+    </div>
+    <div class="checkbox-line">
+      <div class="cbx"></div>
+      <div class="cbx-label">أوافق على استخدام صوري ومحتوى مشروعي لأغراض التوثيق والنشر الإعلامي كقصة نجاح.</div>
+    </div>
+  </div>
+
+  <h2 class="section"><span class="num">٥</span> التوقيعات</h2>
+
+  <div class="sig-container">
+    <!-- Beneficiary -->
+    <div class="sig-block">
+      <div class="sig-role">المستفيد · Beneficiary</div>
+      <div class="sig-name" contenteditable="true" data-placeholder="اسم المستفيد">—</div>
+      <div class="sig-title">صاحب المشروع</div>
+      <div class="sig-meta">
+        <div>
+          <label>التاريخ</label>
+          <div class="val" contenteditable="true" data-placeholder="__/__/____"></div>
+        </div>
+        <div>
+          <label>رقم الهوية</label>
+          <div class="val" contenteditable="true" data-placeholder="1XXXXXXXXX"></div>
+        </div>
+      </div>
+      <div class="sig-line-container">
+        <div class="sig-line">التوقيع</div>
+        <div class="sig-caption">SIGNATURE</div>
+      </div>
+    </div>
+
+    <!-- Section supervisor -->
+    <div class="sig-block">
+      <div class="sig-role">المهندس/ة المشرف · Section Supervisor</div>
+      <div class="sig-name" contenteditable="true" data-placeholder="اسم المهندس/ة">—</div>
+      <div class="sig-title" contenteditable="true" data-placeholder="مسؤول القسم — القسم">مسؤول القسم المشرف على المشروع</div>
+      <div class="sig-meta">
+        <div>
+          <label>التاريخ</label>
+          <div class="val" contenteditable="true" data-placeholder="__/__/____"></div>
+        </div>
+        <div>
+          <label>القسم</label>
+          <div class="val" contenteditable="true" data-placeholder="اسم القسم"></div>
+        </div>
+      </div>
+      <div class="sig-line-container">
+        <div class="sig-line">التوقيع</div>
+        <div class="sig-caption">SIGNATURE</div>
+      </div>
+    </div>
+
+    <!-- Manager -->
+    <div class="sig-block">
+      <div class="sig-role">مدير الكيان · Manager</div>
+      <div class="sig-name">أ. زكي اللويم</div>
+      <div class="sig-title">مدير فاب لاب الأحساء</div>
+      <div class="sig-meta">
+        <div>
+          <label>التاريخ</label>
+          <div class="val" contenteditable="true" data-placeholder="__/__/____"></div>
+        </div>
+        <div>
+          <label>الاعتماد</label>
+          <div class="val" contenteditable="true" data-placeholder="مُعتمَد"></div>
+        </div>
+      </div>
+      <div class="sig-line-container">
+        <div class="sig-line">التوقيع والختم</div>
+        <div class="sig-caption">SIGNATURE &amp; STAMP</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="footer">
+    <span class="brand-mark">© مؤسسة عبدالمنعم الراشد الإنسانية · فاب لاب الأحساء</span>
+    <span>PSR-PLEDGE-01 · v1.0 · صفحة ٢ من ٢</span>
+  </div>
+</div>
+
+<script>
+  // Prevent contentEditable elements from pasting rich formatting —
+  // keep the field consistent by pasting plain text only.
+  document.addEventListener('paste', (e) => {
+    if (e.target.getAttribute && e.target.getAttribute('contenteditable') === 'true') {
+      e.preventDefault();
+      const text = (e.clipboardData || window.clipboardData).getData('text/plain');
+      document.execCommand('insertText', false, text);
+    }
+  });
+</script>
+
+</body>
+</html>
