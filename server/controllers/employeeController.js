@@ -539,7 +539,9 @@ exports.getMyRegistrations = async (req, res) => {
 
     const rows = await Registration.findAll({
       where,
-      include: [{ model: User, as: 'user' }],
+      // profilePicture is a base64 blob and the Registrations tab only
+      // shows name / email / phone — up to 500 rows made this heavy.
+      include: [{ model: User, as: 'user', attributes: { exclude: ['profilePicture'] } }],
       order: [['createdAt', 'DESC']],
       limit: 500
     });

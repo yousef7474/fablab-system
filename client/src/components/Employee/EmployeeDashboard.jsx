@@ -692,8 +692,16 @@ const EmployeeDashboard = () => {
       // Record login
       employeeApi.post('/employee/activity/login').catch(() => {});
 
-      Promise.all([fetchProfile(), fetchTasks(), fetchRatings(), fetchSchedule(), fetchEvaluations(), fetchActivityStats(), fetchMyWorkshops(), fetchRegistrations(), fetchMyOvertime(), fetchMyAttendance()])
+      // Only the small overview requests gate the loading screen. The
+      // tab-specific lists (workshops, registrations, overtime,
+      // attendance) fill in as they arrive, so one slow response on a
+      // weak connection can't hold the whole dashboard hostage.
+      Promise.all([fetchProfile(), fetchTasks(), fetchRatings(), fetchSchedule(), fetchEvaluations(), fetchActivityStats()])
         .finally(() => setLoading(false));
+      fetchMyWorkshops();
+      fetchRegistrations();
+      fetchMyOvertime();
+      fetchMyAttendance();
 
       // Heartbeat every 5 minutes
       const heartbeatInterval = setInterval(() => {

@@ -2583,10 +2583,16 @@ exports.getMyWorkshops = async (req, res) => {
 
     const workshops = await Workshop.findAll({
       where: { assignedEmployeeId: employeeId },
+      // The employee dashboard never renders the cover photo or the
+      // students' payment receipts. Both are base64 blobs (one photo
+      // is ~500 KB), so an employee with many workshops was pulling
+      // tens of MB here and the dashboard hung on slow connections.
+      attributes: { exclude: ['photo'] },
       include: [
         {
           model: WorkshopStudent,
-          as: 'students'
+          as: 'students',
+          attributes: { exclude: ['paymentProof'] }
         }
       ],
       order: [['startDate', 'DESC']]
