@@ -124,10 +124,10 @@ const AutoStaffOvertime = () => {
           <input type="date" value={to} onChange={(e) => setTo(e.target.value)}
             style={{ padding: '6px 10px', borderRadius: 6, border: '1px solid #c4b5fd' }} />
         </label>
-        <label style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 12, flex: '1 1 220px' }}>
+        <label style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 12, flex: '1 1 220px', minWidth: 0 }}>
           <span style={{ color: '#5b21b6', fontWeight: 700 }}>{isRTL ? 'الموظف' : 'Employee'}</span>
           <select value={staffFilter} onChange={(e) => setStaffFilter(e.target.value)}
-            style={{ padding: '6px 10px', borderRadius: 6, border: '1px solid #c4b5fd', fontFamily: 'inherit' }}>
+            style={{ padding: '6px 10px', borderRadius: 6, border: '1px solid #c4b5fd', fontFamily: 'inherit', width: '100%' }}>
             <option value="">{isRTL ? 'الكل' : 'All'}</option>
             {staff.map(s => (
               <option key={s.staffId} value={s.staffId}>{s.name}{s.position ? ` — ${s.position}` : ''}</option>

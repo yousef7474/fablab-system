@@ -212,6 +212,10 @@
   border-bottom-left-radius: 4px;
 }
 
+@media (max-width: 640px) {
+  .faby-welcome-popup { max-width: min(230px, calc(100vw - 48px)); padding: 10px 14px; font-size: 13px; }
+}
+
 .faby-welcome-popup::after {
   content: '';
   position: absolute;

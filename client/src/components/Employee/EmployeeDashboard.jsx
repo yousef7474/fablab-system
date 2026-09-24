@@ -1804,7 +1804,7 @@ const EmployeeDashboard = () => {
                     <div style={{ marginTop: 10, marginBottom: 6, fontSize: 11.5, fontWeight: 800, letterSpacing: 1, color: '#f59e0b' }}>
                       {isRTL ? 'الأيام والساعات' : 'DAYS & HOURS'}
                     </div>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                    <div className="ot-days-scroll" style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                       {otForm.days.map((d, idx) => (
                         <div key={idx} style={{ display: 'grid', gridTemplateColumns: '150px 1fr 1fr 1fr 2fr auto', gap: 6, alignItems: 'center', background: 'rgba(148,163,184,0.06)', padding: 8, borderRadius: 8 }}>
                           <input type="date" value={d.date} onChange={(e) => otUpdateDay(idx, { date: e.target.value })} style={{ padding: 7, borderRadius: 6, border: '1px solid var(--term-divider, #334155)', background: 'var(--term-inline-panel, #020617)', color: 'inherit', fontSize: 12, fontFamily: 'inherit' }} />

@@ -459,6 +459,15 @@ Costs vary based on:
     }
   }, [isOpen]);
 
+  // On phones the greeting bubble sits over form fields — let it go
+  // away by itself after a few seconds there.
+  useEffect(() => {
+    if (!showWelcome) return undefined;
+    if (!window.matchMedia || !window.matchMedia('(max-width: 640px)').matches) return undefined;
+    const t = setTimeout(() => setShowWelcome(false), 6000);
+    return () => clearTimeout(t);
+  }, [showWelcome]);
+
   // Context-aware help based on current step
   const getContextHelp = () => {
     const stepHelp = {

@@ -201,7 +201,7 @@
 }
 
 @media (max-width: 720px) {
-  .mo-card { grid-template-columns: 1fr; gap: 10px; }
+  .mo-card { grid-template-columns: minmax(0, 1fr); gap: 10px; }
   .mo-card-items, .mo-card-total, .mo-card-status { align-items: flex-start; }
 }
 

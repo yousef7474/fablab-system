@@ -541,7 +541,7 @@
 /* ---------- Form ---------- */
 .yc-form {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 12px;
 }
 .yc-field {
@@ -699,7 +699,7 @@
 .yc-btn--danger:hover { background: #fef2f2; border-color: #dc2626; }
 
 @media (max-width: 640px) {
-  .yc-form { grid-template-columns: 1fr; }
+  .yc-form { grid-template-columns: minmax(0, 1fr); }
   .yc-year { font-size: 22px; }
   .yc-legend { display: none; }
 }

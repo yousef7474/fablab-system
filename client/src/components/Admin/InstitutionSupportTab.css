@@ -555,7 +555,7 @@
 .isp-student-del:hover { background: rgba(220,38,38,0.16); }
 
 @media (max-width: 640px) {
-  .isp-students-add-grid { grid-template-columns: 1fr; }
+  .isp-students-add-grid { grid-template-columns: minmax(0, 1fr); }
 }
 
 /* ---------- Generic file-list section (registration + chats) ---------- */
@@ -945,9 +945,9 @@
   .isp-modal-body { padding: 16px 18px 20px; }
   .isp-progress-strip { padding: 12px 18px; }
   .isp-section { padding: 16px 18px; }
-  .isp-grid-2 { grid-template-columns: 1fr; }
+  .isp-grid-2 { grid-template-columns: minmax(0, 1fr); }
   .isp-modal-head h3 { font-size: 18px; }
   .isp-modal-icon { width: 44px; height: 44px; }
   .isp-modal-icon svg { width: 22px; height: 22px; }
-  .isp-reports-grid { grid-template-columns: 1fr; }
+  .isp-reports-grid { grid-template-columns: minmax(0, 1fr); }
 }

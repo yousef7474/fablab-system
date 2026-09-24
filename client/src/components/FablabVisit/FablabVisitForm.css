@@ -320,7 +320,7 @@
 
 .fv-cal-weekdays {
   display: grid;
-  grid-template-columns: repeat(7, 1fr);
+  grid-template-columns: repeat(7, minmax(0, 1fr));
   gap: 4px;
   font-family: 'JetBrains Mono', monospace;
   font-size: 10px;
@@ -337,7 +337,7 @@
 
 .fv-cal-grid {
   display: grid;
-  grid-template-columns: repeat(7, 1fr);
+  grid-template-columns: repeat(7, minmax(0, 1fr));
   gap: 4px;
 }
 
@@ -460,11 +460,11 @@
 .fv-slot-block { margin-top: 20px; }
 .fv-slot-row {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   gap: 16px;
 }
 @media (max-width: 640px) {
-  .fv-slot-row { grid-template-columns: 1fr; }
+  .fv-slot-row { grid-template-columns: minmax(0, 1fr); }
 }
 .fv-slot-col {
   background: var(--fv-surface-2);
@@ -753,5 +753,5 @@
 @media (max-width: 480px) {
   .fv-actions { flex-direction: column-reverse; }
   .fv-actions .fv-btn { width: 100%; }
-  .fv-thanks-summary { grid-template-columns: 1fr; }
+  .fv-thanks-summary { grid-template-columns: minmax(0, 1fr); }
 }

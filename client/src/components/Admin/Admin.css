@@ -1094,6 +1094,11 @@
 /* ========== Main Content ========== */
 .admin-main {
   flex: 1;
+  /* Flex items default to min-width:auto and won't shrink below their
+     widest content — one wide row (date filters, a table) used to
+     stretch the whole main area past the phone screen, where the
+     layout's overflow-x:hidden clipped it out of reach. */
+  min-width: 0;
   margin-left: 260px;
   transition: margin-left 0.3s ease;
 }
@@ -1504,6 +1509,11 @@
   border-radius: 10px;
   border: 1px solid var(--border-color);
 }
+@media (max-width: 640px) {
+  .date-range-filter { flex-wrap: wrap; width: 100%; padding: 0.5rem 0.75rem; }
+  .date-range-filter .date-input-group { flex: 1 1 100%; min-width: 0; }
+  .date-range-filter .date-input { flex: 1; min-width: 0; }
+}
 
 .date-input-group {
   display: flex;
@@ -1681,7 +1691,8 @@
 .table-container {
   background: white;
   border-radius: 12px;
-  overflow: hidden;
+  overflow-x: auto;
+  overflow-y: hidden;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
 }
 
@@ -1904,7 +1915,7 @@
 
 .detail-grid {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 1.25rem;
 }
 
@@ -2010,7 +2021,7 @@
   }
 
   .stats-grid {
-    grid-template-columns: repeat(2, 1fr);
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 
@@ -2061,7 +2072,7 @@
   }
 
   .stats-grid {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
   }
 
   .filters-bar {
@@ -2085,7 +2096,7 @@
   }
 
   .detail-grid {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
   }
 
   .modal-footer {
@@ -2192,7 +2203,7 @@
 
 .charts-grid {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 1.5rem;
   margin-top: 1.5rem;
 }
@@ -2283,7 +2294,7 @@
 
 .calendar-weekdays {
   display: grid;
-  grid-template-columns: repeat(7, 1fr);
+  grid-template-columns: repeat(7, minmax(0, 1fr));
   gap: 0.25rem;
   margin-bottom: 0.5rem;
 }
@@ -2299,7 +2310,7 @@
 
 .calendar-days {
   display: grid;
-  grid-template-columns: repeat(7, 1fr);
+  grid-template-columns: repeat(7, minmax(0, 1fr));
   gap: 0.25rem;
 }
 
@@ -3239,11 +3250,11 @@
 /* ========== Responsive for New Sections ========== */
 @media (max-width: 1024px) {
   .charts-grid {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
   }
 
   .schedule-layout {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
   }
 
   .schedule-sidebar {
@@ -3558,7 +3569,7 @@
 
 .user-details-grid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 1rem;
   margin-bottom: 1.5rem;
   padding: 1rem;
@@ -3660,7 +3671,7 @@
 /* Editable user form */
 .user-edit-form {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 1rem;
   margin-top: 1rem;
   padding: 1rem;
@@ -3815,11 +3826,11 @@
 
 @media (max-width: 768px) {
   .user-details-grid {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
   }
 
   .user-edit-form {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
   }
 
   .user-registration-item {
@@ -4159,7 +4170,7 @@
 
 .employee-task-form .form-row {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   gap: 0.75rem;
 }
 
@@ -4359,7 +4370,7 @@
 
 @media (max-width: 1024px) {
   .schedule-layout-new {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
   }
 
   .schedule-sidebar {
@@ -4688,12 +4699,12 @@
   }
 
   .dashboard-grid {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
     gap: 1rem;
   }
 
   .stats-grid {
-    grid-template-columns: repeat(2, 1fr);
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 0.75rem;
   }
 
@@ -4710,11 +4721,11 @@
   }
 
   .charts-grid {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
   }
 
   .schedule-layout {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
   }
 
   .calendar-section {
@@ -4855,7 +4866,7 @@
 
   /* Stats grid */
   .stats-grid {
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
     gap: 0.5rem;
   }
 
@@ -5015,7 +5026,7 @@
   }
 
   .detail-grid {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
     gap: 0.75rem;
   }
 
@@ -5134,7 +5145,7 @@
   }
 
   .stats-grid {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
   }
 
   .stat-card {
@@ -5208,7 +5219,7 @@
   }
 
   .stats-grid {
-    grid-template-columns: repeat(4, 1fr);
+    grid-template-columns: repeat(4, minmax(0, 1fr));
   }
 }
 
@@ -5770,7 +5781,7 @@
 
 .section-modal .form-row {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   gap: 1rem;
 }
 
@@ -5838,11 +5849,11 @@
 
 @media (max-width: 768px) {
   .sections-availability-grid {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
   }
 
   .section-modal .form-row {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
   }
 }
 
@@ -6039,8 +6050,12 @@
   gap: 18px;
   align-items: start;
 }
+/* minmax(0, …) + min-width:0 — a plain 1fr track grows to the widest
+   item's min-content (the side-scrolling roster strip counted at full
+   length), which made the stacked layout ~1270px wide on phones. */
+.sv2-grid > * { min-width: 0; }
 @media (max-width: 1100px) {
-  .sv2-grid { grid-template-columns: 1fr; }
+  .sv2-grid { grid-template-columns: minmax(0, 1fr); }
 }
 
 /* ---------- Panel base (calendar / roster / task / feed) ---------- */
@@ -6114,6 +6129,14 @@
 .sv2-panel-body {
   padding: 16px 18px 18px;
 }
+@media (max-width: 640px) {
+  .sv2-panel-head { flex-wrap: wrap; padding: 12px 14px; }
+  .sv2-panel-body { padding: 12px 12px 14px; }
+  .sv2-cal-nav { margin-inline-start: auto; }
+  .sv2-cal-weekdays, .sv2-cal-grid { gap: 3px; }
+  .sv2-cal-day { min-height: 42px; padding: 4px 5px; }
+  .sv2-cal-weekday { font-size: 0.55rem; letter-spacing: 0.5px; }
+}
 .sv2-right { display: flex; flex-direction: column; gap: 18px; }
 
 /* ---------- Calendar (left column) ---------- */
@@ -6151,7 +6174,7 @@
 
 .sv2-cal-weekdays {
   display: grid;
-  grid-template-columns: repeat(7, 1fr);
+  grid-template-columns: repeat(7, minmax(0, 1fr));
   gap: 6px;
   margin-bottom: 8px;
 }
@@ -6167,7 +6190,7 @@
 }
 .sv2-cal-grid {
   display: grid;
-  grid-template-columns: repeat(7, 1fr);
+  grid-template-columns: repeat(7, minmax(0, 1fr));
   gap: 6px;
 }
 .sv2-cal-day {
@@ -6447,7 +6470,7 @@
 }
 .sv2-task-form .form-row {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   gap: 10px;
 }
 .sv2-task-form .checkbox-label {
@@ -6746,7 +6769,7 @@
 /* ---------- Responsive ---------- */
 @media (max-width: 900px) {
   .sv2-command {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
     padding: 14px 16px;
   }
   .sv2-metrics {
@@ -6759,7 +6782,7 @@
   .sv2-cal-day { min-height: 52px; padding: 4px 6px; }
   .sv2-cal-day-num { font-size: 0.75rem; }
   .sv2-command-title h2 { font-size: 1.15rem; }
-  .sv2-task-form .form-row { grid-template-columns: 1fr; }
+  .sv2-task-form .form-row { grid-template-columns: minmax(0, 1fr); }
 }
 
 /* =====================================================================
@@ -7575,7 +7598,7 @@
 
 /* ---------- Responsive ---------- */
 @media (max-width: 900px) {
-  .wsv2-command { grid-template-columns: 1fr; padding: 14px 16px; }
+  .wsv2-command { grid-template-columns: minmax(0, 1fr); padding: 14px 16px; }
   .wsv2-metrics { justify-content: flex-start; }
   .wsv2-toolbar { padding: 10px 12px; }
   .wsv2-actions { margin-inline-start: 0; width: 100%; }

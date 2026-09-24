@@ -659,7 +659,7 @@
 
 .emp-stats-grid {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 14px;
 }
 
@@ -751,7 +751,7 @@
   align-items: center;
 }
 @media (max-width: 768px) {
-  .emp-activity { grid-template-columns: 1fr; }
+  .emp-activity { grid-template-columns: minmax(0, 1fr); }
 }
 
 .emp-activity-ring {
@@ -1297,7 +1297,7 @@
 /* ---------- Schedule / Calendar ---------- */
 .emp-schedule-tab {
   display: grid;
-  grid-template-columns: 1fr;
+  grid-template-columns: minmax(0, 1fr);
   gap: 20px;
 }
 
@@ -1360,7 +1360,7 @@
 
 .emp-calendar-weekdays {
   display: grid;
-  grid-template-columns: repeat(7, 1fr);
+  grid-template-columns: repeat(7, minmax(0, 1fr));
   gap: 4px;
   margin-bottom: 6px;
 }
@@ -1377,7 +1377,7 @@
 
 .emp-calendar-grid {
   display: grid;
-  grid-template-columns: repeat(7, 1fr);
+  grid-template-columns: repeat(7, minmax(0, 1fr));
   gap: 4px;
 }
 .emp-calendar-day {
@@ -1525,7 +1525,7 @@
 
 .emp-points-summary {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 14px;
 }
 .emp-points-card {
@@ -1901,8 +1901,8 @@
 
 /* ---------- Responsive ---------- */
 @media (max-width: 900px) {
-  .emp-stats-grid { grid-template-columns: repeat(2, 1fr); }
-  .emp-points-summary { grid-template-columns: 1fr; }
+  .emp-stats-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .emp-points-summary { grid-template-columns: minmax(0, 1fr); }
 }
 @media (max-width: 640px) {
   .emp-topbar { padding: 12px 16px; }
@@ -1912,7 +1912,7 @@
   .emp-tabs { padding: 4px 12px 0; }
   .emp-tab { padding: 12px 12px; font-size: 0.75rem; }
   .emp-tab-label { display: none; }
-  .emp-stats-grid { grid-template-columns: 1fr 1fr; }
+  .emp-stats-grid { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
   .emp-stat-value { font-size: 2.4rem; }
   .emp-activity-ring { width: 180px; height: 180px; }
   .emp-activity-percent { font-size: 2.2rem; }

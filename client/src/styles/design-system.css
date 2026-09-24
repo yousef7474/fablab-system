@@ -506,7 +506,11 @@ html[data-theme="dark"] .table-container {
   background: var(--card-bg);
   border: 1px solid var(--glass-border);
   border-radius: var(--ds-radius);
-  overflow: hidden;
+  /* Clip to the rounded corners but let wide tables scroll sideways
+     (overflow:hidden here used to cut tables off on phones). */
+  overflow-x: auto;
+  overflow-y: hidden;
+  -webkit-overflow-scrolling: touch;
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
 }

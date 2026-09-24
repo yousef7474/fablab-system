@@ -1,0 +1,73 @@
+/* =====================================================================
+   Cross-cutting responsive rules (phones / small tablets)
+
+   Most screens are built with inline styles, so these rules correct
+   the common patterns that break on a narrow screen without touching
+   each component. Component CSS loads later (lazy chunks), so rules
+   here use !important where they must beat inline or component styles.
+
+   Direction-neutral on purpose (logical properties, no left/right) so
+   Arabic (RTL) and English (LTR) behave the same.
+   ===================================================================== */
+
+/* Media and form controls never exceed their box. */
+img, video, canvas, iframe { max-width: 100%; }
+input, select, textarea { max-width: 100%; }
+
+@media (max-width: 900px) {
+  /* Wide tables scroll sideways inside their own box instead of
+     widening the page (their parent becomes the scroll area). */
+  /* !important on the x-axis only: several table wrappers carry an
+     inline overflow:hidden (for rounded corners) that would otherwise
+     clip the table. Vertical clipping is left as the wrapper set it. */
+  :has(> table) {
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior-x: contain;
+  }
+  /* …except where the page itself is the parent. */
+  body:has(> table), html:has(> table) { overflow-x: visible !important; }
+}
+
+@media (max-width: 640px) {
+  /* ---- Inline grids ------------------------------------------------ */
+  /* Two-column forms / detail pairs → one column. */
+  [style*="grid-template-columns: 1fr 1fr"],
+  [style*="grid-template-columns: repeat(2, 1fr)"] {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+  /* Three / four equal columns (stats, short fields) → two columns. */
+  [style*="grid-template-columns: 1fr 1fr 1fr"],
+  [style*="grid-template-columns: repeat(3, 1fr)"],
+  [style*="grid-template-columns: repeat(4, 1fr)"],
+  [style*="grid-template-columns: repeat(5, 1fr)"],
+  [style*="grid-template-columns: repeat(6, 1fr)"] {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+  /* Card grids whose minimum card width is wider than a phone. */
+  [style*="minmax(260px"], [style*="minmax(280px"], [style*="minmax(300px"],
+  [style*="minmax(320px"], [style*="minmax(340px"], [style*="minmax(360px"],
+  [style*="minmax(380px"], [style*="minmax(400px"], [style*="minmax(420px"] {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+  /* Grid children may shrink below their content (long names, emails). */
+  [style*="display: grid"] > * { min-width: 0; }
+
+  /* Overtime "days" editors: 6 fields per row with a header row — keep
+     the rows aligned and scroll the block sideways instead. */
+  .ot-days-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; padding-bottom: 4px; }
+  .ot-days-scroll > * { min-width: 560px; }
+
+  /* ---- Modals ------------------------------------------------------ */
+  .modal-overlay { padding: 8px !important; align-items: flex-start !important; overflow-y: auto; }
+  .modal-content {
+    width: 100% !important;
+    max-width: calc(100vw - 16px) !important;
+    max-height: calc(100dvh - 16px) !important;
+    padding-inline: 14px !important;
+    margin-block: 0 !important;
+  }
+  .modal-content .modal-header,
+  .modal-content .modal-body,
+  .modal-content .modal-footer { padding-inline: 4px !important; }
+}

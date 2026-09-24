@@ -11,6 +11,7 @@
    Loaded once so both the register page and the admin panel
    pick up the unified palette + optimizations. */
 @import './styles/design-system.css';
+@import './styles/responsive.css';
 
 /* CSS Variables - Color Scheme */
 :root {

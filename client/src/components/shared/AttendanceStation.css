@@ -128,7 +128,7 @@
   margin-bottom: 24px;
 }
 @media (max-width: 900px) {
-  .as-hero { grid-template-columns: 1fr; }
+  .as-hero { grid-template-columns: minmax(0, 1fr); }
 }
 .as-ready {
   padding: 40px 32px;
@@ -497,7 +497,7 @@
   .as-ready { padding: 28px 20px; }
   .as-ready-label { font-size: 32px; }
   .as-stat-value { font-size: 32px; }
-  .as-groups { grid-template-columns: 1fr; }
+  .as-groups { grid-template-columns: minmax(0, 1fr); }
 }
 
 /* =====================================================================

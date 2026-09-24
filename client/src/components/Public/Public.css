@@ -477,7 +477,7 @@
 }
 .pub-vcard-stats {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 8px;
 }
 .pub-vcard-stat {
@@ -529,7 +529,7 @@
 .pub-vcard-actions--grid .pub-btn.brand { flex: 2; }
 
 @media (max-width: 720px) {
-  .pub-vgrid { grid-template-columns: 1fr; }
+  .pub-vgrid { grid-template-columns: minmax(0, 1fr); }
   .pub-vcard-actions--grid { flex-wrap: wrap; }
   .pub-vcard-actions--grid .pub-btn.brand { flex-basis: 100%; }
 }

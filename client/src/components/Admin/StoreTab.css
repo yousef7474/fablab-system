@@ -367,7 +367,7 @@
 }
 
 @media (max-width: 900px) {
-  .stt-order-row { grid-template-columns: 1fr; gap: 6px; padding: 12px; }
+  .stt-order-row { grid-template-columns: minmax(0, 1fr); gap: 6px; padding: 12px; }
   .stt-order-when { display: none; }
 }
 
@@ -448,7 +448,7 @@
 /* ---------- Item Form ---------- */
 .stt-form {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 12px;
 }
 .stt-field {
@@ -734,7 +734,7 @@
 }
 .stt-coupon-meta {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 8px;
   margin-bottom: 10px;
 }

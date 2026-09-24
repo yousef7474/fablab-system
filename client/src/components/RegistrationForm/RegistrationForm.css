@@ -313,6 +313,16 @@
 .registration-page[data-theme="light"] .registration-topbar {
   background: rgba(255, 255, 255, 0.75);
 }
+/* Phones: the name needs the room — drop the subtitle and the step
+   pill (the stepper right below already shows progress). */
+@media (max-width: 480px) {
+  .registration-topbar { padding: 0.65rem 0.85rem; gap: 0.5rem; }
+  .registration-topbar .topbar-subtitle,
+  .registration-topbar .topbar-progress-pill { display: none; }
+  .registration-topbar .topbar-actions { gap: 6px; flex-shrink: 0; }
+  .registration-topbar .topbar-logo { width: 34px; height: 34px; }
+  .registration-topbar .topbar-logo img { width: 26px; height: 26px; }
+}
 .topbar-brand {
   display: flex;
   align-items: center;
@@ -1236,12 +1246,12 @@
 /* Form Fields */
 .form-grid {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 1.5rem;
 }
 
 .form-grid.single-column {
-  grid-template-columns: 1fr;
+  grid-template-columns: minmax(0, 1fr);
 }
 
 .form-field {
@@ -2099,19 +2109,19 @@
   }
 
   .form-grid {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
   }
 
   .selection-grid {
-    grid-template-columns: repeat(2, 1fr);
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .checkbox-grid {
-    grid-template-columns: repeat(2, 1fr);
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .section-grid {
-    grid-template-columns: repeat(2, 1fr);
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .radio-card {
@@ -2179,15 +2189,15 @@
 
 @media (max-width: 480px) {
   .selection-grid {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
   }
 
   .checkbox-grid {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
   }
 
   .section-grid {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
   }
 
   .stepper-wrapper {
@@ -2200,7 +2210,7 @@
   }
 
   .datetime-grid {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
   }
 
   .radio-card {
@@ -2246,7 +2256,7 @@
 /* ========== Booking Calendar Styles ========== */
 .booking-calendar-container {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   gap: 2rem;
   margin-top: 1.5rem;
 }
@@ -2294,7 +2304,7 @@
 
 .calendar-weekdays {
   display: grid;
-  grid-template-columns: repeat(7, 1fr);
+  grid-template-columns: repeat(7, minmax(0, 1fr));
   gap: 4px;
   margin-bottom: 0.5rem;
 }
@@ -2314,7 +2324,7 @@
 
 .calendar-days-grid {
   display: grid;
-  grid-template-columns: repeat(7, 1fr);
+  grid-template-columns: repeat(7, minmax(0, 1fr));
   gap: 6px;
   position: relative;
   z-index: 10;
@@ -2609,7 +2619,7 @@
 
 .time-slots-grid {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 0.5rem;
 }
 
@@ -2746,13 +2756,13 @@
 /* Responsive for calendar */
 @media (max-width: 900px) {
   .booking-calendar-container {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
   }
 }
 
 @media (max-width: 600px) {
   .time-slots-grid {
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 
   .duration-options {
@@ -2767,7 +2777,7 @@
 
 @media (max-width: 400px) {
   .time-slots-grid {
-    grid-template-columns: repeat(2, 1fr);
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 
@@ -4643,7 +4653,7 @@
     min-height: 3rem;
   }
   .registration-page .selection-grid {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
   }
 }
 
@@ -4870,7 +4880,7 @@
 /* Mobile */
 @media (max-width: 640px) {
   .registration-page .service-cards-grid {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
   }
   .registration-page .service-card {
     padding: 1.1rem 1.1rem;
@@ -5111,7 +5121,7 @@
 }
 
 @media (max-width: 480px) {
-  .selection-grid.selection-grid--with-desc { grid-template-columns: 1fr; }
+  .selection-grid.selection-grid--with-desc { grid-template-columns: minmax(0, 1fr); }
 }
 
 /* =============================================================

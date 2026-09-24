@@ -22,7 +22,7 @@
 
 @media (max-width: 1200px) {
   [data-page="manager"] .schedule-layout {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
   }
 }
 
@@ -476,7 +476,7 @@
    ======================================== */
 [data-page="manager"] .todo-stats-grid {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   gap: 12px;
   margin-top: 16px;
 }
@@ -806,7 +806,7 @@
 
 .task-form-row {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   gap: 16px;
 }
 
@@ -1169,7 +1169,7 @@
 /* Responsive */
 @media (max-width: 768px) {
   .task-form-row {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
   }
 
   .task-modal {
@@ -2438,13 +2438,18 @@
 
 .volunteers-header {
   display: flex;
+  flex-wrap: wrap;
   justify-content: space-between;
   align-items: center;
+  gap: 16px;
   margin-bottom: 24px;
 }
 
+/* Wraps at every width: with the sidebar open, 5 English buttons
+   are wider than the content area even on a laptop. */
 .volunteers-actions {
   display: flex;
+  flex-wrap: wrap;
   gap: 12px;
 }
 
@@ -2801,7 +2806,7 @@
 
 .volunteer-detail-stats {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 16px;
   background: var(--bg-secondary, #f8fafc);
   padding: 20px;
@@ -3380,7 +3385,7 @@
 /* Small tablets and large phones */
 @media (max-width: 900px) {
   [data-page="manager"] .schedule-layout {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
     gap: 1rem;
   }
 
@@ -3399,7 +3404,7 @@
   }
 
   .volunteers-grid {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
   }
 
   .volunteer-card {
@@ -3462,7 +3467,7 @@
   }
 
   .task-form-row {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
     gap: 12px;
   }
 
@@ -3660,7 +3665,7 @@
   }
 
   .volunteers-grid {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
     gap: 12px;
   }
 
@@ -3752,7 +3757,7 @@
   }
 
   .volunteer-detail-stats {
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 12px;
     padding: 16px;
   }
@@ -3978,7 +3983,7 @@
   }
 
   .volunteer-detail-stats {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
     gap: 8px;
   }
 
@@ -4063,7 +4068,7 @@
   }
 
   .volunteers-grid {
-    grid-template-columns: repeat(2, 1fr);
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 
@@ -4363,7 +4368,7 @@
 
 [data-page="manager"] .workspaces-content .stats-grid {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 1rem;
   margin-bottom: 1.5rem;
 }
@@ -5839,17 +5844,17 @@
 /* Responsive Workspaces */
 @media (max-width: 1200px) {
   [data-page="manager"] .workspaces-content .stats-grid {
-    grid-template-columns: repeat(2, 1fr);
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 
 @media (max-width: 768px) {
   [data-page="manager"] .workspaces-content .stats-grid {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
   }
 
   [data-page="manager"] .workspaces-grid {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
   }
 
   [data-page="manager"] .workspace-rating-info {
@@ -6358,7 +6363,7 @@
 
 @media (max-width: 768px) {
   [data-page="manager"] .todo-app {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
   }
   [data-page="manager"] .todo-sidebar {
     border-inline-end: none;

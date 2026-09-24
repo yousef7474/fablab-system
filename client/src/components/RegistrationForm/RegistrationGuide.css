@@ -211,7 +211,7 @@
 /* ---------- step: goal ---------- */
 .rg-goal-grid {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   gap: 10px;
 }
 .rg-goal {
@@ -404,7 +404,7 @@
 /* ---------- step: how ---------- */
 .rg-how {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   gap: 12px;
 }
 .rg-how-card {
@@ -517,8 +517,8 @@
   .rg-progress { padding: 0 16px 12px; }
   .rg-body { padding: 4px 16px 16px; }
   .rg-foot { padding: 10px 16px 14px; }
-  .rg-goal-grid, .rg-how { grid-template-columns: 1fr; }
-  .rg-sec-grid { grid-template-columns: 1fr 1fr; }
+  .rg-goal-grid, .rg-how { grid-template-columns: minmax(0, 1fr); }
+  .rg-sec-grid { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
   .rg-sec-desc { display: none; }
   .rg-foot .rg-btn--primary { flex: 1; }
 }

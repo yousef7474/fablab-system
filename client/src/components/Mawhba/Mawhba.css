@@ -368,7 +368,7 @@
 
 .mawhba-am-stats {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 1rem;
 }
 .mawhba-am-stat {
@@ -436,7 +436,7 @@
 
 @media (max-width: 640px) {
   .mawhba-am-title { font-size: 1.7rem; }
-  .mawhba-am-stats { grid-template-columns: 1fr; }
+  .mawhba-am-stats { grid-template-columns: minmax(0, 1fr); }
   .mawhba-am-ready-pulse { width: 88px; height: 88px; }
 }
 
@@ -556,7 +556,7 @@
 .mawhba-log-modal { width: min(820px, 96vw); }
 .mawhba-log-summary {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 0.6rem;
   margin-bottom: 1rem;
 }
@@ -623,7 +623,7 @@
 .mawhba-log-pill.partial { background: #fef3c7; color: #92400e; }
 
 @media (max-width: 640px) {
-  .mawhba-log-summary { grid-template-columns: repeat(2, 1fr); }
+  .mawhba-log-summary { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 
 .mawhba-colors-modal { width: min(680px, 96vw); }
@@ -897,7 +897,7 @@
 
 .mawhba-form-grid {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   gap: 0.85rem;
 }
 .mawhba-field { display: flex; flex-direction: column; gap: 0.3rem; }
@@ -1024,6 +1024,6 @@
 }
 
 @media (max-width: 640px) {
-  .mawhba-form-grid { grid-template-columns: 1fr; }
+  .mawhba-form-grid { grid-template-columns: minmax(0, 1fr); }
   .mawhba-table .ellipsis { max-width: 120px; }
 }

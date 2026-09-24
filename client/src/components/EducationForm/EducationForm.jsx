@@ -9,6 +9,10 @@ import SectionSelection from './steps/SectionSelection';
 import ScheduleSelection from './steps/ScheduleSelection';
 import RoomPhoto from './steps/RoomPhoto';
 import EducationTerms from './steps/EducationTerms';
+// Shared form classes (form-card, stepper, btn, form-input) live in the
+// registration stylesheet; without this import the page rendered
+// unstyled whenever it was opened directly instead of via the home page.
+import '../RegistrationForm/RegistrationForm.css';
 import './EducationForm.css';
 
 const defaultFormData = {

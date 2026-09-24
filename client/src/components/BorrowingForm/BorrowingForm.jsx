@@ -8,6 +8,10 @@ import UserStep from './steps/UserStep';
 import BorrowingDetails from './steps/BorrowingDetails';
 import ReturnDate from './steps/ReturnDate';
 import BorrowingTerms from './steps/BorrowingTerms';
+// Shared form classes (form-card, stepper, btn, form-input) live in the
+// registration stylesheet; without this import the page rendered
+// unstyled whenever it was opened directly instead of via the home page.
+import '../RegistrationForm/RegistrationForm.css';
 import './BorrowingForm.css';
 
 const defaultFormData = {

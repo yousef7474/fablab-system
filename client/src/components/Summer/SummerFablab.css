@@ -211,7 +211,7 @@
 }
 .summer-form-grid {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   gap: 0.85rem;
 }
 .summer-field { display: flex; flex-direction: column; gap: 0.3rem; }
@@ -328,6 +328,6 @@
 }
 
 @media (max-width: 540px) {
-  .summer-form-grid { grid-template-columns: 1fr; }
+  .summer-form-grid { grid-template-columns: minmax(0, 1fr); }
   .summer-subnav-btn { flex: 1 1 calc(50% - 0.5rem); }
 }

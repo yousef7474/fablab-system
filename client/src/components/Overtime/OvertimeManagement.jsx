@@ -1039,7 +1039,7 @@ const OvertimeManagement = () => {
                       {isRTL ? 'الإجمالي' : 'Total'}: {totalHoursFromForm()} {isRTL ? 'ساعة' : 'hrs'}
                     </span>
                   </div>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                  <div className="ot-days-scroll" style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                     <div style={{ display: 'grid', gridTemplateColumns: '150px 105px 105px 90px 1fr 40px', gap: 8, fontSize: 12, fontWeight: 700, color: '#6d28d9', padding: '0 2px' }}>
                       <span>{isRTL ? 'التاريخ' : 'Date'}</span>
                       <span>{isRTL ? 'من الساعة' : 'From'}</span>

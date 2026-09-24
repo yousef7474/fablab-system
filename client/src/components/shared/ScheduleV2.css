@@ -192,7 +192,7 @@
   align-items: start;
 }
 @media (max-width: 1100px) {
-  .sv2-grid { grid-template-columns: 1fr; }
+  .sv2-grid { grid-template-columns: minmax(0, 1fr); }
 }
 
 /* ---------- Panel base (calendar / roster / task / feed) ---------- */
@@ -303,7 +303,7 @@
 
 .sv2-cal-weekdays {
   display: grid;
-  grid-template-columns: repeat(7, 1fr);
+  grid-template-columns: repeat(7, minmax(0, 1fr));
   gap: 6px;
   margin-bottom: 8px;
 }
@@ -319,7 +319,7 @@
 }
 .sv2-cal-grid {
   display: grid;
-  grid-template-columns: repeat(7, 1fr);
+  grid-template-columns: repeat(7, minmax(0, 1fr));
   gap: 6px;
 }
 .sv2-cal-day {
@@ -631,7 +631,7 @@
 }
 .sv2-task-form .form-row {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   gap: 10px;
 }
 .sv2-task-form .checkbox-label {
@@ -937,7 +937,7 @@
 /* ---------- Responsive ---------- */
 @media (max-width: 900px) {
   .sv2-command {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
     padding: 14px 16px;
   }
   .sv2-metrics {
@@ -950,5 +950,5 @@
   .sv2-cal-day { min-height: 52px; padding: 4px 6px; }
   .sv2-cal-day-num { font-size: 0.75rem; }
   .sv2-command-title h2 { font-size: 1.15rem; }
-  .sv2-task-form .form-row { grid-template-columns: 1fr; }
+  .sv2-task-form .form-row { grid-template-columns: minmax(0, 1fr); }
 }
