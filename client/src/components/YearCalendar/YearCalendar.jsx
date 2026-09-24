@@ -354,8 +354,21 @@ const YearCalendar = ({ apiClient, readOnly = false } = {}) => {
             const iso = toISO(d);
             const isToday = iso === toISO(new Date());
             const dayEvents = eventsByDay.get(iso) || [];
-            const dots = dayEvents.slice(0, 3);
-            const extra = dayEvents.length - dots.length;
+            // Up to 3 events → one dot each. Busier days switch to a
+            // count + a colour bar split by category, which fits in the
+            // cell however many events there are (a row of dots plus a
+            // "+N" pill used to stretch the column and overflow the
+            // month card).
+            const isBusy = dayEvents.length > 3;
+            const segments = [];
+            if (isBusy) {
+              const byColor = new Map();
+              dayEvents.forEach(e => {
+                const c = e.color || catColor(e.category);
+                if (byColor.has(c)) segments[byColor.get(c)].n += 1;
+                else { byColor.set(c, segments.length); segments.push({ color: c, n: 1 }); }
+              });
+            }
             const hasImportant = dayEvents.some(e => e.isImportant);
             const isWeekend = d.getDay() === 5 || d.getDay() === 6;
 
@@ -367,18 +380,28 @@ const YearCalendar = ({ apiClient, readOnly = false } = {}) => {
                 onMouseUp={() => handleDayMouseUp(iso)}
                 onClick={() => openDay(iso)}
                 onDoubleClick={() => { if (!readOnly) openCreate(iso); }}
-                className={`yc-cell ${isToday ? 'is-today' : ''} ${isWeekend ? 'is-weekend' : ''} ${dayEvents.length ? 'has-events' : ''} ${hasImportant ? 'is-important' : ''}`}
-                title={dayEvents.length ? dayEvents.map(e => e.title).join(' · ') : ''}
+                className={`yc-cell ${isToday ? 'is-today' : ''} ${isWeekend ? 'is-weekend' : ''} ${dayEvents.length ? 'has-events' : ''} ${isBusy ? 'is-busy' : ''} ${hasImportant ? 'is-important' : ''}`}
+                title={dayEvents.length ? `(${dayEvents.length}) ${dayEvents.map(e => e.title).join(' · ')}` : ''}
               >
                 <span className="yc-cell-num">{d.getDate()}</span>
-                {dots.length > 0 && (
+                {dayEvents.length > 0 && (isBusy ? (
+                  <>
+                    <span className="yc-cell-dots is-busy">
+                      <span className="yc-count">{dayEvents.length > 99 ? '99+' : dayEvents.length}</span>
+                    </span>
+                    <span className="yc-bar" aria-hidden="true">
+                      {segments.map(s => (
+                        <span key={s.color} style={{ flexGrow: s.n, background: s.color }} />
+                      ))}
+                    </span>
+                  </>
+                ) : (
                   <span className="yc-cell-dots">
-                    {dots.map((e, idx) => (
+                    {dayEvents.map((e, idx) => (
                       <span key={idx} className="yc-dot" style={{ background: e.color || catColor(e.category) }} />
                     ))}
-                    {extra > 0 && <span className="yc-dot yc-dot--more">+{extra}</span>}
                   </span>
-                )}
+                ))}
               </button>
             );
           })}
