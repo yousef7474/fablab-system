@@ -1491,6 +1491,21 @@
 .emp-event-card.priority-low::before    { background: var(--signal-cyan); }
 .emp-event-card.appointment::before     { background: var(--signal-mint); }
 
+/* Appointments open a summary pop-up on click */
+.emp-event-card.is-clickable { cursor: pointer; transition: border-color 0.18s ease, transform 0.18s ease; }
+.emp-event-card.is-clickable:hover { border-color: var(--signal-mint); transform: translateY(-1px); }
+.emp-event-card.is-clickable:focus-visible { outline: 2px solid var(--signal-mint); outline-offset: 2px; }
+.emp-event-more {
+  margin-inline-start: auto;
+  font-size: 11.5px;
+  font-weight: 800;
+  color: var(--signal-mint);
+  white-space: nowrap;
+}
+@media (prefers-reduced-motion: reduce) {
+  .emp-event-card.is-clickable:hover { transform: none; }
+}
+
 .emp-event-header {
   display: flex;
   justify-content: space-between;

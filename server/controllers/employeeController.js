@@ -432,7 +432,8 @@ exports.getMySchedule = async (req, res) => {
       include: [{
         model: User,
         as: 'user',
-        attributes: ['firstName', 'lastName', 'name', 'phoneNumber', 'email', 'applicationType']
+        attributes: ['firstName', 'lastName', 'name', 'phoneNumber', 'email', 'applicationType',
+          'currentJob', 'entityName', 'visitingEntity', 'personInCharge']
       }],
       order: [['appointmentDate', 'ASC'], ['appointmentTime', 'ASC']]
     });
@@ -467,6 +468,14 @@ exports.getMySchedule = async (req, res) => {
         applicationType: reg.user.applicationType,
         phone: reg.user.phoneNumber,
         email: reg.user.email,
+        // Shown in the appointment summary pop-up on the employee
+        // dashboard's schedule tab.
+        currentJob: reg.user.currentJob,
+        entityName: reg.user.entityName,
+        visitingEntity: reg.user.visitingEntity,
+        personInCharge: reg.user.personInCharge,
+        serviceDetails: reg.serviceDetails,
+        otherServiceDetails: reg.otherServiceDetails,
         type: 'appointment'
       };
     });

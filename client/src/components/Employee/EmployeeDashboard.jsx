@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -21,6 +22,32 @@ const SECTION_COLORS = {
   'Vinyl Cutting': '#ec4899',
   'UV Printing and Sticker Making': '#14b8a6'
 };
+
+// Registration service / applicant-type values → Arabic labels.
+const SERVICE_AR = {
+  'In-person consultation': 'استشارة حضورية',
+  'Online consultation': 'استشارة عن بعد',
+  'Machine/Device reservation': 'حجز جهاز / آلة',
+  'Personal workspace': 'مساحة عمل شخصية',
+  'Support in project implementation': 'دعم في تنفيذ المشروع',
+  'FABLAB Visit': 'زيارة فاب لاب',
+  'Volunteering': 'تطوع',
+  'Other': 'أخرى'
+};
+const APP_TYPE_AR = {
+  Beneficiary: 'مستفيد',
+  Visitor: 'زائر',
+  Volunteer: 'متطوع',
+  Talented: 'موهوب',
+  Entity: 'كيان',
+  'FABLAB Visit': 'زيارة فاب لاب'
+};
+
+// Renders modals at the dashboard root. .emp-content is its own
+// stacking context (z-index:1), so overlays rendered inside it sat
+// underneath the sticky top bar and tabs no matter their z-index.
+// The root still carries the theme CSS variables.
+const DashPortal = ({ target, children }) => (target ? createPortal(children, target) : children);
 
 // ---------- Animated integer counter ----------
 // Rolls from 0 to `target` over ~800ms with an easing that decelerates
@@ -166,6 +193,8 @@ const EmployeeDashboard = () => {
   // Calendar state
   const [calendarDate, setCalendarDate] = useState(new Date());
   const [selectedDay, setSelectedDay] = useState(null);
+  const [apptModal, setApptModal] = useState(null); // schedule appointment summary pop-up
+  const [dashRoot, setDashRoot] = useState(null); // portal target for modals (see DashPortal)
 
   // Create task modal
   const [showCreateTaskModal, setShowCreateTaskModal] = useState(false);
@@ -825,6 +854,32 @@ const EmployeeDashboard = () => {
     return `${h12}:${minutes} ${ampm}`;
   };
 
+  const translateService = (s) => (isRTL ? (SERVICE_AR[s] || s) : s);
+
+  // Esc closes the appointment summary pop-up.
+  useEffect(() => {
+    if (!apptModal) return undefined;
+    const onKey = (e) => { if (e.key === 'Escape') setApptModal(null); };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [apptModal]);
+
+  // "المدة" — same rule as the admin registration details (minutes, or
+  // the visit / booking time window), plus the day count when a
+  // booking spans several days.
+  const regDuration = (r) => {
+    let time = null;
+    if (r.appointmentDuration) time = `${r.appointmentDuration} ${isRTL ? 'دقيقة' : 'min'}`;
+    else if (r.visitStartTime && r.visitEndTime) time = `${formatTimeAMPM(r.visitStartTime)} – ${formatTimeAMPM(r.visitEndTime)}`;
+    else if (r.startTime && r.endTime) time = `${formatTimeAMPM(r.startTime)} – ${formatTimeAMPM(r.endTime)}`;
+    let days = null;
+    if (r.startDate && r.endDate && String(r.endDate).slice(0, 10) !== String(r.startDate).slice(0, 10)) {
+      const n = Math.round((new Date(String(r.endDate).slice(0, 10)) - new Date(String(r.startDate).slice(0, 10))) / 86400000) + 1;
+      if (n > 1) days = !isRTL ? `${n} days` : n === 2 ? 'يومان' : n <= 10 ? `${n} أيام` : `${n} يوماً`;
+    }
+    return [days, time].filter(Boolean).join(' · ') || null;
+  };
+
   if (loading) {
     return (
       <div className="employee-loading">
@@ -857,7 +912,7 @@ const EmployeeDashboard = () => {
   const ringOffset = RING_C - (RING_C * activityPct) / 100;
 
   return (
-    <div className="employee-dashboard" dir={isRTL ? 'rtl' : 'ltr'} data-page="employee" data-theme={theme}>
+    <div ref={setDashRoot} className="employee-dashboard" dir={isRTL ? 'rtl' : 'ltr'} data-page="employee" data-theme={theme}>
       {/* Top Bar */}
       <motion.div
         className="emp-topbar"
@@ -1381,20 +1436,26 @@ const EmployeeDashboard = () => {
                               {appointment && (
                                 <div><div style={{ fontSize: 10.5, color: '#94a3b8', fontWeight: 700, letterSpacing: 0.6 }}>{isRTL ? 'الموعد' : 'APPOINTMENT'}</div><div dir="ltr" style={{ fontSize: 13 }}>{appointment}{appointmentTime ? ` · ${String(appointmentTime).slice(0,5)}` : ''}</div></div>
                               )}
+                              {regDuration(r) && (
+                                <div><div style={{ fontSize: 10.5, color: '#94a3b8', fontWeight: 700, letterSpacing: 0.6 }}>{isRTL ? 'المدة' : 'DURATION'}</div><div style={{ fontSize: 13 }}>{regDuration(r)}</div></div>
+                              )}
+                              {r.user?.currentJob && (
+                                <div><div style={{ fontSize: 10.5, color: '#94a3b8', fontWeight: 700, letterSpacing: 0.6 }}>{isRTL ? 'الوظيفة الحالية' : 'CURRENT JOB'}</div><div style={{ fontSize: 13 }}>{r.user.currentJob}</div></div>
+                              )}
                             </div>
 
                             {services.length > 0 && (
                               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 10 }}>
                                 {services.map((s, si) => (
                                   <span key={si} style={{ fontSize: 11.5, background: 'rgba(148,163,184,0.15)', padding: '3px 10px', borderRadius: 999 }}>
-                                    {s}
+                                    {translateService(s)}
                                   </span>
                                 ))}
                               </div>
                             )}
 
                             {r.serviceDetails && (
-                              <div style={{ background: 'rgba(148,163,184,0.08)', padding: '10px 14px', borderRadius: 8, fontSize: 13, whiteSpace: 'pre-wrap', marginBottom: 10 }}>
+                              <div dir="auto" style={{ background: 'rgba(148,163,184,0.08)', padding: '10px 14px', borderRadius: 8, fontSize: 13, whiteSpace: 'pre-wrap', marginBottom: 10 }}>
                                 {r.serviceDetails}
                               </div>
                             )}
@@ -1442,7 +1503,126 @@ const EmployeeDashboard = () => {
             </motion.div>
           )}
 
+          {/* Appointment summary (schedule tab → click an appointment) */}
+          <DashPortal target={dashRoot}>
+          <AnimatePresence>
+            {apptModal && (() => {
+              const a = apptModal;
+              const dateStr = a.date ? String(a.date).slice(0, 10) : '';
+              const dateObj = dateStr ? new Date(`${dateStr}T00:00:00`) : null;
+              const services = Array.isArray(a.services) ? a.services : [];
+              const entity = a.entityName || a.visitingEntity;
+              const label = { fontSize: 10.5, color: '#94a3b8', fontWeight: 800, letterSpacing: 0.6, textTransform: 'uppercase', marginBottom: 3 };
+              const Field = ({ l, children, ltr }) => (
+                <div style={{ minWidth: 0 }}>
+                  <div style={label}>{l}</div>
+                  <div dir={ltr ? 'ltr' : undefined} style={{ fontSize: 13.5, fontWeight: 600, overflowWrap: 'anywhere', textAlign: ltr && isRTL ? 'right' : undefined }}>{children}</div>
+                </div>
+              );
+              return (
+                <motion.div
+                  key="appt-modal"
+                  initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                  onClick={() => setApptModal(null)}
+                  style={{ position: 'fixed', inset: 0, background: 'var(--term-modal-scrim, rgba(15,23,42,0.6))', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}
+                >
+                  <motion.div
+                    role="dialog"
+                    aria-modal="true"
+                    aria-label={isRTL ? 'ملخص الموعد' : 'Appointment summary'}
+                    initial={{ opacity: 0, scale: 0.94, y: 12 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.94, y: 12 }}
+                    onClick={(e) => e.stopPropagation()}
+                    style={{ background: 'var(--term-panel-solid, #0f172a)', color: 'var(--ink-primary, #e2e8f0)', borderRadius: 14, maxWidth: 560, width: '100%', maxHeight: 'calc(100dvh - 32px)', overflowY: 'auto', border: '1px solid var(--term-divider, #334155)' }}
+                  >
+                    <div style={{ padding: '18px 22px', borderBottom: '1px solid var(--term-divider, #334155)', display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
+                      <div style={{ minWidth: 0 }}>
+                        <div style={{ fontSize: 11, letterSpacing: 1.2, color: '#16a34a', textTransform: 'uppercase', fontWeight: 800 }}>
+                          {isRTL ? 'ملخص الموعد' : 'Appointment summary'}
+                        </div>
+                        <div style={{ fontSize: 17, fontWeight: 800, marginTop: 4, overflowWrap: 'anywhere' }}>{a.title || '—'}</div>
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 8 }}>
+                          {a.section && (
+                            <span className="emp-section-tag" style={{ backgroundColor: SECTION_COLORS[a.section] || '#666' }}>
+                              {sectionLabels[a.section] || a.section}
+                            </span>
+                          )}
+                          {a.applicationType && (
+                            <span style={{ fontSize: 11.5, fontWeight: 700, padding: '2px 10px', borderRadius: 999, background: 'rgba(148,163,184,0.15)' }}>
+                              {isRTL ? (APP_TYPE_AR[a.applicationType] || a.applicationType) : a.applicationType}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setApptModal(null)}
+                        aria-label={isRTL ? 'إغلاق' : 'Close'}
+                        style={{ flexShrink: 0, width: 34, height: 34, borderRadius: 8, border: '1px solid var(--term-divider, #334155)', background: 'transparent', color: 'inherit', cursor: 'pointer', fontSize: 16 }}
+                      >✕</button>
+                    </div>
+
+                    <div style={{ padding: '18px 22px', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 14 }}>
+                      {dateObj && !isNaN(dateObj.getTime()) && (
+                        <Field l={isRTL ? 'التاريخ' : 'Date'}>{format(dateObj, 'EEEE، d MMMM yyyy', { locale: isRTL ? ar : enUS })}</Field>
+                      )}
+                      {a.startTime && (
+                        <Field l={isRTL ? 'الوقت' : 'Time'}>{formatTimeAMPM(a.startTime)}{a.endTime ? ` – ${formatTimeAMPM(a.endTime)}` : ''}</Field>
+                      )}
+                      {a.duration && (
+                        <Field l={isRTL ? 'المدة' : 'Duration'}>{a.duration} {isRTL ? 'دقيقة' : 'min'}</Field>
+                      )}
+                      {a.phone && (
+                        <Field l={isRTL ? 'الجوال' : 'Phone'} ltr><a href={`tel:${a.phone}`} style={{ color: 'inherit' }}>{a.phone}</a></Field>
+                      )}
+                      {a.email && (
+                        <Field l={isRTL ? 'البريد' : 'Email'} ltr><a href={`mailto:${a.email}`} style={{ color: 'inherit' }}>{a.email}</a></Field>
+                      )}
+                      {a.currentJob && (
+                        <Field l={isRTL ? 'الوظيفة الحالية' : 'Current job'}>{a.currentJob}</Field>
+                      )}
+                      {entity && (
+                        <Field l={isRTL ? 'الجهة' : 'Organization'}>{entity}</Field>
+                      )}
+                      {a.personInCharge && (
+                        <Field l={isRTL ? 'المسؤول' : 'Person in charge'}>{a.personInCharge}</Field>
+                      )}
+                    </div>
+
+                    {services.length > 0 && (
+                      <div style={{ padding: '0 22px 14px' }}>
+                        <div style={label}>{isRTL ? 'الخدمات المطلوبة' : 'Requested services'}</div>
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 4 }}>
+                          {services.map((s, si) => (
+                            <span key={si} style={{ fontSize: 12, fontWeight: 600, background: 'rgba(148,163,184,0.15)', padding: '3px 10px', borderRadius: 999 }}>
+                              {translateService(s)}
+                            </span>
+                          ))}
+                        </div>
+                        {a.otherServiceDetails && (
+                          <div dir="auto" style={{ fontSize: 12.5, color: '#94a3b8', marginTop: 8, whiteSpace: 'pre-wrap' }}>
+                            {isRTL ? 'أخرى: ' : 'Other: '}{a.otherServiceDetails}
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    <div style={{ padding: '0 22px 20px' }}>
+                      <div style={label}>{isRTL ? 'تفاصيل الخدمة' : 'Service details'}</div>
+                      <div dir="auto" style={{ marginTop: 4, padding: '12px 14px', borderRadius: 10, background: 'rgba(22,163,74,0.08)', border: '1px solid rgba(22,163,74,0.25)', fontSize: 13.5, lineHeight: 1.8, whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}>
+                        {a.serviceDetails
+                          ? a.serviceDetails
+                          : <span style={{ color: '#94a3b8' }}>{isRTL ? 'لم يكتب المستفيد تفاصيل للخدمة.' : 'No service details were provided.'}</span>}
+                      </div>
+                    </div>
+                  </motion.div>
+                </motion.div>
+              );
+            })()}
+          </AnimatePresence>
+          </DashPortal>
+
           {/* Decision modal (approve / reject registration) */}
+          <DashPortal target={dashRoot}>
           <AnimatePresence>
             {regDecideModal && (
               <motion.div
@@ -1520,6 +1700,7 @@ const EmployeeDashboard = () => {
               </motion.div>
             )}
           </AnimatePresence>
+          </DashPortal>
 
           {/* ═══════════════════════════════════════════════════ OVERTIME */}
           {activeTab === 'overtime' && (
@@ -1669,6 +1850,7 @@ const EmployeeDashboard = () => {
           )}
 
           {/* Overtime form modal */}
+          <DashPortal target={dashRoot}>
           <AnimatePresence>
             {otFormOpen && (
               <motion.div
@@ -1845,6 +2027,7 @@ const EmployeeDashboard = () => {
               </motion.div>
             )}
           </AnimatePresence>
+          </DashPortal>
 
           {/* Send-for-approval modal */}
           <AnimatePresence>
@@ -2067,10 +2250,17 @@ const EmployeeDashboard = () => {
                     ) : getEventsForDay(selectedDay).map((event, i) => (
                       <motion.div
                         key={event.id}
-                        className={`emp-event-card ${event.type === 'task' ? `priority-${event.priority}` : 'appointment'}`}
+                        className={`emp-event-card ${event.type === 'task' ? `priority-${event.priority}` : 'appointment is-clickable'}`}
                         initial={{ opacity: 0, x: isRTL ? -12 : 12 }}
                         animate={{ opacity: 1, x: 0 }}
                         transition={{ delay: i * 0.04 }}
+                        {...(event.type === 'appointment' ? {
+                          role: 'button',
+                          tabIndex: 0,
+                          onClick: () => setApptModal(event),
+                          onKeyDown: (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setApptModal(event); } },
+                          title: isRTL ? 'عرض تفاصيل الموعد' : 'View appointment details'
+                        } : {})}
                       >
                         <div className="emp-event-header">
                           <span className="emp-event-title">
@@ -2104,6 +2294,9 @@ const EmployeeDashboard = () => {
                             </span>
                           )}
                           {event.type === 'appointment' && event.phone && <span>☎ {event.phone}</span>}
+                          {event.type === 'appointment' && (
+                            <span className="emp-event-more">{isRTL ? 'التفاصيل ›' : 'Details ›'}</span>
+                          )}
                         </div>
                         {event.description && <p className="emp-event-desc">{event.description}</p>}
                       </motion.div>
