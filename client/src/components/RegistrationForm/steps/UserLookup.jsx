@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -6,14 +6,18 @@ import { toast } from 'react-toastify';
 import Lottie from 'lottie-react';
 import welcomeAnimation from '../../../lottie/welcome.json';
 import api from '../../../config/api';
+import RegistrationGuide from '../RegistrationGuide';
+import { SECTION_BY_VALUE, SERVICE_LABELS } from '../sectionCatalog';
 
 const ELITE_PASSWORD = 'fabstar123';
 const EDUCATION_PASSWORD = 'education123';
 
-const UserLookup = ({ onUserFound, onNewUser }) => {
+const UserLookup = ({ onUserFound, onNewUser, theme, guidedChoice, onGuideApply, onGuideClear }) => {
   const { t, i18n } = useTranslation();
   const isRTL = i18n.language === 'ar';
   const navigate = useNavigate();
+  const identifierRef = useRef(null);
+  const [guide, setGuide] = useState({ open: false, intercept: null });
   const [identifier, setIdentifier] = useState('');
   const [loading, setLoading] = useState(false);
   const [showEliteModal, setShowEliteModal] = useState(false);
@@ -37,6 +41,33 @@ const UserLookup = ({ onUserFound, onNewUser }) => {
     setPendingEducationPath(path);
     setShowEducationModal(true);
   };
+
+  const openGuide = (intercept = null) => setGuide({ open: true, intercept });
+  const closeGuide = () => setGuide(g => ({ ...g, open: false }));
+
+  // Visit + project-support forms were catching people who really
+  // wanted a consultation. The first click per session shows a short
+  // "this form is for X — did you mean a consultation?" screen.
+  const goWithIntercept = (kind, path) => {
+    const key = `fablab_guide_seen_${kind}`;
+    let seen = false;
+    try { seen = sessionStorage.getItem(key) === '1'; } catch (e) {}
+    if (seen) { navigate(path); return; }
+    try { sessionStorage.setItem(key, '1'); } catch (e) {}
+    openGuide(kind);
+  };
+
+  const handleGuideApply = (choice) => {
+    onGuideApply?.(choice);
+    // Bring the ID/phone field into view — it's the next thing to do.
+    setTimeout(() => {
+      identifierRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      identifierRef.current?.focus({ preventScroll: true });
+    }, 250);
+  };
+
+  const pickedSection = guidedChoice ? SECTION_BY_VALUE[guidedChoice.fablabSection] : null;
+  const pickedService = guidedChoice ? SERVICE_LABELS[guidedChoice.requiredServices?.[0]] : null;
 
   const handleEliteAccess = () => {
     if (elitePassword === ELITE_PASSWORD) {
@@ -105,6 +136,57 @@ const UserLookup = ({ onUserFound, onNewUser }) => {
           : 'Enter your National ID or Phone Number to check your previous registration'}
       </motion.p>
 
+      {/* Consultation guide — consultations are booked through this
+          registration, which wasn't obvious from the landing page. */}
+      <motion.div
+        initial={{ y: 16, opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        transition={{ delay: 0.35 }}
+      >
+        {guidedChoice && pickedSection ? (
+          <div className="rg-picked" role="status">
+            <div className="rg-picked-top">
+              <span className="rg-picked-check">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg>
+              </span>
+              <span className="rg-picked-title">
+                {isRTL ? pickedService?.ar : pickedService?.en}
+                {' · '}
+                {isRTL ? pickedSection.labelAr : pickedSection.labelEn}
+              </span>
+              <span className="rg-picked-actions">
+                <button type="button" onClick={() => openGuide()}>{isRTL ? 'تغيير' : 'Change'}</button>
+                <button type="button" onClick={onGuideClear}>{isRTL ? 'إلغاء' : 'Clear'}</button>
+              </span>
+            </div>
+            <p className="rg-picked-next">
+              {isRTL
+                ? 'الخطوة التالية: أدخل رقم هويتك أو جوالك بالأسفل واضغط «بحث»، أو اضغط «تسجيل جديد» إن كانت هذه أول مرة لك.'
+                : 'Next: enter your ID or phone below and press "Search", or press "New Registration" if this is your first time.'}
+            </p>
+          </div>
+        ) : (
+          <button type="button" className="rg-launch" onClick={() => openGuide()}>
+            <span className="rg-launch-ico">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <circle cx="12" cy="12" r="10"/>
+                <polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76"/>
+              </svg>
+            </span>
+            <span className="rg-launch-text">
+              <b>{isRTL ? 'تريد استشارة تقنية أو حجز جهاز؟' : 'Want a technical consultation or a machine?'}</b>
+              <small>{isRTL ? 'أجب عن أسئلة سريعة ونوجّهك للقسم المناسب ونجهّز لك التسجيل' : "Answer a few quick questions — we'll pick the right section and set up your registration"}</small>
+            </span>
+            <span className="rg-launch-cta">
+              {isRTL ? 'ساعدني أختار' : 'Help me choose'}
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" style={{ transform: isRTL ? 'scaleX(-1)' : 'none' }}>
+                <path d="M5 12h14M13 6l6 6-6 6"/>
+              </svg>
+            </span>
+          </button>
+        )}
+      </motion.div>
+
       <motion.div
         className="user-lookup-input"
         initial={{ y: 20, opacity: 0 }}
@@ -112,6 +194,7 @@ const UserLookup = ({ onUserFound, onNewUser }) => {
         transition={{ delay: 0.4 }}
       >
         <input
+          ref={identifierRef}
           type="text"
           className="form-input"
           placeholder={isRTL ? 'رقم الهوية أو رقم الهاتف' : 'National ID or Phone Number'}
@@ -177,6 +260,31 @@ const UserLookup = ({ onUserFound, onNewUser }) => {
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.6 }}
       >
+        {/* Technical consultation — booked through the main registration;
+            opens the guide so people land in the right section. */}
+        <button
+          type="button"
+          className="service-card service-card--consult"
+          onClick={() => openGuide()}
+        >
+          <div className="service-card-icon">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+              <path d="M8 9h8M8 13h5"/>
+            </svg>
+          </div>
+          <div className="service-card-body">
+            <span className="service-card-badge">{isRTL ? 'ابدأ من هنا' : 'Start here'}</span>
+            <div className="service-card-title">{isRTL ? 'استشارة تقنية وحجز الأجهزة' : 'Tech Consultation & Machines'}</div>
+            <div className="service-card-description">
+              {isRTL
+                ? 'جلسة مع مهندس القسم حضورياً أو عن بعد، أو حجز جهاز لتنفيذ مشروعك — نساعدك في اختيار القسم'
+                : 'Meet a section engineer in person or online, or reserve a machine — we help you pick the section'}
+            </div>
+          </div>
+          <div className="service-card-arrow" aria-hidden="true">{isRTL ? '←' : '→'}</div>
+        </button>
+
         {/* Borrow Components */}
         <button
           type="button"
@@ -247,7 +355,7 @@ const UserLookup = ({ onUserFound, onNewUser }) => {
         <button
           type="button"
           className="service-card service-card--visit"
-          onClick={() => navigate('/fablab-visit')}
+          onClick={() => goWithIntercept('visit', '/fablab-visit')}
         >
           <div className="service-card-icon">
             <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -261,7 +369,7 @@ const UserLookup = ({ onUserFound, onNewUser }) => {
           <div className="service-card-body">
             <div className="service-card-title">{isRTL ? 'طلب زيارة للفاب لاب' : 'FABLAB Visit'}</div>
             <div className="service-card-description">
-              {isRTL ? 'احجز زيارة جماعية أو تعريفية لمرافق فاب لاب الأحساء' : 'Book a group or introductory tour of FABLAB Al-Ahsa'}
+              {isRTL ? 'زيارة جماعية تعريفية للمدارس والجامعات والجهات — ليست لحجز استشارة' : 'Group introductory tours for schools & organizations — not for consultations'}
             </div>
           </div>
           <div className="service-card-arrow" aria-hidden="true">{isRTL ? '←' : '→'}</div>
@@ -275,7 +383,7 @@ const UserLookup = ({ onUserFound, onNewUser }) => {
         <button
           type="button"
           className="service-card service-card--support"
-          onClick={() => navigate('/project-support')}
+          onClick={() => goWithIntercept('support', '/project-support')}
           style={{
             borderColor: '#c4b5fd',
             background: 'linear-gradient(135deg, rgba(139, 92, 246, 0.04), rgba(109, 40, 217, 0.02))'
@@ -290,8 +398,8 @@ const UserLookup = ({ onUserFound, onNewUser }) => {
             <div className="service-card-title">{isRTL ? 'طلب دعم للمشروع' : 'Project Support Request'}</div>
             <div className="service-card-description">
               {isRTL
-                ? 'قدّم طلبك للحصول على دعم مالي، تقني، أو استشاري لمشروعك — أرفق الملفات وستصلك الإجابة خلال 5 أيام عمل'
-                : 'Request funding, technical, or advisory support for your project — attach files and get a decision within 5 working days'}
+                ? 'اطلب تمويلاً أو رعاية لمشروعك أو دعماً لمشاركتك في مسابقة — تصلك الإجابة خلال 5 أيام عمل'
+                : 'Request funding or sponsorship for your project or a competition entry — decision within 5 working days'}
             </div>
           </div>
           <div className="service-card-arrow" aria-hidden="true">{isRTL ? '←' : '→'}</div>
@@ -797,6 +905,15 @@ const UserLookup = ({ onUserFound, onNewUser }) => {
           </motion.div>
         )}
       </AnimatePresence>
+
+      <RegistrationGuide
+        open={guide.open}
+        intercept={guide.intercept}
+        onClose={closeGuide}
+        onApply={handleGuideApply}
+        isRTL={isRTL}
+        theme={theme}
+      />
     </div>
   );
 };

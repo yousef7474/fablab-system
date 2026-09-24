@@ -124,6 +124,10 @@ const RegistrationForm = () => {
   const [formData, setFormData] = useState(() => getInitialFormData() || defaultFormData);
 
   const [registrationResult, setRegistrationResult] = useState(null);
+  // Choice made in the "help me choose" guide on the landing screen
+  // ({ applicationType, fablabSection, requiredServices }). It is also
+  // written into formData so the steps open pre-selected.
+  const [guidedChoice, setGuidedChoice] = useState(null);
   const [loading, setLoading] = useState(false);
   const [registrationDisabled, setRegistrationDisabled] = useState(false);
   const [disabledReason, setDisabledReason] = useState('');
@@ -220,13 +224,30 @@ const RegistrationForm = () => {
     setFormData({ ...formData, ...data });
   };
 
+  const handleGuideApply = (choice) => {
+    setGuidedChoice(choice);
+    setFormData(prev => ({
+      ...prev,
+      applicationType: choice.applicationType,
+      fablabSection: choice.fablabSection,
+      requiredServices: choice.requiredServices
+    }));
+  };
+
+  const handleGuideClear = () => {
+    setGuidedChoice(null);
+    setFormData(prev => ({ ...prev, applicationType: '', fablabSection: '', requiredServices: [] }));
+  };
+
   const handleUserFound = (userData) => {
     // Auto-fill all user fields from existing user data
-    // User can still change application type, but personal info is pre-filled
+    // User can still change application type, but personal info is pre-filled.
+    // A type picked in the guide (consultation → Beneficiary) wins over
+    // whatever type the user registered with last time.
     setFormData({
       ...formData,
       existingUserId: userData.userId,
-      applicationType: userData.applicationType || '',
+      applicationType: guidedChoice?.applicationType || userData.applicationType || '',
       firstName: userData.firstName || '',
       lastName: userData.lastName || '',
       name: userData.name || '',
@@ -288,7 +309,8 @@ const RegistrationForm = () => {
       formData,
       onChange: handleFormDataChange,
       onNext: handleNext,
-      onBack: handleBack
+      onBack: handleBack,
+      theme
     };
 
     switch (step) {
@@ -439,6 +461,7 @@ const RegistrationForm = () => {
                 onClick={() => {
                   setActiveStep(-1);
                   setFormData(defaultFormData);
+                  setGuidedChoice(null);
                   clearSavedForm();
                 }}
                 title={isRTL ? 'العودة للرئيسية' : 'Back to Home'}
@@ -539,6 +562,10 @@ const RegistrationForm = () => {
               <UserLookup
                 onUserFound={handleUserFound}
                 onNewUser={() => setActiveStep(0)}
+                theme={theme}
+                guidedChoice={guidedChoice}
+                onGuideApply={handleGuideApply}
+                onGuideClear={handleGuideClear}
               />
             ) : (
               <>
