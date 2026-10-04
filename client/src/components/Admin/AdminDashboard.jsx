@@ -24,6 +24,7 @@ import OvertimeManagement from '../Overtime/OvertimeManagement';
 import TrainerAssistantManagement from '../TrainerAssistant/TrainerAssistantManagement';
 import CustomersManagement from '../Customers/CustomersManagement';
 import WorkshopSurveyResults from './WorkshopSurveyResults';
+import WorkshopSurveyEditor from './WorkshopSurveyEditor';
 import QuickMessages from './QuickMessages';
 import QuickForms from './QuickForms';
 import UnifiedAttendancePage from '../shared/UnifiedAttendancePage';
@@ -279,6 +280,7 @@ const AdminDashboard = () => {
   const [workshopSort, setWorkshopSort] = useState('date-asc');
   const [selectedWorkshopIds, setSelectedWorkshopIds] = useState([]);
   const [surveyResultsFor, setSurveyResultsFor] = useState(null); // { workshopId, studentId? }
+  const [showSurveyEditor, setShowSurveyEditor] = useState(false);
   const [sendingSurveys, setSendingSurveys] = useState(false);
   const [bulkRegBusy, setBulkRegBusy] = useState(false);
   const [bankSaving, setBankSaving] = useState(false);
@@ -8671,6 +8673,13 @@ const AdminDashboard = () => {
                           📜 {isRTL ? 'الشروط' : 'Terms'}
                         </button>
                         <button
+                          className="wsv2-action-btn"
+                          onClick={() => setShowSurveyEditor(true)}
+                          title={isRTL ? 'عرض وتعديل أسئلة استبيان ما بعد الورشة' : 'View and edit the post-workshop survey questions'}
+                        >
+                          📝 {isRTL ? 'الاستبيان' : 'Survey'}
+                        </button>
+                        <button
                           className="wsv2-action-btn primary"
                           onClick={() => {
                             setSelectedWorkshop(null);
@@ -9908,12 +9917,17 @@ const AdminDashboard = () => {
             )}
 
             {/* Admin Add Student Modal (workshop) */}
+            {showSurveyEditor && (
+              <WorkshopSurveyEditor isRTL={isRTL} onClose={() => setShowSurveyEditor(false)} />
+            )}
+
             {surveyResultsFor && (
               <WorkshopSurveyResults
                 workshopId={surveyResultsFor.workshopId}
                 studentId={surveyResultsFor.studentId}
                 isRTL={isRTL}
                 onClose={() => setSurveyResultsFor(null)}
+                onEditQuestions={() => { setSurveyResultsFor(null); setShowSurveyEditor(true); }}
               />
             )}
 

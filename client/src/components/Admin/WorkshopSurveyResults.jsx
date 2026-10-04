@@ -5,7 +5,7 @@ import api from '../../config/api';
 // Admin view of a workshop's post-workshop survey: response rate,
 // average per rating question, answer breakdowns, written comments,
 // CSV export. With `studentId` it opens on that one student's answers.
-const WorkshopSurveyResults = ({ workshopId, studentId, isRTL, onClose }) => {
+const WorkshopSurveyResults = ({ workshopId, studentId, isRTL, onClose, onEditQuestions }) => {
   const [data, setData] = useState(null);
   const [error, setError] = useState('');
   const [focusId, setFocusId] = useState(studentId || null);
@@ -122,7 +122,7 @@ const WorkshopSurveyResults = ({ workshopId, studentId, isRTL, onClose }) => {
               <span>{new Date(focused.submittedAt).toLocaleString(isRTL ? 'ar-SA-u-ca-gregory-nu-latn' : 'en-GB')}</span>
             </div>
             <dl className="wsr-answers">
-              {data.questions.map(q => (
+              {(focused.questions || data.questions).map(q => (
                 <div key={q.id} className="wsr-answer">
                   <dt>{L(q)}</dt>
                   <dd className={focused.answers[q.id] === undefined ? 'none' : ''}>
@@ -238,6 +238,11 @@ const WorkshopSurveyResults = ({ workshopId, studentId, isRTL, onClose }) => {
         )}
 
         <div className="wsr-foot">
+          {onEditQuestions && (
+            <button type="button" className="wsr-btn ghost" style={{ marginInlineEnd: 'auto' }} onClick={onEditQuestions}>
+              ✏️ {isRTL ? 'تعديل أسئلة الاستبيان' : 'Edit survey questions'}
+            </button>
+          )}
           {data && data.totals.responses > 0 && (
             <button type="button" className="wsr-btn" onClick={exportCsv}>📥 {isRTL ? 'تصدير CSV' : 'Export CSV'}</button>
           )}

@@ -232,3 +232,14 @@
   .wsurvey-rate, .wsurvey-face, .wsurvey-submit, .wsurvey-progress-fill { transition: none; }
   .wsurvey-spinner { animation-duration: 2s; }
 }
+
+.wsurvey-preview {
+  margin: 0 0 14px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  color: #1e40af;
+  font-size: 0.85rem;
+  font-weight: 700;
+}

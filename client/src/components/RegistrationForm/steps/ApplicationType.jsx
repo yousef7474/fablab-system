@@ -198,6 +198,13 @@ const ApplicationType = ({ formData, onChange, onNext, theme }) => {
     onNext();
   };
 
+  // Entity already chosen (returning Entity user, the guide, a draft)
+  // but not unlocked this visit → ask right away.
+  useEffect(() => {
+    if (formData.applicationType === 'Entity' && !formData.entityAccessToken) setEntityPrompt('next');
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const handleUnlock = (token) => {
     const thenNext = entityPrompt === 'next';
     setEntityPrompt(null);

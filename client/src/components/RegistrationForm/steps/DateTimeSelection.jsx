@@ -3,6 +3,10 @@ import { useTranslation } from 'react-i18next';
 import { motion } from 'framer-motion';
 import api from '../../../config/api';
 
+// Types that book a single appointment (date + time + duration).
+// Entity (كيان) books a meeting the same way as a beneficiary.
+const APPOINTMENT_TYPES = ['Beneficiary', 'Talented', 'Visitor', 'Entity'];
+
 // Helper function to format time as AM/PM
 const formatTimeAMPM = (time24) => {
   if (!time24) return '';
@@ -170,7 +174,7 @@ const DateTimeSelection = ({ formData, onChange, onNext, onBack }) => {
   const isDateClosed = (date) => !!getClosureInfo(date);
 
   const canProceed = () => {
-    if (['Beneficiary', 'Talented', 'Visitor'].includes(formData.applicationType)) {
+    if (APPOINTMENT_TYPES.includes(formData.applicationType)) {
       return formData.appointmentDate && formData.appointmentTime && formData.appointmentDuration;
     } else if (formData.applicationType === 'Volunteer') {
       return formData.startDate && formData.endDate && formData.startTime && formData.endTime &&
@@ -261,7 +265,7 @@ const DateTimeSelection = ({ formData, onChange, onNext, onBack }) => {
     if (!isDateSelectable(date)) return;
     const dateStr = formatDateForInput(date);
 
-    if (['Beneficiary', 'Talented', 'Visitor'].includes(formData.applicationType)) {
+    if (APPOINTMENT_TYPES.includes(formData.applicationType)) {
       // Update both fields at once to prevent state override
       onChange({
         appointmentDate: dateStr,
@@ -310,7 +314,7 @@ const DateTimeSelection = ({ formData, onChange, onNext, onBack }) => {
   };
 
   const handleTimeSlotSelect = (time) => {
-    if (['Beneficiary', 'Talented', 'Visitor'].includes(formData.applicationType)) {
+    if (APPOINTMENT_TYPES.includes(formData.applicationType)) {
       // Clear duration when time changes, user needs to re-select
       onChange({
         appointmentTime: time,
@@ -365,7 +369,7 @@ const DateTimeSelection = ({ formData, onChange, onNext, onBack }) => {
       </p>
 
       {/* Calendar View for appointment types */}
-      {['Beneficiary', 'Talented', 'Visitor', 'FABLAB Visit'].includes(formData.applicationType) && (
+      {[...APPOINTMENT_TYPES, 'FABLAB Visit'].includes(formData.applicationType) && (
         <div className="booking-calendar-container">
           {/* Calendar */}
           <motion.div
@@ -627,7 +631,7 @@ const DateTimeSelection = ({ formData, onChange, onNext, onBack }) => {
               )}
 
               {/* Duration Selection for Beneficiary/Talented/Visitor */}
-              {['Beneficiary', 'Talented', 'Visitor'].includes(formData.applicationType) && formData.appointmentTime && (
+              {APPOINTMENT_TYPES.includes(formData.applicationType) && formData.appointmentTime && (
                 <motion.div
                   className="duration-selection"
                   initial={{ opacity: 0, y: 10 }}

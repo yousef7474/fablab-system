@@ -2918,15 +2918,31 @@ const _surveyStudent = async (token) => {
 };
 
 // GET /workshops/public/survey/:token — the questions + who/what it's for.
+// The token "preview" shows the live questions without a student (the
+// admin's "preview as a student" link); nothing can be submitted there.
 exports.getPublicSurvey = async (req, res) => {
   try {
+    const questions = await survey.loadQuestions(Settings);
+    if (req.params.token === 'preview') {
+      return res.json({
+        preview: true,
+        questions,
+        ratingLabels: survey.RATING_LABELS,
+        student: { firstName: '' },
+        workshop: { title: 'معاينة استبيان الورشة · Survey preview' },
+        isOpen: true,
+        submitted: false,
+        attendance: { ok: true, attendedDays: 1, requiredDays: 1, workshopDays: 1 },
+        certificateSent: false
+      });
+    }
     const student = await _surveyStudent(req.params.token);
     if (!student || !student.workshop) {
       return res.status(404).json({ message: 'Survey link is not valid', messageAr: 'رابط الاستبيان غير صالح' });
     }
     const w = student.workshop;
     res.json({
-      questions: survey.QUESTIONS,
+      questions,
       ratingLabels: survey.RATING_LABELS,
       student: { firstName: student.firstName, lastName: student.lastName },
       workshop: { title: w.title, presenter: w.presenter, startDate: w.startDate, endDate: w.endDate, totalHours: w.totalHours, color: w.color },
@@ -2948,6 +2964,9 @@ exports.getPublicSurvey = async (req, res) => {
 // student has an email, the certificate is emailed right away.
 exports.submitPublicSurvey = async (req, res) => {
   try {
+    if (req.params.token === 'preview') {
+      return res.status(400).json({ message: 'Preview only — answers are not saved', messageAr: 'هذه معاينة — لا تُحفظ الإجابات' });
+    }
     const student = await _surveyStudent(req.params.token);
     if (!student || !student.workshop) {
       return res.status(404).json({ message: 'Survey link is not valid', messageAr: 'رابط الاستبيان غير صالح' });
@@ -2959,12 +2978,15 @@ exports.submitPublicSurvey = async (req, res) => {
     if (w.startDate && String(w.startDate).slice(0, 10) > _todayStrRiyadh()) {
       return res.status(400).json({ message: 'The survey opens when the workshop starts', messageAr: 'يُتاح الاستبيان عند بدء الورشة' });
     }
-    const { answers, missing } = survey.cleanAnswers(req.body && req.body.answers);
+    const questions = await survey.loadQuestions(Settings);
+    const { answers, missing } = survey.cleanAnswers(req.body && req.body.answers, questions);
     if (missing.length) {
       return res.status(400).json({ missing, message: 'Please answer all required questions', messageAr: 'يرجى الإجابة على جميع الأسئلة المطلوبة' });
     }
     await student.update({
-      surveyResponse: { v: survey.SURVEY_VERSION, answers },
+      // Snapshot of the questions answered — later edits to the survey
+      // don't change what these answers meant.
+      surveyResponse: { v: survey.SURVEY_VERSION, answers, questions },
       surveySubmittedAt: new Date()
     });
 
@@ -3007,7 +3029,7 @@ exports.getSurveyResults = async (req, res) => {
     const students = workshop.students || [];
     res.json({
       workshop: { workshopId: workshop.workshopId, title: workshop.title, startDate: workshop.startDate, endDate: workshop.endDate },
-      questions: survey.QUESTIONS,
+      questions: await survey.loadQuestions(Settings),
       ratingLabels: survey.RATING_LABELS,
       totals: {
         students: students.length,
@@ -3022,11 +3044,49 @@ exports.getSurveyResults = async (req, res) => {
           name: `${st.firstName || ''} ${st.lastName || ''}`.trim(),
           phone: st.phone,
           submittedAt: st.surveySubmittedAt,
-          answers: (st.surveyResponse && st.surveyResponse.answers) || {}
+          answers: (st.surveyResponse && st.surveyResponse.answers) || {},
+          // Questions as the student saw them (v2+); older answers used the defaults.
+          questions: (st.surveyResponse && st.surveyResponse.questions) || survey.DEFAULT_QUESTIONS
         }))
     });
   } catch (error) {
     console.error('getSurveyResults:', error);
+    res.status(500).json({ message: 'Server error', messageAr: 'خطأ في الخادم' });
+  }
+};
+
+// GET /workshops/admin/survey — the live questions for the editor.
+exports.getSurveyQuestions = async (req, res) => {
+  try {
+    const row = await Settings.findByPk(survey.SURVEY_SETTINGS_KEY);
+    const saved = survey.validateQuestions(row && row.value);
+    res.json({
+      questions: saved.questions || survey.DEFAULT_QUESTIONS,
+      isDefault: !saved.questions,
+      defaults: survey.DEFAULT_QUESTIONS,
+      ratingLabels: survey.RATING_LABELS
+    });
+  } catch (error) {
+    console.error('getSurveyQuestions:', error);
+    res.status(500).json({ message: 'Server error', messageAr: 'خطأ في الخادم' });
+  }
+};
+
+// PUT /workshops/admin/survey (manager) — body { questions } or { reset: true }.
+// Applies to surveys submitted from now on; earlier answers keep their
+// own question snapshot.
+exports.updateSurveyQuestions = async (req, res) => {
+  try {
+    if (req.body && req.body.reset) {
+      await Settings.destroy({ where: { key: survey.SURVEY_SETTINGS_KEY } });
+      return res.json({ questions: survey.DEFAULT_QUESTIONS, isDefault: true });
+    }
+    const v = survey.validateQuestions(req.body && req.body.questions);
+    if (!v.questions) return res.status(400).json(v);
+    await Settings.upsert({ key: survey.SURVEY_SETTINGS_KEY, value: v.questions });
+    res.json({ questions: v.questions, isDefault: false });
+  } catch (error) {
+    console.error('updateSurveyQuestions:', error);
     res.status(500).json({ message: 'Server error', messageAr: 'خطأ في الخادم' });
   }
 };

@@ -61,6 +61,8 @@ router.get('/admin/payment-settings',  adminAuth, controller.getAdminPaymentSett
 router.put('/admin/payment-settings',  adminAuth, requireManager, controller.updateAdminPaymentSettings);
 router.get('/admin/terms',             adminAuth, controller.getAdminTerms);
 router.put('/admin/terms',             adminAuth, requireManager, controller.updateAdminTerms);
+router.get('/admin/survey',            adminAuth, controller.getSurveyQuestions);
+router.put('/admin/survey',            adminAuth, requireManager, controller.updateSurveyQuestions);
 
 // Admin coupons CRUD (manager-only for writes; any admin can list).
 router.get('/admin/coupons',          adminAuth, controller.listCoupons);

@@ -1,17 +1,20 @@
 // Post-workshop survey. A student gets the certificate only after they
-// attended enough days AND submitted this survey. The questions live
-// here (one place) and are served to the public survey page and the
-// admin results view, so both always render the same version.
+// attended enough days AND submitted this survey. DEFAULT_QUESTIONS is
+// the starting set; admins edit the live list from the Workshops tab
+// (Settings key `workshop_survey_questions`, see validateQuestions).
+// Each response stores a snapshot of the questions it answered, so
+// later edits never change what an old answer meant.
 const crypto = require('crypto');
 
-const SURVEY_VERSION = 1;
+const SURVEY_VERSION = 2;
+const SURVEY_SETTINGS_KEY = 'workshop_survey_questions';
 
 const RATING_LABELS = {
   ar: ['غير راضٍ إطلاقاً', 'غير راضٍ', 'محايد', 'راضٍ', 'راضٍ جداً'],
   en: ['Very dissatisfied', 'Dissatisfied', 'Neutral', 'Satisfied', 'Very satisfied']
 };
 
-const QUESTIONS = [
+const DEFAULT_QUESTIONS = [
   { id: 'overall', type: 'rating', required: true,
     ar: 'ما مدى رضاك العام عن الورشة؟', en: 'Overall, how satisfied are you with the workshop?' },
   { id: 'presenter', type: 'rating', required: true,
@@ -65,12 +68,67 @@ const QUESTIONS = [
 
 const MAX_TEXT = 1000;
 
+// ---------- admin-edited question list ----------
+const ID_RE = /^[A-Za-z0-9_]{1,40}$/;
+const TYPES = ['rating', 'choice', 'text'];
+const _t = (v, max = 300) => String(v == null ? '' : v).trim().slice(0, max);
+
+// Returns { questions } (normalised) or { message, messageAr }.
+const validateQuestions = (list) => {
+  const fail = (message, messageAr) => ({ message, messageAr });
+  if (!Array.isArray(list) || list.length === 0) return fail('Add at least one question', 'أضف سؤالاً واحداً على الأقل');
+  if (list.length > 40) return fail('The survey can have up to 40 questions', 'الحد الأقصى 40 سؤالاً');
+  const ids = new Set();
+  const questions = [];
+  for (let i = 0; i < list.length; i++) {
+    const q = list[i] || {};
+    const n = i + 1;
+    const id = _t(q.id, 40);
+    if (!ID_RE.test(id) || ids.has(id)) return fail(`Question ${n}: invalid or duplicate id`, `السؤال ${n}: معرّف غير صالح أو مكرر`);
+    ids.add(id);
+    if (!TYPES.includes(q.type)) return fail(`Question ${n}: unknown type`, `السؤال ${n}: نوع غير معروف`);
+    const ar = _t(q.ar);
+    const en = _t(q.en);
+    if (!ar && !en) return fail(`Question ${n}: enter the question text`, `السؤال ${n}: اكتب نص السؤال`);
+    const item = { id, type: q.type, required: !!q.required, ar: ar || en, en: en || ar };
+    if (q.type === 'choice') {
+      const values = new Set();
+      const options = [];
+      for (const o of (Array.isArray(q.options) ? q.options : [])) {
+        const oar = _t(o && o.ar, 120);
+        const oen = _t(o && o.en, 120);
+        if (!oar && !oen) continue;
+        let v = _t(o && o.v, 40);
+        if (!ID_RE.test(v) || values.has(v)) {
+          let k = options.length + 1;
+          while (values.has(`o${k}`)) k++;
+          v = `o${k}`;
+        }
+        values.add(v);
+        options.push({ v, ar: oar || oen, en: oen || oar });
+      }
+      if (options.length < 2) return fail(`Question ${n}: a choice question needs at least 2 options`, `السؤال ${n}: سؤال الاختيار يحتاج خيارين على الأقل`);
+      if (options.length > 12) return fail(`Question ${n}: up to 12 options`, `السؤال ${n}: الحد الأقصى 12 خياراً`);
+      item.options = options;
+    }
+    questions.push(item);
+  }
+  return { questions };
+};
+
+// Live question list: the admin's saved version, or the defaults.
+const loadQuestions = async (Settings) => {
+  const row = await Settings.findByPk(SURVEY_SETTINGS_KEY);
+  const v = validateQuestions(row && row.value);
+  return v.questions || DEFAULT_QUESTIONS;
+};
+
 // Keeps only known answers in the expected shape; reports required ones
 // that are missing.
-const cleanAnswers = (raw) => {
+const cleanAnswers = (raw, questions = DEFAULT_QUESTIONS) => {
   const answers = {};
   const missing = [];
-  for (const q of QUESTIONS) {
+  for (const q of questions) {
     const v = raw ? raw[q.id] : undefined;
     if (q.type === 'rating') {
       const n = Number(v);
@@ -145,7 +203,11 @@ const certificateBlock = (student, workshop) => {
 
 module.exports = {
   SURVEY_VERSION,
-  QUESTIONS,
+  SURVEY_SETTINGS_KEY,
+  DEFAULT_QUESTIONS,
+  QUESTIONS: DEFAULT_QUESTIONS,
+  validateQuestions,
+  loadQuestions,
   RATING_LABELS,
   cleanAnswers,
   surveyToken,

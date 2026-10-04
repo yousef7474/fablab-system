@@ -45,6 +45,12 @@ const WorkshopSurvey = () => {
       document.getElementById(`q-${first?.id}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
       return;
     }
+    if (data.preview) {
+      // Admin preview: nothing is saved.
+      setResult({ preview: true });
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      return;
+    }
     setSubmitting(true);
     setSubmitError('');
     try {
@@ -104,6 +110,9 @@ const WorkshopSurvey = () => {
       : notice('⚠️', isRTL ? 'تعذّر تحميل الاستبيان' : 'Could not load the survey', isRTL ? 'تحقق من اتصالك ثم أعد تحميل الصفحة.' : 'Check your connection and reload the page.', 'error');
   } else if (!data) {
     body = <div className="wsurvey-loading"><span className="wsurvey-spinner" />{isRTL ? 'جارٍ التحميل…' : 'Loading…'}</div>;
+  } else if (result && result.preview) {
+    body = notice('👁', isRTL ? 'انتهت المعاينة' : 'End of preview',
+      isRTL ? 'هذه معاينة للاستبيان كما يراه الطالب — لم تُحفظ أي إجابات.' : 'This is a preview of the survey as students see it — no answers were saved.');
   } else if (result) {
     const att = result.attendance || {};
     let text;
@@ -132,6 +141,11 @@ const WorkshopSurvey = () => {
   } else {
     body = (
       <>
+        {data.preview && (
+          <div className="wsurvey-preview">
+            👁 {isRTL ? 'وضع المعاينة — هكذا يرى الطالب الاستبيان، ولا تُحفظ الإجابات.' : 'Preview mode — this is what students see; answers are not saved.'}
+          </div>
+        )}
         <div className="wsurvey-intro">
           <p>
             {isRTL ? `مرحباً ${data.student.firstName || ''} 👋` : `Hi ${data.student.firstName || ''} 👋`}

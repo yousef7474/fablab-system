@@ -202,7 +202,9 @@ exports.getAllRegistrations = async (req, res) => {
     const term = String(search || '').trim();
     if (term) {
       const seq = Registration.sequelize;
-      const col = (c) => seq.col(c);
+      // Cast to TEXT: some columns are ENUMs (users.entityName) and
+      // lower()/translate() don't accept enum types in Postgres.
+      const col = (c) => seq.cast(seq.col(c), 'TEXT');
       const fold = (expr) => seq.fn('translate', seq.fn('lower', expr), 'أإآةى', 'اااهي');
       const folded = term.toLowerCase().replace(/[أإآ]/g, 'ا').replace(/ة/g, 'ه').replace(/ى/g, 'ي');
       const pattern = `%${folded.replace(/[\\%_]/g, (c) => `\\${c}`)}%`;
@@ -819,7 +821,9 @@ exports.getAllUsers = async (req, res) => {
     const term = String(search || '').trim();
     if (term) {
       const seq = User.sequelize;
-      const col = (c) => seq.col(c);
+      // Cast to TEXT: some columns are ENUMs (users.entityName) and
+      // lower()/translate() don't accept enum types in Postgres.
+      const col = (c) => seq.cast(seq.col(c), 'TEXT');
       const fold = (expr) => seq.fn('translate', seq.fn('lower', expr), 'أإآةى', 'اااهي');
       const folded = term.toLowerCase().replace(/[أإآ]/g, 'ا').replace(/ة/g, 'ه').replace(/ى/g, 'ي');
       const pattern = `%${folded.replace(/[\\%_]/g, (c) => `\\${c}`)}%`;

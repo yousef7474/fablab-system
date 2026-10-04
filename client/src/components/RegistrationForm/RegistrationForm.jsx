@@ -23,7 +23,10 @@ const getInitialFormData = () => {
     const saved = localStorage.getItem(STORAGE_KEY);
     if (saved) {
       const parsed = JSON.parse(saved);
-      return parsed.formData || null;
+      if (!parsed.formData) return null;
+      // The Entity (كيان) unlock is per visit — never restored.
+      const { entityAccessToken, ...rest } = parsed.formData;
+      return rest;
     }
   } catch (e) {
     console.error('Error loading saved form data:', e);
@@ -146,6 +149,15 @@ const RegistrationForm = () => {
     checkRegistrationStatus();
   }, []);
 
+  // Entity (كيان) needs the access password every visit: a resumed
+  // draft, a URL step jump or a returning Entity user lands back on the
+  // type step, which asks for it.
+  useEffect(() => {
+    if (!registrationResult && activeStep >= 1 && formData.applicationType === 'Entity' && !formData.entityAccessToken) {
+      setActiveStep(0);
+    }
+  }, [activeStep, formData.applicationType, formData.entityAccessToken, registrationResult]);
+
   // Sync URL with active step
   useEffect(() => {
     if (!registrationResult) {
@@ -182,8 +194,9 @@ const RegistrationForm = () => {
   useEffect(() => {
     if (!registrationResult) {
       try {
+        const { entityAccessToken, ...draft } = formData;
         localStorage.setItem(STORAGE_KEY, JSON.stringify({
-          formData,
+          formData: draft,
           activeStep,
           savedAt: new Date().toISOString()
         }));
