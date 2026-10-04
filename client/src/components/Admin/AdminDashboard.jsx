@@ -29,7 +29,6 @@ import QuickMessages from './QuickMessages';
 import QuickForms from './QuickForms';
 import UnifiedAttendancePage from '../shared/UnifiedAttendancePage';
 import FablabVisitsTab from './FablabVisitsTab';
-import FablabVisitOverrideCodeCard from './FablabVisitOverrideCodeCard';
 import YearCalendar from '../YearCalendar/YearCalendar';
 import StoreTab from './StoreTab';
 import Print3DTab from './Print3DTab';
@@ -210,6 +209,9 @@ const AdminDashboard = () => {
   const [storeClosed, setStoreClosed] = useState(false);
   const [storeCloseReason, setStoreCloseReason] = useState('');
   const [savingStoreClose, setSavingStoreClose] = useState(false);
+  const [visitsClosed, setVisitsClosed] = useState(false);
+  const [visitsCloseReason, setVisitsCloseReason] = useState('');
+  const [savingVisitsClose, setSavingVisitsClose] = useState(false);
 
   // 3D printing closure (temporary, with optional date window)
   const [p3dStatus, setP3dStatus] = useState({
@@ -764,6 +766,39 @@ const AdminDashboard = () => {
     }
   };
 
+  // FabLab visits closure — mirrors the store toggle; the public
+  // /fablab-visit form shows the reason and the server rejects bookings.
+  const fetchVisitsStatus = async () => {
+    try {
+      const response = await api.get('/settings/fablab-visit-status');
+      setVisitsClosed(!!response.data.disabled);
+      setVisitsCloseReason(response.data.reason || '');
+    } catch (error) {
+      console.error('Error fetching visit status:', error);
+    }
+  };
+
+  const handleToggleVisits = async () => {
+    setSavingVisitsClose(true);
+    try {
+      const newDisabled = !visitsClosed;
+      await api.put('/settings/fablab-visit-status', {
+        disabled: newDisabled,
+        reason: newDisabled ? visitsCloseReason : ''
+      });
+      setVisitsClosed(newDisabled);
+      if (!newDisabled) setVisitsCloseReason('');
+      toast.success(isRTL
+        ? (newDisabled ? 'تم إغلاق التسجيل في زيارات فاب لاب' : 'تم فتح التسجيل في زيارات فاب لاب')
+        : (newDisabled ? 'FabLab visit registration closed' : 'FabLab visit registration open'));
+    } catch (error) {
+      console.error('Error updating visit status:', error);
+      toast.error(isRTL ? 'خطأ في تحديث حالة الزيارات' : 'Error updating visit status');
+    } finally {
+      setSavingVisitsClose(false);
+    }
+  };
+
   // 3D printing closure — mirrors store but adds an optional date
   // window so admin can schedule a maintenance period in advance.
   const fetchPrint3dStatus = async () => {
@@ -933,6 +968,7 @@ const AdminDashboard = () => {
       fetchSectionAvailability();
       fetchRegistrationStatus();
       fetchStoreStatus();
+      fetchVisitsStatus();
       fetchPrint3dStatus();
       fetchClosures();
     } else if (activeTab === 'borrowing') {
@@ -10621,6 +10657,83 @@ const AdminDashboard = () => {
                     </div>
                   </div>
 
+                  {/* FabLab visits closure — same as the store card. Closing
+                      hides the open slots on /fablab-visit and shows the
+                      reason; the server rejects new bookings. */}
+                  <div className="settings-card" style={{ gridColumn: '1 / -1', border: visitsClosed ? '2px solid #f59e0b' : '2px solid #22c55e', background: visitsClosed ? 'rgba(245,158,11,0.03)' : 'rgba(34,197,94,0.03)' }}>
+                    <h3 style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={visitsClosed ? '#f59e0b' : '#22c55e'} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                        <circle cx="9" cy="7" r="4"/>
+                        <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+                        <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+                      </svg>
+                      {isRTL ? 'زيارات فاب لاب' : 'FabLab Visits'}
+                    </h3>
+                    <div className="settings-form">
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', flexWrap: 'wrap', padding: '12px 16px', background: visitsClosed ? '#fffbeb' : '#f0fdf4', borderRadius: '10px', marginBottom: '12px' }}>
+                        <div style={{ minWidth: 0, flex: '1 1 240px' }}>
+                          <p style={{ margin: 0, fontWeight: '700', fontSize: '15px', color: visitsClosed ? '#b45309' : '#16a34a' }}>
+                            {visitsClosed
+                              ? (isRTL ? 'التسجيل في الزيارات مغلق' : 'Visit registration is CLOSED')
+                              : (isRTL ? 'التسجيل في الزيارات مفتوح' : 'Visit registration is OPEN')}
+                          </p>
+                          <p style={{ margin: '4px 0 0 0', fontSize: '13px', color: 'var(--text-secondary, #64748b)' }}>
+                            {isRTL ? 'عند الإغلاق تختفي المواعيد المتاحة من صفحة طلب الزيارة ويظهر السبب للزوار' : 'When closed, the open slots disappear from the visit page and visitors see the reason'}
+                          </p>
+                        </div>
+                        <button
+                          onClick={() => {
+                            if (visitsClosed) {
+                              handleToggleVisits();
+                            } else if (!visitsCloseReason.trim()) {
+                              toast.error(isRTL ? 'يرجى إدخال سبب الإغلاق أولاً' : 'Please enter a reason first');
+                            } else {
+                              handleToggleVisits();
+                            }
+                          }}
+                          disabled={savingVisitsClose}
+                          style={{
+                            padding: '10px 24px',
+                            borderRadius: '10px',
+                            border: 'none',
+                            fontWeight: '700',
+                            fontSize: '14px',
+                            cursor: savingVisitsClose ? 'not-allowed' : 'pointer',
+                            background: visitsClosed ? '#22c55e' : '#f59e0b',
+                            color: 'white',
+                            transition: 'all 0.2s',
+                            opacity: savingVisitsClose ? 0.7 : 1
+                          }}
+                        >
+                          {savingVisitsClose
+                            ? (isRTL ? 'جاري الحفظ...' : 'Saving...')
+                            : visitsClosed
+                              ? (isRTL ? 'فتح التسجيل' : 'Open Registration')
+                              : (isRTL ? 'إغلاق التسجيل' : 'Close Registration')}
+                        </button>
+                      </div>
+                      <div className="form-group">
+                        <label style={{ fontWeight: '600' }}>
+                          {isRTL ? 'سبب الإغلاق (سيظهر للزوار)' : 'Closure Reason (shown to visitors)'}
+                        </label>
+                        <textarea
+                          value={visitsCloseReason}
+                          onChange={(e) => setVisitsCloseReason(e.target.value)}
+                          placeholder={isRTL ? 'مثال: الزيارات متوقفة خلال فترة الاختبارات — نرحب بكم بعد ذلك' : 'e.g., Visits are paused during the exam period — welcome back afterwards'}
+                          rows={3}
+                          style={{ width: '100%', padding: '10px 14px', borderRadius: '8px', border: '1px solid var(--border-color, #e2e8f0)', resize: 'vertical', fontSize: '14px', fontFamily: 'inherit' }}
+                          disabled={visitsClosed}
+                        />
+                        {visitsClosed && visitsCloseReason && (
+                          <p style={{ margin: '6px 0 0', fontSize: '12px', color: '#b45309' }}>
+                            {isRTL ? 'لتعديل السبب، افتح التسجيل أولاً ثم أغلقه بسبب جديد' : 'To change the reason, open registration first then close again with a new reason'}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
                   {/* 3D printing closure — mirrors the store card but with
                       an optional date window (from/to) so admin can schedule
                       a maintenance period in advance instead of remembering
@@ -10730,7 +10843,6 @@ const AdminDashboard = () => {
                     </div>
                   </div>
 
-                  <FablabVisitOverrideCodeCard isRTL={isRTL} />
 
                   <div className="settings-card" style={{ gridColumn: '1 / -1' }}>
                     <h3 style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>

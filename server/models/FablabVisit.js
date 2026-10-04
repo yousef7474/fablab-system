@@ -20,18 +20,26 @@ const FablabVisit = sequelize.define('FablabVisit', {
     allowNull: true,
     unique: true
   },
-  // Submitter identity
-  entityName:      { type: DataTypes.STRING, allowNull: false },   // اسم الجهة
-  personInCharge:  { type: DataTypes.STRING, allowNull: false },   // الشخص المسؤول
-  nationalId:      { type: DataTypes.STRING, allowNull: false },
+  // Submitter identity — the visiting entity and its supervisor.
+  entityName:      { type: DataTypes.STRING, allowNull: false },   // الجهة الزائرة
+  personInCharge:  { type: DataTypes.STRING, allowNull: false },   // المشرف
+  supervisorJob:   { type: DataTypes.STRING, allowNull: true },    // وظيفة المشرف
+  nationalId:      { type: DataTypes.STRING, allowNull: true },    // older requests only
   phone:           { type: DataTypes.STRING, allowNull: false },
   email:           { type: DataTypes.STRING, allowNull: false, validate: { isEmail: true } },
+  // Accompanying instructors: [{ name, phone, job }]. At least 2 for
+  // every 15 visitors (2 × ⌈visitors / 15⌉).
+  instructors:     { type: DataTypes.JSON, allowNull: true },
+  // The admin-opened slot this visit booked (null for older requests
+  // that picked a free date/time). visitDate/visitStartTime/visitEndTime
+  // are copied from the slot.
+  slotId:          { type: DataTypes.UUID, allowNull: true },
   // Visit specifics
   visitorsCount:   { type: DataTypes.INTEGER, allowNull: true, defaultValue: 1 },
   visitDate:       { type: DataTypes.DATEONLY, allowNull: false },
   visitStartTime:  { type: DataTypes.TIME, allowNull: false },
   visitEndTime:    { type: DataTypes.TIME, allowNull: false },
-  purpose:         { type: DataTypes.TEXT, allowNull: false },     // الغرض من الزيارة
+  purpose:         { type: DataTypes.TEXT, allowNull: true },      // الغرض من الزيارة (اختياري)
   notes:           { type: DataTypes.TEXT, allowNull: true },
 
   // ----- Manager approval workflow (mirrors OvertimeRequest) -----

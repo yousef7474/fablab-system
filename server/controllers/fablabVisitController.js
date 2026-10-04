@@ -1,4 +1,5 @@
-const { FablabVisit, Settings, RegistrationClosure } = require('../models');
+const { FablabVisit, FablabVisitSlot, Settings, RegistrationClosure } = require('../models');
+const { Op } = require('sequelize');
 const { sequelize } = require('../config/database');
 const crypto = require('crypto');
 const sgMail = require('@sendgrid/mail');
@@ -117,6 +118,241 @@ const _publicOrigin = () =>
   process.env.PUBLIC_APP_URL ||
   (process.env.NODE_ENV === 'production' ? 'https://fablabsahsa.com' : 'http://localhost:3000');
 
+// -------------------- SLOTS + BOOKING RULES --------------------
+// Visits are booked only into slots the admin opens (date, time window,
+// capacity = most visitors one group may bring). One group per slot: a
+// slot is taken while a visit pointing at it hasn't been rejected.
+// Every 15 visitors (or part of 15) need at least 2 instructors.
+
+const VISITORS_PER_INSTRUCTOR_PAIR = 15;
+const requiredInstructors = (visitors) =>
+  2 * Math.max(1, Math.ceil((Number(visitors) || 0) / VISITORS_PER_INSTRUCTOR_PAIR));
+
+// Riyadh "now" as { date: 'YYYY-MM-DD', time: 'HH:MM' }.
+const _riyadhNow = () => {
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Asia/Riyadh', year: 'numeric', month: '2-digit', day: '2-digit',
+    hour: '2-digit', minute: '2-digit', hourCycle: 'h23'
+  }).formatToParts(new Date());
+  const g = (t) => parts.find(p => p.type === t).value;
+  return { date: `${g('year')}-${g('month')}-${g('day')}`, time: `${g('hour')}:${g('minute')}` };
+};
+
+const _hhmm = (t) => String(t || '').slice(0, 5);
+const _isFutureSlot = (slot, now = _riyadhNow()) =>
+  slot.date > now.date || (slot.date === now.date && _hhmm(slot.startTime) > now.time);
+
+// A visit keeps its slot until it is rejected (by the manager or in the
+// final decision to the visitor).
+const _ACTIVE_VISIT = {
+  approvalStatus: { [Op.ne]: 'rejected' },
+  visitorDecision: { [Op.ne]: 'rejected' }
+};
+
+// slotId → the active visit holding it (for the given slot ids).
+const _bookingsBySlot = async (slotIds, { transaction, excludeVisitId } = {}) => {
+  if (!slotIds.length) return new Map();
+  const where = { slotId: { [Op.in]: slotIds }, ..._ACTIVE_VISIT };
+  if (excludeVisitId) where.visitId = { [Op.ne]: excludeVisitId };
+  const rows = await FablabVisit.findAll({
+    where,
+    attributes: ['visitId', 'visitNumber', 'slotId', 'entityName', 'personInCharge', 'phone', 'visitorsCount', 'approvalStatus', 'visitorDecision'],
+    transaction
+  });
+  return new Map(rows.map(r => [r.slotId, r]));
+};
+
+const _visitsClosed = async () => {
+  const [d, r] = await Promise.all([
+    Settings.findByPk('fablab_visit_disabled'),
+    Settings.findByPk('fablab_visit_disabled_reason')
+  ]);
+  return { closed: !!(d && d.value), reason: (r && r.value) || '' };
+};
+
+const _slotOut = (slot) => ({
+  slotId: slot.slotId,
+  date: slot.date,
+  startTime: _hhmm(slot.startTime),
+  endTime: _hhmm(slot.endTime),
+  capacity: slot.capacity
+});
+
+// GET /public/fablab-visit/slots — open, future, unbooked slots.
+exports.publicSlots = async (req, res) => {
+  try {
+    const status = await _visitsClosed();
+    if (status.closed) {
+      return res.json({ open: false, reason: status.reason, slots: [], visitorsPerInstructorPair: VISITORS_PER_INSTRUCTOR_PAIR });
+    }
+    const now = _riyadhNow();
+    const slots = await FablabVisitSlot.findAll({
+      where: { isActive: true, date: { [Op.gte]: now.date } },
+      order: [['date', 'ASC'], ['startTime', 'ASC']]
+    });
+    const future = slots.filter(sl => _isFutureSlot(sl, now));
+    const booked = await _bookingsBySlot(future.map(sl => sl.slotId));
+    res.json({
+      open: true,
+      reason: '',
+      visitorsPerInstructorPair: VISITORS_PER_INSTRUCTOR_PAIR,
+      slots: future.filter(sl => !booked.has(sl.slotId)).map(_slotOut)
+    });
+  } catch (err) {
+    console.error('publicSlots:', err);
+    res.status(500).json({ message: 'Server error', messageAr: 'خطأ في الخادم' });
+  }
+};
+
+// GET /fablab-visits/slots?from=YYYY-MM-DD&to=YYYY-MM-DD (admin) — every
+// slot in the range with the visit holding it, if any.
+exports.listSlots = async (req, res) => {
+  try {
+    const where = {};
+    const iso = /^\d{4}-\d{2}-\d{2}$/;
+    if (iso.test(String(req.query.from || '')) || iso.test(String(req.query.to || ''))) {
+      where.date = {};
+      if (iso.test(String(req.query.from || ''))) where.date[Op.gte] = req.query.from;
+      if (iso.test(String(req.query.to || ''))) where.date[Op.lte] = req.query.to;
+    }
+    const slots = await FablabVisitSlot.findAll({ where, order: [['date', 'ASC'], ['startTime', 'ASC']] });
+    const booked = await _bookingsBySlot(slots.map(sl => sl.slotId));
+    const now = _riyadhNow();
+    res.json(slots.map(sl => {
+      const b = booked.get(sl.slotId);
+      return {
+        ..._slotOut(sl),
+        isActive: sl.isActive,
+        notes: sl.notes,
+        isPast: !_isFutureSlot(sl, now),
+        booking: b ? {
+          visitId: b.visitId,
+          visitNumber: b.visitNumber,
+          visitNumberLabel: formatVisitNumber(b.visitNumber),
+          entityName: b.entityName,
+          personInCharge: b.personInCharge,
+          phone: b.phone,
+          visitorsCount: b.visitorsCount,
+          approvalStatus: b.approvalStatus,
+          visitorDecision: b.visitorDecision
+        } : null
+      };
+    }));
+  } catch (err) {
+    console.error('listSlots:', err);
+    res.status(500).json({ message: 'Server error', messageAr: 'خطأ في الخادم' });
+  }
+};
+
+const _TIME_RE = /^([01]\d|2[0-3]):[0-5]\d$/;
+const _DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+
+// POST /fablab-visits/slots (manager) — body { dates: [], startTime, endTime, capacity, notes? }
+// Opens the same time window on every selected date.
+exports.createSlots = async (req, res) => {
+  try {
+    const { startTime, endTime, notes } = req.body || {};
+    const capacity = parseInt(req.body?.capacity, 10);
+    const dates = [...new Set((Array.isArray(req.body?.dates) ? req.body.dates : []).map(String))];
+    const now = _riyadhNow();
+    if (!dates.length || dates.length > 62 || !dates.every(d => _DATE_RE.test(d))) {
+      return res.status(400).json({ message: 'Choose one or more dates', messageAr: 'اختر يوماً واحداً على الأقل' });
+    }
+    if (dates.some(d => d < now.date)) {
+      return res.status(400).json({ message: 'Dates in the past cannot be opened', messageAr: 'لا يمكن فتح مواعيد في أيام سابقة' });
+    }
+    if (!_TIME_RE.test(String(startTime || '')) || !_TIME_RE.test(String(endTime || '')) || startTime >= endTime) {
+      return res.status(400).json({ message: 'Enter a valid time window (start before end)', messageAr: 'أدخل وقتاً صحيحاً (البداية قبل النهاية)' });
+    }
+    if (!Number.isInteger(capacity) || capacity < 1 || capacity > 1000) {
+      return res.status(400).json({ message: 'Capacity must be between 1 and 1000', messageAr: 'العدد المسموح يجب أن يكون بين 1 و 1000' });
+    }
+    const existing = await FablabVisitSlot.findAll({ where: { date: { [Op.in]: dates } } });
+    const created = [];
+    const skipped = [];
+    for (const date of dates.sort()) {
+      // Skip a window that overlaps one already open that day, or one
+      // today whose start time has already passed.
+      const clash = existing.find(e => e.date === date && _hhmm(e.startTime) < endTime && _hhmm(e.endTime) > startTime);
+      if (clash || (date === now.date && startTime <= now.time)) { skipped.push(date); continue; }
+      created.push(await FablabVisitSlot.create({
+        date, startTime, endTime, capacity,
+        notes: notes ? String(notes).trim().slice(0, 500) : null,
+        createdBy: req.admin?.fullName || req.admin?.username || null
+      }));
+    }
+    res.status(201).json({
+      created: created.map(_slotOut),
+      skipped,
+      message: `${created.length} slot(s) opened${skipped.length ? `, ${skipped.length} skipped (overlapping an existing slot, or already started today)` : ''}`,
+      messageAr: `تم فتح ${created.length} موعد${skipped.length ? ` — وتم تجاوز ${skipped.length} (تتعارض مع موعد قائم أو بدأ وقتها اليوم)` : ''}`
+    });
+  } catch (err) {
+    console.error('createSlots:', err);
+    res.status(500).json({ message: 'Server error', messageAr: 'خطأ في الخادم' });
+  }
+};
+
+// PUT /fablab-visits/slots/:id (manager) — { date?, startTime?, endTime?, capacity?, isActive?, notes? }
+// A booked slot keeps its date and time; its capacity can't drop below
+// the group already booked.
+exports.updateSlot = async (req, res) => {
+  try {
+    const slot = await FablabVisitSlot.findByPk(req.params.id);
+    if (!slot) return res.status(404).json({ message: 'Slot not found', messageAr: 'الموعد غير موجود' });
+    const booking = (await _bookingsBySlot([slot.slotId])).get(slot.slotId);
+    const b = req.body || {};
+    const patch = {};
+    const date = b.date !== undefined ? String(b.date) : slot.date;
+    const startTime = b.startTime !== undefined ? String(b.startTime) : _hhmm(slot.startTime);
+    const endTime = b.endTime !== undefined ? String(b.endTime) : _hhmm(slot.endTime);
+    const moved = date !== slot.date || startTime !== _hhmm(slot.startTime) || endTime !== _hhmm(slot.endTime);
+    if (moved) {
+      if (booking) {
+        return res.status(409).json({ message: 'This slot is booked — its date and time cannot change', messageAr: 'هذا الموعد محجوز — لا يمكن تغيير تاريخه أو وقته' });
+      }
+      if (!_DATE_RE.test(date) || !_TIME_RE.test(startTime) || !_TIME_RE.test(endTime) || startTime >= endTime) {
+        return res.status(400).json({ message: 'Enter a valid date and time window', messageAr: 'أدخل تاريخاً ووقتاً صحيحين' });
+      }
+      Object.assign(patch, { date, startTime, endTime });
+    }
+    if (b.capacity !== undefined) {
+      const capacity = parseInt(b.capacity, 10);
+      if (!Number.isInteger(capacity) || capacity < 1 || capacity > 1000) {
+        return res.status(400).json({ message: 'Capacity must be between 1 and 1000', messageAr: 'العدد المسموح يجب أن يكون بين 1 و 1000' });
+      }
+      if (booking && capacity < (booking.visitorsCount || 0)) {
+        return res.status(409).json({ message: `The booked group has ${booking.visitorsCount} visitors`, messageAr: `المجموعة المحجوزة عددها ${booking.visitorsCount} زائر — لا يمكن تقليل العدد عن ذلك` });
+      }
+      patch.capacity = capacity;
+    }
+    if (b.isActive !== undefined) patch.isActive = !!b.isActive;
+    if (b.notes !== undefined) patch.notes = b.notes ? String(b.notes).trim().slice(0, 500) : null;
+    await slot.update(patch);
+    res.json(_slotOut(slot));
+  } catch (err) {
+    console.error('updateSlot:', err);
+    res.status(500).json({ message: 'Server error', messageAr: 'خطأ في الخادم' });
+  }
+};
+
+// DELETE /fablab-visits/slots/:id (manager) — only while not booked.
+exports.deleteSlot = async (req, res) => {
+  try {
+    const slot = await FablabVisitSlot.findByPk(req.params.id);
+    if (!slot) return res.status(404).json({ message: 'Slot not found', messageAr: 'الموعد غير موجود' });
+    const booking = (await _bookingsBySlot([slot.slotId])).get(slot.slotId);
+    if (booking) {
+      return res.status(409).json({ message: 'This slot is booked — reject or delete the visit first', messageAr: 'هذا الموعد محجوز — ارفض الطلب أو احذفه أولاً' });
+    }
+    await slot.destroy();
+    res.json({ message: 'Deleted', messageAr: 'تم حذف الموعد' });
+  } catch (err) {
+    console.error('deleteSlot:', err);
+    res.status(500).json({ message: 'Server error', messageAr: 'خطأ في الخادم' });
+  }
+};
+
 // -------------------- LIST / CRUD --------------------
 
 // Public — no auth required. Anyone can submit a visit request.
@@ -149,6 +385,23 @@ const _esc = (v) => String(v == null ? '' : v)
   .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
   .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 
+// Instructors as an email table (name · phone · job).
+const _instructorsHtml = (row) => {
+  const list = Array.isArray(row.instructors) ? row.instructors : [];
+  if (!list.length) return '';
+  const rows = list.map((i, k) => `<tr>
+      <td style="padding:6px 8px;border-bottom:1px solid #e5e7eb;color:#64748b">${k + 1}</td>
+      <td style="padding:6px 8px;border-bottom:1px solid #e5e7eb;font-weight:600">${_esc(i.name)}</td>
+      <td style="padding:6px 8px;border-bottom:1px solid #e5e7eb" dir="ltr">${_esc(i.phone)}</td>
+      <td style="padding:6px 8px;border-bottom:1px solid #e5e7eb">${_esc(i.job || '—')}</td>
+    </tr>`).join('');
+  return `<div style="font-weight:700;color:#0369a1;margin:14px 0 6px;font-size:13px">المرافقون (${list.length})</div>
+    <table style="width:100%;font-size:12.5px;border-collapse:collapse;background:#f8fafc;border-radius:8px;overflow:hidden">
+      <tr style="background:#eef2f7"><th style="padding:6px 8px;text-align:start">#</th><th style="padding:6px 8px;text-align:start">الاسم</th><th style="padding:6px 8px;text-align:start">الجوال</th><th style="padding:6px 8px;text-align:start">الوظيفة</th></tr>
+      ${rows}
+    </table>`;
+};
+
 // Confirmation to the visitor: "we got your request".
 const _buildVisitorReceivedEmail = (row) => {
   const visitNo = formatVisitNumber(row.visitNumber);
@@ -171,6 +424,7 @@ const _buildVisitorReceivedEmail = (row) => {
       <tr><td style="padding:8px 14px;color:#64748b">تاريخ الزيارة:</td><td style="padding:8px 14px;font-family:monospace" dir="ltr">${_esc(row.visitDate)}</td></tr>
       <tr><td style="padding:8px 14px;color:#64748b">الوقت:</td><td style="padding:8px 14px;font-family:monospace" dir="ltr">${_esc(row.visitStartTime)} → ${_esc(row.visitEndTime)}</td></tr>
       <tr><td style="padding:8px 14px;color:#64748b">عدد الزوار:</td><td style="padding:8px 14px">${_esc(row.visitorsCount)}</td></tr>
+      ${Array.isArray(row.instructors) && row.instructors.length ? `<tr><td style="padding:8px 14px;color:#64748b">عدد المرافقين:</td><td style="padding:8px 14px">${row.instructors.length}</td></tr>` : ''}
     </table>
     <p style="margin:14px 0 0;font-size:12px;color:#6b7280;padding:10px 14px;background:#fef3c7;border-inline-start:3px solid #f59e0b;border-radius:6px">
       ⏳ سيصلكم قرار الموافقة أو الاعتذار عبر البريد الإلكتروني بمجرد الانتهاء من المراجعة.
@@ -200,16 +454,18 @@ const _buildAdminVisitReceivedEmail = (row) => {
     <p style="margin:0 0 14px">وصل طلب زيارة جديد بحاجة إلى مراجعتكم واعتماد المدير.</p>
     <table style="width:100%;font-size:13px;border-collapse:collapse;margin:0 0 16px">
       <tr><td style="padding:6px 0;color:#64748b;width:150px">الجهة:</td><td style="padding:6px 0;font-weight:700">${_esc(row.entityName)}</td></tr>
-      <tr><td style="padding:6px 0;color:#64748b">المسؤول:</td><td style="padding:6px 0">${_esc(row.personInCharge)}</td></tr>
-      <tr><td style="padding:6px 0;color:#64748b">رقم الهوية:</td><td style="padding:6px 0" dir="ltr">${_esc(row.nationalId)}</td></tr>
+      <tr><td style="padding:6px 0;color:#64748b">المشرف:</td><td style="padding:6px 0">${_esc(row.personInCharge)}</td></tr>
+      ${row.supervisorJob ? `<tr><td style="padding:6px 0;color:#64748b">وظيفة المشرف:</td><td style="padding:6px 0">${_esc(row.supervisorJob)}</td></tr>` : ''}
+      ${row.nationalId ? `<tr><td style="padding:6px 0;color:#64748b">رقم الهوية:</td><td style="padding:6px 0" dir="ltr">${_esc(row.nationalId)}</td></tr>` : ''}
       <tr><td style="padding:6px 0;color:#64748b">الجوال:</td><td style="padding:6px 0" dir="ltr">${_esc(row.phone)}</td></tr>
       <tr><td style="padding:6px 0;color:#64748b">البريد:</td><td style="padding:6px 0" dir="ltr">${_esc(row.email)}</td></tr>
       <tr><td style="padding:6px 0;color:#64748b">عدد الزوار:</td><td style="padding:6px 0">${_esc(row.visitorsCount)}</td></tr>
       <tr><td style="padding:6px 0;color:#64748b">تاريخ الزيارة:</td><td style="padding:6px 0" dir="ltr">${_esc(row.visitDate)}</td></tr>
       <tr><td style="padding:6px 0;color:#64748b">الوقت:</td><td style="padding:6px 0" dir="ltr">${_esc(row.visitStartTime)} → ${_esc(row.visitEndTime)}</td></tr>
-      <tr><td style="padding:6px 0;color:#64748b;vertical-align:top">الغرض:</td><td style="padding:6px 0;white-space:pre-wrap">${_esc(row.purpose)}</td></tr>
+      ${row.purpose ? `<tr><td style="padding:6px 0;color:#64748b;vertical-align:top">الغرض:</td><td style="padding:6px 0;white-space:pre-wrap">${_esc(row.purpose)}</td></tr>` : ''}
       ${row.notes ? `<tr><td style="padding:6px 0;color:#64748b;vertical-align:top">ملاحظات:</td><td style="padding:6px 0;white-space:pre-wrap">${_esc(row.notes)}</td></tr>` : ''}
     </table>
+    ${_instructorsHtml(row)}
     <div style="text-align:center;margin-top:16px">
       <a href="${_publicOrigin()}/admin/dashboard?tab=fablab-visits" style="display:inline-block;background:#EE2329;color:#fff;padding:12px 28px;border-radius:8px;text-decoration:none;font-weight:800">مراجعة الطلب</a>
     </div>
@@ -224,64 +480,89 @@ const _buildAdminVisitReceivedEmail = (row) => {
 
 exports.publicCreate = async (req, res) => {
   try {
-    const {
-      entityName, personInCharge, nationalId, phone, email,
-      visitorsCount, visitDate, visitStartTime, visitEndTime,
-      purpose, notes, overrideCode
-    } = req.body || {};
+    const b = req.body || {};
+    const entityName = String(b.entityName || '').trim();
+    const supervisorName = String(b.supervisorName || b.personInCharge || '').trim();
+    const supervisorJob = String(b.supervisorJob || '').trim();
+    const phone = String(b.phone || '').trim();
+    const email = String(b.email || '').trim();
+    const visitorsCount = parseInt(b.visitorsCount, 10);
 
-    if (!entityName || !personInCharge || !nationalId || !phone || !email
-        || !visitDate || !visitStartTime || !visitEndTime || !purpose) {
-      return res.status(400).json({
-        message: 'Missing required fields',
-        messageAr: 'الرجاء تعبئة جميع الحقول المطلوبة'
+    const status = await _visitsClosed();
+    if (status.closed) {
+      return res.status(403).json({
+        code: 'VISITS_CLOSED',
+        message: status.reason || 'FabLab visit registration is currently closed',
+        messageAr: status.reason || 'التسجيل في زيارات فاب لاب مغلق حالياً'
       });
     }
 
-    // Check working-hours / working-days / closures. If it fails, only
-    // proceed with a valid override code from the admin.
-    const timing = await _validateTimingAgainstSettings(visitDate, visitStartTime, visitEndTime);
-    let usedOverride = false;
-    if (!timing.ok) {
-      const codeOk = await _isOverrideCodeValid(overrideCode);
-      if (!codeOk) {
-        return res.status(409).json({
-          message: timing.reason + ' A valid override code is required to submit outside allowed times.',
-          messageAr: timing.reasonAr + ' يلزم رمز خاص من إدارة فاب لاب لتقديم الطلب خارج الأوقات المتاحة.',
-          requiresOverride: true
-        });
-      }
-      usedOverride = true;
-      // Consume the code — force-rotate so the same code can't be reused.
-      await _forceRotateOverrideCode();
+    if (!entityName || !supervisorName || !supervisorJob || !phone || !email || !b.slotId) {
+      return res.status(400).json({ message: 'Missing required fields', messageAr: 'الرجاء تعبئة جميع الحقول المطلوبة' });
+    }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      return res.status(400).json({ message: 'Invalid email address', messageAr: 'البريد الإلكتروني غير صحيح' });
+    }
+    if (!Number.isInteger(visitorsCount) || visitorsCount < 1) {
+      return res.status(400).json({ message: 'Enter the number of visitors', messageAr: 'أدخل عدد الزوار' });
+    }
+
+    // Instructors: at least 2 per 15 visitors, each with a name + phone.
+    const need = requiredInstructors(visitorsCount);
+    const instructors = (Array.isArray(b.instructors) ? b.instructors : [])
+      .map(i => ({
+        name: String(i?.name || '').trim().slice(0, 120),
+        phone: String(i?.phone || '').trim().slice(0, 30),
+        job: String(i?.job || '').trim().slice(0, 120)
+      }))
+      .filter(i => i.name || i.phone || i.job)
+      .slice(0, 100);
+    if (instructors.length < need || instructors.some(i => !i.name || !i.phone)) {
+      return res.status(400).json({
+        code: 'INSTRUCTORS_REQUIRED',
+        required: need,
+        message: `${visitorsCount} visitors need at least ${need} instructors (2 for every 15) — enter each instructor's name and phone`,
+        messageAr: `عدد ${visitorsCount} زائر يتطلب ${need} مرافقين على الأقل (2 لكل 15 زائراً) — أدخل اسم ورقم جوال كل مرافق`
+      });
     }
 
     const visitNumber = await _assignNextVisitNumber();
 
-    const row = await FablabVisit.create({
-      visitNumber,
-      entityName: String(entityName).trim(),
-      personInCharge: String(personInCharge).trim(),
-      nationalId: String(nationalId).trim(),
-      phone: String(phone).trim(),
-      email: String(email).trim(),
-      visitorsCount: Number(visitorsCount) > 0 ? Number(visitorsCount) : 1,
-      visitDate,
-      visitStartTime,
-      visitEndTime,
-      purpose: String(purpose).trim(),
-      // If admin override was used, tag the notes so admin sees it in the review modal.
-      notes: [
-        notes ? String(notes).trim() : null,
-        usedOverride ? '⚠️ تم تقديم هذا الطلب باستخدام رمز إدارة فاب لاب (خارج الأوقات المتاحة).' : null
-      ].filter(Boolean).join('\n\n') || null,
-      approvalStatus: 'draft',
-      visitorDecision: 'pending'
+    // Lock the slot so two groups can't take it at the same moment.
+    const result = await sequelize.transaction(async (t) => {
+      const slot = await FablabVisitSlot.findByPk(String(b.slotId), { transaction: t, lock: t.LOCK.UPDATE });
+      if (!slot || !slot.isActive || !_isFutureSlot(slot)) {
+        throw { status: 409, code: 'SLOT_UNAVAILABLE', message: 'This slot is no longer available — choose another one', messageAr: 'هذا الموعد لم يعد متاحاً — اختر موعداً آخر' };
+      }
+      if (visitorsCount > slot.capacity) {
+        throw { status: 400, code: 'OVER_CAPACITY', message: `This slot takes up to ${slot.capacity} visitors`, messageAr: `هذا الموعد يتسع لـ ${slot.capacity} زائر كحد أقصى` };
+      }
+      const taken = (await _bookingsBySlot([slot.slotId], { transaction: t })).get(slot.slotId);
+      if (taken) {
+        throw { status: 409, code: 'SLOT_UNAVAILABLE', message: 'This slot was just booked — choose another one', messageAr: 'تم حجز هذا الموعد للتو — اختر موعداً آخر' };
+      }
+      return FablabVisit.create({
+        visitNumber,
+        slotId: slot.slotId,
+        entityName,
+        personInCharge: supervisorName,
+        supervisorJob,
+        phone,
+        email,
+        instructors,
+        visitorsCount,
+        visitDate: slot.date,
+        visitStartTime: _hhmm(slot.startTime),
+        visitEndTime: _hhmm(slot.endTime),
+        purpose: b.purpose ? String(b.purpose).trim().slice(0, 2000) : null,
+        notes: b.notes ? String(b.notes).trim().slice(0, 2000) : null,
+        approvalStatus: 'draft',
+        visitorDecision: 'pending'
+      }, { transaction: t });
     });
+    const row = result;
 
-    // Fire-and-forget notification pair — mirrors store / print3d
-    // flows so the ops inbox sees every submission and the visitor
-    // gets an immediate confirmation.
+    // Same notifications as before: ops inbox + confirmation to the visitor.
     process.nextTick(async () => {
       try {
         const adminMail = _buildAdminVisitReceivedEmail(row);
@@ -300,8 +581,11 @@ exports.publicCreate = async (req, res) => {
       visitNumber: row.visitNumber
     });
   } catch (err) {
+    if (err && err.status) {
+      return res.status(err.status).json({ code: err.code, message: err.message, messageAr: err.messageAr });
+    }
     console.error('publicCreate visit:', err);
-    res.status(500).json({ message: 'Server error', detail: err.message });
+    res.status(500).json({ message: 'Server error', messageAr: 'خطأ في الخادم' });
   }
 };
 
@@ -421,7 +705,7 @@ const _buildManagerEmail = ({ row, token, origin }) => {
     <table style="width:100%;font-size:13px;border-collapse:collapse;margin-bottom:16px">
       <tr><td style="padding:6px 0;color:#64748b;width:140px">رقم الطلب:</td><td style="padding:6px 0;font-weight:800;color:#0284c7;font-family:'JetBrains Mono',monospace">${visitNoStr}</td></tr>
       <tr><td style="padding:6px 0;color:#64748b">الجهة:</td><td style="padding:6px 0;font-weight:700">${row.entityName}</td></tr>
-      <tr><td style="padding:6px 0;color:#64748b">الشخص المسؤول:</td><td style="padding:6px 0">${row.personInCharge}</td></tr>
+      <tr><td style="padding:6px 0;color:#64748b">المشرف:</td><td style="padding:6px 0">${_esc(row.personInCharge)}${row.supervisorJob ? ` — ${_esc(row.supervisorJob)}` : ''}</td></tr>
       <tr><td style="padding:6px 0;color:#64748b">الجوال:</td><td style="padding:6px 0;direction:ltr">${row.phone}</td></tr>
       <tr><td style="padding:6px 0;color:#64748b">البريد:</td><td style="padding:6px 0;direction:ltr">${row.email}</td></tr>
       <tr><td style="padding:6px 0;color:#64748b">عدد الزوار:</td><td style="padding:6px 0">${row.visitorsCount || 1}</td></tr>
@@ -429,10 +713,11 @@ const _buildManagerEmail = ({ row, token, origin }) => {
       <tr><td style="padding:6px 0;color:#64748b">الوقت:</td><td style="padding:6px 0;direction:ltr">${fmtTime(row.visitStartTime)} → ${fmtTime(row.visitEndTime)}</td></tr>
     </table>
 
-    <div style="background:#f8fafc;padding:12px 14px;border-radius:8px;font-size:13px;color:#334155;margin-bottom:16px">
+    ${row.purpose ? `<div style="background:#f8fafc;padding:12px 14px;border-radius:8px;font-size:13px;color:#334155;margin-bottom:16px">
       <div style="font-weight:700;color:#0369a1;margin-bottom:4px">الغرض من الزيارة</div>
-      <div style="white-space:pre-wrap">${row.purpose}</div>
-    </div>
+      <div style="white-space:pre-wrap">${_esc(row.purpose)}</div>
+    </div>` : ''}
+    ${_instructorsHtml(row) ? `<div style="margin-bottom:16px">${_instructorsHtml(row)}</div>` : ''}
 
     ${row.notes ? `<div style="background:#f8fafc;padding:10px 12px;border-radius:8px;font-size:13px;color:#334155;margin-bottom:16px"><b>ملاحظات:</b> ${row.notes}</div>` : ''}
 
@@ -452,13 +737,11 @@ const _buildManagerEmail = ({ row, token, origin }) => {
     text: `طلب اعتماد زيارة فاب لاب
 
 الجهة: ${row.entityName}
-الشخص المسؤول: ${row.personInCharge}
+المشرف: ${row.personInCharge}${row.supervisorJob ? ` (${row.supervisorJob})` : ''}
 تاريخ الزيارة: ${row.visitDate}  ${fmtTime(row.visitStartTime)} - ${fmtTime(row.visitEndTime)}
 عدد الزوار: ${row.visitorsCount || 1}
-
-الغرض:
-${row.purpose}
-
+عدد المرافقين: ${Array.isArray(row.instructors) ? row.instructors.length : 0}
+${row.purpose ? `\nالغرض:\n${row.purpose}\n` : ''}
 للاعتماد أو الرفض:
 ${previewUrl}`
   };
@@ -483,6 +766,18 @@ exports.sendForApproval = async (req, res) => {
         message: 'Visit already decided',
         messageAr: 'الطلب تم البت فيه مسبقاً'
       });
+    }
+
+    // A rejected booking gave its slot back; re-sending it must not
+    // double-book a slot another group has taken since.
+    if (row.slotId) {
+      const other = (await _bookingsBySlot([row.slotId], { excludeVisitId: row.visitId })).get(row.slotId);
+      if (other) {
+        return res.status(409).json({
+          message: `This slot is now booked by ${other.entityName} — move this visit to another slot first`,
+          messageAr: `هذا الموعد محجوز الآن لـ ${other.entityName} — لا يمكن إعادة إرسال الطلب على نفس الموعد`
+        });
+      }
     }
 
     // Fresh token every send so an old link can't revive a superseded request.
@@ -588,6 +883,8 @@ exports.publicGetByToken = async (req, res) => {
       approvalStatus: row.approvalStatus,
       entityName: row.entityName,
       personInCharge: row.personInCharge,
+      supervisorJob: row.supervisorJob,
+      instructors: row.instructors || [],
       phone: row.phone,
       email: row.email,
       visitorsCount: row.visitorsCount,

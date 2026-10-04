@@ -30,6 +30,8 @@ router.post('/overtime/:token/decide', overtimeController.publicDecide);
 // FABLAB Visit — public submission (from the /fablab-visit form) and
 // manager approval flow (same shape as overtime).
 router.post('/fablab-visit/submit', fablabVisitController.publicCreate);
+// Open slots the visit form offers (literal path before /:token).
+router.get('/fablab-visit/slots', fablabVisitController.publicSlots);
 router.get('/fablab-visit/:token', fablabVisitController.publicGetByToken);
 router.post('/fablab-visit/:token/decide', fablabVisitController.publicDecide);
 

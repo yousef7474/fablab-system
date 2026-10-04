@@ -175,10 +175,13 @@ const FablabVisitApprovals = () => {
                     {/* Detail cards — every field, grouped */}
                     <div className="ap-detail-cards">
                       <div className="ap-detail-card">
-                        <div className="ap-detail-card-title">{isRTL ? 'الجهة والمسؤول' : 'Entity & Contact'}</div>
+                        <div className="ap-detail-card-title">{isRTL ? 'الجهة والمشرف' : 'Entity & Supervisor'}</div>
                         <div className="ap-kv-grid">
-                          <div className="ap-kv"><div className="ap-kv-label">{isRTL ? 'الجهة' : 'Entity'}</div><div className="ap-kv-value">{r.entityName || '—'}</div></div>
-                          <div className="ap-kv"><div className="ap-kv-label">{isRTL ? 'المسؤول' : 'Person in charge'}</div><div className="ap-kv-value">{r.personInCharge || '—'}</div></div>
+                          <div className="ap-kv"><div className="ap-kv-label">{isRTL ? 'الجهة الزائرة' : 'Visiting entity'}</div><div className="ap-kv-value">{r.entityName || '—'}</div></div>
+                          <div className="ap-kv"><div className="ap-kv-label">{isRTL ? 'المشرف' : 'Supervisor'}</div><div className="ap-kv-value">{r.personInCharge || '—'}</div></div>
+                          {r.supervisorJob && (
+                            <div className="ap-kv"><div className="ap-kv-label">{isRTL ? 'وظيفة المشرف' : 'Supervisor job'}</div><div className="ap-kv-value ap-kv-value--plain">{r.supervisorJob}</div></div>
+                          )}
                           <div className="ap-kv"><div className="ap-kv-label">{isRTL ? 'الجوال' : 'Phone'}</div><div className="ap-kv-value" dir="ltr">{r.phone || '—'}</div></div>
                           <div className="ap-kv"><div className="ap-kv-label">{isRTL ? 'البريد' : 'Email'}</div><div className="ap-kv-value" dir="ltr">{r.email || '—'}</div></div>
                           {r.nationalId && (
@@ -194,6 +197,9 @@ const FablabVisitApprovals = () => {
                           <div className="ap-kv"><div className="ap-kv-label">{isRTL ? 'من الساعة' : 'From'}</div><div className="ap-kv-value" dir="ltr">{fmtTime(r.visitStartTime)}</div></div>
                           <div className="ap-kv"><div className="ap-kv-label">{isRTL ? 'إلى الساعة' : 'To'}</div><div className="ap-kv-value" dir="ltr">{fmtTime(r.visitEndTime)}</div></div>
                           <div className="ap-kv"><div className="ap-kv-label">{isRTL ? 'عدد الزوار' : 'Visitors'}</div><div className="ap-kv-value">👥 {r.visitorsCount || 1}</div></div>
+                          {Array.isArray(r.instructors) && r.instructors.length > 0 && (
+                            <div className="ap-kv"><div className="ap-kv-label">{isRTL ? 'عدد المرافقين' : 'Instructors'}</div><div className="ap-kv-value">🧑‍🏫 {r.instructors.length}</div></div>
+                          )}
                         </div>
                       </div>
 
@@ -209,10 +215,40 @@ const FablabVisitApprovals = () => {
                       </div>
                     </div>
 
-                    <div className="ap-block">
-                      <div className="ap-block-label">{isRTL ? 'الغرض من الزيارة' : 'Purpose of visit'}</div>
-                      <div className="ap-block-text">{r.purpose}</div>
-                    </div>
+                    {Array.isArray(r.instructors) && r.instructors.length > 0 && (
+                      <div className="ap-block">
+                        <div className="ap-block-label">{isRTL ? `المرافقون (${r.instructors.length})` : `Instructors (${r.instructors.length})`}</div>
+                        <div className="ap-table-wrap" style={{ marginTop: 0 }}>
+                          <table className="ap-table">
+                            <thead>
+                              <tr>
+                                <th>#</th>
+                                <th>{isRTL ? 'الاسم' : 'Name'}</th>
+                                <th>{isRTL ? 'الجوال' : 'Phone'}</th>
+                                <th>{isRTL ? 'الوظيفة' : 'Job'}</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {r.instructors.map((ins, k) => (
+                                <tr key={k}>
+                                  <td className="mono">{k + 1}</td>
+                                  <td>{ins.name || '—'}</td>
+                                  <td className="mono" dir="ltr">{ins.phone || '—'}</td>
+                                  <td>{ins.job || '—'}</td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
+                    )}
+
+                    {r.purpose && (
+                      <div className="ap-block">
+                        <div className="ap-block-label">{isRTL ? 'الغرض من الزيارة' : 'Purpose of visit'}</div>
+                        <div className="ap-block-text">{r.purpose}</div>
+                      </div>
+                    )}
 
                     {r.notes && (
                       <div className="ap-block ap-block--admin">

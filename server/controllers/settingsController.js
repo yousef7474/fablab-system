@@ -147,6 +147,38 @@ const updateStoreStatus = async (req, res) => {
   }
 };
 
+// GET /api/settings/fablab-visit-status (public — the /fablab-visit form)
+const getFablabVisitStatus = async (req, res) => {
+  try {
+    const disabled = await Settings.findByPk('fablab_visit_disabled');
+    const reason = await Settings.findByPk('fablab_visit_disabled_reason');
+    res.json({
+      disabled: disabled ? !!disabled.value : false,
+      reason: reason ? reason.value : ''
+    });
+  } catch (error) {
+    console.error('Error fetching visit status:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+// PUT /api/settings/fablab-visit-status (admin) — body { disabled, reason }
+const updateFablabVisitStatus = async (req, res) => {
+  try {
+    const { disabled, reason } = req.body || {};
+    await Settings.upsert({ key: 'fablab_visit_disabled', value: !!disabled });
+    await Settings.upsert({ key: 'fablab_visit_disabled_reason', value: disabled ? (reason || '') : '' });
+    res.json({
+      message: disabled ? 'FabLab visits closed' : 'FabLab visits open',
+      disabled: !!disabled,
+      reason: disabled ? (reason || '') : ''
+    });
+  } catch (error) {
+    console.error('Error updating visit status:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
 // -------------------- 3D PRINTING CLOSURE --------------------
 // Same pattern as store closure but with an optional date window so
 // admin can schedule a maintenance window in advance. The service is
@@ -484,6 +516,8 @@ module.exports = {
   updateRegistrationStatus,
   getStoreStatus,
   updateStoreStatus,
+  getFablabVisitStatus,
+  updateFablabVisitStatus,
   getPrint3dStatus,
   updatePrint3dStatus,
   computePrint3dStatus: exports.computePrint3dStatus,

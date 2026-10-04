@@ -1,0 +1,284 @@
+/* =============================================================
+   FabLab visit slots (admin) — month calendar of bookable slots.
+   Uses the admin theme tokens so it reads in light and dark.
+   ============================================================= */
+/* Colour tokens live on the panel and on the portaled modal layer. */
+.fvs, .fvs-overlay {
+  --fvs-open: #16a34a;
+  --fvs-open-bg: rgba(22, 163, 74, 0.10);
+  --fvs-booked: #0284c7;
+  --fvs-booked-bg: rgba(14, 165, 233, 0.12);
+  --fvs-inactive: #64748b;
+  --fvs-inactive-bg: rgba(100, 116, 139, 0.12);
+  --fvs-past: #94a3b8;
+  --fvs-past-bg: rgba(148, 163, 184, 0.10);
+  --fvs-accent: #0ea5e9;
+}
+.fvs { color: var(--text-primary, #0f172a); }
+[data-theme="dark"] .fvs, [data-theme="dark"] .fvs-overlay {
+  --fvs-open: #4ade80;
+  --fvs-booked: #38bdf8;
+  --fvs-inactive: #94a3b8;
+  --fvs-past: #64748b;
+}
+
+/* ---- toolbar ---- */
+.fvs-toolbar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 12px; }
+.fvs-monthnav { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.fvs-monthnav button {
+  width: 36px; height: 36px;
+  border-radius: 10px;
+  border: 1px solid var(--border-color, #e5e7eb);
+  background: var(--card-bg, #fff);
+  color: var(--text-primary, #0f172a);
+  font-size: 1.2rem;
+  line-height: 1;
+  cursor: pointer;
+}
+.fvs-monthnav button:hover:not(:disabled) { border-color: var(--fvs-accent); color: var(--fvs-accent); }
+.fvs-monthnav button:disabled { opacity: 0.35; cursor: default; }
+.fvs-monthnav .fvs-today { width: auto; padding: 0 12px; font-size: 0.8rem; font-weight: 700; font-family: inherit; }
+.fvs-month { min-width: 150px; text-align: center; font-weight: 800; font-size: 1.05rem; }
+.fvs-monthnav.compact .fvs-month { min-width: 0; flex: 1; font-size: 0.95rem; }
+.fvs-monthnav.compact { width: 100%; flex-wrap: nowrap; }
+
+.fvs-primary, .fvs-btn {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 10px 18px;
+  border-radius: 10px;
+  font: 700 0.88rem/1.2 inherit;
+  font-family: inherit;
+  cursor: pointer;
+  transition: transform 0.15s ease, opacity 0.15s ease, border-color 0.15s ease;
+}
+.fvs-primary { border: none; background: linear-gradient(135deg, #0ea5e9, #0284c7); color: #fff; box-shadow: 0 8px 20px -10px rgba(2, 132, 199, 0.7); }
+.fvs-primary:hover:not(:disabled) { transform: translateY(-1px); }
+.fvs-primary.small { padding: 8px 14px; font-size: 0.82rem; }
+.fvs-primary:disabled, .fvs-btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+.fvs-btn { border: 1px solid var(--border-color, #e5e7eb); background: var(--card-bg, #fff); color: var(--text-primary, #0f172a); }
+.fvs-btn:hover:not(:disabled) { border-color: var(--fvs-accent); }
+.fvs-btn.danger { color: #dc2626; border-color: rgba(220, 38, 38, 0.35); }
+.fvs-btn.danger:hover { border-color: #dc2626; }
+
+/* ---- legend ---- */
+.fvs-legend { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; margin-bottom: 12px; font-size: 0.8rem; color: var(--text-secondary, #475569); }
+.fvs-legend-item { display: inline-flex; align-items: center; gap: 6px; font-weight: 600; }
+.fvs-legend-item b { font-family: 'JetBrains Mono', ui-monospace, monospace; color: var(--text-primary, #0f172a); }
+.fvs-legend-note { flex: 1 1 260px; color: var(--text-tertiary, #64748b); font-size: 0.75rem; }
+.fvs-dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; background: var(--fvs-open); flex: none; }
+.open > .fvs-dot, .fvs-dot.open { background: var(--fvs-open); }
+.booked > .fvs-dot, .fvs-dot.booked { background: var(--fvs-booked); }
+.inactive > .fvs-dot, .fvs-dot.inactive { background: var(--fvs-inactive); }
+.past > .fvs-dot, .fvs-dot.past { background: var(--fvs-past); }
+
+/* ---- month grid ---- */
+.fvs-cal {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 6px;
+  transition: opacity 0.2s ease;
+}
+.fvs-cal.loading { opacity: 0.55; }
+.fvs-weekday { text-align: center; font-size: 0.72rem; font-weight: 800; color: var(--text-tertiary, #64748b); padding: 2px 0 4px; }
+.fvs-cell {
+  min-height: 108px;
+  padding: 6px;
+  border-radius: 10px;
+  border: 1px solid var(--border-color, #e5e7eb);
+  background: var(--card-bg, #fff);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+.fvs-cell.blank { border: none; background: transparent; }
+.fvs-cell.past { opacity: 0.6; }
+.fvs-cell.today { border-color: var(--fvs-accent); box-shadow: inset 0 0 0 1px var(--fvs-accent); }
+.fvs-daynum { font-size: 0.78rem; font-weight: 800; color: var(--text-secondary, #475569); font-family: 'JetBrains Mono', ui-monospace, monospace; }
+.fvs-cell.today .fvs-daynum { color: var(--fvs-accent); }
+.fvs-dots { display: none; gap: 3px; flex-wrap: wrap; }
+.fvs-chips { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+
+.fvs-chip {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 1px;
+  width: 100%;
+  min-width: 0;
+  padding: 4px 6px;
+  border-radius: 7px;
+  border: 1px solid transparent;
+  border-inline-start: 3px solid var(--fvs-open);
+  background: var(--fvs-open-bg);
+  color: var(--text-primary, #0f172a);
+  font-family: inherit;
+  text-align: start;
+  cursor: pointer;
+  transition: transform 0.12s ease, box-shadow 0.12s ease;
+}
+.fvs-chip:hover { transform: translateY(-1px); box-shadow: 0 6px 14px -8px rgba(15, 23, 42, 0.35); }
+.fvs-chip.booked { border-inline-start-color: var(--fvs-booked); background: var(--fvs-booked-bg); }
+.fvs-chip.inactive { border-inline-start-color: var(--fvs-inactive); background: var(--fvs-inactive-bg); }
+.fvs-chip.past { border-inline-start-color: var(--fvs-past); background: var(--fvs-past-bg); opacity: 0.85; }
+.fvs-chip-time { font: 700 0.72rem/1.2 'JetBrains Mono', ui-monospace, monospace; }
+.fvs-chip-sub { font-size: 0.68rem; font-weight: 600; color: var(--text-secondary, #475569); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.fvs-chip.full { padding: 10px 12px; border-radius: 10px; }
+.fvs-chip.full .fvs-chip-time { font-size: 0.9rem; }
+.fvs-chip.full .fvs-chip-sub { font-size: 0.8rem; white-space: normal; }
+
+.fvs-empty {
+  margin-top: 12px;
+  padding: 18px;
+  border-radius: 12px;
+  border: 1px dashed var(--border-color, #cbd5e1);
+  background: var(--bg-tertiary, #f8fafc);
+  color: var(--text-secondary, #475569);
+  text-align: center;
+  font-weight: 600;
+  font-size: 0.88rem;
+}
+
+/* ---- agenda (phones only) ---- */
+.fvs-agenda { display: none; margin-top: 14px; flex-direction: column; gap: 12px; }
+.fvs-agenda-day { display: flex; flex-direction: column; gap: 6px; scroll-margin-top: 80px; }
+.fvs-agenda-date { font-weight: 800; font-size: 0.88rem; color: var(--text-secondary, #475569); }
+
+@media (max-width: 760px) {
+  .fvs-cal { gap: 4px; }
+  .fvs-cell { min-height: 52px; padding: 5px 4px; align-items: center; cursor: default; }
+  .fvs-cell.has { cursor: pointer; }
+  .fvs-chips { display: none; }
+  .fvs-dots { display: flex; justify-content: center; }
+  .fvs-agenda { display: flex; }
+  .fvs-month { min-width: 0; }
+  .fvs-toolbar .fvs-primary { flex: 1 1 100%; justify-content: center; }
+}
+
+/* ---- modals ---- */
+.fvs-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  background: rgba(15, 23, 42, 0.55);
+}
+.fvs-modal {
+  width: min(520px, 100%);
+  max-height: 92vh;
+  display: flex;
+  flex-direction: column;
+  border-radius: 16px;
+  border: 1px solid var(--border-color, #e5e7eb);
+  background: var(--modal-bg, #fff);
+  color: var(--text-primary, #0f172a);
+  box-shadow: 0 30px 70px -30px rgba(0, 0, 0, 0.55);
+  overflow: hidden;
+}
+.fvs-modal.wide { width: min(860px, 100%); }
+.fvs-modal-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; padding: 18px 20px 12px; border-bottom: 1px solid var(--border-color, #e5e7eb); }
+.fvs-modal-head h3 { margin: 6px 0 2px; font-size: 1.1rem; font-weight: 800; color: var(--text-primary, #0f172a); }
+.fvs-modal-sub { font-size: 0.82rem; color: var(--text-tertiary, #64748b); line-height: 1.6; }
+.fvs-x { flex: none; width: 34px; height: 34px; border-radius: 10px; border: 1px solid var(--border-color, #e5e7eb); background: transparent; color: var(--text-secondary, #475569); cursor: pointer; }
+.fvs-modal-body { padding: 16px 20px; overflow-y: auto; }
+.fvs-modal-foot { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; padding: 12px 20px; border-top: 1px solid var(--border-color, #e5e7eb); }
+.fvs-modal-foot .danger { margin-inline-end: auto; }
+
+.fvs-status { display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px; border-radius: 999px; font-size: 0.75rem; font-weight: 800; }
+.fvs-status.open { background: var(--fvs-open-bg); color: var(--fvs-open); }
+.fvs-status.booked { background: var(--fvs-booked-bg); color: var(--fvs-booked); }
+.fvs-status.inactive { background: var(--fvs-inactive-bg); color: var(--fvs-inactive); }
+.fvs-status.past { background: var(--fvs-past-bg); color: var(--fvs-past); }
+
+.fvs-kv-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.fvs-kv { padding: 10px 12px; border-radius: 10px; border: 1px solid var(--border-color, #e5e7eb); background: var(--bg-tertiary, #f8fafc); display: flex; flex-direction: column; gap: 3px; }
+.fvs-kv span { font-size: 0.72rem; font-weight: 700; color: var(--text-tertiary, #64748b); }
+.fvs-kv b { font-size: 0.95rem; }
+.fvs-note { margin-top: 10px; padding: 10px 12px; border-radius: 10px; background: var(--bg-tertiary, #f8fafc); font-size: 0.85rem; color: var(--text-secondary, #475569); white-space: pre-wrap; }
+.fvs-hint { margin-top: 10px; font-size: 0.82rem; color: var(--text-tertiary, #64748b); }
+.fvs-booking { margin-top: 12px; padding: 12px 14px; border-radius: 12px; background: var(--fvs-booked-bg); border: 1px solid rgba(14, 165, 233, 0.35); display: flex; flex-direction: column; gap: 4px; align-items: flex-start; }
+.fvs-booking-title { font-size: 0.72rem; font-weight: 800; color: var(--fvs-booked); }
+.fvs-booking-name { font-weight: 800; font-size: 0.95rem; }
+.fvs-booking-meta, .fvs-booking-stage { font-size: 0.82rem; color: var(--text-secondary, #475569); }
+.fvs-booking .fvs-primary { margin-top: 6px; }
+
+/* ---- forms ---- */
+.fvs-form-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; align-content: start; }
+.fvs-field { display: flex; flex-direction: column; gap: 5px; min-width: 0; }
+.fvs-field.span2 { grid-column: 1 / -1; }
+.fvs-field > span { font-size: 0.78rem; font-weight: 700; color: var(--text-secondary, #475569); }
+.fvs-field small { font-size: 0.74rem; color: var(--text-tertiary, #64748b); line-height: 1.5; }
+.fvs-field input, .fvs-field textarea {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 9px 11px;
+  border-radius: 9px;
+  border: 1.5px solid var(--border-color, #e5e7eb);
+  background: var(--input-bg, #fff);
+  color: var(--text-primary, #0f172a);
+  font: 500 0.9rem/1.4 inherit;
+  font-family: inherit;
+  min-width: 0;
+}
+.fvs-field input:focus, .fvs-field textarea:focus { outline: none; border-color: var(--fvs-accent); }
+.fvs-field input:disabled { opacity: 0.55; }
+[data-theme="dark"] .fvs-field input[type="date"], [data-theme="dark"] .fvs-field input[type="time"] { color-scheme: dark; }
+
+/* ---- create modal ---- */
+.fvs-create { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); gap: 18px; }
+.fvs-picker { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.fvs-mini { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 4px; }
+.fvs-mini-day {
+  position: relative;
+  aspect-ratio: 1;
+  min-height: 34px;
+  border-radius: 9px;
+  border: 1px solid var(--border-color, #e5e7eb);
+  background: var(--card-bg, #fff);
+  color: var(--text-primary, #0f172a);
+  font: 700 0.85rem/1 'JetBrains Mono', ui-monospace, monospace;
+  cursor: pointer;
+}
+.fvs-mini-day.off { color: var(--text-tertiary, #94a3b8); background: var(--bg-tertiary, #f8fafc); }
+.fvs-mini-day:hover:not(:disabled) { border-color: var(--fvs-accent); }
+.fvs-mini-day.on { background: var(--fvs-accent); border-color: var(--fvs-accent); color: #fff; }
+.fvs-mini-day:disabled { opacity: 0.3; cursor: not-allowed; }
+.fvs-mini-mark { position: absolute; top: 4px; inset-inline-end: 4px; width: 6px; height: 6px; border-radius: 50%; background: var(--fvs-booked); }
+.fvs-mini-day.on .fvs-mini-mark { background: #fff; }
+.fvs-picker-tools { display: flex; flex-wrap: wrap; gap: 6px 14px; }
+.fvs-link { border: none; background: none; padding: 0; color: var(--fvs-accent); font: 700 0.8rem/1.4 inherit; font-family: inherit; cursor: pointer; }
+.fvs-link:hover { text-decoration: underline; }
+.fvs-picked-head { font-size: 0.8rem; font-weight: 800; color: var(--text-secondary, #475569); margin-top: 4px; }
+.fvs-picked { display: flex; flex-wrap: wrap; gap: 5px; max-height: 96px; overflow-y: auto; }
+.fvs-pill {
+  padding: 4px 9px;
+  border-radius: 999px;
+  border: 1px solid rgba(14, 165, 233, 0.35);
+  background: var(--fvs-booked-bg);
+  color: var(--text-primary, #0f172a);
+  font: 600 0.74rem/1.3 inherit;
+  font-family: inherit;
+  cursor: pointer;
+}
+span.fvs-pill { cursor: default; }
+.fvs-muted { font-size: 0.8rem; color: var(--text-tertiary, #94a3b8); }
+.fvs-result { padding: 12px 14px; border-radius: 10px; font-weight: 700; font-size: 0.9rem; margin-bottom: 10px; display: flex; flex-direction: column; gap: 8px; }
+.fvs-result.ok { background: var(--fvs-open-bg); color: var(--fvs-open); }
+.fvs-result.warn { background: rgba(245, 158, 11, 0.12); color: #b45309; }
+[data-theme="dark"] .fvs-result.warn { color: #fcd34d; }
+
+@media (max-width: 760px) {
+  .fvs-create { grid-template-columns: 1fr; }
+  .fvs-modal { max-height: 94vh; }
+  .fvs-kv-grid { grid-template-columns: 1fr 1fr; }
+}
+@media (max-width: 420px) {
+  .fvs-form-grid { grid-template-columns: 1fr 1fr; }
+  .fvs-modal-head, .fvs-modal-body, .fvs-modal-foot { padding-inline: 14px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .fvs-chip, .fvs-primary { transition: none; }
+}

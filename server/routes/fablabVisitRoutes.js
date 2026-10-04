@@ -13,6 +13,11 @@ router.get('/override-code',              ctrl.getOverrideCode);
 router.post('/override-code/regenerate',  requireManager, ctrl.regenerateOverrideCode);
 // Manager approvals board — pending list + approve/reject from the dashboard
 router.get('/pending',                    requireManager, ctrl.listPending);
+// Visit slots the admin opens for booking
+router.get('/slots',                      ctrl.listSlots);
+router.post('/slots',                     requireManager, ctrl.createSlots);
+router.put('/slots/:id',                  requireManager, ctrl.updateSlot);
+router.delete('/slots/:id',               requireManager, ctrl.deleteSlot);
 
 router.get('/', ctrl.list);
 router.get('/:id', ctrl.get);

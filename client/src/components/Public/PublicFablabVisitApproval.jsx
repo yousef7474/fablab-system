@@ -104,7 +104,7 @@ const PublicFablabVisitApproval = () => {
                 )}
               </div>
               <h1 className="pub-title">{r.entityName}</h1>
-              {r.personInCharge && <div className="pub-subtitle">مسؤول: {r.personInCharge}</div>}
+              {r.personInCharge && <div className="pub-subtitle">المشرف: {r.personInCharge}{r.supervisorJob ? ` — ${r.supervisorJob}` : ''}</div>}
             </div>
             {finalStatus === 'approved' && (
               <span className="pub-badge" style={{ background: '#ecfdf5', color: '#16a34a', border: '1px solid #a7f3d0' }}>
@@ -130,22 +130,57 @@ const PublicFablabVisitApproval = () => {
             <div className="pub-info"><div className="pub-info-label">الجوال</div><div className="pub-info-value" dir="ltr">{r.phone}</div></div>
             <div className="pub-info"><div className="pub-info-label">البريد</div><div className="pub-info-value" dir="ltr">{r.email}</div></div>
             <div className="pub-info"><div className="pub-info-label">عدد الزوار</div><div className="pub-info-value">{r.visitorsCount || 1}</div></div>
+            {Array.isArray(r.instructors) && r.instructors.length > 0 && (
+              <div className="pub-info"><div className="pub-info-label">عدد المرافقين</div><div className="pub-info-value">{r.instructors.length}</div></div>
+            )}
             <div className="pub-info"><div className="pub-info-label">تاريخ الزيارة</div><div className="pub-info-value" dir="ltr">{fmtDate(r.visitDate)}</div></div>
             <div className="pub-info"><div className="pub-info-label">الوقت</div><div className="pub-info-value" dir="ltr">{fmtTime(r.visitStartTime)} → {fmtTime(r.visitEndTime)}</div></div>
           </div>
         </div>
 
-        <div className="pub-panel">
-          <div className="pub-panel-title"><h3>الغرض من الزيارة</h3></div>
-          <div style={{ padding: '4px 4px 8px', whiteSpace: 'pre-wrap', color: '#334155', lineHeight: 1.75 }}>
-            {r.purpose}
-          </div>
-          {r.notes && (
-            <div style={{ marginTop: 12, padding: '10px 14px', borderRadius: 10, background: '#f8fafc', border: '1px solid #e5e7eb', fontSize: 14, color: '#334155' }}>
-              <b>ملاحظات: </b>{r.notes}
+        {Array.isArray(r.instructors) && r.instructors.length > 0 && (
+          <div className="pub-panel">
+            <div className="pub-panel-title"><h3>المرافقون ({r.instructors.length})</h3></div>
+            <div style={{ overflowX: 'auto' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 14, minWidth: 420 }}>
+                <thead>
+                  <tr style={{ background: '#f0f9ff', color: '#0369a1' }}>
+                    <th style={{ padding: '10px 12px', textAlign: 'start' }}>#</th>
+                    <th style={{ padding: '10px 12px', textAlign: 'start' }}>الاسم</th>
+                    <th style={{ padding: '10px 12px', textAlign: 'start' }}>الجوال</th>
+                    <th style={{ padding: '10px 12px', textAlign: 'start' }}>الوظيفة</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {r.instructors.map((ins, k) => (
+                    <tr key={k} style={{ borderTop: '1px solid #e5e7eb', color: '#334155' }}>
+                      <td style={{ padding: '10px 12px' }}>{k + 1}</td>
+                      <td style={{ padding: '10px 12px', fontWeight: 600 }}>{ins.name || '—'}</td>
+                      <td style={{ padding: '10px 12px' }} dir="ltr">{ins.phone || '—'}</td>
+                      <td style={{ padding: '10px 12px' }}>{ins.job || '—'}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
-          )}
-        </div>
+          </div>
+        )}
+
+        {(r.purpose || r.notes) && (
+          <div className="pub-panel">
+            <div className="pub-panel-title"><h3>{r.purpose ? 'الغرض من الزيارة' : 'ملاحظات'}</h3></div>
+            {r.purpose && (
+              <div style={{ padding: '4px 4px 8px', whiteSpace: 'pre-wrap', color: '#334155', lineHeight: 1.75 }}>
+                {r.purpose}
+              </div>
+            )}
+            {r.notes && (
+              <div style={{ marginTop: r.purpose ? 12 : 0, padding: '10px 14px', borderRadius: 10, background: '#f8fafc', border: '1px solid #e5e7eb', fontSize: 14, color: '#334155' }}>
+                <b>ملاحظات: </b>{r.notes}
+              </div>
+            )}
+          </div>
+        )}
 
         {!finalStatus && (
           <div className="pub-panel" style={{ borderColor: '#fde68a' }}>

@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'react-toastify';
 import api from '../../config/api';
+import FablabVisitSlots from './FablabVisitSlots';
 
 // Manager approver quick-pick (mirrors the overtime tab convention).
 // Empty emails are hidden — admin can still type a custom one.
@@ -17,6 +18,8 @@ const fmtDate = (v) => v ? String(v).slice(0, 10) : '—';
 const fmtTime = (t) => t ? String(t).slice(0, 5) : '—';
 const fmtWhen = (v) => v ? new Date(v).toLocaleString('ar-SA-u-ca-gregory-nu-latn', { calendar: 'gregory', hour: '2-digit', minute: '2-digit', day: '2-digit', month: 'short' }) : '—';
 const fmtVisitNo = (n) => n == null ? '—' : `V-${String(n).padStart(3, '0')}`;
+const instructorsOf = (v) => (Array.isArray(v?.instructors) ? v.instructors : []);
+const VIEW_KEY = 'fablabVisitsView';
 
 // ---------- Status badge helpers ----------
 const managerBadge = (s) => {
@@ -35,6 +38,13 @@ const FablabVisitsTab = () => {
   const { i18n } = useTranslation();
   const isRTL = i18n.language === 'ar';
 
+  const [view, setView] = useState(() => {
+    try { return localStorage.getItem(VIEW_KEY) === 'slots' ? 'slots' : 'requests'; } catch { return 'requests'; }
+  });
+  const switchView = (next) => {
+    setView(next);
+    try { localStorage.setItem(VIEW_KEY, next); } catch { /* storage unavailable */ }
+  };
   const [visits, setVisits] = useState([]);
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState('all');
@@ -65,6 +75,22 @@ const FablabVisitsTab = () => {
 
   useEffect(() => { fetchAll(); }, []);
 
+  // From the slots calendar: open the request that booked a slot.
+  const openVisitById = async (visitId) => {
+    let v = visits.find(x => x.visitId === visitId);
+    if (!v) {
+      try {
+        const { data } = await api.get(`/fablab-visits/${visitId}`);
+        v = data;
+        fetchAll();
+      } catch {
+        toast.error('تعذّر فتح الطلب');
+        return;
+      }
+    }
+    setOpenVisit(v);
+  };
+
   const filtered = useMemo(() => {
     let list = visits;
     if (statusFilter === 'draft')    list = list.filter(v => v.approvalStatus === 'draft');
@@ -76,8 +102,11 @@ const FablabVisitsTab = () => {
       const q = search.trim().toLowerCase();
       list = list.filter(v => (v.entityName || '').toLowerCase().includes(q)
                            || (v.personInCharge || '').toLowerCase().includes(q)
+                           || (v.supervisorJob || '').toLowerCase().includes(q)
                            || (v.email || '').toLowerCase().includes(q)
-                           || (v.phone || '').includes(q));
+                           || (v.phone || '').includes(q)
+                           || fmtVisitNo(v.visitNumber).toLowerCase().includes(q)
+                           || instructorsOf(v).some(i => (i.name || '').toLowerCase().includes(q) || (i.phone || '').includes(q)));
     }
     return list;
   }, [visits, statusFilter, search]);
@@ -322,6 +351,11 @@ const FablabVisitsTab = () => {
       color: #333;
     }
 
+    /* Instructors table */
+    .instr { width: 100%; border-collapse: collapse; background: white; font-size: 10.5px; }
+    .instr th { background: #f0f9ff; color: #0369a1; padding: 5px 8px; text-align: right; font-weight: 700; border: 1px solid #e5e5e5; }
+    .instr td { padding: 5px 8px; border: 1px solid #e5e5e5; }
+
     /* Signature Section */
     .signature-section {
       margin-top: 15px;
@@ -420,22 +454,26 @@ const FablabVisitsTab = () => {
     </div>
   </div>
 
-  <!-- Entity / Applicant Info -->
+  <!-- Entity / Supervisor Info -->
   <div class="section">
-    <div class="section-title">معلومات الجهة والمسؤول</div>
+    <div class="section-title">معلومات الجهة الزائرة والمشرف</div>
     <div class="field-grid">
       <div class="field field-full-2">
-        <div class="field-label">اسم الجهة</div>
+        <div class="field-label">الجهة الزائرة</div>
         <div class="field-value">${esc(v.entityName)}</div>
       </div>
       <div class="field">
-        <div class="field-label">الشخص المسؤول</div>
+        <div class="field-label">المشرف</div>
         <div class="field-value">${esc(v.personInCharge)}</div>
       </div>
       <div class="field">
-        <div class="field-label">رقم الهوية</div>
-        <div class="field-value" style="direction:ltr">${esc(v.nationalId || '—')}</div>
+        <div class="field-label">وظيفة المشرف</div>
+        <div class="field-value">${esc(v.supervisorJob || '—')}</div>
       </div>
+      ${v.nationalId ? `<div class="field">
+        <div class="field-label">رقم الهوية</div>
+        <div class="field-value" style="direction:ltr">${esc(v.nationalId)}</div>
+      </div>` : ''}
       <div class="field">
         <div class="field-label">رقم الجوال</div>
         <div class="field-value" style="direction:ltr">${esc(v.phone)}</div>
@@ -467,18 +505,37 @@ const FablabVisitsTab = () => {
         <div class="field-label">عدد الزوار</div>
         <div class="field-value">${esc(v.visitorsCount || 1)}</div>
       </div>
-      <div class="field field-full-2">
+      <div class="field">
+        <div class="field-label">عدد المرافقين</div>
+        <div class="field-value">${esc(instructorsOf(v).length || '—')}</div>
+      </div>
+      <div class="field">
         <div class="field-label">حالة الرد على الزائر</div>
         <div class="field-value">${vis ? `<span class="status ${v.visitorDecision === 'accepted' ? 'accepted' : 'rejected'}">${esc(vis.text)}</span>` : '<span style="color:#94a3b8">لم يُرسل بعد</span>'}</div>
       </div>
     </div>
   </div>
 
+  ${instructorsOf(v).length ? `
+  <!-- Instructors -->
+  <div class="section">
+    <div class="section-title">المرافقون (${instructorsOf(v).length})</div>
+    <table class="instr">
+      <thead><tr><th>#</th><th>الاسم</th><th>الجوال</th><th>الوظيفة</th></tr></thead>
+      <tbody>
+        ${instructorsOf(v).map((i, k) => `<tr><td>${k + 1}</td><td>${esc(i.name)}</td><td style="direction:ltr;text-align:right">${esc(i.phone)}</td><td>${esc(i.job || '—')}</td></tr>`).join('')}
+      </tbody>
+    </table>
+  </div>
+  ` : ''}
+
+  ${v.purpose ? `
   <!-- Purpose -->
   <div class="section">
     <div class="section-title">الغرض من الزيارة</div>
     <div class="prose">${esc(v.purpose)}</div>
   </div>
+  ` : ''}
 
   ${v.notes ? `
   <!-- Notes -->
@@ -562,15 +619,43 @@ const FablabVisitsTab = () => {
   return (
     <div style={{ padding: '16px 4px' }}>
       {/* Header + summary tiles */}
-      <div style={{ marginBottom: 20 }}>
+      <div style={{ marginBottom: 16 }}>
         <h2 style={{ margin: '0 0 6px', fontSize: 22, fontWeight: 800 }}>
-          طلبات زيارة فاب لاب
+          {isRTL ? 'زيارات فاب لاب' : 'FabLab Visits'}
         </h2>
         <p style={{ margin: 0, color: '#64748b', fontSize: 13 }}>
-          مراجعة طلبات الزيارة المستلمة، إرسالها للمدير للاعتماد، ثم إشعار الجهة الزائرة بالقرار.
+          {view === 'slots'
+            ? (isRTL ? 'افتح مواعيد الزيارة المتاحة — يختار الزوار من هذه المواعيد فقط، ومجموعة واحدة لكل موعد.' : 'Open the visit slots — visitors can only book these, one group per slot.')
+            : (isRTL ? 'مراجعة طلبات الزيارة المستلمة، إرسالها للمدير للاعتماد، ثم إشعار الجهة الزائرة بالقرار.' : 'Review incoming visit requests, send them for manager approval, then notify the visiting entity.')}
         </p>
       </div>
 
+      <div className="fvs-switch" role="tablist" style={{ display: 'inline-flex', gap: 4, padding: 4, borderRadius: 12, border: '1px solid var(--border-color, #e5e7eb)', background: 'var(--bg-tertiary, #f8fafc)', marginBottom: 16, maxWidth: '100%', flexWrap: 'wrap' }}>
+        {[
+          { key: 'requests', label: isRTL ? `📋 طلبات الزيارة (${counts.total})` : `📋 Requests (${counts.total})` },
+          { key: 'slots', label: isRTL ? '🗓️ مواعيد الزيارات' : '🗓️ Visit slots' }
+        ].map(t => (
+          <button
+            key={t.key}
+            type="button"
+            role="tab"
+            aria-selected={view === t.key}
+            onClick={() => switchView(t.key)}
+            style={{
+              padding: '8px 16px', borderRadius: 9, border: 'none', cursor: 'pointer',
+              fontFamily: 'inherit', fontWeight: 800, fontSize: 13,
+              background: view === t.key ? 'linear-gradient(135deg,#0ea5e9,#0284c7)' : 'transparent',
+              color: view === t.key ? '#fff' : 'var(--text-secondary, #475569)'
+            }}
+          >
+            {t.label}
+          </button>
+        ))}
+      </div>
+
+      {view === 'slots' && <FablabVisitSlots isRTL={isRTL} onOpenVisit={openVisitById} />}
+
+      {view === 'requests' && (<>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 10, marginBottom: 16 }}>
         {[
           { key: 'total',    label: 'الإجمالي',      value: counts.total,    color: '#0f172a' },
@@ -650,7 +735,9 @@ const FablabVisitsTab = () => {
                     <span style={{ fontSize: 16, fontWeight: 800, color: '#0f172a' }}>{v.entityName}</span>
                   </div>
                   <div style={{ fontSize: 13, color: '#475569', marginBottom: 8 }}>
-                    مسؤول: {v.personInCharge} · {v.visitorsCount || 1} زائر
+                    المشرف: {v.personInCharge}{v.supervisorJob ? ` (${v.supervisorJob})` : ''} · {v.visitorsCount || 1} زائر
+                    {instructorsOf(v).length > 0 && ` · ${instructorsOf(v).length} مرافق`}
+                    {v.slotId && <span style={{ marginInlineStart: 8, fontSize: 11, fontWeight: 700, color: '#0284c7', background: '#e0f2fe', padding: '2px 8px', borderRadius: 999 }}>🗓️ موعد محجوز</span>}
                   </div>
                   <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', fontSize: 12, color: '#64748b' }}>
                     <span dir="ltr">📅 {fmtDate(v.visitDate)}  ·  {fmtTime(v.visitStartTime)} → {fmtTime(v.visitEndTime)}</span>
@@ -667,6 +754,7 @@ const FablabVisitsTab = () => {
           ))}
         </div>
       )}
+      </>)}
 
       {/* ===================== DETAIL MODAL ===================== */}
       <AnimatePresence>
@@ -701,12 +789,14 @@ const FablabVisitsTab = () => {
               <div style={{ padding: 24 }}>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 12, marginBottom: 20 }}>
                   {[
-                    ['الشخص المسؤول', openVisit.personInCharge],
+                    ['المشرف', openVisit.personInCharge],
+                    ...(openVisit.supervisorJob ? [['وظيفة المشرف', openVisit.supervisorJob]] : []),
                     ['الجوال', <span dir="ltr">{openVisit.phone}</span>],
                     ['البريد', <span dir="ltr">{openVisit.email}</span>],
                     ...(openVisit.nationalId ? [['رقم الهوية', <span dir="ltr">{openVisit.nationalId}</span>]] : []),
                     ['عدد الزوار', openVisit.visitorsCount || 1],
-                    ['تاريخ الزيارة', <span dir="ltr">{fmtDate(openVisit.visitDate)}</span>],
+                    ...(instructorsOf(openVisit).length ? [['عدد المرافقين', instructorsOf(openVisit).length]] : []),
+                    [openVisit.slotId ? 'تاريخ الزيارة (موعد محجوز)' : 'تاريخ الزيارة', <span dir="ltr">{fmtDate(openVisit.visitDate)}</span>],
                     ['الوقت', <span dir="ltr">{fmtTime(openVisit.visitStartTime)} → {fmtTime(openVisit.visitEndTime)}</span>]
                   ].map(([k, val], i) => (
                     <div key={i} style={{ background: '#f8fafc', border: '1px solid #e5e7eb', padding: 12, borderRadius: 10 }}>
@@ -716,10 +806,42 @@ const FablabVisitsTab = () => {
                   ))}
                 </div>
 
-                <div style={{ marginBottom: 16 }}>
-                  <div style={{ fontSize: 12, fontWeight: 700, color: '#0369a1', letterSpacing: 1, marginBottom: 8, textTransform: 'uppercase' }}>الغرض من الزيارة</div>
-                  <div style={{ background: '#f8fafc', border: '1px solid #e5e7eb', padding: 14, borderRadius: 10, whiteSpace: 'pre-wrap', lineHeight: 1.7, fontSize: 13 }}>{openVisit.purpose}</div>
-                </div>
+                {instructorsOf(openVisit).length > 0 && (
+                  <div style={{ marginBottom: 16 }}>
+                    <div style={{ fontSize: 12, fontWeight: 700, color: '#0369a1', letterSpacing: 1, marginBottom: 8, textTransform: 'uppercase' }}>
+                      المرافقون ({instructorsOf(openVisit).length})
+                    </div>
+                    <div style={{ overflowX: 'auto', border: '1px solid #e5e7eb', borderRadius: 10 }}>
+                      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13, minWidth: 420 }}>
+                        <thead>
+                          <tr style={{ background: '#f0f9ff', color: '#0369a1' }}>
+                            <th style={{ padding: '8px 12px', textAlign: 'start' }}>#</th>
+                            <th style={{ padding: '8px 12px', textAlign: 'start' }}>الاسم</th>
+                            <th style={{ padding: '8px 12px', textAlign: 'start' }}>الجوال</th>
+                            <th style={{ padding: '8px 12px', textAlign: 'start' }}>الوظيفة</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {instructorsOf(openVisit).map((ins, k) => (
+                            <tr key={k} style={{ borderTop: '1px solid #e5e7eb', color: '#0f172a' }}>
+                              <td style={{ padding: '8px 12px', color: '#64748b' }}>{k + 1}</td>
+                              <td style={{ padding: '8px 12px', fontWeight: 600 }}>{ins.name || '—'}</td>
+                              <td style={{ padding: '8px 12px' }} dir="ltr">{ins.phone || '—'}</td>
+                              <td style={{ padding: '8px 12px' }}>{ins.job || '—'}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                )}
+
+                {openVisit.purpose && (
+                  <div style={{ marginBottom: 16 }}>
+                    <div style={{ fontSize: 12, fontWeight: 700, color: '#0369a1', letterSpacing: 1, marginBottom: 8, textTransform: 'uppercase' }}>الغرض من الزيارة</div>
+                    <div style={{ background: '#f8fafc', border: '1px solid #e5e7eb', padding: 14, borderRadius: 10, whiteSpace: 'pre-wrap', lineHeight: 1.7, fontSize: 13 }}>{openVisit.purpose}</div>
+                  </div>
+                )}
 
                 {openVisit.notes && (
                   <div style={{ marginBottom: 16 }}>

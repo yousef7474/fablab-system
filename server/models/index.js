@@ -67,6 +67,7 @@ const Customer = require('./Customer');
 const Contract = require('./Contract');
 const SummerStudentAttendance = require('./SummerStudentAttendance');
 const FablabVisit = require('./FablabVisit');
+const FablabVisitSlot = require('./FablabVisitSlot');
 const CalendarEvent = require('./CalendarEvent');
 const StoreItem = require('./StoreItem');
 const StoreOrder = require('./StoreOrder');
@@ -491,6 +492,20 @@ const syncDatabase = async () => {
     } catch (migrationError) {
       if (!/does not exist/i.test(migrationError.message)) {
         console.log('calendar_events.customCategory migration note:', migrationError.message);
+      }
+    }
+
+    // FabLab visits booked from admin-opened slots: supervisor job,
+    // instructors list, slot link; national ID + purpose became optional.
+    try {
+      await sequelize.query(`ALTER TABLE fablab_visits ADD COLUMN IF NOT EXISTS "supervisorJob" VARCHAR(255)`);
+      await sequelize.query(`ALTER TABLE fablab_visits ADD COLUMN IF NOT EXISTS "instructors" JSON`);
+      await sequelize.query(`ALTER TABLE fablab_visits ADD COLUMN IF NOT EXISTS "slotId" UUID`);
+      await sequelize.query(`ALTER TABLE fablab_visits ALTER COLUMN "nationalId" DROP NOT NULL`);
+      await sequelize.query(`ALTER TABLE fablab_visits ALTER COLUMN "purpose" DROP NOT NULL`);
+    } catch (migrationError) {
+      if (!/does not exist/i.test(migrationError.message)) {
+        console.log('fablab_visits slot fields migration note:', migrationError.message);
       }
     }
 
@@ -1409,6 +1424,7 @@ module.exports = {
   Contract,
   SummerStudentAttendance,
   FablabVisit,
+  FablabVisitSlot,
   CalendarEvent,
   StoreItem,
   StoreOrder,
