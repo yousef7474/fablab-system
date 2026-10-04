@@ -13,25 +13,10 @@
 
 const { GoogleGenerativeAI } = require('@google/generative-ai');
 const path = require('path');
+const { generateWithFallback } = require('./geminiModels');
 
 // ─────────────── Config ───────────────
-// Order matters — first model that succeeds wins. Kept a mix of
-// current flash + pro variants so a decommissioned or gated model
-// falls through to a working one automatically.
-// Only names ACTUALLY exposed by the current v1beta model catalog
-// (verified against ListModels output on the production key on
-// 2026-09-12). Order: cheapest/latest first, upgrade if it fails.
-// Override the whole list with GEMINI_MODEL env if you want to pin.
-const MODEL_CANDIDATES = process.env.GEMINI_MODEL
-  ? [process.env.GEMINI_MODEL]
-  : [
-      'gemini-flash-latest',       // Google-maintained "latest flash" alias
-      'gemini-2.5-flash',          // Explicit stable flash (June 2025)
-      'gemini-2.5-flash-lite',     // Cheaper fallback
-      'gemini-flash-lite-latest',
-      'gemini-pro-latest',
-      'gemini-2.5-pro'
-    ];
+// Model list + fallback rules live in utils/geminiModels.js.
 const MAX_TEXT_CHARS_PER_FILE = 20_000;   // hard cap per file post-extraction
 const MAX_TOTAL_TEXT_CHARS    = 120_000;  // guard against runaway prompts
 const MAX_IMAGES_INLINE       = 6;        // vision inputs (rest are named-only)
@@ -250,45 +235,35 @@ async function callGemini({ meta, textBlocks, inlineImages, listedImages }) {
     ...inlineImages
   ];
 
-  // Try each model candidate; a 404 on one just means Google
-  // renamed / deprecated it, so we fall through to the next.
-  let lastErr = null;
-  for (const modelName of MODEL_CANDIDATES) {
-    try {
-      const model = client.getGenerativeModel({
-        model: modelName,
-        generationConfig: {
-          temperature: 0.35,
-          // Enough room for all 8 sections in Arabic (verbose script).
-          // Previous 2048 was truncating after section 2.
-          maxOutputTokens: 8192,
-          // Disable "thinking" budget on 2.5+ models so it doesn't
-          // eat the output token allowance producing hidden reasoning.
-          thinkingConfig: { thinkingBudget: 0 }
-        }
-      });
-      const result = await model.generateContent({ contents: [{ role: 'user', parts }] });
-      const text = result?.response?.text?.() || '';
-      const finishReason = result?.response?.candidates?.[0]?.finishReason || '';
-      if (!text.trim()) {
-        throw new Error('empty response');
-      }
-      // If the model still hit the ceiling, note it so the caller
-      // and the UI can flag the summary as incomplete.
-      const truncated = finishReason === 'MAX_TOKENS';
-      return { text: text.trim(), model: modelName, truncated };
-    } catch (err) {
-      lastErr = err;
-      const msg = err?.message || String(err);
-      // Only fall through on 404 / not-found / model errors — auth
-      // and quota errors should surface immediately.
-      if (!/not found|is not supported|404|does not exist/i.test(msg)) {
-        throw err;
-      }
-      console.warn(`institutionSummary: model ${modelName} unavailable, trying next — ${msg.slice(0, 200)}`);
-    }
+  // Retired / overloaded models fall through to the next candidate
+  // (see utils/geminiModels.js); key or permission errors surface.
+  let result, modelName;
+  try {
+    ({ result, model: modelName } = await generateWithFallback(client, {
+      parts,
+      generationConfig: {
+        temperature: 0.35,
+        // Enough room for all 8 sections in Arabic (verbose script).
+        // Previous 2048 was truncating after section 2.
+        maxOutputTokens: 8192
+      },
+      // Thinking off where allowed so it doesn't eat the output allowance.
+      thinkingConfig: { thinkingBudget: 0 },
+      callTimeoutMs: 120000,
+      label: 'institutionSummary'
+    }));
+  } catch (err) {
+    throw new Error(`All Gemini model candidates failed. Last error: ${err?.message || 'unknown'}`);
   }
-  throw new Error(`All Gemini model candidates failed. Last error: ${lastErr?.message || 'unknown'}`);
+  const text = result?.response?.text?.() || '';
+  const finishReason = result?.response?.candidates?.[0]?.finishReason || '';
+  if (!text.trim()) {
+    throw new Error('empty response');
+  }
+  // If the model still hit the ceiling, note it so the caller
+  // and the UI can flag the summary as incomplete.
+  const truncated = finishReason === 'MAX_TOKENS';
+  return { text: text.trim(), model: modelName, truncated };
 }
 
 // ─────────────── Public API ───────────────

@@ -10,11 +10,7 @@
 const crypto = require('crypto');
 const jwt = require('jsonwebtoken');
 const { GoogleGenerativeAI } = require('@google/generative-ai');
-
-// Same candidates as utils/institutionSummary.js (verified catalog).
-const MODEL_CANDIDATES = process.env.GEMINI_MODEL
-  ? [process.env.GEMINI_MODEL]
-  : ['gemini-flash-latest', 'gemini-2.5-flash', 'gemini-2.5-flash-lite', 'gemini-flash-lite-latest', 'gemini-pro-latest', 'gemini-2.5-pro'];
+const { generateWithFallback } = require('./geminiModels');
 
 const ALLOWED_TYPES = { png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg', webp: 'image/webp' };
 const MAX_PHOTO_BYTES = 5 * 1024 * 1024;
@@ -140,32 +136,29 @@ async function _askGemini(photo) {
     { text: PROMPT }
   ];
   // Answer well inside nginx's 60s proxy timeout: past it the browser
-  // gets nginx's HTML error page instead of a JSON message. A model that
-  // is missing, overloaded, rate-limited or slow hands over to the next.
-  const started = Date.now();
-  let lastErr = null;
-  for (const modelName of MODEL_CANDIDATES) {
-    const left = ID_READ_DEADLINE_MS - (Date.now() - started);
-    if (left < 5000) break;
-    try {
-      const model = client.getGenerativeModel({
-        model: modelName,
-        generationConfig: {
-          temperature: 0,
-          maxOutputTokens: 512,
-          responseMimeType: 'application/json',
-          thinkingConfig: { thinkingBudget: 0 }
-        }
-      }, { timeout: Math.min(30000, left) });
-      const result = await model.generateContent({ contents: [{ role: 'user', parts }] });
-      return _parseJson(result?.response?.text?.() || '');
-    } catch (err) {
-      lastErr = err;
-      console.error(`readIdDocument: ${modelName} failed after ${Date.now() - started}ms:`, err?.message || err);
-      if (!/not found|is not supported|404|does not exist|429|quota|500|internal|503|overloaded|unavailable|abort|timed? ?out/i.test(err?.message || '')) throw err;
-    }
+  // gets nginx's HTML error page instead of a JSON message.
+  const { result } = await generateWithFallback(client, {
+    parts,
+    generationConfig: {
+      temperature: 0,
+      // Room for the JSON even when a model insists on thinking.
+      maxOutputTokens: 2048,
+      responseMimeType: 'application/json'
+    },
+    thinkingConfig: { thinkingBudget: 0 },
+    deadlineMs: ID_READ_DEADLINE_MS,
+    callTimeoutMs: 30000,
+    label: 'readIdDocument'
+  });
+  let text = '';
+  try {
+    text = result?.response?.text?.() || '';
+  } catch (err) {
+    // Gemini declined to answer for this image (blocked candidate).
+    console.error('readIdDocument: response blocked:', err?.message || err);
+    return null;
   }
-  throw lastErr || new Error('No Gemini model available');
+  return _parseJson(text);
 }
 
 // ---------- public API ----------
