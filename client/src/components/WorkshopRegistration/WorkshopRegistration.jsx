@@ -265,17 +265,27 @@ const WorkshopRegistration = () => {
     setIdCheck({ status: 'reading', preview });
     handleChange('age', '');
     try {
-      const { data } = await api.post('/workshops/public/read-id', { idPhoto: photo });
+      const { data } = await api.post('/workshops/public/read-id', { idPhoto: photo }, { timeout: 90000 });
       setIdCheck({ status: 'ok', preview, photo, ...data });
       // Age comes from the card; fill the ID number too if still empty.
       setForm(prev => ({ ...prev, age: String(data.age), nationalId: prev.nationalId || data.idNumber || '' }));
     } catch (err) {
-      setIdCheck({
-        status: 'error',
-        preview,
-        error: (isRTL ? err.response?.data?.messageAr : err.response?.data?.message)
-          || (isRTL ? 'تعذّرت قراءة البطاقة — يرجى المحاولة مرة أخرى' : "Couldn't read the card — please try again")
-      });
+      const status = err.response?.status;
+      const own = isRTL ? err.response?.data?.messageAr : err.response?.data?.message;
+      // No JSON message = the request never got a proper answer from the
+      // API (offline, timed out, or the web server answered instead).
+      let fallback;
+      if (!err.response) {
+        fallback = isRTL ? 'تعذّر الاتصال بالخادم — تحقق من الإنترنت ثم أعد رفع الصورة' : "Couldn't reach the server — check your connection and upload again";
+      } else if (status === 413) {
+        fallback = isRTL ? 'حجم الصورة كبير جداً — صوّر البطاقة من مسافة أقرب وأعد المحاولة' : 'The photo is too large — take a closer photo of the card and try again';
+      } else if (status >= 500) {
+        fallback = isRTL ? 'خدمة قراءة الهوية مشغولة حالياً — يرجى المحاولة بعد دقيقة' : 'ID reading is busy right now — please try again in a minute';
+      } else {
+        fallback = isRTL ? 'تعذّرت قراءة البطاقة — يرجى المحاولة مرة أخرى' : "Couldn't read the card — please try again";
+      }
+      if (!own) console.error('read-id failed:', status || err.code || err.message);
+      setIdCheck({ status: 'error', preview, error: own || fallback });
     }
   };
 

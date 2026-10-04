@@ -19,6 +19,7 @@ const MODEL_CANDIDATES = process.env.GEMINI_MODEL
 const ALLOWED_TYPES = { png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg', webp: 'image/webp' };
 const MAX_PHOTO_BYTES = 5 * 1024 * 1024;
 const TOKEN_TTL = '2h';
+const ID_READ_DEADLINE_MS = 45000;
 
 const PROMPT = `You read Saudi identity documents. The image should show the FRONT of a Saudi National ID card (بطاقة الهوية الوطنية) or a Resident Identity / Iqama (هوية مقيم / إقامة).
 
@@ -138,8 +139,14 @@ async function _askGemini(photo) {
     { inlineData: { mimeType: ALLOWED_TYPES[photo.fileType], data: photo.fileData } },
     { text: PROMPT }
   ];
+  // Answer well inside nginx's 60s proxy timeout: past it the browser
+  // gets nginx's HTML error page instead of a JSON message. A model that
+  // is missing, overloaded, rate-limited or slow hands over to the next.
+  const started = Date.now();
   let lastErr = null;
   for (const modelName of MODEL_CANDIDATES) {
+    const left = ID_READ_DEADLINE_MS - (Date.now() - started);
+    if (left < 5000) break;
     try {
       const model = client.getGenerativeModel({
         model: modelName,
@@ -149,12 +156,13 @@ async function _askGemini(photo) {
           responseMimeType: 'application/json',
           thinkingConfig: { thinkingBudget: 0 }
         }
-      });
+      }, { timeout: Math.min(30000, left) });
       const result = await model.generateContent({ contents: [{ role: 'user', parts }] });
       return _parseJson(result?.response?.text?.() || '');
     } catch (err) {
       lastErr = err;
-      if (!/not found|is not supported|404|does not exist/i.test(err?.message || '')) throw err;
+      console.error(`readIdDocument: ${modelName} failed after ${Date.now() - started}ms:`, err?.message || err);
+      if (!/not found|is not supported|404|does not exist|429|quota|500|internal|503|overloaded|unavailable|abort|timed? ?out/i.test(err?.message || '')) throw err;
     }
   }
   throw lastErr || new Error('No Gemini model available');

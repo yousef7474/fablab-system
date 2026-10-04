@@ -535,7 +535,11 @@ const _employeeSections = (emp) => {
 exports.getMyRegistrations = async (req, res) => {
   try {
     const employee = req.employee;
-    const sections = _employeeSections(employee);
+    // Employee sections can include roles that aren't registration
+    // sections (e.g. "مديرة البرامج والمشاريع"); Postgres rejects the whole
+    // query on an unknown ENUM value, so keep only real ones.
+    const valid = Registration.rawAttributes.fablabSection.values || [];
+    const sections = _employeeSections(employee).filter(s => valid.includes(s));
     if (sections.length === 0) {
       return res.json([]);
     }
