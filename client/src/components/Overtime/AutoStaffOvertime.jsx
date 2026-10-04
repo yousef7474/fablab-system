@@ -106,8 +106,8 @@ const AutoStaffOvertime = () => {
           </div>
           <div style={{ fontSize: 12, color: '#64748b' }}>
             {isRTL
-              ? 'يُحسب تلقائياً من مسح البطاقة — الدوام الرسمي ٩ ساعات + سماح ٣٠ دقيقة؛ أي وقت بعد ذلك يُعدّ ساعات إضافية.'
-              : 'Computed from QR scans — 9-hour official day + 30-min grace; anything past that counts as overtime.'}
+              ? 'يُحسب تلقائياً من مسح البطاقة — الدوام الرسمي ٩ ساعات؛ إذا تجاوز الوقت الإضافي ٣٠ دقيقة يُحتسب كاملاً (بما فيه الـ٣٠ دقيقة). أيام الجمعة والسبت تُحتسب كلها ساعات إضافية.'
+              : 'Computed from QR scans — 9-hour official day; once the extra time passes 30 min, all of it counts (the 30 min included). Friday and Saturday count entirely as overtime.'}
           </div>
         </div>
       </div>
@@ -186,7 +186,14 @@ const AutoStaffOvertime = () => {
               return (
                 <tr key={r.attendanceId} style={{ borderTop: '1px solid #f1f5f9' }}>
                   <td style={{ padding: 10, fontWeight: 600 }}>{r.staff?.name || '—'}</td>
-                  <td style={{ padding: 10, fontFamily: 'JetBrains Mono, monospace' }}>{r.date}</td>
+                  <td style={{ padding: 10, fontFamily: 'JetBrains Mono, monospace' }}>
+                    {r.date}
+                    {r.isWeekend && (
+                      <span style={{ marginInlineStart: 6, fontFamily: 'inherit', fontSize: 10.5, fontWeight: 800, padding: '1px 7px', borderRadius: 999, background: '#fef3c7', color: '#92400e', whiteSpace: 'nowrap' }}>
+                        {isRTL ? 'عطلة' : 'Weekend'}
+                      </span>
+                    )}
+                  </td>
                   <td style={{ padding: 10, fontFamily: 'JetBrains Mono, monospace', textAlign: 'center' }} dir="ltr">{fmtTime(r.checkInAt)}</td>
                   <td style={{ padding: 10, fontFamily: 'JetBrains Mono, monospace', textAlign: 'center' }} dir="ltr">{fmtTime(r.checkOutAt)}</td>
                   <td style={{ padding: 10, fontFamily: 'JetBrains Mono, monospace', color: '#b91c1c', fontWeight: 700, textAlign: 'center' }} dir="ltr">

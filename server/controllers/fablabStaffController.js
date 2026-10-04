@@ -400,16 +400,27 @@ exports.deleteAttendance = async (req, res) => {
 };
 
 // ============== OVERTIME (auto-derived from attendance) ==============
-// Official working day is 9 hours. Anything above is overtime.
 // Nothing is stored — overtime minutes are computed on read from the
 // existing checkInAt / checkOutAt timestamps. Admin annotates each
 // eligible row with `reason` and `approvedBy`.
+//
+// Rules:
+//  - Working days (Sun–Thu): the official day is 9 hours. Up to 30
+//    minutes beyond it is a grace margin and earns nothing; once the
+//    extra time exceeds 30 minutes, ALL of it counts, margin included
+//    (e.g. 10h worked → 60 min overtime; 9h20m → 0).
+//  - Weekend (Fri + Sat): every minute worked is overtime.
 
 const OFFICIAL_HOURS = 9;
-// Grace window above the 9-hour day that is NOT counted as overtime.
-// Anything between 9h and 9h+30m stays "official hours"; only what
-// exceeds 9h 30m is billed as overtime.
 const OVERTIME_GRACE_MIN = 30;
+const WEEKEND_DAYS = [5, 6]; // Friday, Saturday
+
+// `date` is the Riyadh calendar day (DATEONLY 'YYYY-MM-DD').
+const isWeekendDate = (date) => {
+  if (!date) return false;
+  const d = new Date(`${String(date).slice(0, 10)}T00:00:00Z`);
+  return !isNaN(d.getTime()) && WEEKEND_DAYS.includes(d.getUTCDay());
+};
 
 const shapeOvertimeRow = (att) => {
   if (!att.checkInAt || !att.checkOutAt) return null;
@@ -417,8 +428,14 @@ const shapeOvertimeRow = (att) => {
   const outMs = new Date(att.checkOutAt).getTime();
   if (!(outMs > inMs)) return null;
   const durationMin = Math.round((outMs - inMs) / 60000);
-  const threshold = OFFICIAL_HOURS * 60 + OVERTIME_GRACE_MIN;
-  const overtimeMin = Math.max(0, durationMin - threshold);
+  const isWeekend = isWeekendDate(att.date);
+  let overtimeMin;
+  if (isWeekend) {
+    overtimeMin = durationMin;
+  } else {
+    const extra = durationMin - OFFICIAL_HOURS * 60;
+    overtimeMin = extra > OVERTIME_GRACE_MIN ? extra : 0;
+  }
   return {
     attendanceId: att.attendanceId,
     staffId: att.staffId,
@@ -435,6 +452,7 @@ const shapeOvertimeRow = (att) => {
     checkOutAt: att.checkOutAt,
     durationMinutes: durationMin,
     overtimeMinutes: overtimeMin,
+    isWeekend,
     reason: att.reason || null,
     approvedBy: att.approvedBy || null
   };

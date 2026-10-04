@@ -1960,7 +1960,14 @@ const EmployeeDashboard = () => {
                                 }}
                               >
                                 <input type="checkbox" checked={picked} onChange={() => otToggleAutoPick(r.attendanceId)} onClick={(e) => e.stopPropagation()} />
-                                <span dir="ltr">{String(r.date).slice(0, 10)}</span>
+                                <span dir="ltr">
+                                  {String(r.date).slice(0, 10)}
+                                  {r.isWeekend && (
+                                    <span style={{ marginInlineStart: 5, fontSize: 10, fontWeight: 800, padding: '0 6px', borderRadius: 999, background: 'rgba(245,158,11,0.18)', color: '#f59e0b' }}>
+                                      {isRTL ? 'عطلة' : 'Wknd'}
+                                    </span>
+                                  )}
+                                </span>
                                 <span dir="ltr" style={{ fontFamily: 'JetBrains Mono, monospace' }}>{fmtT(r.checkInAt)} → {fmtT(r.checkOutAt)}</span>
                                 <span style={{ color: '#94a3b8', fontSize: 11.5 }}>{r.reason || (isRTL ? '—' : '—')}</span>
                                 <span style={{ fontFamily: 'JetBrains Mono, monospace', fontWeight: 800, color: '#f59e0b', textAlign: 'end' }}>{hrs} h</span>
@@ -2109,8 +2116,8 @@ const EmployeeDashboard = () => {
                   <h2 style={{ margin: 0 }}>{isRTL ? '✅ سجل الحضور' : '✅ Attendance Log'}</h2>
                   <p style={{ margin: '4px 0 0', color: '#94a3b8', fontSize: 13 }}>
                     {isRTL
-                      ? 'حضورك المُسجّل عبر QR في محطة الحضور. يتم إحتساب الساعات الإضافية تلقائياً بعد 9 ساعات.'
-                      : 'Your QR-scanned attendance history from the check-in station. Overtime accrues after 9 hours.'}
+                      ? 'حضورك المُسجّل عبر QR في محطة الحضور. الدوام الرسمي 9 ساعات؛ إذا تجاوز الوقت الإضافي 30 دقيقة يُحتسب كاملاً، وأيام الجمعة والسبت تُحتسب كلها ساعات إضافية.'
+                      : 'Your QR-scanned attendance history from the check-in station. The official day is 9 hours; extra time over 30 min counts in full, and Friday/Saturday count entirely as overtime.'}
                   </p>
                 </div>
                 {!myAttendanceLinked && (
