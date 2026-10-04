@@ -70,6 +70,55 @@
   border-color: #dc2626; box-shadow: 0 0 0 3px rgba(220, 38, 38,0.1);
 }
 
+/* ID photo → birth date → age */
+.workshop-id-field { grid-column: 1 / -1; }
+.workshop-id-hint { margin: 0 0 0.6rem; font-size: 0.78rem; line-height: 1.6; color: #64748b; }
+.workshop-id-box {
+  display: flex; align-items: center; gap: 0.9rem;
+  padding: 0.75rem; border: 1.5px dashed #cbd5e1; border-radius: 12px; background: #f8fafc;
+}
+.workshop-id-box.is-ok { border-style: solid; border-color: #86efac; background: #f0fdf4; }
+.workshop-id-box.is-error { border-style: solid; border-color: #fca5a5; background: #fef2f2; }
+.workshop-id-thumb {
+  width: 96px; height: 62px; object-fit: cover; border-radius: 8px;
+  border: 1px solid #e2e8f0; flex-shrink: 0; background: #fff;
+}
+.workshop-id-body { flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: flex-start; gap: 0.35rem; }
+.workshop-id-muted { font-size: 0.82rem; color: #94a3b8; }
+.workshop-id-reading { display: inline-flex; align-items: center; gap: 0.5rem; font-size: 0.85rem; font-weight: 600; color: #334155; }
+.workshop-id-spinner {
+  width: 16px; height: 16px; border-radius: 50%;
+  border: 2px solid rgba(220, 38, 38, 0.2); border-top-color: #dc2626;
+  animation: workshop-id-spin 0.8s linear infinite;
+}
+@keyframes workshop-id-spin { to { transform: rotate(360deg); } }
+.workshop-id-line { font-size: 0.82rem; color: #334155; }
+.workshop-id-age { font-size: 0.95rem; font-weight: 700; color: #166534; }
+.workshop-id-error { font-size: 0.82rem; font-weight: 600; color: #b91c1c; line-height: 1.6; }
+.workshop-field .workshop-id-btn {
+  display: inline-flex; align-items: center; gap: 0.35rem; margin: 0.15rem 0 0;
+  padding: 0.45rem 0.9rem; border-radius: 8px; border: 1.5px solid #dc2626;
+  background: #fff; color: #dc2626; font-size: 0.82rem; font-weight: 700; cursor: pointer;
+}
+.workshop-field .workshop-id-btn:hover { background: #fef2f2; }
+.workshop-field .workshop-id-btn.is-disabled { opacity: 0.5; cursor: progress; }
+.workshop-field .workshop-id-btn input { display: none; }
+.workshop-id-warn {
+  margin-top: 0.5rem; padding: 0.55rem 0.75rem; border-radius: 8px;
+  background: #fffbeb; border: 1px solid #fcd34d; color: #92400e; font-size: 0.8rem; line-height: 1.6;
+}
+.workshop-id-warn button {
+  margin-inline-start: 0.5rem; padding: 0.2rem 0.6rem; border-radius: 6px; border: 1px solid #f59e0b;
+  background: #fff; color: #92400e; font-weight: 700; font-size: 0.78rem; cursor: pointer; font-family: inherit;
+}
+@media (max-width: 480px) {
+  .workshop-id-box { flex-direction: column; align-items: stretch; }
+  .workshop-id-thumb { width: 100%; height: 140px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .workshop-id-spinner { animation-duration: 2s; }
+}
+
 /* Workshop Cards */
 .workshop-cards { display: flex; flex-direction: column; gap: 0.75rem; }
 

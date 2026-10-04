@@ -46,6 +46,14 @@ const WorkshopRegistration = () => {
   const [step, setStep] = useState(_initialDraft?.step ?? 0);
   const [workshops, setWorkshops] = useState([]);
   const [submitting, setSubmitting] = useState(false);
+  // Age is verified from a photo of the National ID / Iqama for every
+  // workshop except Education ones (the shareable /workshop/:id links).
+  // The public page only lists non-education workshops.
+  const requireId = isSingleMode ? (workshops[0] ? !workshops[0].isEducation : false) : true;
+  // { status: 'idle'|'reading'|'ok'|'error', preview, photo, birthDate,
+  //   birthDateHijri, age, idNumber, token, error } — kept out of the
+  // saved draft (large photo; the token expires after 2 hours).
+  const [idCheck, setIdCheck] = useState({ status: 'idle' });
   const [result, setResult] = useState(null);
 
   // If the customer already filled personal info, skip the "lookup"
@@ -107,7 +115,8 @@ const WorkshopRegistration = () => {
   const handleChange = (field, value) => setForm(prev => ({ ...prev, [field]: value }));
 
   const isValidEmail = (email) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
-  const canProceedStep0 = form.firstName && form.lastName && form.phone && form.email && isValidEmail(form.email) && form.nationalId && form.gender && form.age && form.city;
+  const canProceedStep0 = form.firstName && form.lastName && form.phone && form.email && isValidEmail(form.email) && form.nationalId && form.gender && form.city
+    && (requireId ? idCheck.status === 'ok' : form.age);
   const canProceedStep1 = form.workshopId;
 
   const selectedWorkshopEarly = workshops.find(w => w.workshopId === form.workshopId);
@@ -210,6 +219,71 @@ const WorkshopRegistration = () => {
     reader.readAsDataURL(file);
   });
 
+  // Downscale + re-encode as JPEG (longest side ≤ 1600px): plenty for
+  // reading the card and keeps the upload around 200–500 KB.
+  const compressImage = (file) => new Promise((resolve, reject) => {
+    const url = URL.createObjectURL(file);
+    const img = new Image();
+    img.onload = () => {
+      const scale = Math.min(1, 1600 / Math.max(img.naturalWidth, img.naturalHeight));
+      const w = Math.round(img.naturalWidth * scale);
+      const h = Math.round(img.naturalHeight * scale);
+      const canvas = document.createElement('canvas');
+      canvas.width = w;
+      canvas.height = h;
+      canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+      URL.revokeObjectURL(url);
+      const preview = canvas.toDataURL('image/jpeg', 0.88);
+      const fileData = preview.split(',')[1];
+      resolve({
+        preview,
+        photo: { fileName: `${(file.name || 'id').replace(/\.[^.]+$/, '')}.jpg`, fileType: 'jpg', fileSize: Math.round(fileData.length * 0.75), fileData }
+      });
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('decode')); };
+    img.src = url;
+  });
+
+  const handleIdUpload = async (fileList) => {
+    const file = fileList?.[0];
+    if (!file) return;
+    if (!String(file.type).startsWith('image/')) {
+      setIdCheck({ status: 'error', error: isRTL ? 'يرجى اختيار صورة (JPG أو PNG)' : 'Please choose an image (JPG or PNG)' });
+      return;
+    }
+    let compressed;
+    try {
+      compressed = await compressImage(file);
+    } catch {
+      setIdCheck({ status: 'error', error: isRTL ? 'تعذّر فتح الصورة — جرّب صورة JPG أو PNG' : "Couldn't open the image — try a JPG or PNG" });
+      return;
+    }
+    const { preview, photo } = compressed;
+    setIdCheck({ status: 'reading', preview });
+    handleChange('age', '');
+    try {
+      const { data } = await api.post('/workshops/public/read-id', { idPhoto: photo });
+      setIdCheck({ status: 'ok', preview, photo, ...data });
+      // Age comes from the card; fill the ID number too if still empty.
+      setForm(prev => ({ ...prev, age: String(data.age), nationalId: prev.nationalId || data.idNumber || '' }));
+    } catch (err) {
+      setIdCheck({
+        status: 'error',
+        preview,
+        error: (isRTL ? err.response?.data?.messageAr : err.response?.data?.message)
+          || (isRTL ? 'تعذّرت قراءة البطاقة — يرجى المحاولة مرة أخرى' : "Couldn't read the card — please try again")
+      });
+    }
+  };
+
+  // Resuming a saved draft past step 0 without a verified ID (photo and
+  // token aren't saved) → back to step 0 to upload it again.
+  useEffect(() => {
+    if (requireId && step > 0 && step < 3 && idCheck.status !== 'ok') setStep(0);
+  }, [requireId, step, idCheck.status]);
+
+  const fmtDmy = (iso) => (iso ? String(iso).slice(0, 10).split('-').reverse().join('/') : '');
+
   const handleProofUpload = async (fileList) => {
     const file = fileList?.[0];
     if (!file) return;
@@ -291,7 +365,9 @@ const WorkshopRegistration = () => {
         paymentMethod: effectiveMethod,
         paymentProof: effectiveMethod === 'bank_transfer' ? proofFile : null,
         couponCode: coupon?.code || null,
-        termsAccepted: paid ? termsAgreed : true
+        termsAccepted: paid ? termsAgreed : true,
+        idPhoto: requireId ? idCheck.photo : null,
+        idToken: requireId ? idCheck.token : null
       };
       const res = await api.post('/workshops/register', payload);
       setResult(res.data);
@@ -459,14 +535,76 @@ const WorkshopRegistration = () => {
                           <option value="female">{isRTL ? 'أنثى' : 'Female'}</option>
                         </select>
                       </div>
-                      <div className="workshop-field">
-                        <label>{isRTL ? 'العمر' : 'Age'} *</label>
-                        <input type="number" value={form.age} onChange={e => handleChange('age', e.target.value)} />
-                      </div>
+                      {!requireId && (
+                        <div className="workshop-field">
+                          <label>{isRTL ? 'العمر' : 'Age'} *</label>
+                          <input type="number" value={form.age} onChange={e => handleChange('age', e.target.value)} />
+                        </div>
+                      )}
                       <div className="workshop-field">
                         <label>{isRTL ? 'المدينة' : 'City'} *</label>
                         <input value={form.city} onChange={e => handleChange('city', e.target.value)} />
                       </div>
+                      {requireId && (
+                        <div className="workshop-field workshop-id-field">
+                          <label>{isRTL ? 'صورة الهوية الوطنية أو الإقامة' : 'Photo of the National ID or Iqama'} *</label>
+                          <p className="workshop-id-hint">
+                            {isRTL
+                              ? 'صوّر الوجه الأمامي للبطاقة كاملاً بإضاءة جيدة وبدون انعكاس. نقرأ تاريخ الميلاد منها ونحسب العمر تلقائياً.'
+                              : 'Photograph the whole front of the card in good light, without glare. We read the date of birth and calculate the age automatically.'}
+                          </p>
+                          <div className={`workshop-id-box is-${idCheck.status}`}>
+                            {idCheck.preview && <img src={idCheck.preview} alt="" className="workshop-id-thumb" />}
+                            <div className="workshop-id-body">
+                              {idCheck.status === 'idle' && (
+                                <span className="workshop-id-muted">{isRTL ? 'لم يتم رفع صورة بعد' : 'No photo uploaded yet'}</span>
+                              )}
+                              {idCheck.status === 'reading' && (
+                                <span className="workshop-id-reading">
+                                  <span className="workshop-id-spinner" aria-hidden="true" />
+                                  {isRTL ? 'جاري قراءة البطاقة…' : 'Reading the card…'}
+                                </span>
+                              )}
+                              {idCheck.status === 'ok' && (
+                                <>
+                                  <div className="workshop-id-line">
+                                    <span>{isRTL ? 'تاريخ الميلاد:' : 'Date of birth:'}</span>{' '}
+                                    <b dir="ltr">{fmtDmy(idCheck.birthDate)}</b>{isRTL ? ' م' : ''}
+                                    {idCheck.birthDateHijri && <> · <b dir="ltr">{fmtDmy(idCheck.birthDateHijri)}</b> {isRTL ? 'هـ' : 'AH'}</>}
+                                  </div>
+                                  <div className="workshop-id-age">
+                                    ✓ {isRTL ? 'العمر:' : 'Age:'} <b>{idCheck.age}</b> {isRTL ? 'سنة' : 'years'}
+                                  </div>
+                                </>
+                              )}
+                              {idCheck.status === 'error' && (
+                                <div className="workshop-id-error" role="alert">{idCheck.error}</div>
+                              )}
+                              <label className={`workshop-id-btn ${idCheck.status === 'reading' ? 'is-disabled' : ''}`}>
+                                <input
+                                  type="file"
+                                  accept="image/*"
+                                  disabled={idCheck.status === 'reading'}
+                                  onChange={e => { handleIdUpload(e.target.files); e.target.value = ''; }}
+                                />
+                                {idCheck.status === 'idle'
+                                  ? (isRTL ? '📷 رفع صورة الهوية' : '📷 Upload ID photo')
+                                  : (isRTL ? 'تغيير الصورة' : 'Change photo')}
+                              </label>
+                            </div>
+                          </div>
+                          {idCheck.status === 'ok' && idCheck.idNumber && form.nationalId && form.nationalId !== idCheck.idNumber && (
+                            <div className="workshop-id-warn">
+                              {isRTL
+                                ? <>رقم الهوية في البطاقة (<b dir="ltr">{idCheck.idNumber}</b>) يختلف عن الرقم المُدخل.</>
+                                : <>The number on the card (<b>{idCheck.idNumber}</b>) differs from the one entered.</>}
+                              <button type="button" onClick={() => handleChange('nationalId', idCheck.idNumber)}>
+                                {isRTL ? 'استخدم رقم البطاقة' : 'Use the card number'}
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      )}
                     </div>
                     <div className="workshop-actions">
                       <button className="workshop-btn-back" onClick={() => setLookupMode(true)}>{isRTL ? 'رجوع' : 'Back'}</button>

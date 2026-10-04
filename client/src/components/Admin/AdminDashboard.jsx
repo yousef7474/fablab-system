@@ -9010,6 +9010,18 @@ const AdminDashboard = () => {
                                   📄 {isRTL ? 'الإثبات' : 'Proof'}
                                 </button>
                               )}
+                              {s.birthDate && (
+                                <button
+                                  onClick={() => {
+                                    const token = localStorage.getItem('adminToken') || '';
+                                    window.open(`${api.defaults.baseURL}/workshops/students/${s.studentId}/id-photo?token=${encodeURIComponent(token)}`, '_blank');
+                                  }}
+                                  title={`${isRTL ? 'عرض صورة الهوية — تاريخ الميلاد' : 'View ID photo — born'} ${s.birthDate}${s.birthDateHijri ? ` (${s.birthDateHijri} ${isRTL ? 'هـ' : 'AH'})` : ''}`}
+                                  style={{ padding: '4px 10px', borderRadius: 6, border: '1px solid #86efac', background: '#f0fdf4', color: '#166534', cursor: 'pointer', fontSize: 11, fontWeight: 700, fontFamily: 'inherit' }}
+                                >
+                                  🪪 {isRTL ? 'الهوية' : 'ID'} · {s.age} {isRTL ? 'سنة' : 'y'}
+                                </button>
+                              )}
                               <select
                                 className="wsv2-pay-select"
                                 value={s.paymentStatus}

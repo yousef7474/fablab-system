@@ -43,9 +43,12 @@ router.get('/public/:id/payment-settings', controller.getPublicPaymentSettings);
 router.get('/students/:id/invoice-html',   controller.getInvoiceHtml);
 router.get('/public/terms',                controller.getPublicTerms);
 router.get('/public/coupons/validate',     controller.validateCouponPublic);
+// Read birth date from a National ID / Iqama photo (age verification).
+router.post('/public/read-id',             controller.readIdPublic);
 
 // Admin payment endpoints
 router.get('/students/:id/payment-proof', adminAuth, controller.downloadPaymentProof);
+router.get('/students/:id/id-photo', adminAuth, controller.downloadIdPhoto);
 router.get('/admin/payment-settings',  adminAuth, controller.getAdminPaymentSettings);
 router.put('/admin/payment-settings',  adminAuth, requireManager, controller.updateAdminPaymentSettings);
 router.get('/admin/terms',             adminAuth, controller.getAdminTerms);

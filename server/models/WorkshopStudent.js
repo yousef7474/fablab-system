@@ -117,10 +117,23 @@ const WorkshopStudent = sequelize.define('WorkshopStudent', {
   notes: {
     type: DataTypes.TEXT,
     allowNull: true
-  }
+  },
+  // Age verification from the registrant's ID photo (every workshop
+  // except Education). birthDate is Gregorian; birthDateHijri is the
+  // date as printed on Hijri cards; idPhoto mirrors paymentProof's
+  // shape. `age` is derived from birthDate on the server.
+  birthDate:      { type: DataTypes.DATEONLY, allowNull: true },
+  birthDateHijri: { type: DataTypes.STRING(10), allowNull: true },
+  idPhoto:        { type: DataTypes.JSON, allowNull: true }
 }, {
   tableName: 'workshop_students',
   timestamps: true,
+  // The ID photo is large and sensitive: never loaded unless asked
+  // for explicitly (WorkshopStudent.unscoped() — the admin viewer).
+  // Applies to includes too, so no student list ships it.
+  defaultScope: {
+    attributes: { exclude: ['idPhoto'] }
+  },
   hooks: {
     beforeValidate: (student) => {
       const nullableFields = [

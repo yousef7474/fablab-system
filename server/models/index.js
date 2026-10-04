@@ -886,6 +886,16 @@ const syncDatabase = async () => {
       await sequelize.query(
         `ALTER TABLE workshop_students ADD COLUMN IF NOT EXISTS "paymentProof" JSON`
       );
+      // Age verification from the ID photo (non-education workshops).
+      await sequelize.query(
+        `ALTER TABLE workshop_students ADD COLUMN IF NOT EXISTS "birthDate" DATE`
+      );
+      await sequelize.query(
+        `ALTER TABLE workshop_students ADD COLUMN IF NOT EXISTS "birthDateHijri" VARCHAR(10)`
+      );
+      await sequelize.query(
+        `ALTER TABLE workshop_students ADD COLUMN IF NOT EXISTS "idPhoto" JSON`
+      );
       await sequelize.query(
         `ALTER TABLE workshop_students ADD COLUMN IF NOT EXISTS "paidAt" TIMESTAMP WITH TIME ZONE`
       );

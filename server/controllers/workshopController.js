@@ -3,6 +3,7 @@ const { Op } = require('sequelize');
 const { sequelize } = require('../config/database');
 const { sendWorkshopRegistrationEmail, sendAttendanceIdEmail, sendWorkshopCustomEmail, generateAttendanceIdHtml, sendCertificateEmail, sendWorkshopPaymentInstructions, sendWorkshopPaymentConfirmed } = require('../utils/emailService');
 const { requireRole } = require('../utils/qrPayload');
+const { readIdDocument, verifyIdToken } = require('../utils/idDocumentReader');
 
 // ─────────────── Invoice numbering (sequential WSK-####) ───────────────
 // Auto-assigns the next number under a transaction so two concurrent
@@ -372,6 +373,73 @@ exports.lookupStudent = async (req, res) => {
   }
 };
 
+// ---------- ID photo → birth date → age (public) ----------
+// POST /workshops/public/read-id  body: { idPhoto: { fileName, fileType, fileSize, fileData } }
+// Reads the birth date off a National ID / Iqama photo and returns it
+// with the computed age and a signed token that registerStudent
+// verifies against the same photo. Each call costs a Gemini request,
+// so attempts are capped per client.
+const _readIdHits = new Map(); // ip → recent attempt timestamps
+const READ_ID_LIMIT = 8;
+const READ_ID_WINDOW_MS = 10 * 60 * 1000;
+const _clientIp = (req) => String(req.headers['x-forwarded-for'] || '').split(',')[0].trim() || req.ip || 'unknown';
+
+exports.readIdPublic = async (req, res) => {
+  try {
+    const ip = _clientIp(req);
+    const now = Date.now();
+    const hits = (_readIdHits.get(ip) || []).filter(t => now - t < READ_ID_WINDOW_MS);
+    if (hits.length >= READ_ID_LIMIT) {
+      return res.status(429).json({
+        message: 'Too many attempts — please try again in a few minutes',
+        messageAr: 'محاولات كثيرة — يرجى المحاولة مرة أخرى بعد دقائق'
+      });
+    }
+    hits.push(now);
+    _readIdHits.set(ip, hits);
+    if (_readIdHits.size > 5000) {
+      for (const [k, v] of _readIdHits) if (!v.some(t => now - t < READ_ID_WINDOW_MS)) _readIdHits.delete(k);
+    }
+
+    const result = await readIdDocument(req.body?.idPhoto);
+    if (!result.ok) {
+      const msgs = {
+        invalid_photo: ['Please upload a JPG, PNG or WEBP photo of the ID (max 5 MB)', 'يرجى رفع صورة للهوية بصيغة JPG أو PNG أو WEBP (حتى 5 ميجابايت)'],
+        not_id: ['This does not look like a National ID or Iqama — photograph the front of the card', 'لا تبدو الصورة بطاقة هوية وطنية أو إقامة — صوّر الوجه الأمامي للبطاقة'],
+        unreadable: ['Could not read the date of birth — retake the photo in good light, without glare, with the whole card visible', 'تعذّرت قراءة تاريخ الميلاد — أعد تصوير البطاقة بإضاءة جيدة وبدون انعكاس، مع ظهور البطاقة كاملة']
+      };
+      const [message, messageAr] = msgs[result.reason] || msgs.unreadable;
+      return res.status(422).json({ reason: result.reason, message, messageAr });
+    }
+    res.json(result);
+  } catch (error) {
+    if (error && error.code === 'NO_KEY') {
+      return res.status(503).json({ message: 'ID reading is not configured', messageAr: 'خدمة قراءة الهوية غير مهيأة حالياً — يرجى التواصل مع فاب لاب' });
+    }
+    console.error('readIdPublic:', error?.message || error);
+    res.status(502).json({ message: 'Could not read the ID right now — please try again', messageAr: 'تعذّرت قراءة الهوية حالياً — يرجى المحاولة مرة أخرى' });
+  }
+};
+
+// GET /workshops/students/:id/id-photo (admin) — the stored ID photo.
+exports.downloadIdPhoto = async (req, res) => {
+  try {
+    const student = await WorkshopStudent.unscoped().findByPk(req.params.id, {
+      attributes: ['studentId', 'idPhoto']
+    });
+    const p = student?.idPhoto;
+    if (!p?.fileData) return res.status(404).send('No ID photo');
+    const mime = { png: 'image/png', webp: 'image/webp', jpg: 'image/jpeg', jpeg: 'image/jpeg' }[p.fileType] || 'application/octet-stream';
+    res.setHeader('Content-Type', mime);
+    res.setHeader('Cache-Control', 'private, no-store');
+    res.setHeader('Content-Disposition', `inline; filename="id-${student.studentId}.${p.fileType || 'jpg'}"`);
+    res.send(Buffer.from(String(p.fileData), 'base64'));
+  } catch (error) {
+    console.error('downloadIdPhoto:', error);
+    res.status(500).send('Server error');
+  }
+};
+
 // Register student for workshop (public)
 // Check if student is already registered for a workshop (by national ID only).
 exports.checkDuplicate = async (req, res) => {
@@ -395,7 +463,8 @@ exports.registerStudent = async (req, res) => {
       workshopId, firstName, lastName, phone, email,
       nationalId, gender, age, city, notes,
       paymentMethod, paymentProof,
-      couponCode, termsAccepted
+      couponCode, termsAccepted,
+      idPhoto, idToken
     } = req.body;
 
     // invoiceNumber is now auto-assigned server-side (WSK-####) so the
@@ -464,7 +533,15 @@ exports.registerStudent = async (req, res) => {
         }
       }
 
-      const studentAge = parseInt(age);
+      // Every workshop except Education requires the ID photo: the age
+      // comes from the birth date read off the card (signed token from
+      // /public/read-id, bound to this exact photo), not a typed number.
+      let idCheck = null;
+      if (!workshop.isEducation) {
+        idCheck = verifyIdToken(idToken, idPhoto);
+      }
+
+      const studentAge = idCheck ? idCheck.age : parseInt(age);
       if (!isNaN(studentAge) && (workshop.minAge || workshop.maxAge)) {
         if (workshop.minAge && studentAge < workshop.minAge) {
           throw { status: 400, message: `Age must be between ${workshop.minAge}-${workshop.maxAge || '∞'} years. Your age: ${studentAge}`, messageAr: `العمر يجب أن يكون بين ${workshop.minAge} و ${workshop.maxAge || '∞'} سنة. عمرك: ${studentAge}` };
@@ -545,7 +622,11 @@ exports.registerStudent = async (req, res) => {
       const paymentStatus = method === 'free' || isFreeAfterDiscount ? 'verified' : 'pending';
       const student = await WorkshopStudent.create({
         workshopId, firstName, lastName, phone, email,
-        nationalId, gender, age, city, invoiceNumber, notes,
+        nationalId, gender, city, invoiceNumber, notes,
+        age: idCheck ? String(idCheck.age) : age,
+        birthDate: idCheck ? idCheck.birthDate : null,
+        birthDateHijri: idCheck ? idCheck.birthDateHijri : null,
+        idPhoto: idCheck ? idCheck.photo : null,
         paymentMethod: isFreeAfterDiscount ? 'free' : method,
         paymentAmount: netAmount,
         couponCode: couponRow ? couponRow.code : null,
@@ -593,10 +674,12 @@ exports.registerStudent = async (req, res) => {
       }
     }
 
+    // Don't echo the uploaded files (ID photo, transfer proof) back.
+    const { idPhoto: _omitId, paymentProof: _omitProof, ...studentOut } = student.toJSON();
     res.status(201).json({
       message: 'Registration successful',
       messageAr: 'تم التسجيل بنجاح',
-      student,
+      student: studentOut,
       invoiceNumber,
       paymentMethod: method,
       paymentAmount: netAmount,
@@ -1160,7 +1243,7 @@ exports.exportStudentsCSV = async (req, res) => {
 
     rows.push([
       '#', 'الاسم الكامل', 'الهاتف', 'البريد', 'الهوية',
-      'الجنس', 'العمر', 'المدينة', 'رقم الفاتورة', 'حالة الدفع',
+      'الجنس', 'العمر', 'تاريخ الميلاد', 'المدينة', 'رقم الفاتورة', 'حالة الدفع',
       'الحضور (أيام)', 'التقييم', 'ملاحظات'
     ].join(TAB));
 
@@ -1175,6 +1258,7 @@ exports.exportStudentsCSV = async (req, res) => {
         cell(s.nationalId),
         cell(s.gender),
         cell(s.age),
+        cell(s.birthDate ? `${s.birthDate}${s.birthDateHijri ? ` (${s.birthDateHijri} هـ)` : ''}` : ''),
         cell(s.city),
         cell(s.invoiceNumber),
         cell(s.paymentStatus),
@@ -2592,7 +2676,7 @@ exports.getMyWorkshops = async (req, res) => {
         {
           model: WorkshopStudent,
           as: 'students',
-          attributes: { exclude: ['paymentProof'] }
+          attributes: { exclude: ['paymentProof', 'idPhoto'] }
         }
       ],
       order: [['startDate', 'DESC']]
