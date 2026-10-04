@@ -1068,6 +1068,42 @@ body{font-family:'Segoe UI',Tahoma,Arial,sans-serif;background:linear-gradient(1
   }
 };
 
+// Invitation to the post-workshop survey. The certificate is emailed
+// automatically once the survey is submitted (if attendance is enough).
+const sendWorkshopSurveyEmail = async (studentEmail, student, workshop, surveyLink) => {
+  if (!studentEmail) return;
+  if (!process.env.SENDGRID_API_KEY || !process.env.SENDGRID_FROM_EMAIL) {
+    throw new Error('Email is not configured');
+  }
+  const name = `${student.firstName || ''} ${student.lastName || ''}`.trim();
+  const esc = (v) => String(v == null ? '' : v).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  const msg = {
+    to: studentEmail,
+    from: { email: process.env.SENDGRID_FROM_EMAIL, name: process.env.SENDGRID_FROM_NAME || 'FABLAB Al-Ahsa' },
+    subject: `استبيان ورشة: ${workshop.title} — لاستلام شهادتك | Workshop survey`,
+    html: `<div dir="rtl" style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;background:#fff;border:1px solid #e2e8f0;border-radius:12px;overflow:hidden;">
+<div style="background:#1e293b;padding:22px;text-align:center;">
+<img src="https://fablabsahsa.com/fablab.png" alt="FabLab" style="height:48px;"/>
+<h2 style="color:#fff;margin:10px 0 0;font-size:18px;">شاركنا رأيك في الورشة</h2>
+</div>
+<div style="padding:24px;color:#334155;font-size:14px;line-height:1.8;">
+<p style="margin:0 0 10px;">مرحباً <b>${esc(name)}</b>،</p>
+<p style="margin:0 0 10px;">شكراً لحضورك ورشة <b style="color:#EE2329;">"${esc(workshop.title)}"</b>. نرجو تعبئة استبيان قصير (دقيقتان تقريباً) عن تجربتك — <b>تُرسل شهادة إتمام الورشة إلى بريدك تلقائياً بعد تعبئته</b>.</p>
+<div style="text-align:center;margin:22px 0;">
+<a href="${surveyLink}" style="display:inline-block;background:#EE2329;color:#fff;text-decoration:none;font-weight:700;padding:13px 30px;border-radius:10px;font-size:15px;">تعبئة الاستبيان</a>
+</div>
+<p style="margin:0;font-size:12px;color:#64748b;">إذا لم يعمل الزر، انسخ الرابط التالي إلى المتصفح:<br/><span dir="ltr" style="word-break:break-all;">${surveyLink}</span></p>
+</div>
+<div dir="ltr" style="padding:14px 24px;border-top:1px solid #e2e8f0;font-size:12px;color:#64748b;">
+Thank you for attending <b>"${esc(workshop.title)}"</b>. Please fill in a short survey about the workshop — your certificate is emailed automatically once it is submitted: <a href="${surveyLink}">${surveyLink}</a>
+</div>
+<div style="background:#f8fafc;padding:12px;text-align:center;font-size:10px;color:#94a3b8;">فاب لاب الأحساء — مختبر التصنيع الرقمي | FABLAB Al-Ahsa</div>
+</div>`
+  };
+  await sgMail.send(msg);
+  console.log(`✅ Survey email sent to ${studentEmail}`);
+};
+
 /**
  * Fire-and-forget: send workshop payment instructions to the
  * customer right after they submit the paid registration form.
@@ -1378,6 +1414,7 @@ module.exports = {
   sendWorkshopCustomEmail,
   generateAttendanceIdHtml,
   sendCertificateEmail,
+  sendWorkshopSurveyEmail,
   sendWeeklyActivityCreditEmail,
   sendTaskStatusChangedEmail,
   sendWorkshopPaymentInstructions,

@@ -40,6 +40,7 @@ router.post('/store/orders',         storeOrderController.publicCreate);
 router.get('/store/orders/:id',      storeOrderController.publicGet);
 router.get('/store/orders/:id/invoice', storeOrderController.publicInvoiceHtml);
 router.post('/store/coupon/validate', discountCouponController.publicValidate);
+router.get('/store/payment-settings',  storeOrderController.publicPaymentSettings);
 
 // Customer accounts (public — password-based)
 router.post('/store/customer/register', storeCustomerController.register);
@@ -51,6 +52,7 @@ router.get('/store/customer/orders',    customerAuth, storeCustomerController.my
 // 3D printing service — public form submit, quote-token page, accept/reject,
 // and printable invoice HTML.
 router.post('/print3d',                    print3DController.publicCreate);
+router.get('/print3d/options',             print3DController.publicOptions);
 router.get('/print3d/quote/:token',        print3DController.publicGetByToken);
 router.post('/print3d/quote/:token/decide', print3DController.publicDecide);
 router.get('/print3d/:id/invoice',         print3DController.publicInvoiceHtml);

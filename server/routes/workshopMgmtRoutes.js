@@ -15,6 +15,9 @@ router.post('/:id/email-all', adminAuth, controller.emailAllStudents);
 router.post('/students/:id/email', adminAuth, controller.emailOneStudent);
 router.post('/students/:id/send-attendance-id', adminAuth, controller.sendAttendanceId);
 router.post('/students/:id/send-certificate', adminAuth, controller.sendCertificate);
+router.post('/students/:id/send-survey', adminAuth, controller.sendSurveyOne);
+router.get('/:id/survey-results', adminAuth, controller.getSurveyResults);
+router.post('/:id/send-surveys', adminAuth, controller.sendSurveys);
 router.get('/students/:id/certificate-pdf', adminAuth, controller.downloadCertificatePdf);
 router.get('/students/:id/invoice-pdf', adminAuth, controller.downloadInvoicePdf);
 router.get('/students/:id/attendance-id', adminAuth, controller.getAttendanceIdHtml);
@@ -35,7 +38,9 @@ router.get('/active', controller.getActiveWorkshops);
 // Public education-workshop lookup (single workshop by ID, only if
 // isEducation=true). Used by the shareable /workshop/:id URL.
 router.get('/edu/:id', controller.getEducationWorkshop);
-// Admin toggle for the registrationEnabled flag.
+// Admin toggle for the registrationEnabled flag (bulk route first so
+// "bulk" isn't captured as an :id).
+router.patch('/bulk/registration-enabled', adminAuth, requireManager, controller.bulkToggleRegistration);
 router.patch('/:id/registration-enabled', adminAuth, requireManager, controller.toggleRegistration);
 
 // Public payment-settings lookup + invoice viewer (no login).
@@ -45,6 +50,9 @@ router.get('/public/terms',                controller.getPublicTerms);
 router.get('/public/coupons/validate',     controller.validateCouponPublic);
 // Read birth date from a National ID / Iqama photo (age verification).
 router.post('/public/read-id',             controller.readIdPublic);
+// Post-workshop survey (signed per-student link; gates the certificate).
+router.get('/public/survey/:token',        controller.getPublicSurvey);
+router.post('/public/survey/:token',       controller.submitPublicSurvey);
 
 // Admin payment endpoints
 router.get('/students/:id/payment-proof', adminAuth, controller.downloadPaymentProof);

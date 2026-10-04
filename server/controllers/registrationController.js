@@ -3,6 +3,36 @@ const { generateUserId, generateRegistrationId } = require('../utils/idGenerator
 const { checkTimeSlotAvailability, getAvailableTimeSlots } = require('../utils/conflictChecker');
 const { sendRegistrationConfirmation, sendEngineerNotification } = require('../utils/emailService');
 const { Op } = require('sequelize');
+const { checkEntityPassword, issueEntityToken, verifyEntityToken } = require('../utils/entityAccess');
+
+// POST /registration/entity-access  body: { password }
+// Unlocks the "Entity" application type. Attempts are capped per client.
+const _entityHits = new Map(); // ip → recent attempt timestamps
+const ENTITY_LIMIT = 10;
+const ENTITY_WINDOW_MS = 10 * 60 * 1000;
+
+exports.entityAccess = async (req, res) => {
+  const ip = String(req.headers['x-forwarded-for'] || '').split(',')[0].trim() || req.ip || 'unknown';
+  const now = Date.now();
+  const hits = (_entityHits.get(ip) || []).filter(t => now - t < ENTITY_WINDOW_MS);
+  if (hits.length >= ENTITY_LIMIT) {
+    return res.status(429).json({
+      message: 'Too many attempts — please try again in a few minutes',
+      messageAr: 'محاولات كثيرة — يرجى المحاولة بعد دقائق'
+    });
+  }
+  if (!checkEntityPassword(req.body?.password)) {
+    hits.push(now);
+    _entityHits.set(ip, hits);
+    if (_entityHits.size > 5000) {
+      for (const [k, v] of _entityHits) if (!v.some(t => now - t < ENTITY_WINDOW_MS)) _entityHits.delete(k);
+    }
+    // 403, not 401: the client's axios interceptor treats 401 as an
+    // expired admin session and redirects to the admin login.
+    return res.status(403).json({ code: 'WRONG_PASSWORD', message: 'Incorrect password', messageAr: 'كلمة المرور غير صحيحة' });
+  }
+  res.json({ ok: true, token: issueEntityToken() });
+};
 
 // Check if user exists
 exports.checkUser = async (req, res) => {
@@ -187,11 +217,24 @@ exports.createRegistration = async (req, res) => {
     let userId = existingUserId;
     let user;
 
+    // Entity registrations need the access code (see entityAccess).
+    const entityDenied = () => res.status(403).json({
+      code: 'ENTITY_ACCESS_REQUIRED',
+      message: 'Entity registration requires the access password',
+      messageAr: 'التسجيل ككيان يتطلب إدخال كلمة المرور'
+    });
+    if (applicationType === 'Entity' && !verifyEntityToken(req.body.entityAccessToken)) {
+      return entityDenied();
+    }
+
     // Create or get user
     if (existingUserId) {
       user = await User.findByPk(existingUserId);
       if (!user) {
         return res.status(404).json({ message: 'User not found' });
+      }
+      if (!applicationType && user.applicationType === 'Entity' && !verifyEntityToken(req.body.entityAccessToken)) {
+        return entityDenied();
       }
 
       // Refresh the user's profile with whatever the form submitted this time.

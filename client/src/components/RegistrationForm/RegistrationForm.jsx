@@ -281,6 +281,13 @@ const RegistrationForm = () => {
       const errorData = error.response?.data;
       let errorMessage;
 
+      if (errorData?.code === 'ENTITY_ACCESS_REQUIRED') {
+        setFormData(prev => ({ ...prev, entityAccessToken: '' }));
+        setActiveStep(0);
+        toast.error(isRTL ? 'انتهت صلاحية التحقق — أدخل كلمة مرور الكيان مرة أخرى' : 'Entity access expired — please enter the password again');
+        return;
+      }
+
       if (errorData) {
         errorMessage = isRTL
           ? (errorData.messageAr || errorData.message || errorData.error)

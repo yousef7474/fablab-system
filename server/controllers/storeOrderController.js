@@ -13,6 +13,78 @@ const _publicOrigin = () =>
   process.env.PUBLIC_APP_URL ||
   (process.env.NODE_ENV === 'production' ? 'https://fablabsahsa.com' : 'http://localhost:3000');
 
+// -------------------- PAYMENT HELPERS --------------------
+// Same payment options as workshop registration. The bank account and
+// mada instructions are the ones the admin edits under Workshops →
+// "🏦 حساب الدفع" (Settings: workshop_bank_account / workshop_mada_info).
+
+const PAYMENT_METHODS = ['cash', 'mada', 'bank_transfer'];
+const MAX_PROOF_BYTES = 10 * 1024 * 1024;
+const PAYMENT_LABEL_AR = {
+  cash: 'نقداً عند الاستلام',
+  mada: 'مدى — في مقر فاب لاب عند الاستلام',
+  bank_transfer: 'تحويل بنكي',
+  free: 'مجاني (كود خصم)'
+};
+const _paymentLabel = (m) => PAYMENT_LABEL_AR[m] || PAYMENT_LABEL_AR.cash;
+const _esc = (v) => String(v == null ? '' : v)
+  .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+
+// Same rules as workshopController's _sanitizeProof.
+function _sanitizeProof(input) {
+  if (!input || typeof input !== 'object') return null;
+  const name = String(input.fileName || '').slice(0, 250);
+  const type = String(input.fileType || '').toLowerCase().replace(/^\./, '').slice(0, 8);
+  const data = input.fileData ? String(input.fileData) : '';
+  if (!name || !data) return null;
+  if (!['png', 'jpg', 'jpeg', 'webp', 'pdf'].includes(type)) return null;
+  if (data.length > MAX_PROOF_BYTES * 1.4) return null;
+  return { fileName: name, fileType: type, fileSize: Math.max(0, Number(input.fileSize) || 0), fileData: data };
+}
+
+async function _getPaymentSettings() {
+  const [bank, mada] = await Promise.all([
+    Settings.findByPk('workshop_bank_account'),
+    Settings.findByPk('workshop_mada_info')
+  ]);
+  return { bank: bank?.value || null, mada: mada?.value || null };
+}
+
+// Payment box for the customer email: what to do / what happens next
+// for the chosen method. Bank details only while the transfer is
+// still awaiting verification.
+const _paymentBlockHtml = (order, pay = {}) => {
+  const box = (bg, border, color, inner) =>
+    `<div style="background:${bg};border:1px solid ${border};border-radius:10px;padding:12px 14px;margin:14px 0;font-size:13px;line-height:1.8;color:${color}">${inner}</div>`;
+  const m = order.paymentMethod;
+  if (m === 'free') return '';
+  if (m === 'bank_transfer') {
+    if (order.paymentStatus === 'verified') {
+      return box('#f0fdf4', '#86efac', '#166534', '<b>✓ تم التحقق من التحويل البنكي.</b>');
+    }
+    if (order.paymentStatus === 'rejected') {
+      return box('#fef2f2', '#fecaca', '#991b1b', '<b>لم يتم قبول إثبات التحويل.</b> يرجى التواصل معنا على fablabspec@fablabsahsa.com لإكمال الدفع.');
+    }
+    const b = pay.bank || {};
+    const rows = [['البنك', b.bankName], ['اسم المستفيد', b.accountHolder], ['رقم الآيبان (IBAN)', b.iban]]
+      .filter(r => r[1])
+      .map(([k, v]) => `<tr><td style="padding:4px 0;color:#64748b;width:130px">${k}:</td><td style="padding:4px 0;font-weight:700;direction:ltr;text-align:start">${_esc(v)}</td></tr>`)
+      .join('');
+    return box('#eff6ff', '#bfdbfe', '#1e3a8a',
+      `<b>الدفع بالتحويل البنكي</b><br>استلمنا إثبات التحويل وسيتم التحقق منه قريباً.` +
+      (rows ? `<table style="width:100%;font-size:13px;border-collapse:collapse;margin-top:8px">${rows}</table>` : '') +
+      (b.additionalInfo ? `<div style="margin-top:6px;color:#334155">${_esc(b.additionalInfo)}</div>` : ''));
+  }
+  if (m === 'mada') {
+    const md = pay.mada || {};
+    return box('#f0fdf4', '#86efac', '#166534',
+      `<b>الدفع بالبطاقة (مدى)</b><br>يتم الدفع في مقر فاب لاب عند استلام الطلب.` +
+      (md.instructions ? `<div style="margin-top:6px;color:#334155">${_esc(md.instructions)}</div>` : '') +
+      (md.address ? `<div style="margin-top:4px;color:#334155">📍 ${_esc(md.address)}</div>` : ''));
+  }
+  return box('#f8fafc', '#e5e7eb', '#334155', '<b>الدفع نقداً</b> عند استلام الطلب من مقر فاب لاب.');
+};
+
 // -------------------- SEQUENCE HELPER --------------------
 
 const _assignNextOrderNumber = async () => {
@@ -58,6 +130,7 @@ const _buildAdminOrderEmail = (order) => {
       ${order.customerNationalId ? `<tr><td style="padding:6px 0;color:#64748b">رقم الهوية:</td><td style="padding:6px 0;direction:ltr">${order.customerNationalId}</td></tr>` : ''}
       ${order.deliveryAddress ? `<tr><td style="padding:6px 0;color:#64748b;vertical-align:top">عنوان التسليم:</td><td style="padding:6px 0">${order.deliveryAddress}</td></tr>` : ''}
       ${order.notes ? `<tr><td style="padding:6px 0;color:#64748b;vertical-align:top">ملاحظات:</td><td style="padding:6px 0">${order.notes}</td></tr>` : ''}
+      <tr><td style="padding:6px 0;color:#64748b">طريقة الدفع:</td><td style="padding:6px 0;font-weight:700">${_paymentLabel(order.paymentMethod)}${order.paymentMethod === 'bank_transfer' ? ' — <span style="color:#1d4ed8">تم رفع إثبات التحويل، يرجى التحقق منه من لوحة التحكم</span>' : ''}</td></tr>
     </table>
 
     <table style="width:100%;font-size:13px;border-collapse:collapse;border:1px solid #e5e7eb;border-radius:8px;overflow:hidden;margin-bottom:16px">
@@ -93,6 +166,7 @@ const _buildAdminOrderEmail = (order) => {
 الجوال: ${order.customerPhone}
 البريد: ${order.customerEmail}
 الإجمالي: ${SAR(order.total)}
+طريقة الدفع: ${_paymentLabel(order.paymentMethod)}
 
 للإدارة: ${_publicOrigin()}/admin/dashboard?tab=store`
   };
@@ -145,7 +219,7 @@ const _statusMeta = (status) => {
       return {
         subject: 'طلبك جاهز للاستلام',
         headline: 'طلبك جاهز في مقر فاب لاب',
-        detail: 'طلبك جاهز الآن ويمكنك الحضور لاستلامه من مقر فاب لاب الأحساء خلال ساعات العمل. يرجى إحضار رقم الطلب أو الفاتورة عند الاستلام والدفع نقداً.',
+        detail: 'طلبك جاهز الآن ويمكنك الحضور لاستلامه من مقر فاب لاب الأحساء خلال ساعات العمل. يرجى إحضار رقم الطلب أو الفاتورة عند الاستلام.',
         timelineIdx: 2
       };
     case 'completed':
@@ -172,11 +246,16 @@ const _statusMeta = (status) => {
   }
 };
 
-const _buildCustomerInvoiceEmail = (order, subjectOrMeta, headlineArg, detailArg) => {
+// Called as (order, meta, pay) — or the old (order, subject, headline,
+// detail, pay). `pay` = { bank, mada } from _getPaymentSettings(), used
+// for the payment box (bank details for transfers, mada instructions).
+const _buildCustomerInvoiceEmail = (order, subjectOrMeta, ...rest) => {
   // Backwards-compat: allow old (subject, headline) call or new (metaObj).
-  const meta = (typeof subjectOrMeta === 'object' && subjectOrMeta)
+  const isMeta = typeof subjectOrMeta === 'object' && subjectOrMeta;
+  const meta = isMeta
     ? subjectOrMeta
-    : { subject: subjectOrMeta, headline: headlineArg, detail: detailArg };
+    : { subject: subjectOrMeta, headline: rest[0], detail: rest[1] };
+  const pay = (isMeta ? rest[0] : rest[2]) || {};
   const orderNo = fmtOrderNumber(order.orderNumber);
   const timeline = meta.cancelled != null || meta.timelineIdx != null
     ? _renderTimeline(meta.timelineIdx || 0, !!meta.cancelled)
@@ -196,6 +275,7 @@ const _buildCustomerInvoiceEmail = (order, subjectOrMeta, headlineArg, detailArg
     </p>
     ${meta.detail ? `<p style="margin:0 0 6px;font-size:14px;line-height:1.85;color:#334155">${meta.detail}</p>` : ''}
     ${timeline}
+    ${meta.cancelled ? '' : _paymentBlockHtml(order, pay)}
     <p style="margin:14px 0 10px;font-size:13px;line-height:1.75;color:#64748b">
       فيما يلي تفاصيل فاتورتك:
     </p>
@@ -203,7 +283,7 @@ const _buildCustomerInvoiceEmail = (order, subjectOrMeta, headlineArg, detailArg
     <table style="width:100%;font-size:13px;border-collapse:collapse;background:#f8fafc;border-radius:10px;overflow:hidden;margin-bottom:16px">
       <tr><td style="padding:10px 14px;color:#64748b;width:120px;border-bottom:1px solid #e5e7eb">التاريخ:</td><td style="padding:10px 14px;border-bottom:1px solid #e5e7eb;direction:ltr">${new Date(order.createdAt).toLocaleString('ar-SA-u-ca-gregory-nu-latn', { calendar: 'gregory' })}</td></tr>
       <tr><td style="padding:10px 14px;color:#64748b;border-bottom:1px solid #e5e7eb">الحالة:</td><td style="padding:10px 14px;border-bottom:1px solid #e5e7eb;font-weight:700">${arabicStatus(order.status)}</td></tr>
-      <tr><td style="padding:10px 14px;color:#64748b">طريقة الدفع:</td><td style="padding:10px 14px">نقداً عند الاستلام</td></tr>
+      <tr><td style="padding:10px 14px;color:#64748b">طريقة الدفع:</td><td style="padding:10px 14px">${_paymentLabel(order.paymentMethod)}</td></tr>
     </table>
 
     <table style="width:100%;font-size:13px;border-collapse:collapse;border:1px solid #e5e7eb;border-radius:8px;overflow:hidden;margin-bottom:16px">
@@ -243,7 +323,7 @@ const _buildCustomerInvoiceEmail = (order, subjectOrMeta, headlineArg, detailArg
   </div>
 </div>
 </body></html>`,
-    text: `${meta.headline} — ${orderNo}\n\nالإجمالي: ${SAR(order.total)}`
+    text: `${meta.headline} — ${orderNo}\n\nالإجمالي: ${SAR(order.total)}\nطريقة الدفع: ${_paymentLabel(order.paymentMethod)}`
   };
 };
 
@@ -278,13 +358,22 @@ exports.publicCreate = async (req, res) => {
   try {
     const {
       customerName, customerPhone, customerEmail, customerNationalId,
-      deliveryAddress, notes, items, couponCode
+      deliveryAddress, notes, items, couponCode, paymentMethod, paymentProof
     } = req.body || {};
 
     if (!customerName || !customerPhone || !customerEmail || !Array.isArray(items) || items.length === 0) {
       return res.status(400).json({
         message: 'Missing required fields',
         messageAr: 'الرجاء تعبئة جميع الحقول المطلوبة'
+      });
+    }
+
+    // Payment method — older clients don't send one (cash at pickup).
+    const method = paymentMethod ? String(paymentMethod) : 'cash';
+    if (!PAYMENT_METHODS.includes(method)) {
+      return res.status(400).json({
+        message: 'Invalid payment method',
+        messageAr: 'طريقة الدفع غير صالحة'
       });
     }
 
@@ -357,6 +446,19 @@ exports.publicCreate = async (req, res) => {
     const taxAmount = 0;
     const total = netAfterDiscount;
 
+    // A coupon that covers the whole total means nothing to pay.
+    const isFree = total <= 0;
+    let proof = null;
+    if (!isFree && method === 'bank_transfer') {
+      proof = _sanitizeProof(paymentProof);
+      if (!proof) {
+        return res.status(400).json({
+          message: 'Bank transfer requires a valid proof (PNG/JPG/WEBP/PDF, up to 10MB)',
+          messageAr: 'يرجى رفع إثبات التحويل البنكي (صورة أو PDF بحجم لا يتجاوز 10MB)'
+        });
+      }
+    }
+
     const orderNumber = await _assignNextOrderNumber();
 
     const order = await StoreOrder.create({
@@ -373,7 +475,11 @@ exports.publicCreate = async (req, res) => {
       couponPercent: couponPercentApplied,
       discountAmount,
       taxRate, taxAmount, total,
-      status: 'pending'
+      status: 'pending',
+      paymentMethod: isFree ? 'free' : method,
+      paymentStatus: isFree ? 'verified' : 'pending',
+      paymentProof: proof,
+      paidAt: isFree ? new Date() : null
     });
 
     // Consume the coupon usage once the order is persisted
@@ -398,7 +504,8 @@ exports.publicCreate = async (req, res) => {
         const adminRes = await _sendMail(STORE_NOTIFY_EMAIL, adminMail.subject, adminMail.html, adminMail.text);
         if (adminRes.ok) await order.update({ adminEmailSentAt: new Date() });
 
-        const custMail = _buildCustomerInvoiceEmail(order, _statusMeta('pending'));
+        const pay = await _getPaymentSettings();
+        const custMail = _buildCustomerInvoiceEmail(order, _statusMeta('pending'), pay);
         const custRes = await _sendMail(order.customerEmail, custMail.subject, custMail.html, custMail.text);
         if (custRes.ok) await order.update({ customerEmailSentAt: new Date() });
       } catch (err) {
@@ -411,7 +518,8 @@ exports.publicCreate = async (req, res) => {
       messageAr: 'تم استلام طلبك — سنتواصل معك للتأكيد',
       orderId: order.orderId,
       orderNumber: order.orderNumber,
-      total: order.total
+      total: order.total,
+      paymentMethod: order.paymentMethod
     });
   } catch (err) {
     console.error('publicCreate order:', err);
@@ -425,7 +533,7 @@ exports.publicGet = async (req, res) => {
     const order = await StoreOrder.findByPk(req.params.id);
     if (!order) return res.status(404).json({ message: 'Not found' });
     // Only expose non-admin fields
-    const { adminNotes, ...safe } = order.toJSON();
+    const { adminNotes, paymentReviewedBy, ...safe } = order.toJSON();
     res.json(safe);
   } catch (err) {
     console.error('publicGet order:', err);
@@ -550,7 +658,7 @@ exports.publicInvoiceHtml = async (req, res) => {
         <div class="no">${orderNo}</div>
         <div class="dates">
           <span>تاريخ الإصدار</span><b>${esc(invoiceDate)}</b>
-          <span>طريقة الدفع</span><b>نقداً عند الاستلام</b>
+          <span>طريقة الدفع</span><b>${esc(_paymentLabel(o.paymentMethod))}</b>
         </div>
       </div>
     </div>
@@ -585,7 +693,11 @@ exports.publicInvoiceHtml = async (req, res) => {
       <div class="payment-info">
         <div class="pi-title">معلومات الدفع</div>
         <div class="pi-row"><b>حالة الطلب: </b>${esc(o.status)}</div>
-        <div class="pi-row"><b>حالة الدفع: </b>${paid ? '✓ مدفوع بالكامل' : 'بانتظار الدفع'}</div>
+        <div class="pi-row"><b>طريقة الدفع: </b>${esc(_paymentLabel(o.paymentMethod))}</div>
+        <div class="pi-row"><b>حالة الدفع: </b>${paid ? '✓ مدفوع بالكامل'
+          : o.paymentMethod === 'bank_transfer' && o.paymentStatus === 'rejected' ? 'لم يُقبل إثبات التحويل'
+          : o.paymentMethod === 'bank_transfer' ? 'التحويل قيد التحقق'
+          : 'بانتظار الدفع'}</div>
         ${o.paidAt ? `<div class="pi-row"><b>تاريخ الدفع: </b>${esc(new Date(o.paidAt).toLocaleDateString('ar-SA-u-ca-gregory-nu-latn', { calendar: 'gregory' }))}</div>` : ''}
       </div>
       <table class="totals">
@@ -645,7 +757,16 @@ exports.updateStatus = async (req, res) => {
     const patch = {};
     if (status) patch.status = status;
     if (adminNotes !== undefined) patch.adminNotes = adminNotes ? String(adminNotes).trim() : null;
-    if (status === 'completed') { patch.completedAt = new Date(); patch.paidAt = patch.paidAt || new Date(); }
+    if (status === 'completed') {
+      // Picked up = paid, whatever the method.
+      patch.completedAt = new Date();
+      patch.paidAt = order.paidAt || new Date();
+      if (order.paymentStatus !== 'verified') {
+        patch.paymentStatus = 'verified';
+        patch.paymentReviewedBy = req.admin?.fullName || 'Admin';
+        patch.paymentReviewedAt = new Date();
+      }
+    }
     if (status === 'cancelled') patch.cancelledAt = new Date();
     await order.update(patch);
 
@@ -654,7 +775,7 @@ exports.updateStatus = async (req, res) => {
     // progress-timeline visual, not just a swapped headline.
     if (notifyCustomer && order.customerEmail && ['confirmed', 'ready', 'completed', 'cancelled'].includes(status)) {
       const meta = _statusMeta(status);
-      const mail = _buildCustomerInvoiceEmail(order, meta);
+      const mail = _buildCustomerInvoiceEmail(order, meta, await _getPaymentSettings());
       await _sendMail(order.customerEmail, mail.subject, mail.html, mail.text);
       await order.update({ customerEmailSentAt: new Date() });
     }
@@ -670,10 +791,79 @@ exports.markPaid = async (req, res) => {
   try {
     const order = await StoreOrder.findByPk(req.params.id);
     if (!order) return res.status(404).json({ message: 'Not found' });
-    await order.update({ paidAt: new Date() });
+    await order.update({
+      paidAt: new Date(),
+      paymentStatus: 'verified',
+      paymentReviewedBy: req.admin?.fullName || 'Admin',
+      paymentReviewedAt: new Date()
+    });
     res.json(order);
   } catch (err) {
     console.error('markPaid:', err);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+// PATCH /store/orders/:id/payment — body { paymentStatus }
+// Admin reviews the payment (mainly bank-transfer proofs), mirroring
+// the workshop "verify payment" flow. Verified ⇒ paidAt is set.
+exports.updatePayment = async (req, res) => {
+  try {
+    const order = await StoreOrder.findByPk(req.params.id);
+    if (!order) return res.status(404).json({ message: 'Not found' });
+    const { paymentStatus } = req.body || {};
+    if (!['pending', 'verified', 'rejected'].includes(paymentStatus)) {
+      return res.status(400).json({
+        message: 'Invalid payment status',
+        messageAr: 'حالة الدفع غير صالحة'
+      });
+    }
+    await order.update({
+      paymentStatus,
+      paymentReviewedBy: req.admin?.fullName || 'Admin',
+      paymentReviewedAt: new Date(),
+      paidAt: paymentStatus === 'verified' ? (order.paidAt || new Date()) : null
+    });
+    res.json(order);
+  } catch (err) {
+    console.error('updatePayment order:', err);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+// GET /store/orders/:id/payment-proof — stream the uploaded transfer
+// proof inline (admin only; accepts ?token= so it opens in a new tab).
+exports.downloadPaymentProof = async (req, res) => {
+  try {
+    const order = await StoreOrder.unscoped().findByPk(req.params.id, {
+      attributes: ['orderId', 'paymentProof']
+    });
+    if (!order) return res.status(404).send('Not found');
+    const p = order.paymentProof;
+    if (!p?.fileData) return res.status(404).send('No proof uploaded');
+    const type = String(p.fileType || '').toLowerCase();
+    const mime = type === 'pdf' ? 'application/pdf'
+      : type === 'png' ? 'image/png'
+      : type === 'webp' ? 'image/webp'
+      : type === 'jpg' || type === 'jpeg' ? 'image/jpeg'
+      : 'application/octet-stream';
+    res.setHeader('Content-Type', mime);
+    res.setHeader('Cache-Control', 'private, no-store');
+    res.setHeader('Content-Disposition', `inline; filename="${(p.fileName || 'proof').replace(/[^\w.\-]/g, '_')}"`);
+    res.send(Buffer.from(String(p.fileData), 'base64'));
+  } catch (err) {
+    console.error('downloadPaymentProof order:', err);
+    res.status(500).send('Server error');
+  }
+};
+
+// GET /public/store/payment-settings — bank + mada details shown at
+// checkout. Same Settings the workshop registration uses.
+exports.publicPaymentSettings = async (req, res) => {
+  try {
+    res.json(await _getPaymentSettings());
+  } catch (err) {
+    console.error('publicPaymentSettings:', err);
     res.status(500).json({ message: 'Server error' });
   }
 };

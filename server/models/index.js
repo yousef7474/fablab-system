@@ -465,6 +465,23 @@ const syncDatabase = async () => {
       }
     }
 
+    // Store orders: payment method (cash / mada / bank transfer, same
+    // options as workshops), payment review status and the transfer
+    // proof. Existing orders were all cash-on-pickup.
+    try {
+      await sequelize.query(`ALTER TABLE store_orders ADD COLUMN IF NOT EXISTS "paymentMethod" VARCHAR(24) DEFAULT 'cash'`);
+      await sequelize.query(`ALTER TABLE store_orders ADD COLUMN IF NOT EXISTS "paymentStatus" VARCHAR(16) DEFAULT 'pending'`);
+      await sequelize.query(`ALTER TABLE store_orders ADD COLUMN IF NOT EXISTS "paymentProof" JSON`);
+      await sequelize.query(`ALTER TABLE store_orders ADD COLUMN IF NOT EXISTS "paymentReviewedBy" VARCHAR(255)`);
+      await sequelize.query(`ALTER TABLE store_orders ADD COLUMN IF NOT EXISTS "paymentReviewedAt" TIMESTAMP WITH TIME ZONE`);
+      // Orders already marked paid count as verified.
+      await sequelize.query(`UPDATE store_orders SET "paymentStatus" = 'verified' WHERE "paidAt" IS NOT NULL AND "paymentStatus" = 'pending'`);
+    } catch (migrationError) {
+      if (!/does not exist/i.test(migrationError.message)) {
+        console.log('store_orders.payment fields migration note:', migrationError.message);
+      }
+    }
+
     // Calendar events: ensure the customCategory column exists so
     // "أخرى / Other" events can carry a free-text label.
     try {
@@ -895,6 +912,16 @@ const syncDatabase = async () => {
       );
       await sequelize.query(
         `ALTER TABLE workshop_students ADD COLUMN IF NOT EXISTS "idPhoto" JSON`
+      );
+      // Post-workshop survey (required before the certificate).
+      await sequelize.query(
+        `ALTER TABLE workshop_students ADD COLUMN IF NOT EXISTS "surveyResponse" JSON`
+      );
+      await sequelize.query(
+        `ALTER TABLE workshop_students ADD COLUMN IF NOT EXISTS "surveySubmittedAt" TIMESTAMP WITH TIME ZONE`
+      );
+      await sequelize.query(
+        `ALTER TABLE workshop_students ADD COLUMN IF NOT EXISTS "certificateSentAt" TIMESTAMP WITH TIME ZONE`
       );
       await sequelize.query(
         `ALTER TABLE workshop_students ADD COLUMN IF NOT EXISTS "paidAt" TIMESTAMP WITH TIME ZONE`

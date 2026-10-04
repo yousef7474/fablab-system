@@ -357,7 +357,7 @@
   flex-shrink: 0;
 }
 .p3t-part b { flex: 1; color: var(--p3t-ink); font-size: 13px; }
-.p3t-part-hex { font-family: monospace; font-size: 11.5px; color: var(--p3t-muted); }
+.p3t .p3t-part-hex { font-family: monospace; font-size: 11.5px; color: var(--p3t-muted); }
 
 .p3t-notes {
   margin-top: 10px;
@@ -506,4 +506,177 @@
   .p3t-modal-body { padding: 14px 16px; }
   .p3t-modal-head { padding: 14px 16px; }
   .p3t-modal-head h3 { font-size: 16px; }
+}
+
+/* ============================================================
+   Materials & colors editor (Print3DOptionsEditor)
+   Text + inputs carry explicit colors behind a .p3t prefix so the
+   global dark-theme span/label/input rules (Admin.css,
+   design-system.css) don't turn them light-on-white.
+   ============================================================ */
+.p3t-head-side { display: flex; flex-direction: column; align-items: flex-end; gap: 8px; }
+.p3t-btn--sm { padding: 7px 14px; font-size: 12.5px; }
+.p3t-chip--sm { padding: 4px 11px; font-size: 11.5px; font-family: 'JetBrains Mono', 'Cairo', monospace; }
+.p3t-chip:disabled { cursor: default; }
+
+.p3t .p3t-off-tag {
+  align-self: center;
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: #fef3c7;
+  border: 1px solid #fde68a;
+  color: #92400e;
+  font-size: 10.5px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.p3t-modal--wide { max-width: 900px; }
+.p3t-modal-head h3.p3t-opt-title { font-family: 'Bricolage Grotesque', 'Cairo', sans-serif; letter-spacing: 0; }
+
+.p3t-opt-intro {
+  padding: 10px 14px;
+  background: rgba(14,165,233,0.07);
+  border: 1px solid rgba(14,165,233,0.22);
+  border-radius: 10px;
+  font-size: 12.5px;
+  color: #0369a1;
+  line-height: 1.6;
+}
+.p3t-opt-ro { color: #b45309; }
+.p3t-opt-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; margin-bottom: 10px; }
+.p3t-opt-head h4 { margin: 0; }
+.p3t-opt-hint { font-size: 11.5px; color: var(--p3t-muted); line-height: 1.6; margin-bottom: 10px; }
+.p3t-opt-empty {
+  padding: 12px 14px;
+  border: 1px dashed #fcd34d;
+  background: #fffbeb;
+  color: #92400e;
+  border-radius: 10px;
+  font-size: 12.5px;
+  margin-bottom: 10px;
+}
+
+.p3t-opt-list { display: flex; flex-direction: column; gap: 10px; }
+.p3t-opt-item {
+  padding: 12px 14px;
+  background: #fff;
+  border: 1px solid var(--p3t-line);
+  border-radius: 12px;
+  transition: opacity 0.15s, background 0.15s;
+}
+.p3t-opt-item.is-off { background: #f8fafc; }
+.p3t-opt-item.is-off .p3t-opt-grid,
+.p3t-opt-item.is-off .p3t-opt-limits { opacity: 0.6; }
+.p3t-opt-item-top { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; flex-wrap: wrap; }
+.p3t-opt-spacer { flex: 1; }
+.p3t-opt-grid--inline { flex: 1; min-width: 0; }
+.p3t-opt-spacer--narrow { display: none; }
+
+.p3t .p3t-opt-code {
+  background: linear-gradient(135deg, #0ea5e9, #2563eb);
+  color: #fff;
+  font-family: 'JetBrains Mono', monospace;
+  font-weight: 800;
+  font-size: 12px;
+  letter-spacing: 0.6px;
+  padding: 4px 10px;
+  border-radius: 6px;
+}
+.p3t .p3t-opt-hex { font-family: 'JetBrains Mono', monospace; font-size: 12px; color: var(--p3t-muted); }
+.p3t-opt-swatch {
+  position: relative;
+  width: 34px; height: 34px;
+  border-radius: 8px;
+  border: 1px solid #cbd5e1;
+  overflow: hidden;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.p3t-opt-swatch input { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; border: none; padding: 0; }
+.p3t-opt-swatch input:disabled { cursor: default; }
+
+.p3t-opt-del {
+  width: 30px; height: 30px;
+  border-radius: 8px;
+  border: 1px solid rgba(220,38,38,0.3);
+  background: transparent;
+  color: var(--p3t-danger);
+  font-weight: 700;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.p3t-opt-del:hover { background: rgba(220,38,38,0.08); }
+
+.p3t-opt-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 8px 10px; }
+.p3t .p3t-opt-field,
+.p3t .p3t-opt-field > span { color: var(--p3t-muted); }
+.p3t-opt-field { display: flex; flex-direction: column; gap: 4px; font-size: 11.5px; color: var(--p3t-muted); font-weight: 600; min-width: 0; }
+.p3t .p3t-opt-field input[type="text"],
+.p3t .p3t-opt-field input[type="number"],
+.p3t .p3t-opt-item-top input.p3t-opt-code-input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 8px 10px;
+  background: #fff;
+  border: 1px solid var(--p3t-line);
+  border-radius: 8px;
+  color: var(--p3t-ink);
+  font-family: inherit;
+  font-size: 13px;
+}
+.p3t .p3t-opt-item-top input.p3t-opt-code-input {
+  width: 150px;
+  font-family: 'JetBrains Mono', monospace;
+  font-weight: 700;
+  letter-spacing: 0.6px;
+}
+.p3t .p3t-opt-field input:focus,
+.p3t .p3t-opt-item-top input.p3t-opt-code-input:focus {
+  outline: none;
+  border-color: var(--p3t-brand);
+  box-shadow: 0 0 0 3px rgba(14,165,233,0.12);
+  background: #fff;
+}
+.p3t .p3t-opt-field input:disabled { background: #f8fafc; color: var(--p3t-ink-2); }
+
+.p3t-opt-limits { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin-top: 10px; font-size: 11.5px; font-weight: 600; }
+.p3t .p3t-opt-limits > span { color: var(--p3t-muted); }
+
+.p3t-switch {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 10px 3px 3px;
+  border-radius: 999px;
+  border: 1px solid var(--p3t-line);
+  background: #f1f5f9;
+  color: var(--p3t-muted);
+  font-family: inherit;
+  font-size: 11.5px;
+  font-weight: 700;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+[dir="rtl"] .p3t-switch { padding: 3px 3px 3px 10px; }
+.p3t-switch:disabled { cursor: default; }
+.p3t-switch-knob {
+  width: 18px; height: 18px;
+  border-radius: 50%;
+  background: #cbd5e1;
+  transition: background 0.15s;
+}
+.p3t .p3t-switch-label { color: inherit; }
+.p3t-switch.is-on { background: rgba(22,163,74,0.1); border-color: rgba(22,163,74,0.35); color: #166534; }
+.p3t-switch.is-on .p3t-switch-knob { background: var(--p3t-ok); }
+
+.p3t .p3t-opt-dirty { font-size: 12px; font-weight: 700; color: #b45309; }
+
+@media (max-width: 640px) {
+  .p3t-head-side { align-items: stretch; width: 100%; }
+  .p3t-opt-grid { grid-template-columns: minmax(0, 1fr); }
+  .p3t .p3t-opt-item-top input.p3t-opt-code-input { width: 100%; min-width: 0; flex: 1; }
+  .p3t-opt-item { padding: 10px 12px; }
+  .p3t-opt-grid--inline { order: 9; flex-basis: 100%; }
+  .p3t-opt-spacer--narrow { display: block; }
 }

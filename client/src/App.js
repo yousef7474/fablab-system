@@ -24,6 +24,7 @@ const ManagerDashboard = lazy(() => import('./components/Manager/ManagerDashboar
 const EmployeeLogin = lazy(() => import('./components/Employee/EmployeeLogin'));
 const EmployeeDashboard = lazy(() => import('./components/Employee/EmployeeDashboard'));
 const WorkshopRegistration = lazy(() => import('./components/WorkshopRegistration/WorkshopRegistration'));
+const WorkshopSurvey = lazy(() => import('./components/WorkshopSurvey/WorkshopSurvey'));
 const PublicVolunteerReport = lazy(() => import('./components/Public/PublicVolunteerReport'));
 const PublicAttendanceReport = lazy(() => import('./components/Public/PublicAttendanceReport'));
 const PublicOvertimeApproval = lazy(() => import('./components/Public/PublicOvertimeApproval'));
@@ -85,6 +86,7 @@ const AppContent = () => {
           {/* Shareable education-workshop URL. Pre-selects the
               workshop; skips the picker step. */}
           <Route path="/workshop/:workshopId" element={<WorkshopRegistration />} />
+          <Route path="/workshop-survey/:token" element={<WorkshopSurvey />} />
           <Route path="/employee/login" element={<EmployeeLogin />} />
           <Route path="/employee/dashboard" element={<EmployeeDashboard />} />
           {/* Public no-login volunteer report pages (token-gated) */}

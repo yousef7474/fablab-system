@@ -1,9 +1,10 @@
 const { Workshop, WorkshopStudent, WorkshopCoupon, Employee, Admin, Settings } = require('../models');
 const { Op } = require('sequelize');
 const { sequelize } = require('../config/database');
-const { sendWorkshopRegistrationEmail, sendAttendanceIdEmail, sendWorkshopCustomEmail, generateAttendanceIdHtml, sendCertificateEmail, sendWorkshopPaymentInstructions, sendWorkshopPaymentConfirmed } = require('../utils/emailService');
+const { sendWorkshopRegistrationEmail, sendAttendanceIdEmail, sendWorkshopCustomEmail, generateAttendanceIdHtml, sendCertificateEmail, sendWorkshopPaymentInstructions, sendWorkshopPaymentConfirmed, sendWorkshopSurveyEmail } = require('../utils/emailService');
 const { requireRole } = require('../utils/qrPayload');
 const { readIdDocument, verifyIdToken } = require('../utils/idDocumentReader');
+const survey = require('../utils/workshopSurvey');
 
 // ─────────────── Invoice numbering (sequential WSK-####) ───────────────
 // Auto-assigns the next number under a transaction so two concurrent
@@ -187,7 +188,9 @@ exports.getWorkshopById = async (req, res) => {
       });
     }
 
-    res.json(workshop);
+    const out = workshop.toJSON();
+    out.students = (out.students || []).map(st => ({ ...st, surveyUrl: survey.surveyUrl(st.studentId) }));
+    res.json(out);
   } catch (error) {
     console.error('Error fetching workshop:', error);
     res.status(500).json({ message: 'Server error', messageAr: 'خطأ في الخادم' });
@@ -292,20 +295,51 @@ exports.deleteWorkshop = async (req, res) => {
   }
 };
 
+// Why a workshop is not taking public registrations right now, or null
+// when it is open. Registration closes automatically on the start day
+// (Riyadh time); the admin can also close it by hand (registrationEnabled).
+// Admin manual adds bypass all of this except capacity.
+const _closedReason = (w, studentCount) => {
+  if (!w.isActive) return 'inactive';
+  if (w.status === 'cancelled') return 'cancelled';
+  if (w.status === 'completed') return 'completed';
+  if (w.registrationEnabled === false) return 'disabled';
+  if (w.startDate && String(w.startDate).slice(0, 10) <= _todayStrRiyadh()) return 'started';
+  if (w.maxParticipants && studentCount >= w.maxParticipants) return 'full';
+  return null;
+};
+
+const _CLOSED_MESSAGES = {
+  inactive:  ['This workshop is not accepting registrations', 'هذه الورشة لا تقبل التسجيل حالياً'],
+  cancelled: ['This workshop is not accepting registrations', 'هذه الورشة لا تقبل التسجيل حالياً'],
+  completed: ['This workshop has ended', 'انتهت هذه الورشة'],
+  disabled:  ['Registration for this workshop is closed', 'التسجيل في هذه الورشة مغلق'],
+  started:   ['Registration closed — the workshop has already started', 'أُغلق التسجيل — بدأت الورشة'],
+  full:      ['This workshop is full', 'هذه الورشة ممتلئة']
+};
+
 // Get active workshops (public, for registration form)
 exports.getActiveWorkshops = async (req, res) => {
   try {
+    const today = _todayStrRiyadh();
     const workshops = await Workshop.findAll({
       where: {
         isActive: true,
         isPublic: true,
-        status: { [Op.notIn]: ['cancelled', 'completed'] }
+        status: { [Op.notIn]: ['cancelled', 'completed'] },
+        // Drop workshops that have fully ended; ones that started but
+        // are still running stay listed (shown as closed).
+        [Op.or]: [
+          { endDate: { [Op.gte]: today } },
+          { endDate: null, startDate: { [Op.gte]: today } }
+        ]
       },
       attributes: [
         'workshopId', 'title', 'description', 'presenter',
         'startDate', 'endDate', 'startTime', 'endTime',
         'totalHours', 'content', 'objectives', 'photo',
-        'maxParticipants', 'price', 'status', 'color', 'minAge', 'maxAge'
+        'maxParticipants', 'price', 'status', 'color', 'minAge', 'maxAge',
+        'isActive', 'registrationEnabled'
       ],
       include: [
         {
@@ -323,6 +357,8 @@ exports.getActiveWorkshops = async (req, res) => {
       plain.spotsRemaining = plain.maxParticipants
         ? plain.maxParticipants - plain.studentCount
         : null;
+      plain.closedReason = _closedReason(plain, plain.studentCount);
+      plain.isOpen = !plain.closedReason;
       delete plain.students;
       return plain;
     });
@@ -505,19 +541,17 @@ exports.registerStudent = async (req, res) => {
       // be registered for via the public form.
       // EXCEPTION: education workshops opt into public-URL registration.
       // They stay hidden from the picker (isPublic=false) but accept
-      // registrations from anyone with the shareable URL, as long as
-      // registrationEnabled is toggled on.
-      if (workshop.isPublic === false) {
-        if (!workshop.isEducation) {
-          throw { status: 403, message: 'This workshop is not open for public registration', messageAr: 'هذه الورشة غير متاحة للتسجيل العام' };
-        }
-        if (workshop.registrationEnabled === false) {
-          throw {
-            status: 403,
-            message: 'Registration for this workshop is currently closed',
-            messageAr: 'التسجيل في هذه الورشة مغلق مؤقتاً'
-          };
-        }
+      // registrations from anyone with the shareable URL.
+      if (workshop.isPublic === false && !workshop.isEducation) {
+        throw { status: 403, message: 'This workshop is not open for public registration', messageAr: 'هذه الورشة غير متاحة للتسجيل العام' };
+      }
+
+      // Closed by the admin, or auto-closed from the start day on.
+      // (Capacity is checked below under the lock.)
+      const closed = _closedReason(workshop, 0);
+      if (closed) {
+        const [message, messageAr] = _CLOSED_MESSAGES[closed];
+        throw { status: closed === 'disabled' || closed === 'started' ? 403 : 400, message, messageAr, closedReason: closed };
       }
 
       // Duplicate check is by student national ID only. Repeated emails,
@@ -692,7 +726,7 @@ exports.registerStudent = async (req, res) => {
     });
   } catch (error) {
     if (error && error.status) {
-      return res.status(error.status).json({ message: error.message, messageAr: error.messageAr });
+      return res.status(error.status).json({ message: error.message, messageAr: error.messageAr, closedReason: error.closedReason });
     }
     console.error('Error registering student:', error);
     res.status(500).json({ message: 'Server error', messageAr: 'خطأ في الخادم' });
@@ -709,7 +743,7 @@ exports.adminAddStudent = async (req, res) => {
     const { id } = req.params;
     const {
       firstName, lastName, phone, email, nationalId,
-      gender, age, city, invoiceNumber, notes
+      gender, age, city, invoiceNumber, notes, allowAgeOverride
     } = req.body || {};
 
     if (!firstName || !phone) {
@@ -755,6 +789,25 @@ exports.adminAddStudent = async (req, res) => {
         }
       }
 
+      // The admin may add a student outside the workshop's age range,
+      // but only on purpose: the request must say so, and the exception
+      // is written into the student's notes. Closed / already-started
+      // registration doesn't apply to manual adds.
+      let ageNote = '';
+      const ageNum = parseInt(age, 10);
+      if (!isNaN(ageNum) && ((workshop.minAge && ageNum < workshop.minAge) || (workshop.maxAge && ageNum > workshop.maxAge))) {
+        const range = `${workshop.minAge || 0}-${workshop.maxAge || '∞'}`;
+        if (!allowAgeOverride) {
+          throw {
+            status: 400,
+            code: 'AGE_OUT_OF_RANGE',
+            message: `Age ${ageNum} is outside this workshop's range (${range}) — confirm the exception to add anyway`,
+            messageAr: `العمر ${ageNum} خارج الفئة العمرية للورشة (${range}) — أكّد الاستثناء للإضافة`
+          };
+        }
+        ageNote = `استثناء من حد العمر (${range}) — العمر ${ageNum}`;
+      }
+
       const student = await WorkshopStudent.create({
         workshopId: id,
         firstName,
@@ -766,7 +819,7 @@ exports.adminAddStudent = async (req, res) => {
         age: age || '',
         city: city || '',
         invoiceNumber: invoiceNumber || '',
-        notes: notes || ''
+        notes: [ageNote, notes].filter(Boolean).join(' · ')
       }, { transaction: t });
 
       return { student, workshop };
@@ -779,7 +832,7 @@ exports.adminAddStudent = async (req, res) => {
     });
   } catch (error) {
     if (error && error.status) {
-      return res.status(error.status).json({ message: error.message, messageAr: error.messageAr });
+      return res.status(error.status).json({ message: error.message, messageAr: error.messageAr, code: error.code });
     }
     console.error('Admin add student error:', error);
     res.status(500).json({ message: 'Server error', messageAr: 'خطأ في الخادم' });
@@ -1677,22 +1730,9 @@ exports.downloadCertificatePdf = async (req, res) => {
     });
     if (!student) return res.status(404).json({ message: 'Student not found' });
 
-    // Check attendance - must attend more than half the workshop days
-    const workshopDays = (() => {
-      if (!student.workshop.startDate) return 1;
-      const start = new Date(student.workshop.startDate);
-      const end = student.workshop.endDate ? new Date(student.workshop.endDate) : start;
-      return Math.max(1, Math.ceil((end - start) / (1000*60*60*24)) + 1);
-    })();
-    const attendedDaysCount = Array.isArray(student.attendanceDates) ? student.attendanceDates.length : 0;
-    const requiredDays = Math.ceil(workshopDays / 2);
-
-    if (attendedDaysCount < requiredDays) {
-      return res.status(400).json({
-        message: `Student must attend at least ${requiredDays} of ${workshopDays} days. Currently attended: ${attendedDaysCount}`,
-        messageAr: `يجب على الطالب حضور ${requiredDays} يوم على الأقل من أصل ${workshopDays} يوم. الحضور الحالي: ${attendedDaysCount} يوم`
-      });
-    }
+    // Attendance (at least half the days) + the post-workshop survey.
+    const blocked = survey.certificateBlock(student, student.workshop);
+    if (blocked) return res.status(400).json(blocked);
 
     const name = `${student.firstName || ''} ${student.lastName || ''}`.trim();
     const certId = 'WS-' + (student.studentId || '').substring(0, 8).toUpperCase();
@@ -2636,25 +2676,28 @@ exports.sendCertificate = async (req, res) => {
     if (!student) return res.status(404).json({ message: 'Student not found' });
     if (!student.email) return res.status(400).json({ message: 'Student has no email', messageAr: 'الطالب ليس لديه بريد إلكتروني' });
 
-    // Check attendance - must attend more than half the workshop days
-    const workshopDays = (() => {
-      if (!student.workshop.startDate) return 1;
-      const start = new Date(student.workshop.startDate);
-      const end = student.workshop.endDate ? new Date(student.workshop.endDate) : start;
-      return Math.max(1, Math.ceil((end - start) / (1000*60*60*24)) + 1);
-    })();
-    const attendedDays = Array.isArray(student.attendanceDates) ? student.attendanceDates.length : 0;
-    const requiredDays = Math.ceil(workshopDays / 2);
-
-    if (attendedDays < requiredDays) {
-      return res.status(400).json({
-        message: `Student must attend at least ${requiredDays} of ${workshopDays} days. Currently attended: ${attendedDays}`,
-        messageAr: `يجب على الطالب حضور ${requiredDays} يوم على الأقل من أصل ${workshopDays} يوم. الحضور الحالي: ${attendedDays} يوم`
-      });
+    const blocked = survey.certificateBlock(student, student.workshop);
+    if (blocked && blocked.code === 'SURVEY_REQUIRED') {
+      // Send the survey instead; the certificate follows automatically
+      // when the student submits it.
+      try {
+        await sendWorkshopSurveyEmail(student.email, student, student.workshop, survey.surveyUrl(student.studentId));
+        return res.status(409).json({
+          code: 'SURVEY_REQUIRED',
+          surveyEmailed: true,
+          message: 'The student has not filled the survey yet — the survey link was emailed; the certificate is sent automatically once it is submitted',
+          messageAr: 'لم يعبّئ الطالب الاستبيان بعد — أُرسل رابط الاستبيان إلى بريده، وستُرسل الشهادة تلقائياً بعد تعبئته'
+        });
+      } catch (e) {
+        console.error('Survey email failed:', e.message);
+        return res.status(400).json(blocked);
+      }
     }
+    if (blocked) return res.status(400).json(blocked);
 
     await sendCertificateEmail(student.email, student, student.workshop);
-    res.json({ message: 'Certificate sent' });
+    await student.update({ certificateSentAt: new Date() });
+    res.json({ message: 'Certificate sent', messageAr: 'تم إرسال الشهادة' });
   } catch (error) {
     console.error('Send certificate error:', error);
     res.status(500).json({ message: 'Server error' });
@@ -2814,20 +2857,14 @@ exports.getEducationWorkshop = async (req, res) => {
       : null;
 
     const { students, ...rest } = workshop.toJSON();
+    const closedReason = _closedReason(workshop, studentCount);
     res.json({
       ...rest,
       studentCount,
       spotsRemaining,
       // Explicit flags so the client can render the right message.
-      isOpen: !!(workshop.isActive
-        && workshop.registrationEnabled
-        && workshop.status !== 'cancelled'
-        && (spotsRemaining === null || spotsRemaining > 0)),
-      closedReason: !workshop.isActive
-        ? 'inactive'
-        : (workshop.status === 'cancelled' ? 'cancelled'
-        : (!workshop.registrationEnabled ? 'disabled'
-        : (spotsRemaining === 0 ? 'full' : null)))
+      isOpen: !closedReason,
+      closedReason
     });
   } catch (error) {
     console.error('getEducationWorkshop:', error);
@@ -2846,6 +2883,198 @@ exports.toggleRegistration = async (req, res) => {
   } catch (error) {
     console.error('toggleRegistration:', error);
     res.status(500).json({ message: 'Server error' });
+  }
+};
+
+// PATCH /workshops/bulk/registration-enabled — admin opens/closes
+// registration on several workshops at once. body: { ids: [], enabled: bool }
+exports.bulkToggleRegistration = async (req, res) => {
+  try {
+    const ids = Array.isArray(req.body?.ids)
+      ? [...new Set(req.body.ids.map(String).filter(id => /^[0-9a-f-]{36}$/i.test(id)))].slice(0, 500)
+      : [];
+    if (!ids.length || typeof req.body?.enabled !== 'boolean') {
+      return res.status(400).json({ message: 'ids and enabled are required', messageAr: 'يرجى اختيار الورش' });
+    }
+    const [updated] = await Workshop.update(
+      { registrationEnabled: req.body.enabled },
+      { where: { workshopId: { [Op.in]: ids } } }
+    );
+    res.json({ updated, registrationEnabled: req.body.enabled });
+  } catch (error) {
+    console.error('bulkToggleRegistration:', error);
+    res.status(500).json({ message: 'Server error', messageAr: 'خطأ في الخادم' });
+  }
+};
+
+// ─────────────── Post-workshop survey ───────────────
+
+const _surveyStudent = async (token) => {
+  const studentId = survey.parseSurveyToken(token);
+  if (!studentId) return null;
+  return WorkshopStudent.findByPk(studentId, {
+    include: [{ model: Workshop, as: 'workshop', attributes: ['workshopId', 'title', 'presenter', 'startDate', 'endDate', 'totalHours', 'objectives', 'color'] }]
+  });
+};
+
+// GET /workshops/public/survey/:token — the questions + who/what it's for.
+exports.getPublicSurvey = async (req, res) => {
+  try {
+    const student = await _surveyStudent(req.params.token);
+    if (!student || !student.workshop) {
+      return res.status(404).json({ message: 'Survey link is not valid', messageAr: 'رابط الاستبيان غير صالح' });
+    }
+    const w = student.workshop;
+    res.json({
+      questions: survey.QUESTIONS,
+      ratingLabels: survey.RATING_LABELS,
+      student: { firstName: student.firstName, lastName: student.lastName },
+      workshop: { title: w.title, presenter: w.presenter, startDate: w.startDate, endDate: w.endDate, totalHours: w.totalHours, color: w.color },
+      opensOn: w.startDate,
+      isOpen: !w.startDate || String(w.startDate).slice(0, 10) <= _todayStrRiyadh(),
+      submitted: !!student.surveySubmittedAt,
+      submittedAt: student.surveySubmittedAt,
+      attendance: survey.attendanceStatus(student, w),
+      certificateSent: !!student.certificateSentAt
+    });
+  } catch (error) {
+    console.error('getPublicSurvey:', error);
+    res.status(500).json({ message: 'Server error', messageAr: 'خطأ في الخادم' });
+  }
+};
+
+// POST /workshops/public/survey/:token  body: { answers }
+// Saves the survey once. If attendance is already enough and the
+// student has an email, the certificate is emailed right away.
+exports.submitPublicSurvey = async (req, res) => {
+  try {
+    const student = await _surveyStudent(req.params.token);
+    if (!student || !student.workshop) {
+      return res.status(404).json({ message: 'Survey link is not valid', messageAr: 'رابط الاستبيان غير صالح' });
+    }
+    if (student.surveySubmittedAt) {
+      return res.status(409).json({ message: 'You have already submitted this survey', messageAr: 'تم إرسال الاستبيان مسبقاً — شكراً لك' });
+    }
+    const w = student.workshop;
+    if (w.startDate && String(w.startDate).slice(0, 10) > _todayStrRiyadh()) {
+      return res.status(400).json({ message: 'The survey opens when the workshop starts', messageAr: 'يُتاح الاستبيان عند بدء الورشة' });
+    }
+    const { answers, missing } = survey.cleanAnswers(req.body && req.body.answers);
+    if (missing.length) {
+      return res.status(400).json({ missing, message: 'Please answer all required questions', messageAr: 'يرجى الإجابة على جميع الأسئلة المطلوبة' });
+    }
+    await student.update({
+      surveyResponse: { v: survey.SURVEY_VERSION, answers },
+      surveySubmittedAt: new Date()
+    });
+
+    let certificateSent = false;
+    const att = survey.attendanceStatus(student, w);
+    if (att.ok && student.email && !student.certificateSentAt) {
+      try {
+        const full = await WorkshopStudent.findByPk(student.studentId, { include: [{ model: Workshop, as: 'workshop' }] });
+        await sendCertificateEmail(full.email, full, full.workshop);
+        await full.update({ certificateSentAt: new Date() });
+        certificateSent = true;
+      } catch (e) {
+        console.error('Auto certificate after survey failed:', e.message);
+      }
+    }
+    res.json({
+      ok: true,
+      certificateSent,
+      certificateAlreadySent: !!student.certificateSentAt && !certificateSent,
+      attendance: att,
+      hasEmail: !!student.email
+    });
+  } catch (error) {
+    console.error('submitPublicSurvey:', error);
+    res.status(500).json({ message: 'Server error', messageAr: 'خطأ في الخادم' });
+  }
+};
+
+// GET /workshops/:id/survey-results (admin) — questions + every response.
+exports.getSurveyResults = async (req, res) => {
+  try {
+    const workshop = await Workshop.findByPk(req.params.id, {
+      attributes: ['workshopId', 'title', 'startDate', 'endDate'],
+      include: [{
+        model: WorkshopStudent, as: 'students',
+        attributes: ['studentId', 'firstName', 'lastName', 'phone', 'email', 'attendanceDates', 'surveyResponse', 'surveySubmittedAt', 'certificateSentAt']
+      }]
+    });
+    if (!workshop) return res.status(404).json({ message: 'Workshop not found', messageAr: 'الورشة غير موجودة' });
+    const students = workshop.students || [];
+    res.json({
+      workshop: { workshopId: workshop.workshopId, title: workshop.title, startDate: workshop.startDate, endDate: workshop.endDate },
+      questions: survey.QUESTIONS,
+      ratingLabels: survey.RATING_LABELS,
+      totals: {
+        students: students.length,
+        attended: students.filter(st => Array.isArray(st.attendanceDates) && st.attendanceDates.length > 0).length,
+        responses: students.filter(st => st.surveySubmittedAt).length
+      },
+      responses: students
+        .filter(st => st.surveySubmittedAt)
+        .sort((a, b) => new Date(a.surveySubmittedAt) - new Date(b.surveySubmittedAt))
+        .map(st => ({
+          studentId: st.studentId,
+          name: `${st.firstName || ''} ${st.lastName || ''}`.trim(),
+          phone: st.phone,
+          submittedAt: st.surveySubmittedAt,
+          answers: (st.surveyResponse && st.surveyResponse.answers) || {}
+        }))
+    });
+  } catch (error) {
+    console.error('getSurveyResults:', error);
+    res.status(500).json({ message: 'Server error', messageAr: 'خطأ في الخادم' });
+  }
+};
+
+// POST /workshops/students/:id/send-survey (admin) — email one student.
+exports.sendSurveyOne = async (req, res) => {
+  try {
+    const student = await WorkshopStudent.findByPk(req.params.id, { include: [{ model: Workshop, as: 'workshop' }] });
+    if (!student) return res.status(404).json({ message: 'Student not found', messageAr: 'الطالب غير موجود' });
+    if (!student.email) return res.status(400).json({ message: 'Student has no email', messageAr: 'الطالب ليس لديه بريد إلكتروني' });
+    if (student.surveySubmittedAt) return res.status(409).json({ message: 'Survey already submitted', messageAr: 'عبّأ الطالب الاستبيان مسبقاً' });
+    await sendWorkshopSurveyEmail(student.email, student, student.workshop, survey.surveyUrl(student.studentId));
+    res.json({ message: 'Survey sent', messageAr: 'تم إرسال رابط الاستبيان' });
+  } catch (error) {
+    console.error('sendSurveyOne:', error);
+    res.status(500).json({ message: 'Could not send the survey email', messageAr: 'تعذّر إرسال بريد الاستبيان' });
+  }
+};
+
+// POST /workshops/:id/send-surveys (admin) — email every student who
+// attended at least one day and hasn't answered yet.
+exports.sendSurveys = async (req, res) => {
+  try {
+    const workshop = await Workshop.findByPk(req.params.id);
+    if (!workshop) return res.status(404).json({ message: 'Workshop not found', messageAr: 'الورشة غير موجودة' });
+    const students = await WorkshopStudent.findAll({ where: { workshopId: workshop.workshopId } });
+    const targets = students.filter(st =>
+      st.email && !st.surveySubmittedAt && Array.isArray(st.attendanceDates) && st.attendanceDates.length > 0);
+    let sent = 0;
+    let failed = 0;
+    for (const st of targets) {
+      try {
+        await sendWorkshopSurveyEmail(st.email, st, workshop, survey.surveyUrl(st.studentId));
+        sent++;
+      } catch (e) {
+        failed++;
+        console.error('sendSurveys:', st.studentId, e.message);
+      }
+    }
+    res.json({
+      sent, failed,
+      skipped: students.length - targets.length,
+      message: `Survey sent to ${sent} student(s)`,
+      messageAr: `تم إرسال الاستبيان إلى ${sent} طالب`
+    });
+  } catch (error) {
+    console.error('sendSurveys:', error);
+    res.status(500).json({ message: 'Server error', messageAr: 'خطأ في الخادم' });
   }
 };
 

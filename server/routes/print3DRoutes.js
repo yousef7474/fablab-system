@@ -7,6 +7,9 @@ const { requireManager } = require('../middleware/roleMiddleware');
 router.use(authMiddleware);
 
 router.get('/rates',                 print3d.rates);
+// Materials + colors offered on the public form (declared before /:id).
+router.get('/options',               print3d.getOptions);
+router.put('/options',               requireManager, print3d.updateOptions);
 router.get('/',                      print3d.list);
 router.get('/:id',                   print3d.get);
 router.get('/:id/download',          print3d.download);

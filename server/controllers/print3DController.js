@@ -4,6 +4,10 @@ const { Print3DRequest, Settings } = require('../models');
 const { sequelize } = require('../config/database');
 const sgMail = require('@sendgrid/mail');
 const { computePrint3dStatus } = require('./settingsController');
+const {
+  DEFAULT_PRINT3D_OPTIONS, rateKeyFor, normCode, normHex,
+  validatePrint3dOptions, sanitizePrint3dOptions, publicPrint3dOptions, isColorOffered
+} = require('../utils/print3dOptions');
 if (process.env.SENDGRID_API_KEY) sgMail.setApiKey(process.env.SENDGRID_API_KEY);
 
 const PRINT3D_NOTIFY_EMAIL = 'fablabspec@fablabsahsa.com';
@@ -21,24 +25,32 @@ const DEFAULT_RATES = {
 };
 
 // Load current pricing from Settings, falling back to defaults so a
-// missing seed row never blocks a quote.
+// missing seed row never blocks a quote. Every print3d_rate_<code> row
+// becomes rates[CODE], so materials a manager adds from the options
+// editor are priced the same way as the seeded PLA / PETG / TPU.
+const RATE_PREFIX = 'print3d_rate_';
 const _loadRates = async () => {
   const keys = [
-    'print3d_rate_pla', 'print3d_rate_petg', 'print3d_rate_tpu',
     'print3d_setup_fee', 'print3d_multi_color_fee', 'print3d_min_charge',
     'print3d_supported_files'
   ];
-  const rows = await Settings.findAll({ where: { key: { [Op.in]: keys } } });
+  const rows = await Settings.findAll({
+    where: { [Op.or]: [{ key: { [Op.in]: keys } }, { key: { [Op.like]: `${RATE_PREFIX}%` } }] }
+  });
   const m = new Map(rows.map(r => [r.key, r.value]));
   const num = (k, d) => {
     const v = m.get(k);
     const n = Number(v);
     return Number.isFinite(n) ? n : d;
   };
+  const materialRates = { PLA: DEFAULT_RATES.PLA, PETG: DEFAULT_RATES.PETG, TPU: DEFAULT_RATES.TPU };
+  for (const [k, v] of m) {
+    if (!k.startsWith(RATE_PREFIX)) continue;
+    const n = Number(v);
+    if (Number.isFinite(n)) materialRates[k.slice(RATE_PREFIX.length).toUpperCase()] = n;
+  }
   return {
-    PLA: num('print3d_rate_pla', DEFAULT_RATES.PLA),
-    PETG: num('print3d_rate_petg', DEFAULT_RATES.PETG),
-    TPU: num('print3d_rate_tpu', DEFAULT_RATES.TPU),
+    ...materialRates,
     setupFee: num('print3d_setup_fee', DEFAULT_RATES.setupFee),
     multiColorFee: num('print3d_multi_color_fee', DEFAULT_RATES.multiColorFee),
     minCharge: num('print3d_min_charge', DEFAULT_RATES.minCharge),
@@ -46,6 +58,13 @@ const _loadRates = async () => {
       ? m.get('print3d_supported_files').map(s => String(s).toLowerCase())
       : DEFAULT_RATES.supported
   };
+};
+
+// Current materials/colors list. A missing row (fresh DB before the
+// seed runs) falls back to the defaults the seed would write.
+const _loadOptions = async () => {
+  const row = await Settings.findByPk('print3d_options');
+  return sanitizePrint3dOptions(row ? row.value : DEFAULT_PRINT3D_OPTIONS);
 };
 
 // Cost = max(minCharge, weight × rate + setupFee + (multi ? multiColorFee : 0)).
@@ -200,16 +219,39 @@ exports.publicCreate = async (req, res) => {
       });
     }
 
-    const mat = String(material || 'PLA').toUpperCase();
-    if (!['PLA', 'PETG', 'TPU'].includes(mat)) {
-      return res.status(400).json({ message: 'Invalid material', messageAr: 'خامة الطباعة غير صحيحة' });
-    }
-    const cMode = colorMode === 'multi' ? 'multi' : 'single';
-    if (cMode === 'multi' && (!Array.isArray(multiColorParts) || multiColorParts.length === 0)) {
+    // Material + colors must come from the list a manager has enabled
+    // in the admin. The form only offers those; this guards stale tabs
+    // and hand-crafted requests.
+    const options = await _loadOptions();
+    const mat = normCode(material || 'PLA');
+    if (!options.materials.some(m => m.enabled && m.code === mat)) {
       return res.status(400).json({
-        message: 'Multi-color parts are required for multi-color mode',
-        messageAr: 'يرجى إضافة تفاصيل الأجزاء والألوان'
+        message: 'The selected material is not available — please choose another one',
+        messageAr: 'الخامة المختارة غير متوفرة حالياً — يرجى اختيار خامة أخرى'
       });
+    }
+    const colorUnavailable = {
+      message: 'The selected color is not available for this material — please choose another one',
+      messageAr: 'اللون المختار غير متوفر حالياً لهذه الخامة — يرجى اختيار لون آخر'
+    };
+    const cMode = colorMode === 'multi' ? 'multi' : 'single';
+    const parts = cMode === 'multi' && Array.isArray(multiColorParts)
+      ? multiColorParts
+          .map(p => ({ part: String(p?.part || '').trim(), color: normHex(p?.color) }))
+          .filter(p => p.part || p.color)
+      : [];
+    if (cMode === 'multi') {
+      if (parts.length === 0) {
+        return res.status(400).json({
+          message: 'Multi-color parts are required for multi-color mode',
+          messageAr: 'يرجى إضافة تفاصيل الأجزاء والألوان'
+        });
+      }
+      if (parts.some(p => !isColorOffered(options, p.color, mat))) {
+        return res.status(400).json(colorUnavailable);
+      }
+    } else if (!isColorOffered(options, singleColor, mat)) {
+      return res.status(400).json(colorUnavailable);
     }
 
     const requestNumber = await _assignNextNumber();
@@ -233,12 +275,8 @@ exports.publicCreate = async (req, res) => {
       fileData: primary.fileData,
       material: mat,
       colorMode: cMode,
-      singleColor: cMode === 'single' ? (singleColor || null) : null,
-      multiColorParts: cMode === 'multi'
-        ? (multiColorParts || [])
-            .map(p => ({ part: String(p.part || '').trim(), color: String(p.color || '').trim() }))
-            .filter(p => p.part || p.color)
-        : [],
+      singleColor: cMode === 'single' ? normHex(singleColor) : null,
+      multiColorParts: parts,
       termsAcceptedAt: new Date(),
       quoteToken,
       status: 'submitted'
@@ -643,6 +681,88 @@ exports.rates = async (req, res) => {
     const rates = await _loadRates();
     res.json(rates);
   } catch (err) {
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+// -------------------- MATERIALS + COLORS --------------------
+
+// Admin view — full list (disabled entries included) with each
+// material's current per-gram rate merged in for the editor.
+const _adminOptionsView = (options, rates) => ({
+  ...options,
+  materials: options.materials.map(m => ({
+    ...m,
+    rate: Number.isFinite(Number(rates[m.code])) ? Number(rates[m.code]) : null
+  }))
+});
+
+// GET /api/print3d/options (admin)
+exports.getOptions = async (req, res) => {
+  try {
+    const [options, rates] = await Promise.all([_loadOptions(), _loadRates()]);
+    res.json(_adminOptionsView(options, rates));
+  } catch (err) {
+    console.error('print3d getOptions:', err);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+// PUT /api/print3d/options (manager/admin)
+// Body: { materials: [{ code, nameAr, nameEn, noteAr, noteEn, enabled, rate }],
+//         colors:    [{ hex, nameAr, nameEn, materials, enabled }] }
+// `rate` is written to print3d_rate_<code> (the key quotes read) so
+// prices live in one place. Removing a material leaves its rate row
+// alone, so older requests in that material can still be quoted.
+exports.updateOptions = async (req, res) => {
+  try {
+    const body = req.body || {};
+    const invalid = validatePrint3dOptions(body);
+    if (invalid) return res.status(400).json(invalid);
+
+    const rates = await _loadRates();
+    const rateWrites = [];
+    for (const m of body.materials) {
+      const code = normCode(m.code);
+      const hasRate = m.rate !== '' && m.rate != null;
+      const rate = Number(m.rate);
+      if (hasRate && (!Number.isFinite(rate) || rate < 0)) {
+        return res.status(400).json({
+          message: `Invalid price per gram for ${code}`,
+          messageAr: `سعر الغرام للخامة ${code} غير صحيح`
+        });
+      }
+      if (!hasRate && !Number.isFinite(Number(rates[code]))) {
+        return res.status(400).json({
+          message: `Set a price per gram for ${code}`,
+          messageAr: `يرجى تحديد سعر الغرام للخامة ${code}`
+        });
+      }
+      if (hasRate && rate !== Number(rates[code])) {
+        rateWrites.push({ key: rateKeyFor(code), value: rate });
+      }
+    }
+
+    const options = sanitizePrint3dOptions(body);
+    await sequelize.transaction(async (t) => {
+      await Settings.upsert({ key: 'print3d_options', value: options }, { transaction: t });
+      for (const w of rateWrites) await Settings.upsert(w, { transaction: t });
+    });
+
+    res.json(_adminOptionsView(options, await _loadRates()));
+  } catch (err) {
+    console.error('print3d updateOptions:', err);
+    res.status(500).json({ message: 'Server error', messageAr: 'تعذّر حفظ الخيارات' });
+  }
+};
+
+// GET /api/public/print3d/options — enabled entries only, for the
+// customer form.
+exports.publicOptions = async (req, res) => {
+  try {
+    res.json(publicPrint3dOptions(await _loadOptions()));
+  } catch (err) {
+    console.error('print3d publicOptions:', err);
     res.status(500).json({ message: 'Server error' });
   }
 };

@@ -2,8 +2,9 @@ const { DataTypes } = require('sequelize');
 const { sequelize } = require('../config/database');
 
 // A customer's order placed via the public /store page. Payment is
-// cash-on-pickup for now — admin marks `paidAt` when money is
-// collected. Item details are snapshotted in `items` JSON so that
+// cash or mada at pickup, or an upfront bank transfer (see the
+// payment fields below); admin marks `paidAt` when payment is
+// confirmed. Item details are snapshotted in `items` JSON so that
 // later edits to a StoreItem don't change historical orders.
 const StoreOrder = sequelize.define('StoreOrder', {
   orderId: {
@@ -42,6 +43,19 @@ const StoreOrder = sequelize.define('StoreOrder', {
   // 'cancelled' → cancelled by admin (with a note)
   status:      { type: DataTypes.STRING(16), allowNull: false, defaultValue: 'pending' },
   paidAt:      { type: DataTypes.DATE, allowNull: true },
+
+  // Payment — same options as workshop registration:
+  //   'cash'          → paid in cash at pickup (original behaviour)
+  //   'mada'          → paid by card (mada) at the FabLab store on pickup
+  //   'bank_transfer' → paid upfront; customer uploads a transfer proof
+  //   'free'          → a coupon covered the whole total
+  // paymentStatus: 'pending' | 'verified' | 'rejected' (admin review).
+  paymentMethod: { type: DataTypes.STRING(24), allowNull: false, defaultValue: 'cash' },
+  paymentStatus: { type: DataTypes.STRING(16), allowNull: false, defaultValue: 'pending' },
+  // Transfer proof — { fileName, fileType, fileSize, fileData(base64) }.
+  paymentProof:  { type: DataTypes.JSON, allowNull: true },
+  paymentReviewedBy: { type: DataTypes.STRING, allowNull: true },
+  paymentReviewedAt: { type: DataTypes.DATE, allowNull: true },
   cancelledAt: { type: DataTypes.DATE, allowNull: true },
   completedAt: { type: DataTypes.DATE, allowNull: true },
   adminNotes:  { type: DataTypes.TEXT, allowNull: true },
@@ -52,6 +66,11 @@ const StoreOrder = sequelize.define('StoreOrder', {
 }, {
   tableName: 'store_orders',
   timestamps: true,
+  // The transfer proof can be several MB — never loaded unless asked
+  // for explicitly (StoreOrder.unscoped(), the admin proof viewer).
+  defaultScope: {
+    attributes: { exclude: ['paymentProof'] }
+  },
   indexes: [
     { fields: ['status'] },
     { fields: ['orderNumber'] },

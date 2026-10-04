@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -10,30 +10,19 @@ const API_URL = process.env.NODE_ENV === 'production'
   ? '/api'
   : (process.env.REACT_APP_API_URL || 'http://localhost:5000/api');
 
-// Curated palette for the multi-color part picker + single-color chip row.
-const COLOR_PALETTE = [
-  { name: 'أبيض',     hex: '#ffffff', border: true },
-  { name: 'أسود',     hex: '#111111' },
-  { name: 'رمادي',    hex: '#6b7280' },
-  { name: 'أحمر',     hex: '#dc2626' },
-  { name: 'برتقالي',  hex: '#f97316' },
-  { name: 'أصفر',     hex: '#facc15' },
-  { name: 'أخضر',     hex: '#16a34a' },
-  { name: 'تركوازي',  hex: '#06b6d4' },
-  { name: 'أزرق',     hex: '#2563eb' },
-  { name: 'بنفسجي',   hex: '#7c3aed' },
-  { name: 'زهري',     hex: '#ec4899' },
-  { name: 'بني',      hex: '#78350f' },
-  { name: 'شفاف',     hex: '#e5e7eb', border: true, translucent: true },
-  { name: 'ذهبي',     hex: '#d4af37' },
-  { name: 'فضي',      hex: '#c0c0c0' }
-];
+// Materials + colors come from the admin-managed list served by
+// /public/print3d/options (enabled entries only). A color with a
+// non-empty `materials` list is only offered for those material codes.
+const colorsFor = (options, code) => (options?.colors || []).filter(c =>
+  !c.materials?.length || c.materials.includes(code)
+);
 
-const MATERIALS = [
-  { key: 'PLA',  labelAr: 'PLA — عام ومتعدد الاستخدام',   labelEn: 'PLA — General purpose',   hintAr: 'أفضل للمجسمات الديكورية والنماذج', hintEn: 'Best for decorative models and prototypes' },
-  { key: 'PETG', labelAr: 'PETG — قوي ومقاوم للماء',       labelEn: 'PETG — Strong & waterproof', hintAr: 'مناسب للاستخدام الوظيفي والحاويات', hintEn: 'Great for functional parts and containers' },
-  { key: 'TPU',  labelAr: 'TPU — مرن كالمطاط',              labelEn: 'TPU — Rubber-like flexible', hintAr: 'للأجزاء المرنة والحماية والإطارات', hintEn: 'For flexible parts, protection, gaskets' }
-];
+// Light swatches get an outline and a dark checkmark.
+const isLightHex = (hex) => {
+  const n = parseInt(String(hex || '').slice(1), 16);
+  if (!Number.isFinite(n)) return false;
+  return (0.299 * ((n >> 16) & 255) + 0.587 * ((n >> 8) & 255) + 0.114 * (n & 255)) > 160;
+};
 
 const MAX_FILE_MB = 40;
 const MAX_FILES = 5;
@@ -52,6 +41,11 @@ const PrintServicePage = () => {
     effectiveClosed: false, from: '', to: '', reason: ''
   });
 
+  // Materials + colors the lab currently offers. null = still loading.
+  const [options, setOptions] = useState(null);
+  const [optionsError, setOptionsError] = useState(false);
+
+  // material / colors are filled in from `options` once it loads.
   const [form, setForm] = useState({
     customerName: '',
     customerPhone: '',
@@ -59,10 +53,10 @@ const PrintServicePage = () => {
     customerNationalId: '',
     deliveryAddress: '',
     notes: '',
-    material: 'PLA',
+    material: '',
     colorMode: 'single',
-    singleColor: '#dc2626',
-    multiColorParts: [{ part: '', color: '#dc2626' }]
+    singleColor: '',
+    multiColorParts: [{ part: '', color: '' }]
   });
 
   // Array of up to MAX_FILES uploaded files. Each entry:
@@ -88,6 +82,44 @@ const PrintServicePage = () => {
       .catch(() => {});
     return () => { alive = false; };
   }, []);
+
+  const loadOptions = useCallback(() => {
+    setOptionsError(false);
+    axios.get(`${API_URL}/public/print3d/options`)
+      .then(res => setOptions({
+        materials: Array.isArray(res.data?.materials) ? res.data.materials : [],
+        colors: Array.isArray(res.data?.colors) ? res.data.colors : []
+      }))
+      .catch(() => setOptionsError(true));
+  }, []);
+  useEffect(() => { loadOptions(); }, [loadOptions]);
+
+  // Keep the selection inside what's on offer — runs when the list
+  // arrives and whenever the material changes (a color can be limited
+  // to specific materials).
+  useEffect(() => {
+    if (!options) return;
+    setForm(f => {
+      const material = options.materials.some(m => m.code === f.material)
+        ? f.material
+        : (options.materials[0]?.code || '');
+      const offered = colorsFor(options, material);
+      const isOffered = (hex) => offered.some(c => c.hex === hex);
+      const fallback = offered[0]?.hex || '';
+      const singleColor = isOffered(f.singleColor) ? f.singleColor : fallback;
+      const multiColorParts = f.multiColorParts.map(p => isOffered(p.color) ? p : { ...p, color: fallback });
+      const changed = material !== f.material
+        || singleColor !== f.singleColor
+        || multiColorParts.some((p, i) => p !== f.multiColorParts[i]);
+      return changed ? { ...f, material, singleColor, multiColorParts } : f;
+    });
+  }, [options, form.material]);
+
+  const offeredColors = useMemo(() => colorsFor(options, form.material), [options, form.material]);
+  const colorName = (hex) => {
+    const c = offeredColors.find(x => x.hex === hex);
+    return c ? (isRTL ? c.nameAr : c.nameEn) : hex;
+  };
 
   const patch = (k, v) => setForm(f => ({ ...f, [k]: v }));
 
@@ -152,7 +184,7 @@ const PrintServicePage = () => {
 
   const addPart = () => setForm(f => ({
     ...f,
-    multiColorParts: [...f.multiColorParts, { part: '', color: '#2563eb' }]
+    multiColorParts: [...f.multiColorParts, { part: '', color: offeredColors[0]?.hex || '' }]
   }));
   const removePart = (idx) => setForm(f => ({
     ...f,
@@ -167,12 +199,16 @@ const PrintServicePage = () => {
     if (!form.customerName.trim() || !form.customerPhone.trim() || !form.customerEmail.trim()) return false;
     if (files.length === 0) return false;
     if (!terms) return false;
+    if (!options || !options.materials.some(m => m.code === form.material)) return false;
+    const isOffered = (hex) => offeredColors.some(c => c.hex === hex);
     if (form.colorMode === 'multi') {
-      const validParts = form.multiColorParts.filter(p => p.part.trim() && p.color.trim());
-      if (validParts.length === 0) return false;
+      const namedParts = form.multiColorParts.filter(p => p.part.trim());
+      if (namedParts.length === 0 || !namedParts.every(p => isOffered(p.color))) return false;
+    } else if (!isOffered(form.singleColor)) {
+      return false;
     }
     return true;
-  }, [form, files, terms]);
+  }, [form, files, terms, options, offeredColors]);
 
   const submit = async (e) => {
     e.preventDefault();
@@ -478,20 +514,41 @@ const PrintServicePage = () => {
               <p>{isRTL ? 'اختر الخامة المناسبة لاستخدامك' : 'Pick the right material for your use'}</p>
             </div>
           </div>
-          <div className="p3d-materials">
-            {MATERIALS.map(m => (
-              <button
-                key={m.key}
-                type="button"
-                onClick={() => patch('material', m.key)}
-                className={`p3d-material ${form.material === m.key ? 'is-active' : ''}`}
-              >
-                <span className="p3d-material-badge">{m.key}</span>
-                <span className="p3d-material-label">{isRTL ? m.labelAr : m.labelEn}</span>
-                <span className="p3d-material-hint">{isRTL ? m.hintAr : m.hintEn}</span>
-              </button>
-            ))}
-          </div>
+          {!options ? (
+            optionsError ? (
+              <div className="p3d-options-note is-warn">
+                <span>{isRTL ? 'تعذّر تحميل الخامات والألوان المتاحة' : 'Could not load the available materials and colors'}</span>
+                <button type="button" onClick={loadOptions}>{isRTL ? 'إعادة المحاولة' : 'Retry'}</button>
+              </div>
+            ) : (
+              <div className="p3d-options-note">{isRTL ? 'جارٍ تحميل الخامات المتاحة...' : 'Loading available materials...'}</div>
+            )
+          ) : options.materials.length === 0 ? (
+            <div className="p3d-options-note is-warn">
+              <span>{isRTL
+                ? 'لا تتوفر خامات للطباعة حالياً — يرجى المحاولة لاحقاً أو التواصل معنا'
+                : 'No print materials are available right now — please try again later or contact us'}</span>
+            </div>
+          ) : (
+            <div className="p3d-materials">
+              {options.materials.map(m => {
+                const note = isRTL ? m.noteAr : m.noteEn;
+                return (
+                  <button
+                    key={m.code}
+                    type="button"
+                    onClick={() => patch('material', m.code)}
+                    className={`p3d-material ${form.material === m.code ? 'is-active' : ''}`}
+                    aria-pressed={form.material === m.code}
+                  >
+                    <span className="p3d-material-badge">{m.code}</span>
+                    <span className="p3d-material-label">{isRTL ? m.nameAr : m.nameEn}</span>
+                    {note && <span className="p3d-material-hint">{note}</span>}
+                  </button>
+                );
+              })}
+            </div>
+          )}
         </motion.section>
 
         {/* SECTION: Color */}
@@ -507,99 +564,125 @@ const PrintServicePage = () => {
             </div>
           </div>
 
-          <div className="p3d-color-mode">
-            <button type="button" className={`p3d-mode ${form.colorMode === 'single' ? 'is-active' : ''}`} onClick={() => patch('colorMode', 'single')}>
-              {isRTL ? 'لون واحد' : 'Single color'}
-            </button>
-            <button type="button" className={`p3d-mode ${form.colorMode === 'multi' ? 'is-active' : ''}`} onClick={() => patch('colorMode', 'multi')}>
-              {isRTL ? 'ألوان متعددة' : 'Multi-color'}
-            </button>
-          </div>
-
-          {form.colorMode === 'single' ? (
-            <div>
-              <div className="p3d-palette">
-                {COLOR_PALETTE.map(c => (
-                  <button
-                    key={c.hex + c.name}
-                    type="button"
-                    onClick={() => patch('singleColor', c.hex)}
-                    className={`p3d-swatch ${form.singleColor === c.hex ? 'is-active' : ''}`}
-                    style={{ background: c.hex, border: c.border ? '1px solid #d1d5db' : '1px solid transparent' }}
-                    title={c.name}
-                  >
-                    {form.singleColor === c.hex && (
-                      <svg viewBox="0 0 24 24" fill="none" stroke={['#ffffff','#facc15','#c0c0c0','#e5e7eb','#d4af37'].includes(c.hex) ? '#000' : '#fff'} strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-                        <polyline points="20 6 9 17 4 12"/>
-                      </svg>
-                    )}
-                  </button>
-                ))}
-                <label className="p3d-swatch-custom" title={isRTL ? 'لون مخصص' : 'Custom color'}>
-                  <input type="color" value={form.singleColor} onChange={e => patch('singleColor', e.target.value)} />
-                </label>
-              </div>
-              <div className="p3d-color-current">
-                <span>{isRTL ? 'اللون المختار:' : 'Selected:'}</span>
-                <span className="p3d-color-chip" style={{ background: form.singleColor }} />
-                <b style={{ fontFamily: 'monospace' }}>{form.singleColor}</b>
-              </div>
+          {!options || !form.material ? (
+            <div className="p3d-options-note">
+              {isRTL ? 'تظهر الألوان المتاحة بعد اختيار الخامة' : 'Available colors appear once a material is selected'}
+            </div>
+          ) : offeredColors.length === 0 ? (
+            <div className="p3d-options-note is-warn">
+              <span>{isRTL
+                ? `لا تتوفر ألوان لخامة ${form.material} حالياً — يرجى اختيار خامة أخرى`
+                : `No colors are available for ${form.material} right now — please pick another material`}</span>
             </div>
           ) : (
-            <div className="p3d-multi">
-              <div className="p3d-multi-head">
-                <span>#</span>
-                <span>{isRTL ? 'اسم الجزء' : 'Part name'}</span>
-                <span>{isRTL ? 'اللون' : 'Color'}</span>
-                <span />
+            <>
+              <div className="p3d-color-mode">
+                <button type="button" className={`p3d-mode ${form.colorMode === 'single' ? 'is-active' : ''}`} onClick={() => patch('colorMode', 'single')}>
+                  {isRTL ? 'لون واحد' : 'Single color'}
+                </button>
+                <button type="button" className={`p3d-mode ${form.colorMode === 'multi' ? 'is-active' : ''}`} onClick={() => patch('colorMode', 'multi')}>
+                  {isRTL ? 'ألوان متعددة' : 'Multi-color'}
+                </button>
               </div>
-              <AnimatePresence initial={false}>
-                {form.multiColorParts.map((p, idx) => (
-                  <motion.div
-                    key={idx}
-                    className="p3d-multi-row"
-                    initial={{ opacity: 0, y: -6 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -6 }}
-                  >
-                    <span className="p3d-multi-idx">{idx + 1}</span>
-                    <input
-                      type="text"
-                      value={p.part}
-                      onChange={e => setPart(idx, 'part', e.target.value)}
-                      placeholder={isRTL ? 'مثال: الجسم / الغطاء / الأزرار' : 'e.g., Body / Lid / Buttons'}
-                    />
-                    <div className="p3d-multi-color">
-                      <label className="p3d-multi-chip" style={{ background: p.color }}>
-                        <input type="color" value={p.color} onChange={e => setPart(idx, 'color', e.target.value)} />
-                      </label>
-                      <div className="p3d-multi-palette">
-                        {COLOR_PALETTE.slice(0, 10).map(c => (
-                          <button
-                            key={c.hex}
-                            type="button"
-                            onClick={() => setPart(idx, 'color', c.hex)}
-                            className={`p3d-swatch p3d-swatch--sm ${p.color === c.hex ? 'is-active' : ''}`}
-                            style={{ background: c.hex, border: c.border ? '1px solid #d1d5db' : '1px solid transparent' }}
-                            title={c.name}
+
+              {form.colorMode === 'single' ? (
+                <div>
+                  <div className="p3d-palette">
+                    {offeredColors.map(c => {
+                      const name = isRTL ? c.nameAr : c.nameEn;
+                      const active = form.singleColor === c.hex;
+                      const light = isLightHex(c.hex);
+                      return (
+                        <button
+                          key={c.hex}
+                          type="button"
+                          onClick={() => patch('singleColor', c.hex)}
+                          className={`p3d-swatch ${active ? 'is-active' : ''}`}
+                          style={{ background: c.hex, border: light ? '1px solid #d1d5db' : '1px solid transparent' }}
+                          title={name}
+                          aria-label={name}
+                          aria-pressed={active}
+                        >
+                          {active && (
+                            <svg viewBox="0 0 24 24" fill="none" stroke={light ? '#000' : '#fff'} strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                              <polyline points="20 6 9 17 4 12"/>
+                            </svg>
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
+                  <div className="p3d-color-current">
+                    <span>{isRTL ? 'اللون المختار:' : 'Selected:'}</span>
+                    <span className="p3d-color-chip" style={{ background: form.singleColor }} />
+                    <b>{colorName(form.singleColor)}</b>
+                  </div>
+                </div>
+              ) : (
+                <div className="p3d-multi">
+                  <div className="p3d-multi-head">
+                    <span>#</span>
+                    <span>{isRTL ? 'اسم الجزء' : 'Part name'}</span>
+                    <span>{isRTL ? 'اللون' : 'Color'}</span>
+                    <span />
+                  </div>
+                  <AnimatePresence initial={false}>
+                    {form.multiColorParts.map((p, idx) => (
+                      <motion.div
+                        key={idx}
+                        className="p3d-multi-row"
+                        initial={{ opacity: 0, y: -6 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -6 }}
+                      >
+                        <span className="p3d-multi-idx">{idx + 1}</span>
+                        <input
+                          type="text"
+                          value={p.part}
+                          onChange={e => setPart(idx, 'part', e.target.value)}
+                          placeholder={isRTL ? 'مثال: الجسم / الغطاء / الأزرار' : 'e.g., Body / Lid / Buttons'}
+                        />
+                        <div className="p3d-multi-color">
+                          <span
+                            className="p3d-multi-chip"
+                            style={{ background: p.color || 'transparent' }}
+                            title={colorName(p.color)}
                           />
-                        ))}
-                      </div>
-                    </div>
-                    <button
-                      type="button"
-                      className="p3d-multi-del"
-                      onClick={() => removePart(idx)}
-                      disabled={form.multiColorParts.length <= 1}
-                      title={isRTL ? 'حذف' : 'Remove'}
-                    >✕</button>
-                  </motion.div>
-                ))}
-              </AnimatePresence>
-              <button type="button" className="p3d-multi-add" onClick={addPart}>
-                + {isRTL ? 'إضافة جزء جديد' : 'Add another part'}
-              </button>
-            </div>
+                          <span className="p3d-multi-name">{colorName(p.color)}</span>
+                          <div className="p3d-multi-palette">
+                            {offeredColors.map(c => {
+                              const name = isRTL ? c.nameAr : c.nameEn;
+                              return (
+                                <button
+                                  key={c.hex}
+                                  type="button"
+                                  onClick={() => setPart(idx, 'color', c.hex)}
+                                  className={`p3d-swatch p3d-swatch--sm ${p.color === c.hex ? 'is-active' : ''}`}
+                                  style={{ background: c.hex, border: isLightHex(c.hex) ? '1px solid #d1d5db' : '1px solid transparent' }}
+                                  title={name}
+                                  aria-label={name}
+                                  aria-pressed={p.color === c.hex}
+                                />
+                              );
+                            })}
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          className="p3d-multi-del"
+                          onClick={() => removePart(idx)}
+                          disabled={form.multiColorParts.length <= 1}
+                          title={isRTL ? 'حذف' : 'Remove'}
+                        >✕</button>
+                      </motion.div>
+                    ))}
+                  </AnimatePresence>
+                  <button type="button" className="p3d-multi-add" onClick={addPart}>
+                    + {isRTL ? 'إضافة جزء جديد' : 'Add another part'}
+                  </button>
+                </div>
+              )}
+            </>
           )}
         </motion.section>
 

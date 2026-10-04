@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'react-toastify';
 import api from '../../config/api';
+import Print3DOptionsEditor from './Print3DOptionsEditor';
 import './Print3DTab.css';
 
 const API_URL = process.env.NODE_ENV === 'production'
@@ -27,12 +28,27 @@ const STATUS_BADGES = {
 };
 const STATUS_ORDER = ['submitted','quoted','accepted','rejected','printing','ready','completed','cancelled'];
 
+// Writes to the materials/colors list are manager-only server-side
+// (requireManager) — mirror that so other roles get a read-only view.
+const canManageOptions = () => {
+  try {
+    return ['manager', 'admin'].includes(JSON.parse(localStorage.getItem('adminData') || '{}').role);
+  } catch {
+    return false;
+  }
+};
+
 const Print3DTab = () => {
   const { i18n } = useTranslation();
   const isRTL = i18n.language === 'ar';
 
   const [rows, setRows] = useState([]);
   const [rates, setRates] = useState(null);
+  // Admin-managed materials + colors (disabled ones included) — drives
+  // the header rate chips, the options editor, and the names shown in
+  // the request detail.
+  const [options, setOptions] = useState(null);
+  const [showOptions, setShowOptions] = useState(false);
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState('all');
   const [search, setSearch] = useState('');
@@ -54,12 +70,14 @@ const Print3DTab = () => {
   const fetchAll = useCallback(async () => {
     setLoading(true);
     try {
-      const [r, rt] = await Promise.all([
+      const [r, rt, op] = await Promise.all([
         api.get('/print3d'),
-        api.get('/print3d/rates').catch(() => ({ data: null }))
+        api.get('/print3d/rates').catch(() => ({ data: null })),
+        api.get('/print3d/options').catch(() => ({ data: null }))
       ]);
       setRows(Array.isArray(r.data) ? r.data : []);
       setRates(rt.data);
+      setOptions(op.data);
     } catch (err) {
       toast.error(isRTL ? 'تعذّر تحميل طلبات الطباعة' : 'Failed to load print requests');
     } finally {
@@ -214,6 +232,28 @@ const Print3DTab = () => {
     window.open(`${API_URL}/public/print3d/${selected.requestId}/invoice`, '_blank');
   };
 
+  const onOptionsSaved = (data) => {
+    setOptions(data);
+    // Rates may have changed with the save — refresh the header chips
+    // and quote placeholders.
+    api.get('/print3d/rates').then(res => setRates(res.data)).catch(() => {});
+  };
+
+  // Lookups over the full list (disabled entries included) so older
+  // requests still show friendly names; `offered: false` flags options
+  // customers can no longer pick.
+  const materialInfo = (code) => {
+    const m = options?.materials?.find(x => x.code === String(code || '').toUpperCase());
+    return { name: m ? (isRTL ? m.nameAr : m.nameEn) : '', offered: !options || !!m?.enabled };
+  };
+  const colorInfo = (hex) => {
+    const c = options?.colors?.find(x => x.hex === String(hex || '').toLowerCase());
+    return { name: c ? (isRTL ? c.nameAr : c.nameEn) : '', offered: !options || !!c?.enabled };
+  };
+  const notOfferedTag = (
+    <span className="p3t-off-tag">{isRTL ? 'لم يعد متاحاً' : 'No longer offered'}</span>
+  );
+
   return (
     <div className="p3t" dir={isRTL ? 'rtl' : 'ltr'}>
       <div className="p3t-head">
@@ -221,14 +261,27 @@ const Print3DTab = () => {
           <h2>{isRTL ? '🖨️ خدمة الطباعة ثلاثية الأبعاد' : '🖨️ 3D Printing Service'}</h2>
           <p>{isRTL ? 'مراجعة الطلبات، إصدار عروض الأسعار، ومتابعة الإنتاج' : 'Review requests, issue quotes, and track production'}</p>
         </div>
-        {rates && (
-          <div className="p3t-rates">
-            <span>PLA: <b>{SAR(rates.PLA)}/g</b></span>
-            <span>PETG: <b>{SAR(rates.PETG)}/g</b></span>
-            <span>TPU: <b>{SAR(rates.TPU)}/g</b></span>
-            <span>{isRTL ? 'رسوم الإعداد:' : 'Setup:'} <b>{SAR(rates.setupFee)}</b></span>
-          </div>
-        )}
+        <div className="p3t-head-side">
+          {rates && (
+            <div className="p3t-rates">
+              {(options?.materials
+                ? options.materials.filter(m => m.enabled).map(m => m.code)
+                : ['PLA', 'PETG', 'TPU']
+              ).map(code => (
+                <span key={code}>{code}: <b>{SAR(rates[code])}/g</b></span>
+              ))}
+              <span>{isRTL ? 'رسوم الإعداد:' : 'Setup:'} <b>{SAR(rates.setupFee)}</b></span>
+            </div>
+          )}
+          <button
+            type="button"
+            className="p3t-btn p3t-btn--primary p3t-btn--sm"
+            onClick={() => setShowOptions(true)}
+            disabled={!options}
+          >
+            ⚙️ {isRTL ? 'الخامات والألوان' : 'Materials & colors'}
+          </button>
+        </div>
       </div>
 
       {/* Stats */}
@@ -446,26 +499,37 @@ const Print3DTab = () => {
                   <section className="p3t-section">
                     <h4>{isRTL ? '⚙️ خيارات الطباعة' : '⚙️ Print options'}</h4>
                     <div className="p3t-kv">
-                      <div><span>{isRTL ? 'الخامة:' : 'Material:'}</span><b>{detail.material}</b></div>
+                      <div>
+                        <span>{isRTL ? 'الخامة:' : 'Material:'}</span>
+                        <b>{detail.material}{materialInfo(detail.material).name ? ` — ${materialInfo(detail.material).name}` : ''}</b>
+                        {!materialInfo(detail.material).offered && notOfferedTag}
+                      </div>
                       <div><span>{isRTL ? 'نمط اللون:' : 'Color mode:'}</span><b>{detail.colorMode === 'multi' ? (isRTL ? 'متعدد الألوان' : 'Multi-color') : (isRTL ? 'لون واحد' : 'Single')}</b></div>
                     </div>
 
                     {detail.colorMode === 'multi' && Array.isArray(detail.multiColorParts) && detail.multiColorParts.length > 0 ? (
                       <div className="p3t-parts">
-                        {detail.multiColorParts.map((p, i) => (
-                          <div key={i} className="p3t-part">
-                            <span className="p3t-part-chip" style={{ background: p.color }} />
-                            <b>{p.part}</b>
-                            <span className="p3t-part-hex">{p.color}</span>
-                          </div>
-                        ))}
+                        {detail.multiColorParts.map((p, i) => {
+                          const info = colorInfo(p.color);
+                          return (
+                            <div key={i} className="p3t-part">
+                              <span className="p3t-part-chip" style={{ background: p.color }} />
+                              <b>{p.part}</b>
+                              {!info.offered && notOfferedTag}
+                              <span className="p3t-part-hex">{info.name ? `${info.name} · ` : ''}{p.color}</span>
+                            </div>
+                          );
+                        })}
                       </div>
                     ) : detail.singleColor && (
                       <div className="p3t-parts">
                         <div className="p3t-part">
                           <span className="p3t-part-chip" style={{ background: detail.singleColor }} />
                           <b>{isRTL ? 'اللون الكامل' : 'Full print color'}</b>
-                          <span className="p3t-part-hex">{detail.singleColor}</span>
+                          {!colorInfo(detail.singleColor).offered && notOfferedTag}
+                          <span className="p3t-part-hex">
+                            {colorInfo(detail.singleColor).name ? `${colorInfo(detail.singleColor).name} · ` : ''}{detail.singleColor}
+                          </span>
                         </div>
                       </div>
                     )}
@@ -638,6 +702,19 @@ const Print3DTab = () => {
               </div>
             </motion.div>
           </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Materials + colors editor */}
+      <AnimatePresence>
+        {showOptions && options && (
+          <Print3DOptionsEditor
+            initial={options}
+            canEdit={canManageOptions()}
+            isRTL={isRTL}
+            onClose={() => setShowOptions(false)}
+            onSaved={onOptionsSaved}
+          />
         )}
       </AnimatePresence>
     </div>

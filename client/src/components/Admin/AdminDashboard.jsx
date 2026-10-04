@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -23,6 +23,7 @@ import FablabStaffManagement from '../FablabStaff/FablabStaffManagement';
 import OvertimeManagement from '../Overtime/OvertimeManagement';
 import TrainerAssistantManagement from '../TrainerAssistant/TrainerAssistantManagement';
 import CustomersManagement from '../Customers/CustomersManagement';
+import WorkshopSurveyResults from './WorkshopSurveyResults';
 import QuickMessages from './QuickMessages';
 import QuickForms from './QuickForms';
 import UnifiedAttendancePage from '../shared/UnifiedAttendancePage';
@@ -276,6 +277,10 @@ const AdminDashboard = () => {
   const [madaForm, setMadaForm] = useState({ title: '', instructions: '', address: '' });
   const [showEduScheduleCompare, setShowEduScheduleCompare] = useState(false);
   const [workshopSort, setWorkshopSort] = useState('date-asc');
+  const [selectedWorkshopIds, setSelectedWorkshopIds] = useState([]);
+  const [surveyResultsFor, setSurveyResultsFor] = useState(null); // { workshopId, studentId? }
+  const [sendingSurveys, setSendingSurveys] = useState(false);
+  const [bulkRegBusy, setBulkRegBusy] = useState(false);
   const [bankSaving, setBankSaving] = useState(false);
   const [selectedWorkshop, setSelectedWorkshop] = useState(null);
   const [workshopForm, setWorkshopForm] = useState({
@@ -296,7 +301,7 @@ const AdminDashboard = () => {
   const [selectedWorkshopStudentIds, setSelectedWorkshopStudentIds] = useState(() => new Set());
   // Attendance kiosk (universal) — opened from its own admin tab.
   const [attendanceKioskOpen, setAttendanceKioskOpen] = useState(false);
-  const emptyWorkshopStudentForm = { firstName: '', lastName: '', phone: '', email: '', nationalId: '', gender: '', age: '', city: '', invoiceNumber: '', notes: '' };
+  const emptyWorkshopStudentForm = { firstName: '', lastName: '', phone: '', email: '', nationalId: '', gender: '', age: '', city: '', invoiceNumber: '', notes: '', allowAgeOverride: false };
   const [showWorkshopAddStudent, setShowWorkshopAddStudent] = useState(false);
   const [workshopAddStudentForm, setWorkshopAddStudentForm] = useState(emptyWorkshopStudentForm);
   const [addingWorkshopStudent, setAddingWorkshopStudent] = useState(false);
@@ -525,16 +530,23 @@ const AdminDashboard = () => {
     }
   };
 
+  // Every filter change fires a request; only the newest may update
+  // the list, so a slower earlier response can't overwrite it with
+  // results for the old section / search.
+  const regRequestSeq = useRef(0);
   const fetchRegistrations = useCallback(async (page = 1) => {
+    const seq = ++regRequestSeq.current;
     setLoading(true);
     try {
       const params = new URLSearchParams();
       Object.entries(filters).forEach(([key, value]) => {
-        if (value) params.append(key, value);
+        const v = typeof value === 'string' ? value.trim() : value;
+        if (v) params.append(key, v);
       });
       params.append('page', page);
       params.append('limit', pagination.limit);
       const response = await api.get(`/admin/registrations?${params.toString()}`);
+      if (seq !== regRequestSeq.current) return;
       setRegistrations(response.data.registrations || []);
       if (response.data.pagination) {
         setPagination(prev => ({
@@ -545,10 +557,11 @@ const AdminDashboard = () => {
         }));
       }
     } catch (error) {
+      if (seq !== regRequestSeq.current) return;
       console.error('Error fetching registrations:', error);
       toast.error(isRTL ? 'خطأ في تحميل التسجيلات' : 'Error loading registrations');
     } finally {
-      setLoading(false);
+      if (seq === regRequestSeq.current) setLoading(false);
     }
   }, [filters, isRTL, pagination.limit]);
 
@@ -941,6 +954,26 @@ const AdminDashboard = () => {
     }
   }, []);
 
+  // Open / close public registration on the selected workshops.
+  const handleBulkRegistration = async (enabled) => {
+    if (!selectedWorkshopIds.length || bulkRegBusy) return;
+    setBulkRegBusy(true);
+    try {
+      const { data } = await api.patch('/workshops/bulk/registration-enabled', { ids: selectedWorkshopIds, enabled });
+      const n = data?.updated ?? selectedWorkshopIds.length;
+      toast.success(enabled
+        ? (isRTL ? `تم فتح التسجيل في ${n} ورشة` : `Registration opened for ${n} workshop(s)`)
+        : (isRTL ? `تم إغلاق التسجيل في ${n} ورشة` : `Registration closed for ${n} workshop(s)`));
+      setSelectedWorkshopIds([]);
+      await fetchWorkshops();
+    } catch (e) {
+      const d = e.response?.data;
+      toast.error((isRTL ? d?.messageAr : d?.message) || (isRTL ? 'تعذّر تحديث حالة التسجيل' : 'Could not update registration'));
+    } finally {
+      setBulkRegBusy(false);
+    }
+  };
+
   useEffect(() => {
     if (activeTab === 'workshops') {
       fetchWorkshops();
@@ -1112,6 +1145,10 @@ const AdminDashboard = () => {
     const reqDays = Math.ceil(wDays / 2);
     if (aDays < reqDays) {
       toast.error(isRTL ? `يجب على الطالب حضور ${reqDays} يوم على الأقل من أصل ${wDays} يوم. الحضور الحالي: ${aDays} يوم` : `Must attend ${reqDays} of ${wDays} days. Attended: ${aDays}`);
+      return;
+    }
+    if (!student.surveySubmittedAt) {
+      toast.error(isRTL ? 'لم يعبّئ الطالب استبيان الورشة بعد — تُصدر الشهادة بعد تعبئة الاستبيان' : 'The student has not filled in the workshop survey yet — the certificate is issued after the survey');
       return;
     }
     const printWindow = window.open('', '_blank');
@@ -1564,9 +1601,16 @@ const AdminDashboard = () => {
       toast.error(isRTL ? 'الاسم الأول ورقم الهاتف مطلوبان' : 'First name and phone are required');
       return;
     }
+    const ageNum = parseInt(workshopAddStudentForm.age, 10);
+    const { minAge, maxAge } = viewingWorkshopStudents;
+    const ageOut = !isNaN(ageNum) && ((minAge && ageNum < minAge) || (maxAge && ageNum > maxAge));
+    if (ageOut && !workshopAddStudentForm.allowAgeOverride) {
+      toast.error(isRTL ? 'العمر خارج الفئة العمرية — فعّل خيار الاستثناء للإضافة' : 'Age is outside the range — tick the exception box to add anyway');
+      return;
+    }
     setAddingWorkshopStudent(true);
     try {
-      await api.post(`/workshops/${viewingWorkshopStudents.workshopId}/students`, workshopAddStudentForm);
+      await api.post(`/workshops/${viewingWorkshopStudents.workshopId}/students`, { ...workshopAddStudentForm, allowAgeOverride: !!ageOut });
       toast.success(isRTL ? 'تم إضافة الطالب' : 'Student added');
       setShowWorkshopAddStudent(false);
       setWorkshopAddStudentForm(emptyWorkshopStudentForm);
@@ -8447,6 +8491,20 @@ const AdminDashboard = () => {
                 else arr.sort((a, b) => dateVal(a) - dateVal(b)); // default: date-asc
                 return arr;
               })();
+              // Registration state as the public form sees it: closed by
+              // the admin, or auto-closed from the start day (Riyadh).
+              const _todayRiyadh = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Riyadh' }).format(new Date());
+              const _regState = (w) => {
+                if (w.status === 'cancelled' || w.status === 'completed') return null;
+                if ((w.endDate || w.startDate || '9999') < _todayRiyadh) return null;
+                if (w.registrationEnabled === false) return 'disabled';
+                if (w.startDate && w.startDate <= _todayRiyadh) return 'started';
+                return 'open';
+              };
+              const _visibleIds = _visibleWorkshops.map(w => w.workshopId);
+              const _selectedVisible = selectedWorkshopIds.filter(id => _visibleIds.includes(id));
+              const _allVisibleSelected = _visibleIds.length > 0 && _selectedVisible.length === _visibleIds.length;
+              const _toggleWsSelect = (id) => setSelectedWorkshopIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
               const _wsStatusLabels = {
                 upcoming: isRTL ? 'قادمة' : 'Upcoming',
                 in_progress: isRTL ? 'جارية' : 'In Progress',
@@ -8628,6 +8686,37 @@ const AdminDashboard = () => {
                       </div>
                     </motion.div>
 
+                    {_visibleIds.length > 0 && (
+                      <div className={`wsv2-selectbar ${_selectedVisible.length ? 'has-selection' : ''}`}>
+                        <label className="wsv2-selectbar-all">
+                          <input
+                            type="checkbox"
+                            checked={_allVisibleSelected}
+                            ref={el => { if (el) el.indeterminate = _selectedVisible.length > 0 && !_allVisibleSelected; }}
+                            onChange={() => setSelectedWorkshopIds(prev => _allVisibleSelected
+                              ? prev.filter(id => !_visibleIds.includes(id))
+                              : [...new Set([...prev, ..._visibleIds])])}
+                          />
+                          {_selectedVisible.length
+                            ? (isRTL ? `${_selectedVisible.length} ورشة محددة` : `${_selectedVisible.length} selected`)
+                            : (isRTL ? 'حدّد الورش لفتح التسجيل أو إغلاقه' : 'Select workshops to open or close registration')}
+                        </label>
+                        {_selectedVisible.length > 0 && (
+                          <div className="wsv2-selectbar-actions">
+                            <button className="wsv2-action-btn danger" disabled={bulkRegBusy} onClick={() => handleBulkRegistration(false)}>
+                              🔒 {isRTL ? 'إغلاق التسجيل' : 'Close registration'}
+                            </button>
+                            <button className="wsv2-action-btn success" disabled={bulkRegBusy} onClick={() => handleBulkRegistration(true)}>
+                              🔓 {isRTL ? 'فتح التسجيل' : 'Open registration'}
+                            </button>
+                            <button className="wsv2-action-btn" disabled={bulkRegBusy} onClick={() => setSelectedWorkshopIds([])}>
+                              {isRTL ? 'إلغاء التحديد' : 'Clear'}
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    )}
+
                     <motion.div
                       className="wsv2-grid"
                       initial="hidden"
@@ -8651,11 +8740,13 @@ const AdminDashboard = () => {
                           }
                           const perDay = (w.totalHours && days > 1) ? (w.totalHours / days).toFixed(1) : null;
                           const progressPct = w.maxParticipants ? Math.min(100, ((w.studentCount || 0) / w.maxParticipants) * 100) : 0;
+                          const regState = _regState(w);
+                          const isSelected = selectedWorkshopIds.includes(w.workshopId);
                           return (
                           <motion.div
                             key={w.workshopId}
                             layout
-                            className="wsv2-card"
+                            className={`wsv2-card ${isSelected ? 'selected' : ''}`}
                             style={{ '--wsc': wsColor }}
                             initial={{ opacity: 0, y: 14 }}
                             animate={{ opacity: 1, y: 0 }}
@@ -8664,6 +8755,9 @@ const AdminDashboard = () => {
                             whileHover={{ y: -3 }}
                           >
                             <div className="wsv2-card-accent" />
+                            <label className="wsv2-select" title={isRTL ? 'تحديد' : 'Select'}>
+                              <input type="checkbox" checked={isSelected} onChange={() => _toggleWsSelect(w.workshopId)} />
+                            </label>
                             {w.photo && <div className="wsv2-card-photo" style={{ backgroundImage: `url(${w.photo})` }} />}
                             <div className="wsv2-card-body">
                               <div className="wsv2-card-head">
@@ -8689,9 +8783,14 @@ const AdminDashboard = () => {
                                       🎓 {isRTL ? 'تعليم — نسخ الرابط' : 'EDU — copy link'}
                                     </span>
                                   )}
-                                  {w.isEducation && w.registrationEnabled === false && (
-                                    <span style={{ fontSize: 10, fontWeight: 800, padding: '3px 8px', borderRadius: 999, background: '#fee2e2', color: '#991b1b', border: '1px solid #fecaca' }}>
-                                      ⏸ {isRTL ? 'التسجيل مغلق' : 'Reg. closed'}
+                                  {regState === 'disabled' && (
+                                    <span className="wsv2-reg-badge closed" title={isRTL ? 'أغلقه المسؤول' : 'Closed by admin'}>
+                                      🔒 {isRTL ? 'التسجيل مغلق' : 'Reg. closed'}
+                                    </span>
+                                  )}
+                                  {regState === 'started' && (
+                                    <span className="wsv2-reg-badge started" title={isRTL ? 'يُغلق التسجيل تلقائياً من يوم بدء الورشة' : 'Registration closes automatically on the start day'}>
+                                      ⏹ {isRTL ? 'بدأت · التسجيل مغلق' : 'Started · reg. closed'}
                                     </span>
                                   )}
                                   {!w.isEducation && w.isPublic === false && (
@@ -8844,6 +8943,43 @@ const AdminDashboard = () => {
                         </div>
                       </div>
                       <div className="wsv2-actions" style={{ marginInlineStart: 'auto' }}>
+                        <button
+                          className="wsv2-action-btn"
+                          onClick={() => setSurveyResultsFor({ workshopId: viewingWorkshopStudents.workshopId })}
+                          title={isRTL ? 'نتائج استبيان الورشة' : 'Workshop survey results'}
+                        >
+                          📊 {isRTL ? 'نتائج الاستبيان' : 'Survey results'}
+                          <span style={{ fontFamily: 'var(--sv2-font-mono, monospace)', fontSize: '0.72rem', opacity: 0.8 }}>
+                            {(viewingWorkshopStudents.students || []).filter(st => st.surveySubmittedAt).length}/{(viewingWorkshopStudents.students || []).length}
+                          </span>
+                        </button>
+                        <button
+                          className="wsv2-action-btn info"
+                          disabled={sendingSurveys}
+                          onClick={async () => {
+                            const pending = (viewingWorkshopStudents.students || []).filter(st =>
+                              st.email && !st.surveySubmittedAt && Array.isArray(st.attendanceDates) && st.attendanceDates.length > 0);
+                            if (pending.length === 0) {
+                              toast.info(isRTL ? 'لا يوجد طلاب حاضرون بانتظار الاستبيان (ولديهم بريد)' : 'No attended students with an email are waiting for the survey');
+                              return;
+                            }
+                            if (!window.confirm(isRTL ? `إرسال رابط الاستبيان إلى ${pending.length} طالب حضروا الورشة ولم يعبّئوه بعد؟` : `Email the survey link to ${pending.length} attended student(s) who haven't answered yet?`)) return;
+                            setSendingSurveys(true);
+                            try {
+                              const { data } = await api.post(`/workshops/${viewingWorkshopStudents.workshopId}/send-surveys`);
+                              toast.success((isRTL ? data?.messageAr : data?.message) || (isRTL ? 'تم الإرسال' : 'Sent'));
+                              if (data?.failed) toast.error(isRTL ? `تعذّر الإرسال إلى ${data.failed} طالب` : `Failed for ${data.failed} student(s)`);
+                            } catch (e2) {
+                              const d = e2.response?.data;
+                              toast.error((isRTL ? d?.messageAr : d?.message) || (isRTL ? 'تعذّر إرسال الاستبيان' : 'Could not send the survey'));
+                            } finally {
+                              setSendingSurveys(false);
+                            }
+                          }}
+                          title={isRTL ? 'إرسال رابط الاستبيان للطلاب الحاضرين الذين لم يعبّئوه' : 'Email the survey to attended students who have not answered'}
+                        >
+                          📨 {sendingSurveys ? (isRTL ? 'جارٍ الإرسال…' : 'Sending…') : (isRTL ? 'إرسال الاستبيان' : 'Send survey')}
+                        </button>
                         <button
                           className="wsv2-action-btn success"
                           onClick={async () => {
@@ -9037,6 +9173,18 @@ const AdminDashboard = () => {
                                   ? `✓ ${Array.isArray(s.attendanceDates) ? s.attendanceDates.length : 0}${isRTL ? 'ي' : 'd'}`
                                   : (isRTL ? 'لم يحضر' : 'Absent')}
                               </span>
+                              {s.surveySubmittedAt ? (
+                                <button type="button" className="wsv2-survey-pill done"
+                                  onClick={() => setSurveyResultsFor({ workshopId: viewingWorkshopStudents.workshopId, studentId: s.studentId })}
+                                  title={isRTL ? 'عرض إجابات الاستبيان' : 'View survey answers'}>
+                                  📝 {isRTL ? 'الاستبيان ✓' : 'Survey ✓'}
+                                </button>
+                              ) : (
+                                <span className="wsv2-survey-pill waiting" style={{ cursor: 'default' }}
+                                  title={isRTL ? 'الشهادة تُصدر بعد تعبئة الاستبيان' : 'Certificate is issued after the survey'}>
+                                  📝 {isRTL ? 'بانتظار الاستبيان' : 'Survey pending'}
+                                </span>
+                              )}
                               <select
                                 className="wsv2-actions-select"
                                 onChange={async (e) => {
@@ -9052,7 +9200,36 @@ const AdminDashboard = () => {
                                   else if (action === 'downloadPdfPlain') {
                                     try { const res = await api.get(`/workshops/students/${s.studentId}/certificate-pdf?plain=1`, { responseType: 'blob' }); const link = document.createElement('a'); link.href = URL.createObjectURL(new Blob([res.data], { type: 'application/pdf' })); link.download = `certificate_plain_${s.firstName}.pdf`; link.click(); } catch(e2) { let msg = isRTL ? 'خطأ' : 'Error'; if (e2.response?.data instanceof Blob) { try { const j = JSON.parse(await e2.response.data.text()); msg = (isRTL ? j.messageAr : j.message) || msg; } catch {} } toast.error(msg); }
                                   }
-                                  else if (action === 'emailCert') { try { await api.post(`/workshops/students/${s.studentId}/send-certificate`); toast.success(isRTL ? 'تم إرسال الشهادة' : 'Certificate emailed'); } catch(e2) { toast.error(e2.response?.data?.messageAr || 'Error'); } }
+                                  else if (action === 'emailCert') {
+                                    try {
+                                      await api.post(`/workshops/students/${s.studentId}/send-certificate`);
+                                      toast.success(isRTL ? 'تم إرسال الشهادة' : 'Certificate emailed');
+                                    } catch (e2) {
+                                      const d = e2.response?.data;
+                                      const msg = (isRTL ? d?.messageAr : d?.message) || (isRTL ? 'خطأ' : 'Error');
+                                      if (d?.surveyEmailed) toast.info(msg, { autoClose: 9000 }); else toast.error(msg);
+                                    }
+                                  }
+                                  else if (action === 'copySurvey') {
+                                    if (!s.surveyUrl) return;
+                                    navigator.clipboard.writeText(s.surveyUrl).then(
+                                      () => toast.success(isRTL ? 'تم نسخ رابط الاستبيان' : 'Survey link copied'),
+                                      () => window.prompt(isRTL ? 'رابط الاستبيان:' : 'Survey link:', s.surveyUrl)
+                                    );
+                                  }
+                                  else if (action === 'whatsappSurvey') {
+                                    window.open(`https://wa.me/${(s.phone || '').replace(/[^0-9]/g, '').replace(/^0/, '966')}?text=${encodeURIComponent(`مرحباً ${s.firstName}،\n\nشكراً لحضورك ورشة "${viewingWorkshopStudents.title}" في فاب لاب الأحساء. نرجو تعبئة استبيان قصير عن الورشة، وبعدها تُرسل شهادتك:\n${s.surveyUrl}`)}`, '_blank');
+                                  }
+                                  else if (action === 'emailSurvey') {
+                                    try {
+                                      const { data } = await api.post(`/workshops/students/${s.studentId}/send-survey`);
+                                      toast.success((isRTL ? data?.messageAr : data?.message) || (isRTL ? 'تم الإرسال' : 'Sent'));
+                                    } catch (e2) {
+                                      const d = e2.response?.data;
+                                      toast.error((isRTL ? d?.messageAr : d?.message) || (isRTL ? 'خطأ' : 'Error'));
+                                    }
+                                  }
+                                  else if (action === 'viewSurvey') setSurveyResultsFor({ workshopId: viewingWorkshopStudents.workshopId, studentId: s.studentId });
                                   else if (action === 'invoice') {
                                     setInvoiceTarget({ studentId: s.studentId, firstName: s.firstName || '', lastName: s.lastName || '', price: Number(viewingWorkshopStudents?.price || 0) });
                                     setInvoiceForm({ discount: '', discountType: 'amount', approver: '', customApprover: '' });
@@ -9107,6 +9284,13 @@ const AdminDashboard = () => {
                                 <option value="downloadPdfPlain">{isRTL ? '🖨 طباعة على قالب A4' : '🖨 Print on template'}</option>
                                 <option value="invoice">{isRTL ? '🧾 طباعة الفاتورة' : '🧾 Print Invoice'}</option>
                                 {s.email && <option value="emailCert">{isRTL ? '📧 إرسال الشهادة' : '📧 Email Cert'}</option>}
+                                {s.surveySubmittedAt
+                                  ? <option value="viewSurvey">{isRTL ? '📝 عرض إجابات الاستبيان' : '📝 View survey answers'}</option>
+                                  : <>
+                                      {s.surveyUrl && <option value="copySurvey">{isRTL ? '🔗 نسخ رابط الاستبيان' : '🔗 Copy survey link'}</option>}
+                                      {s.email && <option value="emailSurvey">{isRTL ? '📨 إرسال الاستبيان بالبريد' : '📨 Email survey'}</option>}
+                                      {s.phone && s.surveyUrl && <option value="whatsappSurvey">{isRTL ? '💬 إرسال الاستبيان واتساب' : '💬 Survey via WhatsApp'}</option>}
+                                    </>}
                                 {s.email && <option value="emailAttId">{isRTL ? '📨 إرسال بطاقة الحضور' : '📨 Send Att. ID'}</option>}
                                 {s.email && <option value="emailCustom">{isRTL ? '✉ بريد مخصص' : '✉ Custom Email'}</option>}
                                 {s.phone && <option value="whatsapp">{isRTL ? '💬 واتساب' : '💬 WhatsApp'}</option>}
@@ -9623,9 +9807,8 @@ const AdminDashboard = () => {
                       </label>
                     </div>
 
-                    {workshopForm.isEducation && (
-                      <>
-                        <div style={{ gridColumn: '1/-1', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+                    <div style={{ gridColumn: '1/-1', display: 'grid', gridTemplateColumns: workshopForm.isEducation ? '1fr 1fr' : '1fr', gap: '0.75rem' }}>
+                          {workshopForm.isEducation && (
                           <div>
                             <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 600, marginBottom: 4 }}>{isRTL ? 'القاعة / الغرفة' : 'Room'}</label>
                             <input
@@ -9635,6 +9818,7 @@ const AdminDashboard = () => {
                               style={{ width: '100%', padding: '0.5rem', borderRadius: 8, border: '1.5px solid #e2e8f0', fontFamily: 'inherit' }}
                             />
                           </div>
+                          )}
                           <div>
                             <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 600, marginBottom: 4 }}>{isRTL ? 'حالة التسجيل' : 'Registration'}</label>
                             <div style={{ display: 'flex', gap: 8 }}>
@@ -9653,8 +9837,14 @@ const AdminDashboard = () => {
                                 ⏸ {isRTL ? 'مغلق' : 'Closed'}
                               </button>
                             </div>
+                            <div style={{ fontSize: '0.72rem', color: '#64748b', marginTop: 4 }}>
+                              {isRTL ? 'يُغلق التسجيل تلقائياً من يوم بدء الورشة.' : 'Registration also closes automatically on the start day.'}
+                            </div>
                           </div>
-                        </div>
+                    </div>
+
+                    {workshopForm.isEducation && (
+                      <>
                         {selectedWorkshop && (
                           <div style={{ gridColumn: '1/-1', padding: 12, background: '#faf5ff', border: '1px solid #ddd6fe', borderRadius: 10 }}>
                             <div style={{ fontSize: 11, fontWeight: 800, color: '#6d28d9', letterSpacing: 1.2, textTransform: 'uppercase', marginBottom: 6 }}>
@@ -9718,6 +9908,15 @@ const AdminDashboard = () => {
             )}
 
             {/* Admin Add Student Modal (workshop) */}
+            {surveyResultsFor && (
+              <WorkshopSurveyResults
+                workshopId={surveyResultsFor.workshopId}
+                studentId={surveyResultsFor.studentId}
+                isRTL={isRTL}
+                onClose={() => setSurveyResultsFor(null)}
+              />
+            )}
+
             {showWorkshopAddStudent && viewingWorkshopStudents && (
               <div className="modal-overlay" onClick={() => !addingWorkshopStudent && setShowWorkshopAddStudent(false)}>
                 <motion.div className="modal-content" onClick={e => e.stopPropagation()} initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }}
@@ -9739,10 +9938,24 @@ const AdminDashboard = () => {
                         <option value="Female">{isRTL ? 'أنثى' : 'Female'}</option>
                       </select>
                     </div>
-                    <div><label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 600, marginBottom: 4 }}>{isRTL ? 'العمر' : 'Age'}</label><input type="number" min="0" style={{ width: '100%', padding: '0.5rem', borderRadius: 8, border: '1.5px solid #e2e8f0', fontFamily: 'inherit' }} value={workshopAddStudentForm.age} onChange={e => setWorkshopAddStudentForm({...workshopAddStudentForm, age: e.target.value})} /></div>
+                    <div><label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 600, marginBottom: 4 }}>{isRTL ? 'العمر' : 'Age'}{(viewingWorkshopStudents.minAge || viewingWorkshopStudents.maxAge) ? <span style={{ fontWeight: 500, color: '#64748b' }}> ({viewingWorkshopStudents.minAge || 0}–{viewingWorkshopStudents.maxAge || '∞'})</span> : null}</label><input type="number" min="0" style={{ width: '100%', padding: '0.5rem', borderRadius: 8, border: '1.5px solid #e2e8f0', fontFamily: 'inherit' }} value={workshopAddStudentForm.age} onChange={e => setWorkshopAddStudentForm({...workshopAddStudentForm, age: e.target.value})} /></div>
                     <div><label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 600, marginBottom: 4 }}>{isRTL ? 'المدينة' : 'City'}</label><input style={{ width: '100%', padding: '0.5rem', borderRadius: 8, border: '1.5px solid #e2e8f0', fontFamily: 'inherit' }} value={workshopAddStudentForm.city} onChange={e => setWorkshopAddStudentForm({...workshopAddStudentForm, city: e.target.value})} /></div>
                     <div style={{ gridColumn: '1 / -1' }}><label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 600, marginBottom: 4 }}>{isRTL ? 'رقم الفاتورة' : 'Invoice Number'}</label><input dir="ltr" style={{ width: '100%', padding: '0.5rem', borderRadius: 8, border: '1.5px solid #e2e8f0', fontFamily: 'inherit' }} value={workshopAddStudentForm.invoiceNumber} onChange={e => setWorkshopAddStudentForm({...workshopAddStudentForm, invoiceNumber: e.target.value})} /></div>
                     <div style={{ gridColumn: '1 / -1' }}><label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 600, marginBottom: 4 }}>{isRTL ? 'ملاحظات' : 'Notes'}</label><textarea rows={2} style={{ width: '100%', padding: '0.5rem', borderRadius: 8, border: '1.5px solid #e2e8f0', fontFamily: 'inherit', resize: 'vertical' }} value={workshopAddStudentForm.notes} onChange={e => setWorkshopAddStudentForm({...workshopAddStudentForm, notes: e.target.value})} /></div>
+                    {(() => {
+                      const a = parseInt(workshopAddStudentForm.age, 10);
+                      const { minAge, maxAge } = viewingWorkshopStudents;
+                      if (isNaN(a) || !((minAge && a < minAge) || (maxAge && a > maxAge))) return null;
+                      return (
+                        <label className="wsv2-age-override">
+                          <input type="checkbox" style={{ marginTop: 3 }} checked={!!workshopAddStudentForm.allowAgeOverride} onChange={e => setWorkshopAddStudentForm({ ...workshopAddStudentForm, allowAgeOverride: e.target.checked })} />
+                          <span>
+                            <b>{isRTL ? `العمر ${a} خارج الفئة العمرية للورشة (${minAge || 0}–${maxAge || '∞'})` : `Age ${a} is outside this workshop's range (${minAge || 0}–${maxAge || '∞'})`}</b><br />
+                            {isRTL ? 'إضافة الطالب كاستثناء إداري — يُسجَّل الاستثناء في ملاحظات الطالب.' : 'Add as an admin exception — it is recorded in the student notes.'}
+                          </span>
+                        </label>
+                      );
+                    })()}
                   </div>
                   <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end', marginTop: '1.5rem' }}>
                     <button onClick={() => setShowWorkshopAddStudent(false)} disabled={addingWorkshopStudent} style={{ padding: '0.6rem 1.5rem', borderRadius: 8, border: 'none', background: '#f1f5f9', cursor: 'pointer', fontWeight: 600, fontFamily: 'inherit' }}>{isRTL ? 'إلغاء' : 'Cancel'}</button>

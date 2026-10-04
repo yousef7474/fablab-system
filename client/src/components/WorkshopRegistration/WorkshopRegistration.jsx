@@ -117,7 +117,10 @@ const WorkshopRegistration = () => {
   const isValidEmail = (email) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
   const canProceedStep0 = form.firstName && form.lastName && form.phone && form.email && isValidEmail(form.email) && form.nationalId && form.gender && form.city
     && (requireId ? idCheck.status === 'ok' : form.age);
-  const canProceedStep1 = form.workshopId;
+  // A workshop can be picked while registration is open (not closed by
+  // the admin, not started yet) and it still has seats.
+  const isPickable = (w) => !!w && w.isOpen !== false && (w.spotsRemaining == null || w.spotsRemaining > 0);
+  const canProceedStep1 = form.workshopId && isPickable(workshops.find(w => w.workshopId === form.workshopId));
 
   const selectedWorkshopEarly = workshops.find(w => w.workshopId === form.workshopId);
   const workshopIsPaid = selectedWorkshopEarly && Number(selectedWorkshopEarly.price) > 0;
@@ -459,13 +462,15 @@ const WorkshopRegistration = () => {
             <div style={{ margin: '20px auto', maxWidth: 640, padding: 22, background: '#fef3c7', border: '1px solid #fde68a', borderRadius: 12, textAlign: 'center', color: '#92400e' }}>
               <div style={{ fontSize: 42, marginBottom: 8 }}>⏸️</div>
               <h3 style={{ margin: 0, color: '#92400e' }}>
-                {isRTL ? 'التسجيل في هذه الورشة مغلق مؤقتاً' : 'Registration for this workshop is currently closed'}
+                {isRTL ? 'التسجيل في هذه الورشة مغلق' : 'Registration for this workshop is closed'}
               </h3>
               <p style={{ margin: '8px 0 0', fontSize: 13, color: '#78350f' }}>
                 {singleWorkshopMeta.closedReason === 'full'
                   ? (isRTL ? 'تم اكتمال العدد المسموح به.' : 'The workshop is full.')
                   : singleWorkshopMeta.closedReason === 'cancelled'
                   ? (isRTL ? 'تم إلغاء هذه الورشة.' : 'This workshop has been cancelled.')
+                  : singleWorkshopMeta.closedReason === 'started' || singleWorkshopMeta.closedReason === 'completed'
+                  ? (isRTL ? 'بدأت الورشة — يُغلق التسجيل من يوم انطلاقها.' : 'The workshop has already started — registration closes on the start day.')
                   : (isRTL ? 'يرجى التواصل مع إدارة فاب لاب لمزيد من المعلومات.' : 'Please contact the FabLab admin for more information.')}
               </p>
             </div>
@@ -626,10 +631,17 @@ const WorkshopRegistration = () => {
                   <div className="workshop-empty">{isRTL ? 'لا توجد ورش متاحة حالياً' : 'No workshops available'}</div>
                 ) : (
                   <div className="workshop-cards" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '1.25rem', maxHeight: 'none', overflow: 'visible' }}>
-                    {workshops.map(w => (
-                      <div key={w.workshopId} className={`workshop-card ${form.workshopId === w.workshopId ? 'selected' : ''} ${w.spotsRemaining <= 0 ? 'full' : ''}`}
-                        style={{ cursor: w.spotsRemaining > 0 ? 'pointer' : 'not-allowed', borderRadius: 16 }}
-                        onClick={() => w.spotsRemaining > 0 && handleChange('workshopId', w.workshopId)}>
+                    {workshops.map(w => {
+                      const pickable = isPickable(w);
+                      const closedLabel = w.closedReason === 'started'
+                        ? (isRTL ? 'بدأت الورشة — التسجيل مغلق' : 'Started — registration closed')
+                        : w.closedReason === 'full' || (w.spotsRemaining != null && w.spotsRemaining <= 0)
+                        ? (isRTL ? 'مكتمل' : 'Full')
+                        : (isRTL ? 'التسجيل مغلق' : 'Registration closed');
+                      return (
+                      <div key={w.workshopId} className={`workshop-card ${form.workshopId === w.workshopId ? 'selected' : ''} ${!pickable ? 'full' : ''}`}
+                        style={{ cursor: pickable ? 'pointer' : 'not-allowed', borderRadius: 16 }}
+                        onClick={() => pickable && handleChange('workshopId', w.workshopId)}>
                         {w.photo && <div className="workshop-card-img" style={{ height: 200, backgroundImage: `url(${w.photo})`, backgroundSize: 'cover', backgroundPosition: 'center' }} />}
                         <div className="workshop-card-body" style={{ padding: '1.25rem' }}>
                           <h4 style={{ fontSize: '1.15rem', marginBottom: '0.5rem' }}>{w.title}</h4>
@@ -656,10 +668,10 @@ const WorkshopRegistration = () => {
                           <div className="workshop-card-footer" style={{ paddingTop: '0.75rem', borderTop: '1px solid #f1f5f9', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                             {w.price ? <span className="workshop-price" style={{ fontSize: '1.2rem' }}>{w.price} {isRTL ? 'ر.س' : 'SAR'}</span> : <span className="workshop-price free" style={{ fontSize: '1.2rem' }}>{isRTL ? 'مجاني' : 'Free'}</span>}
                             <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                              <span className={`workshop-spots ${w.spotsRemaining <= 3 ? 'low' : ''}`}>
-                                {w.spotsRemaining > 0 ? `${w.spotsRemaining} ${isRTL ? 'مقعد متبقي' : 'spots left'}` : (isRTL ? 'مكتمل' : 'Full')}
+                              <span className={`workshop-spots ${!pickable || (w.spotsRemaining != null && w.spotsRemaining <= 3) ? 'low' : ''}`}>
+                                {!pickable ? closedLabel : w.spotsRemaining != null ? `${w.spotsRemaining} ${isRTL ? 'مقعد متبقي' : 'spots left'}` : (isRTL ? 'متاح' : 'Open')}
                               </span>
-                              {w.spotsRemaining > 0 && form.workshopId === w.workshopId && (
+                              {pickable && form.workshopId === w.workshopId && (
                                 <span style={{ background: '#1a56db', color: 'white', padding: '4px 12px', borderRadius: 8, fontSize: '0.78rem', fontWeight: 700 }}>
                                   {isRTL ? '✓ محدد' : '✓ Selected'}
                                 </span>
@@ -669,7 +681,8 @@ const WorkshopRegistration = () => {
                         </div>
                         {form.workshopId === w.workshopId && <div className="workshop-card-check">✓</div>}
                       </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 )}
                 <div className="workshop-actions">

@@ -68,6 +68,30 @@ const emptyCheckout = {
   customerNationalId: '', deliveryAddress: '', notes: ''
 };
 
+// Same payment options as workshop registration, plus the original
+// cash-on-pickup. Bank/mada details come from the workshop payment
+// settings (GET /public/store/payment-settings).
+const PAY_METHODS = [
+  { key: 'cash', icon: '💵', ar: 'نقداً عند الاستلام', en: 'Cash on pickup', hintAr: 'ادفع نقداً عند استلام طلبك', hintEn: 'Pay in cash when you pick up' },
+  { key: 'mada', icon: '💳', ar: 'مدى في مقر فاب لاب', en: 'Mada at FabLab', hintAr: 'ادفع بالبطاقة عند الاستلام', hintEn: 'Pay by card at pickup' },
+  { key: 'bank_transfer', icon: '🏦', ar: 'تحويل بنكي', en: 'Bank transfer', hintAr: 'حوّل المبلغ وارفع الإشعار', hintEn: 'Transfer, then upload the receipt' }
+];
+const PROOF_TYPES = ['png', 'jpg', 'jpeg', 'webp', 'pdf'];
+const MAX_PROOF_BYTES = 10 * 1024 * 1024;
+
+// File → { fileName, fileType, fileSize, fileData (base64) }.
+const readAsFilePayload = (file) => new Promise((resolve, reject) => {
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    const raw = String(e.target.result || '');
+    const b64 = raw.includes(',') ? raw.split(',').pop() : raw;
+    const ext = (file.name.split('.').pop() || '').toLowerCase();
+    resolve({ fileName: file.name, fileType: ext, fileSize: file.size, fileData: b64 });
+  };
+  reader.onerror = reject;
+  reader.readAsDataURL(file);
+});
+
 const StorePage = () => {
   const { i18n } = useTranslation();
   const isRTL = i18n.language === 'ar';
@@ -99,6 +123,20 @@ const StorePage = () => {
   const [orderResult, setOrderResult] = useState(null);
   const [selected, setSelected] = useState(null);
   const [galleryIdx, setGalleryIdx] = useState(0);
+
+  // Payment
+  const [payMethod, setPayMethod] = useState('cash');
+  const [proofFile, setProofFile] = useState(null);
+  const [paySettings, setPaySettings] = useState(null); // { bank, mada } once loaded
+  const [copiedField, setCopiedField] = useState(null);
+
+  // Bank/mada details load the first time checkout opens.
+  useEffect(() => {
+    if (!checkoutOpen || paySettings) return;
+    axios.get(`${API_URL}/public/store/payment-settings`)
+      .then(({ data }) => setPaySettings({ bank: data?.bank || null, mada: data?.mada || null }))
+      .catch(() => setPaySettings({ bank: null, mada: null }));
+  }, [checkoutOpen, paySettings]);
 
   useEffect(() => {
     (async () => {
@@ -228,6 +266,39 @@ const StorePage = () => {
     setDrawer(false);
   };
 
+  const handleProofUpload = async (fileList) => {
+    const file = fileList?.[0];
+    if (!file) return;
+    const ext = (file.name.split('.').pop() || '').toLowerCase();
+    if (!PROOF_TYPES.includes(ext)) {
+      toast.error(isRTL ? 'الصيغة غير مدعومة — اختر صورة أو PDF' : 'Unsupported format — pick an image or PDF');
+      return;
+    }
+    if (file.size > MAX_PROOF_BYTES) {
+      toast.error(isRTL ? 'حجم الملف أكبر من 10 ميجابايت' : 'File is larger than 10 MB');
+      return;
+    }
+    try {
+      setProofFile(await readAsFilePayload(file));
+    } catch {
+      toast.error(isRTL ? 'تعذّر قراءة الملف' : 'Failed to read the file');
+    }
+  };
+
+  const copyToClipboard = async (text, key) => {
+    try {
+      await navigator.clipboard.writeText(text);
+    } catch {
+      // Fallback for browsers without the async clipboard API.
+      const ta = document.createElement('textarea');
+      ta.value = text; document.body.appendChild(ta);
+      ta.select(); try { document.execCommand('copy'); } catch { /* ignore */ }
+      ta.remove();
+    }
+    setCopiedField(key);
+    setTimeout(() => setCopiedField(prev => (prev === key ? null : prev)), 1600);
+  };
+
   const placeOrder = async (e) => {
     e.preventDefault();
     if (!checkout.customerName.trim() || !checkout.customerPhone.trim() || !checkout.customerEmail.trim()) {
@@ -238,19 +309,28 @@ const StorePage = () => {
       toast.error(isRTL ? 'بريد إلكتروني غير صالح' : 'Invalid email');
       return;
     }
+    const method = total > 0 ? payMethod : 'cash';
+    if (method === 'bank_transfer' && !proofFile) {
+      toast.error(isRTL ? 'يرجى رفع إثبات التحويل البنكي (صورة أو PDF)' : 'Please upload the bank transfer proof (image or PDF)');
+      return;
+    }
     setPlacing(true);
     try {
       const { data } = await axios.post(`${API_URL}/public/store/orders`, {
         ...checkout,
         items: cart.lines.map(l => ({ itemId: l.itemId, quantity: l.quantity })),
-        couponCode: couponApplied?.code || null
+        couponCode: couponApplied?.code || null,
+        paymentMethod: method,
+        paymentProof: method === 'bank_transfer' ? proofFile : null
       });
       rememberOrder({ orderId: data.orderId, orderNumber: data.orderNumber, total: data.total });
-      setOrderResult({ orderId: data.orderId, orderNumber: data.orderNumber, total: data.total });
+      setOrderResult({ orderId: data.orderId, orderNumber: data.orderNumber, total: data.total, paymentMethod: data.paymentMethod || method });
       cart.clear();
       setCouponApplied(null);
       setCheckoutOpen(false);
       setCheckout(emptyCheckout);
+      setPayMethod('cash');
+      setProofFile(null);
     } catch (err) {
       toast.error(err?.response?.data?.messageAr || err?.response?.data?.message || (isRTL ? 'تعذّر تقديم الطلب' : 'Order failed'));
     } finally {
@@ -338,12 +418,12 @@ const StorePage = () => {
             </h1>
             <p className="st-hero-sub">
               {isRTL
-                ? 'كل ما تحتاج لتنفيذ مشاريعك في مكان واحد. الدفع نقداً عند الاستلام.'
-                : 'Everything you need for your projects. Cash payment on pickup.'}
+                ? 'كل ما تحتاج لتنفيذ مشاريعك في مكان واحد. ادفع نقداً أو بمدى عند الاستلام، أو بتحويل بنكي.'
+                : 'Everything you need for your projects. Pay cash or mada on pickup, or by bank transfer.'}
             </p>
             <div className="st-hero-badges">
               <span className="st-hero-badge">🚚 {isRTL ? 'استلام سريع' : 'Quick pickup'}</span>
-              <span className="st-hero-badge">💵 {isRTL ? 'دفع نقدي' : 'Cash payment'}</span>
+              <span className="st-hero-badge">💳 {isRTL ? 'نقداً · مدى · تحويل' : 'Cash · Mada · Transfer'}</span>
               <span className="st-hero-badge">✅ {isRTL ? 'ضمان الجودة' : 'Quality guaranteed'}</span>
             </div>
           </div>
@@ -629,6 +709,127 @@ const StorePage = () => {
                   </label>
                 </div>
 
+                {/* Payment method — hidden when a coupon covers the whole total. */}
+                {total > 0 && (
+                  <div className="st-pay">
+                    <div className="st-pay-title">{isRTL ? 'طريقة الدفع' : 'Payment method'}</div>
+                    <div className="st-pay-methods" role="radiogroup" aria-label={isRTL ? 'طريقة الدفع' : 'Payment method'}>
+                      {PAY_METHODS.map(pm => {
+                        const active = payMethod === pm.key;
+                        return (
+                          <button
+                            key={pm.key}
+                            type="button"
+                            role="radio"
+                            aria-checked={active}
+                            className={`st-pay-method ${active ? 'is-active' : ''}`}
+                            onClick={() => setPayMethod(pm.key)}
+                          >
+                            <span className="st-pay-icon" aria-hidden="true">{pm.icon}</span>
+                            <span className="st-pay-text">
+                              <b>{isRTL ? pm.ar : pm.en}</b>
+                              <small>{isRTL ? pm.hintAr : pm.hintEn}</small>
+                            </span>
+                          </button>
+                        );
+                      })}
+                    </div>
+
+                    {payMethod === 'bank_transfer' && (
+                      <>
+                        <div className="st-bank">
+                          <div className="st-bank-head">
+                            <span>{isRTL ? 'تفاصيل التحويل البنكي' : 'Bank transfer details'}</span>
+                            {paySettings?.bank && (
+                              <button
+                                type="button"
+                                className="st-copy-btn"
+                                onClick={() => copyToClipboard(
+                                  `${paySettings.bank.bankName || ''}\n${paySettings.bank.accountHolder || ''}\nIBAN: ${paySettings.bank.iban || ''}`,
+                                  'all'
+                                )}
+                              >
+                                {copiedField === 'all' ? (isRTL ? '✓ نُسخ الكل' : '✓ Copied all') : (isRTL ? '📋 نسخ الكل' : '📋 Copy all')}
+                              </button>
+                            )}
+                          </div>
+                          {!paySettings ? (
+                            <div className="st-bank-empty">{isRTL ? 'جارٍ تحميل تفاصيل الحساب...' : 'Loading account details...'}</div>
+                          ) : !paySettings.bank ? (
+                            <div className="st-bank-empty">
+                              {isRTL
+                                ? 'تفاصيل الحساب غير متوفرة حالياً — تواصل معنا على fablabspec@fablabsahsa.com'
+                                : 'Account details are not available right now — contact fablabspec@fablabsahsa.com'}
+                            </div>
+                          ) : (
+                            <>
+                              {[
+                                { key: 'bank', ar: 'البنك', en: 'Bank', value: paySettings.bank.bankName },
+                                { key: 'holder', ar: 'اسم صاحب الحساب', en: 'Account holder', value: paySettings.bank.accountHolder },
+                                { key: 'iban', ar: 'رقم الآيبان (IBAN)', en: 'IBAN', value: paySettings.bank.iban, ltr: true }
+                              ].map(row => (
+                                <div key={row.key} className="st-bank-row">
+                                  <span className="st-bank-label">{isRTL ? row.ar : row.en}</span>
+                                  <span className={`st-bank-value ${row.ltr ? 'is-ltr' : ''}`} dir={row.ltr ? 'ltr' : undefined}>
+                                    {row.value || '—'}
+                                  </span>
+                                  {row.value && (
+                                    <button
+                                      type="button"
+                                      className="st-copy-btn st-copy-btn--sm"
+                                      onClick={() => copyToClipboard(row.value, row.key)}
+                                      title={isRTL ? 'نسخ' : 'Copy'}
+                                      aria-label={isRTL ? `نسخ ${row.ar}` : `Copy ${row.en}`}
+                                    >
+                                      {copiedField === row.key ? '✓' : '📋'}
+                                    </button>
+                                  )}
+                                </div>
+                              ))}
+                              {paySettings.bank.additionalInfo && (
+                                <div className="st-bank-info">💡 {paySettings.bank.additionalInfo}</div>
+                              )}
+                            </>
+                          )}
+                        </div>
+
+                        <div className="st-proof">
+                          <div className="st-pay-title">{isRTL ? 'إثبات التحويل *' : 'Transfer proof *'}</div>
+                          {proofFile ? (
+                            <div className="st-proof-file">
+                              <span>✓ <b>{proofFile.fileName}</b> <small>({Math.max(1, Math.round(proofFile.fileSize / 1024))} KB)</small></span>
+                              <button type="button" onClick={() => setProofFile(null)} aria-label={isRTL ? 'إزالة الملف' : 'Remove file'}>✕</button>
+                            </div>
+                          ) : (
+                            <label className="st-proof-drop">
+                              <input
+                                type="file"
+                                accept="image/png,image/jpeg,image/webp,application/pdf"
+                                onChange={(e) => { handleProofUpload(e.target.files); e.target.value = ''; }}
+                              />
+                              <span className="st-proof-icon" aria-hidden="true">📤</span>
+                              <b>{isRTL ? 'ارفع صورة أو PDF لإشعار التحويل' : 'Upload a photo or PDF of the transfer receipt'}</b>
+                              <small>{isRTL ? 'PNG, JPG, WebP, PDF · الحد الأقصى 10 ميجابايت' : 'PNG, JPG, WebP, PDF · max 10 MB'}</small>
+                            </label>
+                          )}
+                        </div>
+                      </>
+                    )}
+
+                    {payMethod === 'mada' && (
+                      <div className="st-mada">
+                        <b>💳 {paySettings?.mada?.title || (isRTL ? 'الدفع بمدى' : 'Mada payment')}</b>
+                        <p>
+                          {paySettings?.mada?.instructions || (isRTL
+                            ? 'ادفع بالبطاقة (مدى) في مقر فاب لاب عند استلام طلبك.'
+                            : 'Pay by card (mada) at the FabLab store when you pick up your order.')}
+                        </p>
+                        {paySettings?.mada?.address && <p className="st-mada-addr">📍 {paySettings.mada.address}</p>}
+                      </div>
+                    )}
+                  </div>
+                )}
+
                 <div className="st-checkout-summary">
                   <div className="st-totals">
                     <div><span>{isRTL ? 'المجموع الفرعي' : 'Subtotal'}</span><b>{SAR(cart.subtotal)}</b></div>
@@ -642,7 +843,13 @@ const StorePage = () => {
                     <div className="st-totals-final"><span>{isRTL ? 'الإجمالي' : 'Total'}</span><b>{SAR(total)}</b></div>
                   </div>
                   <div className="st-payment-note">
-                    💵 {isRTL ? 'الدفع نقداً عند الاستلام' : 'Cash payment on pickup'}
+                    {total <= 0
+                      ? (isRTL ? '🎁 لا يوجد مبلغ مستحق' : '🎁 Nothing to pay')
+                      : payMethod === 'bank_transfer'
+                        ? (isRTL ? '🏦 تحويل بنكي — يُراجع الإثبات قبل تأكيد الطلب' : '🏦 Bank transfer — proof is reviewed before confirming')
+                        : payMethod === 'mada'
+                          ? (isRTL ? '💳 الدفع بمدى في مقر فاب لاب عند الاستلام' : '💳 Mada payment at FabLab on pickup')
+                          : (isRTL ? '💵 الدفع نقداً عند الاستلام' : '💵 Cash payment on pickup')}
                   </div>
                 </div>
 
@@ -700,9 +907,17 @@ const StorePage = () => {
                 {isRTL ? 'الإجمالي' : 'Total'}: <b>{SAR(orderResult.total)}</b>
               </div>
               <p>
-                {isRTL
-                  ? 'ستصلك رسالة تأكيد بالبريد مع تفاصيل الفاتورة. سنتواصل معك قريباً للتأكيد.'
-                  : 'You will receive a confirmation email with the invoice. We will contact you shortly.'}
+                {orderResult.paymentMethod === 'bank_transfer'
+                  ? (isRTL
+                    ? 'استلمنا إثبات التحويل وسيتم التحقق منه. ستصلك رسالة بالبريد مع تفاصيل الفاتورة.'
+                    : 'We received your transfer proof and will verify it. You will get an email with the invoice.')
+                  : orderResult.paymentMethod === 'mada'
+                    ? (isRTL
+                      ? 'ادفع بمدى في مقر فاب لاب عند استلام طلبك. ستصلك رسالة تأكيد بالبريد مع تفاصيل الفاتورة.'
+                      : 'Pay by mada at the FabLab store when you pick up. You will get a confirmation email with the invoice.')
+                    : (isRTL
+                      ? 'ستصلك رسالة تأكيد بالبريد مع تفاصيل الفاتورة. سنتواصل معك قريباً للتأكيد.'
+                      : 'You will receive a confirmation email with the invoice. We will contact you shortly.')}
               </p>
               <div className="st-success-actions">
                 <button type="button" className="st-btn st-btn--ghost" onClick={() => setOrderResult(null)}>
@@ -1034,10 +1249,10 @@ const ItemDetailModal = ({ item, isRTL, galleryIdx, setGalleryIdx, onClose, onAd
                 </div>
               </div>
               <div className="st-pdp-trust-item">
-                <span className="st-pdp-trust-icon">💵</span>
+                <span className="st-pdp-trust-icon">💳</span>
                 <div>
-                  <b>{isRTL ? 'دفع نقدي' : 'Cash payment'}</b>
-                  <span>{isRTL ? 'عند الاستلام' : 'On pickup'}</span>
+                  <b>{isRTL ? 'طرق دفع متعددة' : 'Flexible payment'}</b>
+                  <span>{isRTL ? 'نقداً، مدى، أو تحويل' : 'Cash, mada or transfer'}</span>
                 </div>
               </div>
               <div className="st-pdp-trust-item">

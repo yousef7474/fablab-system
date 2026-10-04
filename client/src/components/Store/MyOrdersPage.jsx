@@ -35,6 +35,23 @@ const STATUS_MAP = {
   cancelled: { ar: 'ملغى',          en: 'Cancelled',       bg: '#fee2e2', fg: '#b91c1c', icon: '✕' }
 };
 
+const PAY_METHOD = {
+  cash:          { ar: 'نقداً عند الاستلام', en: 'Cash on pickup' },
+  mada:          { ar: 'مدى في مقر فاب لاب', en: 'Mada at FabLab' },
+  bank_transfer: { ar: 'تحويل بنكي',          en: 'Bank transfer' },
+  free:          { ar: 'مجاني (كود خصم)',     en: 'Free (coupon)' }
+};
+const payMethodLabel = (o, isRTL) => (PAY_METHOD[o.paymentMethod] || PAY_METHOD.cash)[isRTL ? 'ar' : 'en'];
+const payStatusLabel = (o, isRTL) => {
+  if (o.paidAt) return isRTL ? '✓ مدفوع' : '✓ Paid';
+  if (o.paymentMethod === 'bank_transfer') {
+    return o.paymentStatus === 'rejected'
+      ? (isRTL ? '✕ لم يُقبل إثبات التحويل' : '✕ Transfer proof rejected')
+      : (isRTL ? '⏳ التحويل قيد التحقق' : '⏳ Transfer under review');
+  }
+  return isRTL ? 'يُدفع عند الاستلام' : 'Pay on pickup';
+};
+
 const MyOrdersPage = () => {
   const { i18n } = useTranslation();
   const isRTL = i18n.language === 'ar';
@@ -235,7 +252,15 @@ const MyOrdersPage = () => {
                       <span className="mo-status" style={{ background: status.bg, color: status.fg }}>
                         {status.icon} {isRTL ? status.ar : status.en}
                       </span>
-                      {o.paidAt && <span className="mo-paid">💵 {isRTL ? 'مدفوع' : 'Paid'}</span>}
+                      {o.paidAt
+                        ? <span className="mo-paid">💵 {isRTL ? 'مدفوع' : 'Paid'}</span>
+                        : o.paymentMethod === 'bank_transfer' && o.status !== 'cancelled' && (
+                          <span className={`mo-paid ${o.paymentStatus === 'rejected' ? 'is-rejected' : 'is-review'}`}>
+                            🏦 {o.paymentStatus === 'rejected'
+                              ? (isRTL ? 'لم يُقبل التحويل' : 'Transfer rejected')
+                              : (isRTL ? 'التحويل قيد التحقق' : 'Transfer under review')}
+                          </span>
+                        )}
                     </div>
                     <button
                       type="button"
@@ -282,7 +307,8 @@ const MyOrdersPage = () => {
                 <div className="mo-info">
                   <div><span>{isRTL ? 'التاريخ' : 'Date'}</span><b>{fmtWhen(selectedOrder.createdAt, isRTL)}</b></div>
                   <div><span>{isRTL ? 'الحالة' : 'Status'}</span><b>{(STATUS_MAP[selectedOrder.status] || STATUS_MAP.pending)[isRTL ? 'ar' : 'en']}</b></div>
-                  <div><span>{isRTL ? 'الدفع' : 'Payment'}</span><b>{selectedOrder.paidAt ? (isRTL ? '✓ مدفوع' : '✓ Paid') : (isRTL ? 'نقداً عند الاستلام' : 'Cash on pickup')}</b></div>
+                  <div><span>{isRTL ? 'طريقة الدفع' : 'Payment method'}</span><b>{payMethodLabel(selectedOrder, isRTL)}</b></div>
+                  <div><span>{isRTL ? 'حالة الدفع' : 'Payment status'}</span><b>{payStatusLabel(selectedOrder, isRTL)}</b></div>
                 </div>
 
                 <table className="mo-items-table">

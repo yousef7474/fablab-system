@@ -199,6 +199,8 @@
   color: #166534;
   font-weight: 700;
 }
+.mo-paid.is-review { color: #1d4ed8; }
+.mo-paid.is-rejected { color: #b91c1c; }
 
 @media (max-width: 720px) {
   .mo-card { grid-template-columns: minmax(0, 1fr); gap: 10px; }

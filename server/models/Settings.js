@@ -1,5 +1,6 @@
 const { DataTypes } = require('sequelize');
 const { sequelize } = require('../config/database');
+const { DEFAULT_PRINT3D_OPTIONS } = require('../utils/print3dOptions');
 
 const Settings = sequelize.define('Settings', {
   key: {
@@ -32,6 +33,9 @@ Settings.seedDefaults = async () => {
     { key: 'print3d_multi_color_fee', value: 20 },
     { key: 'print3d_min_charge',      value: 25 }, // minimum charge per print
     { key: 'print3d_supported_files', value: ['stl', 'obj', '3mf', 'step', 'stp', 'ply', 'gcode', 'zip'] },
+    // Materials + colors the customer can pick on the 3D print form.
+    // Managers edit the list from the 3D Printing tab.
+    { key: 'print3d_options',         value: DEFAULT_PRINT3D_OPTIONS },
     // FabLab store category library — admin picks from this list when
     // adding a new item, or types a new one which gets appended here
     // for future use.

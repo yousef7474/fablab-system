@@ -17,6 +17,28 @@ const STATUS_BADGES = {
   cancelled: { text: 'ملغى',          bg: '#fee2e2', fg: '#b91c1c', border: '#fecaca' }
 };
 
+// Payment method / review status — same options as workshops.
+const PAY_METHODS = {
+  cash:          { icon: '💵', ar: 'نقداً عند الاستلام', en: 'Cash on pickup' },
+  mada:          { icon: '💳', ar: 'مدى في المقر',       en: 'Mada at FabLab' },
+  bank_transfer: { icon: '🏦', ar: 'تحويل بنكي',         en: 'Bank transfer' },
+  free:          { icon: '🎁', ar: 'مجاني (كود خصم)',    en: 'Free (coupon)' }
+};
+const PAY_STATUS = {
+  pending:  { ar: 'بانتظار الدفع', arBank: 'بانتظار التحقق', en: 'Pending', enBank: 'Awaiting review' },
+  verified: { ar: 'مدفوع',         en: 'Paid' },
+  rejected: { ar: 'مرفوض',         en: 'Rejected' }
+};
+const payMethodOf = (o) => PAY_METHODS[o.paymentMethod] || PAY_METHODS.cash;
+const payStatusText = (o, isRTL) => {
+  const key = o.paidAt ? 'verified' : (PAY_STATUS[o.paymentStatus] ? o.paymentStatus : 'pending');
+  const s = PAY_STATUS[key];
+  const bank = o.paymentMethod === 'bank_transfer';
+  return isRTL ? ((bank && s.arBank) || s.ar) : ((bank && s.enBank) || s.en);
+};
+const needsTransferReview = (o) =>
+  o.paymentMethod === 'bank_transfer' && !o.paidAt && o.paymentStatus !== 'rejected' && o.status !== 'cancelled';
+
 const emptyItem = {
   name: '', nameEn: '', description: '', descriptionEn: '',
   price: 0, stock: 0, category: '', images: [],
@@ -59,6 +81,7 @@ const StoreTab = () => {
   const [orderAdminNote, setOrderAdminNote] = useState('');
   const [notifyCustomer, setNotifyCustomer] = useState(true);
   const [savingOrder, setSavingOrder] = useState(false);
+  const [savingPayment, setSavingPayment] = useState(false);
 
   const [orderFilter, setOrderFilter] = useState('all');
   const [orderSearch, setOrderSearch] = useState('');
@@ -102,7 +125,8 @@ const StoreTab = () => {
   // ---- Orders filter ----
   const filteredOrders = useMemo(() => {
     let list = orders;
-    if (orderFilter !== 'all') list = list.filter(o => o.status === orderFilter);
+    if (orderFilter === 'bank_review') list = list.filter(needsTransferReview);
+    else if (orderFilter !== 'all') list = list.filter(o => o.status === orderFilter);
     if (orderSearch.trim()) {
       const q = orderSearch.trim().toLowerCase();
       list = list.filter(o =>
@@ -256,11 +280,32 @@ const StoreTab = () => {
 
   const markPaid = async (order) => {
     try {
-      await api.post(`/store/orders/${order.orderId}/mark-paid`);
+      const { data } = await api.post(`/store/orders/${order.orderId}/mark-paid`);
       toast.success('تم تسجيل الدفع');
       await fetchAll();
-      setOrderModal(o => o ? { ...o, paidAt: new Date().toISOString() } : o);
+      setOrderModal(o => o ? { ...o, paidAt: new Date().toISOString(), paymentStatus: 'verified', ...(data || {}) } : o);
     } catch { toast.error('تعذّر الحفظ'); }
+  };
+
+  // Payment review (mirrors the workshop verify-payment select).
+  const updatePaymentStatus = async (order, paymentStatus) => {
+    setSavingPayment(true);
+    try {
+      const { data } = await api.patch(`/store/orders/${order.orderId}/payment`, { paymentStatus });
+      toast.success(isRTL ? 'تم تحديث حالة الدفع' : 'Payment status updated');
+      setOrderModal(o => (o && o.orderId === order.orderId ? { ...o, ...(data || {}), paymentStatus } : o));
+      await fetchAll();
+    } catch (err) {
+      toast.error(err?.response?.data?.messageAr || err?.response?.data?.message || (isRTL ? 'تعذّر الحفظ' : 'Save failed'));
+    } finally {
+      setSavingPayment(false);
+    }
+  };
+
+  // Opens the uploaded transfer proof (image / PDF) in a new tab.
+  const viewPaymentProof = (order) => {
+    const token = localStorage.getItem('adminToken') || '';
+    window.open(`${api.defaults.baseURL}/store/orders/${order.orderId}/payment-proof?token=${encodeURIComponent(token)}`, '_blank');
   };
 
   // ---- Coupon actions ----
@@ -651,7 +696,7 @@ const StoreTab = () => {
         <div class="dates">
           <span>تاريخ الإصدار</span><b>${esc(invoiceDate)}</b>
           <span>الاستحقاق</span><b>${esc(dueLabel)}</b>
-          <span>طريقة الدفع</span><b>نقداً عند الاستلام</b>
+          <span>طريقة الدفع</span><b>${esc(payMethodOf(o).ar)}</b>
         </div>
       </div>
     </div>
@@ -692,9 +737,9 @@ const StoreTab = () => {
       <div class="payment-info">
         <div class="pi-title">معلومات الدفع</div>
         <div class="pi-row"><b>الحالة: </b>${esc(STATUS_BADGES[o.status]?.text || o.status)}</div>
-        <div class="pi-row"><b>حالة الدفع: </b>${paid ? '✓ مدفوع بالكامل' : 'بانتظار الدفع عند الاستلام'}</div>
+        <div class="pi-row"><b>حالة الدفع: </b>${paid ? '✓ مدفوع بالكامل' : o.paymentMethod === 'bank_transfer' ? esc(payStatusText(o, true)) : 'بانتظار الدفع عند الاستلام'}</div>
         ${o.paidAt ? `<div class="pi-row"><b>تاريخ الدفع: </b><span style="direction:ltr">${esc(new Date(o.paidAt).toLocaleDateString('ar-SA-u-ca-gregory-nu-latn', { calendar: 'gregory' }))}</span></div>` : ''}
-        <div class="pi-row" style="margin-top:6px;padding-top:6px;border-top:1px dashed #d1d5db"><b>طريقة الدفع: </b>نقداً</div>
+        <div class="pi-row" style="margin-top:6px;padding-top:6px;border-top:1px dashed #d1d5db"><b>طريقة الدفع: </b>${esc(payMethodOf(o).ar)}</div>
       </div>
       <table class="totals">
         <tr><td class="label">المجموع الفرعي</td><td class="val">${SAR(o.subtotal)}</td></tr>
@@ -783,6 +828,7 @@ const StoreTab = () => {
         <OrdersPanel
           orders={filteredOrders}
           totalOrders={orders.length}
+          reviewCount={orders.filter(needsTransferReview).length}
           filter={orderFilter}
           setFilter={setOrderFilter}
           search={orderSearch}
@@ -1011,6 +1057,47 @@ const StoreTab = () => {
                   {orderModal.notes && <div className="stt-order-info-full"><span>ملاحظات العميل</span><b>{orderModal.notes}</b></div>}
                 </div>
 
+                {/* Payment — method, review status, transfer proof */}
+                <div className={`stt-pay-panel ${needsTransferReview(orderModal) ? 'is-review' : ''}`}>
+                  <div className="stt-pay-panel-main">
+                    <div>
+                      <span className="stt-pay-panel-label">{isRTL ? 'طريقة الدفع' : 'Payment method'}</span>
+                      <b>{payMethodOf(orderModal).icon} {isRTL ? payMethodOf(orderModal).ar : payMethodOf(orderModal).en}</b>
+                    </div>
+                    <span className={`stt-pay-state is-${orderModal.paidAt ? 'verified' : (orderModal.paymentStatus || 'pending')}`}>
+                      {payStatusText(orderModal, isRTL)}
+                    </span>
+                  </div>
+                  {orderModal.paymentReviewedBy && (
+                    <div className="stt-pay-panel-meta">
+                      {isRTL ? 'آخر مراجعة: ' : 'Last reviewed: '}{orderModal.paymentReviewedBy} · {fmtWhen(orderModal.paymentReviewedAt)}
+                    </div>
+                  )}
+                  {orderModal.paymentMethod !== 'free' && (
+                    <div className="stt-pay-panel-actions">
+                      {orderModal.paymentMethod === 'bank_transfer' && (
+                        <button type="button" className="stt-btn stt-btn--ghost" onClick={() => viewPaymentProof(orderModal)}>
+                          📄 {isRTL ? 'عرض إثبات التحويل' : 'View transfer proof'}
+                        </button>
+                      )}
+                      <label className="stt-pay-select">
+                        <span>{isRTL ? 'حالة الدفع' : 'Payment status'}</span>
+                        <select
+                          value={orderModal.paidAt ? 'verified' : (orderModal.paymentStatus || 'pending')}
+                          onChange={e => updatePaymentStatus(orderModal, e.target.value)}
+                          disabled={savingPayment}
+                        >
+                          <option value="pending">{orderModal.paymentMethod === 'bank_transfer' ? (isRTL ? 'قيد المراجعة' : 'Pending review') : (isRTL ? 'بانتظار الدفع' : 'Pending')}</option>
+                          <option value="verified">{isRTL ? 'تم التحقق — مدفوع' : 'Verified — paid'}</option>
+                          {(orderModal.paymentMethod === 'bank_transfer' || orderModal.paymentStatus === 'rejected') && (
+                            <option value="rejected">{isRTL ? 'مرفوض' : 'Rejected'}</option>
+                          )}
+                        </select>
+                      </label>
+                    </div>
+                  )}
+                </div>
+
                 <table className="stt-order-items">
                   <thead>
                     <tr><th>الصنف</th><th>الكمية</th><th>السعر</th><th>الإجمالي</th></tr>
@@ -1121,7 +1208,7 @@ const ItemsPanel = ({ items, onCreate, onEdit, onDelete, onToggle }) => (
   </div>
 );
 
-const OrdersPanel = ({ orders, totalOrders, filter, setFilter, search, setSearch, onOpen, onPrint }) => (
+const OrdersPanel = ({ orders, totalOrders, reviewCount, filter, setFilter, search, setSearch, onOpen, onPrint }) => (
   <div>
     <div className="stt-toolbar">
       <input
@@ -1132,13 +1219,15 @@ const OrdersPanel = ({ orders, totalOrders, filter, setFilter, search, setSearch
         className="stt-search"
       />
       <div className="stt-filters">
-        {['all', 'pending', 'confirmed', 'ready', 'completed', 'cancelled'].map(f => (
+        {['all', 'pending', 'confirmed', 'ready', 'completed', 'cancelled', 'bank_review'].map(f => (
           <button
             key={f}
             className={`stt-filter ${filter === f ? 'is-active' : ''}`}
             onClick={() => setFilter(f)}
           >
-            {f === 'all' ? 'الكل' : STATUS_BADGES[f]?.text}
+            {f === 'all' ? 'الكل'
+              : f === 'bank_review' ? `🏦 تحويلات للتحقق${reviewCount ? ` (${reviewCount})` : ''}`
+              : STATUS_BADGES[f]?.text}
           </button>
         ))}
       </div>
@@ -1158,13 +1247,21 @@ const OrdersPanel = ({ orders, totalOrders, filter, setFilter, search, setSearch
             </div>
             <div className="stt-order-items-count">{(o.items || []).length} صنف</div>
             <div className="stt-order-total">{SAR(o.total)}</div>
-            <div>
+            <div className="stt-order-state">
               <span className="stt-status-badge" style={{
                 background: STATUS_BADGES[o.status]?.bg,
                 color: STATUS_BADGES[o.status]?.fg,
                 borderColor: STATUS_BADGES[o.status]?.border
               }}>{STATUS_BADGES[o.status]?.text}</span>
               {o.paidAt && <span className="stt-paid-pill" style={{ marginInlineStart: 6 }}>💵</span>}
+              {o.paymentMethod && o.paymentMethod !== 'cash' && (
+                <span
+                  className={`stt-method-pill ${needsTransferReview(o) ? 'is-review' : ''} ${o.paymentStatus === 'rejected' && !o.paidAt ? 'is-rejected' : ''}`}
+                  title={`${payMethodOf(o).ar} · ${payStatusText(o, true)}`}
+                >
+                  {payMethodOf(o).icon}{o.paymentMethod === 'bank_transfer' && !o.paidAt ? ` ${payStatusText(o, true)}` : ''}
+                </span>
+              )}
             </div>
             <div className="stt-order-when">{fmtWhen(o.createdAt)}</div>
             <button onClick={(e) => { e.stopPropagation(); onPrint(o); }} className="stt-icon-btn" title="طباعة">🖨️</button>

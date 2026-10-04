@@ -124,7 +124,12 @@ const WorkshopStudent = sequelize.define('WorkshopStudent', {
   // shape. `age` is derived from birthDate on the server.
   birthDate:      { type: DataTypes.DATEONLY, allowNull: true },
   birthDateHijri: { type: DataTypes.STRING(10), allowNull: true },
-  idPhoto:        { type: DataTypes.JSON, allowNull: true }
+  idPhoto:        { type: DataTypes.JSON, allowNull: true },
+  // Post-workshop survey (utils/workshopSurvey.js). The certificate is
+  // only issued once the student attended enough days AND submitted it.
+  surveyResponse:    { type: DataTypes.JSON, allowNull: true },
+  surveySubmittedAt: { type: DataTypes.DATE, allowNull: true },
+  certificateSentAt: { type: DataTypes.DATE, allowNull: true }
 }, {
   tableName: 'workshop_students',
   timestamps: true,

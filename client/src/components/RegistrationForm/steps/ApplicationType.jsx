@@ -1,10 +1,106 @@
-import React from 'react';
+import React, { useState, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
 import { motion } from 'framer-motion';
+import api from '../../../config/api';
+import '../RegistrationGuide.css';
 
-const ApplicationType = ({ formData, onChange, onNext }) => {
+// "Entity" (كيان) registrations are invite-only: the server checks an
+// access password and returns a short-lived token that goes with the
+// registration.
+const EntityPasswordDialog = ({ theme, isRTL, onUnlock, onClose }) => {
+  const [password, setPassword] = useState('');
+  const [show, setShow] = useState(false);
+  const [error, setError] = useState('');
+  const [busy, setBusy] = useState(false);
+  const inputRef = useRef(null);
+
+  useEffect(() => {
+    inputRef.current?.focus();
+    const onKey = (e) => { if (e.key === 'Escape') onClose(); };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [onClose]);
+
+  const submit = async (e) => {
+    e.preventDefault();
+    if (!password.trim() || busy) return;
+    setBusy(true);
+    setError('');
+    try {
+      const { data } = await api.post('/registration/entity-access', { password });
+      onUnlock(data.token);
+    } catch (err) {
+      const d = err.response?.data;
+      setError((isRTL ? d?.messageAr : d?.message) || (isRTL ? 'تعذّر التحقق — حاول مرة أخرى' : 'Could not verify — please try again'));
+      setPassword('');
+      inputRef.current?.focus();
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return createPortal(
+    <div className="rg-overlay" data-theme={theme === 'light' ? 'light' : 'dark'} dir={isRTL ? 'rtl' : 'ltr'} onClick={onClose}>
+      <motion.form
+        className="ent-dialog"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="ent-title"
+        onClick={e => e.stopPropagation()}
+        onSubmit={submit}
+        initial={{ opacity: 0, y: 16, scale: 0.97 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        transition={{ type: 'spring', stiffness: 320, damping: 26 }}
+      >
+        <div className="ent-icon" aria-hidden="true">
+          <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <rect x="3" y="11" width="18" height="11" rx="2" />
+            <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+          </svg>
+        </div>
+        <h3 id="ent-title" className="ent-title">{isRTL ? 'التسجيل ككيان' : 'Register as an Entity'}</h3>
+        <p className="ent-text">
+          {isRTL
+            ? 'هذا النوع مخصص للجهات المتعاونة مع فاب لاب. أدخل كلمة المرور التي زوّدتك بها إدارة فاب لاب للمتابعة.'
+            : 'This type is for organisations partnering with FabLab. Enter the password provided by the FabLab team to continue.'}
+        </p>
+        <div className={`ent-field ${error ? 'has-error' : ''}`}>
+          <input
+            ref={inputRef}
+            type={show ? 'text' : 'password'}
+            value={password}
+            onChange={e => { setPassword(e.target.value); setError(''); }}
+            placeholder={isRTL ? 'كلمة المرور' : 'Password'}
+            autoComplete="off"
+            dir="ltr"
+            aria-invalid={!!error}
+          />
+          <button type="button" className="ent-eye" onClick={() => setShow(v => !v)} aria-label={show ? (isRTL ? 'إخفاء' : 'Hide') : (isRTL ? 'إظهار' : 'Show')}>
+            {show ? (
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24" /><line x1="1" y1="1" x2="23" y2="23" /></svg>
+            ) : (
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" /><circle cx="12" cy="12" r="3" /></svg>
+            )}
+          </button>
+        </div>
+        {error && <div className="ent-error" role="alert">{error}</div>}
+        <div className="ent-actions">
+          <button type="button" className="ent-btn ghost" onClick={onClose}>{isRTL ? 'إلغاء' : 'Cancel'}</button>
+          <button type="submit" className="ent-btn primary" disabled={!password.trim() || busy}>
+            {busy ? (isRTL ? 'جارٍ التحقق…' : 'Checking…') : (isRTL ? 'متابعة' : 'Continue')}
+          </button>
+        </div>
+      </motion.form>
+    </div>,
+    document.body
+  );
+};
+
+const ApplicationType = ({ formData, onChange, onNext, theme }) => {
   const { t, i18n } = useTranslation();
   const isRTL = i18n.language === 'ar';
+  const [entityPrompt, setEntityPrompt] = useState(null); // 'select' | 'next' | null
 
   const applicationTypes = [
     {
@@ -82,8 +178,31 @@ const ApplicationType = ({ formData, onChange, onNext }) => {
     }
   ];
 
+  const entityUnlocked = !!formData.entityAccessToken;
+
   const handleSelect = (type) => {
+    if (type === 'Entity' && !entityUnlocked) {
+      setEntityPrompt('select');
+      return;
+    }
     onChange({ applicationType: type });
+  };
+
+  // Entity can arrive pre-selected (returning user, the guide, a saved
+  // draft) — ask for the password before moving on.
+  const handleNext = () => {
+    if (formData.applicationType === 'Entity' && !entityUnlocked) {
+      setEntityPrompt('next');
+      return;
+    }
+    onNext();
+  };
+
+  const handleUnlock = (token) => {
+    const thenNext = entityPrompt === 'next';
+    setEntityPrompt(null);
+    onChange({ applicationType: 'Entity', entityAccessToken: token });
+    if (thenNext) onNext();
   };
 
   const canProceed = formData.applicationType !== '';
@@ -112,6 +231,11 @@ const ApplicationType = ({ formData, onChange, onNext }) => {
             </div>
             <div className="selection-card-title">
               {isRTL ? type.labelAr : type.label}
+              {type.value === 'Entity' && (
+                <span className="ent-lock-tag" title={isRTL ? 'يتطلب كلمة مرور' : 'Password required'}>
+                  {entityUnlocked ? '🔓' : '🔒'}
+                </span>
+              )}
             </div>
             <div className="selection-card-description">
               {isRTL ? type.descriptionAr : type.descriptionEn}
@@ -124,7 +248,7 @@ const ApplicationType = ({ formData, onChange, onNext }) => {
         <div />
         <button
           className="btn btn-primary"
-          onClick={onNext}
+          onClick={handleNext}
           disabled={!canProceed}
         >
           {t('next')}
@@ -133,6 +257,15 @@ const ApplicationType = ({ formData, onChange, onNext }) => {
           </svg>
         </button>
       </div>
+
+      {entityPrompt && (
+        <EntityPasswordDialog
+          theme={theme}
+          isRTL={isRTL}
+          onUnlock={handleUnlock}
+          onClose={() => setEntityPrompt(null)}
+        />
+      )}
     </div>
   );
 };

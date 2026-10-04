@@ -192,19 +192,40 @@ exports.getAllRegistrations = async (req, res) => {
       }
     }
 
-    // Search by name, ID, phone, etc.
-    if (search) {
-      andConditions.push({
-        [Op.or]: [
-          { registrationId: { [Op.like]: `%${search}%` } },
-          { '$user.userId$': { [Op.like]: `%${search}%` } },
-          { '$user.firstName$': { [Op.like]: `%${search}%` } },
-          { '$user.lastName$': { [Op.like]: `%${search}%` } },
-          { '$user.name$': { [Op.like]: `%${search}%` } },
-          { '$user.nationalId$': { [Op.like]: `%${search}%` } },
-          { '$user.phoneNumber$': { [Op.like]: `%${search}%` } }
-        ]
-      });
+    // Search — case-insensitive and tolerant of Arabic spelling
+    // variants (أ/إ/آ→ا, ة→ه, ى→ي) on both sides; matches the full
+    // "first last" name, IDs, email and organisation; phones compare
+    // digits only (0555… / +966555… / 966555… all match); "R00042" or
+    // "42" find "R#00042". Plain LIKE was case-sensitive on Postgres
+    // and checked first/last name separately, so many searches
+    // returned nothing.
+    const term = String(search || '').trim();
+    if (term) {
+      const seq = Registration.sequelize;
+      const col = (c) => seq.col(c);
+      const fold = (expr) => seq.fn('translate', seq.fn('lower', expr), 'أإآةى', 'اااهي');
+      const folded = term.toLowerCase().replace(/[أإآ]/g, 'ا').replace(/ة/g, 'ه').replace(/ى/g, 'ي');
+      const pattern = `%${folded.replace(/[\\%_]/g, (c) => `\\${c}`)}%`;
+      const like = (expr) => seq.where(fold(expr), { [Op.like]: pattern });
+      const ors = [
+        like(col('Registration.registrationId')),
+        like(col('user.userId')),
+        like(seq.fn('concat_ws', ' ', col('user.firstName'), col('user.lastName'))),
+        like(col('user.name')),
+        like(col('user.nationalId')),
+        like(col('user.email')),
+        like(col('user.entityName')),
+        like(col('user.visitingEntity'))
+      ];
+      const phoneDigits = term.replace(/[^0-9]/g, '').replace(/^(00966|966|0)/, '');
+      if (phoneDigits.length >= 4 && !/[a-z؀-ۿ]/i.test(term)) {
+        ors.push(seq.where(seq.fn('regexp_replace', col('user.phoneNumber'), '[^0-9]', '', 'g'), { [Op.like]: `%${phoneDigits}%` }));
+      }
+      const idDigits = term.replace(/^r\s*#?\s*/i, '').replace(/^#/, '');
+      if (/^\d+$/.test(idDigits)) {
+        ors.push(seq.where(col('Registration.registrationId'), { [Op.like]: `%${idDigits}%` }));
+      }
+      andConditions.push({ [Op.or]: ors });
     }
 
     if (andConditions.length > 0) {
@@ -793,16 +814,29 @@ exports.getAllUsers = async (req, res) => {
       whereClause.applicationType = applicationType;
     }
 
-    if (search) {
-      whereClause[Op.or] = [
-        { userId: { [Op.like]: `%${search}%` } },
-        { firstName: { [Op.like]: `%${search}%` } },
-        { lastName: { [Op.like]: `%${search}%` } },
-        { name: { [Op.like]: `%${search}%` } },
-        { email: { [Op.like]: `%${search}%` } },
-        { phoneNumber: { [Op.like]: `%${search}%` } },
-        { nationalId: { [Op.like]: `%${search}%` } }
+    // Same matching rules as the registrations search (case-insensitive,
+    // Arabic spelling variants folded, full name, digits-only phone).
+    const term = String(search || '').trim();
+    if (term) {
+      const seq = User.sequelize;
+      const col = (c) => seq.col(c);
+      const fold = (expr) => seq.fn('translate', seq.fn('lower', expr), 'أإآةى', 'اااهي');
+      const folded = term.toLowerCase().replace(/[أإآ]/g, 'ا').replace(/ة/g, 'ه').replace(/ى/g, 'ي');
+      const pattern = `%${folded.replace(/[\\%_]/g, (c) => `\\${c}`)}%`;
+      const like = (expr) => seq.where(fold(expr), { [Op.like]: pattern });
+      const ors = [
+        like(col('userId')),
+        like(seq.fn('concat_ws', ' ', col('firstName'), col('lastName'))),
+        like(col('name')),
+        like(col('email')),
+        like(col('nationalId')),
+        like(col('entityName'))
       ];
+      const phoneDigits = term.replace(/[^0-9]/g, '').replace(/^(00966|966|0)/, '');
+      if (phoneDigits.length >= 4 && !/[a-z؀-ۿ]/i.test(term)) {
+        ors.push(seq.where(seq.fn('regexp_replace', col('phoneNumber'), '[^0-9]', '', 'g'), { [Op.like]: `%${phoneDigits}%` }));
+      }
+      whereClause[Op.or] = ors;
     }
 
     const offset = (page - 1) * limit;

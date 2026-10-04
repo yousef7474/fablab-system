@@ -28,6 +28,9 @@ router.get('/orders',           orders.list);
 router.get('/orders/:id',       orders.get);
 router.patch('/orders/:id/status',    requireManager, orders.updateStatus);
 router.post('/orders/:id/mark-paid',  requireManager, orders.markPaid);
+router.patch('/orders/:id/payment',   requireManager, orders.updatePayment);
+// Transfer proof viewer — opened in a new tab with ?token= (see auth.js).
+router.get('/orders/:id/payment-proof', orders.downloadPaymentProof);
 router.delete('/orders/:id',    requireManager, orders.remove);
 
 module.exports = router;
