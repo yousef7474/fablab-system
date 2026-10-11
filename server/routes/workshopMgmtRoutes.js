@@ -38,6 +38,8 @@ router.get('/active', controller.getActiveWorkshops);
 // Public education-workshop lookup (single workshop by ID, only if
 // isEducation=true). Used by the shareable /workshop/:id URL.
 router.get('/edu/:id', controller.getEducationWorkshop);
+// Teachers / instructors register through the same education link.
+router.post('/edu/:id/teachers', controller.registerEducationTeacher);
 // Admin toggle for the registrationEnabled flag (bulk route first so
 // "bulk" isn't captured as an :id).
 router.patch('/bulk/registration-enabled', adminAuth, requireManager, controller.bulkToggleRegistration);
@@ -62,6 +64,9 @@ router.put('/admin/payment-settings',  adminAuth, requireManager, controller.upd
 router.get('/admin/terms',             adminAuth, controller.getAdminTerms);
 router.put('/admin/terms',             adminAuth, requireManager, controller.updateAdminTerms);
 router.get('/admin/survey',            adminAuth, controller.getSurveyQuestions);
+router.get('/admin/edu-teachers',      adminAuth, controller.listEducationTeachers);
+router.get('/teachers/:id/file',       adminAuth, controller.downloadTeacherFile);
+router.delete('/teachers/:id',         adminAuth, controller.deleteEducationTeacher);
 router.put('/admin/survey',            adminAuth, requireManager, controller.updateSurveyQuestions);
 
 // Admin coupons CRUD (manager-only for writes; any admin can list).

@@ -1183,6 +1183,51 @@ const sendWorkshopPaymentInstructions = async (email, name, workshop, student, {
  * has been verified. Includes the workshop details + a link to the
  * printable invoice.
  */
+// Confirmation to a teacher / instructor who registered through an
+// education workshop link: workshop, chosen room and their requirements.
+const sendEducationTeacherConfirmation = async (teacher, workshop, roomLabel) => {
+  if (!teacher || !teacher.email) return;
+  if (!process.env.SENDGRID_API_KEY || !process.env.SENDGRID_FROM_EMAIL) {
+    throw new Error('Email is not configured');
+  }
+  const esc = (v) => String(v == null ? '' : v).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  const fmtDate = (d) => (d ? String(d).slice(0, 10).split('-').reverse().join('/') : '');
+  const fmtTime = (t) => (t ? String(t).slice(0, 5) : '');
+  const dates = fmtDate(workshop.startDate) + (workshop.endDate && workshop.endDate !== workshop.startDate ? ` – ${fmtDate(workshop.endDate)}` : '');
+  const times = workshop.startTime ? `${fmtTime(workshop.startTime)}${workshop.endTime ? ` – ${fmtTime(workshop.endTime)}` : ''}` : '';
+  const row = (k, v) => `<tr><td style="padding:8px 14px;color:#64748b;width:140px;border-bottom:1px solid #e5e7eb">${k}</td><td style="padding:8px 14px;font-weight:700;border-bottom:1px solid #e5e7eb">${v}</td></tr>`;
+  const msg = {
+    to: teacher.email,
+    from: { email: process.env.SENDGRID_FROM_EMAIL, name: process.env.SENDGRID_FROM_NAME || 'FABLAB Al-Ahsa' },
+    subject: `تأكيد تسجيلك معلماً/مدرباً في ورشة: ${workshop.title} | Registration confirmed`,
+    html: `<div dir="rtl" style="font-family:Arial,sans-serif;max-width:620px;margin:0 auto;background:#fff;border:1px solid #e2e8f0;border-radius:12px;overflow:hidden;">
+<div style="background:linear-gradient(135deg,#b91c1c,#EE2329);padding:22px;text-align:center;color:#fff;">
+<img src="https://fablabsahsa.com/fablab.png" alt="FabLab" style="height:46px;filter:brightness(0) invert(1);"/>
+<h2 style="margin:10px 0 0;font-size:19px;">تم تسجيلك بنجاح ✓</h2>
+<p style="margin:4px 0 0;font-size:12px;opacity:.85">معلم / مدرب — ورشة تعليمية</p>
+</div>
+<div style="padding:22px 24px;color:#334155;font-size:14px;line-height:1.8;">
+<p style="margin:0 0 12px;">مرحباً <b>${esc(teacher.fullName)}</b>،</p>
+<p style="margin:0 0 14px;">شكراً لتسجيلك في الورشة التعليمية بفاب لاب الأحساء. استلمنا بياناتك ومتطلباتك وسنقوم بتجهيزها قبل موعد الورشة.</p>
+<table style="width:100%;font-size:13px;border-collapse:collapse;background:#f8fafc;border-radius:10px;overflow:hidden;margin:0 0 16px">
+${row('الورشة', esc(workshop.title))}
+${row('التاريخ', `<span dir="ltr">${esc(dates)}</span>`)}
+${times ? row('الوقت', `<span dir="ltr">${esc(times)}</span>`) : ''}
+${row('القاعة', esc(roomLabel))}
+${row('الوظيفة / التخصص', esc(teacher.jobTitle))}
+</table>
+${teacher.requirements ? `<div style="background:#eff6ff;border-inline-start:3px solid #3b82f6;border-radius:8px;padding:12px 14px;margin:0 0 12px;"><div style="font-weight:700;color:#1d4ed8;margin-bottom:4px;">المتطلبات التي أرسلتها</div><div style="white-space:pre-wrap;color:#1e3a8a;">${esc(teacher.requirements)}</div></div>` : ''}
+${teacher.requirementsFileName ? `<p style="margin:0 0 12px;font-size:13px;">📎 الملف المرفق: <b>${esc(teacher.requirementsFileName)}</b></p>` : ''}
+<p style="margin:0;font-size:13px;color:#64748b;">لأي تعديل على المتطلبات يرجى التواصل مع فاب لاب الأحساء.</p>
+</div>
+<div dir="ltr" style="padding:12px 24px;border-top:1px solid #e2e8f0;font-size:12px;color:#64748b;">You are registered as a teacher/instructor for <b>${esc(workshop.title)}</b> (${esc(dates)}) in <b>${esc(roomLabel)}</b>. We will prepare your requirements before the workshop.</div>
+<div style="background:#f8fafc;padding:12px;text-align:center;font-size:10px;color:#94a3b8;">فاب لاب الأحساء — مختبر التصنيع الرقمي | FABLAB Al-Ahsa</div>
+</div>`
+  };
+  await sgMail.send(msg);
+  console.log(`✅ Education teacher confirmation sent to ${teacher.email}`);
+};
+
 const sendWorkshopPaymentConfirmed = async (email, name, workshop, student) => {
   try {
     if (!process.env.SENDGRID_API_KEY || !process.env.SENDGRID_FROM_EMAIL) return;
@@ -1418,5 +1463,6 @@ module.exports = {
   sendWeeklyActivityCreditEmail,
   sendTaskStatusChangedEmail,
   sendWorkshopPaymentInstructions,
-  sendWorkshopPaymentConfirmed
+  sendWorkshopPaymentConfirmed,
+  sendEducationTeacherConfirmation
 };

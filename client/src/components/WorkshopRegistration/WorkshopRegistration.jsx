@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'react-toastify';
 import axios from 'axios';
+import EducationTeacherForm from './EducationTeacherForm';
 import './WorkshopRegistration.css';
 
 const API_URL = process.env.NODE_ENV === 'production' ? '/api' : (process.env.REACT_APP_API_URL || 'http://localhost:5000/api');
@@ -38,6 +39,17 @@ const WorkshopRegistration = () => {
   const isSingleMode = !!routeWorkshopId;
   const [singleWorkshopMeta, setSingleWorkshopMeta] = useState(null); // { closedReason, isOpen, ... }
   const [singleFetchError, setSingleFetchError] = useState(null);
+  // Education links offer two registrations: a student (the existing
+  // steps) or a teacher / instructor (EducationTeacherForm). Remembered
+  // per workshop for this tab.
+  const roleKey = `fablab_edu_role_${routeWorkshopId || ''}`;
+  const [eduRole, setEduRoleState] = useState(() => {
+    try { return sessionStorage.getItem(roleKey) || null; } catch { return null; }
+  });
+  const setEduRole = (r) => {
+    setEduRoleState(r);
+    try { if (r) sessionStorage.setItem(roleKey, r); else sessionStorage.removeItem(roleKey); } catch { /* private mode */ }
+  };
 
   // Read any saved draft ONCE on mount so a refresh restores the
   // exact step + typed fields + selected workshop.
@@ -419,6 +431,20 @@ const WorkshopRegistration = () => {
 
   const toggleLanguage = () => i18n.changeLanguage(i18n.language === 'ar' ? 'en' : 'ar');
 
+  const isEduLink = isSingleMode && !!singleWorkshopMeta?.isEducation;
+  // A saved student draft past the first step means they already chose.
+  const effectiveRole = isEduLink ? (eduRole || (step > 0 ? 'student' : null)) : 'student';
+  const showStudentFlow = !isEduLink || effectiveRole === 'student';
+  const deadlineLabel = (() => {
+    if (!isEduLink || !singleWorkshopMeta?.registrationDeadline) return '';
+    const d = new Date(singleWorkshopMeta.registrationDeadline);
+    const when = d.toLocaleString(isRTL ? 'ar-SA-u-ca-gregory-nu-latn' : 'en-GB', {
+      timeZone: 'Asia/Riyadh', weekday: 'long', day: 'numeric', month: 'long', hour: 'numeric', minute: '2-digit'
+    });
+    if (singleWorkshopMeta.forceOpen) return isRTL ? 'التسجيل مفتوح استثنائياً بقرار من فاب لاب' : 'Registration is open as an exception by FabLab';
+    return isRTL ? `آخر موعد للتسجيل: ${when} (قبل بدء الورشة بـ 24 ساعة)` : `Registration closes ${when} (24 hours before the workshop starts)`;
+  })();
+
   return (
     <div className="workshop-reg-page" dir={isRTL ? 'rtl' : 'ltr'}>
       <div className="workshop-reg-container">
@@ -433,6 +459,46 @@ const WorkshopRegistration = () => {
             <p>FABLAB Al-Ahsa</p>
           </div>
 
+          {/* Education link: who is registering? */}
+          {isEduLink && !effectiveRole && (
+            <motion.div className="workshop-step-content edu-roles" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}>
+              <div className="edu-roles-workshop">
+                <span>{isRTL ? 'الورشة' : 'Workshop'}</span>
+                <b>{singleWorkshopMeta.title}</b>
+              </div>
+              {deadlineLabel && <div className="edu-deadline">⏰ {deadlineLabel}</div>}
+              <h3>{isRTL ? 'سجّل بصفتك' : 'Register as'}</h3>
+              <div className="edu-role-grid">
+                <button type="button" className="edu-role" onClick={() => setEduRole('student')}>
+                  <span className="edu-role-icon" aria-hidden="true">🎒</span>
+                  <b>{isRTL ? 'طالب' : 'Student'}</b>
+                  <span>{isRTL ? 'سجّل بيانات الطالب للمشاركة في الورشة' : "Enter the student's details to join the workshop"}</span>
+                </button>
+                <button type="button" className="edu-role" onClick={() => setEduRole('teacher')}>
+                  <span className="edu-role-icon" aria-hidden="true">👩‍🏫</span>
+                  <b>{isRTL ? 'معلم أو مدرب' : 'Teacher or instructor'}</b>
+                  <span>{isRTL ? 'بياناتك، القاعة، والمتطلبات التي تحتاج تجهيزها' : 'Your details, the room, and what you need prepared'}</span>
+                </button>
+              </div>
+            </motion.div>
+          )}
+
+          {isEduLink && effectiveRole === 'teacher' && (
+            <EducationTeacherForm
+              meta={singleWorkshopMeta}
+              isRTL={isRTL}
+              deadlineLabel={deadlineLabel}
+              onBack={() => setEduRole(null)}
+            />
+          )}
+
+          {showStudentFlow && (<>
+          {isEduLink && (
+            <div className="edu-student-bar">
+              <span>🎒 {isRTL ? 'تسجيل طالب' : 'Student registration'}{deadlineLabel ? ` · ${deadlineLabel}` : ''}</span>
+              {step !== 3 && <button type="button" className="edu-back-link" onClick={() => setEduRole(null)}>{isRTL ? 'تغيير' : 'Change'}</button>}
+            </div>
+          )}
           {/* Stepper — in single-workshop mode the picker step is
               hidden entirely (there's nothing to pick). */}
           <div className="workshop-stepper">
@@ -479,6 +545,8 @@ const WorkshopRegistration = () => {
                   ? (isRTL ? 'تم اكتمال العدد المسموح به.' : 'The workshop is full.')
                   : singleWorkshopMeta.closedReason === 'cancelled'
                   ? (isRTL ? 'تم إلغاء هذه الورشة.' : 'This workshop has been cancelled.')
+                  : singleWorkshopMeta.closedReason === 'deadline'
+                  ? (isRTL ? 'يُغلق التسجيل قبل بدء الورشة بـ 24 ساعة. للتسجيل المتأخر يرجى التواصل مع فاب لاب.' : 'Registration closes 24 hours before the workshop starts. For late registration please contact FabLab.')
                   : singleWorkshopMeta.closedReason === 'started' || singleWorkshopMeta.closedReason === 'completed'
                   ? (isRTL ? 'بدأت الورشة — يُغلق التسجيل من يوم انطلاقها.' : 'The workshop has already started — registration closes on the start day.')
                   : (isRTL ? 'يرجى التواصل مع إدارة فاب لاب لمزيد من المعلومات.' : 'Please contact the FabLab admin for more information.')}
@@ -1069,6 +1137,7 @@ const WorkshopRegistration = () => {
               </motion.div>
             )}
           </AnimatePresence>
+          </>)}
 
           {/* Footer */}
           <div className="workshop-reg-footer">

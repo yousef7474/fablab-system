@@ -1,10 +1,11 @@
-const { Workshop, WorkshopStudent, WorkshopCoupon, Employee, Admin, Settings } = require('../models');
+const { Workshop, WorkshopStudent, WorkshopCoupon, WorkshopTeacher, Employee, Admin, Settings } = require('../models');
 const { Op } = require('sequelize');
 const { sequelize } = require('../config/database');
-const { sendWorkshopRegistrationEmail, sendAttendanceIdEmail, sendWorkshopCustomEmail, generateAttendanceIdHtml, sendCertificateEmail, sendWorkshopPaymentInstructions, sendWorkshopPaymentConfirmed, sendWorkshopSurveyEmail } = require('../utils/emailService');
+const { sendWorkshopRegistrationEmail, sendAttendanceIdEmail, sendWorkshopCustomEmail, generateAttendanceIdHtml, sendCertificateEmail, sendWorkshopPaymentInstructions, sendWorkshopPaymentConfirmed, sendWorkshopSurveyEmail, sendEducationTeacherConfirmation } = require('../utils/emailService');
 const { requireRole } = require('../utils/qrPayload');
 const { readIdDocument, verifyIdToken } = require('../utils/idDocumentReader');
 const survey = require('../utils/workshopSurvey');
+const { EDU_ROOMS, roomById, roomByName, workshopsOverlap, eduDeadline } = require('../utils/eduRooms');
 
 // ─────────────── Invoice numbering (sequential WSK-####) ───────────────
 // Auto-assigns the next number under a transaction so two concurrent
@@ -65,7 +66,7 @@ exports.createWorkshop = async (req, res) => {
       startDate, endDate, startTime, endTime, totalHours,
       content, objectives, photo, maxParticipants, price,
       status, isActive, isPublic, notes, color, minAge, maxAge,
-      isEducation, room, registrationEnabled
+      isEducation, room, registrationEnabled, registrationForceOpen
     } = req.body;
 
     if (!title || !presenter || !startDate) {
@@ -88,6 +89,7 @@ exports.createWorkshop = async (req, res) => {
       isEducation: eduFlag,
       room: room || null,
       registrationEnabled: registrationEnabled !== undefined ? !!registrationEnabled : true,
+      registrationForceOpen: !!registrationForceOpen && registrationEnabled !== false,
       notes,
       color: color || '#1a56db',
       minAge: minAge || null,
@@ -142,9 +144,20 @@ exports.getAllWorkshops = async (req, res) => {
       order: [['createdAt', 'DESC']]
     });
 
+    // Teachers registered through education links, per workshop.
+    const teacherRows = await WorkshopTeacher.findAll({
+      attributes: ['workshopId', [sequelize.fn('COUNT', sequelize.col('teacherId')), 'n']],
+      group: ['workshopId'],
+      raw: true
+    });
+    const teacherCounts = new Map(teacherRows.map(r => [r.workshopId, Number(r.n) || 0]));
+
     const result = workshops.map(w => {
       const plain = w.toJSON();
       plain.studentCount = plain.students ? plain.students.length : 0;
+      plain.teacherCount = teacherCounts.get(plain.workshopId) || 0;
+      plain.closedReason = _closedReason(plain, plain.studentCount);
+      plain.registrationDeadline = plain.isEducation ? (eduDeadline(plain)?.toISOString() || null) : null;
       delete plain.students;
       return plain;
     });
@@ -190,6 +203,10 @@ exports.getWorkshopById = async (req, res) => {
 
     const out = workshop.toJSON();
     out.students = (out.students || []).map(st => ({ ...st, surveyUrl: survey.surveyUrl(st.studentId) }));
+    out.teachers = (await WorkshopTeacher.findAll({ where: { workshopId: id }, order: [['createdAt', 'ASC']] }))
+      .map(t => ({ ...t.toJSON(), roomLabel: roomById(t.room)?.ar || t.room }));
+    out.closedReason = _closedReason(out, out.students.length);
+    out.registrationDeadline = out.isEducation ? (eduDeadline(out)?.toISOString() || null) : null;
     res.json(out);
   } catch (error) {
     console.error('Error fetching workshop:', error);
@@ -215,7 +232,7 @@ exports.updateWorkshop = async (req, res) => {
       startDate, endDate, startTime, endTime, totalHours,
       content, objectives, photo, maxParticipants, price,
       status, isActive, isPublic, notes, color, minAge, maxAge,
-      isEducation, room, registrationEnabled
+      isEducation, room, registrationEnabled, registrationForceOpen
     } = req.body;
 
     // Education workshops never appear in the public picker.
@@ -243,6 +260,9 @@ exports.updateWorkshop = async (req, res) => {
       isEducation: nextIsEdu,
       room: room !== undefined ? (room || null) : workshop.room,
       registrationEnabled: registrationEnabled !== undefined ? !!registrationEnabled : workshop.registrationEnabled,
+      registrationForceOpen: registrationForceOpen !== undefined
+        ? (!!registrationForceOpen && registrationEnabled !== false)
+        : (registrationEnabled === false ? false : workshop.registrationForceOpen),
       notes: notes !== undefined ? notes : workshop.notes,
       color: color !== undefined ? color : workshop.color,
       minAge: minAge !== undefined ? (minAge || null) : workshop.minAge,
@@ -284,8 +304,9 @@ exports.deleteWorkshop = async (req, res) => {
       });
     }
 
-    // Delete all students first
+    // Delete all students (and registered teachers) first
     await WorkshopStudent.destroy({ where: { workshopId: id } });
+    await WorkshopTeacher.destroy({ where: { workshopId: id } });
     await workshop.destroy();
 
     res.json({ message: 'Workshop deleted successfully', messageAr: 'تم حذف الورشة بنجاح' });
@@ -296,16 +317,26 @@ exports.deleteWorkshop = async (req, res) => {
 };
 
 // Why a workshop is not taking public registrations right now, or null
-// when it is open. Registration closes automatically on the start day
-// (Riyadh time); the admin can also close it by hand (registrationEnabled).
-// Admin manual adds bypass all of this except capacity.
-const _closedReason = (w, studentCount) => {
+// when it is open. Registration closes automatically — education
+// workshops 24 hours before the start (date + time), the rest on the
+// start day (Riyadh) — unless the admin opened it as an exception
+// (registrationForceOpen). The admin can also close it by hand
+// (registrationEnabled). Teachers don't count toward capacity. Admin
+// manual adds bypass all of this except capacity.
+const _closedReason = (w, studentCount, { forTeacher = false } = {}) => {
   if (!w.isActive) return 'inactive';
   if (w.status === 'cancelled') return 'cancelled';
   if (w.status === 'completed') return 'completed';
   if (w.registrationEnabled === false) return 'disabled';
-  if (w.startDate && String(w.startDate).slice(0, 10) <= _todayStrRiyadh()) return 'started';
-  if (w.maxParticipants && studentCount >= w.maxParticipants) return 'full';
+  if (!w.registrationForceOpen) {
+    if (w.isEducation) {
+      const deadline = eduDeadline(w);
+      if (deadline && Date.now() >= deadline.getTime()) return 'deadline';
+    } else if (w.startDate && String(w.startDate).slice(0, 10) <= _todayStrRiyadh()) {
+      return 'started';
+    }
+  }
+  if (!forTeacher && w.maxParticipants && studentCount >= w.maxParticipants) return 'full';
   return null;
 };
 
@@ -315,6 +346,7 @@ const _CLOSED_MESSAGES = {
   completed: ['This workshop has ended', 'انتهت هذه الورشة'],
   disabled:  ['Registration for this workshop is closed', 'التسجيل في هذه الورشة مغلق'],
   started:   ['Registration closed — the workshop has already started', 'أُغلق التسجيل — بدأت الورشة'],
+  deadline:  ['Registration closed — it closes 24 hours before the workshop starts', 'أُغلق التسجيل — يُغلق التسجيل قبل بدء الورشة بـ 24 ساعة'],
   full:      ['This workshop is full', 'هذه الورشة ممتلئة']
 };
 
@@ -339,7 +371,7 @@ exports.getActiveWorkshops = async (req, res) => {
         'startDate', 'endDate', 'startTime', 'endTime',
         'totalHours', 'content', 'objectives', 'photo',
         'maxParticipants', 'price', 'status', 'color', 'minAge', 'maxAge',
-        'isActive', 'registrationEnabled'
+        'isActive', 'registrationEnabled', 'registrationForceOpen', 'isEducation'
       ],
       include: [
         {
@@ -551,7 +583,7 @@ exports.registerStudent = async (req, res) => {
       const closed = _closedReason(workshop, 0);
       if (closed) {
         const [message, messageAr] = _CLOSED_MESSAGES[closed];
-        throw { status: closed === 'disabled' || closed === 'started' ? 403 : 400, message, messageAr, closedReason: closed };
+        throw { status: ['disabled', 'started', 'deadline'].includes(closed) ? 403 : 400, message, messageAr, closedReason: closed };
       }
 
       // Duplicate check is by student national ID only. Repeated emails,
@@ -2839,7 +2871,7 @@ exports.getEducationWorkshop = async (req, res) => {
         'workshopId', 'title', 'description', 'presenter', 'startDate', 'endDate',
         'startTime', 'endTime', 'totalHours', 'content', 'objectives', 'photo',
         'maxParticipants', 'price', 'color', 'minAge', 'maxAge',
-        'isEducation', 'room', 'registrationEnabled', 'status', 'isActive'
+        'isEducation', 'room', 'registrationEnabled', 'registrationForceOpen', 'status', 'isActive'
       ],
       include: [{
         model: WorkshopStudent, as: 'students', attributes: ['studentId']
@@ -2858,13 +2890,21 @@ exports.getEducationWorkshop = async (req, res) => {
 
     const { students, ...rest } = workshop.toJSON();
     const closedReason = _closedReason(workshop, studentCount);
+    const teacherClosedReason = _closedReason(workshop, studentCount, { forTeacher: true });
+    const rooms = await _eduRoomAvailability(workshop);
     res.json({
       ...rest,
       studentCount,
       spotsRemaining,
       // Explicit flags so the client can render the right message.
       isOpen: !closedReason,
-      closedReason
+      closedReason,
+      teacherIsOpen: !teacherClosedReason,
+      teacherClosedReason,
+      registrationDeadline: eduDeadline(workshop)?.toISOString() || null,
+      forceOpen: !!workshop.registrationForceOpen,
+      // Which other workshop holds a room stays private.
+      rooms: rooms.map(({ takenBy, ...r }) => r)
     });
   } catch (error) {
     console.error('getEducationWorkshop:', error);
@@ -2878,8 +2918,8 @@ exports.toggleRegistration = async (req, res) => {
     const workshop = await Workshop.findByPk(req.params.id);
     if (!workshop) return res.status(404).json({ message: 'Workshop not found' });
     const enabled = !!req.body?.enabled;
-    await workshop.update({ registrationEnabled: enabled });
-    res.json({ workshopId: workshop.workshopId, registrationEnabled: workshop.registrationEnabled });
+    await workshop.update({ registrationEnabled: enabled, registrationForceOpen: enabled && req.body?.forceOpen === true });
+    res.json({ workshopId: workshop.workshopId, registrationEnabled: workshop.registrationEnabled, registrationForceOpen: workshop.registrationForceOpen });
   } catch (error) {
     console.error('toggleRegistration:', error);
     res.status(500).json({ message: 'Server error' });
@@ -2896,13 +2936,214 @@ exports.bulkToggleRegistration = async (req, res) => {
     if (!ids.length || typeof req.body?.enabled !== 'boolean') {
       return res.status(400).json({ message: 'ids and enabled are required', messageAr: 'يرجى اختيار الورش' });
     }
+    // "Open as an exception" (forceOpen) keeps registration open past the
+    // automatic cut-off; plain open/close returns to the automatic rule.
+    const forceOpen = req.body.enabled && req.body.forceOpen === true;
     const [updated] = await Workshop.update(
-      { registrationEnabled: req.body.enabled },
+      { registrationEnabled: req.body.enabled, registrationForceOpen: forceOpen },
       { where: { workshopId: { [Op.in]: ids } } }
     );
-    res.json({ updated, registrationEnabled: req.body.enabled });
+    res.json({ updated, registrationEnabled: req.body.enabled, registrationForceOpen: forceOpen });
   } catch (error) {
     console.error('bulkToggleRegistration:', error);
+    res.status(500).json({ message: 'Server error', messageAr: 'خطأ في الخادم' });
+  }
+};
+
+// ─────────────── Education workshops: teachers / instructors ───────────────
+
+// Each FabLab room with whether another education workshop at an
+// overlapping date + time already holds it (a teacher picked it, or the
+// admin typed it as that workshop's room).
+async function _eduRoomAvailability(workshop, { transaction } = {}) {
+  const start = String(workshop.startDate || '').slice(0, 10);
+  if (!start) return EDU_ROOMS.map(r => ({ ...r, available: true, takenBy: null }));
+  const end = String(workshop.endDate || workshop.startDate).slice(0, 10);
+  const candidates = await Workshop.findAll({
+    where: {
+      isEducation: true,
+      workshopId: { [Op.ne]: workshop.workshopId },
+      status: { [Op.ne]: 'cancelled' },
+      startDate: { [Op.lte]: end },
+      [Op.or]: [{ endDate: { [Op.gte]: start } }, { endDate: null, startDate: { [Op.gte]: start } }]
+    },
+    attributes: ['workshopId', 'title', 'startDate', 'endDate', 'startTime', 'endTime', 'room'],
+    transaction
+  });
+  const overlapping = candidates.filter(o => workshopsOverlap(workshop, o));
+  const teachers = overlapping.length
+    ? await WorkshopTeacher.findAll({
+      where: { workshopId: { [Op.in]: overlapping.map(o => o.workshopId) } },
+      attributes: ['workshopId', 'room'],
+      transaction
+    })
+    : [];
+  return EDU_ROOMS.map(r => {
+    const viaTeacher = teachers.find(t => t.room === r.id);
+    const holder = viaTeacher
+      ? overlapping.find(o => o.workshopId === viaTeacher.workshopId)
+      : overlapping.find(o => roomByName(o.room)?.id === r.id);
+    return { ...r, available: !holder, takenBy: holder ? { workshopId: holder.workshopId, title: holder.title } : null };
+  });
+}
+
+const TEACHER_FILE_TYPES = ['pdf', 'doc', 'docx', 'xls', 'xlsx', 'csv', 'txt', 'png', 'jpg', 'jpeg', 'webp'];
+const MAX_TEACHER_FILE_BYTES = 10 * 1024 * 1024;
+const _sanitizeTeacherFile = (input) => {
+  if (!input || typeof input !== 'object') return null;
+  const name = String(input.fileName || '').slice(0, 200);
+  const type = String(input.fileType || name.split('.').pop() || '').toLowerCase().replace(/^\./, '').slice(0, 8);
+  const data = input.fileData ? String(input.fileData).replace(/^data:[^;]+;base64,/, '') : '';
+  if (!name || !data || !TEACHER_FILE_TYPES.includes(type)) return null;
+  if (data.length > MAX_TEACHER_FILE_BYTES * 1.37) return null;
+  return { fileName: name, fileType: type, fileSize: Math.round(data.length * 0.75), fileData: data };
+};
+
+// POST /workshops/edu/:id/teachers (public, through the school's link)
+exports.registerEducationTeacher = async (req, res) => {
+  try {
+    const b = req.body || {};
+    const fullName = String(b.fullName || '').trim().slice(0, 150);
+    const phone = String(b.phone || '').trim().slice(0, 30);
+    const email = String(b.email || '').trim().slice(0, 150);
+    const jobTitle = String(b.jobTitle || '').trim().slice(0, 150);
+    const nationalId = String(b.nationalId || '').trim().slice(0, 20);
+    const requirements = String(b.requirements || '').trim().slice(0, 5000);
+    const room = roomById(String(b.room || ''));
+
+    if (!fullName || !phone || !email || !jobTitle) {
+      return res.status(400).json({ message: 'Please fill in all required fields', messageAr: 'يرجى تعبئة جميع الحقول المطلوبة' });
+    }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      return res.status(400).json({ message: 'Invalid email address', messageAr: 'البريد الإلكتروني غير صحيح' });
+    }
+    if (!room) {
+      return res.status(400).json({ message: 'Choose one of the rooms', messageAr: 'اختر إحدى القاعات' });
+    }
+    let file = null;
+    if (b.requirementsFile) {
+      file = _sanitizeTeacherFile(b.requirementsFile);
+      if (!file) {
+        return res.status(400).json({ message: 'File must be PDF, Word, Excel, text or an image, up to 10 MB', messageAr: 'الملف يجب أن يكون PDF أو Word أو Excel أو نصاً أو صورة، بحجم لا يتجاوز 10 ميجابايت' });
+      }
+    }
+    if (!requirements && !file) {
+      return res.status(400).json({ code: 'REQUIREMENTS_REQUIRED', message: 'Write your requirements or upload a file with them', messageAr: 'اكتب متطلباتك أو ارفع ملفاً بها' });
+    }
+
+    const result = await sequelize.transaction(async (t) => {
+      // One registration per room at a time, across workshops.
+      await sequelize.query('SELECT pg_advisory_xact_lock(hashtext(:k))', { replacements: { k: `edu-room-${room.id}` }, transaction: t });
+      const workshop = await Workshop.findByPk(req.params.id, { transaction: t, lock: t.LOCK.UPDATE });
+      if (!workshop || !workshop.isEducation) {
+        throw { status: 404, message: 'Education workshop not found', messageAr: 'الورشة التعليمية غير موجودة' };
+      }
+      const closed = _closedReason(workshop, 0, { forTeacher: true });
+      if (closed) {
+        const [message, messageAr] = _CLOSED_MESSAGES[closed];
+        throw { status: 403, message, messageAr, closedReason: closed };
+      }
+      const rooms = await _eduRoomAvailability(workshop, { transaction: t });
+      if (!rooms.find(r => r.id === room.id)?.available) {
+        throw { status: 409, code: 'ROOM_TAKEN', message: `${room.en} is booked by another workshop at the same time — choose another room`, messageAr: `${room.ar} محجوزة لورشة أخرى في نفس الوقت — اختر قاعة أخرى` };
+      }
+      const dup = await WorkshopTeacher.findOne({
+        where: { workshopId: workshop.workshopId, [Op.or]: [{ email }, { phone }] },
+        transaction: t
+      });
+      if (dup) {
+        throw { status: 409, code: 'ALREADY_REGISTERED', message: 'You are already registered for this workshop', messageAr: 'أنت مسجل مسبقاً في هذه الورشة' };
+      }
+      const teacher = await WorkshopTeacher.create({
+        workshopId: workshop.workshopId,
+        fullName, phone, email, jobTitle,
+        nationalId: nationalId || null,
+        room: room.id,
+        requirements: requirements || null,
+        requirementsFile: file,
+        requirementsFileName: file ? file.fileName : null,
+        requirementsFileSize: file ? file.fileSize : null
+      }, { transaction: t });
+      // The workshop's own room (shown to students / on invoices) follows
+      // the first teacher's pick when the admin left it empty.
+      if (!workshop.room) await workshop.update({ room: room.ar }, { transaction: t });
+      return { teacher, workshop };
+    });
+
+    const { teacher, workshop } = result;
+    sendEducationTeacherConfirmation(teacher, workshop, room.ar)
+      .then(() => teacher.update({ confirmationSentAt: new Date() }))
+      .catch(e => console.error('Teacher confirmation email failed:', e.message));
+
+    res.status(201).json({
+      message: 'Registered — a confirmation was sent to your email',
+      messageAr: 'تم تسجيلك — أُرسل تأكيد إلى بريدك الإلكتروني',
+      teacherId: teacher.teacherId,
+      room: { id: room.id, ar: room.ar, en: room.en }
+    });
+  } catch (error) {
+    if (error && error.status) {
+      return res.status(error.status).json({ code: error.code, closedReason: error.closedReason, message: error.message, messageAr: error.messageAr });
+    }
+    console.error('registerEducationTeacher:', error);
+    res.status(500).json({ message: 'Server error', messageAr: 'خطأ في الخادم' });
+  }
+};
+
+// GET /workshops/admin/edu-teachers?upcoming=1 (admin) — every teacher
+// across education workshops with their room and requirements.
+exports.listEducationTeachers = async (req, res) => {
+  try {
+    const teachers = await WorkshopTeacher.findAll({ order: [['createdAt', 'ASC']] });
+    const ids = [...new Set(teachers.map(t => t.workshopId))];
+    const workshops = ids.length
+      ? await Workshop.findAll({ where: { workshopId: { [Op.in]: ids } }, attributes: ['workshopId', 'title', 'startDate', 'endDate', 'startTime', 'endTime', 'status'] })
+      : [];
+    const byId = new Map(workshops.map(w => [w.workshopId, w]));
+    const today = _todayStrRiyadh();
+    const rows = teachers
+      .map(t => ({ ...t.toJSON(), roomLabel: roomById(t.room)?.ar || t.room, workshop: byId.get(t.workshopId) || null }))
+      .filter(r => r.workshop && (req.query.upcoming !== '1' || String(r.workshop.endDate || r.workshop.startDate).slice(0, 10) >= today))
+      .sort((a, b) => String(a.workshop.startDate).localeCompare(String(b.workshop.startDate)) || String(a.workshop.startTime || '').localeCompare(String(b.workshop.startTime || '')));
+    res.json({ rooms: EDU_ROOMS, teachers: rows });
+  } catch (error) {
+    console.error('listEducationTeachers:', error);
+    res.status(500).json({ message: 'Server error', messageAr: 'خطأ في الخادم' });
+  }
+};
+
+// GET /workshops/teachers/:id/file (admin, ?token= for new tabs)
+exports.downloadTeacherFile = async (req, res) => {
+  try {
+    const t = await WorkshopTeacher.unscoped().findByPk(req.params.id, { attributes: ['teacherId', 'requirementsFile'] });
+    const f = t?.requirementsFile;
+    if (!f?.fileData) return res.status(404).send('No file');
+    const mime = {
+      pdf: 'application/pdf', png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg', webp: 'image/webp',
+      txt: 'text/plain; charset=utf-8', csv: 'text/csv; charset=utf-8',
+      doc: 'application/msword', docx: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      xls: 'application/vnd.ms-excel', xlsx: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    }[f.fileType] || 'application/octet-stream';
+    const inline = ['pdf', 'png', 'jpg', 'jpeg', 'webp', 'txt'].includes(f.fileType);
+    res.setHeader('Content-Type', mime);
+    res.setHeader('Cache-Control', 'private, no-store');
+    res.setHeader('Content-Disposition', `${inline ? 'inline' : 'attachment'}; filename*=UTF-8''${encodeURIComponent(f.fileName || `requirements.${f.fileType}`)}`);
+    res.send(Buffer.from(String(f.fileData), 'base64'));
+  } catch (error) {
+    console.error('downloadTeacherFile:', error);
+    res.status(500).send('Server error');
+  }
+};
+
+// DELETE /workshops/teachers/:id (admin)
+exports.deleteEducationTeacher = async (req, res) => {
+  try {
+    const t = await WorkshopTeacher.findByPk(req.params.id);
+    if (!t) return res.status(404).json({ message: 'Not found', messageAr: 'غير موجود' });
+    await t.destroy();
+    res.json({ message: 'Removed', messageAr: 'تم حذف المعلم' });
+  } catch (error) {
+    console.error('deleteEducationTeacher:', error);
     res.status(500).json({ message: 'Server error', messageAr: 'خطأ في الخادم' });
   }
 };

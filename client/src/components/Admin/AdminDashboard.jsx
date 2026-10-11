@@ -25,6 +25,7 @@ import TrainerAssistantManagement from '../TrainerAssistant/TrainerAssistantMana
 import CustomersManagement from '../Customers/CustomersManagement';
 import WorkshopSurveyResults from './WorkshopSurveyResults';
 import WorkshopSurveyEditor from './WorkshopSurveyEditor';
+import { EduTeachersSection, EduTeachersModal, fmtDeadline } from './EducationTeachers';
 import QuickMessages from './QuickMessages';
 import QuickForms from './QuickForms';
 import UnifiedAttendancePage from '../shared/UnifiedAttendancePage';
@@ -281,6 +282,8 @@ const AdminDashboard = () => {
   const [showEduScheduleCompare, setShowEduScheduleCompare] = useState(false);
   const [workshopSort, setWorkshopSort] = useState('date-asc');
   const [selectedWorkshopIds, setSelectedWorkshopIds] = useState([]);
+  const [showEduTeachersModal, setShowEduTeachersModal] = useState(false);
+  const [regQuickBusyId, setRegQuickBusyId] = useState(null);
   const [surveyResultsFor, setSurveyResultsFor] = useState(null); // { workshopId, studentId? }
   const [showSurveyEditor, setShowSurveyEditor] = useState(false);
   const [sendingSurveys, setSendingSurveys] = useState(false);
@@ -292,7 +295,7 @@ const AdminDashboard = () => {
     startDate: '', endDate: '', startTime: '', endTime: '',
     totalHours: '', content: '', objectives: '', photo: '',
     maxParticipants: '', price: '', notes: '', color: '#1a56db', minAge: '', maxAge: '',
-    isPublic: true, isEducation: false, room: '', registrationEnabled: true
+    isPublic: true, isEducation: false, room: '', registrationEnabled: true, registrationForceOpen: false
   });
   const [workshopLoading, setWorkshopLoading] = useState(false);
   const [viewingWorkshopStudents, setViewingWorkshopStudents] = useState(() => {
@@ -993,15 +996,19 @@ const AdminDashboard = () => {
   }, []);
 
   // Open / close public registration on the selected workshops.
-  const handleBulkRegistration = async (enabled) => {
+  // forceOpen: "open as an exception" — keeps registration open past the
+  // automatic cut-off (education: 24h before start; others: start day).
+  const handleBulkRegistration = async (enabled, forceOpen = false) => {
     if (!selectedWorkshopIds.length || bulkRegBusy) return;
     setBulkRegBusy(true);
     try {
-      const { data } = await api.patch('/workshops/bulk/registration-enabled', { ids: selectedWorkshopIds, enabled });
+      const { data } = await api.patch('/workshops/bulk/registration-enabled', { ids: selectedWorkshopIds, enabled, ...(forceOpen ? { forceOpen: true } : {}) });
       const n = data?.updated ?? selectedWorkshopIds.length;
-      toast.success(enabled
-        ? (isRTL ? `تم فتح التسجيل في ${n} ورشة` : `Registration opened for ${n} workshop(s)`)
-        : (isRTL ? `تم إغلاق التسجيل في ${n} ورشة` : `Registration closed for ${n} workshop(s)`));
+      toast.success(!enabled
+        ? (isRTL ? `تم إغلاق التسجيل في ${n} ورشة` : `Registration closed for ${n} workshop(s)`)
+        : forceOpen
+          ? (isRTL ? `تم فتح التسجيل استثنائياً في ${n} ورشة` : `Registration opened as an exception for ${n} workshop(s)`)
+          : (isRTL ? `تم فتح التسجيل في ${n} ورشة` : `Registration opened for ${n} workshop(s)`));
       setSelectedWorkshopIds([]);
       await fetchWorkshops();
     } catch (e) {
@@ -1009,6 +1016,27 @@ const AdminDashboard = () => {
       toast.error((isRTL ? d?.messageAr : d?.message) || (isRTL ? 'تعذّر تحديث حالة التسجيل' : 'Could not update registration'));
     } finally {
       setBulkRegBusy(false);
+    }
+  };
+
+  // Card quick action: open one workshop as an exception, or put it back
+  // on the automatic cut-off.
+  const handleWorkshopRegQuick = async (w, forceOpen) => {
+    if (regQuickBusyId) return;
+    setRegQuickBusyId(w.workshopId);
+    try {
+      await api.patch(`/workshops/${w.workshopId}/registration-enabled`, { enabled: true, forceOpen });
+      toast.success(forceOpen
+        ? (isRTL ? 'تم فتح التسجيل استثنائياً' : 'Registration opened as an exception')
+        : (isRTL ? 'عاد التسجيل للوضع التلقائي' : 'Registration back to automatic'));
+      await fetchWorkshops();
+    } catch (e) {
+      const d = e.response?.data;
+      toast.error((isRTL ? d?.messageAr : d?.message) || (e.response?.status === 403
+        ? (isRTL ? 'هذا الإجراء متاح للمدير فقط' : 'Only managers can do this')
+        : (isRTL ? 'تعذّر تحديث حالة التسجيل' : 'Could not update registration')));
+    } finally {
+      setRegQuickBusyId(null);
     }
   };
 
@@ -1457,7 +1485,8 @@ const AdminDashboard = () => {
       isPublic: workshop.isPublic !== false,
       isEducation: !!workshop.isEducation,
       room: workshop.room || '',
-      registrationEnabled: workshop.registrationEnabled !== false
+      registrationEnabled: workshop.registrationEnabled !== false,
+      registrationForceOpen: !!workshop.registrationForceOpen
     });
     setShowWorkshopModal(true);
   };
@@ -8529,14 +8558,18 @@ const AdminDashboard = () => {
                 else arr.sort((a, b) => dateVal(a) - dateVal(b)); // default: date-asc
                 return arr;
               })();
-              // Registration state as the public form sees it: closed by
-              // the admin, or auto-closed from the start day (Riyadh).
+              // Registration state as the public form sees it (server's
+              // closedReason): closed by the admin, auto-closed (education:
+              // 24h before start; others: the start day), or opened by the
+              // admin as an exception.
               const _todayRiyadh = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Riyadh' }).format(new Date());
               const _regState = (w) => {
                 if (w.status === 'cancelled' || w.status === 'completed') return null;
                 if ((w.endDate || w.startDate || '9999') < _todayRiyadh) return null;
                 if (w.registrationEnabled === false) return 'disabled';
-                if (w.startDate && w.startDate <= _todayRiyadh) return 'started';
+                if (w.registrationForceOpen) return 'forced';
+                if (w.closedReason === 'deadline' || w.closedReason === 'started') return w.closedReason;
+                if (w.closedReason === undefined && w.startDate && w.startDate <= _todayRiyadh) return 'started';
                 return 'open';
               };
               const _visibleIds = _visibleWorkshops.map(w => w.workshopId);
@@ -8660,6 +8693,15 @@ const AdminDashboard = () => {
                         {workshopFilter === 'education' && (
                           <button
                             className="wsv2-action-btn"
+                            onClick={() => setShowEduTeachersModal(true)}
+                            title={isRTL ? 'متطلبات المعلمين والمدربين المسجلين في الورش التعليمية' : "Requirements from teachers registered for education workshops"}
+                          >
+                            📋 {isRTL ? 'متطلبات المعلمين' : "Teachers' requirements"}
+                          </button>
+                        )}
+                        {workshopFilter === 'education' && (
+                          <button
+                            className="wsv2-action-btn"
                             onClick={() => setShowEduScheduleCompare(true)}
                             title={isRTL ? 'مقارنة مع جدول 1448' : 'Compare with 1448 schedule'}
                           >
@@ -8719,7 +8761,7 @@ const AdminDashboard = () => {
                           className="wsv2-action-btn primary"
                           onClick={() => {
                             setSelectedWorkshop(null);
-                            setWorkshopForm({ title: '', description: '', presenter: '', assignedEmployeeId: '', startDate: '', endDate: '', startTime: '', endTime: '', totalHours: '', content: '', objectives: '', photo: '', maxParticipants: '', price: '', notes: '', color: '#1a56db', minAge: '', maxAge: '', isPublic: true, isEducation: false, room: '', registrationEnabled: true });
+                            setWorkshopForm({ title: '', description: '', presenter: '', assignedEmployeeId: '', startDate: '', endDate: '', startTime: '', endTime: '', totalHours: '', content: '', objectives: '', photo: '', maxParticipants: '', price: '', notes: '', color: '#1a56db', minAge: '', maxAge: '', isPublic: true, isEducation: false, room: '', registrationEnabled: true, registrationForceOpen: false });
                             setShowWorkshopModal(true);
                           }}
                         >
@@ -8753,6 +8795,10 @@ const AdminDashboard = () => {
                             </button>
                             <button className="wsv2-action-btn success" disabled={bulkRegBusy} onClick={() => handleBulkRegistration(true)}>
                               🔓 {isRTL ? 'فتح التسجيل' : 'Open registration'}
+                            </button>
+                            <button className="wsv2-action-btn info" disabled={bulkRegBusy} onClick={() => handleBulkRegistration(true, true)}
+                              title={isRTL ? 'فتح التسجيل حتى بعد موعد الإغلاق التلقائي' : 'Open even past the automatic cut-off'}>
+                              🔓 {isRTL ? 'فتح استثنائي' : 'Open as exception'}
                             </button>
                             <button className="wsv2-action-btn" disabled={bulkRegBusy} onClick={() => setSelectedWorkshopIds([])}>
                               {isRTL ? 'إلغاء التحديد' : 'Clear'}
@@ -8838,6 +8884,16 @@ const AdminDashboard = () => {
                                       ⏹ {isRTL ? 'بدأت · التسجيل مغلق' : 'Started · reg. closed'}
                                     </span>
                                   )}
+                                  {regState === 'deadline' && (
+                                    <span className="wsv2-reg-badge deadline" title={isRTL ? 'يُغلق تسجيل الورش التعليمية تلقائياً قبل البدء بـ24 ساعة' : 'Education registration closes automatically 24 hours before the start'}>
+                                      ⏰ {isRTL ? 'أُغلق (قبل البدء بـ24 ساعة)' : 'Closed (24h before start)'}
+                                    </span>
+                                  )}
+                                  {regState === 'forced' && (
+                                    <span className="wsv2-reg-badge forced" title={isRTL ? 'فتحه المسؤول بعد موعد الإغلاق التلقائي' : 'Opened by the admin past the automatic cut-off'}>
+                                      🔓 {isRTL ? 'مفتوح استثنائياً' : 'Open (exception)'}
+                                    </span>
+                                  )}
                                   {!w.isEducation && w.isPublic === false && (
                                     <span className="wsv2-visibility" title={isRTL ? 'مخفية عن الجمهور' : 'Hidden from public'}>
                                       <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
@@ -8891,6 +8947,30 @@ const AdminDashboard = () => {
                                   {w.price ? `${w.price} SAR` : (isRTL ? 'مجاني' : 'Free')}
                                 </span>
                               </div>
+                              {w.isEducation && (
+                                <div className="wsv2-edu-extra">
+                                  {w.registrationDeadline && (
+                                    <span>⏰ {isRTL ? 'آخر موعد للتسجيل:' : 'Register by:'} <b>{fmtDeadline(w.registrationDeadline, isRTL)}</b></span>
+                                  )}
+                                  <span className="wsv2-edu-chip" title={isRTL ? 'المعلمون والمدربون المسجلون' : 'Registered teachers / instructors'}>
+                                    👩‍🏫 {w.teacherCount || 0}
+                                  </span>
+                                </div>
+                              )}
+                              {(regState === 'deadline' || regState === 'started') && (
+                                <button type="button" className="wsv2-reg-quick" disabled={regQuickBusyId === w.workshopId}
+                                  onClick={() => handleWorkshopRegQuick(w, true)}
+                                  title={isRTL ? 'السماح بالتسجيل رغم انتهاء موعد الإغلاق التلقائي' : 'Allow registration past the automatic cut-off'}>
+                                  🔓 {isRTL ? 'فتح استثنائي' : 'Open as exception'}
+                                </button>
+                              )}
+                              {regState === 'forced' && (
+                                <button type="button" className="wsv2-reg-quick reset" disabled={regQuickBusyId === w.workshopId}
+                                  onClick={() => handleWorkshopRegQuick(w, false)}
+                                  title={isRTL ? 'إعادة الإغلاق التلقائي للتسجيل' : 'Back to the automatic cut-off'}>
+                                  ↩️ {isRTL ? 'إعادة للوضع التلقائي' : 'Back to automatic'}
+                                </button>
+                              )}
                               <div className="wsv2-students-bar">
                                 <span className="wsv2-students-label">
                                   <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -8982,6 +9062,12 @@ const AdminDashboard = () => {
                             {viewingWorkshopStudents.students?.length || 0}
                             <small>{isRTL ? 'طالب' : 'students'}</small>
                           </span>
+                          {viewingWorkshopStudents.isEducation && (
+                            <span className="wsv2-student-count-pill">
+                              {viewingWorkshopStudents.teachers?.length || 0}
+                              <small>{isRTL ? 'معلم' : 'teachers'}</small>
+                            </span>
+                          )}
                           {viewingWorkshopStudents.startDate && (
                             <span> · {viewingWorkshopStudents.startDate}{viewingWorkshopStudents.endDate && viewingWorkshopStudents.endDate !== viewingWorkshopStudents.startDate ? ` → ${viewingWorkshopStudents.endDate}` : ''}</span>
                           )}
@@ -9106,6 +9192,19 @@ const AdminDashboard = () => {
                         )}
                       </div>
                     </motion.div>
+                    {viewingWorkshopStudents.isEducation && (
+                      <EduTeachersSection
+                        workshop={viewingWorkshopStudents}
+                        isRTL={isRTL}
+                        onChanged={async () => {
+                          try {
+                            const res = await api.get(`/workshops/${viewingWorkshopStudents.workshopId}`);
+                            setViewingWorkshopStudents(res.data);
+                            fetchWorkshops();
+                          } catch {}
+                        }}
+                      />
+                    )}
                     <div className="wsv2-student-list">
                       <AnimatePresence mode="popLayout">
                         {(viewingWorkshopStudents.students || []).length === 0 ? (
@@ -9864,8 +9963,36 @@ const AdminDashboard = () => {
                             />
                           </div>
                           )}
-                          <div>
+                          <div style={workshopForm.isEducation ? { gridColumn: '1 / -1' } : undefined}>
                             <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 600, marginBottom: 4 }}>{isRTL ? 'حالة التسجيل' : 'Registration'}</label>
+                            {workshopForm.isEducation ? (
+                              <>
+                                {/* Education: automatic cut-off 24h before start, an admin
+                                    exception that keeps it open, or closed. */}
+                                <div className="wsv2-regmode" role="radiogroup">
+                                  {[
+                                    { key: 'auto', on: workshopForm.registrationEnabled && !workshopForm.registrationForceOpen, patch: { registrationEnabled: true, registrationForceOpen: false },
+                                      label: isRTL ? '⏰ تلقائي' : '⏰ Automatic', hint: isRTL ? 'يُغلق قبل البدء بـ24 ساعة' : 'Closes 24h before start' },
+                                    { key: 'forced', on: workshopForm.registrationEnabled && workshopForm.registrationForceOpen, patch: { registrationEnabled: true, registrationForceOpen: true },
+                                      label: isRTL ? '🔓 مفتوح استثنائياً' : '🔓 Open (exception)', hint: isRTL ? 'يبقى مفتوحاً بعد الموعد' : 'Stays open past the cut-off' },
+                                    { key: 'closed', on: !workshopForm.registrationEnabled, patch: { registrationEnabled: false, registrationForceOpen: false },
+                                      label: isRTL ? '⏸ مغلق' : '⏸ Closed', hint: isRTL ? 'لا يُقبل أي تسجيل' : 'No registrations' }
+                                  ].map(o => (
+                                    <button key={o.key} type="button" role="radio" aria-checked={o.on}
+                                      className={`${o.key} ${o.on ? 'on' : ''}`}
+                                      onClick={() => setWorkshopForm({ ...workshopForm, ...o.patch })}>
+                                      {o.label}<small>{o.hint}</small>
+                                    </button>
+                                  ))}
+                                </div>
+                                <div style={{ fontSize: '0.72rem', color: '#64748b', marginTop: 4 }}>
+                                  {isRTL
+                                    ? 'يسجّل الطلاب والمعلمون عبر رابط المدرسة حتى 24 ساعة قبل بدء الورشة (تاريخ ووقت البداية).'
+                                    : 'Students and teachers can register through the school link until 24 hours before the workshop starts (start date and time).'}
+                                </div>
+                              </>
+                            ) : (
+                            <>
                             <div style={{ display: 'flex', gap: 8 }}>
                               <button
                                 type="button"
@@ -9884,7 +10011,14 @@ const AdminDashboard = () => {
                             </div>
                             <div style={{ fontSize: '0.72rem', color: '#64748b', marginTop: 4 }}>
                               {isRTL ? 'يُغلق التسجيل تلقائياً من يوم بدء الورشة.' : 'Registration also closes automatically on the start day.'}
+                              {workshopForm.registrationEnabled && workshopForm.registrationForceOpen && (
+                                <span style={{ display: 'block', color: '#16a34a', fontWeight: 700 }}>
+                                  {isRTL ? '🔓 مفتوح حالياً استثنائياً بعد موعد الإغلاق التلقائي.' : '🔓 Currently open as an exception past the automatic cut-off.'}
+                                </span>
+                              )}
                             </div>
+                            </>
+                            )}
                           </div>
                     </div>
 
@@ -9953,6 +10087,10 @@ const AdminDashboard = () => {
             )}
 
             {/* Admin Add Student Modal (workshop) */}
+            {showEduTeachersModal && (
+              <EduTeachersModal isRTL={isRTL} onClose={() => setShowEduTeachersModal(false)} />
+            )}
+
             {showSurveyEditor && (
               <WorkshopSurveyEditor isRTL={isRTL} onClose={() => setShowSurveyEditor(false)} />
             )}

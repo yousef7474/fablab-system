@@ -68,6 +68,7 @@ const Contract = require('./Contract');
 const SummerStudentAttendance = require('./SummerStudentAttendance');
 const FablabVisit = require('./FablabVisit');
 const FablabVisitSlot = require('./FablabVisitSlot');
+const WorkshopTeacher = require('./WorkshopTeacher');
 const CalendarEvent = require('./CalendarEvent');
 const StoreItem = require('./StoreItem');
 const StoreOrder = require('./StoreOrder');
@@ -928,6 +929,10 @@ const syncDatabase = async () => {
       await sequelize.query(
         `ALTER TABLE workshop_students ADD COLUMN IF NOT EXISTS "idPhoto" JSON`
       );
+      // Admin "open as an exception" past the automatic registration cut-off.
+      await sequelize.query(
+        `ALTER TABLE workshops ADD COLUMN IF NOT EXISTS "registrationForceOpen" BOOLEAN NOT NULL DEFAULT false`
+      );
       // Post-workshop survey (required before the certificate).
       await sequelize.query(
         `ALTER TABLE workshop_students ADD COLUMN IF NOT EXISTS "surveyResponse" JSON`
@@ -1425,6 +1430,7 @@ module.exports = {
   SummerStudentAttendance,
   FablabVisit,
   FablabVisitSlot,
+  WorkshopTeacher,
   CalendarEvent,
   StoreItem,
   StoreOrder,

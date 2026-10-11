@@ -125,6 +125,13 @@ const Workshop = sequelize.define('Workshop', {
     defaultValue: true,
     allowNull: false
   },
+  // Admin exception: keep registration open past the automatic cut-off
+  // (education: 24h before the start; others: the start day).
+  registrationForceOpen: {
+    type: DataTypes.BOOLEAN,
+    defaultValue: false,
+    allowNull: false
+  },
   createdById: {
     type: DataTypes.UUID,
     allowNull: true,
