@@ -1,0 +1,26 @@
+/* Workshop card — shared by the home carousel and the /workshops page */
+
+.site-ws-card {
+  display: flex; flex-direction: column;
+  border-radius: 16px; overflow: hidden;
+  background: var(--s-card-2);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  transition: transform 0.3s ease, box-shadow 0.3s ease, border-color 0.3s ease;
+}
+.site-ws-card:hover { transform: translateY(-6px); box-shadow: 0 16px 34px rgba(156, 39, 176, 0.25); border-color: rgba(156, 39, 176, 0.6); }
+.site-ws-img { position: relative; aspect-ratio: 16 / 10; background: #111628; }
+.site-ws-img img { width: 100%; height: 100%; object-fit: cover; }
+.site-ws-img-ph { width: 100%; height: 100%; display: grid; place-items: center; font-size: 2.4rem; color: rgba(255, 255, 255, 0.85); background: linear-gradient(135deg, var(--ws-c, var(--s-purple)), #0f1428); }
+.site-ws-badge { position: absolute; top: 0.7rem; inset-inline-start: 0.7rem; padding: 0.2rem 0.7rem; border-radius: 20px; font-size: 0.78rem; font-weight: 800; }
+.site-ws-badge.open { background: rgba(76, 175, 80, 0.92); color: #fff; }
+.site-ws-badge.closed { background: rgba(0, 0, 0, 0.65); color: #ffcc80; }
+.site-ws-body { display: flex; flex-direction: column; gap: 0.7rem; flex: 1; padding: 1rem 1.1rem 1.2rem; }
+.site-ws-body h3 { font-size: 1.08rem; font-weight: 800; color: #fff; line-height: 1.5; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.site-ws-meta { display: flex; flex-wrap: wrap; gap: 0.4rem 0.9rem; color: var(--s-muted); font-size: 0.86rem; }
+.site-ws-meta i { color: var(--s-blue); margin-inline-end: 0.2rem; }
+.site-ws-price { color: var(--s-amber); font-weight: 800; }
+.site-ws-body .site-btn { margin-top: auto; align-self: flex-start; }
+.site-ws-skeleton { display: flex; gap: 20px; overflow: hidden; }
+.site-ws-skeleton span { flex: 0 0 clamp(250px, 30%, 330px); height: 300px; border-radius: 16px; background: linear-gradient(90deg, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0.09), rgba(255, 255, 255, 0.04)); background-size: 200% 100%; animation: site-shimmer 1.4s infinite; }
+@keyframes site-shimmer { to { background-position: -200% 0; } }
+.site-ws-desc { color: var(--s-muted); font-size: 0.9rem; line-height: 1.75; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }

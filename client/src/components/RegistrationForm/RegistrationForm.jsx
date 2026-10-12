@@ -131,6 +131,19 @@ const RegistrationForm = () => {
   // ({ applicationType, fablabSection, requiredServices }). It is also
   // written into formData so the steps open pre-selected.
   const [guidedChoice, setGuidedChoice] = useState(null);
+  // /register?type=Volunteer (etc.) — the public website's buttons open
+  // the form with the application type already chosen.
+  const [presetType] = useState(() => {
+    const t = searchParams.get('type');
+    return ['Beneficiary', 'Visitor', 'Volunteer', 'Talented', 'Entity'].includes(t) ? t : null;
+  });
+  useEffect(() => {
+    if (!presetType) return;
+    setFormData(prev => ({ ...prev, applicationType: presetType }));
+    searchParams.delete('type');
+    setSearchParams(searchParams, { replace: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const [loading, setLoading] = useState(false);
   const [registrationDisabled, setRegistrationDisabled] = useState(false);
   const [disabledReason, setDisabledReason] = useState('');
@@ -260,7 +273,7 @@ const RegistrationForm = () => {
     setFormData({
       ...formData,
       existingUserId: userData.userId,
-      applicationType: guidedChoice?.applicationType || userData.applicationType || '',
+      applicationType: guidedChoice?.applicationType || presetType || userData.applicationType || '',
       firstName: userData.firstName || '',
       lastName: userData.lastName || '',
       name: userData.name || '',

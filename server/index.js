@@ -33,6 +33,8 @@ const mawhbaRoutes = require('./routes/mawhbaRoutes');
 const fablabStaffRoutes = require('./routes/fablabStaffRoutes');
 const overtimeRoutes = require('./routes/overtimeRoutes');
 const fablabVisitRoutes = require('./routes/fablabVisitRoutes');
+const siteRoutes = require('./routes/siteRoutes');
+const siteAdminRoutes = require('./routes/siteAdminRoutes');
 const calendarEventRoutes = require('./routes/calendarEventRoutes');
 const storeRoutes = require('./routes/storeRoutes');
 const print3DRoutes = require('./routes/print3DRoutes');
@@ -87,6 +89,9 @@ app.use('/api/mawhba', mawhbaRoutes);
 app.use('/api/fablab-staff', fablabStaffRoutes);
 app.use('/api/overtime', overtimeRoutes);
 app.use('/api/fablab-visits', fablabVisitRoutes);
+// Public website (replaces main.fablabsahsa.com) + its admin.
+app.use('/api/site', siteRoutes);
+app.use('/api/site-admin', siteAdminRoutes);
 app.use('/api/calendar-events', calendarEventRoutes);
 app.use('/api/store', storeRoutes);
 app.use('/api/print3d', print3DRoutes);

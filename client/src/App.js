@@ -36,29 +36,60 @@ const StorePage = lazy(() => import('./components/Store/StorePage'));
 const MyOrdersPage = lazy(() => import('./components/Store/MyOrdersPage'));
 const PrintServicePage = lazy(() => import('./components/Print3D/PrintServicePage'));
 const PrintQuotePage = lazy(() => import('./components/Print3D/PrintQuotePage'));
+// Public website (replaces the old main.fablabsahsa.com)
+const SiteHome = lazy(() => import('./components/Site/SiteHome'));
+const SiteAbout = lazy(() => import('./components/Site/SiteAbout'));
+const SitePaths = lazy(() => import('./components/Site/SitePaths'));
+const SiteSections = lazy(() => import('./components/Site/SiteSections'));
+const SiteFacilities = lazy(() => import('./components/Site/SiteFacilities'));
+const SiteServices = lazy(() => import('./components/Site/SiteServices'));
+const SiteMedia = lazy(() => import('./components/Site/SiteMedia'));
+const SiteStories = lazy(() => import('./components/Site/SiteStories'));
+const SiteWorkshops = lazy(() => import('./components/Site/SiteWorkshops'));
+const SiteVolunteer = lazy(() => import('./components/Site/SiteVolunteer'));
+const SiteInternship = lazy(() => import('./components/Site/SiteInternship'));
+const SiteTalented = lazy(() => import('./components/Site/SiteTalented'));
 
-const RouteFallback = () => (
-  <div style={{
-    minHeight: '100vh',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    background: 'var(--gray-50, #f9fafb)'
-  }}>
+// Public website pages carry their own header (language switch, menus),
+// so the floating language selector is hidden there.
+const SITE_PATHS = new Set(['/', '/about', '/aboutfablab', '/paths', '/sections', '/oursections', '/facilities', '/services', '/media', '/success-stories', '/workshops', '/volunteer', '/internship', '/i-am-talented', '/i_am_talented']);
+const isSitePath = (pathname) => SITE_PATHS.has((pathname.replace(/\/+$/, '') || '/').toLowerCase());
+
+// "/" is the website home. Old links / saved drafts pointed the
+// registration form at "/?step=…" — send any query on "/" to /register.
+const RootRoute = () => {
+  const { search } = useLocation();
+  if (search && search.length > 1) return <Navigate to={`/register${search}`} replace />;
+  return <SiteHome />;
+};
+
+const RouteFallback = () => {
+  // Website pages are dark — avoid a white flash while their chunk loads.
+  const site = isSitePath(useLocation().pathname);
+  return (
     <div style={{
-      width: 42, height: 42,
-      border: '3px solid rgba(238, 35, 41, 0.15)',
-      borderTopColor: '#EE2329',
-      borderRadius: '50%',
-      animation: 'spin 0.9s linear infinite'
-    }} />
-    <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
-  </div>
-);
+      minHeight: '100vh',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      background: site ? '#0b0f1d' : 'var(--gray-50, #f9fafb)'
+    }}>
+      <div style={{
+        width: 42, height: 42,
+        border: site ? '3px solid rgba(156, 39, 176, 0.2)' : '3px solid rgba(238, 35, 41, 0.15)',
+        borderTopColor: site ? '#9C27B0' : '#EE2329',
+        borderRadius: '50%',
+        animation: 'spin 0.9s linear infinite'
+      }} />
+      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+    </div>
+  );
+};
 
 // Wrapper to conditionally show LanguageSelector (hide on admin/manager/elite pages)
 const ConditionalLanguageSelector = () => {
   const location = useLocation();
+  if (isSitePath(location.pathname)) return null;
   if (location.pathname === '/admin/login' || location.pathname.startsWith('/manager') || location.pathname.startsWith('/elite') || location.pathname.startsWith('/employee') || location.pathname.startsWith('/workshop') || location.pathname.startsWith('/public/') || location.pathname.startsWith('/fablab-visit') || location.pathname.startsWith('/project-support') || location.pathname.startsWith('/store') || location.pathname.startsWith('/print-service') || location.pathname.startsWith('/print-quote')) return null;
   return <LanguageSelector />;
 };
@@ -69,8 +100,23 @@ const AppContent = () => {
       <ConditionalLanguageSelector />
       <Suspense fallback={<RouteFallback />}>
         <Routes>
-          <Route path="/" element={<RegistrationForm />} />
+          <Route path="/" element={<RootRoute />} />
           <Route path="/register" element={<RegistrationForm />} />
+          {/* Public website */}
+          <Route path="/about" element={<SiteAbout />} />
+          <Route path="/AboutFablab" element={<Navigate to="/about" replace />} />
+          <Route path="/paths" element={<SitePaths />} />
+          <Route path="/sections" element={<SiteSections />} />
+          <Route path="/oursections" element={<Navigate to="/sections" replace />} />
+          <Route path="/facilities" element={<SiteFacilities />} />
+          <Route path="/services" element={<SiteServices />} />
+          <Route path="/media" element={<SiteMedia />} />
+          <Route path="/success-stories" element={<SiteStories />} />
+          <Route path="/workshops" element={<SiteWorkshops />} />
+          <Route path="/volunteer" element={<SiteVolunteer />} />
+          <Route path="/internship" element={<SiteInternship />} />
+          <Route path="/i-am-talented" element={<SiteTalented />} />
+          <Route path="/i_am_talented" element={<Navigate to="/i-am-talented" replace />} />
           <Route path="/elite-registration" element={<EliteRegistrationForm />} />
           <Route path="/elite-dashboard" element={<EliteDashboard />} />
           <Route path="/elite/login" element={<EliteLogin />} />

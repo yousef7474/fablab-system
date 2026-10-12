@@ -69,6 +69,13 @@ const SummerStudentAttendance = require('./SummerStudentAttendance');
 const FablabVisit = require('./FablabVisit');
 const FablabVisitSlot = require('./FablabVisitSlot');
 const WorkshopTeacher = require('./WorkshopTeacher');
+const SiteMedia = require('./SiteMedia');
+const SiteWorkshopArchive = require('./SiteWorkshopArchive');
+const SiteStory = require('./SiteStory');
+const TalentApplication = require('./TalentApplication');
+const InternshipOpportunity = require('./InternshipOpportunity');
+const InternshipApplication = require('./InternshipApplication');
+const SiteContactMessage = require('./SiteContactMessage');
 const CalendarEvent = require('./CalendarEvent');
 const StoreItem = require('./StoreItem');
 const StoreOrder = require('./StoreOrder');
@@ -1431,6 +1438,13 @@ module.exports = {
   FablabVisit,
   FablabVisitSlot,
   WorkshopTeacher,
+  SiteMedia,
+  SiteWorkshopArchive,
+  SiteStory,
+  TalentApplication,
+  InternshipOpportunity,
+  InternshipApplication,
+  SiteContactMessage,
   CalendarEvent,
   StoreItem,
   StoreOrder,
