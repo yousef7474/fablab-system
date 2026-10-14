@@ -1645,9 +1645,13 @@ const AdminDashboard = () => {
     } catch (e2) {
       let msg = isRTL ? 'خطأ في إنشاء الفاتورة' : 'Error generating invoice';
       if (e2.response?.data instanceof Blob) {
-        try { const j = JSON.parse(await e2.response.data.text()); msg = (isRTL ? j.messageAr : j.message) || msg; } catch {}
+        try {
+          const j = JSON.parse(await e2.response.data.text());
+          msg = (isRTL ? j.messageAr : j.message) || msg;
+          if (j.detail) msg += ` — ${j.detail}`;
+        } catch {}
       }
-      toast.error(msg);
+      toast.error(msg, { autoClose: 12000 });
     }
   };
 

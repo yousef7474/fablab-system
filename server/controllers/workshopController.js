@@ -2694,7 +2694,11 @@ body::before {
     res.end(pdfBuffer);
   } catch (error) {
     console.error('Download invoice PDF error:', error);
-    res.status(500).json({ message: 'Error generating invoice', messageAr: 'خطأ في إنشاء الفاتورة' });
+    res.status(500).json({
+      message: 'Error generating invoice',
+      messageAr: 'خطأ في إنشاء الفاتورة',
+      detail: String(error?.message || error).slice(0, 200)
+    });
   }
 };
 

@@ -18,23 +18,34 @@ if (!chromiumPath) {
 
 console.log('PDF Generator: Chromium path =', chromiumPath);
 
+const BASE_ARGS = [
+  '--no-sandbox',
+  '--disable-setuid-sandbox',
+  '--disable-dev-shm-usage',
+  '--disable-gpu',
+  '--disable-extensions'
+];
+// Reduce memory footprint on the 2GB droplet — many small reports with
+// lots of embedded images can otherwise OOM. Chromium's single-process
+// mode is unsupported though, and some (auto-updated snap) versions crash
+// in it, so a failed attempt is retried once in the normal mode.
+const LOW_MEMORY_ARGS = ['--single-process', '--no-zygote'];
+
 const generatePdfFromHtml = async (html, options = {}) => {
   if (!chromiumPath) throw new Error('Chromium not found');
+  try {
+    return await _render(html, options, [...BASE_ARGS, ...LOW_MEMORY_ARGS]);
+  } catch (err) {
+    console.error('PDF Generator: low-memory mode failed, retrying normally:', err.message);
+    return _render(html, options, BASE_ARGS);
+  }
+};
 
+const _render = async (html, options, args) => {
   const browser = await puppeteer.launch({
     executablePath: chromiumPath,
     headless: 'new',
-    args: [
-      '--no-sandbox',
-      '--disable-setuid-sandbox',
-      '--disable-dev-shm-usage',
-      '--disable-gpu',
-      // Reduce memory footprint on the 2GB droplet — many small
-      // reports with lots of embedded images can otherwise OOM.
-      '--single-process',
-      '--no-zygote',
-      '--disable-extensions'
-    ]
+    args
   });
 
   try {
