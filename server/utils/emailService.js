@@ -457,11 +457,22 @@ const sendStatusUpdateEmail = async (userEmail, userName, registrationId, status
 
   try {
     await sgMail.send(msg);
-    console.log(`✅ Status update email sent to ${userEmail}`);
+    console.log(`✅ Status update email sent to ${userEmail} (${registrationId}: ${previousStatus || '-'} -> ${status})`);
   } catch (error) {
-    console.error('❌ Error sending status update email:', error);
+    console.error(`❌ Error sending status update email to ${userEmail} (${registrationId}):`, describeEmailError(error));
     throw error;
   }
+};
+
+// Short, human-readable reason from a SendGrid error (quota exceeded,
+// unverified sender, bad address...) for logs and the admin UI.
+const describeEmailError = (err) => {
+  const errors = err?.response?.body?.errors;
+  if (Array.isArray(errors) && errors.length) {
+    return errors.map(e => e?.message).filter(Boolean).join('; ').slice(0, 300);
+  }
+  const code = err?.code || err?.response?.statusCode;
+  return String(err?.message || 'unknown error').slice(0, 300) + (code ? ` (${code})` : '');
 };
 
 // Send custom email from admin to user
@@ -1450,6 +1461,7 @@ module.exports = {
   sendRegistrationConfirmation,
   sendEngineerNotification,
   sendStatusUpdateEmail,
+  describeEmailError,
   sendCustomEmail,
   sendTaskRatingEmail,
   sendTaskReminderEmail,

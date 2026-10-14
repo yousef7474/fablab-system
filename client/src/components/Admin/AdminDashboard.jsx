@@ -3069,7 +3069,7 @@ const AdminDashboard = () => {
 
     try {
       const encodedId = encodeURIComponent(statusModalRegistration.registrationId);
-      await api.patch(`/admin/registrations/${encodedId}/status`, {
+      const { data } = await api.patch(`/admin/registrations/${encodedId}/status`, {
         status: statusModalAction === 'approve' ? 'approved' : 'rejected',
         rejectionReason: statusModalAction === 'reject' ? rejectionReason : null,
         adminMessage: statusMessage || null,
@@ -3090,6 +3090,17 @@ const AdminDashboard = () => {
           ? (statusModalAction === 'approve' ? 'تم قبول الطلب بنجاح' : 'تم رفض الطلب بنجاح')
           : (statusModalAction === 'approve' ? 'Registration approved successfully' : 'Registration rejected successfully')
         );
+      }
+      // The status is saved either way — but say so when the beneficiary
+      // was not actually emailed.
+      if (data?.emailSent === false) {
+        const reason = data.emailError === 'no-email'
+          ? (isRTL ? 'لا يوجد بريد إلكتروني مسجل للمستفيد' : 'no email address on file')
+          : (data.emailError || '');
+        toast.warning(isRTL
+          ? `⚠️ لم يتم إرسال البريد للمستفيد${reason ? ` — ${reason}` : ''}`
+          : `⚠️ The beneficiary was NOT emailed${reason ? ` — ${reason}` : ''}`,
+          { autoClose: 12000 });
       }
 
       fetchRegistrations();

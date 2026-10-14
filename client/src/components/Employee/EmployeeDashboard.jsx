@@ -583,15 +583,28 @@ const EmployeeDashboard = () => {
     setRegDecideBusy(true);
     try {
       employeeApi.post('/employee/activity/interaction').catch(() => {});
-      await employeeApi.patch(`/employee/my-registrations/${encodeURIComponent(id)}/status`, {
+      const { data } = await employeeApi.patch(`/employee/my-registrations/${encodeURIComponent(id)}/status`, {
         status: mode === 'approve' ? 'approved' : 'rejected',
         rejectionReason: mode === 'reject' ? regRejectReason.trim() : null,
         adminMessage: regNote.trim() || null,
         sendMessageInEmail: regSendMessage
       });
-      toast.success(mode === 'approve'
-        ? (isRTL ? '✅ تم الاعتماد وإرسال البريد للمستفيد' : '✅ Approved — beneficiary emailed')
-        : (isRTL ? '✕ تم الرفض وإرسال البريد للمستفيد' : '✕ Rejected — beneficiary emailed'));
+      if (data?.emailSent === false) {
+        const reason = data.emailError === 'no-email'
+          ? (isRTL ? 'لا يوجد بريد إلكتروني مسجل للمستفيد' : 'no email address on file')
+          : (data.emailError || '');
+        toast.success(mode === 'approve'
+          ? (isRTL ? '✅ تم الاعتماد' : '✅ Approved')
+          : (isRTL ? '✕ تم الرفض' : '✕ Rejected'));
+        toast.warning(isRTL
+          ? `⚠️ لم يتم إرسال البريد للمستفيد${reason ? ` — ${reason}` : ''}`
+          : `⚠️ The beneficiary was NOT emailed${reason ? ` — ${reason}` : ''}`,
+          { autoClose: 12000 });
+      } else {
+        toast.success(mode === 'approve'
+          ? (isRTL ? '✅ تم الاعتماد وإرسال البريد للمستفيد' : '✅ Approved — beneficiary emailed')
+          : (isRTL ? '✕ تم الرفض وإرسال البريد للمستفيد' : '✕ Rejected — beneficiary emailed'));
+      }
       closeRegDecide();
       fetchRegistrations();
     } catch (err) {

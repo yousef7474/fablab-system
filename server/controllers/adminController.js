@@ -1,7 +1,7 @@
 const { Admin, User, Registration, Employee } = require('../models');
 const jwt = require('jsonwebtoken');
 const { Op } = require('sequelize');
-const { sendStatusUpdateEmail, sendCustomEmail } = require('../utils/emailService');
+const { sendStatusUpdateEmail, sendCustomEmail, describeEmailError } = require('../utils/emailService');
 const QRCode = require('qrcode');
 const PDFDocument = require('pdfkit');
 const fs = require('fs');
@@ -327,9 +327,14 @@ exports.updateRegistrationStatus = async (req, res) => {
 
     await registration.save();
 
-    // Send email to user (non-blocking, don't fail the request if email fails)
+    // Send email to user. Never fails the request, but report the outcome
+    // so the admin can see when the beneficiary was NOT notified.
+    let emailSent = false;
+    let emailError = null;
     try {
-      if (registration.user && registration.user.email) {
+      if (!registration.user || !registration.user.email) {
+        emailError = 'no-email';
+      } else {
         const userName = registration.user.firstName && registration.user.lastName
           ? `${registration.user.firstName} ${registration.user.lastName}`
           : registration.user.name || 'User';
@@ -355,14 +360,17 @@ exports.updateRegistrationStatus = async (req, res) => {
             previousStatus: previousStatus || oldStatus
           }
         );
+        emailSent = true;
       }
-    } catch (emailError) {
-      console.error('Failed to send status update email:', emailError);
+    } catch (err) {
+      emailError = describeEmailError(err);
     }
 
     res.json({
       message: isStatusChange ? 'Registration status changed successfully' : 'Registration status updated successfully',
-      registration
+      registration,
+      emailSent,
+      emailError
     });
   } catch (error) {
     console.error('Error updating registration status:', error);

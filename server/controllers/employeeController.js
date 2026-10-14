@@ -606,9 +606,13 @@ exports.updateMyRegistrationStatus = async (req, res) => {
 
     // Fire the same email the admin flow sends — beneficiary sees no
     // difference whether admin or the section employee acted.
+    const { sendStatusUpdateEmail, describeEmailError } = require('../utils/emailService');
+    let emailSent = false;
+    let emailError = null;
     try {
-      if (registration.user?.email) {
-        const { sendStatusUpdateEmail } = require('../utils/emailService');
+      if (!registration.user?.email) {
+        emailError = 'no-email';
+      } else {
         const userName = registration.user.firstName && registration.user.lastName
           ? `${registration.user.firstName} ${registration.user.lastName}`
           : registration.user.name || 'User';
@@ -631,15 +635,18 @@ exports.updateMyRegistrationStatus = async (req, res) => {
             previousStatus
           }
         );
+        emailSent = true;
       }
     } catch (emailErr) {
-      console.error('Employee registration status email failed:', emailErr.message);
+      emailError = describeEmailError(emailErr);
     }
 
     res.json({
       message: 'Registration status updated',
       messageAr: 'تم تحديث حالة الطلب',
-      registration
+      registration,
+      emailSent,
+      emailError
     });
   } catch (error) {
     console.error('updateMyRegistrationStatus:', error);
