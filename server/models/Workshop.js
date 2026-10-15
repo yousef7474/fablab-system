@@ -111,10 +111,9 @@ const Workshop = sequelize.define('Workshop', {
     defaultValue: false,
     allowNull: false
   },
-  // Which program a link-only (isEducation) workshop belongs to: null =
-  // Education, 'future_scientists' = علماء المستقبل. Both share the same
-  // mechanics (shareable URL, students + teachers, rooms, 24h cut-off);
-  // the admin lists them in separate sections.
+  // 'future_scientists' = علماء المستقبل: a paid workshop hidden from the
+  // public list and opened through its payment link (/workshop/:id) that
+  // the admin sends to a group. Never combined with isEducation.
   track: {
     type: DataTypes.STRING(32),
     allowNull: true

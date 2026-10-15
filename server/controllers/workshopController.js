@@ -7,10 +7,14 @@ const { readIdDocument, verifyIdToken } = require('../utils/idDocumentReader');
 const survey = require('../utils/workshopSurvey');
 const { EDU_ROOMS, roomById, roomByName, workshopsOverlap, eduDeadline } = require('../utils/eduRooms');
 
-// Programs among the link-only (isEducation) workshops besides Education
-// itself (track null). They work exactly like Education workshops.
+// علماء المستقبل (track 'future_scientists'): a regular paid workshop that
+// is hidden from the public list and opened through its link — a payment
+// link the admin sends to a group. Anyone with it registers a student and
+// pays (bank transfer / mada), as many times as needed. Nothing of the
+// Education flow (teachers, rooms, 24h cut-off) applies.
 const WORKSHOP_TRACKS = ['future_scientists'];
 const _normTrack = (t) => (WORKSHOP_TRACKS.includes(t) ? t : null);
+const _isPaymentLink = (w) => !!w && !w.isEducation && w.track === 'future_scientists';
 
 // ─────────────── Invoice numbering (sequential WSK-####) ───────────────
 // Auto-assigns the next number under a transaction so two concurrent
@@ -81,9 +85,9 @@ exports.createWorkshop = async (req, res) => {
       });
     }
 
-    // Choosing a program (علماء المستقبل) makes the workshop link-only too.
+    // علماء المستقبل and Education are exclusive; both are link-only.
     const trackValue = _normTrack(track);
-    const eduFlag = !!isEducation || !!trackValue;
+    const eduFlag = !trackValue && !!isEducation;
     const workshop = await Workshop.create({
       title, description, presenter, assignedEmployeeId,
       startDate, endDate, startTime, endTime, totalHours,
@@ -92,9 +96,9 @@ exports.createWorkshop = async (req, res) => {
       isActive: isActive !== undefined ? isActive : true,
       // Education workshops are ALWAYS hidden from the public picker.
       // Only the shareable URL /workshop/:id opens them.
-      isPublic: eduFlag ? false : (isPublic !== undefined ? !!isPublic : true),
+      isPublic: (eduFlag || trackValue) ? false : (isPublic !== undefined ? !!isPublic : true),
       isEducation: eduFlag,
-      track: eduFlag ? trackValue : null,
+      track: trackValue,
       room: room || null,
       registrationEnabled: registrationEnabled !== undefined ? !!registrationEnabled : true,
       registrationForceOpen: !!registrationForceOpen && registrationEnabled !== false,
@@ -243,13 +247,14 @@ exports.updateWorkshop = async (req, res) => {
       isEducation, track, room, registrationEnabled, registrationForceOpen
     } = req.body;
 
-    // Education workshops never appear in the public picker. Choosing a
-    // program (علماء المستقبل) makes the workshop link-only too.
+    // Education and علماء المستقبل workshops never appear in the public
+    // picker, and are exclusive — whichever the admin just chose wins.
     let nextIsEdu = isEducation !== undefined ? !!isEducation : workshop.isEducation;
     let nextTrack = track !== undefined ? _normTrack(track) : workshop.track;
-    if (track !== undefined && nextTrack) nextIsEdu = true;
-    if (!nextIsEdu) nextTrack = null;
-    const nextIsPublic = nextIsEdu ? false : (isPublic !== undefined ? !!isPublic : workshop.isPublic);
+    if (nextIsEdu && nextTrack) {
+      if (track !== undefined) nextIsEdu = false; else nextTrack = null;
+    }
+    const nextIsPublic = (nextIsEdu || nextTrack) ? false : (isPublic !== undefined ? !!isPublic : workshop.isPublic);
 
     await workshop.update({
       title: title !== undefined ? title : workshop.title,
@@ -584,10 +589,10 @@ exports.registerStudent = async (req, res) => {
 
       // Admin-only workshops are hidden from the public listing and cannot
       // be registered for via the public form.
-      // EXCEPTION: education workshops opt into public-URL registration.
-      // They stay hidden from the picker (isPublic=false) but accept
-      // registrations from anyone with the shareable URL.
-      if (workshop.isPublic === false && !workshop.isEducation) {
+      // EXCEPTION: education workshops and علماء المستقبل payment links
+      // opt into public-URL registration. They stay hidden from the picker
+      // (isPublic=false) but accept registrations from anyone with the URL.
+      if (workshop.isPublic === false && !workshop.isEducation && !_isPaymentLink(workshop)) {
         throw { status: 403, message: 'This workshop is not open for public registration', messageAr: 'هذه الورشة غير متاحة للتسجيل العام' };
       }
 
@@ -2878,9 +2883,9 @@ exports.rateStudentEmployee = async (req, res) => {
 // ─────────────── Education workshops (unique shareable URL) ───────────────
 
 // GET /workshops/edu/:id — public, no auth. Returns the education
-// workshop's public-facing details for the /workshop/:id shareable
-// registration page. 404 for non-education workshops so the URL
-// isn't a discovery vector.
+// workshop's (or علماء المستقبل payment link's) public-facing details for
+// the /workshop/:id shareable registration page. 404 for other workshops
+// so the URL isn't a discovery vector.
 exports.getEducationWorkshop = async (req, res) => {
   try {
     const workshop = await Workshop.findByPk(req.params.id, {
@@ -2894,7 +2899,7 @@ exports.getEducationWorkshop = async (req, res) => {
         model: WorkshopStudent, as: 'students', attributes: ['studentId']
       }]
     });
-    if (!workshop || !workshop.isEducation) {
+    if (!workshop || (!workshop.isEducation && !_isPaymentLink(workshop))) {
       return res.status(404).json({
         message: 'Education workshop not found',
         messageAr: 'الورشة التعليمية غير موجودة'
@@ -2905,12 +2910,17 @@ exports.getEducationWorkshop = async (req, res) => {
       ? Math.max(0, workshop.maxParticipants - studentCount)
       : null;
 
-    const { students, ...rest } = workshop.toJSON();
+    const { students, room, ...rest } = workshop.toJSON();
     const closedReason = _closedReason(workshop, studentCount);
+    if (!workshop.isEducation) {
+      // Payment link: just the workshop and whether it takes registrations.
+      return res.json({ ...rest, studentCount, spotsRemaining, isOpen: !closedReason, closedReason });
+    }
     const teacherClosedReason = _closedReason(workshop, studentCount, { forTeacher: true });
     const rooms = await _eduRoomAvailability(workshop);
     res.json({
       ...rest,
+      room,
       studentCount,
       spotsRemaining,
       // Explicit flags so the client can render the right message.
@@ -3107,24 +3117,20 @@ exports.registerEducationTeacher = async (req, res) => {
   }
 };
 
-// GET /workshops/admin/edu-teachers?upcoming=1&track=education|future_scientists
-// (admin) — every teacher across link-only workshops with their room and
-// requirements; `track` limits it to one program.
+// GET /workshops/admin/edu-teachers?upcoming=1 (admin) — every teacher
+// across education workshops with their room and requirements.
 exports.listEducationTeachers = async (req, res) => {
   try {
     const teachers = await WorkshopTeacher.findAll({ order: [['createdAt', 'ASC']] });
     const ids = [...new Set(teachers.map(t => t.workshopId))];
     const workshops = ids.length
-      ? await Workshop.findAll({ where: { workshopId: { [Op.in]: ids } }, attributes: ['workshopId', 'title', 'startDate', 'endDate', 'startTime', 'endTime', 'status', 'track'] })
+      ? await Workshop.findAll({ where: { workshopId: { [Op.in]: ids } }, attributes: ['workshopId', 'title', 'startDate', 'endDate', 'startTime', 'endTime', 'status'] })
       : [];
     const byId = new Map(workshops.map(w => [w.workshopId, w]));
     const today = _todayStrRiyadh();
-    const wantTrack = req.query.track === 'education' ? null : _normTrack(req.query.track);
-    const filterTrack = req.query.track === 'education' || !!wantTrack;
     const rows = teachers
       .map(t => ({ ...t.toJSON(), roomLabel: roomById(t.room)?.ar || t.room, workshop: byId.get(t.workshopId) || null }))
-      .filter(r => r.workshop && (!filterTrack || (r.workshop.track || null) === wantTrack))
-      .filter(r => req.query.upcoming !== '1' || String(r.workshop.endDate || r.workshop.startDate).slice(0, 10) >= today)
+      .filter(r => r.workshop && (req.query.upcoming !== '1' || String(r.workshop.endDate || r.workshop.startDate).slice(0, 10) >= today))
       .sort((a, b) => String(a.workshop.startDate).localeCompare(String(b.workshop.startDate)) || String(a.workshop.startTime || '').localeCompare(String(b.workshop.startTime || '')));
     res.json({ rooms: EDU_ROOMS, teachers: rows });
   } catch (error) {

@@ -432,6 +432,32 @@ const WorkshopRegistration = () => {
   const toggleLanguage = () => i18n.changeLanguage(i18n.language === 'ar' ? 'en' : 'ar');
 
   const isEduLink = isSingleMode && !!singleWorkshopMeta?.isEducation;
+  // علماء المستقبل: a payment link sent to a group — the usual student +
+  // payment steps for one workshop, usable for several payments.
+  const isPayLink = isSingleMode && !!singleWorkshopMeta && !singleWorkshopMeta.isEducation
+    && singleWorkshopMeta.track === 'future_scientists';
+  const payLinkPrice = Number(singleWorkshopMeta?.price) || 0;
+  // Register + pay for one more student through the same link.
+  const startAnother = () => {
+    setForm(prev => ({
+      firstName: '', lastName: '', phone: '', email: '',
+      nationalId: '', gender: '', age: '', city: '',
+      workshopId: prev.workshopId,
+      paymentMethod: 'bank_transfer'
+    }));
+    setIdCheck({ status: 'idle' });
+    setProofFile(null);
+    setTermsAgreed(false);
+    setCoupon(null);
+    setCouponInput('');
+    setResult(null);
+    setLookupValue('');
+    setLookupMode(true);
+    setStep(0);
+    api.get(`/workshops/edu/${routeWorkshopId}`)
+      .then(res => { setSingleWorkshopMeta(res.data); setWorkshops([res.data]); })
+      .catch(() => {});
+  };
   // A saved student draft past the first step means they already chose.
   const effectiveRole = isEduLink ? (eduRole || (step > 0 ? 'student' : null)) : 'student';
   const showStudentFlow = !isEduLink || effectiveRole === 'student';
@@ -455,19 +481,44 @@ const WorkshopRegistration = () => {
               <img src="/fablab.png" alt="FabLab" style={{ height: 50 }} />
               <img src="/found.png" alt="Foundation" style={{ height: 50 }} />
             </div>
-            <h1>{isRTL ? 'تسجيل في الورش التدريبية' : 'Workshop Registration'}</h1>
+            <h1>{isPayLink
+              ? (isRTL ? 'رابط الدفع والتسجيل' : 'Payment & Registration')
+              : (isRTL ? 'تسجيل في الورش التدريبية' : 'Workshop Registration')}</h1>
             <p>FABLAB Al-Ahsa</p>
           </div>
+
+          {isPayLink && (
+            <div className="paylink-card">
+              <span className="paylink-kicker">🔬 {isRTL ? 'علماء المستقبل' : 'Future Scientists'}</span>
+              <b className="paylink-title">{singleWorkshopMeta.title}</b>
+              <div className="paylink-meta">
+                {singleWorkshopMeta.startDate && (
+                  <span dir="ltr">📅 {singleWorkshopMeta.startDate}{singleWorkshopMeta.endDate && singleWorkshopMeta.endDate !== singleWorkshopMeta.startDate ? ` → ${singleWorkshopMeta.endDate}` : ''}</span>
+                )}
+                {singleWorkshopMeta.startTime && (
+                  <span dir="ltr">🕘 {String(singleWorkshopMeta.startTime).slice(0, 5)}{singleWorkshopMeta.endTime ? ` – ${String(singleWorkshopMeta.endTime).slice(0, 5)}` : ''}</span>
+                )}
+                {singleWorkshopMeta.spotsRemaining != null && (
+                  <span>🎟 {isRTL ? `المقاعد المتبقية: ${singleWorkshopMeta.spotsRemaining}` : `Seats left: ${singleWorkshopMeta.spotsRemaining}`}</span>
+                )}
+              </div>
+              <div className="paylink-amount">
+                <span>{isRTL ? 'المبلغ لكل طالب' : 'Amount per student'}</span>
+                <strong>{payLinkPrice > 0 ? `${payLinkPrice.toFixed(2)} ${isRTL ? 'ر.س' : 'SAR'}` : (isRTL ? 'مجاني' : 'Free')}</strong>
+              </div>
+              <p className="paylink-note">
+                {isRTL
+                  ? 'سجّل بيانات الطالب ثم ادفع بالتحويل البنكي أو مدى. لأكثر من طالب، كرّر التسجيل من نفس الرابط.'
+                  : "Enter the student's details, then pay by bank transfer or mada. For more students, register again from the same link."}
+              </p>
+            </div>
+          )}
 
           {/* Education link: who is registering? */}
           {isEduLink && !effectiveRole && (
             <motion.div className="workshop-step-content edu-roles" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}>
               <div className="edu-roles-workshop">
-                <span>
-                  {singleWorkshopMeta.track === 'future_scientists'
-                    ? (isRTL ? '🔬 علماء المستقبل · الورشة' : '🔬 Future Scientists · Workshop')
-                    : (isRTL ? 'الورشة' : 'Workshop')}
-                </span>
+                <span>{isRTL ? 'الورشة' : 'Workshop'}</span>
                 <b>{singleWorkshopMeta.title}</b>
               </div>
               {deadlineLabel && <div className="edu-deadline">⏰ {deadlineLabel}</div>}
@@ -1135,8 +1186,13 @@ const WorkshopRegistration = () => {
                   }</span>
                 </motion.div>
 
-                <div style={{ marginTop: 24 }}>
-                  <button className="workshop-btn-next" onClick={() => navigate('/')}>{isRTL ? 'العودة للرئيسية' : 'Back to Home'}</button>
+                <div style={{ marginTop: 24, display: 'flex', gap: 10, justifyContent: 'center', flexWrap: 'wrap' }}>
+                  {isPayLink && (
+                    <button className="workshop-btn-next" onClick={startAnother}>
+                      ➕ {isRTL ? 'تسجيل ودفع لطالب آخر' : 'Register & pay for another student'}
+                    </button>
+                  )}
+                  <button className={isPayLink ? 'workshop-btn-back' : 'workshop-btn-next'} onClick={() => navigate('/')}>{isRTL ? 'العودة للرئيسية' : 'Back to Home'}</button>
                 </div>
               </motion.div>
             )}

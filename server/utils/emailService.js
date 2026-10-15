@@ -1207,7 +1207,6 @@ const sendEducationTeacherConfirmation = async (teacher, workshop, roomLabel) =>
   const dates = fmtDate(workshop.startDate) + (workshop.endDate && workshop.endDate !== workshop.startDate ? ` – ${fmtDate(workshop.endDate)}` : '');
   const times = workshop.startTime ? `${fmtTime(workshop.startTime)}${workshop.endTime ? ` – ${fmtTime(workshop.endTime)}` : ''}` : '';
   const row = (k, v) => `<tr><td style="padding:8px 14px;color:#64748b;width:140px;border-bottom:1px solid #e5e7eb">${k}</td><td style="padding:8px 14px;font-weight:700;border-bottom:1px solid #e5e7eb">${v}</td></tr>`;
-  const programAr = workshop.track === 'future_scientists' ? 'ورشة علماء المستقبل' : 'الورشة التعليمية';
   const msg = {
     to: teacher.email,
     from: { email: process.env.SENDGRID_FROM_EMAIL, name: process.env.SENDGRID_FROM_NAME || 'FABLAB Al-Ahsa' },
@@ -1216,11 +1215,11 @@ const sendEducationTeacherConfirmation = async (teacher, workshop, roomLabel) =>
 <div style="background:linear-gradient(135deg,#b91c1c,#EE2329);padding:22px;text-align:center;color:#fff;">
 <img src="https://fablabsahsa.com/fablab.png" alt="FabLab" style="height:46px;filter:brightness(0) invert(1);"/>
 <h2 style="margin:10px 0 0;font-size:19px;">تم تسجيلك بنجاح ✓</h2>
-<p style="margin:4px 0 0;font-size:12px;opacity:.85">معلم / مدرب — ${workshop.track === 'future_scientists' ? 'علماء المستقبل' : 'ورشة تعليمية'}</p>
+<p style="margin:4px 0 0;font-size:12px;opacity:.85">معلم / مدرب — ورشة تعليمية</p>
 </div>
 <div style="padding:22px 24px;color:#334155;font-size:14px;line-height:1.8;">
 <p style="margin:0 0 12px;">مرحباً <b>${esc(teacher.fullName)}</b>،</p>
-<p style="margin:0 0 14px;">شكراً لتسجيلك في ${programAr} بفاب لاب الأحساء. استلمنا بياناتك ومتطلباتك وسنقوم بتجهيزها قبل موعد الورشة.</p>
+<p style="margin:0 0 14px;">شكراً لتسجيلك في الورشة التعليمية بفاب لاب الأحساء. استلمنا بياناتك ومتطلباتك وسنقوم بتجهيزها قبل موعد الورشة.</p>
 <table style="width:100%;font-size:13px;border-collapse:collapse;background:#f8fafc;border-radius:10px;overflow:hidden;margin:0 0 16px">
 ${row('الورشة', esc(workshop.title))}
 ${row('التاريخ', `<span dir="ltr">${esc(dates)}</span>`)}
