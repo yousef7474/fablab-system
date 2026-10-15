@@ -7,6 +7,11 @@ const { readIdDocument, verifyIdToken } = require('../utils/idDocumentReader');
 const survey = require('../utils/workshopSurvey');
 const { EDU_ROOMS, roomById, roomByName, workshopsOverlap, eduDeadline } = require('../utils/eduRooms');
 
+// Programs among the link-only (isEducation) workshops besides Education
+// itself (track null). They work exactly like Education workshops.
+const WORKSHOP_TRACKS = ['future_scientists'];
+const _normTrack = (t) => (WORKSHOP_TRACKS.includes(t) ? t : null);
+
 // ─────────────── Invoice numbering (sequential WSK-####) ───────────────
 // Auto-assigns the next number under a transaction so two concurrent
 // registrations never race to the same invoice.
@@ -66,7 +71,7 @@ exports.createWorkshop = async (req, res) => {
       startDate, endDate, startTime, endTime, totalHours,
       content, objectives, photo, maxParticipants, price,
       status, isActive, isPublic, notes, color, minAge, maxAge,
-      isEducation, room, registrationEnabled, registrationForceOpen
+      isEducation, track, room, registrationEnabled, registrationForceOpen
     } = req.body;
 
     if (!title || !presenter || !startDate) {
@@ -76,7 +81,9 @@ exports.createWorkshop = async (req, res) => {
       });
     }
 
-    const eduFlag = !!isEducation;
+    // Choosing a program (علماء المستقبل) makes the workshop link-only too.
+    const trackValue = _normTrack(track);
+    const eduFlag = !!isEducation || !!trackValue;
     const workshop = await Workshop.create({
       title, description, presenter, assignedEmployeeId,
       startDate, endDate, startTime, endTime, totalHours,
@@ -87,6 +94,7 @@ exports.createWorkshop = async (req, res) => {
       // Only the shareable URL /workshop/:id opens them.
       isPublic: eduFlag ? false : (isPublic !== undefined ? !!isPublic : true),
       isEducation: eduFlag,
+      track: eduFlag ? trackValue : null,
       room: room || null,
       registrationEnabled: registrationEnabled !== undefined ? !!registrationEnabled : true,
       registrationForceOpen: !!registrationForceOpen && registrationEnabled !== false,
@@ -232,11 +240,15 @@ exports.updateWorkshop = async (req, res) => {
       startDate, endDate, startTime, endTime, totalHours,
       content, objectives, photo, maxParticipants, price,
       status, isActive, isPublic, notes, color, minAge, maxAge,
-      isEducation, room, registrationEnabled, registrationForceOpen
+      isEducation, track, room, registrationEnabled, registrationForceOpen
     } = req.body;
 
-    // Education workshops never appear in the public picker.
-    const nextIsEdu = isEducation !== undefined ? !!isEducation : workshop.isEducation;
+    // Education workshops never appear in the public picker. Choosing a
+    // program (علماء المستقبل) makes the workshop link-only too.
+    let nextIsEdu = isEducation !== undefined ? !!isEducation : workshop.isEducation;
+    let nextTrack = track !== undefined ? _normTrack(track) : workshop.track;
+    if (track !== undefined && nextTrack) nextIsEdu = true;
+    if (!nextIsEdu) nextTrack = null;
     const nextIsPublic = nextIsEdu ? false : (isPublic !== undefined ? !!isPublic : workshop.isPublic);
 
     await workshop.update({
@@ -258,6 +270,7 @@ exports.updateWorkshop = async (req, res) => {
       isActive: isActive !== undefined ? isActive : workshop.isActive,
       isPublic: nextIsPublic,
       isEducation: nextIsEdu,
+      track: nextTrack,
       room: room !== undefined ? (room || null) : workshop.room,
       registrationEnabled: registrationEnabled !== undefined ? !!registrationEnabled : workshop.registrationEnabled,
       registrationForceOpen: registrationForceOpen !== undefined
@@ -2875,7 +2888,7 @@ exports.getEducationWorkshop = async (req, res) => {
         'workshopId', 'title', 'description', 'presenter', 'startDate', 'endDate',
         'startTime', 'endTime', 'totalHours', 'content', 'objectives', 'photo',
         'maxParticipants', 'price', 'color', 'minAge', 'maxAge',
-        'isEducation', 'room', 'registrationEnabled', 'registrationForceOpen', 'status', 'isActive'
+        'isEducation', 'track', 'room', 'registrationEnabled', 'registrationForceOpen', 'status', 'isActive'
       ],
       include: [{
         model: WorkshopStudent, as: 'students', attributes: ['studentId']
@@ -3094,20 +3107,24 @@ exports.registerEducationTeacher = async (req, res) => {
   }
 };
 
-// GET /workshops/admin/edu-teachers?upcoming=1 (admin) — every teacher
-// across education workshops with their room and requirements.
+// GET /workshops/admin/edu-teachers?upcoming=1&track=education|future_scientists
+// (admin) — every teacher across link-only workshops with their room and
+// requirements; `track` limits it to one program.
 exports.listEducationTeachers = async (req, res) => {
   try {
     const teachers = await WorkshopTeacher.findAll({ order: [['createdAt', 'ASC']] });
     const ids = [...new Set(teachers.map(t => t.workshopId))];
     const workshops = ids.length
-      ? await Workshop.findAll({ where: { workshopId: { [Op.in]: ids } }, attributes: ['workshopId', 'title', 'startDate', 'endDate', 'startTime', 'endTime', 'status'] })
+      ? await Workshop.findAll({ where: { workshopId: { [Op.in]: ids } }, attributes: ['workshopId', 'title', 'startDate', 'endDate', 'startTime', 'endTime', 'status', 'track'] })
       : [];
     const byId = new Map(workshops.map(w => [w.workshopId, w]));
     const today = _todayStrRiyadh();
+    const wantTrack = req.query.track === 'education' ? null : _normTrack(req.query.track);
+    const filterTrack = req.query.track === 'education' || !!wantTrack;
     const rows = teachers
       .map(t => ({ ...t.toJSON(), roomLabel: roomById(t.room)?.ar || t.room, workshop: byId.get(t.workshopId) || null }))
-      .filter(r => r.workshop && (req.query.upcoming !== '1' || String(r.workshop.endDate || r.workshop.startDate).slice(0, 10) >= today))
+      .filter(r => r.workshop && (!filterTrack || (r.workshop.track || null) === wantTrack))
+      .filter(r => req.query.upcoming !== '1' || String(r.workshop.endDate || r.workshop.startDate).slice(0, 10) >= today)
       .sort((a, b) => String(a.workshop.startDate).localeCompare(String(b.workshop.startDate)) || String(a.workshop.startTime || '').localeCompare(String(b.workshop.startTime || '')));
     res.json({ rooms: EDU_ROOMS, teachers: rows });
   } catch (error) {

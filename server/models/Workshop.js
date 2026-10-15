@@ -111,6 +111,14 @@ const Workshop = sequelize.define('Workshop', {
     defaultValue: false,
     allowNull: false
   },
+  // Which program a link-only (isEducation) workshop belongs to: null =
+  // Education, 'future_scientists' = علماء المستقبل. Both share the same
+  // mechanics (shareable URL, students + teachers, rooms, 24h cut-off);
+  // the admin lists them in separate sections.
+  track: {
+    type: DataTypes.STRING(32),
+    allowNull: true
+  },
   // Physical room where the workshop is held (education workshops
   // rely on this — printed on invoices + confirmation email).
   room: {

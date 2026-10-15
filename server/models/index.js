@@ -907,6 +907,10 @@ const syncDatabase = async () => {
       await sequelize.query(
         `ALTER TABLE workshops ADD COLUMN IF NOT EXISTS "registrationEnabled" BOOLEAN NOT NULL DEFAULT TRUE`
       );
+      // Program within the link-only workshops (null = Education).
+      await sequelize.query(
+        `ALTER TABLE workshops ADD COLUMN IF NOT EXISTS "track" VARCHAR(32)`
+      );
     } catch (migrationError) {
       if (!/does not exist/i.test(migrationError.message)) {
         console.log('workshops education columns migration note:', migrationError.message);

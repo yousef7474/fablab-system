@@ -296,7 +296,7 @@ const AdminDashboard = () => {
     startDate: '', endDate: '', startTime: '', endTime: '',
     totalHours: '', content: '', objectives: '', photo: '',
     maxParticipants: '', price: '', notes: '', color: '#1a56db', minAge: '', maxAge: '',
-    isPublic: true, isEducation: false, room: '', registrationEnabled: true, registrationForceOpen: false
+    isPublic: true, isEducation: false, track: '', room: '', registrationEnabled: true, registrationForceOpen: false
   });
   const [workshopLoading, setWorkshopLoading] = useState(false);
   const [viewingWorkshopStudents, setViewingWorkshopStudents] = useState(() => {
@@ -1485,6 +1485,7 @@ const AdminDashboard = () => {
       notes: workshop.notes || '', color: workshop.color || '#1a56db', minAge: workshop.minAge || '', maxAge: workshop.maxAge || '',
       isPublic: workshop.isPublic !== false,
       isEducation: !!workshop.isEducation,
+      track: workshop.track || '',
       room: workshop.room || '',
       registrationEnabled: workshop.registrationEnabled !== false,
       registrationForceOpen: !!workshop.registrationForceOpen
@@ -8546,28 +8547,34 @@ const AdminDashboard = () => {
 
             {/* Workshops Tab */}
             {activeTab === 'workshops' && (() => {
-              // Split education workshops out of the main queue —
-              // they live under their own "Education" pill so the
-              // primary Active/Completed lists stay focused on the
-              // public workshops the admin runs day-to-day.
-              const _isEdu = (w) => !!w.isEducation;
-              const _activeCount = workshopsList.filter(w => !_isEdu(w) && w.isActive && w.status !== 'cancelled' && w.status !== 'completed').length;
-              const _completedCount = workshopsList.filter(w => !_isEdu(w) && w.status === 'completed').length;
+              // Split the link-only workshops out of the main queue —
+              // Education and علماء المستقبل each live under their own
+              // pill so the primary Active/Completed lists stay focused on
+              // the public workshops the admin runs day-to-day.
+              const _isLinkOnly = (w) => !!w.isEducation;
+              const _isFS = (w) => _isLinkOnly(w) && w.track === 'future_scientists';
+              const _isEdu = (w) => _isLinkOnly(w) && !_isFS(w);
+              const _isProgramView = workshopFilter === 'education' || workshopFilter === 'future';
+              const _programWs = workshopFilter === 'future' ? workshopsList.filter(_isFS) : workshopsList.filter(_isEdu);
+              const _activeCount = workshopsList.filter(w => !_isLinkOnly(w) && w.isActive && w.status !== 'cancelled' && w.status !== 'completed').length;
+              const _completedCount = workshopsList.filter(w => !_isLinkOnly(w) && w.status === 'completed').length;
               const _educationCount = workshopsList.filter(_isEdu).length;
+              const _futureCount = workshopsList.filter(_isFS).length;
               const _totalStudents = workshopsList.reduce((sum, w) => sum + (w.studentCount || 0), 0);
               const _visibleWorkshops = (() => {
                 const filtered = workshopsList.filter(w => {
                   if (workshopFilter === 'all') return true;
                   if (workshopFilter === 'education') return _isEdu(w);
-                  // Active + Completed exclude education workshops
+                  if (workshopFilter === 'future') return _isFS(w);
+                  // Active + Completed exclude the link-only workshops
                   // so the main queue stays focused.
-                  if (_isEdu(w)) return false;
+                  if (_isLinkOnly(w)) return false;
                   if (workshopFilter === 'active') return w.isActive && w.status !== 'cancelled' && w.status !== 'completed';
                   if (workshopFilter === 'completed') return w.status === 'completed';
                   return true;
                 });
-                if (workshopFilter !== 'education') return filtered;
-                // Sort only in the Education view.
+                if (!_isProgramView) return filtered;
+                // Sort only in the Education / علماء المستقبل views.
                 const arr = [...filtered];
                 const dateVal = w => w.startDate ? new Date(w.startDate).getTime() : (workshopSort === 'date-desc' ? -Infinity : Infinity);
                 if (workshopSort === 'date-desc') arr.sort((a, b) => dateVal(b) - dateVal(a));
@@ -8657,6 +8664,7 @@ const AdminDashboard = () => {
                           { key: 'active',    label: isRTL ? 'النشطة' : 'Active',    count: _activeCount,          color: '#22d3ee' },
                           { key: 'completed', label: isRTL ? 'المكتملة' : 'Completed', count: _completedCount,       color: '#4ade80' },
                           { key: 'education', label: isRTL ? '🎓 التعليم' : '🎓 Education', count: _educationCount, color: '#a78bfa' },
+                          { key: 'future',    label: isRTL ? '🔬 علماء المستقبل' : '🔬 Future Scientists', count: _futureCount, color: '#fbbf24' },
                           { key: 'all',       label: isRTL ? 'الكل' : 'All',         count: workshopsList.length,  color: '#94a3b8' }
                         ].map(f => (
                           <button
@@ -8671,12 +8679,17 @@ const AdminDashboard = () => {
                         ))}
                       </div>
                       <div className="wsv2-actions">
-                        {workshopFilter === 'education' && (
+                        {_isProgramView && (
                           <button
                             className="wsv2-action-btn"
                             onClick={() => {
-                              const eduWs = workshopsList.filter(_isEdu);
-                              if (eduWs.length === 0) { toast.info(isRTL ? 'لا توجد ورش تعليمية' : 'No education workshops'); return; }
+                              const eduWs = _programWs;
+                              if (eduWs.length === 0) {
+                                toast.info(workshopFilter === 'future'
+                                  ? (isRTL ? 'لا توجد ورش لعلماء المستقبل' : 'No Future Scientists workshops')
+                                  : (isRTL ? 'لا توجد ورش تعليمية' : 'No education workshops'));
+                                return;
+                              }
                               const origin = window.location.origin;
                               const fmt = (v) => {
                                 if (v == null) return '';
@@ -8699,20 +8712,20 @@ const AdminDashboard = () => {
                               const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
                               const a = document.createElement('a');
                               a.href = URL.createObjectURL(blob);
-                              a.download = `education-workshops-urls-${new Date().toISOString().slice(0,10)}.csv`;
+                              a.download = `${workshopFilter === 'future' ? 'future-scientists' : 'education'}-workshops-urls-${new Date().toISOString().slice(0,10)}.csv`;
                               document.body.appendChild(a); a.click(); document.body.removeChild(a);
                               toast.success(isRTL ? `تم تصدير ${eduWs.length} ورشة` : `Exported ${eduWs.length} workshops`);
                             }}
-                            title={isRTL ? 'تنزيل قائمة الورش التعليمية مع الروابط' : 'Download education workshops + URLs'}
+                            title={isRTL ? 'تنزيل قائمة ورش هذا القسم مع الروابط' : "Download this section's workshops + URLs"}
                           >
                             📥 {isRTL ? 'تنزيل الروابط' : 'Download URLs'}
                           </button>
                         )}
-                        {workshopFilter === 'education' && (
+                        {_isProgramView && (
                           <button
                             className="wsv2-action-btn"
-                            onClick={() => setShowEduTeachersModal(true)}
-                            title={isRTL ? 'متطلبات المعلمين والمدربين المسجلين في الورش التعليمية' : "Requirements from teachers registered for education workshops"}
+                            onClick={() => setShowEduTeachersModal(workshopFilter === 'future' ? 'future_scientists' : 'education')}
+                            title={isRTL ? 'متطلبات المعلمين والمدربين المسجلين في ورش هذا القسم' : "Requirements from teachers registered for this section's workshops"}
                           >
                             📋 {isRTL ? 'متطلبات المعلمين' : "Teachers' requirements"}
                           </button>
@@ -8726,7 +8739,7 @@ const AdminDashboard = () => {
                             🔍 {isRTL ? 'مقارنة مع الجدول' : 'Compare Schedule'}
                           </button>
                         )}
-                        {workshopFilter === 'education' && (
+                        {_isProgramView && (
                           <select
                             className="wsv2-action-btn"
                             value={workshopSort}
@@ -8779,7 +8792,8 @@ const AdminDashboard = () => {
                           className="wsv2-action-btn primary"
                           onClick={() => {
                             setSelectedWorkshop(null);
-                            setWorkshopForm({ title: '', description: '', presenter: '', assignedEmployeeId: '', startDate: '', endDate: '', startTime: '', endTime: '', totalHours: '', content: '', objectives: '', photo: '', maxParticipants: '', price: '', notes: '', color: '#1a56db', minAge: '', maxAge: '', isPublic: true, isEducation: false, room: '', registrationEnabled: true, registrationForceOpen: false });
+                            // A new workshop starts in the section being viewed.
+                            setWorkshopForm({ title: '', description: '', presenter: '', assignedEmployeeId: '', startDate: '', endDate: '', startTime: '', endTime: '', totalHours: '', content: '', objectives: '', photo: '', maxParticipants: '', price: '', notes: '', color: '#1a56db', minAge: '', maxAge: '', isPublic: !_isProgramView, isEducation: _isProgramView, track: workshopFilter === 'future' ? 'future_scientists' : '', room: '', registrationEnabled: true, registrationForceOpen: false });
                             setShowWorkshopModal(true);
                           }}
                         >
@@ -8876,9 +8890,13 @@ const AdminDashboard = () => {
                                 </h4>
                                 <div className="wsv2-badges">
                                   <span className={`wsv2-status ${w.status}`}>{_wsStatusLabels[w.status] || w.status}</span>
-                                  {w.isEducation && (
+                                  {w.isEducation && (() => {
+                                    const fs = w.track === 'future_scientists';
+                                    return (
                                     <span
-                                      title={isRTL ? 'ورشة تعليمية · انقر لنسخ رابط التسجيل' : 'Education workshop · click to copy registration link'}
+                                      title={fs
+                                        ? (isRTL ? 'علماء المستقبل · انقر لنسخ رابط التسجيل' : 'Future Scientists · click to copy registration link')
+                                        : (isRTL ? 'ورشة تعليمية · انقر لنسخ رابط التسجيل' : 'Education workshop · click to copy registration link')}
                                       onClick={(e) => {
                                         e.stopPropagation();
                                         const url = `${window.location.origin}/workshop/${w.workshopId}`;
@@ -8887,11 +8905,16 @@ const AdminDashboard = () => {
                                           () => toast.error(isRTL ? 'تعذّر النسخ' : 'Copy failed')
                                         );
                                       }}
-                                      style={{ fontSize: 10, fontWeight: 800, padding: '3px 8px', borderRadius: 999, background: '#faf5ff', color: '#6d28d9', border: '1px solid #ddd6fe', cursor: 'pointer', letterSpacing: 0.6 }}
+                                      style={fs
+                                        ? { fontSize: 10, fontWeight: 800, padding: '3px 8px', borderRadius: 999, background: '#fffbeb', color: '#b45309', border: '1px solid #fde68a', cursor: 'pointer', letterSpacing: 0.6 }
+                                        : { fontSize: 10, fontWeight: 800, padding: '3px 8px', borderRadius: 999, background: '#faf5ff', color: '#6d28d9', border: '1px solid #ddd6fe', cursor: 'pointer', letterSpacing: 0.6 }}
                                     >
-                                      🎓 {isRTL ? 'تعليم — نسخ الرابط' : 'EDU — copy link'}
+                                      {fs
+                                        ? <>🔬 {isRTL ? 'علماء المستقبل — نسخ الرابط' : 'Future Scientists — copy link'}</>
+                                        : <>🎓 {isRTL ? 'تعليم — نسخ الرابط' : 'EDU — copy link'}</>}
                                     </span>
-                                  )}
+                                    );
+                                  })()}
                                   {regState === 'disabled' && (
                                     <span className="wsv2-reg-badge closed" title={isRTL ? 'أغلقه المسؤول' : 'Closed by admin'}>
                                       🔒 {isRTL ? 'التسجيل مغلق' : 'Reg. closed'}
@@ -9684,7 +9707,7 @@ const AdminDashboard = () => {
 
             {/* Education schedule (1448) compare modal */}
             {showEduScheduleCompare && (() => {
-              const eduWorkshops = workshopsList.filter(w => !!w.isEducation);
+              const eduWorkshops = workshopsList.filter(w => !!w.isEducation && w.track !== 'future_scientists');
               const normalizedSchoolsInSystem = eduWorkshops.map(w => normalizeArabicTitle(w.title));
               const matched = [];
               const missing = [];
@@ -9945,28 +9968,40 @@ const AdminDashboard = () => {
                       </div>
                     </div>
 
-                    {/* Education-workshop panel — checkbox flips the
-                        workshop into the shareable-URL flow and reveals
-                        Room + Registration-Enabled controls. */}
-                    <div style={{ gridColumn: '1/-1' }}>
-                      <label style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', padding: '10px 14px', borderRadius: 10, background: workshopForm.isEducation ? 'rgba(124,58,237,0.08)' : '#f8fafc', border: workshopForm.isEducation ? '2px solid #7c3aed' : '1.5px solid #e2e8f0' }}>
-                        <input
-                          type="checkbox"
-                          checked={!!workshopForm.isEducation}
-                          onChange={e => setWorkshopForm({ ...workshopForm, isEducation: e.target.checked, isPublic: e.target.checked ? false : workshopForm.isPublic })}
-                          style={{ transform: 'scale(1.2)' }}
-                        />
-                        <div>
-                          <div style={{ fontWeight: 700, fontSize: '0.9rem', color: workshopForm.isEducation ? '#5b21b6' : '#334155' }}>
-                            🎓 {isRTL ? 'ورشة تعليمية (تُشارك عبر رابط فريد فقط)' : 'Education workshop (accessed only via a unique shareable URL)'}
-                          </div>
-                          <div style={{ fontSize: '0.72rem', color: '#64748b', marginTop: 2 }}>
-                            {isRTL
-                              ? 'لا تظهر في قائمة الورش العامة. الإدارة تشارك رابط التسجيل مع طلاب التعليم يدوياً.'
-                              : "Won't appear in the public listing. Admin shares the registration link with education students manually."}
-                          </div>
-                        </div>
-                      </label>
+                    {/* Link-only programs — Education or علماء المستقبل. Either
+                        flips the workshop into the shareable-URL flow and
+                        reveals Room + Registration controls. */}
+                    <div style={{ gridColumn: '1/-1', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 10 }}>
+                      {[
+                        { track: '', icon: '🎓', color: '#7c3aed', dark: '#5b21b6', bg: 'rgba(124,58,237,0.08)',
+                          ar: 'ورشة تعليمية (تُشارك عبر رابط فريد فقط)', en: 'Education workshop (accessed only via a unique shareable URL)',
+                          hintAr: 'لا تظهر في قائمة الورش العامة. الإدارة تشارك رابط التسجيل مع طلاب التعليم يدوياً.',
+                          hintEn: "Won't appear in the public listing. Admin shares the registration link with education students manually." },
+                        { track: 'future_scientists', icon: '🔬', color: '#d97706', dark: '#92400e', bg: 'rgba(217,119,6,0.08)',
+                          ar: 'علماء المستقبل (تُشارك عبر رابط فريد فقط)', en: 'Future Scientists (accessed only via a unique shareable URL)',
+                          hintAr: 'قسم مستقل يعمل مثل الورش التعليمية: رابط فريد، تسجيل الطلاب والمعلمين، والقاعات.',
+                          hintEn: 'A separate section that works like Education: unique link, student + teacher registration, rooms.' }
+                      ].map(p => {
+                        const on = !!workshopForm.isEducation && (workshopForm.track || '') === p.track;
+                        return (
+                          <label key={p.track || 'education'} style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', padding: '10px 14px', borderRadius: 10, background: on ? p.bg : '#f8fafc', border: on ? `2px solid ${p.color}` : '1.5px solid #e2e8f0' }}>
+                            <input
+                              type="checkbox"
+                              checked={on}
+                              onChange={e => setWorkshopForm({ ...workshopForm, isEducation: e.target.checked, track: e.target.checked ? p.track : '', isPublic: e.target.checked ? false : workshopForm.isPublic })}
+                              style={{ transform: 'scale(1.2)' }}
+                            />
+                            <div>
+                              <div style={{ fontWeight: 700, fontSize: '0.9rem', color: on ? p.dark : '#334155' }}>
+                                {p.icon} {isRTL ? p.ar : p.en}
+                              </div>
+                              <div style={{ fontSize: '0.72rem', color: '#64748b', marginTop: 2 }}>
+                                {isRTL ? p.hintAr : p.hintEn}
+                              </div>
+                            </div>
+                          </label>
+                        );
+                      })}
                     </div>
 
                     <div style={{ gridColumn: '1/-1', display: 'grid', gridTemplateColumns: workshopForm.isEducation ? '1fr 1fr' : '1fr', gap: '0.75rem' }}>
@@ -10106,7 +10141,7 @@ const AdminDashboard = () => {
 
             {/* Admin Add Student Modal (workshop) */}
             {showEduTeachersModal && (
-              <EduTeachersModal isRTL={isRTL} onClose={() => setShowEduTeachersModal(false)} />
+              <EduTeachersModal isRTL={isRTL} track={showEduTeachersModal === 'future_scientists' ? 'future_scientists' : 'education'} onClose={() => setShowEduTeachersModal(false)} />
             )}
 
             {showSurveyEditor && (

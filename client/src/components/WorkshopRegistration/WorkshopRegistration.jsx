@@ -463,7 +463,11 @@ const WorkshopRegistration = () => {
           {isEduLink && !effectiveRole && (
             <motion.div className="workshop-step-content edu-roles" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}>
               <div className="edu-roles-workshop">
-                <span>{isRTL ? 'الورشة' : 'Workshop'}</span>
+                <span>
+                  {singleWorkshopMeta.track === 'future_scientists'
+                    ? (isRTL ? '🔬 علماء المستقبل · الورشة' : '🔬 Future Scientists · Workshop')
+                    : (isRTL ? 'الورشة' : 'Workshop')}
+                </span>
                 <b>{singleWorkshopMeta.title}</b>
               </div>
               {deadlineLabel && <div className="edu-deadline">⏰ {deadlineLabel}</div>}

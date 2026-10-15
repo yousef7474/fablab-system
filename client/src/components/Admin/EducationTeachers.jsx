@@ -166,8 +166,9 @@ export const EduTeachersSection = ({ workshop, isRTL, onChanged }) => {
   );
 };
 
-// ─────────── All teachers' requirements (Education toolbar) ───────────
-export const EduTeachersModal = ({ isRTL, onClose }) => {
+// ─────────── All teachers' requirements (Education / علماء المستقبل toolbar) ───────────
+export const EduTeachersModal = ({ isRTL, track = 'education', onClose }) => {
+  const isFS = track === 'future_scientists';
   const [includePast, setIncludePast] = useState(false);
   const [data, setData] = useState(null);
   const [error, setError] = useState('');
@@ -177,7 +178,7 @@ export const EduTeachersModal = ({ isRTL, onClose }) => {
     let alive = true;
     setData(null);
     setError('');
-    api.get('/workshops/admin/edu-teachers', { params: includePast ? {} : { upcoming: 1 } })
+    api.get('/workshops/admin/edu-teachers', { params: includePast ? { track } : { upcoming: 1, track } })
       .then(res => { if (alive) setData(res.data); })
       .catch(err => {
         if (!alive) return;
@@ -185,7 +186,7 @@ export const EduTeachersModal = ({ isRTL, onClose }) => {
         setError((isRTL ? d?.messageAr : d?.message) || (isRTL ? 'تعذّر تحميل المتطلبات' : 'Could not load the requirements'));
       });
     return () => { alive = false; };
-  }, [includePast, isRTL]);
+  }, [includePast, isRTL, track]);
 
   useEffect(() => {
     const onKey = (e) => { if (e.key === 'Escape') onClose(); };
@@ -231,7 +232,7 @@ export const EduTeachersModal = ({ isRTL, onClose }) => {
     const csv = '﻿' + [header, ...rows].map(r => r.map(fmt).join(',')).join('\r\n');
     const a = document.createElement('a');
     a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8;' }));
-    a.download = `teachers-requirements-${new Date().toISOString().slice(0, 10)}.csv`;
+    a.download = `${isFS ? 'future-scientists-' : ''}teachers-requirements-${new Date().toISOString().slice(0, 10)}.csv`;
     document.body.appendChild(a); a.click(); document.body.removeChild(a);
   };
 
@@ -248,7 +249,7 @@ export const EduTeachersModal = ({ isRTL, onClose }) => {
       >
         <div className="wsr-head">
           <div>
-            <span className="wsr-kicker">📋 {isRTL ? 'الورش التعليمية' : 'Education workshops'}</span>
+            <span className="wsr-kicker">📋 {isFS ? (isRTL ? 'علماء المستقبل' : 'Future Scientists') : (isRTL ? 'الورش التعليمية' : 'Education workshops')}</span>
             <h3>{isRTL ? 'متطلبات المعلمين والمدربين' : "Teachers' requirements"}</h3>
           </div>
           <button type="button" className="wsr-close" onClick={onClose} aria-label={isRTL ? 'إغلاق' : 'Close'}>✕</button>
