@@ -11,6 +11,12 @@ const PaymentPage = sequelize.define('PaymentPage', {
   slug: { type: DataTypes.STRING(24), allowNull: false, unique: true },
   title: { type: DataTypes.STRING(200), allowNull: false },
   description: { type: DataTypes.TEXT, allowNull: true },
+  // Pricing: the main cost, an optional % discount (who applied it and
+  // who approved it) and `amount` = what the customer pays after it.
+  baseAmount: { type: DataTypes.DECIMAL(10, 2), allowNull: true },
+  discountPercent: { type: DataTypes.DECIMAL(5, 2), allowNull: false, defaultValue: 0 },
+  discountAppliedBy: { type: DataTypes.STRING(150), allowNull: true },
+  discountApprovedBy: { type: DataTypes.STRING(150), allowNull: true },
   amount: { type: DataTypes.DECIMAL(10, 2), allowNull: false },
   // null = no limit. Pending + verified payments take a place; a
   // rejected one frees it.

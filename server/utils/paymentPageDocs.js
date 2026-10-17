@@ -34,6 +34,16 @@ const fmtDate = (d) => {
     return new Date(d).toLocaleDateString('ar-SA-u-ca-gregory-nu-latn', { timeZone: 'Asia/Riyadh', year: 'numeric', month: 'long', day: 'numeric' });
   } catch { return String(d).slice(0, 10); }
 };
+// Pricing of a payment: main cost, % discount and what was paid. Rows
+// from before discounts existed have no baseAmount (= no discount).
+const priceOf = (sub) => {
+  const paid = Number(sub.amount || 0);
+  const base = sub.baseAmount != null ? Number(sub.baseAmount) : paid;
+  const pct = Number(sub.discountPercent || 0);
+  return { paid, base, pct, off: Math.max(0, Math.round((base - paid) * 100) / 100), hasDiscount: pct > 0 && base > paid };
+};
+const pctLabel = (pct) => `${Number(pct).toLocaleString('en-US', { maximumFractionDigits: 2 })}%`;
+
 const METHOD_AR = { bank_transfer: 'تحويل بنكي', mada: 'مدى — جهاز الدفع في فاب لاب' };
 const STATUS = {
   verified: { ar: 'مدفوعة', en: 'PAID', bg: '#dcfce7', fg: '#166534', ring: '#16a34a' },
@@ -48,6 +58,7 @@ const buildReceiptHtml = (page, sub, { autoPrint = false, forPdf = false } = {})
   const paid = sub.status === 'verified';
   const docTitle = paid ? 'فاتورة' : 'إيصال طلب دفع';
   const amount = sar(sub.amount);
+  const price = priceOf(sub);
   return `<!doctype html><html dir="rtl" lang="ar"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>${esc(sub.reference)} · ${esc(page.title)}</title>
@@ -73,7 +84,7 @@ html, body { margin: 0; padding: 0; background: ${forPdf ? '#fff' : '#eef0f3'}; 
 .box { border: 1px solid #e3e5ea; border-radius: 4mm; padding: 5mm 6mm; background: rgba(255,255,255,.9); }
 .box h3 { margin: 0 0 3mm; font-size: 9pt; letter-spacing: 1.5px; color: #8a8f99; font-weight: 800; }
 .row { display: flex; justify-content: space-between; gap: 4mm; padding: 1.4mm 0; font-size: 10.5pt; }
-.row span:first-child { color: #6b7280; }
+.row > span:first-child { color: #6b7280; }
 .row b { font-weight: 800; text-align: left; }
 .ltr { direction: ltr; unicode-bidi: embed; }
 .tbl { border-radius: 3mm; overflow: hidden; border: 1px solid #eceef2; }
@@ -85,8 +96,14 @@ tbody td { padding: 4mm; vertical-align: top; }
 tbody td:last-child { text-align: end; font-family: 'JetBrains Mono', monospace; font-weight: 700; }
 .desc { font-weight: 800; }
 .desc small { display: block; font-weight: 600; color: #6b7280; margin-top: 1mm; white-space: pre-line; }
-.totals { margin-top: 6mm; margin-inline-start: auto; width: 82mm; }
+.sum { display: flex; align-items: flex-start; gap: 8mm; margin-top: 6mm; }
+.disc { flex: 1; border: 1px dashed #f3b4b6; background: #fff7f7; border-radius: 4mm; padding: 4mm 5mm; }
+.disc h3 { margin: 0 0 2mm; font-size: 9pt; letter-spacing: 1.2px; color: ${BRAND}; font-weight: 800; }
+.disc .row { padding: 1.2mm 0; font-size: 10pt; }
+.pct { display: inline-block; padding: .4mm 2.4mm; border-radius: 99px; background: ${BRAND}; color: #fff; font-weight: 800; font-size: 9pt; direction: ltr; }
+.totals { margin-inline-start: auto; width: 82mm; }
 .totals .row { padding: 2mm 0; border-bottom: 1px dashed #e3e5ea; }
+.totals .row.off b { color: ${BRAND}; }
 .grand { margin-top: 3mm; display: flex; justify-content: space-between; align-items: center; padding: 4mm 5mm; border-radius: 3mm; background: ${paid ? '#111318' : '#f4f5f7'}; color: ${paid ? '#fff' : '#111318'}; }
 .grand span { font-weight: 800; }
 .grand strong { font-size: 15pt; font-weight: 900; font-variant-numeric: tabular-nums; }
@@ -97,7 +114,7 @@ tbody td:last-child { text-align: end; font-family: 'JetBrains Mono', monospace;
 .bar { position: fixed; inset: auto 0 0 0; display: flex; justify-content: center; gap: 10px; padding: 14px; background: rgba(17,19,24,.92); backdrop-filter: blur(6px); }
 .bar button { font: 800 14px 'Cairo', sans-serif; border: 0; border-radius: 10px; padding: 11px 26px; cursor: pointer; background: ${BRAND}; color: #fff; }
 @media print { .bar { display: none; } html, body { background: #fff; } .sheet { margin: 0; box-shadow: none; border-radius: 0; } }
-@media screen and (max-width: 860px) { .sheet { width: auto; min-height: 0; margin: 0 0 80px; border-radius: 0; padding: 16mm 6mm 40mm; } .cols { grid-template-columns: 1fr; } .totals { width: 100%; } }
+@media screen and (max-width: 860px) { .sheet { width: auto; min-height: 0; margin: 0 0 80px; border-radius: 0; padding: 16mm 6mm 40mm; } .cols { grid-template-columns: 1fr; } .sum { flex-direction: column; } .disc, .totals { width: 100%; } }
 </style></head><body>
 <div class="sheet"><div class="grid"></div><div class="wrap">
   <div class="head">
@@ -125,17 +142,27 @@ tbody td:last-child { text-align: end; font-family: 'JetBrains Mono', monospace;
   </div>
 
   <div class="tbl"><table>
-    <thead><tr><th>البيان</th><th style="width:22mm">الكمية</th><th style="width:38mm">المبلغ (ر.س)</th></tr></thead>
+    <thead><tr><th>البيان</th><th style="width:22mm">الكمية</th><th style="width:38mm">التكلفة (ر.س)</th></tr></thead>
     <tbody><tr>
       <td class="desc">${esc(page.title)}${page.description ? `<small>${esc(String(page.description).slice(0, 280))}</small>` : ''}</td>
       <td>1</td>
-      <td>${amount}</td>
+      <td>${sar(price.base)}</td>
     </tr></tbody>
   </table></div>
 
-  <div class="totals">
-    <div class="row"><span>المجموع الفرعي</span><b class="ltr">${amount}</b></div>
-    <div class="grand"><span>${paid ? 'الإجمالي المدفوع' : 'الإجمالي المستحق'}</span><strong class="ltr">${amount}<em>ر.س</em></strong></div>
+  <div class="sum">
+    ${price.hasDiscount ? `<div class="disc">
+      <h3>تفاصيل الخصم · DISCOUNT</h3>
+      <div class="row"><span>نسبة الخصم</span><b><span class="pct">${pctLabel(price.pct)}</span></b></div>
+      <div class="row"><span>قيمة الخصم</span><b class="ltr">${sar(price.off)} ر.س</b></div>
+      <div class="row"><span>طبّق الخصم</span><b>${esc(sub.discountAppliedBy || '—')}</b></div>
+      <div class="row"><span>اعتمد الخصم</span><b>${esc(sub.discountApprovedBy || '—')}</b></div>
+    </div>` : ''}
+    <div class="totals">
+      <div class="row"><span>التكلفة الأساسية</span><b class="ltr">${sar(price.base)}</b></div>
+      ${price.hasDiscount ? `<div class="row off"><span>الخصم (<bdi dir="ltr">${pctLabel(price.pct)}</bdi>)</span><b class="ltr">- ${sar(price.off)}</b></div>` : ''}
+      <div class="grand"><span>${price.hasDiscount ? 'الإجمالي بعد الخصم' : paid ? 'الإجمالي المدفوع' : 'الإجمالي المستحق'}</span><strong class="ltr">${amount}<em>ر.س</em></strong></div>
+    </div>
   </div>
 
   <div class="note">${paid
@@ -168,7 +195,9 @@ const _shell = ({ tone = BRAND, kicker, heading, body }) => `<div dir="rtl" styl
 const _summary = (page, sub) => `<table style="width:100%;border-collapse:collapse;background:#f7f8fa;border-radius:12px;font-size:13.5px;margin:12px 0 16px">
   <tr><td style="padding:10px 14px;color:#6b7280;width:130px">رقم المرجع</td><td style="padding:10px 14px;font-weight:800;font-family:'JetBrains Mono',monospace;color:${BRAND}" dir="ltr">${esc(sub.reference)}</td></tr>
   <tr><td style="padding:10px 14px;color:#6b7280">البيان</td><td style="padding:10px 14px;font-weight:700">${esc(page.title)}</td></tr>
-  <tr><td style="padding:10px 14px;color:#6b7280">المبلغ</td><td style="padding:10px 14px;font-weight:800">${sar(sub.amount)} ر.س</td></tr>
+  ${priceOf(sub).hasDiscount ? `<tr><td style="padding:10px 14px;color:#6b7280">التكلفة الأساسية</td><td style="padding:10px 14px;font-weight:700"><s style="color:#9ca3af">${sar(priceOf(sub).base)} ر.س</s></td></tr>
+  <tr><td style="padding:10px 14px;color:#6b7280">الخصم</td><td style="padding:10px 14px;font-weight:800;color:${BRAND}"><bdi dir="ltr">${pctLabel(priceOf(sub).pct)}</bdi> (- ${sar(priceOf(sub).off)} ر.س)</td></tr>` : ''}
+  <tr><td style="padding:10px 14px;color:#6b7280">${priceOf(sub).hasDiscount ? 'المبلغ بعد الخصم' : 'المبلغ'}</td><td style="padding:10px 14px;font-weight:800">${sar(sub.amount)} ر.س</td></tr>
   <tr><td style="padding:10px 14px;color:#6b7280">طريقة الدفع</td><td style="padding:10px 14px;font-weight:700">${METHOD_AR[sub.method] || esc(sub.method)}</td></tr>
 </table>`;
 const _button = (href, label, tone = BRAND) => `<div style="text-align:center;margin:20px 0 6px"><a href="${href}" style="display:inline-block;background:${tone};color:#fff;padding:12px 28px;border-radius:10px;text-decoration:none;font-weight:800">${label}</a></div>`;

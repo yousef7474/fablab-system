@@ -215,3 +215,32 @@
   .ppa-grid, .ppa-methods { grid-template-columns: minmax(0, 1fr); }
   .ppa-cards { grid-template-columns: minmax(0, 1fr); }
 }
+
+/* pricing: main cost · discount % · cost after discount */
+.ppa-price { border: 1px solid var(--border-color); border-radius: 14px; padding: 12px 14px 14px; background: var(--bg-tertiary); display: grid; gap: 12px; }
+.ppa-price-head { font-size: 0.82rem; font-weight: 800; color: var(--text-primary); }
+.ppa-price-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; align-items: start; }
+.ppa-price-grid.two { grid-template-columns: repeat(2, minmax(0, 1fr)); padding-top: 12px; border-top: 1px dashed var(--border-color); }
+.ppa-price .ppa-field input, .ppa-price .ppa-field select { background: var(--card-bg); }
+.ppa-field select {
+  width: 100%; padding: 10px 12px; border-radius: 10px;
+  border: 1px solid var(--border-color); background: var(--bg-tertiary); color: var(--text-primary);
+  font: inherit; font-size: 0.92rem;
+}
+.ppa-field select:focus { outline: none; border-color: var(--ppa-red); box-shadow: 0 0 0 3px var(--ppa-red-soft); }
+.ppa-final output {
+  display: flex; align-items: baseline; gap: 6px; padding: 8px 12px; border-radius: 10px;
+  border: 1px dashed var(--border-color); background: var(--card-bg);
+  font-family: 'Bricolage Grotesque', 'Cairo', sans-serif; font-size: 1.3rem; font-weight: 800; color: var(--text-primary);
+}
+.ppa-final output em { font-style: normal; font-size: 0.72rem; color: var(--ppa-red); }
+.ppa-final.on output { border-style: solid; border-color: rgba(22, 163, 74, 0.55); background: rgba(22, 163, 74, 0.08); color: var(--ppa-ok); }
+.ppa-final small { color: var(--ppa-ok); font-weight: 700; }
+.ppa-person-new { display: flex; gap: 6px; margin-top: 6px; }
+.ppa-person-new input { flex: 1; min-width: 0; }
+.ppa-off { display: inline-block; margin-inline-start: 6px; padding: 1px 7px; border-radius: 99px; background: var(--ppa-red); color: #fff; font-size: 0.72rem; font-weight: 800; font-family: 'Cairo', sans-serif; }
+.ppa-card-amount s, .ppa-row-disc s { margin-inline-start: 8px; color: var(--text-tertiary); font-size: 0.85rem; font-weight: 700; }
+.ppa-row-disc { font-size: 0.8rem; cursor: help; }
+@media (max-width: 560px) {
+  .ppa-price-grid, .ppa-price-grid.two { grid-template-columns: minmax(0, 1fr); }
+}

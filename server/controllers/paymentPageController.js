@@ -91,11 +91,6 @@ function _pageFields(b, { partial = false } = {}) {
     if (!out.title) errors.push('العنوان مطلوب');
   }
   if (has('description')) out.description = _str(b.description, 4000) || null;
-  if (has('amount')) {
-    const n = Math.round(Number(b.amount) * 100) / 100;
-    if (!Number.isFinite(n) || n <= 0 || n > 1000000) errors.push('أدخل مبلغاً صحيحاً أكبر من صفر');
-    else out.amount = n;
-  }
   if (has('maxPayers')) {
     if (b.maxPayers === '' || b.maxPayers == null) out.maxPayers = null;
     else {
@@ -122,13 +117,49 @@ function _pageFields(b, { partial = false } = {}) {
   return { out, errors };
 }
 
+const _round2 = (n) => Math.round(n * 100) / 100;
+const PRICING_KEYS = ['baseAmount', 'amount', 'discountPercent', 'discountAppliedBy', 'discountApprovedBy'];
+
+// Main cost + % discount → what the customer pays (`amount`). A discount
+// needs who applied it and who approved it. `current` fills in what an
+// edit leaves out.
+function _pricing(b, current = null) {
+  const errors = [];
+  const pick = (k, fallback) => (b[k] !== undefined ? b[k] : fallback);
+  const baseRaw = b.baseAmount !== undefined ? b.baseAmount
+    : b.amount !== undefined ? b.amount
+      : current ? (current.baseAmount ?? current.amount) : undefined;
+  const base = _round2(Number(baseRaw));
+  if (!Number.isFinite(base) || base <= 0 || base > 1000000) errors.push('أدخل التكلفة الأساسية (أكبر من صفر)');
+  const pctRaw = pick('discountPercent', current ? current.discountPercent : 0);
+  const pct = pctRaw === '' || pctRaw == null ? 0 : _round2(Number(pctRaw));
+  if (!Number.isFinite(pct) || pct < 0 || pct >= 100) errors.push('نسبة الخصم يجب أن تكون بين 0 و 99.99');
+  const appliedBy = _str(pick('discountAppliedBy', current?.discountAppliedBy), 150) || null;
+  const approvedBy = _str(pick('discountApprovedBy', current?.discountApprovedBy), 150) || null;
+  if (pct > 0 && !appliedBy) errors.push('اختر من طبّق الخصم');
+  if (pct > 0 && !approvedBy) errors.push('اختر من اعتمد الخصم');
+  const amount = _round2(base * (1 - (Number.isFinite(pct) ? pct : 0) / 100));
+  if (!errors.length && amount <= 0) errors.push('المبلغ بعد الخصم يجب أن يكون أكبر من صفر');
+  return {
+    errors,
+    out: { baseAmount: base, discountPercent: pct, discountAppliedBy: pct > 0 ? appliedBy : null, discountApprovedBy: pct > 0 ? approvedBy : null, amount }
+  };
+}
+
+// Pricing as stored on a page or a payment (old rows: no discount).
+const _priceOf = (row) => {
+  const amount = Number(row.amount);
+  const base = row.baseAmount != null ? Number(row.baseAmount) : amount;
+  return { amount, baseAmount: base, discountPercent: Number(row.discountPercent || 0), discountValue: _round2(base - amount) };
+};
+
 const _pageJson = (page, stats = {}) => {
   const p = page.toJSON ? page.toJSON() : { ...page };
   delete p.coverImage;
   const taken = (stats.pending || 0) + (stats.verified || 0);
   return {
     ...p,
-    amount: Number(p.amount),
+    ..._priceOf(p),
     hasCover: !!p.coverMime,
     url: `${_origin()}/pay/${p.slug}`,
     stats: {
@@ -177,7 +208,7 @@ exports.getPublicPage = async (req, res) => {
       slug: page.slug,
       title: page.title,
       description: page.description,
-      amount: Number(page.amount),
+      ...(({ amount, baseAmount, discountPercent, discountValue }) => ({ amount, baseAmount, discountPercent, discountValue }))(_priceOf(page)),
       maxPayers: page.maxPayers,
       seatsLeft: page.maxPayers ? Math.max(0, page.maxPayers - taken) : null,
       closesAt: page.closesAt,
@@ -267,6 +298,10 @@ exports.submitPayment = async (req, res) => {
         reference: `PAY-${String(next).padStart(4, '0')}`,
         fullName, phone, email, note, method,
         amount: page.amount,
+        baseAmount: page.baseAmount != null ? page.baseAmount : page.amount,
+        discountPercent: page.discountPercent || 0,
+        discountAppliedBy: Number(page.discountPercent) > 0 ? page.discountAppliedBy : null,
+        discountApprovedBy: Number(page.discountPercent) > 0 ? page.discountApprovedBy : null,
         proofFile: proof ? proof.data : null,
         proofType: proof ? proof.type : null,
         proofName: proof ? proof.name : null
@@ -282,7 +317,7 @@ exports.submitPayment = async (req, res) => {
       reference: sub.reference,
       status: sub.status,
       method: sub.method,
-      amount: Number(sub.amount),
+      ..._priceOf(sub),
       receiptUrl: `/api/pay/receipt/${sub.receiptToken}`
     });
   } catch (error) {
@@ -327,7 +362,10 @@ exports.listPages = async (req, res) => {
 exports.createPage = async (req, res) => {
   try {
     const { out, errors } = _pageFields(req.body || {});
+    const price = _pricing(req.body || {});
+    errors.push(...price.errors);
     if (errors.length) return res.status(400).json({ message: errors.join(' · '), messageAr: errors.join(' · ') });
+    Object.assign(out, price.out);
     if (req.body?.cover) {
       const cover = _parseCover(req.body.cover);
       if (!cover) return res.status(400).json({ messageAr: 'صورة الغلاف يجب أن تكون PNG أو JPG أو WEBP بحجم لا يتجاوز 4 ميجابايت', message: 'Cover must be PNG, JPG or WEBP up to 4 MB' });
@@ -352,6 +390,11 @@ exports.updatePage = async (req, res) => {
     const page = await PaymentPage.findByPk(req.params.id);
     if (!page) return res.status(404).json({ message: 'Not found', messageAr: 'الصفحة غير موجودة' });
     const { out, errors } = _pageFields(req.body || {}, { partial: true });
+    if (PRICING_KEYS.some(k => req.body?.[k] !== undefined)) {
+      const price = _pricing(req.body, page);
+      errors.push(...price.errors);
+      Object.assign(out, price.out);
+    }
     if (errors.length) return res.status(400).json({ message: errors.join(' · '), messageAr: errors.join(' · ') });
     if (req.body?.removeCover) { out.coverImage = null; out.coverMime = null; }
     if (req.body?.cover) {
@@ -409,7 +452,7 @@ exports.listSubmissions = async (req, res) => {
     const stats = await _statsFor([page.pageId]);
     res.json({
       page: _pageJson(page, stats.get(page.pageId)),
-      submissions: subs.map(s => ({ ...s.toJSON(), amount: Number(s.amount), hasProof: !!s.proofType, receiptUrl: receiptUrl(s) }))
+      submissions: subs.map(s => ({ ...s.toJSON(), ..._priceOf(s), hasProof: !!s.proofType, receiptUrl: receiptUrl(s) }))
     });
   } catch (error) {
     console.error('listSubmissions:', error);
@@ -457,7 +500,7 @@ exports.reviewSubmission = async (req, res) => {
         sendPaymentRejected(sub.page, sub, { receiptUrl: url });
       }
     }
-    res.json({ ...sub.toJSON(), page: undefined, amount: Number(sub.amount), hasProof: !!sub.proofType, receiptUrl: receiptUrl(sub) });
+    res.json({ ...sub.toJSON(), page: undefined, ..._priceOf(sub), hasProof: !!sub.proofType, receiptUrl: receiptUrl(sub) });
   } catch (error) {
     console.error('reviewSubmission:', error);
     res.status(500).json({ message: 'Server error', messageAr: 'خطأ في الخادم' });

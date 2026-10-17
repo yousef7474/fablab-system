@@ -26,7 +26,8 @@ const T = {
     bankMissing: 'بيانات الحساب البنكي غير متوفرة حالياً — تواصل مع فاب لاب.',
     upload: 'إيصال التحويل', drop: 'اسحب الإيصال هنا أو', choose: 'اختر ملفاً', fileHint: 'صورة أو PDF · حتى 10 ميجابايت', replace: 'تغيير', remove: 'إزالة',
     madaTitle: 'الدفع بمدى في مقر فاب لاب', madaDefault: 'احضر إلى فاب لاب الأحساء وادفع المبلغ عبر جهاز مدى. يتم تأكيد طلبك فور الدفع.', address: 'العنوان',
-    terms: 'الشروط والأحكام', agree: 'قرأت الشروط وأوافق عليها', total: 'الإجمالي',
+    terms: 'الشروط والأحكام', agree: 'قرأت الشروط وأوافق عليها', total: 'الإجمالي', totalAfter: 'الإجمالي بعد الخصم',
+    base: 'التكلفة الأساسية', discount: 'الخصم', off: 'خصم',
     payBank: (a) => `إرسال الإيصال · ${a} ر.س`, payMada: 'تأكيد الطلب والدفع بمدى', sending: 'جارٍ الإرسال…',
     footnote: 'تُراجع كل دفعة يدوياً من فريق فاب لاب الأحساء، وتصلك الفاتورة على بريدك بعد التأكيد.',
     errName: 'اكتب اسمك الكامل', errPhone: 'رقم جوال غير صحيح', errEmail: 'بريد إلكتروني غير صحيح', errMethod: 'اختر طريقة الدفع', errProof: 'ارفع إيصال التحويل', errTerms: 'يرجى الموافقة على الشروط',
@@ -51,7 +52,8 @@ const T = {
     bankMissing: 'Bank details are not available right now — please contact FabLab.',
     upload: 'Transfer receipt', drop: 'Drop the receipt here or', choose: 'choose a file', fileHint: 'Image or PDF · up to 10 MB', replace: 'Change', remove: 'Remove',
     madaTitle: 'Pay by mada at FabLab', madaDefault: 'Visit FabLab Al-Ahsa and pay the amount on the mada machine. Your payment is confirmed right away.', address: 'Address',
-    terms: 'Terms & conditions', agree: 'I have read and accept the terms', total: 'Total',
+    terms: 'Terms & conditions', agree: 'I have read and accept the terms', total: 'Total', totalAfter: 'Total after discount',
+    base: 'Main cost', discount: 'Discount', off: 'off',
     payBank: (a) => `Send receipt · ${a} SAR`, payMada: 'Confirm & pay by mada', sending: 'Sending…',
     footnote: 'Every payment is reviewed by the FabLab Al-Ahsa team; your invoice is emailed once it is confirmed.',
     errName: 'Enter your full name', errPhone: 'Invalid mobile number', errEmail: 'Invalid email', errMethod: 'Choose a payment method', errProof: 'Upload the transfer receipt', errTerms: 'Please accept the terms',
@@ -67,6 +69,7 @@ const T = {
 };
 
 const fmtAmount = (n) => Number(n || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const fmtPct = (p) => `${Number(p).toLocaleString('en-US', { maximumFractionDigits: 2 })}%`;
 const groupIban = (iban) => String(iban || '').replace(/\s+/g, '').replace(/(.{4})/g, '$1 ').trim();
 
 // Phone photos of receipts are big — shrink images before upload.
@@ -172,6 +175,8 @@ const PaymentPage = () => {
 
   const closed = page && !page.isOpen ? page.closedReason || 'closed' : null;
   const amountStr = page ? fmtAmount(page.amount) : '';
+  const hasDiscount = !!page && Number(page.discountPercent) > 0 && Number(page.baseAmount) > Number(page.amount);
+  const pctStr = hasDiscount ? fmtPct(page.discountPercent) : '';
   const taken = page?.maxPayers ? page.maxPayers - (page.seatsLeft ?? 0) : 0;
   const deadline = useMemo(() => {
     if (!page?.closesAt) return '';
@@ -337,6 +342,12 @@ const PaymentPage = () => {
 
         <div className="pp-amount">
           <span className="pp-amount-label">{t.amountDue}</span>
+          {hasDiscount && (
+            <div className="pp-was">
+              <s dir="ltr">{fmtAmount(page.baseAmount)} {t.sar}</s>
+              <span className="pp-off-badge">{isRTL ? <>{t.off} <bdi dir="ltr">{pctStr}</bdi></> : <><bdi dir="ltr">{pctStr}</bdi> {t.off}</>}</span>
+            </div>
+          )}
           <div className="pp-amount-value">
             <strong dir="ltr">{amountStr}</strong>
             <em>{t.sar}</em>
@@ -517,8 +528,14 @@ const PaymentPage = () => {
                     </label>
                   </div>
                 )}
+                {hasDiscount && (
+                  <div className="pp-breakdown">
+                    <div><span>{t.base}</span><b dir="ltr">{fmtAmount(page.baseAmount)} {t.sar}</b></div>
+                    <div className="off"><span>{t.discount} (<bdi dir="ltr">{pctStr}</bdi>)</span><b dir="ltr">- {fmtAmount(page.discountValue)} {t.sar}</b></div>
+                  </div>
+                )}
                 <div className="pp-total">
-                  <span>{t.total}</span>
+                  <span>{hasDiscount ? t.totalAfter : t.total}</span>
                   <strong dir="ltr">{amountStr} <em>{t.sar}</em></strong>
                 </div>
                 {serverError && <p className="pp-server-err" role="alert">{serverError}</p>}

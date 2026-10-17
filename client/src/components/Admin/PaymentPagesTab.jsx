@@ -62,26 +62,98 @@ const SUB_STATUS = {
   rejected: { ar: 'مرفوض', en: 'Rejected', cls: 'rejected' }
 };
 const METHOD = { bank_transfer: { ar: 'تحويل بنكي', en: 'Bank transfer', icon: '🏦' }, mada: { ar: 'مدى', en: 'mada', icon: '💳' } };
+// Same people as the other discount / approval lists (shared setting
+// "workshop_approvers", editable); used when the setting is empty.
+const DEFAULT_APPROVERS = ['أ. زكي اللويم', 'م. نوف البوعبيد', 'أ. عبدالله الصفي', 'أ. عبدالمحسن السلطان'];
+const round2 = (n) => Math.round(n * 100) / 100;
+const finalAmount = (base, pct) => {
+  const b = Number(base); const p = Number(pct) || 0;
+  return Number.isFinite(b) && b > 0 && p >= 0 && p < 100 ? round2(b * (1 - p / 100)) : 0;
+};
+const fmtPct = (p) => `${Number(p).toLocaleString('en-US', { maximumFractionDigits: 2 })}%`;
+
 const REJECT_REASONS = ['المبلغ المحوّل غير مطابق', 'الإيصال غير واضح', 'لم يصل التحويل إلى الحساب', 'الإيصال لا يخص هذه الصفحة'];
 
-const EMPTY_FORM = { title: '', description: '', amount: '', maxPayers: '', closesAt: '', methods: ['bank_transfer', 'mada'], terms: '', isOpen: true, cover: null, coverPreview: null, removeCover: false };
+const EMPTY_FORM = { title: '', description: '', baseAmount: '', discountPercent: '', discountAppliedBy: '', discountApprovedBy: '', maxPayers: '', closesAt: '', methods: ['bank_transfer', 'mada'], terms: '', isOpen: true, cover: null, coverPreview: null, removeCover: false };
+
+// ─────────────────────────── Person picker ───────────────────────────
+const PersonPicker = ({ isRTL, label, value, onChange, people, onAddPerson, canAdd }) => {
+  const known = !value || people.includes(value);
+  const [custom, setCustom] = useState(!known);
+  const [saving, setSaving] = useState(false);
+  useEffect(() => { if (value && !people.includes(value)) setCustom(true); }, [value, people]);
+  const add = async () => {
+    const name = value.trim();
+    if (!name) return;
+    setSaving(true);
+    try { await onAddPerson(name); setCustom(false); } finally { setSaving(false); }
+  };
+  return (
+    <div className="ppa-field">
+      <span>{label} *</span>
+      <select
+        value={custom ? '__custom__' : (value || '')}
+        onChange={e => {
+          if (e.target.value === '__custom__') { setCustom(true); onChange(''); }
+          else { setCustom(false); onChange(e.target.value); }
+        }}
+      >
+        <option value="">{isRTL ? '— اختر الاسم —' : '— Choose —'}</option>
+        {people.map(n => <option key={n} value={n}>{n}</option>)}
+        <option value="__custom__">{isRTL ? '✏️ شخص آخر…' : '✏️ Someone else…'}</option>
+      </select>
+      {custom && (
+        <div className="ppa-person-new">
+          <input value={value} onChange={e => onChange(e.target.value)} maxLength={150} placeholder={isRTL ? 'الاسم الكامل' : 'Full name'} autoFocus />
+          {canAdd && (
+            <button type="button" className="ppa-btn" onClick={add} disabled={saving || !value.trim()} title={isRTL ? 'يُحفظ في قائمة المعتمدين ويظهر في المرات القادمة' : 'Saved to the approvers list for next time'}>
+              {saving ? '…' : (isRTL ? '＋ حفظ في القائمة' : '＋ Save to list')}
+            </button>
+          )}
+        </div>
+      )}
+    </div>
+  );
+};
 
 // ─────────────────────────── Page editor ───────────────────────────
 const PageEditor = ({ isRTL, page, onClose, onSaved }) => {
   const [form, setForm] = useState(() => page ? {
     ...EMPTY_FORM,
-    title: page.title, description: page.description || '', amount: String(page.amount),
+    title: page.title, description: page.description || '',
+    baseAmount: String(page.baseAmount ?? page.amount), discountPercent: Number(page.discountPercent) > 0 ? String(Number(page.discountPercent)) : '',
+    discountAppliedBy: page.discountAppliedBy || '', discountApprovedBy: page.discountApprovedBy || '',
     maxPayers: page.maxPayers ? String(page.maxPayers) : '', closesAt: toLocalInput(page.closesAt),
     methods: page.methods || ['bank_transfer', 'mada'], terms: page.terms || '', isOpen: page.isOpen,
     coverPreview: page.hasCover ? `${API_BASE}/pay/${page.slug}/cover?v=${new Date(page.updatedAt).getTime()}` : null
   } : EMPTY_FORM);
   const [saving, setSaving] = useState(false);
   const [bank, setBank] = useState(null);
+  const [people, setPeople] = useState(DEFAULT_APPROVERS);
   const set = (patch) => setForm(f => ({ ...f, ...patch }));
+  const manager = isManager();
 
   useEffect(() => {
     api.get('/workshops/admin/payment-settings').then(r => setBank(r.data?.bank || {})).catch(() => setBank({}));
+    api.get('/workshops/admin/terms')
+      .then(r => { if (Array.isArray(r.data?.approvers) && r.data.approvers.length) setPeople(r.data.approvers); })
+      .catch(() => {});
   }, []);
+  const addPerson = async (name) => {
+    if (people.includes(name)) return;
+    const next = [...people, name];
+    try {
+      const { data } = await api.put('/workshops/admin/terms', { approvers: next });
+      setPeople(Array.isArray(data?.approvers) && data.approvers.length ? data.approvers : next);
+      toast.success(isRTL ? `أُضيف «${name}» إلى القائمة` : `Added "${name}" to the list`);
+    } catch (err) {
+      toast.error(errMsg(err, isRTL, isRTL ? 'تعذّر حفظ الاسم في القائمة' : 'Could not save the name'));
+    }
+  };
+  const pct = Number(form.discountPercent) || 0;
+  const hasDiscount = pct > 0;
+  const finalPrice = finalAmount(form.baseAmount, form.discountPercent);
+  const discountValue = hasDiscount && Number(form.baseAmount) > 0 ? round2(Number(form.baseAmount) - finalPrice) : 0;
   useEffect(() => {
     const onKey = (e) => { if (e.key === 'Escape') onClose(); };
     window.addEventListener('keydown', onKey);
@@ -100,11 +172,16 @@ const PageEditor = ({ isRTL, page, onClose, onSaved }) => {
 
   const save = async () => {
     if (!form.title.trim()) return toast.error(isRTL ? 'اكتب عنوان الصفحة' : 'Enter a title');
-    if (!(Number(form.amount) > 0)) return toast.error(isRTL ? 'أدخل المبلغ' : 'Enter the amount');
+    if (!(Number(form.baseAmount) > 0)) return toast.error(isRTL ? 'أدخل التكلفة الأساسية' : 'Enter the main cost');
+    if (pct < 0 || pct >= 100) return toast.error(isRTL ? 'نسبة الخصم يجب أن تكون بين 0 و 99.99' : 'Discount must be 0–99.99%');
+    if (hasDiscount && !form.discountAppliedBy.trim()) return toast.error(isRTL ? 'اختر من طبّق الخصم' : 'Choose who applied the discount');
+    if (hasDiscount && !form.discountApprovedBy.trim()) return toast.error(isRTL ? 'اختر من اعتمد الخصم' : 'Choose who approved the discount');
     if (!form.methods.length) return toast.error(isRTL ? 'اختر طريقة دفع واحدة على الأقل' : 'Choose at least one payment method');
     setSaving(true);
     const body = {
-      title: form.title, description: form.description, amount: form.amount,
+      title: form.title, description: form.description,
+      baseAmount: form.baseAmount, discountPercent: hasDiscount ? form.discountPercent : 0,
+      discountAppliedBy: hasDiscount ? form.discountAppliedBy.trim() : '', discountApprovedBy: hasDiscount ? form.discountApprovedBy.trim() : '',
       maxPayers: form.maxPayers, closesAt: form.closesAt ? new Date(form.closesAt).toISOString() : null,
       methods: form.methods, terms: form.terms, isOpen: form.isOpen,
       ...(form.cover ? { cover: form.cover } : {}),
@@ -156,10 +233,32 @@ const PageEditor = ({ isRTL, page, onClose, onSaved }) => {
               <span>{isRTL ? 'الوصف' : 'Description'}</span>
               <textarea rows={3} value={form.description} onChange={e => set({ description: e.target.value })} maxLength={4000} placeholder={isRTL ? 'ما الذي يدفع العميل مقابله؟ التواريخ، المحتوى، أي تفاصيل مهمة…' : 'What is the customer paying for?'} />
             </label>
-            <label className="ppa-field">
-              <span>{isRTL ? 'المبلغ (ر.س)' : 'Amount (SAR)'} *</span>
-              <input type="number" min="1" step="0.01" dir="ltr" value={form.amount} onChange={e => set({ amount: e.target.value })} placeholder="350" />
-            </label>
+            <div className="ppa-price ppa-span">
+              <div className="ppa-price-head">💰 {isRTL ? 'التكلفة' : 'Cost'}</div>
+              <div className="ppa-price-grid">
+                <label className="ppa-field">
+                  <span>{isRTL ? 'التكلفة الأساسية (ر.س)' : 'Main cost (SAR)'} *</span>
+                  <input type="number" min="1" step="0.01" dir="ltr" value={form.baseAmount} onChange={e => set({ baseAmount: e.target.value })} placeholder="450" />
+                </label>
+                <label className="ppa-field">
+                  <span>{isRTL ? 'الخصم (%)' : 'Discount (%)'}</span>
+                  <input type="number" min="0" max="99.99" step="0.01" dir="ltr" value={form.discountPercent} onChange={e => set({ discountPercent: e.target.value })} placeholder="0" />
+                </label>
+                <div className={`ppa-field ppa-final ${hasDiscount ? 'on' : ''}`}>
+                  <span>{isRTL ? 'التكلفة بعد الخصم' : 'Cost after discount'}</span>
+                  <output dir="ltr">{finalPrice ? fmtSAR(finalPrice) : '—'} <em>SAR</em></output>
+                  {hasDiscount && finalPrice > 0 && <small>{isRTL ? <>خصم <bdi dir="ltr">{fmtPct(pct)}</bdi> = {fmtSAR(discountValue)} ر.س — يدفع العميل هذا المبلغ</> : `${fmtPct(pct)} off = ${fmtSAR(discountValue)} SAR — the customer pays this`}</small>}
+                </div>
+              </div>
+              {hasDiscount && (
+                <div className="ppa-price-grid two">
+                  <PersonPicker isRTL={isRTL} label={isRTL ? 'طبّق الخصم' : 'Discount applied by'} value={form.discountAppliedBy}
+                    onChange={v => set({ discountAppliedBy: v })} people={people} onAddPerson={addPerson} canAdd={manager} />
+                  <PersonPicker isRTL={isRTL} label={isRTL ? 'اعتمد الخصم' : 'Approved by'} value={form.discountApprovedBy}
+                    onChange={v => set({ discountApprovedBy: v })} people={people} onAddPerson={addPerson} canAdd={manager} />
+                </div>
+              )}
+            </div>
             <label className="ppa-field">
               <span>{isRTL ? 'عدد الأشخاص المسموح لهم' : 'People allowed'}</span>
               <input type="number" min="1" step="1" dir="ltr" value={form.maxPayers} onChange={e => set({ maxPayers: e.target.value })} placeholder={isRTL ? 'بدون حد' : 'No limit'} />
@@ -318,8 +417,10 @@ const Submissions = ({ isRTL, pageId, onBack, onChanged, manager }) => {
   };
   const exportCsv = () => {
     const f = (v) => { const s = String(v == null ? '' : v).replace(/"/g, '""'); return /[",\n\r]/.test(s) ? `"${s}"` : s; };
-    const header = ['المرجع', 'الاسم', 'الجوال', 'البريد', 'طريقة الدفع', 'المبلغ', 'الحالة', 'تاريخ الطلب', 'تاريخ التأكيد', 'ملاحظة العميل', 'ملاحظة المراجعة'];
-    const rows = shown.map(s => [s.reference, s.fullName, s.phone, s.email, METHOD[s.method]?.ar || s.method, Number(s.amount).toFixed(2), SUB_STATUS[s.status]?.ar || s.status,
+    const header = ['المرجع', 'الاسم', 'الجوال', 'البريد', 'طريقة الدفع', 'التكلفة الأساسية', 'نسبة الخصم', 'طبّق الخصم', 'اعتمد الخصم', 'المبلغ المدفوع', 'الحالة', 'تاريخ الطلب', 'تاريخ التأكيد', 'ملاحظة العميل', 'ملاحظة المراجعة'];
+    const rows = shown.map(s => [s.reference, s.fullName, s.phone, s.email, METHOD[s.method]?.ar || s.method,
+      Number(s.baseAmount).toFixed(2), s.discountPercent ? fmtPct(s.discountPercent) : '', s.discountAppliedBy || '', s.discountApprovedBy || '',
+      Number(s.amount).toFixed(2), SUB_STATUS[s.status]?.ar || s.status,
       String(s.createdAt).slice(0, 16).replace('T', ' '), s.paidAt ? String(s.paidAt).slice(0, 10) : '', s.note || '', s.reviewNote || '']);
     const a = document.createElement('a');
     a.href = URL.createObjectURL(new Blob(['﻿' + [header, ...rows].map(r => r.map(f).join(',')).join('\r\n')], { type: 'text/csv;charset=utf-8;' }));
@@ -335,7 +436,7 @@ const Submissions = ({ isRTL, pageId, onBack, onChanged, manager }) => {
         {page && (
           <div className="ppa-subs-title">
             <h3>{page.title}</h3>
-            <span dir="ltr">{fmtSAR(page.amount)} SAR · {page.stats.taken}{page.maxPayers ? ` / ${page.maxPayers}` : ''} {isRTL ? 'شخص' : 'people'}</span>
+            <span dir="ltr">{fmtSAR(page.amount)} SAR{page.discountPercent > 0 ? ` (-${fmtPct(page.discountPercent)})` : ''} · {page.stats.taken}{page.maxPayers ? ` / ${page.maxPayers}` : ''} {isRTL ? 'شخص' : 'people'}</span>
           </div>
         )}
         {page && <button type="button" className="ppa-btn" onClick={() => copyText(page.url, isRTL)}>🔗 {isRTL ? 'نسخ الرابط' : 'Copy link'}</button>}
@@ -391,6 +492,11 @@ const Submissions = ({ isRTL, pageId, onBack, onChanged, manager }) => {
                   </div>
                   <div className="ppa-row-side">
                     <strong dir="ltr">{fmtSAR(s.amount)} <em>SAR</em></strong>
+                    {s.discountPercent > 0 && (
+                      <span className="ppa-row-disc" title={`${isRTL ? 'طبّق الخصم' : 'Applied by'}: ${s.discountAppliedBy || '—'} · ${isRTL ? 'اعتمده' : 'Approved by'}: ${s.discountApprovedBy || '—'}`}>
+                        <s dir="ltr">{fmtSAR(s.baseAmount)}</s> <span className="ppa-off">-{fmtPct(s.discountPercent)}</span>
+                      </span>
+                    )}
                     <div className="ppa-row-actions">
                       {s.hasProof && <button type="button" className="ppa-btn" onClick={() => openProof(s)}>🧾 {isRTL ? 'الإيصال' : 'Receipt'}</button>}
                       {s.status !== 'verified' && <button type="button" className="ppa-btn ok" onClick={() => setReview({ sub: s, action: 'verified' })}>✓ {isRTL ? 'تأكيد' : 'Verify'}</button>}
@@ -495,7 +601,10 @@ const PaymentPagesTab = ({ isRTL }) => {
                       </div>
                       <div className="ppa-card-body">
                         <h4>{p.title}</h4>
-                        <div className="ppa-card-amount" dir="ltr"><strong>{fmtSAR(p.amount)}</strong> <em>SAR</em></div>
+                        <div className="ppa-card-amount" dir="ltr">
+                          <strong>{fmtSAR(p.amount)}</strong> <em>SAR</em>
+                          {p.discountPercent > 0 && <><s>{fmtSAR(p.baseAmount)}</s><span className="ppa-off">-{fmtPct(p.discountPercent)}</span></>}
+                        </div>
                         <div className="ppa-card-meter">
                           <div className="ppa-card-meter-top">
                             <span>{p.stats.taken}{p.maxPayers ? ` / ${p.maxPayers}` : ''} {isRTL ? 'شخص' : 'people'}</span>

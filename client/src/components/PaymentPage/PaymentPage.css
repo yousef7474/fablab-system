@@ -408,3 +408,17 @@
 @media (prefers-reduced-motion: reduce) {
   .pp *, .pp *::before, .pp *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
 }
+
+/* discount: was-price on the ticket + breakdown above the total */
+.pp-was { display: flex; align-items: center; gap: 10px; margin-top: 4px; }
+.pp-was s { color: #8d919b; font-weight: 700; font-size: 1rem; text-decoration-thickness: 2px; text-decoration-color: rgba(255, 90, 95, 0.85); }
+.pp-off-badge {
+  padding: 3px 10px; border-radius: 99px; font-size: 0.78rem; font-weight: 800;
+  background: linear-gradient(135deg, #ff5a5f, var(--pp-red)); color: #fff;
+  box-shadow: 0 6px 14px -6px rgba(238, 35, 41, 0.8);
+}
+.pp-breakdown { display: grid; gap: 6px; padding: 12px 14px; margin-bottom: 10px; border-radius: 14px; background: var(--pp-soft); }
+.pp-breakdown div { display: flex; justify-content: space-between; gap: 10px; font-size: 0.9rem; }
+.pp-breakdown span { color: var(--pp-muted); font-weight: 600; }
+.pp-breakdown b { font-weight: 800; font-variant-numeric: tabular-nums; }
+.pp-breakdown .off b { color: var(--pp-red); }
