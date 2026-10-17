@@ -35,6 +35,7 @@ const overtimeRoutes = require('./routes/overtimeRoutes');
 const fablabVisitRoutes = require('./routes/fablabVisitRoutes');
 const siteRoutes = require('./routes/siteRoutes');
 const siteAdminRoutes = require('./routes/siteAdminRoutes');
+const { publicRouter: payRoutes, adminRouter: paymentPageAdminRoutes } = require('./routes/paymentPageRoutes');
 const calendarEventRoutes = require('./routes/calendarEventRoutes');
 const storeRoutes = require('./routes/storeRoutes');
 const print3DRoutes = require('./routes/print3DRoutes');
@@ -92,6 +93,9 @@ app.use('/api/fablab-visits', fablabVisitRoutes);
 // Public website (replaces main.fablabsahsa.com) + its admin.
 app.use('/api/site', siteRoutes);
 app.use('/api/site-admin', siteAdminRoutes);
+// Payment pages: public /pay/:slug checkout + the admin "صفحات الدفع" tab.
+app.use('/api/pay', payRoutes);
+app.use('/api/payment-pages', paymentPageAdminRoutes);
 app.use('/api/calendar-events', calendarEventRoutes);
 app.use('/api/store', storeRoutes);
 app.use('/api/print3d', print3DRoutes);

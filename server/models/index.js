@@ -76,6 +76,8 @@ const TalentApplication = require('./TalentApplication');
 const InternshipOpportunity = require('./InternshipOpportunity');
 const InternshipApplication = require('./InternshipApplication');
 const SiteContactMessage = require('./SiteContactMessage');
+const PaymentPage = require('./PaymentPage');
+const PaymentSubmission = require('./PaymentSubmission');
 const CalendarEvent = require('./CalendarEvent');
 const StoreItem = require('./StoreItem');
 const StoreOrder = require('./StoreOrder');
@@ -370,6 +372,10 @@ Workshop.belongsTo(Employee, { foreignKey: 'assignedEmployeeId', as: 'assignedEm
 Employee.hasMany(Workshop, { foreignKey: 'assignedEmployeeId', as: 'assignedWorkshops' });
 Workshop.hasMany(WorkshopStudent, { foreignKey: 'workshopId', as: 'students' });
 WorkshopStudent.belongsTo(Workshop, { foreignKey: 'workshopId', as: 'workshop' });
+
+// Payment pages (admin "صفحات الدفع") and the payments made through them
+PaymentPage.hasMany(PaymentSubmission, { foreignKey: 'pageId', as: 'submissions' });
+PaymentSubmission.belongsTo(PaymentPage, { foreignKey: 'pageId', as: 'page' });
 
 // Registration Closure relationships
 RegistrationClosure.belongsTo(Admin, { foreignKey: 'createdById', as: 'creator', constraints: false });
@@ -1445,6 +1451,8 @@ module.exports = {
   InternshipOpportunity,
   InternshipApplication,
   SiteContactMessage,
+  PaymentPage,
+  PaymentSubmission,
   CalendarEvent,
   StoreItem,
   StoreOrder,

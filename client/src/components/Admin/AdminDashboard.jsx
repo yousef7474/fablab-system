@@ -34,6 +34,7 @@ import YearCalendar from '../YearCalendar/YearCalendar';
 import StoreTab from './StoreTab';
 import Print3DTab from './Print3DTab';
 import SiteManager from './SiteManager';
+import PaymentPagesTab from './PaymentPagesTab';
 import InstitutionSupportTab from './InstitutionSupportTab';
 import ProjectSupportTab from './ProjectSupportTab';
 import { EDUCATION_SCHEDULE_1448, normalizeArabicTitle } from './educationSchedule1448';
@@ -97,7 +98,7 @@ const AdminDashboard = () => {
   const isRTL = i18n.language === 'ar';
 
   // Valid tabs for URL persistence
-  const validTabs = ['dashboard', 'registrations', 'users', 'employees', 'schedule', 'analytics', 'borrowing', 'education', 'workshops', 'workspaces', 'volunteers', 'workers', 'fablab-staff', 'summer', 'mawhba', 'overtime', 'trainer-assistants', 'contracts', 'customers', 'fablab-visits', 'project-support', 'store', 'print3d', 'institution-support', 'year-calendar', 'attendance-station', 'quick-messages', 'quick-forms', 'site', 'settings'];
+  const validTabs = ['dashboard', 'registrations', 'users', 'employees', 'schedule', 'analytics', 'borrowing', 'education', 'workshops', 'workspaces', 'volunteers', 'workers', 'fablab-staff', 'summer', 'mawhba', 'overtime', 'trainer-assistants', 'contracts', 'customers', 'fablab-visits', 'project-support', 'store', 'print3d', 'institution-support', 'year-calendar', 'attendance-station', 'quick-messages', 'quick-forms', 'payment-pages', 'site', 'settings'];
 
   // Get initial tab from URL, localStorage, or default to 'dashboard'
   const getInitialTab = () => {
@@ -5209,6 +5210,7 @@ const AdminDashboard = () => {
     { id: 'attendance-station', icon: 'attendance-station', labelEn: 'Attendance Station', labelAr: 'محطة الحضور' },
     { id: 'quick-messages', icon: 'quick-messages', labelEn: 'Quick Messages', labelAr: 'رسائل جاهزة' },
     { id: 'quick-forms', icon: 'quick-forms', labelEn: 'Ready Forms', labelAr: 'الفورم الجاهز' },
+    { id: 'payment-pages', icon: 'payment-pages', labelEn: 'Payment Pages', labelAr: 'صفحات الدفع' },
     { id: 'site', icon: 'site', labelEn: 'Website', labelAr: 'الموقع الإلكتروني' },
     { id: 'settings', icon: 'settings', labelEn: 'Settings', labelAr: 'الإعدادات' }
   ];
@@ -5233,6 +5235,7 @@ const AdminDashboard = () => {
       mawhba: <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 2l2.4 7.4H22l-6.2 4.5 2.4 7.4L12 16.8 5.8 21.3l2.4-7.4L2 9.4h7.6z"/></svg>,
       customers: <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>,
       contracts: <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="9" y1="13" x2="15" y2="13"/><line x1="9" y1="17" x2="15" y2="17"/></svg>,
+      'payment-pages': <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2.5" y="5" width="19" height="14" rx="2.5"/><line x1="2.5" y1="10" x2="21.5" y2="10"/><line x1="6.5" y1="15" x2="10.5" y2="15"/></svg>,
       site: <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>,
       'quick-messages': <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>,
       'quick-forms': <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="9" y1="15" x2="15" y2="15"/><line x1="9" y1="18" x2="12" y2="18"/></svg>,
@@ -10526,6 +10529,7 @@ const AdminDashboard = () => {
             {/* Store Tab */}
             {activeTab === 'store' && <StoreTab />}
             {activeTab === 'print3d' && <Print3DTab />}
+            {activeTab === 'payment-pages' && <PaymentPagesTab isRTL={isRTL} />}
             {activeTab === 'site' && <SiteManager />}
             {activeTab === 'institution-support' && <InstitutionSupportTab />}
             {activeTab === 'project-support' && (

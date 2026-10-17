@@ -36,6 +36,7 @@ const StorePage = lazy(() => import('./components/Store/StorePage'));
 const MyOrdersPage = lazy(() => import('./components/Store/MyOrdersPage'));
 const PrintServicePage = lazy(() => import('./components/Print3D/PrintServicePage'));
 const PrintQuotePage = lazy(() => import('./components/Print3D/PrintQuotePage'));
+const PaymentPage = lazy(() => import('./components/PaymentPage/PaymentPage'));
 // Public website (replaces the old main.fablabsahsa.com)
 const SiteHome = lazy(() => import('./components/Site/SiteHome'));
 const SiteAbout = lazy(() => import('./components/Site/SiteAbout'));
@@ -90,7 +91,7 @@ const RouteFallback = () => {
 const ConditionalLanguageSelector = () => {
   const location = useLocation();
   if (isSitePath(location.pathname)) return null;
-  if (location.pathname === '/admin/login' || location.pathname.startsWith('/manager') || location.pathname.startsWith('/elite') || location.pathname.startsWith('/employee') || location.pathname.startsWith('/workshop') || location.pathname.startsWith('/public/') || location.pathname.startsWith('/fablab-visit') || location.pathname.startsWith('/project-support') || location.pathname.startsWith('/store') || location.pathname.startsWith('/print-service') || location.pathname.startsWith('/print-quote')) return null;
+  if (location.pathname === '/admin/login' || location.pathname.startsWith('/manager') || location.pathname.startsWith('/elite') || location.pathname.startsWith('/employee') || location.pathname.startsWith('/workshop') || location.pathname.startsWith('/public/') || location.pathname.startsWith('/fablab-visit') || location.pathname.startsWith('/project-support') || location.pathname.startsWith('/store') || location.pathname.startsWith('/print-service') || location.pathname.startsWith('/print-quote') || location.pathname.startsWith('/pay/')) return null;
   return <LanguageSelector />;
 };
 
@@ -147,6 +148,8 @@ const AppContent = () => {
           <Route path="/store/my-orders" element={<MyOrdersPage />} />
           <Route path="/print-service" element={<PrintServicePage />} />
           <Route path="/print-quote/:token" element={<PrintQuotePage />} />
+          {/* Payment link created in the admin "صفحات الدفع" tab */}
+          <Route path="/pay/:slug" element={<PaymentPage />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </Suspense>
