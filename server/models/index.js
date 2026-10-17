@@ -907,14 +907,6 @@ const syncDatabase = async () => {
       await sequelize.query(
         `ALTER TABLE workshops ADD COLUMN IF NOT EXISTS "registrationEnabled" BOOLEAN NOT NULL DEFAULT TRUE`
       );
-      // علماء المستقبل payment-link workshops. They briefly shipped as an
-      // Education variant; those rows become plain payment links.
-      await sequelize.query(
-        `ALTER TABLE workshops ADD COLUMN IF NOT EXISTS "track" VARCHAR(32)`
-      );
-      await sequelize.query(
-        `UPDATE workshops SET "isEducation" = false WHERE track = 'future_scientists' AND "isEducation" = true`
-      );
     } catch (migrationError) {
       if (!/does not exist/i.test(migrationError.message)) {
         console.log('workshops education columns migration note:', migrationError.message);

@@ -296,7 +296,7 @@ const AdminDashboard = () => {
     startDate: '', endDate: '', startTime: '', endTime: '',
     totalHours: '', content: '', objectives: '', photo: '',
     maxParticipants: '', price: '', notes: '', color: '#1a56db', minAge: '', maxAge: '',
-    isPublic: true, isEducation: false, track: '', room: '', registrationEnabled: true, registrationForceOpen: false
+    isPublic: true, isEducation: false, room: '', registrationEnabled: true, registrationForceOpen: false
   });
   const [workshopLoading, setWorkshopLoading] = useState(false);
   const [viewingWorkshopStudents, setViewingWorkshopStudents] = useState(() => {
@@ -1485,7 +1485,6 @@ const AdminDashboard = () => {
       notes: workshop.notes || '', color: workshop.color || '#1a56db', minAge: workshop.minAge || '', maxAge: workshop.maxAge || '',
       isPublic: workshop.isPublic !== false,
       isEducation: !!workshop.isEducation,
-      track: workshop.track || '',
       room: workshop.room || '',
       registrationEnabled: workshop.registrationEnabled !== false,
       registrationForceOpen: !!workshop.registrationForceOpen
@@ -8547,34 +8546,28 @@ const AdminDashboard = () => {
 
             {/* Workshops Tab */}
             {activeTab === 'workshops' && (() => {
-              // Split the link-only workshops out of the main queue —
-              // Education and علماء المستقبل (payment links sent to a
-              // group) each live under their own pill so the primary
-              // Active/Completed lists stay focused on the public workshops
-              // the admin runs day-to-day.
+              // Split education workshops out of the main queue —
+              // they live under their own "Education" pill so the
+              // primary Active/Completed lists stay focused on the
+              // public workshops the admin runs day-to-day.
               const _isEdu = (w) => !!w.isEducation;
-              const _isFS = (w) => !w.isEducation && w.track === 'future_scientists';
-              const _isLinkOnly = (w) => _isEdu(w) || _isFS(w);
-              const _isProgramView = workshopFilter === 'education' || workshopFilter === 'future';
-              const _activeCount = workshopsList.filter(w => !_isLinkOnly(w) && w.isActive && w.status !== 'cancelled' && w.status !== 'completed').length;
-              const _completedCount = workshopsList.filter(w => !_isLinkOnly(w) && w.status === 'completed').length;
+              const _activeCount = workshopsList.filter(w => !_isEdu(w) && w.isActive && w.status !== 'cancelled' && w.status !== 'completed').length;
+              const _completedCount = workshopsList.filter(w => !_isEdu(w) && w.status === 'completed').length;
               const _educationCount = workshopsList.filter(_isEdu).length;
-              const _futureCount = workshopsList.filter(_isFS).length;
               const _totalStudents = workshopsList.reduce((sum, w) => sum + (w.studentCount || 0), 0);
               const _visibleWorkshops = (() => {
                 const filtered = workshopsList.filter(w => {
                   if (workshopFilter === 'all') return true;
                   if (workshopFilter === 'education') return _isEdu(w);
-                  if (workshopFilter === 'future') return _isFS(w);
-                  // Active + Completed exclude the link-only workshops
+                  // Active + Completed exclude education workshops
                   // so the main queue stays focused.
-                  if (_isLinkOnly(w)) return false;
+                  if (_isEdu(w)) return false;
                   if (workshopFilter === 'active') return w.isActive && w.status !== 'cancelled' && w.status !== 'completed';
                   if (workshopFilter === 'completed') return w.status === 'completed';
                   return true;
                 });
-                if (!_isProgramView) return filtered;
-                // Sort only in the Education / علماء المستقبل views.
+                if (workshopFilter !== 'education') return filtered;
+                // Sort only in the Education view.
                 const arr = [...filtered];
                 const dateVal = w => w.startDate ? new Date(w.startDate).getTime() : (workshopSort === 'date-desc' ? -Infinity : Infinity);
                 if (workshopSort === 'date-desc') arr.sort((a, b) => dateVal(b) - dateVal(a));
@@ -8664,7 +8657,6 @@ const AdminDashboard = () => {
                           { key: 'active',    label: isRTL ? 'النشطة' : 'Active',    count: _activeCount,          color: '#22d3ee' },
                           { key: 'completed', label: isRTL ? 'المكتملة' : 'Completed', count: _completedCount,       color: '#4ade80' },
                           { key: 'education', label: isRTL ? '🎓 التعليم' : '🎓 Education', count: _educationCount, color: '#a78bfa' },
-                          { key: 'future',    label: isRTL ? '🔬 علماء المستقبل' : '🔬 Future Scientists', count: _futureCount, color: '#fbbf24' },
                           { key: 'all',       label: isRTL ? 'الكل' : 'All',         count: workshopsList.length,  color: '#94a3b8' }
                         ].map(f => (
                           <button
@@ -8734,7 +8726,7 @@ const AdminDashboard = () => {
                             🔍 {isRTL ? 'مقارنة مع الجدول' : 'Compare Schedule'}
                           </button>
                         )}
-                        {_isProgramView && (
+                        {workshopFilter === 'education' && (
                           <select
                             className="wsv2-action-btn"
                             value={workshopSort}
@@ -8787,8 +8779,7 @@ const AdminDashboard = () => {
                           className="wsv2-action-btn primary"
                           onClick={() => {
                             setSelectedWorkshop(null);
-                            // A new workshop starts in the section being viewed.
-                            setWorkshopForm({ title: '', description: '', presenter: '', assignedEmployeeId: '', startDate: '', endDate: '', startTime: '', endTime: '', totalHours: '', content: '', objectives: '', photo: '', maxParticipants: '', price: '', notes: '', color: '#1a56db', minAge: '', maxAge: '', isPublic: !_isProgramView, isEducation: workshopFilter === 'education', track: workshopFilter === 'future' ? 'future_scientists' : '', room: '', registrationEnabled: true, registrationForceOpen: false });
+                            setWorkshopForm({ title: '', description: '', presenter: '', assignedEmployeeId: '', startDate: '', endDate: '', startTime: '', endTime: '', totalHours: '', content: '', objectives: '', photo: '', maxParticipants: '', price: '', notes: '', color: '#1a56db', minAge: '', maxAge: '', isPublic: true, isEducation: false, room: '', registrationEnabled: true, registrationForceOpen: false });
                             setShowWorkshopModal(true);
                           }}
                         >
@@ -8885,13 +8876,9 @@ const AdminDashboard = () => {
                                 </h4>
                                 <div className="wsv2-badges">
                                   <span className={`wsv2-status ${w.status}`}>{_wsStatusLabels[w.status] || w.status}</span>
-                                  {(w.isEducation || _isFS(w)) && (() => {
-                                    const fs = _isFS(w);
-                                    return (
+                                  {w.isEducation && (
                                     <span
-                                      title={fs
-                                        ? (isRTL ? 'علماء المستقبل · انقر لنسخ رابط الدفع والتسجيل' : 'Future Scientists · click to copy the payment link')
-                                        : (isRTL ? 'ورشة تعليمية · انقر لنسخ رابط التسجيل' : 'Education workshop · click to copy registration link')}
+                                      title={isRTL ? 'ورشة تعليمية · انقر لنسخ رابط التسجيل' : 'Education workshop · click to copy registration link'}
                                       onClick={(e) => {
                                         e.stopPropagation();
                                         const url = `${window.location.origin}/workshop/${w.workshopId}`;
@@ -8900,16 +8887,11 @@ const AdminDashboard = () => {
                                           () => toast.error(isRTL ? 'تعذّر النسخ' : 'Copy failed')
                                         );
                                       }}
-                                      style={fs
-                                        ? { fontSize: 10, fontWeight: 800, padding: '3px 8px', borderRadius: 999, background: '#fffbeb', color: '#b45309', border: '1px solid #fde68a', cursor: 'pointer', letterSpacing: 0.6 }
-                                        : { fontSize: 10, fontWeight: 800, padding: '3px 8px', borderRadius: 999, background: '#faf5ff', color: '#6d28d9', border: '1px solid #ddd6fe', cursor: 'pointer', letterSpacing: 0.6 }}
+                                      style={{ fontSize: 10, fontWeight: 800, padding: '3px 8px', borderRadius: 999, background: '#faf5ff', color: '#6d28d9', border: '1px solid #ddd6fe', cursor: 'pointer', letterSpacing: 0.6 }}
                                     >
-                                      {fs
-                                        ? <>🔬 {isRTL ? 'علماء المستقبل — نسخ رابط الدفع' : 'Future Scientists — copy payment link'}</>
-                                        : <>🎓 {isRTL ? 'تعليم — نسخ الرابط' : 'EDU — copy link'}</>}
+                                      🎓 {isRTL ? 'تعليم — نسخ الرابط' : 'EDU — copy link'}
                                     </span>
-                                    );
-                                  })()}
+                                  )}
                                   {regState === 'disabled' && (
                                     <span className="wsv2-reg-badge closed" title={isRTL ? 'أغلقه المسؤول' : 'Closed by admin'}>
                                       🔒 {isRTL ? 'التسجيل مغلق' : 'Reg. closed'}
@@ -8930,7 +8912,7 @@ const AdminDashboard = () => {
                                       🔓 {isRTL ? 'مفتوح استثنائياً' : 'Open (exception)'}
                                     </span>
                                   )}
-                                  {!_isLinkOnly(w) && w.isPublic === false && (
+                                  {!w.isEducation && w.isPublic === false && (
                                     <span className="wsv2-visibility" title={isRTL ? 'مخفية عن الجمهور' : 'Hidden from public'}>
                                       <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                                         <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/>
@@ -9963,42 +9945,28 @@ const AdminDashboard = () => {
                       </div>
                     </div>
 
-                    {/* Link-only workshops — Education (shareable URL, rooms,
-                        teachers) or علماء المستقبل (a payment link for a
-                        group). Exclusive; neither shows in the public list. */}
-                    <div style={{ gridColumn: '1/-1', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 10 }}>
-                      {[
-                        { track: '', icon: '🎓', color: '#7c3aed', dark: '#5b21b6', bg: 'rgba(124,58,237,0.08)',
-                          ar: 'ورشة تعليمية (تُشارك عبر رابط فريد فقط)', en: 'Education workshop (accessed only via a unique shareable URL)',
-                          hintAr: 'لا تظهر في قائمة الورش العامة. الإدارة تشارك رابط التسجيل مع طلاب التعليم يدوياً.',
-                          hintEn: "Won't appear in the public listing. Admin shares the registration link with education students manually." },
-                        { track: 'future_scientists', icon: '🔬', color: '#d97706', dark: '#92400e', bg: 'rgba(217,119,6,0.08)',
-                          ar: 'علماء المستقبل (رابط دفع للمجموعة)', en: 'Future Scientists (payment link for a group)',
-                          hintAr: 'لا تظهر في قائمة الورش العامة. أرسل الرابط للمجموعة؛ كل شخص يسجّل بيانات الطالب ويدفع، ويقبل الرابط عدة مدفوعات.',
-                          hintEn: "Won't appear in the public listing. Send the link to the group; each person registers a student and pays — the link takes multiple payments." }
-                      ].map(p => {
-                        const on = p.track
-                          ? workshopForm.track === p.track
-                          : (!!workshopForm.isEducation && !workshopForm.track);
-                        return (
-                          <label key={p.track || 'education'} style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', padding: '10px 14px', borderRadius: 10, background: on ? p.bg : '#f8fafc', border: on ? `2px solid ${p.color}` : '1.5px solid #e2e8f0' }}>
-                            <input
-                              type="checkbox"
-                              checked={on}
-                              onChange={e => setWorkshopForm({ ...workshopForm, isEducation: e.target.checked && !p.track, track: e.target.checked ? p.track : '', isPublic: e.target.checked ? false : workshopForm.isPublic })}
-                              style={{ transform: 'scale(1.2)' }}
-                            />
-                            <div>
-                              <div style={{ fontWeight: 700, fontSize: '0.9rem', color: on ? p.dark : '#334155' }}>
-                                {p.icon} {isRTL ? p.ar : p.en}
-                              </div>
-                              <div style={{ fontSize: '0.72rem', color: '#64748b', marginTop: 2 }}>
-                                {isRTL ? p.hintAr : p.hintEn}
-                              </div>
-                            </div>
-                          </label>
-                        );
-                      })}
+                    {/* Education-workshop panel — checkbox flips the
+                        workshop into the shareable-URL flow and reveals
+                        Room + Registration-Enabled controls. */}
+                    <div style={{ gridColumn: '1/-1' }}>
+                      <label style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', padding: '10px 14px', borderRadius: 10, background: workshopForm.isEducation ? 'rgba(124,58,237,0.08)' : '#f8fafc', border: workshopForm.isEducation ? '2px solid #7c3aed' : '1.5px solid #e2e8f0' }}>
+                        <input
+                          type="checkbox"
+                          checked={!!workshopForm.isEducation}
+                          onChange={e => setWorkshopForm({ ...workshopForm, isEducation: e.target.checked, isPublic: e.target.checked ? false : workshopForm.isPublic })}
+                          style={{ transform: 'scale(1.2)' }}
+                        />
+                        <div>
+                          <div style={{ fontWeight: 700, fontSize: '0.9rem', color: workshopForm.isEducation ? '#5b21b6' : '#334155' }}>
+                            🎓 {isRTL ? 'ورشة تعليمية (تُشارك عبر رابط فريد فقط)' : 'Education workshop (accessed only via a unique shareable URL)'}
+                          </div>
+                          <div style={{ fontSize: '0.72rem', color: '#64748b', marginTop: 2 }}>
+                            {isRTL
+                              ? 'لا تظهر في قائمة الورش العامة. الإدارة تشارك رابط التسجيل مع طلاب التعليم يدوياً.'
+                              : "Won't appear in the public listing. Admin shares the registration link with education students manually."}
+                          </div>
+                        </div>
+                      </label>
                     </div>
 
                     <div style={{ gridColumn: '1/-1', display: 'grid', gridTemplateColumns: workshopForm.isEducation ? '1fr 1fr' : '1fr', gap: '0.75rem' }}>
@@ -10107,52 +10075,6 @@ const AdminDashboard = () => {
                           </div>
                         )}
                       </>
-                    )}
-
-                    {workshopForm.track === 'future_scientists' && (
-                      <div style={{ gridColumn: '1/-1', padding: 12, background: '#fffbeb', border: '1px solid #fde68a', borderRadius: 10 }}>
-                        <div style={{ fontSize: 11, fontWeight: 800, color: '#b45309', letterSpacing: 1.2, marginBottom: 6 }}>
-                          🔗 {isRTL ? 'رابط الدفع والتسجيل' : 'Payment & registration link'}
-                        </div>
-                        {selectedWorkshop ? (
-                          <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-                            <input
-                              readOnly
-                              value={`${window.location.origin}/workshop/${selectedWorkshop.workshopId}`}
-                              onFocus={e => e.target.select()}
-                              dir="ltr"
-                              style={{ flex: 1, padding: '0.5rem', borderRadius: 8, border: '1.5px solid #fde68a', fontFamily: "'JetBrains Mono', monospace", fontSize: 12, background: '#fff', color: '#0f172a', letterSpacing: 0.5 }}
-                            />
-                            <button
-                              type="button"
-                              onClick={() => {
-                                const url = `${window.location.origin}/workshop/${selectedWorkshop.workshopId}`;
-                                navigator.clipboard.writeText(url).then(
-                                  () => toast.success(isRTL ? 'تم نسخ رابط الدفع' : 'Payment link copied'),
-                                  () => toast.error(isRTL ? 'تعذّر النسخ' : 'Copy failed')
-                                );
-                              }}
-                              style={{ padding: '0.5rem 0.9rem', borderRadius: 8, border: 'none', background: '#d97706', color: '#fff', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}
-                            >
-                              📋 {isRTL ? 'نسخ' : 'Copy'}
-                            </button>
-                          </div>
-                        ) : (
-                          <p style={{ margin: 0, fontSize: 12, color: '#92400e' }}>
-                            {isRTL ? 'يظهر الرابط بعد إنشاء الورشة (ومن شارة البطاقة «نسخ رابط الدفع»).' : 'The link appears once the workshop is created (also from the card badge "copy payment link").'}
-                          </p>
-                        )}
-                        <p style={{ margin: '6px 0 0', fontSize: 11.5, color: '#b45309' }}>
-                          {isRTL
-                            ? 'أرسل الرابط للمجموعة: كل شخص يسجّل بيانات الطالب ويدفع بالتحويل البنكي أو مدى، ويمكن استخدامه لأكثر من دفعة (مثلاً ولي أمر لعدة أبناء).'
-                            : 'Send it to the group: each person registers a student and pays by bank transfer or mada; it can be used for several payments (e.g. a parent with several children).'}
-                        </p>
-                        {!(Number(workshopForm.price) > 0) && (
-                          <p style={{ margin: '6px 0 0', fontSize: 11.5, color: '#b91c1c', fontWeight: 700 }}>
-                            ⚠️ {isRTL ? 'لم يُحدد سعر للورشة — سيكون التسجيل عبر الرابط مجانياً بدون دفع.' : 'No price set — registering through the link will be free, with no payment.'}
-                          </p>
-                        )}
-                      </div>
                     )}
                   </div>
                   <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end', marginTop: '1.5rem' }}>

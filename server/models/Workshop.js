@@ -111,13 +111,6 @@ const Workshop = sequelize.define('Workshop', {
     defaultValue: false,
     allowNull: false
   },
-  // 'future_scientists' = علماء المستقبل: a paid workshop hidden from the
-  // public list and opened through its payment link (/workshop/:id) that
-  // the admin sends to a group. Never combined with isEducation.
-  track: {
-    type: DataTypes.STRING(32),
-    allowNull: true
-  },
   // Physical room where the workshop is held (education workshops
   // rely on this — printed on invoices + confirmation email).
   room: {

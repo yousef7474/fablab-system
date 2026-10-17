@@ -7,15 +7,6 @@ const { readIdDocument, verifyIdToken } = require('../utils/idDocumentReader');
 const survey = require('../utils/workshopSurvey');
 const { EDU_ROOMS, roomById, roomByName, workshopsOverlap, eduDeadline } = require('../utils/eduRooms');
 
-// علماء المستقبل (track 'future_scientists'): a regular paid workshop that
-// is hidden from the public list and opened through its link — a payment
-// link the admin sends to a group. Anyone with it registers a student and
-// pays (bank transfer / mada), as many times as needed. Nothing of the
-// Education flow (teachers, rooms, 24h cut-off) applies.
-const WORKSHOP_TRACKS = ['future_scientists'];
-const _normTrack = (t) => (WORKSHOP_TRACKS.includes(t) ? t : null);
-const _isPaymentLink = (w) => !!w && !w.isEducation && w.track === 'future_scientists';
-
 // ─────────────── Invoice numbering (sequential WSK-####) ───────────────
 // Auto-assigns the next number under a transaction so two concurrent
 // registrations never race to the same invoice.
@@ -75,7 +66,7 @@ exports.createWorkshop = async (req, res) => {
       startDate, endDate, startTime, endTime, totalHours,
       content, objectives, photo, maxParticipants, price,
       status, isActive, isPublic, notes, color, minAge, maxAge,
-      isEducation, track, room, registrationEnabled, registrationForceOpen
+      isEducation, room, registrationEnabled, registrationForceOpen
     } = req.body;
 
     if (!title || !presenter || !startDate) {
@@ -85,9 +76,7 @@ exports.createWorkshop = async (req, res) => {
       });
     }
 
-    // علماء المستقبل and Education are exclusive; both are link-only.
-    const trackValue = _normTrack(track);
-    const eduFlag = !trackValue && !!isEducation;
+    const eduFlag = !!isEducation;
     const workshop = await Workshop.create({
       title, description, presenter, assignedEmployeeId,
       startDate, endDate, startTime, endTime, totalHours,
@@ -96,9 +85,8 @@ exports.createWorkshop = async (req, res) => {
       isActive: isActive !== undefined ? isActive : true,
       // Education workshops are ALWAYS hidden from the public picker.
       // Only the shareable URL /workshop/:id opens them.
-      isPublic: (eduFlag || trackValue) ? false : (isPublic !== undefined ? !!isPublic : true),
+      isPublic: eduFlag ? false : (isPublic !== undefined ? !!isPublic : true),
       isEducation: eduFlag,
-      track: trackValue,
       room: room || null,
       registrationEnabled: registrationEnabled !== undefined ? !!registrationEnabled : true,
       registrationForceOpen: !!registrationForceOpen && registrationEnabled !== false,
@@ -244,17 +232,12 @@ exports.updateWorkshop = async (req, res) => {
       startDate, endDate, startTime, endTime, totalHours,
       content, objectives, photo, maxParticipants, price,
       status, isActive, isPublic, notes, color, minAge, maxAge,
-      isEducation, track, room, registrationEnabled, registrationForceOpen
+      isEducation, room, registrationEnabled, registrationForceOpen
     } = req.body;
 
-    // Education and علماء المستقبل workshops never appear in the public
-    // picker, and are exclusive — whichever the admin just chose wins.
-    let nextIsEdu = isEducation !== undefined ? !!isEducation : workshop.isEducation;
-    let nextTrack = track !== undefined ? _normTrack(track) : workshop.track;
-    if (nextIsEdu && nextTrack) {
-      if (track !== undefined) nextIsEdu = false; else nextTrack = null;
-    }
-    const nextIsPublic = (nextIsEdu || nextTrack) ? false : (isPublic !== undefined ? !!isPublic : workshop.isPublic);
+    // Education workshops never appear in the public picker.
+    const nextIsEdu = isEducation !== undefined ? !!isEducation : workshop.isEducation;
+    const nextIsPublic = nextIsEdu ? false : (isPublic !== undefined ? !!isPublic : workshop.isPublic);
 
     await workshop.update({
       title: title !== undefined ? title : workshop.title,
@@ -275,7 +258,6 @@ exports.updateWorkshop = async (req, res) => {
       isActive: isActive !== undefined ? isActive : workshop.isActive,
       isPublic: nextIsPublic,
       isEducation: nextIsEdu,
-      track: nextTrack,
       room: room !== undefined ? (room || null) : workshop.room,
       registrationEnabled: registrationEnabled !== undefined ? !!registrationEnabled : workshop.registrationEnabled,
       registrationForceOpen: registrationForceOpen !== undefined
@@ -589,10 +571,10 @@ exports.registerStudent = async (req, res) => {
 
       // Admin-only workshops are hidden from the public listing and cannot
       // be registered for via the public form.
-      // EXCEPTION: education workshops and علماء المستقبل payment links
-      // opt into public-URL registration. They stay hidden from the picker
-      // (isPublic=false) but accept registrations from anyone with the URL.
-      if (workshop.isPublic === false && !workshop.isEducation && !_isPaymentLink(workshop)) {
+      // EXCEPTION: education workshops opt into public-URL registration.
+      // They stay hidden from the picker (isPublic=false) but accept
+      // registrations from anyone with the shareable URL.
+      if (workshop.isPublic === false && !workshop.isEducation) {
         throw { status: 403, message: 'This workshop is not open for public registration', messageAr: 'هذه الورشة غير متاحة للتسجيل العام' };
       }
 
@@ -2883,9 +2865,9 @@ exports.rateStudentEmployee = async (req, res) => {
 // ─────────────── Education workshops (unique shareable URL) ───────────────
 
 // GET /workshops/edu/:id — public, no auth. Returns the education
-// workshop's (or علماء المستقبل payment link's) public-facing details for
-// the /workshop/:id shareable registration page. 404 for other workshops
-// so the URL isn't a discovery vector.
+// workshop's public-facing details for the /workshop/:id shareable
+// registration page. 404 for non-education workshops so the URL
+// isn't a discovery vector.
 exports.getEducationWorkshop = async (req, res) => {
   try {
     const workshop = await Workshop.findByPk(req.params.id, {
@@ -2893,13 +2875,13 @@ exports.getEducationWorkshop = async (req, res) => {
         'workshopId', 'title', 'description', 'presenter', 'startDate', 'endDate',
         'startTime', 'endTime', 'totalHours', 'content', 'objectives', 'photo',
         'maxParticipants', 'price', 'color', 'minAge', 'maxAge',
-        'isEducation', 'track', 'room', 'registrationEnabled', 'registrationForceOpen', 'status', 'isActive'
+        'isEducation', 'room', 'registrationEnabled', 'registrationForceOpen', 'status', 'isActive'
       ],
       include: [{
         model: WorkshopStudent, as: 'students', attributes: ['studentId']
       }]
     });
-    if (!workshop || (!workshop.isEducation && !_isPaymentLink(workshop))) {
+    if (!workshop || !workshop.isEducation) {
       return res.status(404).json({
         message: 'Education workshop not found',
         messageAr: 'الورشة التعليمية غير موجودة'
@@ -2910,17 +2892,12 @@ exports.getEducationWorkshop = async (req, res) => {
       ? Math.max(0, workshop.maxParticipants - studentCount)
       : null;
 
-    const { students, room, ...rest } = workshop.toJSON();
+    const { students, ...rest } = workshop.toJSON();
     const closedReason = _closedReason(workshop, studentCount);
-    if (!workshop.isEducation) {
-      // Payment link: just the workshop and whether it takes registrations.
-      return res.json({ ...rest, studentCount, spotsRemaining, isOpen: !closedReason, closedReason });
-    }
     const teacherClosedReason = _closedReason(workshop, studentCount, { forTeacher: true });
     const rooms = await _eduRoomAvailability(workshop);
     res.json({
       ...rest,
-      room,
       studentCount,
       spotsRemaining,
       // Explicit flags so the client can render the right message.
