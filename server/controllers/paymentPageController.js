@@ -1,7 +1,7 @@
 const crypto = require('crypto');
 const { Op } = require('sequelize');
 const { sequelize } = require('../config/database');
-const { PaymentPage, PaymentSubmission, Settings } = require('../models');
+const { PaymentPage, PaymentSubmission, PaymentCoupon, Settings } = require('../models');
 const { IMAGE_TYPES, sendBinary, rateLimited } = require('../utils/siteContent');
 const { buildReceiptHtml, sendPaymentReceived, sendPaymentVerified, sendPaymentRejected } = require('../utils/paymentPageDocs');
 
@@ -146,12 +146,51 @@ function _pricing(b, current = null) {
   };
 }
 
-// Pricing as stored on a page or a payment (old rows: no discount).
+// Pricing as stored on a page or a payment (old rows: no discount). A
+// payment's amount is after the page discount and then its coupon.
 const _priceOf = (row) => {
   const amount = Number(row.amount);
-  const base = row.baseAmount != null ? Number(row.baseAmount) : amount;
-  return { amount, baseAmount: base, discountPercent: Number(row.discountPercent || 0), discountValue: _round2(base - amount) };
+  const couponDiscount = Number(row.couponDiscount || 0);
+  const pageAmount = _round2(amount + couponDiscount);
+  const base = row.baseAmount != null ? Number(row.baseAmount) : pageAmount;
+  return {
+    amount, baseAmount: base, discountPercent: Number(row.discountPercent || 0), discountValue: _round2(base - pageAmount),
+    couponPercent: Number(row.couponPercent || 0), couponDiscount
+  };
 };
+
+// ── discount codes ──
+const CODE_RE = /^[A-Z0-9-]{3,24}$/;
+const _normCode = (v) => _str(v, 40).toUpperCase().replace(/\s+/g, '');
+const _newCode = () => {
+  const abc = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  return [...crypto.randomBytes(8)].map(b => abc[b % abc.length]).join('');
+};
+const _couponUses = (pageId, code, transaction) => PaymentSubmission.count({
+  where: { pageId, couponCode: code, status: { [Op.in]: TAKES_A_PLACE } }, transaction
+});
+const COUPON_ERRORS = {
+  invalid: ['This discount code is not valid', 'كود الخصم غير صحيح'],
+  inactive: ['This discount code is no longer active', 'كود الخصم غير مفعّل'],
+  expired: ['This discount code has expired', 'انتهت صلاحية كود الخصم'],
+  used: ['This discount code has already been used', 'تم استخدام كود الخصم بالكامل']
+};
+// A code that works on this page right now → the price with it, or throws.
+async function _applyCoupon(page, rawCode, transaction) {
+  const code = _normCode(rawCode);
+  const coupon = CODE_RE.test(code)
+    ? await PaymentCoupon.findOne({ where: { pageId: page.pageId, code }, transaction })
+    : null;
+  const fail = (why) => { const [message, messageAr] = COUPON_ERRORS[why]; throw { status: 400, code: 'COUPON_' + why.toUpperCase(), message, messageAr }; };
+  if (!coupon) fail('invalid');
+  if (!coupon.isActive) fail('inactive');
+  if (coupon.expiresAt && Date.now() >= new Date(coupon.expiresAt).getTime()) fail('expired');
+  if (coupon.maxUses && (await _couponUses(page.pageId, code, transaction)) >= coupon.maxUses) fail('used');
+  const pageAmount = Number(page.amount);
+  const pct = Number(coupon.discountPercent);
+  const discount = _round2(pageAmount * pct / 100);
+  return { coupon, code, pct, discount, pageAmount, amount: _round2(pageAmount - discount) };
+}
 
 const _pageJson = (page, stats = {}) => {
   const p = page.toJSON ? page.toJSON() : { ...page };
@@ -239,7 +278,28 @@ exports.getPublicCover = async (req, res) => {
   }
 };
 
-// POST /api/pay/:slug — { fullName, phone, email, method, proof?, note?, termsAccepted }
+// POST /api/pay/:slug/coupon — { code } → the price with that code.
+exports.checkCoupon = async (req, res) => {
+  try {
+    if (!SLUG_RE.test(req.params.slug)) return res.status(404).json({ message: 'Not found' });
+    if (rateLimited(req, `coupon:${req.params.slug}`, 20, 10 * 60 * 1000)) {
+      return res.status(429).json({ message: 'Too many attempts — try again in a few minutes', messageAr: 'محاولات كثيرة — حاول مجدداً بعد دقائق' });
+    }
+    const page = await PaymentPage.findOne({ where: { slug: req.params.slug } });
+    if (!page) return res.status(404).json({ message: 'Payment page not found', messageAr: 'صفحة الدفع غير موجودة' });
+    const c = await _applyCoupon(page, req.body?.code);
+    res.json({ code: c.code, percent: c.pct, discount: c.discount, subtotal: c.pageAmount, amount: c.amount });
+  } catch (error) {
+    if (error && error.status) {
+      const { status, ...body } = error;
+      return res.status(status).json(body);
+    }
+    console.error('checkCoupon:', error);
+    res.status(500).json({ message: 'Server error', messageAr: 'خطأ في الخادم' });
+  }
+};
+
+// POST /api/pay/:slug — { fullName, phone, email, method, proof?, note?, termsAccepted, couponCode? }
 exports.submitPayment = async (req, res) => {
   try {
     if (!SLUG_RE.test(req.params.slug)) return res.status(404).json({ message: 'Not found' });
@@ -284,6 +344,9 @@ exports.submitPayment = async (req, res) => {
       if (dup) {
         throw { status: 409, code: 'DUPLICATE', reference: dup.reference, message: `You already have a payment on this page (${dup.reference})`, messageAr: `لديك طلب دفع مسجل مسبقاً في هذه الصفحة (${dup.reference})` };
       }
+      // A discount code is checked again here, under the page lock, so its
+      // use limit can't be overrun.
+      const coupon = b.couponCode ? await _applyCoupon(page, b.couponCode, t) : null;
       // References never repeat, even after a request is deleted: a
       // counter in settings, never below the highest one in the table.
       const [rows] = await sequelize.query(
@@ -297,8 +360,12 @@ exports.submitPayment = async (req, res) => {
         pageId: page.pageId,
         reference: `PAY-${String(next).padStart(4, '0')}`,
         fullName, phone, email, note, method,
-        amount: page.amount,
+        amount: coupon ? coupon.amount : page.amount,
         baseAmount: page.baseAmount != null ? page.baseAmount : page.amount,
+        couponCode: coupon ? coupon.code : null,
+        couponPercent: coupon ? coupon.pct : 0,
+        couponDiscount: coupon ? coupon.discount : 0,
+        couponApprovedBy: coupon ? coupon.coupon.approvedBy : null,
         discountPercent: page.discountPercent || 0,
         discountAppliedBy: Number(page.discountPercent) > 0 ? page.discountAppliedBy : null,
         discountApprovedBy: Number(page.discountPercent) > 0 ? page.discountApprovedBy : null,
@@ -318,6 +385,7 @@ exports.submitPayment = async (req, res) => {
       status: sub.status,
       method: sub.method,
       ..._priceOf(sub),
+      couponCode: sub.couponCode,
       receiptUrl: `/api/pay/receipt/${sub.receiptToken}`
     });
   } catch (error) {
@@ -351,7 +419,9 @@ exports.listPages = async (req, res) => {
   try {
     const pages = await PaymentPage.findAll({ order: [['createdAt', 'DESC']] });
     const stats = await _statsFor(pages.map(p => p.pageId));
-    res.json(pages.map(p => _pageJson(p, stats.get(p.pageId))));
+    const codes = await PaymentCoupon.findAll({ attributes: ['pageId', [sequelize.fn('COUNT', sequelize.col('couponId')), 'n']], group: ['pageId'], raw: true });
+    const codeCount = new Map(codes.map(r => [r.pageId, Number(r.n) || 0]));
+    res.json(pages.map(p => ({ ..._pageJson(p, stats.get(p.pageId)), couponCount: codeCount.get(p.pageId) || 0 })));
   } catch (error) {
     console.error('listPages:', error);
     res.status(500).json({ message: 'Server error', messageAr: 'خطأ في الخادم' });
@@ -435,6 +505,7 @@ exports.deletePage = async (req, res) => {
       return res.status(409).json({ message: 'This page has verified payments — close it instead', messageAr: 'لا يمكن حذف صفحة عليها مدفوعات مؤكدة — يمكنك إغلاقها بدلاً من ذلك' });
     }
     await PaymentSubmission.destroy({ where: { pageId: page.pageId } });
+    await PaymentCoupon.destroy({ where: { pageId: page.pageId } });
     await page.destroy();
     res.json({ message: 'Deleted', messageAr: 'تم الحذف' });
   } catch (error) {
@@ -550,6 +621,118 @@ exports.deleteSubmission = async (req, res) => {
     res.json({ message: 'Deleted', messageAr: 'تم الحذف' });
   } catch (error) {
     console.error('deleteSubmission:', error);
+    res.status(500).json({ message: 'Server error', messageAr: 'خطأ في الخادم' });
+  }
+};
+
+// ─────────── discount codes (admin) ───────────
+
+const _couponJson = (c, uses = 0) => ({ ...c.toJSON(), discountPercent: Number(c.discountPercent), uses });
+
+// GET /api/payment-pages/:id/coupons
+exports.listCoupons = async (req, res) => {
+  try {
+    const page = await PaymentPage.findByPk(req.params.id, { attributes: ['pageId', 'amount', 'slug'] });
+    if (!page) return res.status(404).json({ message: 'Not found', messageAr: 'الصفحة غير موجودة' });
+    const coupons = await PaymentCoupon.findAll({ where: { pageId: page.pageId }, order: [['createdAt', 'DESC']] });
+    const used = await PaymentSubmission.findAll({
+      where: { pageId: page.pageId, couponCode: { [Op.ne]: null }, status: { [Op.in]: TAKES_A_PLACE } },
+      attributes: ['couponCode', [sequelize.fn('COUNT', sequelize.col('submissionId')), 'n']], group: ['couponCode'], raw: true
+    });
+    const uses = new Map(used.map(r => [r.couponCode, Number(r.n) || 0]));
+    res.json(coupons.map(c => _couponJson(c, uses.get(c.code) || 0)));
+  } catch (error) {
+    console.error('listCoupons:', error);
+    res.status(500).json({ message: 'Server error', messageAr: 'خطأ في الخادم' });
+  }
+};
+
+function _couponFields(b, { partial = false } = {}) {
+  const out = {};
+  const errors = [];
+  const has = (k) => !partial || b[k] !== undefined;
+  if (has('discountPercent')) {
+    const pct = _round2(Number(b.discountPercent));
+    if (!Number.isFinite(pct) || pct <= 0 || pct >= 100) errors.push('نسبة خصم الكود يجب أن تكون أكبر من 0 وأقل من 100');
+    else out.discountPercent = pct;
+  }
+  if (has('approvedBy')) {
+    out.approvedBy = _str(b.approvedBy, 150);
+    if (!out.approvedBy) errors.push('اختر من اعتمد الخصم');
+  }
+  if (has('maxUses')) {
+    if (b.maxUses === '' || b.maxUses == null) out.maxUses = null;
+    else {
+      const n = parseInt(b.maxUses, 10);
+      if (!Number.isInteger(n) || n < 1 || n > 100000) errors.push('عدد مرات الاستخدام يجب أن يكون 1 أو أكثر');
+      else out.maxUses = n;
+    }
+  }
+  if (has('expiresAt')) {
+    if (!b.expiresAt) out.expiresAt = null;
+    else {
+      const d = new Date(b.expiresAt);
+      if (Number.isNaN(d.getTime())) errors.push('تاريخ انتهاء الكود غير صحيح');
+      else out.expiresAt = d;
+    }
+  }
+  if (has('note')) out.note = _str(b.note, 300) || null;
+  if (has('isActive')) out.isActive = b.isActive !== false;
+  return { out, errors };
+}
+
+// POST /api/payment-pages/:id/coupons — { code?, discountPercent, approvedBy, maxUses?, expiresAt?, note? }
+exports.createCoupon = async (req, res) => {
+  try {
+    const page = await PaymentPage.findByPk(req.params.id, { attributes: ['pageId'] });
+    if (!page) return res.status(404).json({ message: 'Not found', messageAr: 'الصفحة غير موجودة' });
+    const { out, errors } = _couponFields({ maxUses: 1, ...(req.body || {}) });
+    let code = _normCode(req.body?.code);
+    if (code && !CODE_RE.test(code)) errors.push('الكود: حروف إنجليزية وأرقام فقط (3 إلى 24)');
+    if (errors.length) return res.status(400).json({ message: errors.join(' · '), messageAr: errors.join(' · ') });
+    if (!code) {
+      for (let i = 0; i < 5 && !code; i++) {
+        const c = _newCode();
+        if (!(await PaymentCoupon.count({ where: { pageId: page.pageId, code: c } }))) code = c;
+      }
+    } else if (await PaymentCoupon.count({ where: { pageId: page.pageId, code } })) {
+      return res.status(409).json({ message: 'This code already exists on this page', messageAr: 'هذا الكود موجود مسبقاً في هذه الصفحة' });
+    }
+    const coupon = await PaymentCoupon.create({ ...out, pageId: page.pageId, code, createdBy: req.admin?.fullName || req.admin?.username || null });
+    res.status(201).json(_couponJson(coupon));
+  } catch (error) {
+    console.error('createCoupon:', error);
+    res.status(500).json({ message: 'Server error', messageAr: 'خطأ في الخادم' });
+  }
+};
+
+// PATCH /api/payment-pages/coupons/:couponId — any of the fields above (not the code)
+exports.updateCoupon = async (req, res) => {
+  try {
+    const coupon = await PaymentCoupon.findByPk(req.params.couponId);
+    if (!coupon) return res.status(404).json({ message: 'Not found', messageAr: 'الكود غير موجود' });
+    const { out, errors } = _couponFields(req.body || {}, { partial: true });
+    if (errors.length) return res.status(400).json({ message: errors.join(' · '), messageAr: errors.join(' · ') });
+    await coupon.update(out);
+    res.json(_couponJson(coupon, await _couponUses(coupon.pageId, coupon.code)));
+  } catch (error) {
+    console.error('updateCoupon:', error);
+    res.status(500).json({ message: 'Server error', messageAr: 'خطأ في الخادم' });
+  }
+};
+
+// DELETE /api/payment-pages/coupons/:couponId — only while unused (else deactivate it).
+exports.deleteCoupon = async (req, res) => {
+  try {
+    const coupon = await PaymentCoupon.findByPk(req.params.couponId);
+    if (!coupon) return res.status(404).json({ message: 'Not found', messageAr: 'الكود غير موجود' });
+    if (await _couponUses(coupon.pageId, coupon.code)) {
+      return res.status(409).json({ message: 'This code has been used — deactivate it instead', messageAr: 'تم استخدام هذا الكود — يمكنك إيقافه بدلاً من حذفه' });
+    }
+    await coupon.destroy();
+    res.json({ message: 'Deleted', messageAr: 'تم الحذف' });
+  } catch (error) {
+    console.error('deleteCoupon:', error);
     res.status(500).json({ message: 'Server error', messageAr: 'خطأ في الخادم' });
   }
 };

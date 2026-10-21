@@ -78,6 +78,7 @@ const InternshipApplication = require('./InternshipApplication');
 const SiteContactMessage = require('./SiteContactMessage');
 const PaymentPage = require('./PaymentPage');
 const PaymentSubmission = require('./PaymentSubmission');
+const PaymentCoupon = require('./PaymentCoupon');
 const CalendarEvent = require('./CalendarEvent');
 const StoreItem = require('./StoreItem');
 const StoreOrder = require('./StoreOrder');
@@ -376,6 +377,7 @@ WorkshopStudent.belongsTo(Workshop, { foreignKey: 'workshopId', as: 'workshop' }
 // Payment pages (admin "صفحات الدفع") and the payments made through them
 PaymentPage.hasMany(PaymentSubmission, { foreignKey: 'pageId', as: 'submissions' });
 PaymentSubmission.belongsTo(PaymentPage, { foreignKey: 'pageId', as: 'page' });
+PaymentPage.hasMany(PaymentCoupon, { foreignKey: 'pageId', as: 'coupons' });
 
 // Registration Closure relationships
 RegistrationClosure.belongsTo(Admin, { foreignKey: 'createdById', as: 'creator', constraints: false });
@@ -1453,6 +1455,7 @@ module.exports = {
   SiteContactMessage,
   PaymentPage,
   PaymentSubmission,
+  PaymentCoupon,
   CalendarEvent,
   StoreItem,
   StoreOrder,

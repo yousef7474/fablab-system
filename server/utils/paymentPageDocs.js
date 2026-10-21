@@ -36,11 +36,18 @@ const fmtDate = (d) => {
 };
 // Pricing of a payment: main cost, % discount and what was paid. Rows
 // from before discounts existed have no baseAmount (= no discount).
+const r2 = (n) => Math.round(n * 100) / 100;
 const priceOf = (sub) => {
   const paid = Number(sub.amount || 0);
-  const base = sub.baseAmount != null ? Number(sub.baseAmount) : paid;
+  // A discount code comes off the price after the page discount.
+  const cPct = Number(sub.couponPercent || 0);
+  const cOff = Number(sub.couponDiscount || 0);
+  const afterPage = r2(paid + cOff);
+  const base = sub.baseAmount != null ? Number(sub.baseAmount) : afterPage;
   const pct = Number(sub.discountPercent || 0);
-  return { paid, base, pct, off: Math.max(0, Math.round((base - paid) * 100) / 100), hasDiscount: pct > 0 && base > paid };
+  const hasDiscount = pct > 0 && base > afterPage;
+  const hasCoupon = !!sub.couponCode && cPct > 0;
+  return { paid, base, pct, off: Math.max(0, r2(base - afterPage)), hasDiscount, afterPage, cPct, cOff, hasCoupon, anyDiscount: hasDiscount || hasCoupon };
 };
 const pctLabel = (pct) => `${Number(pct).toLocaleString('en-US', { maximumFractionDigits: 2 })}%`;
 
@@ -100,6 +107,8 @@ tbody td:last-child { text-align: end; font-family: 'JetBrains Mono', monospace;
 .disc { flex: 1; border: 1px dashed #f3b4b6; background: #fff7f7; border-radius: 4mm; padding: 4mm 5mm; }
 .disc h3 { margin: 0 0 2mm; font-size: 9pt; letter-spacing: 1.2px; color: ${BRAND}; font-weight: 800; }
 .disc .row { padding: 1.2mm 0; font-size: 10pt; }
+.disc h4 { margin: 3mm 0 1mm; padding-top: 2.5mm; border-top: 1px dashed #f3b4b6; font-size: 8.5pt; letter-spacing: 1px; color: ${BRAND}; font-weight: 800; }
+.code { display: inline-block; padding: .4mm 2.4mm; border-radius: 1.5mm; border: 1px dashed ${BRAND}; color: ${BRAND}; background: #fff; font-family: 'JetBrains Mono', monospace; font-weight: 700; font-size: 9.5pt; direction: ltr; letter-spacing: .5px; }
 .pct { display: inline-block; padding: .4mm 2.4mm; border-radius: 99px; background: ${BRAND}; color: #fff; font-weight: 800; font-size: 9pt; direction: ltr; }
 .totals { margin-inline-start: auto; width: 82mm; }
 .totals .row { padding: 2mm 0; border-bottom: 1px dashed #e3e5ea; }
@@ -151,17 +160,24 @@ tbody td:last-child { text-align: end; font-family: 'JetBrains Mono', monospace;
   </table></div>
 
   <div class="sum">
-    ${price.hasDiscount ? `<div class="disc">
+    ${price.anyDiscount ? `<div class="disc">
       <h3>تفاصيل الخصم · DISCOUNT</h3>
+      ${price.hasDiscount ? `
       <div class="row"><span>نسبة الخصم</span><b><span class="pct">${pctLabel(price.pct)}</span></b></div>
       <div class="row"><span>قيمة الخصم</span><b class="ltr">${sar(price.off)} ر.س</b></div>
       <div class="row"><span>طبّق الخصم</span><b>${esc(sub.discountAppliedBy || '—')}</b></div>
-      <div class="row"><span>اعتمد الخصم</span><b>${esc(sub.discountApprovedBy || '—')}</b></div>
+      <div class="row"><span>اعتمد الخصم</span><b>${esc(sub.discountApprovedBy || '—')}</b></div>` : ''}
+      ${price.hasCoupon ? `${price.hasDiscount ? '<h4>كود الخصم · COUPON</h4>' : ''}
+      <div class="row"><span>كود الخصم</span><b><span class="code">${esc(sub.couponCode)}</span></b></div>
+      <div class="row"><span>نسبة خصم الكود</span><b><span class="pct">${pctLabel(price.cPct)}</span></b></div>
+      <div class="row"><span>قيمة خصم الكود</span><b class="ltr">${sar(price.cOff)} ر.س</b></div>
+      <div class="row"><span>اعتمد الكود</span><b>${esc(sub.couponApprovedBy || '—')}</b></div>` : ''}
     </div>` : ''}
     <div class="totals">
       <div class="row"><span>التكلفة الأساسية</span><b class="ltr">${sar(price.base)}</b></div>
       ${price.hasDiscount ? `<div class="row off"><span>الخصم (<bdi dir="ltr">${pctLabel(price.pct)}</bdi>)</span><b class="ltr">- ${sar(price.off)}</b></div>` : ''}
-      <div class="grand"><span>${price.hasDiscount ? 'الإجمالي بعد الخصم' : paid ? 'الإجمالي المدفوع' : 'الإجمالي المستحق'}</span><strong class="ltr">${amount}<em>ر.س</em></strong></div>
+      ${price.hasCoupon ? `<div class="row off"><span>كود <bdi dir="ltr">${esc(sub.couponCode)}</bdi> (<bdi dir="ltr">${pctLabel(price.cPct)}</bdi>)</span><b class="ltr">- ${sar(price.cOff)}</b></div>` : ''}
+      <div class="grand"><span>${price.anyDiscount ? 'الإجمالي بعد الخصم' : paid ? 'الإجمالي المدفوع' : 'الإجمالي المستحق'}</span><strong class="ltr">${amount}<em>ر.س</em></strong></div>
     </div>
   </div>
 
@@ -195,9 +211,10 @@ const _shell = ({ tone = BRAND, kicker, heading, body }) => `<div dir="rtl" styl
 const _summary = (page, sub) => `<table style="width:100%;border-collapse:collapse;background:#f7f8fa;border-radius:12px;font-size:13.5px;margin:12px 0 16px">
   <tr><td style="padding:10px 14px;color:#6b7280;width:130px">رقم المرجع</td><td style="padding:10px 14px;font-weight:800;font-family:'JetBrains Mono',monospace;color:${BRAND}" dir="ltr">${esc(sub.reference)}</td></tr>
   <tr><td style="padding:10px 14px;color:#6b7280">البيان</td><td style="padding:10px 14px;font-weight:700">${esc(page.title)}</td></tr>
-  ${priceOf(sub).hasDiscount ? `<tr><td style="padding:10px 14px;color:#6b7280">التكلفة الأساسية</td><td style="padding:10px 14px;font-weight:700"><s style="color:#9ca3af">${sar(priceOf(sub).base)} ر.س</s></td></tr>
-  <tr><td style="padding:10px 14px;color:#6b7280">الخصم</td><td style="padding:10px 14px;font-weight:800;color:${BRAND}"><bdi dir="ltr">${pctLabel(priceOf(sub).pct)}</bdi> (- ${sar(priceOf(sub).off)} ر.س)</td></tr>` : ''}
-  <tr><td style="padding:10px 14px;color:#6b7280">${priceOf(sub).hasDiscount ? 'المبلغ بعد الخصم' : 'المبلغ'}</td><td style="padding:10px 14px;font-weight:800">${sar(sub.amount)} ر.س</td></tr>
+  ${priceOf(sub).anyDiscount ? `<tr><td style="padding:10px 14px;color:#6b7280">التكلفة الأساسية</td><td style="padding:10px 14px;font-weight:700"><s style="color:#9ca3af">${sar(priceOf(sub).base)} ر.س</s></td></tr>` : ''}
+  ${priceOf(sub).hasDiscount ? `<tr><td style="padding:10px 14px;color:#6b7280">الخصم</td><td style="padding:10px 14px;font-weight:800;color:${BRAND}"><bdi dir="ltr">${pctLabel(priceOf(sub).pct)}</bdi> (- ${sar(priceOf(sub).off)} ر.س)</td></tr>` : ''}
+  ${priceOf(sub).hasCoupon ? `<tr><td style="padding:10px 14px;color:#6b7280">كود الخصم</td><td style="padding:10px 14px;font-weight:800;color:${BRAND}"><bdi dir="ltr">${esc(sub.couponCode)}</bdi> · <bdi dir="ltr">${pctLabel(priceOf(sub).cPct)}</bdi> (- ${sar(priceOf(sub).cOff)} ر.س)</td></tr>` : ''}
+  <tr><td style="padding:10px 14px;color:#6b7280">${priceOf(sub).anyDiscount ? 'المبلغ بعد الخصم' : 'المبلغ'}</td><td style="padding:10px 14px;font-weight:800">${sar(sub.amount)} ر.س</td></tr>
   <tr><td style="padding:10px 14px;color:#6b7280">طريقة الدفع</td><td style="padding:10px 14px;font-weight:700">${METHOD_AR[sub.method] || esc(sub.method)}</td></tr>
 </table>`;
 const _button = (href, label, tone = BRAND) => `<div style="text-align:center;margin:20px 0 6px"><a href="${href}" style="display:inline-block;background:${tone};color:#fff;padding:12px 28px;border-radius:10px;text-decoration:none;font-weight:800">${label}</a></div>`;

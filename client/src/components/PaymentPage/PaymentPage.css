@@ -422,3 +422,25 @@
 .pp-breakdown span { color: var(--pp-muted); font-weight: 600; }
 .pp-breakdown b { font-weight: 800; font-variant-numeric: tabular-nums; }
 .pp-breakdown .off b { color: var(--pp-red); }
+
+/* discount code */
+.pp-off-badge.code { background: #fff; color: var(--pp-red); box-shadow: none; border: 1.5px dashed #ff8a8d; font-family: 'JetBrains Mono', monospace; font-weight: 700; }
+.pp-code { margin-bottom: 12px; }
+.pp-code-row { display: flex; gap: 8px; }
+.pp-code-row input {
+  flex: 1; min-width: 0; min-height: 46px; padding: 10px 14px; border-radius: 12px;
+  border: 1.5px dashed #d5d7dd; background: #fff; font: 700 1rem 'JetBrains Mono', monospace; letter-spacing: 1px; color: var(--pp-ink);
+}
+.pp-code-row input:focus { outline: none; border-color: var(--pp-red); box-shadow: 0 0 0 4px rgba(238, 35, 41, 0.12); }
+.pp-code-btn {
+  min-height: 46px; padding: 0 18px; border: 0; border-radius: 12px; cursor: pointer;
+  background: var(--pp-ink); color: #fff; font-weight: 800; font-size: 0.9rem;
+}
+.pp-code-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.pp-code-on {
+  display: flex; align-items: center; gap: 10px; padding: 10px 14px; border-radius: 12px;
+  background: #f0fdf4; border: 1.5px solid #bbf7d0; color: #166534; font-size: 0.88rem; font-weight: 700;
+}
+.pp-code-on b { font-family: 'JetBrains Mono', monospace; letter-spacing: 0.5px; }
+.pp-code-on .pp-link { margin-inline-start: auto; }
+.pp-code-tick { display: grid; place-items: center; width: 22px; height: 22px; border-radius: 50%; background: var(--pp-ok); color: #fff; font-size: 12px; flex: none; }

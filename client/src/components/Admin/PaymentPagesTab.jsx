@@ -116,25 +116,11 @@ const PersonPicker = ({ isRTL, label, value, onChange, people, onAddPerson, canA
   );
 };
 
-// ─────────────────────────── Page editor ───────────────────────────
-const PageEditor = ({ isRTL, page, onClose, onSaved }) => {
-  const [form, setForm] = useState(() => page ? {
-    ...EMPTY_FORM,
-    title: page.title, description: page.description || '',
-    baseAmount: String(page.baseAmount ?? page.amount), discountPercent: Number(page.discountPercent) > 0 ? String(Number(page.discountPercent)) : '',
-    discountAppliedBy: page.discountAppliedBy || '', discountApprovedBy: page.discountApprovedBy || '',
-    maxPayers: page.maxPayers ? String(page.maxPayers) : '', closesAt: toLocalInput(page.closesAt),
-    methods: page.methods || ['bank_transfer', 'mada'], terms: page.terms || '', isOpen: page.isOpen,
-    coverPreview: page.hasCover ? `${API_BASE}/pay/${page.slug}/cover?v=${new Date(page.updatedAt).getTime()}` : null
-  } : EMPTY_FORM);
-  const [saving, setSaving] = useState(false);
-  const [bank, setBank] = useState(null);
+// The shared approvers list (setting "workshop_approvers"); managers can
+// add a name to it from any picker.
+const useApprovers = (isRTL) => {
   const [people, setPeople] = useState(DEFAULT_APPROVERS);
-  const set = (patch) => setForm(f => ({ ...f, ...patch }));
-  const manager = isManager();
-
   useEffect(() => {
-    api.get('/workshops/admin/payment-settings').then(r => setBank(r.data?.bank || {})).catch(() => setBank({}));
     api.get('/workshops/admin/terms')
       .then(r => { if (Array.isArray(r.data?.approvers) && r.data.approvers.length) setPeople(r.data.approvers); })
       .catch(() => {});
@@ -150,6 +136,29 @@ const PageEditor = ({ isRTL, page, onClose, onSaved }) => {
       toast.error(errMsg(err, isRTL, isRTL ? 'تعذّر حفظ الاسم في القائمة' : 'Could not save the name'));
     }
   };
+  return { people, addPerson };
+};
+
+// ─────────────────────────── Page editor ───────────────────────────
+const PageEditor = ({ isRTL, page, onClose, onSaved }) => {
+  const [form, setForm] = useState(() => page ? {
+    ...EMPTY_FORM,
+    title: page.title, description: page.description || '',
+    baseAmount: String(page.baseAmount ?? page.amount), discountPercent: Number(page.discountPercent) > 0 ? String(Number(page.discountPercent)) : '',
+    discountAppliedBy: page.discountAppliedBy || '', discountApprovedBy: page.discountApprovedBy || '',
+    maxPayers: page.maxPayers ? String(page.maxPayers) : '', closesAt: toLocalInput(page.closesAt),
+    methods: page.methods || ['bank_transfer', 'mada'], terms: page.terms || '', isOpen: page.isOpen,
+    coverPreview: page.hasCover ? `${API_BASE}/pay/${page.slug}/cover?v=${new Date(page.updatedAt).getTime()}` : null
+  } : EMPTY_FORM);
+  const [saving, setSaving] = useState(false);
+  const [bank, setBank] = useState(null);
+  const { people, addPerson } = useApprovers(isRTL);
+  const set = (patch) => setForm(f => ({ ...f, ...patch }));
+  const manager = isManager();
+
+  useEffect(() => {
+    api.get('/workshops/admin/payment-settings').then(r => setBank(r.data?.bank || {})).catch(() => setBank({}));
+  }, []);
   const pct = Number(form.discountPercent) || 0;
   const hasDiscount = pct > 0;
   const finalPrice = finalAmount(form.baseAmount, form.discountPercent);
@@ -417,9 +426,10 @@ const Submissions = ({ isRTL, pageId, onBack, onChanged, manager }) => {
   };
   const exportCsv = () => {
     const f = (v) => { const s = String(v == null ? '' : v).replace(/"/g, '""'); return /[",\n\r]/.test(s) ? `"${s}"` : s; };
-    const header = ['المرجع', 'الاسم', 'الجوال', 'البريد', 'طريقة الدفع', 'التكلفة الأساسية', 'نسبة الخصم', 'طبّق الخصم', 'اعتمد الخصم', 'المبلغ المدفوع', 'الحالة', 'تاريخ الطلب', 'تاريخ التأكيد', 'ملاحظة العميل', 'ملاحظة المراجعة'];
+    const header = ['المرجع', 'الاسم', 'الجوال', 'البريد', 'طريقة الدفع', 'التكلفة الأساسية', 'نسبة الخصم', 'طبّق الخصم', 'اعتمد الخصم', 'كود الخصم', 'نسبة خصم الكود', 'قيمة خصم الكود', 'اعتمد الكود', 'المبلغ المدفوع', 'الحالة', 'تاريخ الطلب', 'تاريخ التأكيد', 'ملاحظة العميل', 'ملاحظة المراجعة'];
     const rows = shown.map(s => [s.reference, s.fullName, s.phone, s.email, METHOD[s.method]?.ar || s.method,
       Number(s.baseAmount).toFixed(2), s.discountPercent ? fmtPct(s.discountPercent) : '', s.discountAppliedBy || '', s.discountApprovedBy || '',
+      s.couponCode || '', s.couponPercent ? fmtPct(s.couponPercent) : '', s.couponDiscount ? Number(s.couponDiscount).toFixed(2) : '', s.couponApprovedBy || '',
       Number(s.amount).toFixed(2), SUB_STATUS[s.status]?.ar || s.status,
       String(s.createdAt).slice(0, 16).replace('T', ' '), s.paidAt ? String(s.paidAt).slice(0, 10) : '', s.note || '', s.reviewNote || '']);
     const a = document.createElement('a');
@@ -497,6 +507,11 @@ const Submissions = ({ isRTL, pageId, onBack, onChanged, manager }) => {
                         <s dir="ltr">{fmtSAR(s.baseAmount)}</s> <span className="ppa-off">-{fmtPct(s.discountPercent)}</span>
                       </span>
                     )}
+                    {s.couponCode && (
+                      <span className="ppa-row-disc" title={`${isRTL ? 'اعتمد الكود' : 'Code approved by'}: ${s.couponApprovedBy || '—'}`}>
+                        🎟 <b dir="ltr">{s.couponCode}</b> <span className="ppa-off">-{fmtPct(s.couponPercent)}</span>
+                      </span>
+                    )}
                     <div className="ppa-row-actions">
                       {s.hasProof && <button type="button" className="ppa-btn" onClick={() => openProof(s)}>🧾 {isRTL ? 'الإيصال' : 'Receipt'}</button>}
                       {s.status !== 'verified' && <button type="button" className="ppa-btn ok" onClick={() => setReview({ sub: s, action: 'verified' })}>✓ {isRTL ? 'تأكيد' : 'Verify'}</button>}
@@ -523,11 +538,172 @@ const Submissions = ({ isRTL, pageId, onBack, onChanged, manager }) => {
   );
 };
 
+// ─────────────────────────── Discount codes of a page ───────────────────────────
+const EMPTY_CODE = { code: '', discountPercent: '', approvedBy: '', maxUses: '1', expiresAt: '', note: '' };
+const codeState = (c) => {
+  if (!c.isActive) return { cls: 'off', ar: 'موقوف', en: 'Off' };
+  if (c.expiresAt && new Date(c.expiresAt).getTime() <= Date.now()) return { cls: 'expired', ar: 'منتهي', en: 'Expired' };
+  if (c.maxUses && c.uses >= c.maxUses) return { cls: 'used', ar: 'مستخدم بالكامل', en: 'Used up' };
+  return { cls: 'on', ar: 'فعّال', en: 'Active' };
+};
+
+const CouponsModal = ({ isRTL, page, manager, onClose, onChanged }) => {
+  const [list, setList] = useState(null);
+  const [form, setForm] = useState(EMPTY_CODE);
+  const [saving, setSaving] = useState(false);
+  const { people, addPerson } = useApprovers(isRTL);
+  const set = (patch) => setForm(f => ({ ...f, ...patch }));
+
+  const load = useCallback(async () => {
+    try { const { data } = await api.get(`/payment-pages/${page.pageId}/coupons`); setList(data || []); }
+    catch (err) { setList(l => l || []); toast.error(errMsg(err, isRTL, isRTL ? 'تعذّر تحميل الأكواد' : 'Could not load the codes')); }
+  }, [page.pageId, isRTL]);
+  useEffect(() => { load(); }, [load]);
+  useEffect(() => {
+    const onKey = (e) => { if (e.key === 'Escape') onClose(); };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [onClose]);
+
+  const pct = Number(form.discountPercent) || 0;
+  const after = (p) => round2(Number(page.amount) * (1 - p / 100));
+  const linkFor = (c) => `${page.url}?code=${encodeURIComponent(c.code)}`;
+
+  const create = async () => {
+    if (!(pct > 0 && pct < 100)) return toast.error(isRTL ? 'أدخل نسبة الخصم (أكبر من 0 وأقل من 100)' : 'Enter the discount % (between 0 and 100)');
+    if (!form.approvedBy.trim()) return toast.error(isRTL ? 'اختر من اعتمد الخصم' : 'Choose who approved the discount');
+    setSaving(true);
+    try {
+      const { data } = await api.post(`/payment-pages/${page.pageId}/coupons`, {
+        code: form.code.trim() || undefined, discountPercent: form.discountPercent, approvedBy: form.approvedBy.trim(),
+        maxUses: form.maxUses, expiresAt: form.expiresAt ? new Date(form.expiresAt).toISOString() : null, note: form.note
+      });
+      toast.success(isRTL ? `تم إنشاء الكود ${data.code}` : `Code ${data.code} created`);
+      setForm(f => ({ ...EMPTY_CODE, approvedBy: f.approvedBy }));
+      load(); onChanged();
+    } catch (err) {
+      toast.error(errMsg(err, isRTL, isRTL ? 'تعذّر إنشاء الكود' : 'Could not create the code'));
+    } finally {
+      setSaving(false);
+    }
+  };
+  const toggle = async (c) => {
+    try { await api.patch(`/payment-pages/coupons/${c.couponId}`, { isActive: !c.isActive }); load(); }
+    catch (err) { toast.error(errMsg(err, isRTL, 'Error')); }
+  };
+  const del = async (c) => {
+    if (!window.confirm(isRTL ? `حذف الكود ${c.code}؟` : `Delete code ${c.code}?`)) return;
+    try { await api.delete(`/payment-pages/coupons/${c.couponId}`); toast.success(isRTL ? 'تم الحذف' : 'Deleted'); load(); onChanged(); }
+    catch (err) { toast.error(errMsg(err, isRTL, 'Error')); }
+  };
+  const copy = (text, msg) => {
+    if (navigator.clipboard?.writeText) navigator.clipboard.writeText(text).then(() => toast.success(msg), () => toast.error(isRTL ? 'تعذّر النسخ' : 'Copy failed'));
+  };
+
+  return (
+    <div className="ppa-overlay" onClick={onClose}>
+      <motion.div className="ppa-modal" dir={isRTL ? 'rtl' : 'ltr'} onClick={e => e.stopPropagation()} role="dialog" aria-modal="true"
+        initial={{ opacity: 0, y: 18, scale: 0.98 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: 12 }} transition={{ duration: 0.25 }}>
+        <div className="ppa-modal-head">
+          <div>
+            <span className="ppa-kicker">🎟 {isRTL ? 'أكواد الخصم' : 'Discount codes'}</span>
+            <h3>{page.title}</h3>
+            <small className="ppa-sub" dir="ltr">{fmtSAR(page.amount)} SAR</small>
+          </div>
+          <button type="button" className="ppa-x" onClick={onClose} aria-label={isRTL ? 'إغلاق' : 'Close'}>✕</button>
+        </div>
+
+        <div className="ppa-modal-body">
+          {manager && (
+            <div className="ppa-price">
+              <div className="ppa-price-head">＋ {isRTL ? 'كود جديد لعميل' : 'New code for a customer'}</div>
+              <div className="ppa-price-grid">
+                <label className="ppa-field">
+                  <span>{isRTL ? 'الكود' : 'Code'}</span>
+                  <input dir="ltr" value={form.code} onChange={e => set({ code: e.target.value.toUpperCase().replace(/[^A-Z0-9-]/g, '') })} maxLength={24} placeholder={isRTL ? 'تلقائي إن تُرك فارغاً' : 'Auto if empty'} />
+                </label>
+                <label className="ppa-field">
+                  <span>{isRTL ? 'نسبة الخصم (%)' : 'Discount (%)'} *</span>
+                  <input type="number" min="1" max="99.99" step="0.01" dir="ltr" value={form.discountPercent} onChange={e => set({ discountPercent: e.target.value })} placeholder="10" />
+                </label>
+                <div className={`ppa-field ppa-final ${pct > 0 && pct < 100 ? 'on' : ''}`}>
+                  <span>{isRTL ? 'يدفع العميل' : 'Customer pays'}</span>
+                  <output dir="ltr">{pct > 0 && pct < 100 ? fmtSAR(after(pct)) : fmtSAR(page.amount)} <em>SAR</em></output>
+                </div>
+              </div>
+              <div className="ppa-price-grid">
+                <PersonPicker isRTL={isRTL} label={isRTL ? 'اعتمد الخصم' : 'Approved by'} value={form.approvedBy}
+                  onChange={v => set({ approvedBy: v })} people={people} onAddPerson={addPerson} canAdd={manager} />
+                <label className="ppa-field">
+                  <span>{isRTL ? 'عدد مرات الاستخدام' : 'Uses allowed'}</span>
+                  <input type="number" min="1" step="1" dir="ltr" value={form.maxUses} onChange={e => set({ maxUses: e.target.value })} placeholder={isRTL ? 'بلا حد' : 'No limit'} />
+                  <small>{isRTL ? '1 = لعميل واحد. اتركه فارغاً بلا حد.' : '1 = one customer. Empty = no limit.'}</small>
+                </label>
+                <label className="ppa-field">
+                  <span>{isRTL ? 'ينتهي في (اختياري)' : 'Expires (optional)'}</span>
+                  <input type="datetime-local" dir="ltr" value={form.expiresAt} onChange={e => set({ expiresAt: e.target.value })} />
+                </label>
+              </div>
+              <label className="ppa-field">
+                <span>{isRTL ? 'لمن هذا الكود؟ (اختياري)' : 'Who is it for? (optional)'}</span>
+                <input value={form.note} onChange={e => set({ note: e.target.value })} maxLength={300} placeholder={isRTL ? 'مثال: ولي أمر الطالب أحمد' : "e.g. Ahmed's parent"} />
+              </label>
+              <div className="ppa-coupon-create">
+                <button type="button" className="ppa-btn primary" onClick={create} disabled={saving}>{saving ? '…' : (isRTL ? '🎟 إنشاء الكود' : '🎟 Create code')}</button>
+              </div>
+            </div>
+          )}
+
+          {!list ? <div className="ppa-loading">{isRTL ? 'جارٍ التحميل…' : 'Loading…'}</div>
+            : !list.length ? <div className="ppa-empty"><span>🎟</span>{isRTL ? 'لا توجد أكواد لهذه الصفحة بعد.' : 'No codes for this page yet.'}</div>
+              : (
+                <div className="ppa-coupons">
+                  {list.map(c => {
+                    const st = codeState(c);
+                    return (
+                      <div key={c.couponId} className={`ppa-coupon ${st.cls}`}>
+                        <div className="ppa-coupon-top">
+                          <span className="ppa-coupon-code" dir="ltr">{c.code}</span>
+                          <span className="ppa-off">-{fmtPct(c.discountPercent)}</span>
+                          <span className="ppa-coupon-pay" dir="ltr">→ {fmtSAR(after(c.discountPercent))} SAR</span>
+                          <span className={`ppa-coupon-state ${st.cls}`}>{isRTL ? st.ar : st.en}</span>
+                        </div>
+                        <div className="ppa-coupon-meta">
+                          <span>👤 {isRTL ? 'اعتمده:' : 'Approved by:'} <b>{c.approvedBy}</b></span>
+                          <span>🔁 {isRTL ? 'الاستخدام:' : 'Used:'} <b dir="ltr">{c.uses} / {c.maxUses || '∞'}</b></span>
+                          {c.expiresAt && <span>⏰ {fmtDateTime(c.expiresAt, isRTL)}</span>}
+                          {c.note && <span>📝 {c.note}</span>}
+                          {c.createdBy && <span className="muted">{isRTL ? 'أنشأه:' : 'By:'} {c.createdBy}</span>}
+                        </div>
+                        <div className="ppa-coupon-actions">
+                          <button type="button" className="ppa-btn" onClick={() => copy(c.code, isRTL ? 'تم نسخ الكود' : 'Code copied')}>⧉ {isRTL ? 'نسخ الكود' : 'Copy code'}</button>
+                          <button type="button" className="ppa-btn" onClick={() => copy(linkFor(c), isRTL ? 'تم نسخ الرابط مع الكود' : 'Link with code copied')}>🔗 {isRTL ? 'رابط مع الكود' : 'Link with code'}</button>
+                          {manager && (
+                            <>
+                              <button type="button" className={`ppa-switch small ${c.isActive ? 'on' : ''}`} onClick={() => toggle(c)} aria-pressed={c.isActive}>
+                                <i />{c.isActive ? (isRTL ? 'فعّال' : 'On') : (isRTL ? 'موقوف' : 'Off')}
+                              </button>
+                              {!c.uses && <button type="button" className="ppa-btn ghost danger" onClick={() => del(c)} title={isRTL ? 'حذف' : 'Delete'}>🗑</button>}
+                            </>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+        </div>
+      </motion.div>
+    </div>
+  );
+};
+
 // ─────────────────────────── Tab ───────────────────────────
 const PaymentPagesTab = ({ isRTL }) => {
   const [pages, setPages] = useState(null);
   const [editing, setEditing] = useState(null); // null | 'new' | page
   const [viewing, setViewing] = useState(null);  // pageId
+  const [codesFor, setCodesFor] = useState(null); // page
   const manager = isManager();
 
   const load = useCallback(async () => {
@@ -621,6 +797,7 @@ const PaymentPagesTab = ({ isRTL }) => {
                       </div>
                       <div className="ppa-card-foot">
                         <button type="button" className="ppa-btn primary" onClick={() => setViewing(p.pageId)}>🧾 {isRTL ? 'المدفوعات' : 'Payments'} <i className="ppa-count">{p.stats.taken + p.stats.rejected}</i></button>
+                        <button type="button" className="ppa-btn" onClick={() => setCodesFor(p)} title={isRTL ? 'أكواد الخصم' : 'Discount codes'}>🎟 {isRTL ? 'الأكواد' : 'Codes'} {p.couponCount > 0 && <i className="ppa-count dark">{p.couponCount}</i>}</button>
                         {manager && (
                           <>
                             <button type="button" className={`ppa-switch small ${p.isOpen ? 'on' : ''}`} onClick={() => toggleOpen(p)} aria-pressed={p.isOpen} title={p.isOpen ? (isRTL ? 'إغلاق الصفحة' : 'Close the page') : (isRTL ? 'فتح الصفحة' : 'Open the page')}>
@@ -643,6 +820,9 @@ const PaymentPagesTab = ({ isRTL }) => {
         {editing && (
           <PageEditor isRTL={isRTL} page={editing === 'new' ? null : editing} onClose={() => setEditing(null)}
             onSaved={() => { setEditing(null); load(); }} />
+        )}
+        {codesFor && (
+          <CouponsModal isRTL={isRTL} page={codesFor} manager={manager} onClose={() => setCodesFor(null)} onChanged={load} />
         )}
       </AnimatePresence>
     </motion.div>

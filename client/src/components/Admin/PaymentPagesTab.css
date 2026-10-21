@@ -238,9 +238,31 @@
 .ppa-final small { color: var(--ppa-ok); font-weight: 700; }
 .ppa-person-new { display: flex; gap: 6px; margin-top: 6px; }
 .ppa-person-new input { flex: 1; min-width: 0; }
-.ppa-off { display: inline-block; margin-inline-start: 6px; padding: 1px 7px; border-radius: 99px; background: var(--ppa-red); color: #fff; font-size: 0.72rem; font-weight: 800; font-family: 'Cairo', sans-serif; }
+.ppa-off { direction: ltr; unicode-bidi: isolate; display: inline-block; margin-inline-start: 6px; padding: 1px 7px; border-radius: 99px; background: var(--ppa-red); color: #fff; font-size: 0.72rem; font-weight: 800; font-family: 'Cairo', sans-serif; }
 .ppa-card-amount s, .ppa-row-disc s { margin-inline-start: 8px; color: var(--text-tertiary); font-size: 0.85rem; font-weight: 700; }
 .ppa-row-disc { font-size: 0.8rem; cursor: help; }
 @media (max-width: 560px) {
   .ppa-price-grid, .ppa-price-grid.two { grid-template-columns: minmax(0, 1fr); }
 }
+
+/* discount codes */
+.ppa-count.dark { background: var(--ppa-red); color: #fff; }
+.ppa-sub { display: block; margin-top: 2px; font-weight: 800; color: var(--text-tertiary); text-align: start; }
+.ppa-coupon-create { display: flex; justify-content: flex-end; }
+.ppa-coupons { display: grid; gap: 10px; }
+.ppa-coupon { display: grid; gap: 8px; padding: 12px 14px; border-radius: 14px; border: 1px solid var(--border-color); background: var(--card-bg); border-inline-start: 4px solid var(--ppa-ok); }
+.ppa-coupon.off, .ppa-coupon.expired, .ppa-coupon.used { border-inline-start-color: var(--border-color); opacity: 0.8; }
+.ppa-coupon-top { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.ppa-coupon-code {
+  padding: 4px 12px; border-radius: 8px; border: 1.5px dashed var(--ppa-red); color: var(--ppa-red); background: var(--ppa-red-soft);
+  font-family: 'JetBrains Mono', monospace; font-weight: 700; font-size: 1.05rem; letter-spacing: 1px;
+}
+.ppa-coupon-pay { font-family: 'Bricolage Grotesque', 'Cairo', sans-serif; font-weight: 800; color: var(--text-primary); }
+.ppa-coupon-state { margin-inline-start: auto; padding: 2px 9px; border-radius: 99px; font-size: 0.72rem; font-weight: 800; background: var(--bg-tertiary); color: var(--text-secondary); }
+.ppa-coupon-state.on { background: rgba(22, 163, 74, 0.14); color: var(--ppa-ok); }
+.ppa-coupon-state.expired, .ppa-coupon-state.used { background: rgba(217, 119, 6, 0.14); color: var(--ppa-amber); }
+.ppa-coupon-meta { display: flex; flex-wrap: wrap; gap: 4px 16px; font-size: 0.8rem; color: var(--text-secondary); }
+.ppa-coupon-meta b { color: var(--text-primary); }
+.ppa-coupon-meta .muted { color: var(--text-tertiary); }
+.ppa-coupon-actions { display: flex; flex-wrap: wrap; gap: 6px; }
+.ppa-coupon-actions .ppa-btn { padding: 6px 10px; font-size: 0.8rem; }

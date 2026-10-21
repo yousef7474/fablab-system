@@ -28,6 +28,7 @@ const T = {
     madaTitle: 'الدفع بمدى في مقر فاب لاب', madaDefault: 'احضر إلى فاب لاب الأحساء وادفع المبلغ عبر جهاز مدى. يتم تأكيد طلبك فور الدفع.', address: 'العنوان',
     terms: 'الشروط والأحكام', agree: 'قرأت الشروط وأوافق عليها', total: 'الإجمالي', totalAfter: 'الإجمالي بعد الخصم',
     base: 'التكلفة الأساسية', discount: 'الخصم', off: 'خصم',
+    haveCode: 'لديك كود خصم؟', codePh: 'أدخل الكود', apply: 'تطبيق', applying: '…', codeLine: 'كود الخصم', removeCode: 'إزالة', codeApplied: 'تم تطبيق الكود',
     payBank: (a) => `إرسال الإيصال · ${a} ر.س`, payMada: 'تأكيد الطلب والدفع بمدى', sending: 'جارٍ الإرسال…',
     footnote: 'تُراجع كل دفعة يدوياً من فريق فاب لاب الأحساء، وتصلك الفاتورة على بريدك بعد التأكيد.',
     errName: 'اكتب اسمك الكامل', errPhone: 'رقم جوال غير صحيح', errEmail: 'بريد إلكتروني غير صحيح', errMethod: 'اختر طريقة الدفع', errProof: 'ارفع إيصال التحويل', errTerms: 'يرجى الموافقة على الشروط',
@@ -54,6 +55,7 @@ const T = {
     madaTitle: 'Pay by mada at FabLab', madaDefault: 'Visit FabLab Al-Ahsa and pay the amount on the mada machine. Your payment is confirmed right away.', address: 'Address',
     terms: 'Terms & conditions', agree: 'I have read and accept the terms', total: 'Total', totalAfter: 'Total after discount',
     base: 'Main cost', discount: 'Discount', off: 'off',
+    haveCode: 'Have a discount code?', codePh: 'Enter code', apply: 'Apply', applying: '…', codeLine: 'Discount code', removeCode: 'Remove', codeApplied: 'Code applied',
     payBank: (a) => `Send receipt · ${a} SAR`, payMada: 'Confirm & pay by mada', sending: 'Sending…',
     footnote: 'Every payment is reviewed by the FabLab Al-Ahsa team; your invoice is emailed once it is confirmed.',
     errName: 'Enter your full name', errPhone: 'Invalid mobile number', errEmail: 'Invalid email', errMethod: 'Choose a payment method', errProof: 'Upload the transfer receipt', errTerms: 'Please accept the terms',
@@ -152,6 +154,12 @@ const PaymentPage = () => {
   const [serverError, setServerError] = useState('');
   const [result, setResult] = useState(null);
   const [descOpen, setDescOpen] = useState(false);
+  // Discount code: typed in, or passed in the link (/pay/xxx?code=ABC).
+  const [codeOpen, setCodeOpen] = useState(false);
+  const [codeInput, setCodeInput] = useState('');
+  const [coupon, setCoupon] = useState(null); // { code, percent, discount, subtotal, amount }
+  const [codeBusy, setCodeBusy] = useState(false);
+  const [codeError, setCodeError] = useState('');
   const fileRef = useRef(null);
 
   useEffect(() => {
@@ -168,13 +176,17 @@ const PaymentPage = () => {
         setLoadState('ready');
         if (data.methods?.length === 1) setMethod(data.methods[0]);
         document.title = `${data.title} · FABLAB Al-Ahsa`;
+        const linkCode = new URLSearchParams(window.location.search).get('code');
+        if (linkCode && data.isOpen) { setCodeOpen(true); setCodeInput(linkCode); applyCode(linkCode); }
       })
       .catch(err => { if (alive) setLoadState(err?.response?.status === 404 ? 'notfound' : 'error'); });
     return () => { alive = false; };
   }, [slug]);
 
   const closed = page && !page.isOpen ? page.closedReason || 'closed' : null;
-  const amountStr = page ? fmtAmount(page.amount) : '';
+  // What the customer pays: the page price, less a discount code if applied.
+  const payAmount = coupon ? coupon.amount : Number(page?.amount || 0);
+  const amountStr = page ? fmtAmount(payAmount) : '';
   const hasDiscount = !!page && Number(page.discountPercent) > 0 && Number(page.baseAmount) > Number(page.amount);
   const pctStr = hasDiscount ? fmtPct(page.discountPercent) : '';
   const taken = page?.maxPayers ? page.maxPayers - (page.seatsLeft ?? 0) : 0;
@@ -187,6 +199,24 @@ const PaymentPage = () => {
   const longDesc = (page?.description || '').length > 220;
 
   const set = (k, v) => { setForm(f => ({ ...f, [k]: v })); setErrors(e => ({ ...e, [k]: undefined })); };
+
+  async function applyCode(raw) {
+    const code = String(raw ?? codeInput).trim();
+    if (!code) return;
+    setCodeBusy(true); setCodeError('');
+    try {
+      const { data } = await api.post(`/pay/${encodeURIComponent(slug)}/coupon`, { code });
+      setCoupon(data);
+      setCodeInput(data.code);
+    } catch (err) {
+      const d = err?.response?.data;
+      setCoupon(null);
+      setCodeError((isRTL ? d?.messageAr : d?.message) || t.errGeneric);
+    } finally {
+      setCodeBusy(false);
+    }
+  }
+  const removeCode = () => { setCoupon(null); setCodeInput(''); setCodeError(''); };
 
   const pickFile = async (file) => {
     if (!file) return;
@@ -234,6 +264,7 @@ const PaymentPage = () => {
         note: form.note.trim() || undefined,
         method,
         termsAccepted: agreed,
+        couponCode: coupon?.code || undefined,
         proof: method === 'bank_transfer' && proof
           ? { fileName: proof.name.replace(/\.[^.]+$/, '') + '.' + proof.type, fileType: proof.type, fileData: proof.dataUrl }
           : undefined
@@ -243,6 +274,7 @@ const PaymentPage = () => {
     } catch (err) {
       const d = err?.response?.data;
       if (d?.code === 'CLOSED') setPage(p => ({ ...p, isOpen: false, closedReason: d.closedReason }));
+      if (String(d?.code || '').startsWith('COUPON_')) { setCoupon(null); setCodeOpen(true); setCodeError((isRTL ? d?.messageAr : d?.message) || ''); }
       setServerError((isRTL ? d?.messageAr : d?.message) || t.errGeneric);
     } finally {
       setSubmitting(false);
@@ -342,10 +374,11 @@ const PaymentPage = () => {
 
         <div className="pp-amount">
           <span className="pp-amount-label">{t.amountDue}</span>
-          {hasDiscount && (
+          {(hasDiscount || coupon) && (
             <div className="pp-was">
               <s dir="ltr">{fmtAmount(page.baseAmount)} {t.sar}</s>
-              <span className="pp-off-badge">{isRTL ? <>{t.off} <bdi dir="ltr">{pctStr}</bdi></> : <><bdi dir="ltr">{pctStr}</bdi> {t.off}</>}</span>
+              {hasDiscount && <span className="pp-off-badge">{isRTL ? <>{t.off} <bdi dir="ltr">{pctStr}</bdi></> : <><bdi dir="ltr">{pctStr}</bdi> {t.off}</>}</span>}
+              {coupon && <span className="pp-off-badge code"><bdi dir="ltr">{coupon.code}</bdi> · <bdi dir="ltr">-{fmtPct(coupon.percent)}</bdi></span>}
             </div>
           )}
           <div className="pp-amount-value">
@@ -465,7 +498,7 @@ const PaymentPage = () => {
                           {page.bank.bankName && <CopyRow label={t.bankName} value={page.bank.bankName} t={t} mono={false} />}
                           {page.bank.accountHolder && <CopyRow label={t.holder} value={page.bank.accountHolder} t={t} mono={false} />}
                           <CopyRow label={t.iban} value={String(page.bank.iban).replace(/\s+/g, '')} display={groupIban(page.bank.iban)} t={t} />
-                          <CopyRow label={t.amount} value={Number(page.amount).toFixed(2)} display={`${amountStr} ${t.sar}`} t={t} />
+                          <CopyRow label={t.amount} value={payAmount.toFixed(2)} display={`${amountStr} ${t.sar}`} t={t} />
                           {page.bank.additionalInfo && <p className="pp-slip-note">{page.bank.additionalInfo}</p>}
                         </div>
                       ) : (
@@ -528,14 +561,33 @@ const PaymentPage = () => {
                     </label>
                   </div>
                 )}
-                {hasDiscount && (
+                <div className="pp-code">
+                  {coupon ? (
+                    <div className="pp-code-on">
+                      <span className="pp-code-tick">{Icon.check}</span>
+                      <span>{t.codeApplied}: <b dir="ltr">{coupon.code}</b> <bdi dir="ltr">(-{fmtPct(coupon.percent)})</bdi></span>
+                      <button type="button" className="pp-link danger" onClick={removeCode}>{t.removeCode}</button>
+                    </div>
+                  ) : !codeOpen ? (
+                    <button type="button" className="pp-link" onClick={() => setCodeOpen(true)}>🎟 {t.haveCode}</button>
+                  ) : (
+                    <div className="pp-code-row">
+                      <input value={codeInput} onChange={e => { setCodeInput(e.target.value.toUpperCase()); setCodeError(''); }} placeholder={t.codePh} dir="ltr" maxLength={24}
+                        onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); applyCode(); } }} aria-label={t.codeLine} />
+                      <button type="button" className="pp-code-btn" onClick={() => applyCode()} disabled={codeBusy || !codeInput.trim()}>{codeBusy ? t.applying : t.apply}</button>
+                    </div>
+                  )}
+                  {codeError && <p className="pp-err">{codeError}</p>}
+                </div>
+                {(hasDiscount || coupon) && (
                   <div className="pp-breakdown">
                     <div><span>{t.base}</span><b dir="ltr">{fmtAmount(page.baseAmount)} {t.sar}</b></div>
-                    <div className="off"><span>{t.discount} (<bdi dir="ltr">{pctStr}</bdi>)</span><b dir="ltr">- {fmtAmount(page.discountValue)} {t.sar}</b></div>
+                    {hasDiscount && <div className="off"><span>{t.discount} (<bdi dir="ltr">{pctStr}</bdi>)</span><b dir="ltr">- {fmtAmount(page.discountValue)} {t.sar}</b></div>}
+                    {coupon && <div className="off"><span>{t.codeLine} <bdi dir="ltr">{coupon.code}</bdi> (<bdi dir="ltr">{fmtPct(coupon.percent)}</bdi>)</span><b dir="ltr">- {fmtAmount(coupon.discount)} {t.sar}</b></div>}
                   </div>
                 )}
                 <div className="pp-total">
-                  <span>{hasDiscount ? t.totalAfter : t.total}</span>
+                  <span>{hasDiscount || coupon ? t.totalAfter : t.total}</span>
                   <strong dir="ltr">{amountStr} <em>{t.sar}</em></strong>
                 </div>
                 {serverError && <p className="pp-server-err" role="alert">{serverError}</p>}
