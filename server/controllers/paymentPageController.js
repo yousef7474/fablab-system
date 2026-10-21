@@ -133,13 +133,12 @@ function _pricing(b, current = null) {
   if (!Number.isFinite(base) || base <= 0 || base > 1000000) errors.push('أدخل التكلفة الأساسية (أكبر من صفر)');
   const pctRaw = pick('discountPercent', current ? current.discountPercent : 0);
   const pct = pctRaw === '' || pctRaw == null ? 0 : _round2(Number(pctRaw));
-  if (!Number.isFinite(pct) || pct < 0 || pct >= 100) errors.push('نسبة الخصم يجب أن تكون بين 0 و 99.99');
+  if (!Number.isFinite(pct) || pct < 0 || pct > 100) errors.push('نسبة الخصم يجب أن تكون بين 0 و 100');
   const appliedBy = _str(pick('discountAppliedBy', current?.discountAppliedBy), 150) || null;
   const approvedBy = _str(pick('discountApprovedBy', current?.discountApprovedBy), 150) || null;
   if (pct > 0 && !appliedBy) errors.push('اختر من طبّق الخصم');
   if (pct > 0 && !approvedBy) errors.push('اختر من اعتمد الخصم');
   const amount = _round2(base * (1 - (Number.isFinite(pct) ? pct : 0) / 100));
-  if (!errors.length && amount <= 0) errors.push('المبلغ بعد الخصم يجب أن يكون أكبر من صفر');
   return {
     errors,
     out: { baseAmount: base, discountPercent: pct, discountAppliedBy: pct > 0 ? appliedBy : null, discountApprovedBy: pct > 0 ? approvedBy : null, amount }
@@ -229,6 +228,21 @@ async function _statsFor(pageIds) {
     map.set(r.pageId, s);
   });
   return map;
+}
+
+// Confirmed payment → email the customer the invoice, with the PDF
+// attached when Chromium can render it. Runs after the response.
+function _sendInvoiceEmail(page, sub) {
+  setImmediate(async () => {
+    let pdf = null;
+    try {
+      const { generatePdfFromHtml } = require('../utils/pdfGenerator');
+      pdf = await generatePdfFromHtml(buildReceiptHtml(page, sub, { forPdf: true }), { landscape: false, format: 'A4' });
+    } catch (e) {
+      console.error('Payment invoice PDF for email failed (sending the link only):', e.message);
+    }
+    sendPaymentVerified(page, sub, { receiptUrl: receiptUrl(sub), pdf });
+  });
 }
 
 // ═════════════════════════ PUBLIC ═════════════════════════
@@ -326,11 +340,18 @@ exports.submitPayment = async (req, res) => {
         const [message, messageAr] = CLOSED_MESSAGES[reason];
         throw { status: 403, code: 'CLOSED', closedReason: reason, message, messageAr };
       }
-      if (!(page.methods || []).includes(method)) {
+      // A discount code is checked again here, under the page lock, so its
+      // use limit can't be overrun.
+      const coupon = b.couponCode ? await _applyCoupon(page, b.couponCode, t) : null;
+      const payAmount = coupon ? coupon.amount : Number(page.amount);
+      // 100% off (page discount or code): nothing to pay — no method, no
+      // receipt, and it is confirmed right away.
+      const free = payAmount <= 0;
+      if (!free && !(page.methods || []).includes(method)) {
         throw { status: 400, message: 'Choose a payment method', messageAr: 'اختر طريقة الدفع' };
       }
       let proof = null;
-      if (method === 'bank_transfer') {
+      if (!free && method === 'bank_transfer') {
         proof = _parseProof(b.proof);
         if (!proof) throw { status: 400, code: 'PROOF_REQUIRED', message: 'Upload the transfer receipt (image or PDF, up to 10 MB)', messageAr: 'ارفع إيصال التحويل (صورة أو PDF حتى 10 ميجابايت)' };
       }
@@ -344,9 +365,6 @@ exports.submitPayment = async (req, res) => {
       if (dup) {
         throw { status: 409, code: 'DUPLICATE', reference: dup.reference, message: `You already have a payment on this page (${dup.reference})`, messageAr: `لديك طلب دفع مسجل مسبقاً في هذه الصفحة (${dup.reference})` };
       }
-      // A discount code is checked again here, under the page lock, so its
-      // use limit can't be overrun.
-      const coupon = b.couponCode ? await _applyCoupon(page, b.couponCode, t) : null;
       // References never repeat, even after a request is deleted: a
       // counter in settings, never below the highest one in the table.
       const [rows] = await sequelize.query(
@@ -359,8 +377,9 @@ exports.submitPayment = async (req, res) => {
       const sub = await PaymentSubmission.create({
         pageId: page.pageId,
         reference: `PAY-${String(next).padStart(4, '0')}`,
-        fullName, phone, email, note, method,
-        amount: coupon ? coupon.amount : page.amount,
+        fullName, phone, email, note,
+        method: free ? 'free' : method,
+        amount: free ? 0 : payAmount,
         baseAmount: page.baseAmount != null ? page.baseAmount : page.amount,
         couponCode: coupon ? coupon.code : null,
         couponPercent: coupon ? coupon.pct : 0,
@@ -371,15 +390,20 @@ exports.submitPayment = async (req, res) => {
         discountApprovedBy: Number(page.discountPercent) > 0 ? page.discountApprovedBy : null,
         proofFile: proof ? proof.data : null,
         proofType: proof ? proof.type : null,
-        proofName: proof ? proof.name : null
+        proofName: proof ? proof.name : null,
+        ...(free ? { status: 'verified', paidAt: new Date(), reviewedAt: new Date(), reviewedBy: 'تلقائي — خصم كامل' } : {})
       }, { transaction: t });
       return { page, sub };
     });
 
     const { page, sub } = result;
-    _paymentSettings()
-      .then(({ bank, mada }) => sendPaymentReceived(page, sub, { bank, mada, receiptUrl: receiptUrl(sub) }))
-      .catch(() => {});
+    if (sub.status === 'verified') {
+      _sendInvoiceEmail(page, sub);
+    } else {
+      _paymentSettings()
+        .then(({ bank, mada }) => sendPaymentReceived(page, sub, { bank, mada, receiptUrl: receiptUrl(sub) }))
+        .catch(() => {});
+    }
     res.status(201).json({
       reference: sub.reference,
       status: sub.status,
@@ -557,16 +581,7 @@ exports.reviewSubmission = async (req, res) => {
     if (previous !== status && sub.page) {
       const url = receiptUrl(sub);
       if (status === 'verified') {
-        setImmediate(async () => {
-          let pdf = null;
-          try {
-            const { generatePdfFromHtml } = require('../utils/pdfGenerator');
-            pdf = await generatePdfFromHtml(buildReceiptHtml(sub.page, sub, { forPdf: true }), { landscape: false, format: 'A4' });
-          } catch (e) {
-            console.error('Payment invoice PDF for email failed (sending the link only):', e.message);
-          }
-          sendPaymentVerified(sub.page, sub, { receiptUrl: url, pdf });
-        });
+        _sendInvoiceEmail(sub.page, sub);
       } else if (status === 'rejected') {
         sendPaymentRejected(sub.page, sub, { receiptUrl: url });
       }
@@ -653,7 +668,7 @@ function _couponFields(b, { partial = false } = {}) {
   const has = (k) => !partial || b[k] !== undefined;
   if (has('discountPercent')) {
     const pct = _round2(Number(b.discountPercent));
-    if (!Number.isFinite(pct) || pct <= 0 || pct >= 100) errors.push('نسبة خصم الكود يجب أن تكون أكبر من 0 وأقل من 100');
+    if (!Number.isFinite(pct) || pct <= 0 || pct > 100) errors.push('نسبة خصم الكود يجب أن تكون بين 1 و 100');
     else out.discountPercent = pct;
   }
   if (has('approvedBy')) {

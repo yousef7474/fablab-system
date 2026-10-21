@@ -51,7 +51,7 @@ const priceOf = (sub) => {
 };
 const pctLabel = (pct) => `${Number(pct).toLocaleString('en-US', { maximumFractionDigits: 2 })}%`;
 
-const METHOD_AR = { bank_transfer: 'تحويل بنكي', mada: 'مدى — جهاز الدفع في فاب لاب' };
+const METHOD_AR = { bank_transfer: 'تحويل بنكي', mada: 'مدى — جهاز الدفع في فاب لاب', free: 'مجاني — خصم كامل' };
 const STATUS = {
   verified: { ar: 'مدفوعة', en: 'PAID', bg: '#dcfce7', fg: '#166534', ring: '#16a34a' },
   pending: { ar: 'بانتظار التحقق', en: 'PENDING', bg: '#fef3c7', fg: '#92400e', ring: '#d97706' },
@@ -182,7 +182,7 @@ tbody td:last-child { text-align: end; font-family: 'JetBrains Mono', monospace;
   </div>
 
   <div class="note">${paid
-    ? 'تم استلام المبلغ والتحقق منه من قبل فريق فاب لاب الأحساء. شكراً لك.'
+    ? (Number(sub.amount) <= 0 ? 'تم تأكيد الطلب بخصم كامل — لا يوجد مبلغ مستحق. شكراً لك.' : 'تم استلام المبلغ والتحقق منه من قبل فريق فاب لاب الأحساء. شكراً لك.')
     : sub.status === 'rejected'
       ? `لم يتم قبول هذا الدفع.${sub.reviewNote ? ` السبب: ${esc(sub.reviewNote)}` : ''} للاستفسار يرجى التواصل مع فاب لاب الأحساء.`
       : 'استلمنا طلبك وسيقوم فريق فاب لاب بالتحقق من الدفع. تصبح هذه الوثيقة فاتورة مدفوعة بعد التأكيد.'}</div>
@@ -253,14 +253,15 @@ const sendPaymentReceived = (page, sub, { bank, mada, receiptUrl }) => {
 };
 
 const sendPaymentVerified = (page, sub, { receiptUrl, pdf }) => {
+  const free = Number(sub.amount) <= 0;
   const body = `<p style="margin:0 0 10px">مرحباً <b>${esc(sub.fullName)}</b>،</p>
-    <p style="margin:0">تم التحقق من دفعتك بنجاح. شكراً لك! فاتورتك ${pdf ? 'مرفقة بهذا البريد، ويمكنك أيضاً' : 'جاهزة، ويمكنك'} عرضها وطباعتها من الرابط أدناه.</p>
+    <p style="margin:0">${free ? 'تم تأكيد طلبك بخصم كامل — لا يوجد أي مبلغ مستحق.' : 'تم التحقق من دفعتك بنجاح. شكراً لك!'} فاتورتك ${pdf ? 'مرفقة بهذا البريد، ويمكنك أيضاً' : 'جاهزة، ويمكنك'} عرضها وطباعتها من الرابط أدناه.</p>
     ${_summary(page, sub)}
     ${_button(receiptUrl, '📄 عرض الفاتورة', '#16a34a')}`;
   return _send({
     to: sub.email,
-    subject: `✅ تأكيد الدفع وفاتورتك — ${page.title} · ${sub.reference}`,
-    html: _shell({ tone: '#16a34a', kicker: 'FABLAB الأحساء · تأكيد الدفع', heading: 'تم تأكيد دفعتك ✓', body }),
+    subject: `✅ ${free ? "تأكيد الطلب" : "تأكيد الدفع"} وفاتورتك — ${page.title} · ${sub.reference}`,
+    html: _shell({ tone: '#16a34a', kicker: free ? 'FABLAB الأحساء · تأكيد الطلب' : 'FABLAB الأحساء · تأكيد الدفع', heading: free ? 'تم تأكيد طلبك ✓' : 'تم تأكيد دفعتك ✓', body }),
     ...(pdf ? { attachments: [{ content: pdf.toString('base64'), filename: `invoice-${sub.reference}.pdf`, type: 'application/pdf', disposition: 'attachment' }] } : {})
   }, 'verified');
 };

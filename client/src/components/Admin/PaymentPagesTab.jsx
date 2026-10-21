@@ -61,14 +61,14 @@ const SUB_STATUS = {
   verified: { ar: 'مؤكد', en: 'Verified', cls: 'verified' },
   rejected: { ar: 'مرفوض', en: 'Rejected', cls: 'rejected' }
 };
-const METHOD = { bank_transfer: { ar: 'تحويل بنكي', en: 'Bank transfer', icon: '🏦' }, mada: { ar: 'مدى', en: 'mada', icon: '💳' } };
+const METHOD = { bank_transfer: { ar: 'تحويل بنكي', en: 'Bank transfer', icon: '🏦' }, mada: { ar: 'مدى', en: 'mada', icon: '💳' }, free: { ar: 'مجاني (خصم 100%)', en: 'Free (100% off)', icon: '🎁' } };
 // Same people as the other discount / approval lists (shared setting
 // "workshop_approvers", editable); used when the setting is empty.
 const DEFAULT_APPROVERS = ['أ. زكي اللويم', 'م. نوف البوعبيد', 'أ. عبدالله الصفي', 'أ. عبدالمحسن السلطان'];
 const round2 = (n) => Math.round(n * 100) / 100;
 const finalAmount = (base, pct) => {
   const b = Number(base); const p = Number(pct) || 0;
-  return Number.isFinite(b) && b > 0 && p >= 0 && p < 100 ? round2(b * (1 - p / 100)) : 0;
+  return Number.isFinite(b) && b > 0 && p >= 0 && p <= 100 ? round2(b * (1 - p / 100)) : null;
 };
 const fmtPct = (p) => `${Number(p).toLocaleString('en-US', { maximumFractionDigits: 2 })}%`;
 
@@ -182,7 +182,7 @@ const PageEditor = ({ isRTL, page, onClose, onSaved }) => {
   const save = async () => {
     if (!form.title.trim()) return toast.error(isRTL ? 'اكتب عنوان الصفحة' : 'Enter a title');
     if (!(Number(form.baseAmount) > 0)) return toast.error(isRTL ? 'أدخل التكلفة الأساسية' : 'Enter the main cost');
-    if (pct < 0 || pct >= 100) return toast.error(isRTL ? 'نسبة الخصم يجب أن تكون بين 0 و 99.99' : 'Discount must be 0–99.99%');
+    if (pct < 0 || pct > 100) return toast.error(isRTL ? 'نسبة الخصم يجب أن تكون بين 0 و 100' : 'Discount must be 0–100%');
     if (hasDiscount && !form.discountAppliedBy.trim()) return toast.error(isRTL ? 'اختر من طبّق الخصم' : 'Choose who applied the discount');
     if (hasDiscount && !form.discountApprovedBy.trim()) return toast.error(isRTL ? 'اختر من اعتمد الخصم' : 'Choose who approved the discount');
     if (!form.methods.length) return toast.error(isRTL ? 'اختر طريقة دفع واحدة على الأقل' : 'Choose at least one payment method');
@@ -251,11 +251,12 @@ const PageEditor = ({ isRTL, page, onClose, onSaved }) => {
                 </label>
                 <label className="ppa-field">
                   <span>{isRTL ? 'الخصم (%)' : 'Discount (%)'}</span>
-                  <input type="number" min="0" max="99.99" step="0.01" dir="ltr" value={form.discountPercent} onChange={e => set({ discountPercent: e.target.value })} placeholder="0" />
+                  <input type="number" min="0" max="100" step="0.01" dir="ltr" value={form.discountPercent} onChange={e => set({ discountPercent: e.target.value })} placeholder="0" />
                 </label>
                 <div className={`ppa-field ppa-final ${hasDiscount ? 'on' : ''}`}>
                   <span>{isRTL ? 'التكلفة بعد الخصم' : 'Cost after discount'}</span>
-                  <output dir="ltr">{finalPrice ? fmtSAR(finalPrice) : '—'} <em>SAR</em></output>
+                  <output dir="ltr">{finalPrice == null ? '—' : fmtSAR(finalPrice)} <em>SAR</em></output>
+                  {finalPrice === 0 && <small>{isRTL ? '🎁 خصم كامل — التسجيل مجاني ويُؤكَّد تلقائياً' : '🎁 Full discount — free, confirmed automatically'}</small>}
                   {hasDiscount && finalPrice > 0 && <small>{isRTL ? <>خصم <bdi dir="ltr">{fmtPct(pct)}</bdi> = {fmtSAR(discountValue)} ر.س — يدفع العميل هذا المبلغ</> : `${fmtPct(pct)} off = ${fmtSAR(discountValue)} SAR — the customer pays this`}</small>}
                 </div>
               </div>
@@ -570,7 +571,7 @@ const CouponsModal = ({ isRTL, page, manager, onClose, onChanged }) => {
   const linkFor = (c) => `${page.url}?code=${encodeURIComponent(c.code)}`;
 
   const create = async () => {
-    if (!(pct > 0 && pct < 100)) return toast.error(isRTL ? 'أدخل نسبة الخصم (أكبر من 0 وأقل من 100)' : 'Enter the discount % (between 0 and 100)');
+    if (!(pct > 0 && pct <= 100)) return toast.error(isRTL ? 'أدخل نسبة الخصم (من 1 إلى 100)' : 'Enter the discount % (1–100)');
     if (!form.approvedBy.trim()) return toast.error(isRTL ? 'اختر من اعتمد الخصم' : 'Choose who approved the discount');
     setSaving(true);
     try {
@@ -624,11 +625,12 @@ const CouponsModal = ({ isRTL, page, manager, onClose, onChanged }) => {
                 </label>
                 <label className="ppa-field">
                   <span>{isRTL ? 'نسبة الخصم (%)' : 'Discount (%)'} *</span>
-                  <input type="number" min="1" max="99.99" step="0.01" dir="ltr" value={form.discountPercent} onChange={e => set({ discountPercent: e.target.value })} placeholder="10" />
+                  <input type="number" min="1" max="100" step="0.01" dir="ltr" value={form.discountPercent} onChange={e => set({ discountPercent: e.target.value })} placeholder="10" />
                 </label>
-                <div className={`ppa-field ppa-final ${pct > 0 && pct < 100 ? 'on' : ''}`}>
+                <div className={`ppa-field ppa-final ${pct > 0 && pct <= 100 ? 'on' : ''}`}>
                   <span>{isRTL ? 'يدفع العميل' : 'Customer pays'}</span>
-                  <output dir="ltr">{pct > 0 && pct < 100 ? fmtSAR(after(pct)) : fmtSAR(page.amount)} <em>SAR</em></output>
+                  <output dir="ltr">{pct > 0 && pct <= 100 ? fmtSAR(after(pct)) : fmtSAR(page.amount)} <em>SAR</em></output>
+                  {pct === 100 && <small>{isRTL ? '🎁 مجاني — يُؤكَّد تلقائياً بدون دفع' : '🎁 Free — confirmed automatically'}</small>}
                 </div>
               </div>
               <div className="ppa-price-grid">

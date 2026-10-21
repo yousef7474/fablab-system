@@ -35,6 +35,8 @@ const T = {
     errFile: 'الملف يجب أن يكون صورة أو PDF بحجم لا يتجاوز 10 ميجابايت', errGeneric: 'تعذّر إرسال الطلب — حاول مرة أخرى',
     okTitle: 'تم استلام طلبك', okBank: 'استلمنا إيصال التحويل وسيتحقق منه فريق فاب لاب. تصلك الفاتورة على بريدك بعد التأكيد.',
     okMada: 'احضر إلى فاب لاب الأحساء وادفع المبلغ عبر جهاز مدى مع ذكر رقم المرجع. تصلك الفاتورة بعد الدفع.',
+    okTitleDone: 'تم تأكيد طلبك', viewInvoice: 'عرض الفاتورة', okFree: 'حصلت على خصم كامل — تم تأكيد طلبك ولا يوجد أي مبلغ مستحق. أرسلنا الفاتورة إلى بريدك.', confirmed: 'مؤكد',
+    free: 'مجاني — خصم كامل', freeTitle: 'مجاني بالكامل', freeNote: 'خصم كامل — لا يلزم أي دفع ولا إيصال. أكّد الطلب وتصلك الفاتورة على بريدك فوراً.', payFree: 'تأكيد الطلب',
     reference: 'رقم المرجع', status: 'الحالة', pending: 'بانتظار التحقق', method: 'طريقة الدفع', viewReceipt: 'عرض الإيصال', saveRef: 'احتفظ برقم المرجع لأي استفسار',
     closed: { closed: ['الصفحة مغلقة حالياً', 'أوقفت إدارة فاب لاب استقبال المدفوعات على هذه الصفحة.'], expired: ['انتهى موعد الدفع', 'لم تعد هذه الصفحة تستقبل مدفوعات.'], full: ['اكتمل العدد', 'تم حجز جميع المقاعد المتاحة لهذه الصفحة.'] },
     stamp: { closed: 'مغلقة', expired: 'منتهية', full: 'مكتملة' }, contact: 'للاستفسار تواصل مع فاب لاب الأحساء',
@@ -62,6 +64,8 @@ const T = {
     errFile: 'The file must be an image or PDF up to 10 MB', errGeneric: 'Could not send — please try again',
     okTitle: 'Request received', okBank: 'We received your transfer receipt; the FabLab team will verify it and email your invoice.',
     okMada: 'Visit FabLab Al-Ahsa and pay on the mada machine, quoting your reference. Your invoice follows the payment.',
+    okTitleDone: 'Request confirmed', viewInvoice: 'View invoice', okFree: 'You got a full discount — your request is confirmed with nothing to pay. Your invoice was emailed.', confirmed: 'Confirmed',
+    free: 'Free — full discount', freeTitle: 'Completely free', freeNote: '100% off — no payment or receipt needed. Confirm and your invoice is emailed right away.', payFree: 'Confirm request',
     reference: 'Reference', status: 'Status', pending: 'Pending review', method: 'Method', viewReceipt: 'View receipt', saveRef: 'Keep your reference for any enquiry',
     closed: { closed: ['This page is closed', 'FabLab has stopped taking payments on this page.'], expired: ['The deadline has passed', 'This page no longer takes payments.'], full: ['All places are taken', 'Every available place on this page has been booked.'] },
     stamp: { closed: 'CLOSED', expired: 'EXPIRED', full: 'FULL' }, contact: 'For enquiries contact FabLab Al-Ahsa',
@@ -187,6 +191,7 @@ const PaymentPage = () => {
   // What the customer pays: the page price, less a discount code if applied.
   const payAmount = coupon ? coupon.amount : Number(page?.amount || 0);
   const amountStr = page ? fmtAmount(payAmount) : '';
+  const isFree = !!page && payAmount <= 0;
   const hasDiscount = !!page && Number(page.discountPercent) > 0 && Number(page.baseAmount) > Number(page.amount);
   const pctStr = hasDiscount ? fmtPct(page.discountPercent) : '';
   const taken = page?.maxPayers ? page.maxPayers - (page.seatsLeft ?? 0) : 0;
@@ -240,8 +245,8 @@ const PaymentPage = () => {
     if (form.fullName.trim().length < 3) e.fullName = t.errName;
     if (form.phone.replace(/\D/g, '').length < 9) e.phone = t.errPhone;
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim())) e.email = t.errEmail;
-    if (!method) e.method = t.errMethod;
-    if (method === 'bank_transfer' && !proof) e.proof = t.errProof;
+    if (!isFree && !method) e.method = t.errMethod;
+    if (!isFree && method === 'bank_transfer' && !proof) e.proof = t.errProof;
     if (page?.terms && !agreed) e.terms = t.errTerms;
     setErrors(e);
     if (Object.keys(e).length) {
@@ -262,10 +267,10 @@ const PaymentPage = () => {
         phone: form.phone.trim(),
         email: form.email.trim(),
         note: form.note.trim() || undefined,
-        method,
+        method: isFree ? 'free' : method,
         termsAccepted: agreed,
         couponCode: coupon?.code || undefined,
-        proof: method === 'bank_transfer' && proof
+        proof: !isFree && method === 'bank_transfer' && proof
           ? { fileName: proof.name.replace(/\.[^.]+$/, '') + '.' + proof.type, fileType: proof.type, fileData: proof.dataUrl }
           : undefined
       });
@@ -409,9 +414,9 @@ const PaymentPage = () => {
                   <motion.path d="M15 27l7 7 15-15" fill="none" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" initial={{ pathLength: 0 }} animate={{ pathLength: 1 }} transition={{ duration: 0.4, delay: 0.5 }} />
                 </svg>
               </div>
-              <motion.h2 initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.55 }}>{t.okTitle}</motion.h2>
+              <motion.h2 initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.55 }}>{result.status === 'verified' ? t.okTitleDone : t.okTitle}</motion.h2>
               <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.7 }} className="pp-done-text">
-                {result.method === 'mada' ? t.okMada : t.okBank}
+                {result.method === 'free' ? t.okFree : result.method === 'mada' ? t.okMada : t.okBank}
               </motion.p>
 
               <div className="pp-slot">
@@ -422,15 +427,15 @@ const PaymentPage = () => {
                   </div>
                   <div className="pp-receipt-rows">
                     <div><span>{t.amount}</span><b dir="ltr">{fmtAmount(result.amount)} {t.sar}</b></div>
-                    <div><span>{t.method}</span><b>{result.method === 'mada' ? t.mada : t.bank}</b></div>
-                    <div><span>{t.status}</span><b className="pp-chip">{t.pending}</b></div>
+                    <div><span>{t.method}</span><b>{result.method === 'free' ? t.free : result.method === 'mada' ? t.mada : t.bank}</b></div>
+                    <div><span>{t.status}</span><b className={`pp-chip ${result.status === 'verified' ? 'ok' : ''}`}>{result.status === 'verified' ? t.confirmed : t.pending}</b></div>
                   </div>
                   <div className="pp-receipt-edge" aria-hidden="true" />
                 </motion.div>
               </div>
 
               <motion.div className="pp-done-actions" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 1.6 }}>
-                <a className="pp-btn-ghost" href={`${API_ORIGIN}${result.receiptUrl}`} target="_blank" rel="noopener noreferrer">{Icon.receipt}{t.viewReceipt}</a>
+                <a className="pp-btn-ghost" href={`${API_ORIGIN}${result.receiptUrl}`} target="_blank" rel="noopener noreferrer">{Icon.receipt}{result.status === 'verified' ? t.viewInvoice : t.viewReceipt}</a>
                 <span>{t.saveRef}</span>
               </motion.div>
             </motion.div>
@@ -472,6 +477,12 @@ const PaymentPage = () => {
               </Section>
 
               <Section n="02" title={t.s2} delay={0.25}>
+                {isFree ? (
+                  <div className="pp-free">
+                    <span className="pp-free-ico">🎁</span>
+                    <div><b>{t.freeTitle}</b><p>{t.freeNote}</p></div>
+                  </div>
+                ) : (<>
                 <div className={`pp-methods ${page.methods.length === 1 ? 'single' : ''}`} data-field="method" role="radiogroup" aria-label={t.s2}>
                   {page.methods.includes('bank_transfer') && (
                     <button type="button" role="radio" aria-checked={method === 'bank_transfer'} className={`pp-method ${method === 'bank_transfer' ? 'on' : ''}`} onClick={() => { setMethod('bank_transfer'); setErrors(e => ({ ...e, method: undefined })); }}>
@@ -548,6 +559,7 @@ const PaymentPage = () => {
                     </motion.div>
                   )}
                 </AnimatePresence>
+                </>)}
               </Section>
 
               <Section n="03" title={t.s3} delay={0.35}>
@@ -592,7 +604,7 @@ const PaymentPage = () => {
                 </div>
                 {serverError && <p className="pp-server-err" role="alert">{serverError}</p>}
                 <motion.button type="submit" className="pp-pay" disabled={submitting} whileTap={{ scale: 0.985 }}>
-                  {submitting ? <><span className="pp-spin" />{t.sending}</> : <>{method === 'mada' ? t.payMada : t.payBank(amountStr)}<span className="pp-pay-arrow">{Icon.arrow}</span></>}
+                  {submitting ? <><span className="pp-spin" />{t.sending}</> : <>{isFree ? t.payFree : method === 'mada' ? t.payMada : t.payBank(amountStr)}<span className="pp-pay-arrow">{Icon.arrow}</span></>}
                 </motion.button>
                 <p className="pp-footnote">{Icon.lock}{t.footnote}</p>
               </Section>
