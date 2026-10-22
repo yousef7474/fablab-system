@@ -999,7 +999,7 @@ const AdminDashboard = () => {
 
   // Open / close public registration on the selected workshops.
   // forceOpen: "open as an exception" — keeps registration open past the
-  // automatic cut-off (education: 24h before start; others: start day).
+  // automatic cut-off (24h before the start, for every workshop).
   const handleBulkRegistration = async (enabled, forceOpen = false) => {
     if (!selectedWorkshopIds.length || bulkRegBusy) return;
     setBulkRegBusy(true);
@@ -8580,8 +8580,8 @@ const AdminDashboard = () => {
                 return arr;
               })();
               // Registration state as the public form sees it (server's
-              // closedReason): closed by the admin, auto-closed (education:
-              // 24h before start; others: the start day), or opened by the
+              // closedReason): closed by the admin, auto-closed (24h before
+              // the start, every workshop), or opened by the
               // admin as an exception.
               const _todayRiyadh = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Riyadh' }).format(new Date());
               const _regState = (w) => {
@@ -8906,7 +8906,7 @@ const AdminDashboard = () => {
                                     </span>
                                   )}
                                   {regState === 'deadline' && (
-                                    <span className="wsv2-reg-badge deadline" title={isRTL ? 'يُغلق تسجيل الورش التعليمية تلقائياً قبل البدء بـ24 ساعة' : 'Education registration closes automatically 24 hours before the start'}>
+                                    <span className="wsv2-reg-badge deadline" title={isRTL ? 'يُغلق التسجيل تلقائياً قبل بدء الورشة بـ24 ساعة' : 'Registration closes automatically 24 hours before the start'}>
                                       ⏰ {isRTL ? 'أُغلق (قبل البدء بـ24 ساعة)' : 'Closed (24h before start)'}
                                     </span>
                                   )}
@@ -8968,14 +8968,16 @@ const AdminDashboard = () => {
                                   {w.price ? `${w.price} SAR` : (isRTL ? 'مجاني' : 'Free')}
                                 </span>
                               </div>
-                              {w.isEducation && (
+                              {(w.isEducation || (w.registrationDeadline && (regState === 'open' || regState === 'forced'))) && (
                                 <div className="wsv2-edu-extra">
-                                  {w.registrationDeadline && (
+                                  {w.registrationDeadline && regState !== null && (
                                     <span>⏰ {isRTL ? 'آخر موعد للتسجيل:' : 'Register by:'} <b>{fmtDeadline(w.registrationDeadline, isRTL)}</b></span>
                                   )}
-                                  <span className="wsv2-edu-chip" title={isRTL ? 'المعلمون والمدربون المسجلون' : 'Registered teachers / instructors'}>
-                                    👩‍🏫 {w.teacherCount || 0}
-                                  </span>
+                                  {w.isEducation && (
+                                    <span className="wsv2-edu-chip" title={isRTL ? 'المعلمون والمدربون المسجلون' : 'Registered teachers / instructors'}>
+                                      👩‍🏫 {w.teacherCount || 0}
+                                    </span>
+                                  )}
                                 </div>
                               )}
                               {(regState === 'deadline' || regState === 'started') && (
@@ -9986,10 +9988,8 @@ const AdminDashboard = () => {
                           )}
                           <div style={workshopForm.isEducation ? { gridColumn: '1 / -1' } : undefined}>
                             <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 600, marginBottom: 4 }}>{isRTL ? 'حالة التسجيل' : 'Registration'}</label>
-                            {workshopForm.isEducation ? (
-                              <>
-                                {/* Education: automatic cut-off 24h before start, an admin
-                                    exception that keeps it open, or closed. */}
+                            {/* Every workshop: automatic cut-off 24h before the start,
+                                an admin exception that keeps it open, or closed. */}
                                 <div className="wsv2-regmode" role="radiogroup">
                                   {[
                                     { key: 'auto', on: workshopForm.registrationEnabled && !workshopForm.registrationForceOpen, patch: { registrationEnabled: true, registrationForceOpen: false },
@@ -10007,39 +10007,14 @@ const AdminDashboard = () => {
                                   ))}
                                 </div>
                                 <div style={{ fontSize: '0.72rem', color: '#64748b', marginTop: 4 }}>
-                                  {isRTL
-                                    ? 'يسجّل الطلاب والمعلمون عبر رابط المدرسة حتى 24 ساعة قبل بدء الورشة (تاريخ ووقت البداية).'
-                                    : 'Students and teachers can register through the school link until 24 hours before the workshop starts (start date and time).'}
+                                  {workshopForm.isEducation
+                                    ? (isRTL
+                                      ? 'يسجّل الطلاب والمعلمون عبر رابط المدرسة حتى 24 ساعة قبل بدء الورشة (تاريخ ووقت البداية).'
+                                      : 'Students and teachers can register through the school link until 24 hours before the workshop starts (start date and time).')
+                                    : (isRTL
+                                      ? 'يُغلق التسجيل تلقائياً قبل بدء الورشة بـ24 ساعة (تاريخ ووقت البداية). اختر «مفتوح استثنائياً» للسماح بالتسجيل بعد ذلك.'
+                                      : 'Registration closes automatically 24 hours before the workshop starts (start date and time). Choose "Open (exception)" to allow it after that.')}
                                 </div>
-                              </>
-                            ) : (
-                            <>
-                            <div style={{ display: 'flex', gap: 8 }}>
-                              <button
-                                type="button"
-                                onClick={() => setWorkshopForm({ ...workshopForm, registrationEnabled: true })}
-                                style={{ flex: 1, padding: '0.55rem', borderRadius: 8, cursor: 'pointer', fontFamily: 'inherit', border: workshopForm.registrationEnabled ? '2px solid #16a34a' : '1.5px solid #e2e8f0', background: workshopForm.registrationEnabled ? 'rgba(22,163,74,0.08)' : '#fff', color: workshopForm.registrationEnabled ? '#166534' : '#64748b', fontWeight: 700, fontSize: '0.85rem' }}
-                              >
-                                ✓ {isRTL ? 'مفعّل' : 'Open'}
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => setWorkshopForm({ ...workshopForm, registrationEnabled: false })}
-                                style={{ flex: 1, padding: '0.55rem', borderRadius: 8, cursor: 'pointer', fontFamily: 'inherit', border: !workshopForm.registrationEnabled ? '2px solid #dc2626' : '1.5px solid #e2e8f0', background: !workshopForm.registrationEnabled ? 'rgba(220,38,38,0.08)' : '#fff', color: !workshopForm.registrationEnabled ? '#991b1b' : '#64748b', fontWeight: 700, fontSize: '0.85rem' }}
-                              >
-                                ⏸ {isRTL ? 'مغلق' : 'Closed'}
-                              </button>
-                            </div>
-                            <div style={{ fontSize: '0.72rem', color: '#64748b', marginTop: 4 }}>
-                              {isRTL ? 'يُغلق التسجيل تلقائياً من يوم بدء الورشة.' : 'Registration also closes automatically on the start day.'}
-                              {workshopForm.registrationEnabled && workshopForm.registrationForceOpen && (
-                                <span style={{ display: 'block', color: '#16a34a', fontWeight: 700 }}>
-                                  {isRTL ? '🔓 مفتوح حالياً استثنائياً بعد موعد الإغلاق التلقائي.' : '🔓 Currently open as an exception past the automatic cut-off.'}
-                                </span>
-                              )}
-                            </div>
-                            </>
-                            )}
                           </div>
                     </div>
 

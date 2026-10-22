@@ -711,7 +711,9 @@ const WorkshopRegistration = () => {
                   <div className="workshop-cards" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '1.25rem', maxHeight: 'none', overflow: 'visible' }}>
                     {workshops.map(w => {
                       const pickable = isPickable(w);
-                      const closedLabel = w.closedReason === 'started'
+                      const closedLabel = w.closedReason === 'deadline'
+                        ? (isRTL ? 'انتهى التسجيل (يُغلق قبل البدء بـ24 ساعة)' : 'Registration ended (closes 24h before the start)')
+                        : w.closedReason === 'started'
                         ? (isRTL ? 'بدأت الورشة — التسجيل مغلق' : 'Started — registration closed')
                         : w.closedReason === 'full' || (w.spotsRemaining != null && w.spotsRemaining <= 0)
                         ? (isRTL ? 'مكتمل' : 'Full')
@@ -723,6 +725,12 @@ const WorkshopRegistration = () => {
                         {w.photo && <div className="workshop-card-img" style={{ height: 200, backgroundImage: `url(${w.photo})`, backgroundSize: 'cover', backgroundPosition: 'center' }} />}
                         <div className="workshop-card-body" style={{ padding: '1.25rem' }}>
                           <h4 style={{ fontSize: '1.15rem', marginBottom: '0.5rem' }}>{w.title}</h4>
+                          {pickable && w.registrationDeadline && (
+                            <div style={{ display: 'inline-block', marginBottom: '0.5rem', padding: '3px 10px', borderRadius: 999, background: '#fffbeb', border: '1px solid #fde68a', color: '#92400e', fontSize: '0.78rem', fontWeight: 700 }}>
+                              ⏰ {isRTL ? 'آخر موعد للتسجيل: ' : 'Register by: '}
+                              {new Date(w.registrationDeadline).toLocaleString(isRTL ? 'ar-SA-u-ca-gregory-nu-latn' : 'en-GB', { timeZone: 'Asia/Riyadh', weekday: 'short', day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' })}
+                            </div>
+                          )}
                           {w.presenter && <div className="workshop-card-presenter" style={{ marginBottom: '0.5rem' }}>{isRTL ? 'المقدم:' : 'Presenter:'} {w.presenter}</div>}
                           <div className="workshop-card-meta" style={{ marginBottom: '0.6rem', gap: '1rem' }}>
                             {w.startDate && <span>📅 {w.startDate}{w.endDate && w.endDate !== w.startDate ? ` → ${w.endDate}` : ''}</span>}

@@ -95,7 +95,7 @@ const WorkshopsCarousel = ({ t, lang, isRTL }) => {
       let list = [];
       try {
         const { data } = await api.get('/workshops/active');
-        list = (Array.isArray(data) ? data : []).filter(w => w.isOpen !== false || w.closedReason === 'full' || w.closedReason === 'started');
+        list = (Array.isArray(data) ? data : []).filter(w => w.isOpen !== false || ['full', 'started', 'deadline'].includes(w.closedReason));
       } catch { /* fall back to the archive */ }
       if (!list.length) {
         try {

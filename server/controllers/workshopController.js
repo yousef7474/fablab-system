@@ -157,7 +157,7 @@ exports.getAllWorkshops = async (req, res) => {
       plain.studentCount = plain.students ? plain.students.length : 0;
       plain.teacherCount = teacherCounts.get(plain.workshopId) || 0;
       plain.closedReason = _closedReason(plain, plain.studentCount);
-      plain.registrationDeadline = plain.isEducation ? (eduDeadline(plain)?.toISOString() || null) : null;
+      plain.registrationDeadline = eduDeadline(plain)?.toISOString() || null;
       delete plain.students;
       return plain;
     });
@@ -206,7 +206,7 @@ exports.getWorkshopById = async (req, res) => {
     out.teachers = (await WorkshopTeacher.findAll({ where: { workshopId: id }, order: [['createdAt', 'ASC']] }))
       .map(t => ({ ...t.toJSON(), roomLabel: roomById(t.room)?.ar || t.room }));
     out.closedReason = _closedReason(out, out.students.length);
-    out.registrationDeadline = out.isEducation ? (eduDeadline(out)?.toISOString() || null) : null;
+    out.registrationDeadline = eduDeadline(out)?.toISOString() || null;
     res.json(out);
   } catch (error) {
     console.error('Error fetching workshop:', error);
@@ -317,24 +317,19 @@ exports.deleteWorkshop = async (req, res) => {
 };
 
 // Why a workshop is not taking public registrations right now, or null
-// when it is open. Registration closes automatically — education
-// workshops 24 hours before the start (date + time), the rest on the
-// start day (Riyadh) — unless the admin opened it as an exception
-// (registrationForceOpen). The admin can also close it by hand
-// (registrationEnabled). Teachers don't count toward capacity. Admin
-// manual adds bypass all of this except capacity.
+// when it is open. Registration closes automatically 24 hours before the
+// start (date + time, Riyadh) — every workshop, education or not — unless
+// the admin opened it as an exception (registrationForceOpen). The admin
+// can also close it by hand (registrationEnabled). Teachers don't count
+// toward capacity. Admin manual adds bypass all of this except capacity.
 const _closedReason = (w, studentCount, { forTeacher = false } = {}) => {
   if (!w.isActive) return 'inactive';
   if (w.status === 'cancelled') return 'cancelled';
   if (w.status === 'completed') return 'completed';
   if (w.registrationEnabled === false) return 'disabled';
   if (!w.registrationForceOpen) {
-    if (w.isEducation) {
-      const deadline = eduDeadline(w);
-      if (deadline && Date.now() >= deadline.getTime()) return 'deadline';
-    } else if (w.startDate && String(w.startDate).slice(0, 10) <= _todayStrRiyadh()) {
-      return 'started';
-    }
+    const deadline = eduDeadline(w);
+    if (deadline && Date.now() >= deadline.getTime()) return 'deadline';
   }
   if (!forTeacher && w.maxParticipants && studentCount >= w.maxParticipants) return 'full';
   return null;
@@ -391,6 +386,7 @@ exports.getActiveWorkshops = async (req, res) => {
         : null;
       plain.closedReason = _closedReason(plain, plain.studentCount);
       plain.isOpen = !plain.closedReason;
+      plain.registrationDeadline = eduDeadline(plain)?.toISOString() || null;
       delete plain.students;
       return plain;
     });
@@ -578,7 +574,7 @@ exports.registerStudent = async (req, res) => {
         throw { status: 403, message: 'This workshop is not open for public registration', messageAr: 'هذه الورشة غير متاحة للتسجيل العام' };
       }
 
-      // Closed by the admin, or auto-closed from the start day on.
+      // Closed by the admin, or auto-closed 24 hours before the start.
       // (Capacity is checked below under the lock.)
       const closed = _closedReason(workshop, 0);
       if (closed) {

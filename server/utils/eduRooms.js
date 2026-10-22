@@ -29,8 +29,9 @@ const workshopsOverlap = (a, b) => {
   return as < be && bs < ae;
 };
 
-// Registration for education workshops closes 24 hours before the start
-// (start date + start time, Riyadh = UTC+3, no DST).
+// Workshop registration (every workshop, not only education) closes 24
+// hours before the start (start date + start time, Riyadh = UTC+3, no
+// DST) unless the admin opens it as an exception.
 const EDU_DEADLINE_HOURS = 24;
 const eduDeadline = (w) => {
   if (!w || !w.startDate) return null;
