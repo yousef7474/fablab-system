@@ -5,6 +5,11 @@ const { Op } = require('sequelize');
 const { ProjectSupportRequest } = require('../models');
 const { sequelize } = require('../config/database');
 const { archiveSentApproval, markArchiveDecided } = require('./approvalArchiveController');
+const { rateLimited } = require('../utils/siteContent');
+const {
+  generateCode, normalizeCode, isValidCode,
+  loadAccess, setAccessCode, checkAccessCode, issueAccessToken, verifyAccessToken
+} = require('../utils/projectSupportAccess');
 
 require('dotenv').config({ path: path.join(__dirname, '..', '.env') });
 if (process.env.SENDGRID_API_KEY) sgMail.setApiKey(process.env.SENDGRID_API_KEY);
@@ -291,6 +296,28 @@ const _sanitizeFiles = (input) => {
   })).filter(f => f.fileName && f.fileData);
 };
 
+// ─────────────── Public: access code ───────────────
+
+// POST /public/project-support/access  body: { code }
+// The form is closed to the public — a correct code (shared by the
+// admin) returns a token the submit call must carry. 403, not 401, so
+// the client's 401 handler never kicks in on a public page.
+exports.publicAccess = async (req, res) => {
+  try {
+    if (rateLimited(req, 'psr-access', 15, 10 * 60 * 1000)) {
+      return res.status(429).json({ message: 'Too many attempts — try again in a few minutes', messageAr: 'محاولات كثيرة — حاول مجدداً بعد دقائق' });
+    }
+    const code = await checkAccessCode(req.body?.code);
+    if (!code) {
+      return res.status(403).json({ code: 'PSR_CODE_INVALID', message: 'Invalid access code', messageAr: 'رمز الدخول غير صحيح' });
+    }
+    res.json({ token: issueAccessToken(code) });
+  } catch (err) {
+    console.error('psr publicAccess:', err);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
 // ─────────────── Public: submit ───────────────
 
 exports.publicCreate = async (req, res) => {
@@ -299,8 +326,16 @@ exports.publicCreate = async (req, res) => {
       firstName, lastName, sex, nationality, nationalId,
       phoneNumber, email, age, city,
       projectTitle, supportType, supportTypes, description,
-      files
+      files, accessToken
     } = req.body || {};
+
+    if (!(await verifyAccessToken(accessToken))) {
+      return res.status(403).json({
+        code: 'PSR_ACCESS_REQUIRED',
+        message: 'This form needs the access code from FabLab',
+        messageAr: 'هذه الصفحة تتطلب رمز الدخول من إدارة فاب لاب — أدخل الرمز مرة أخرى'
+      });
+    }
 
     if (!firstName || !nationalId || !phoneNumber || !email || !description) {
       return res.status(400).json({
@@ -372,6 +407,36 @@ exports.publicCreate = async (req, res) => {
   } catch (err) {
     console.error('psr publicCreate:', err);
     res.status(500).json({ message: 'Server error', detail: err.message });
+  }
+};
+
+// ─────────────── Admin: access code ───────────────
+
+// GET /project-support/access-code
+exports.getAccessCode = async (req, res) => {
+  try {
+    res.json(await loadAccess());
+  } catch (err) {
+    console.error('psr getAccessCode:', err);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+// PUT /project-support/access-code  body: { code } or { regenerate: true }
+// Takes effect at once: the old code and pages opened with it stop working.
+exports.updateAccessCode = async (req, res) => {
+  try {
+    const code = req.body?.regenerate ? generateCode() : normalizeCode(req.body?.code);
+    if (!isValidCode(code)) {
+      return res.status(400).json({
+        message: 'The code must be 4–20 English letters or digits',
+        messageAr: 'الرمز يجب أن يكون من 4 إلى 20 حرفاً إنجليزياً أو رقماً'
+      });
+    }
+    res.json(await setAccessCode(code, req.admin?.fullName || req.admin?.username));
+  } catch (err) {
+    console.error('psr updateAccessCode:', err);
+    res.status(500).json({ message: 'Server error' });
   }
 };
 

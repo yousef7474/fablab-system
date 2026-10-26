@@ -47,13 +47,12 @@ const SiteServices = lazy(() => import('./components/Site/SiteServices'));
 const SiteMedia = lazy(() => import('./components/Site/SiteMedia'));
 const SiteStories = lazy(() => import('./components/Site/SiteStories'));
 const SiteWorkshops = lazy(() => import('./components/Site/SiteWorkshops'));
-const SiteVolunteer = lazy(() => import('./components/Site/SiteVolunteer'));
 const SiteInternship = lazy(() => import('./components/Site/SiteInternship'));
 const SiteTalented = lazy(() => import('./components/Site/SiteTalented'));
 
 // Public website pages carry their own header (language switch, menus),
 // so the floating language selector is hidden there.
-const SITE_PATHS = new Set(['/', '/about', '/aboutfablab', '/paths', '/sections', '/oursections', '/facilities', '/services', '/media', '/success-stories', '/workshops', '/volunteer', '/internship', '/i-am-talented', '/i_am_talented']);
+const SITE_PATHS = new Set(['/', '/about', '/aboutfablab', '/paths', '/sections', '/oursections', '/facilities', '/services', '/media', '/success-stories', '/workshops', '/internship', '/i-am-talented', '/i_am_talented']);
 const isSitePath = (pathname) => SITE_PATHS.has((pathname.replace(/\/+$/, '') || '/').toLowerCase());
 
 // "/" is the website home. Old links / saved drafts pointed the
@@ -114,7 +113,7 @@ const AppContent = () => {
           <Route path="/media" element={<SiteMedia />} />
           <Route path="/success-stories" element={<SiteStories />} />
           <Route path="/workshops" element={<SiteWorkshops />} />
-          <Route path="/volunteer" element={<SiteVolunteer />} />
+          <Route path="/volunteer" element={<Navigate to="/" replace />} />
           <Route path="/internship" element={<SiteInternship />} />
           <Route path="/i-am-talented" element={<SiteTalented />} />
           <Route path="/i_am_talented" element={<Navigate to="/i-am-talented" replace />} />

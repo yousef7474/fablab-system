@@ -64,6 +64,110 @@ const STATUS_META = {
   rejected:  { ar: 'مرفوض',        en: 'Rejected',  bg: '#fee2e2', color: '#991b1b' }
 };
 
+// The public form is closed: people need the access code the admin
+// shares (or the link that carries it). Managers see, copy and change
+// it here; a new code stops the old one at once.
+const AccessCodePanel = ({ isRTL }) => {
+  const [access, setAccess] = useState(null);
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState('');
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    api.get('/project-support/access-code')
+      .then(({ data }) => setAccess(data))
+      .catch(() => setAccess(null)); // not a manager — no panel
+  }, []);
+
+  if (!access) return null;
+  const link = `${window.location.origin}/project-support?code=${encodeURIComponent(access.code)}`;
+
+  const copy = async (text, what) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      toast.success(isRTL ? `تم نسخ ${what}` : `${what} copied`);
+    } catch {
+      toast.info(text);
+    }
+  };
+
+  const save = async (body) => {
+    setSaving(true);
+    try {
+      const { data } = await api.put('/project-support/access-code', body);
+      setAccess(data);
+      setEditing(false);
+      toast.success(isRTL ? `الرمز الجديد: ${data.code}` : `New code: ${data.code}`);
+    } catch (err) {
+      const d = err?.response?.data;
+      toast.error((isRTL ? d?.messageAr : d?.message) || (isRTL ? 'تعذّر حفظ الرمز' : 'Could not save the code'));
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const regenerate = () => {
+    if (!window.confirm(isRTL ? 'إنشاء رمز جديد؟ سيتوقف الرمز الحالي والرابط القديم عن العمل فوراً.' : 'Create a new code? The current code and old links stop working right away.')) return;
+    save({ regenerate: true });
+  };
+
+  const btn = { padding: '8px 14px', borderRadius: 10, border: '1px solid #ddd6fe', background: '#fff', color: '#6d28d9', fontWeight: 800, fontSize: 13, cursor: 'pointer', fontFamily: 'inherit' };
+
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap', padding: '14px 16px', marginBottom: 18, borderRadius: 14, border: '1px solid #ddd6fe', background: 'linear-gradient(135deg, #f5f3ff, #faf5ff)', color: '#0f172a' }}>
+      <div style={{ flex: '1 1 260px', minWidth: 0 }}>
+        <div style={{ fontWeight: 800, fontSize: 15 }}>
+          🔒 {isRTL ? 'صفحة طلب الدعم مغلقة — تُفتح برمز دخول' : 'The support form is closed — it opens with an access code'}
+        </div>
+        <div style={{ fontSize: 12.5, color: '#64748b', marginTop: 3, lineHeight: 1.6 }}>
+          {isRTL
+            ? 'شارك الرمز أو الرابط مع من تريد السماح له بتقديم طلب. تغيير الرمز يوقف القديم فوراً.'
+            : 'Share the code or the link with the people who may apply. Changing it stops the old one at once.'}
+          {access.updatedAt && (
+            <span style={{ display: 'block', fontSize: 11.5, color: '#94a3b8' }}>
+              {isRTL ? 'آخر تغيير:' : 'Last changed:'} {fmtWhen(access.updatedAt)}{access.updatedBy ? ` — ${access.updatedBy}` : ''}
+            </span>
+          )}
+        </div>
+      </div>
+      {editing ? (
+        <form
+          onSubmit={(e) => { e.preventDefault(); save({ code: draft }); }}
+          style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}
+        >
+          <input
+            value={draft}
+            onChange={(e) => setDraft(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ''))}
+            placeholder={isRTL ? '4–20 حرفاً أو رقماً' : '4–20 letters or digits'}
+            maxLength={20}
+            dir="ltr"
+            autoFocus
+            style={{ width: 190, padding: '8px 12px', borderRadius: 10, border: '1.5px solid #a78bfa', fontFamily: 'JetBrains Mono, monospace', fontWeight: 800, fontSize: 16, letterSpacing: '0.15em', textAlign: 'center', background: '#fff', color: '#0f172a' }}
+          />
+          <button type="submit" disabled={saving || draft.length < 4} style={{ ...btn, background: '#6d28d9', color: '#fff', border: 'none', opacity: saving || draft.length < 4 ? 0.6 : 1 }}>
+            {saving ? (isRTL ? 'جارٍ الحفظ…' : 'Saving…') : (isRTL ? 'حفظ الرمز' : 'Save code')}
+          </button>
+          <button type="button" onClick={() => setEditing(false)} style={{ ...btn, color: '#475569', borderColor: '#e2e8f0' }}>
+            {isRTL ? 'إلغاء' : 'Cancel'}
+          </button>
+        </form>
+      ) : (
+        <>
+          <code dir="ltr" style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 22, fontWeight: 800, letterSpacing: '0.2em', padding: '6px 14px', borderRadius: 10, background: '#fff', color: '#6d28d9', border: '1.5px dashed #a78bfa' }}>
+            {access.code}
+          </code>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            <button type="button" style={btn} onClick={() => copy(access.code, isRTL ? 'الرمز' : 'Code')}>📋 {isRTL ? 'نسخ الرمز' : 'Copy code'}</button>
+            <button type="button" style={btn} onClick={() => copy(link, isRTL ? 'الرابط' : 'Link')} title={link}>🔗 {isRTL ? 'نسخ الرابط' : 'Copy link'}</button>
+            <button type="button" style={btn} onClick={regenerate} disabled={saving}>🔄 {isRTL ? 'رمز جديد' : 'New code'}</button>
+            <button type="button" style={btn} onClick={() => { setDraft(''); setEditing(true); }}>✏️ {isRTL ? 'تعيين رمز' : 'Set code'}</button>
+          </div>
+        </>
+      )}
+    </div>
+  );
+};
+
 const ProjectSupportTab = () => {
   const { i18n } = useTranslation();
   const isRTL = i18n.language === 'ar';
@@ -399,6 +503,8 @@ const ProjectSupportTab = () => {
           </p>
         </div>
       </div>
+
+      <AccessCodePanel isRTL={isRTL} />
 
       {/* Status filter pills */}
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 14 }}>

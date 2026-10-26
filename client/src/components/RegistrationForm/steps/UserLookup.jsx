@@ -395,11 +395,11 @@ const UserLookup = ({ onUserFound, onNewUser, theme, guidedChoice, onGuideApply,
             </svg>
           </div>
           <div className="service-card-body">
-            <div className="service-card-title">{isRTL ? 'طلب دعم للمشروع' : 'Project Support Request'}</div>
+            <div className="service-card-title">{isRTL ? 'طلب دعم للمشروع 🔒' : 'Project Support Request 🔒'}</div>
             <div className="service-card-description">
               {isRTL
-                ? 'اطلب تمويلاً أو رعاية لمشروعك أو دعماً لمشاركتك في مسابقة — تصلك الإجابة خلال 5 أيام عمل'
-                : 'Request funding or sponsorship for your project or a competition entry — decision within 5 working days'}
+                ? 'اطلب تمويلاً أو رعاية لمشروعك أو دعماً لمشاركتك في مسابقة — يتطلب رمز دخول من إدارة فاب لاب'
+                : 'Request funding or sponsorship for your project or a competition entry — needs an access code from the FabLab team'}
             </div>
           </div>
           <div className="service-card-arrow" aria-hidden="true">{isRTL ? '←' : '→'}</div>

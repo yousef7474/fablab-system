@@ -223,3 +223,36 @@
   .psr-form { padding: 16px 12px 40px; }
   .psr-card { padding: 18px; }
 }
+
+/* ── Access code screen (the page is closed to the public) ── */
+.psr-gate {
+  background: #fff; border-radius: 20px; padding: 40px 32px;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 30px 60px -20px rgba(139, 92, 246, 0.2);
+  text-align: center;
+  max-width: 480px; margin: 0 auto;
+}
+.psr-gate-icon {
+  width: 68px; height: 68px; border-radius: 20px; margin: 0 auto 16px;
+  display: grid; place-items: center; font-size: 30px;
+  background: rgba(139, 92, 246, 0.10); border: 1.5px solid #ddd6fe;
+}
+.psr-gate h1 { margin: 0 0 10px; font-size: 22px; font-weight: 800; color: #0f172a; }
+.psr-gate > p { margin: 0 0 20px; color: #475569; font-size: 14px; line-height: 1.8; }
+.psr-gate-input {
+  width: 100%; box-sizing: border-box;
+  padding: 14px 16px; border-radius: 12px;
+  border: 1.5px solid #ddd6fe; background: #faf5ff; color: #0f172a;
+  font: 800 22px/1.2 'JetBrains Mono', ui-monospace, monospace;
+  letter-spacing: 0.3em; text-align: center; text-transform: uppercase;
+  outline: none; transition: border-color 0.15s, box-shadow 0.15s;
+}
+.psr-gate-input::placeholder { font: 600 15px/1.2 'Cairo', system-ui, sans-serif; letter-spacing: 0; color: #a78bfa; text-transform: none; }
+.psr-gate-input:focus { border-color: #8b5cf6; box-shadow: 0 0 0 4px rgba(139, 92, 246, 0.15); }
+.psr-gate-input.has-error { border-color: #f87171; background: #fef2f2; }
+.psr-gate-error { margin-top: 10px; color: #dc2626; font-size: 13.5px; font-weight: 700; }
+.psr-gate-btn { width: 100%; margin-top: 16px; padding: 14px; font-size: 15px; }
+.psr-gate .psr-gate-note { margin: 14px 0 0; font-size: 12.5px; color: #94a3b8; }
+@media (max-width: 640px) {
+  .psr-gate { padding: 30px 20px; }
+}

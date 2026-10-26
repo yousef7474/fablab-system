@@ -8,6 +8,10 @@ const { requireManager } = require('../middleware/roleMiddleware');
 // role gate applies).
 router.get('/pending', authMiddleware, requireManager, ctrl.listPending);
 
+// Access code the public form asks for (declared before /:id).
+router.get('/access-code', authMiddleware, requireManager, ctrl.getAccessCode);
+router.put('/access-code', authMiddleware, requireManager, ctrl.updateAccessCode);
+
 // Admin (any authed user) — list, detail, per-file download, delete
 router.use(authMiddleware);
 router.get('/',                          ctrl.list);

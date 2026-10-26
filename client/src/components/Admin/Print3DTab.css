@@ -448,6 +448,22 @@
 /* Status edit */
 .p3t-status-edit { display: grid; grid-template-columns: 1fr 2fr auto; gap: 10px; align-items: end; }
 .p3t-status-edit label { display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: var(--p3t-muted); font-weight: 600; }
+/* email options under the status row */
+.p3t-status-edit .p3t-status-email {
+  grid-column: 1 / -1;
+  display: flex; flex-wrap: wrap; gap: 8px 22px;
+  padding: 10px 12px;
+  background: rgba(14,165,233,0.05);
+  border: 1px dashed rgba(14,165,233,0.3);
+  border-radius: 8px;
+}
+.p3t-status-edit .p3t-status-email label { flex-direction: row; cursor: pointer; }
+.p3t-status-edit .p3t-status-email label.is-off { opacity: 0.5; cursor: not-allowed; }
+.p3t-status-email-to { font-weight: 500; opacity: 0.8; }
+/* the dashboard's dark theme recolours spans — keep the checkbox
+   labels readable on this white modal */
+.p3t-quote-check,
+.p3t-quote-check span { color: #334155 !important; }
 .p3t-status-edit select {
   padding: 10px 12px;
   background: #fff;

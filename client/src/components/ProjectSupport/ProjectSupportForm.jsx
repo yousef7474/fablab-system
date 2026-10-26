@@ -1,5 +1,5 @@
-import React, { useState, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useRef, useEffect } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { motion } from 'framer-motion';
 import { toast } from 'react-toastify';
@@ -11,10 +11,17 @@ import './ProjectSupport.css';
 // beneficiary/visitor/volunteer register flow. Users submit personal
 // info + a description + up to 10 attachments; the server emails a
 // confirmation and lands the request in the admin panel for review.
+//
+// The page is closed to the public: it opens only with the access code
+// the admin shares (typed in, or carried by the shared link as ?code=).
+// The code buys a short-lived token kept for this tab; submit sends it.
 
 const API_URL = process.env.NODE_ENV === 'production'
   ? '/api'
   : (process.env.REACT_APP_API_URL || 'http://localhost:5000/api');
+
+const TOKEN_KEY = 'psr_access_token';
+const readToken = () => { try { return sessionStorage.getItem(TOKEN_KEY) || ''; } catch { return ''; } };
 
 const MAX_FILES = 10;
 const MAX_FILE_MB = 10;
@@ -89,6 +96,38 @@ const ProjectSupportForm = () => {
   const [submitting, setSubmitting] = useState(false);
   const [result, setResult] = useState(null); // { requestNumber }
   const fileInputRef = useRef(null);
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [accessToken, setAccessToken] = useState(readToken);
+  const [codeInput, setCodeInput] = useState('');
+  const [codeError, setCodeError] = useState('');
+  const [checking, setChecking] = useState(false);
+
+  const unlock = async (code) => {
+    setChecking(true);
+    setCodeError('');
+    try {
+      const { data } = await axios.post(`${API_URL}/public/project-support/access`, { code });
+      try { sessionStorage.setItem(TOKEN_KEY, data.token); } catch {}
+      setAccessToken(data.token);
+    } catch (err) {
+      const d = err?.response?.data;
+      setCodeError((isRTL ? d?.messageAr : d?.message) || (isRTL ? 'تعذّر التحقق — حاول مجدداً' : 'Could not verify — please retry'));
+    } finally {
+      setChecking(false);
+    }
+  };
+
+  // The admin's share link carries the code (?code=…) — open directly
+  // and drop it from the address bar.
+  useEffect(() => {
+    const c = searchParams.get('code');
+    if (!c) return;
+    searchParams.delete('code');
+    setSearchParams(searchParams, { replace: true });
+    setCodeInput(c.toUpperCase());
+    unlock(c);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const patch = (k, v) => setForm(f => ({ ...f, [k]: v }));
 
@@ -143,16 +182,93 @@ const ProjectSupportForm = () => {
       const { data } = await axios.post(`${API_URL}/public/project-support/submit`, {
         ...form,
         age: form.age ? Number(form.age) : null,
-        files
+        files,
+        accessToken
       });
       setResult({ requestNumber: data.requestNumber || 'PSR-—' });
     } catch (err) {
+      // Code changed or the token expired — back to the code screen;
+      // what was typed in the form stays.
+      if (err?.response?.data?.code === 'PSR_ACCESS_REQUIRED') {
+        try { sessionStorage.removeItem(TOKEN_KEY); } catch {}
+        setAccessToken('');
+        setCodeError(isRTL ? err.response.data.messageAr : err.response.data.message);
+        return;
+      }
       const msg = err?.response?.data?.messageAr || err?.response?.data?.message;
       toast.error(msg || (isRTL ? 'تعذّر إرسال الطلب — حاول مجدداً' : 'Submit failed — please retry'));
     } finally {
       setSubmitting(false);
     }
   };
+
+  const topbar = (
+    <header className="psr-topbar">
+      <button type="button" className="psr-brand" onClick={() => navigate('/register')}>
+        <img src="/logo.png" alt="" />
+        <div>
+          <div className="psr-brand-title">{isRTL ? 'فاب لاب الأحساء' : 'FabLab Al-Ahsa'}</div>
+          <div className="psr-brand-sub">{isRTL ? 'طلب دعم للمشروع' : 'Project Support Request'}</div>
+        </div>
+      </button>
+      <div className="psr-topbar-actions">
+        <button
+          type="button"
+          className="psr-lang"
+          onClick={() => i18n.changeLanguage(isRTL ? 'en' : 'ar')}
+        >{isRTL ? 'EN' : 'ع'}</button>
+        <button type="button" className="psr-home" onClick={() => navigate('/register')}>
+          {isRTL ? 'الرئيسية' : 'Home'}
+        </button>
+      </div>
+    </header>
+  );
+
+  // ─────────────── Access code screen ───────────────
+  if (!accessToken && !result) {
+    return (
+      <div className="psr" dir={isRTL ? 'rtl' : 'ltr'}>
+        {topbar}
+        <div className="psr-container">
+          <motion.form
+            className="psr-gate"
+            onSubmit={(e) => { e.preventDefault(); unlock(codeInput); }}
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ type: 'spring', damping: 24 }}
+          >
+            <div className="psr-gate-icon" aria-hidden="true">🔒</div>
+            <h1>{isRTL ? 'طلب دعم للمشروع — برمز دخول' : 'Project support — by access code'}</h1>
+            <p>
+              {isRTL
+                ? 'هذه الصفحة مغلقة، ولا يمكن تقديم طلب دعم إلا برمز دخول تزوّدك به إدارة فاب لاب الأحساء. أدخل الرمز للمتابعة.'
+                : 'This page is closed. A support request can only be submitted with an access code from the FabLab Al-Ahsa team. Enter it to continue.'}
+            </p>
+            <input
+              className={`psr-gate-input ${codeError ? 'has-error' : ''}`}
+              value={codeInput}
+              onChange={(e) => { setCodeInput(e.target.value.toUpperCase()); setCodeError(''); }}
+              placeholder={isRTL ? 'رمز الدخول' : 'Access code'}
+              aria-label={isRTL ? 'رمز الدخول' : 'Access code'}
+              aria-invalid={!!codeError}
+              autoComplete="off"
+              spellCheck={false}
+              maxLength={20}
+              dir="ltr"
+              autoFocus
+            />
+            {codeError && <div className="psr-gate-error" role="alert">{codeError}</div>}
+            <button type="submit" className="psr-btn primary psr-gate-btn" disabled={!codeInput.trim() || checking}>
+              {checking ? (isRTL ? 'جارٍ التحقق…' : 'Checking…') : (isRTL ? 'متابعة' : 'Continue')}
+            </button>
+            <p className="psr-gate-note">
+              {isRTL ? 'ليس لديك رمز؟ تواصل مع فاب لاب الأحساء.' : "Don't have a code? Contact FabLab Al-Ahsa."}
+            </p>
+          </motion.form>
+        </div>
+      </div>
+    );
+  }
 
   // ─────────────── Success screen ───────────────
   if (result) {
@@ -207,26 +323,7 @@ const ProjectSupportForm = () => {
 
   return (
     <div className="psr" dir={isRTL ? 'rtl' : 'ltr'}>
-      {/* Top bar */}
-      <header className="psr-topbar">
-        <button type="button" className="psr-brand" onClick={() => navigate('/register')}>
-          <img src="/logo.png" alt="" />
-          <div>
-            <div className="psr-brand-title">{isRTL ? 'فاب لاب الأحساء' : 'FabLab Al-Ahsa'}</div>
-            <div className="psr-brand-sub">{isRTL ? 'طلب دعم للمشروع' : 'Project Support Request'}</div>
-          </div>
-        </button>
-        <div className="psr-topbar-actions">
-          <button
-            type="button"
-            className="psr-lang"
-            onClick={() => i18n.changeLanguage(isRTL ? 'en' : 'ar')}
-          >{isRTL ? 'EN' : 'ع'}</button>
-          <button type="button" className="psr-home" onClick={() => navigate('/register')}>
-            {isRTL ? 'الرئيسية' : 'Home'}
-          </button>
-        </div>
-      </header>
+      {topbar}
 
       {/* Hero */}
       <div className="psr-hero">

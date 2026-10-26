@@ -66,6 +66,9 @@ const Print3DTab = () => {
   const [adminNote, setAdminNote] = useState('');
   const [statusEdit, setStatusEdit] = useState('');
   const [savingStatus, setSavingStatus] = useState(false);
+  // Status email to the customer; the note goes in only when ticked.
+  const [notifyCustomer, setNotifyCustomer] = useState(false);
+  const [includeNote, setIncludeNote] = useState(false);
 
   const fetchAll = useCallback(async () => {
     setLoading(true);
@@ -122,6 +125,8 @@ const Print3DTab = () => {
     setMultiOverride(r.multiColorFee != null ? r.multiColorFee : (rates?.multiColorFee ?? ''));
     setAdminNote(r.adminNotes || '');
     setStatusEdit(r.status);
+    setNotifyCustomer(false);
+    setIncludeNote(false);
     try {
       const { data } = await api.get(`/print3d/${r.requestId}`);
       setDetail(data);
@@ -166,11 +171,23 @@ const Print3DTab = () => {
     try {
       const { data } = await api.patch(`/print3d/${selected.requestId}/status`, {
         status: statusEdit,
-        adminNotes: adminNote
+        adminNotes: adminNote,
+        notifyCustomer,
+        includeNote: notifyCustomer && includeNote && !!adminNote.trim()
       });
       setDetail(data);
       setRows(rs => rs.map(x => x.requestId === selected.requestId ? { ...x, status: data.status, adminNotes: data.adminNotes } : x));
-      toast.success(isRTL ? 'تم تحديث الحالة' : 'Status updated');
+      if (!notifyCustomer) {
+        toast.success(isRTL ? 'تم تحديث الحالة' : 'Status updated');
+      } else if (data.emailSent) {
+        toast.success(isRTL ? 'تم تحديث الحالة وإرسال البريد للعميل' : 'Status updated and the customer was emailed');
+        setNotifyCustomer(false);
+        setIncludeNote(false);
+      } else {
+        toast.warn(isRTL
+          ? `تم تحديث الحالة، لكن تعذّر إرسال البريد للعميل (${data.emailError || 'غير معروف'})`
+          : `Status updated, but the email could not be sent (${data.emailError || 'unknown'})`);
+      }
     } catch (err) {
       toast.error(isRTL ? 'تعذّر التحديث' : 'Update failed');
     } finally {
@@ -654,24 +671,46 @@ const Print3DTab = () => {
                     <div className="p3t-status-edit">
                       <label>
                         <span>{isRTL ? 'الحالة' : 'Status'}</span>
-                        <select value={statusEdit} onChange={e => setStatusEdit(e.target.value)}>
+                        <select value={statusEdit} onChange={e => { setStatusEdit(e.target.value); setNotifyCustomer(e.target.value !== detail.status); }}>
                           {STATUS_ORDER.map(s => (
                             <option key={s} value={s}>{isRTL ? STATUS_BADGES[s].text : s}</option>
                           ))}
                         </select>
                       </label>
                       <label className="p3t-status-note">
-                        <span>{isRTL ? 'ملاحظة داخلية' : 'Admin note'}</span>
+                        <span>{isRTL ? 'ملاحظة / رسالة' : 'Note / message'}</span>
                         <textarea
                           rows={2}
                           value={adminNote}
                           onChange={e => setAdminNote(e.target.value)}
-                          placeholder={isRTL ? 'ملاحظات لا تظهر للعميل...' : 'Notes that stay private...'}
+                          placeholder={isRTL ? 'لا تظهر للعميل إلا إذا اخترت إرفاقها بالبريد...' : 'Stays private unless you include it in the email...'}
                         />
                       </label>
                       <button type="button" className="p3t-btn p3t-btn--secondary" onClick={saveStatus} disabled={savingStatus}>
-                        {savingStatus ? (isRTL ? 'جاري الحفظ...' : 'Saving...') : (isRTL ? 'حفظ التحديث' : 'Save update')}
+                        {savingStatus
+                          ? (isRTL ? 'جاري الحفظ...' : 'Saving...')
+                          : notifyCustomer
+                            ? (isRTL ? 'حفظ وإرسال' : 'Save & email')
+                            : (isRTL ? 'حفظ التحديث' : 'Save update')}
                       </button>
+                      <div className="p3t-status-email">
+                        <label className="p3t-quote-check">
+                          <input type="checkbox" checked={notifyCustomer} onChange={e => setNotifyCustomer(e.target.checked)} />
+                          <span>
+                            📧 {isRTL ? 'إرسال تحديث الحالة للعميل بالبريد' : 'Email the status update to the customer'}
+                            {detail.customerEmail && <> <span dir="ltr" className="p3t-status-email-to">({detail.customerEmail})</span></>}
+                          </span>
+                        </label>
+                        <label className={`p3t-quote-check ${!notifyCustomer || !adminNote.trim() ? 'is-off' : ''}`}>
+                          <input
+                            type="checkbox"
+                            checked={notifyCustomer && includeNote && !!adminNote.trim()}
+                            disabled={!notifyCustomer || !adminNote.trim()}
+                            onChange={e => setIncludeNote(e.target.checked)}
+                          />
+                          <span>💬 {isRTL ? 'إرفاق الملاحظة / الرسالة في البريد' : 'Include the note / message in the email'}</span>
+                        </label>
+                      </div>
                     </div>
                   </section>
                 </div>

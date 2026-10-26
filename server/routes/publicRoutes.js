@@ -66,6 +66,7 @@ router.post('/volunteer-opportunity/:token/decide', vorController.publicDecide);
 // Project Support Request — public submit + manager approval via
 // emailed token. Also a per-file download route so the manager can
 // pull attached files from the review page without pre-loading them.
+router.post('/project-support/access',                     psrController.publicAccess);
 router.post('/project-support/submit',                     psrController.publicCreate);
 router.get('/project-support/:token',                      psrController.publicGetByToken);
 router.get('/project-support/:token/file/:index',          psrController.publicDownloadFile);

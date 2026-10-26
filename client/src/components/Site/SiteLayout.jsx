@@ -24,7 +24,7 @@ const NAV = [
   { key: 'services', items: [['courses', '/workshops'], ['ourServices', '/services']] },
   { key: 'media', to: '/media' },
   { key: 'stories', to: '/success-stories' },
-  { key: 'joinUs', items: [['volunteer', '/volunteer'], ['internship', '/internship'], ['talented', '/i-am-talented'], ['contact', '#contact']] }
+  { key: 'joinUs', items: [['internship', '/internship'], ['talented', '/i-am-talented'], ['contact', '#contact']] }
 ];
 
 export const REGISTER_MENU = [

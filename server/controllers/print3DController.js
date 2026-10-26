@@ -355,6 +355,9 @@ exports.publicGetByToken = async (req, res) => {
     // Strip file payloads from the public JSON response — the
     // customer only needs the quote details, never the file bytes.
     delete o.fileData;
+    // Internal admin note — the customer only gets it when the admin
+    // includes it in a status email.
+    delete o.adminNotes;
     if (Array.isArray(o.files)) {
       o.files = o.files.map(f => ({
         fileName: f?.fileName,
@@ -850,9 +853,47 @@ exports.quote = async (req, res) => {
   }
 };
 
+const STATUS_EMAIL = {
+  submitted: ['مستلم — قيد المراجعة', 'طلبك مستلم وقيد المراجعة من فريق الطباعة.'],
+  quoted:    ['عرض السعر جاهز', 'عرض السعر جاهز — افتح الرابط أدناه للموافقة عليه أو رفضه.'],
+  accepted:  ['تمت الموافقة', 'تم اعتماد طلبك وسيبدأ العمل عليه قريباً.'],
+  rejected:  ['مرفوض', 'نعتذر، لم يتم اعتماد الطلب.'],
+  printing:  ['قيد الطباعة', 'طلبك قيد الطباعة الآن.'],
+  ready:     ['جاهز للاستلام', 'طلبك جاهز للاستلام من فاب لاب الأحساء.'],
+  completed: ['مكتمل', 'تم إكمال طلبك — شكراً لاستخدامك خدمة الطباعة.'],
+  cancelled: ['ملغى', 'تم إلغاء طلب الطباعة.']
+};
+
+// Status update to the customer. The admin's note goes in only when
+// the admin ticks "include the note" — otherwise it stays internal.
+const _statusEmailHtml = (r, note) => {
+  const reqNo = fmtRequestNumber(r.requestNumber);
+  const [label, line] = STATUS_EMAIL[r.status] || [r.status, ''];
+  const link = r.quoteToken ? `${_publicOrigin()}/print-quote/${r.quoteToken}` : null;
+  return `<div style="font-family:Segoe UI,Tahoma,Arial,sans-serif;color:#0f172a;background:#f4f6fb;padding:24px" dir="rtl">
+    <div style="max-width:640px;margin:0 auto;background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 4px 20px rgba(15,23,42,0.08)">
+      <div style="background:linear-gradient(135deg,#0ea5e9,#2563eb);color:#fff;padding:20px 24px">
+        <div style="font-size:12px;letter-spacing:1px;opacity:0.85">FABLAB الأحساء · خدمة الطباعة</div>
+        <div style="font-size:20px;font-weight:800;margin-top:4px">تحديث على طلب الطباعة — ${esc(reqNo)}</div>
+      </div>
+      <div style="padding:22px 24px;font-size:14px;line-height:1.8">
+        <p>مرحباً <b>${esc(r.customerName)}</b>،</p>
+        <p>حالة طلبك الآن: <span style="display:inline-block;background:#e0f2fe;color:#0369a1;border:1px solid #7dd3fc;border-radius:999px;padding:2px 12px;font-weight:800">${esc(label)}</span></p>
+        ${line ? `<p>${esc(line)}</p>` : ''}
+        ${note ? `<div style="background:#f8fafc;border-right:4px solid #2563eb;border-radius:8px;padding:12px 16px;margin:16px 0">
+          <div style="font-weight:800;color:#1d4ed8;margin-bottom:4px">رسالة من فريق فاب لاب:</div>
+          <div style="white-space:pre-wrap">${esc(note)}</div>
+        </div>` : ''}
+        ${link ? `<div style="text-align:center;margin:22px 0"><a href="${link}" style="display:inline-block;background:#2563eb;color:#fff;padding:12px 28px;border-radius:10px;text-decoration:none;font-weight:800">عرض الطلب</a></div>` : ''}
+        <p style="font-size:11px;color:#6b7280;text-align:center">فاب لاب الأحساء · مؤسسة عبدالمنعم الراشد الإنسانية</p>
+      </div>
+    </div>
+  </div>`;
+};
+
 exports.updateStatus = async (req, res) => {
   try {
-    const { status, adminNotes } = req.body || {};
+    const { status, adminNotes, notifyCustomer, includeNote } = req.body || {};
     const allowed = ['submitted','quoted','accepted','rejected','printing','ready','completed','cancelled'];
     if (!allowed.includes(status)) return res.status(400).json({ message: 'Invalid status' });
     const r = await Print3DRequest.findByPk(req.params.id);
@@ -862,7 +903,28 @@ exports.updateStatus = async (req, res) => {
     if (status === 'completed') patch.completedAt = new Date();
     if (status === 'cancelled') patch.cancelledAt = new Date();
     await r.update(patch);
-    res.json(r);
+
+    // Optional email to the customer, with the note only when asked.
+    let emailSent = false;
+    let emailError = null;
+    if (notifyCustomer) {
+      const note = includeNote ? String(r.adminNotes || '').trim() : '';
+      const [label] = STATUS_EMAIL[r.status] || [r.status];
+      const reqNo = fmtRequestNumber(r.requestNumber);
+      const sent = await _sendMail(
+        r.customerEmail,
+        `تحديث طلب الطباعة ${reqNo} — ${label}`,
+        _statusEmailHtml(r, note),
+        `Print request ${reqNo}: ${r.status}${note ? `\n\n${note}` : ''}`
+      );
+      emailSent = sent.ok;
+      emailError = sent.ok ? null : sent.reason;
+      if (sent.ok) await r.update({ customerEmailSentAt: new Date() });
+    }
+    // Same shape as GET /:id (no file bytes) + the email outcome.
+    const out = _stripFileData(r);
+    delete out.fileData;
+    res.json({ ...out, emailSent, emailError });
   } catch (err) {
     console.error('print3d updateStatus:', err);
     res.status(500).json({ message: 'Server error' });
