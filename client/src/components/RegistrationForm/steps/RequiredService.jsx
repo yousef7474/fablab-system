@@ -1,10 +1,15 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { motion } from 'framer-motion';
+import WorkspacePolicyDialog from '../WorkspacePolicy';
 
-const RequiredService = ({ formData, onChange, onNext, onBack }) => {
+// In-person and online consultation are one or the other.
+const CONSULTATIONS = ['In-person consultation', 'Online consultation'];
+
+const RequiredService = ({ formData, onChange, onNext, onBack, theme }) => {
   const { t, i18n } = useTranslation();
   const isRTL = i18n.language === 'ar';
+  const [showPolicy, setShowPolicy] = useState(false);
 
   const services = [
     {
@@ -80,16 +85,6 @@ const RequiredService = ({ formData, onChange, onNext, onBack }) => {
       )
     },
     {
-      value: 'Volunteering',
-      labelEn: 'Volunteering',
-      labelAr: 'تطوع',
-      icon: (
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-          <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
-        </svg>
-      )
-    },
-    {
       value: 'Other',
       labelEn: 'Other',
       labelAr: 'أخرى',
@@ -118,6 +113,7 @@ const RequiredService = ({ formData, onChange, onNext, onBack }) => {
   };
 
   const canProceed = formData.requiredServices.length > 0;
+  const chosenConsultation = CONSULTATIONS.find(c => formData.requiredServices.includes(c));
 
   return (
     <div>
@@ -131,7 +127,8 @@ const RequiredService = ({ formData, onChange, onNext, onBack }) => {
       <div className="checkbox-grid">
         {services.map((service, index) => {
           const isSelected = formData.requiredServices.includes(service.value);
-          const isDisabled = formData.requiredServices.length >= 2 && !isSelected;
+          const blockedByConsultation = !isSelected && !!chosenConsultation && CONSULTATIONS.includes(service.value);
+          const isDisabled = (formData.requiredServices.length >= 2 && !isSelected) || blockedByConsultation;
 
           return (
             <motion.div
@@ -142,6 +139,17 @@ const RequiredService = ({ formData, onChange, onNext, onBack }) => {
               className={`checkbox-card ${isSelected ? 'selected' : ''} ${isDisabled ? 'disabled' : ''}`}
               onClick={() => !isDisabled && handleServiceToggle(service.value)}
             >
+              {service.value === 'Personal workspace' && (
+                <button
+                  type="button"
+                  className="rs-info-btn"
+                  onClick={(e) => { e.stopPropagation(); setShowPolicy(true); }}
+                  title={isRTL ? 'سياسة استخدام مساحة العمل' : 'Workspace policy'}
+                  aria-label={isRTL ? 'سياسة استخدام مساحة العمل' : 'Workspace policy'}
+                >
+                  !
+                </button>
+              )}
               <div className="checkbox-card-check">
                 {isSelected && (
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
@@ -155,10 +163,27 @@ const RequiredService = ({ formData, onChange, onNext, onBack }) => {
               <div className="checkbox-card-label">
                 {isRTL ? service.labelAr : service.labelEn}
               </div>
+              {blockedByConsultation && (
+                <div className="rs-card-note">
+                  {isRTL ? 'لا تُجمع مع الاستشارة المختارة' : "Can't combine with the chosen consultation"}
+                </div>
+              )}
             </motion.div>
           );
         })}
       </div>
+
+      {chosenConsultation && (
+        <p className="rs-consult-hint">
+          {isRTL
+            ? 'ℹ️ يمكن اختيار نوع واحد فقط من الاستشارة: حضورية أو عن بعد.'
+            : 'ℹ️ Only one consultation type can be chosen: in-person or online.'}
+        </p>
+      )}
+
+      {showPolicy && (
+        <WorkspacePolicyDialog theme={theme} isRTL={isRTL} onClose={() => setShowPolicy(false)} />
+      )}
 
       {formData.requiredServices.includes('Other') && (
         <motion.div

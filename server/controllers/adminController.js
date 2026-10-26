@@ -357,7 +357,9 @@ exports.updateRegistrationStatus = async (req, res) => {
             fablabSection: registration.fablabSection,
             statusChangeReason: statusChangeReason || null,
             isStatusChange: isStatusChange || false,
-            previousStatus: previousStatus || oldStatus
+            previousStatus: previousStatus || oldStatus,
+            requiredServices: registration.requiredServices,
+            otherServiceDetails: registration.otherServiceDetails
           }
         );
         emailSent = true;

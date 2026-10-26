@@ -205,7 +205,7 @@ Would you like to know more about a specific service?`
         ar: `📝 **خطوات التسجيل:**
 
 1️⃣ **البحث عن حساب** - أدخل رقم الهوية أو الهاتف للتحقق
-2️⃣ **نوع الطلب** - اختر: مستفيد، زائر، متطوع، موهوب، كيان، أو زيارة
+2️⃣ **نوع الطلب** - اختر: مستفيد، زائر، موهوب، كيان، أو زيارة
 3️⃣ **البيانات الشخصية** - أدخل معلوماتك الأساسية
 4️⃣ **القسم** - اختر القسم المناسب لاحتياجاتك
 5️⃣ **الخدمة** - حدد الخدمات المطلوبة
@@ -217,7 +217,7 @@ Would you like to know more about a specific service?`
         en: `📝 **Registration Steps:**
 
 1️⃣ **Account Lookup** - Enter your ID or phone to check
-2️⃣ **Application Type** - Choose: Beneficiary, Visitor, Volunteer, Talented, Entity, or Visit
+2️⃣ **Application Type** - Choose: Beneficiary, Visitor, Talented, Entity, or Visit
 3️⃣ **Personal Info** - Enter your basic information
 4️⃣ **Section** - Select the section that fits your needs
 5️⃣ **Service** - Choose required services
@@ -475,8 +475,8 @@ Costs vary based on:
         ? 'أنت الآن في صفحة البحث. أدخل رقم الهوية أو الهاتف للتحقق من تسجيلك السابق، أو اختر "تسجيل جديد".'
         : "You're on the lookup page. Enter your ID or phone to check previous registration, or choose 'New Registration'.",
       '0': isRTL
-        ? 'اختر نوع الطلب المناسب لك. إذا كنت فرداً، اختر مستفيد أو زائر. للمتطوعين اختر متطوع.'
-        : "Choose your application type. If you're an individual, select Beneficiary or Visitor. For volunteering, choose Volunteer.",
+        ? 'اختر نوع الطلب المناسب لك. إذا كنت فرداً، اختر مستفيد أو زائر.'
+        : "Choose your application type. If you're an individual, select Beneficiary or Visitor.",
       '1': isRTL
         ? 'أدخل بياناتك الشخصية. جميع الحقول المميزة بنجمة (*) إلزامية.'
         : "Enter your personal information. All fields marked with (*) are required.",

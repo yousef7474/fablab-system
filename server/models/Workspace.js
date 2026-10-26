@@ -50,6 +50,13 @@ const Workspace = sequelize.define('Workspace', {
     type: DataTypes.TIME,
     allowNull: false
   },
+  // Attendance days inside the period, when the person doesn't come
+  // every day: [{ day: 0-6 (0 = Sunday), startTime: 'HH:mm', endTime: 'HH:mm' }].
+  // null = every day of the period. Printed on the banner.
+  schedule: {
+    type: DataTypes.JSON,
+    allowNull: true
+  },
   // Photo before
   photoBefore: {
     type: DataTypes.TEXT,

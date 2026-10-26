@@ -227,6 +227,22 @@ exports.createRegistration = async (req, res) => {
       return entityDenied();
     }
 
+    // Volunteering is no longer offered on this form, and the in-person
+    // and online consultations are one or the other.
+    if (applicationType === 'Volunteer' || (Array.isArray(requiredServices) && requiredServices.includes('Volunteering'))) {
+      return res.status(400).json({
+        message: 'Volunteer registration is no longer available',
+        messageAr: 'التسجيل كمتطوع لم يعد متاحاً'
+      });
+    }
+    if (Array.isArray(requiredServices)
+      && requiredServices.includes('In-person consultation') && requiredServices.includes('Online consultation')) {
+      return res.status(400).json({
+        message: 'Choose either an in-person or an online consultation, not both',
+        messageAr: 'اختر الاستشارة الحضورية أو الاستشارة عن بعد — لا يمكن الجمع بينهما'
+      });
+    }
+
     // Create or get user
     if (existingUserId) {
       user = await User.findByPk(existingUserId);
@@ -357,7 +373,7 @@ exports.createRegistration = async (req, res) => {
 
     // Send confirmation to user
     try {
-      await sendRegistrationConfirmation(user.email, userName, registrationId);
+      await sendRegistrationConfirmation(user.email, userName, registrationId, { requiredServices, otherServiceDetails });
     } catch (emailError) {
       console.error('Failed to send user confirmation email:', emailError);
     }
@@ -372,7 +388,12 @@ exports.createRegistration = async (req, res) => {
         appointmentDate: appointmentDate || visitDate || startDate,
         appointmentTime: appointmentTime || visitStartTime || startTime,
         requiredServices,
-        serviceDetails
+        otherServiceDetails,
+        serviceDetails,
+        applicationType: user.applicationType,
+        currentJob: user.currentJob,
+        entityName: user.entityName,
+        visitingEntity: user.visitingEntity
       });
     } catch (emailError) {
       console.error('Failed to send engineer notification email:', emailError);

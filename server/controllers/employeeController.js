@@ -632,7 +632,9 @@ exports.updateMyRegistrationStatus = async (req, res) => {
             appointmentDuration: registration.appointmentDuration,
             fablabSection: registration.fablabSection,
             isStatusChange: previousStatus !== status,
-            previousStatus
+            previousStatus,
+            requiredServices: registration.requiredServices,
+            otherServiceDetails: registration.otherServiceDetails
           }
         );
         emailSent = true;

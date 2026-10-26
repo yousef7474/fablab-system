@@ -34,7 +34,6 @@ export const REGISTER_MENU = [
   ['regProjectSupport', '/project-support', 'fa-lightbulb'],
   ['reg3d', '/print-service', 'fa-cube'],
   ['regStore', '/store', 'fa-store'],
-  ['regVolunteer', '/register?type=Volunteer', 'fa-hands-helping'],
   ['regTalented', '/i-am-talented', 'fa-star'],
   ['regInternship', '/internship', 'fa-user-graduate']
 ];

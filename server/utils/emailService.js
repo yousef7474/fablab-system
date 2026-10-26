@@ -26,6 +26,7 @@ const serviceTranslations = {
   'Personal workspace': 'مساحة عمل شخصية',
   'Support in project implementation': 'دعم في تنفيذ المشروع',
   'FABLAB Visit': 'زيارة فاب لاب',
+  'Volunteering': 'تطوع',
   'Other': 'أخرى',
   'PCB Design': 'تصميم الدوائر المطبوعة',
   'PCB Fabrication': 'تصنيع الدوائر المطبوعة',
@@ -81,6 +82,45 @@ const translateServicesEn = (services) => {
   return 'N/A';
 };
 
+const escapeHtml = (s) => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+// Selected services for an email line, with the "Other" text the
+// person typed. Escaped — safe to drop into the HTML.
+const servicesLine = (services, otherDetails, lang = 'ar') => {
+  const list = Array.isArray(services) ? services : (services ? [services] : []);
+  if (!list.length) return '';
+  return list.map(s => {
+    const label = escapeHtml(lang === 'ar' ? (serviceTranslations[s] || s) : s);
+    return s === 'Other' && otherDetails ? `${label} (${escapeHtml(otherDetails)})` : label;
+  }).join(lang === 'ar' ? '، ' : ', ');
+};
+
+const applicationTypeLabels = {
+  Beneficiary: ['مستفيد', 'Beneficiary'],
+  Visitor: ['زائر', 'Visitor'],
+  Volunteer: ['متطوع', 'Volunteer'],
+  Talented: ['موهوب', 'Talented'],
+  Entity: ['كيان', 'Entity'],
+  'FABLAB Visit': ['زيارة فاب لاب', 'FABLAB Visit']
+};
+
+const entityNamesAr = {
+  'FABLAB AL-Ahsa': 'فاب لاب الأحساء',
+  'Noura Al-Mousa House for Culture and Arts': 'دار نورة الموسى للثقافة والفنون',
+  'Al-Ahsa Academy for Crafts': 'أكاديمية الأحساء للحرف',
+  'Creativity and Innovation Training Center': 'مركز الإبداع والابتكار للتدريب',
+  'Abdulmonem Al-Rashed Foundation': 'مؤسسة عبدالمنعم الراشد'
+};
+
+// Where the visitor is coming from (الجهة القادمة): the entity for an
+// Entity registration, the visiting party for a FabLab visit, otherwise
+// the organisation the person entered (school / university / company).
+const comingFromLine = ({ applicationType, entityName, visitingEntity, currentJob }, lang = 'ar') => {
+  if (applicationType === 'Entity' && entityName) return escapeHtml(lang === 'ar' ? (entityNamesAr[entityName] || entityName) : entityName);
+  if (applicationType === 'FABLAB Visit' && visitingEntity) return escapeHtml(visitingEntity);
+  return escapeHtml(currentJob || visitingEntity || '');
+};
+
 // Get employee email by section from database ONLY (no fallback to env variables)
 const getEmployeeEmailBySection = async (section) => {
   try {
@@ -120,7 +160,9 @@ const getEmployeeEmailBySection = async (section) => {
 };
 
 // Send registration confirmation to user
-const sendRegistrationConfirmation = async (userEmail, userName, registrationId) => {
+const sendRegistrationConfirmation = async (userEmail, userName, registrationId, { requiredServices, otherServiceDetails } = {}) => {
+  const servicesAr = servicesLine(requiredServices, otherServiceDetails, 'ar');
+  const servicesEn = servicesLine(requiredServices, otherServiceDetails, 'en');
   const msg = {
     to: userEmail,
     from: {
@@ -133,12 +175,14 @@ const sendRegistrationConfirmation = async (userEmail, userName, registrationId)
         <h2>مرحباً ${userName}</h2>
         <p>تم استلام طلب التسجيل الخاص بك بنجاح.</p>
         <p>رقم التسجيل: <strong>${registrationId}</strong></p>
+        ${servicesAr ? `<p>نوع الخدمة: <strong>${servicesAr}</strong></p>` : ''}
         <p>سيتم مراجعة طلبك من قبل المهندس المسؤول وسيتم إرسال رسالة تأكيد إليك قريباً.</p>
         <br>
         <div dir="ltr">
           <h2>Hello ${userName}</h2>
           <p>Your registration request has been received successfully.</p>
           <p>Registration ID: <strong>${registrationId}</strong></p>
+          ${servicesEn ? `<p>Service: <strong>${servicesEn}</strong></p>` : ''}
           <p>Your request will be reviewed by the responsible engineer and a confirmation message will be sent to you soon.</p>
         </div>
         <br>
@@ -165,10 +209,13 @@ const sendEngineerNotification = async (section, registrationData) => {
     return;
   }
 
-  const { userName, userEmail, registrationId, appointmentDate, appointmentTime, requiredServices, serviceDetails } = registrationData;
-  const servicesTextAr = translateServicesAr(requiredServices);
-  const servicesTextEn = translateServicesEn(requiredServices);
+  const { userName, userEmail, registrationId, appointmentDate, appointmentTime, requiredServices, otherServiceDetails, serviceDetails, applicationType } = registrationData;
+  const servicesTextAr = servicesLine(requiredServices, otherServiceDetails, 'ar') || translateServicesAr(requiredServices);
+  const servicesTextEn = servicesLine(requiredServices, otherServiceDetails, 'en') || translateServicesEn(requiredServices);
   const sectionAr = translateSection(section);
+  const [typeAr, typeEn] = applicationTypeLabels[applicationType] || [applicationType || 'غير محدد', applicationType || 'N/A'];
+  const comingFromAr = comingFromLine(registrationData, 'ar');
+  const comingFromEn = comingFromLine(registrationData, 'en');
 
   const msg = {
     to: engineerData.email,
@@ -186,6 +233,8 @@ const sendEngineerNotification = async (section, registrationData) => {
             <tr><td style="padding: 8px 0; border-bottom: 1px solid #eee;"><strong>القسم:</strong></td><td style="padding: 8px 0; border-bottom: 1px solid #eee;">${sectionAr}</td></tr>
             <tr><td style="padding: 8px 0; border-bottom: 1px solid #eee;"><strong>رقم التسجيل:</strong></td><td style="padding: 8px 0; border-bottom: 1px solid #eee;">${registrationId}</td></tr>
             <tr><td style="padding: 8px 0; border-bottom: 1px solid #eee;"><strong>اسم المستخدم:</strong></td><td style="padding: 8px 0; border-bottom: 1px solid #eee;">${userName}</td></tr>
+            <tr><td style="padding: 8px 0; border-bottom: 1px solid #eee;"><strong>نوع الطلب:</strong></td><td style="padding: 8px 0; border-bottom: 1px solid #eee;">${typeAr}</td></tr>
+            <tr><td style="padding: 8px 0; border-bottom: 1px solid #eee;"><strong>الجهة القادمة:</strong></td><td style="padding: 8px 0; border-bottom: 1px solid #eee;">${comingFromAr || 'غير محدد'}</td></tr>
             <tr><td style="padding: 8px 0; border-bottom: 1px solid #eee;"><strong>البريد الإلكتروني:</strong></td><td style="padding: 8px 0; border-bottom: 1px solid #eee;">${userEmail}</td></tr>
             <tr><td style="padding: 8px 0; border-bottom: 1px solid #eee;"><strong>التاريخ:</strong></td><td style="padding: 8px 0; border-bottom: 1px solid #eee;">${appointmentDate || 'غير محدد'}</td></tr>
             <tr><td style="padding: 8px 0; border-bottom: 1px solid #eee;"><strong>الوقت:</strong></td><td style="padding: 8px 0; border-bottom: 1px solid #eee;">${appointmentTime || 'غير محدد'}</td></tr>
@@ -203,6 +252,8 @@ const sendEngineerNotification = async (section, registrationData) => {
             <tr><td style="padding: 8px 0; border-bottom: 1px solid #eee;"><strong>Section:</strong></td><td style="padding: 8px 0; border-bottom: 1px solid #eee;">${section}</td></tr>
             <tr><td style="padding: 8px 0; border-bottom: 1px solid #eee;"><strong>Registration ID:</strong></td><td style="padding: 8px 0; border-bottom: 1px solid #eee;">${registrationId}</td></tr>
             <tr><td style="padding: 8px 0; border-bottom: 1px solid #eee;"><strong>User Name:</strong></td><td style="padding: 8px 0; border-bottom: 1px solid #eee;">${userName}</td></tr>
+            <tr><td style="padding: 8px 0; border-bottom: 1px solid #eee;"><strong>Applicant Type:</strong></td><td style="padding: 8px 0; border-bottom: 1px solid #eee;">${typeEn}</td></tr>
+            <tr><td style="padding: 8px 0; border-bottom: 1px solid #eee;"><strong>Coming From:</strong></td><td style="padding: 8px 0; border-bottom: 1px solid #eee;">${comingFromEn || 'N/A'}</td></tr>
             <tr><td style="padding: 8px 0; border-bottom: 1px solid #eee;"><strong>Email:</strong></td><td style="padding: 8px 0; border-bottom: 1px solid #eee;">${userEmail}</td></tr>
             <tr><td style="padding: 8px 0; border-bottom: 1px solid #eee;"><strong>Date:</strong></td><td style="padding: 8px 0; border-bottom: 1px solid #eee;">${appointmentDate || 'N/A'}</td></tr>
             <tr><td style="padding: 8px 0; border-bottom: 1px solid #eee;"><strong>Time:</strong></td><td style="padding: 8px 0; border-bottom: 1px solid #eee;">${appointmentTime || 'N/A'}</td></tr>
@@ -239,8 +290,13 @@ const sendStatusUpdateEmail = async (userEmail, userName, registrationId, status
     sendMessage = false,
     statusChangeReason = null,
     isStatusChange = false,
-    previousStatus = null
+    previousStatus = null,
+    requiredServices = null,
+    otherServiceDetails = null
   } = options;
+
+  const servicesAr = servicesLine(requiredServices, otherServiceDetails, 'ar');
+  const servicesEn = servicesLine(requiredServices, otherServiceDetails, 'en');
 
   const isApproved = status === 'approved';
   const isRejected = status === 'rejected';
@@ -280,24 +336,26 @@ const sendStatusUpdateEmail = async (userEmail, userName, registrationId, status
   // Translate section name for emails
   const sectionAr = fablabSection ? translateSection(fablabSection) : null;
 
-  const appointmentInfo = appointmentDate ? `
+  const appointmentInfo = (appointmentDate || servicesAr) ? `
     <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; margin: 15px 0; border-right: 4px solid #EE2329;">
       <h4 style="margin: 0 0 10px 0; color: #333;">تفاصيل الموعد:</h4>
       <table style="width: 100%;">
-        <tr><td style="padding: 5px 0;"><strong>التاريخ:</strong></td><td>${formatDateStrAr(appointmentDate)}</td></tr>
-        <tr><td style="padding: 5px 0;"><strong>الوقت:</strong></td><td>${appointmentTime || 'غير محدد'}</td></tr>
+        ${servicesAr ? `<tr><td style="padding: 5px 0;"><strong>نوع الخدمة:</strong></td><td>${servicesAr}</td></tr>` : ''}
+        ${appointmentDate ? `<tr><td style="padding: 5px 0;"><strong>التاريخ:</strong></td><td>${formatDateStrAr(appointmentDate)}</td></tr>
+        <tr><td style="padding: 5px 0;"><strong>الوقت:</strong></td><td>${appointmentTime || 'غير محدد'}</td></tr>` : ''}
         ${appointmentDuration ? `<tr><td style="padding: 5px 0;"><strong>المدة:</strong></td><td>${appointmentDuration} دقيقة</td></tr>` : ''}
         ${sectionAr ? `<tr><td style="padding: 5px 0;"><strong>القسم:</strong></td><td>${sectionAr}</td></tr>` : ''}
       </table>
     </div>
   ` : '';
 
-  const appointmentInfoEn = appointmentDate ? `
+  const appointmentInfoEn = (appointmentDate || servicesEn) ? `
     <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; margin: 15px 0; border-left: 4px solid #EE2329;">
       <h4 style="margin: 0 0 10px 0; color: #333;">Appointment Details:</h4>
       <table style="width: 100%;">
-        <tr><td style="padding: 5px 0;"><strong>Date:</strong></td><td>${formatDateStr(appointmentDate)}</td></tr>
-        <tr><td style="padding: 5px 0;"><strong>Time:</strong></td><td>${appointmentTime || 'Not specified'}</td></tr>
+        ${servicesEn ? `<tr><td style="padding: 5px 0;"><strong>Service:</strong></td><td>${servicesEn}</td></tr>` : ''}
+        ${appointmentDate ? `<tr><td style="padding: 5px 0;"><strong>Date:</strong></td><td>${formatDateStr(appointmentDate)}</td></tr>
+        <tr><td style="padding: 5px 0;"><strong>Time:</strong></td><td>${appointmentTime || 'Not specified'}</td></tr>` : ''}
         ${appointmentDuration ? `<tr><td style="padding: 5px 0;"><strong>Duration:</strong></td><td>${appointmentDuration} minutes</td></tr>` : ''}
         ${fablabSection ? `<tr><td style="padding: 5px 0;"><strong>Section:</strong></td><td>${fablabSection}</td></tr>` : ''}
       </table>

@@ -29,6 +29,74 @@ const _effectiveWorkspaceStatus = (ws, now) => {
   return s;
 };
 
+const MAX_ACTIVE_WORKSPACES = 8;
+
+const _normTable = (t) => String(t || '').trim().toLowerCase();
+
+// Rules for a workspace that is (or becomes) active: at most 8 active
+// at a time, and a table name can't be reused until the active
+// workspace holding it is completed. "Active" is the effective status,
+// so rows whose period already ended don't block anything. Returns an
+// error body, or null when allowed.
+const _activeRulesError = async (tableNumber, { excludeId = null, checkCount = true, checkName = true, transaction } = {}) => {
+  const now = _riyadhNow();
+  const rows = await Workspace.findAll({
+    where: { status: 'active' },
+    attributes: ['workspaceId', 'tableNumber', 'status', 'endDate', 'endTime'],
+    transaction
+  });
+  const active = rows.filter(w => w.workspaceId !== excludeId && _effectiveWorkspaceStatus(w, now) === 'active');
+  if (checkCount && active.length >= MAX_ACTIVE_WORKSPACES) {
+    return {
+      message: `Maximum of ${MAX_ACTIVE_WORKSPACES} active workspaces reached. Please complete or cancel an existing workspace first.`,
+      messageAr: `تم الوصول للحد الأقصى ${MAX_ACTIVE_WORKSPACES} مساحات عمل نشطة. يرجى إكمال أو إلغاء مساحة عمل حالية أولاً.`
+    };
+  }
+  const name = _normTable(tableNumber);
+  if (checkName && name && active.some(w => _normTable(w.tableNumber) === name)) {
+    return {
+      message: `Table "${String(tableNumber).trim()}" is already used by an active workspace. Complete it first to reuse the name.`,
+      messageAr: `الطاولة «${String(tableNumber).trim()}» مستخدمة في مساحة عمل نشطة. أكمل المساحة الحالية أولاً لاستخدام الاسم نفسه.`
+    };
+  }
+  return null;
+};
+
+// Create / update / extend run the rules and the write under one
+// advisory lock so two admins can't both take the 8th slot or the same
+// table at the same moment.
+const _withWorkspaceLock = (fn) => sequelize.transaction(async (transaction) => {
+  await sequelize.query("SELECT pg_advisory_xact_lock(hashtext('workspaces-active'))", { transaction });
+  return fn(transaction);
+});
+
+const _HHMM = /^([01]\d|2[0-3]):[0-5]\d$/;
+
+// Normalises the attendance schedule from the admin form. Returns
+// { schedule } (null = every day of the period) or { error }.
+const _cleanSchedule = (raw) => {
+  if (raw === undefined) return { schedule: undefined };
+  if (raw === null || (Array.isArray(raw) && raw.length === 0)) return { schedule: null };
+  if (!Array.isArray(raw)) return { error: { message: 'Invalid schedule', messageAr: 'جدول الحضور غير صحيح' } };
+  const seen = new Set();
+  const out = [];
+  for (const item of raw) {
+    const day = Number(item?.day);
+    const startTime = String(item?.startTime || '').slice(0, 5);
+    const endTime = String(item?.endTime || '').slice(0, 5);
+    if (!Number.isInteger(day) || day < 0 || day > 6 || seen.has(day)) {
+      return { error: { message: 'Invalid schedule day', messageAr: 'يوم غير صحيح في جدول الحضور' } };
+    }
+    if (!_HHMM.test(startTime) || !_HHMM.test(endTime) || endTime <= startTime) {
+      return { error: { message: 'Each schedule day needs a start time before its end time', messageAr: 'حدد لكل يوم في جدول الحضور وقت بداية قبل وقت النهاية' } };
+    }
+    seen.add(day);
+    out.push({ day, startTime, endTime });
+  }
+  out.sort((a, b) => a.day - b.day);
+  return { schedule: out };
+};
+
 /**
  * Get all workspaces
  */
@@ -157,12 +225,22 @@ exports.extendWorkspace = async (req, res) => {
     }
 
     // Extending also RE-OPENS the workspace: sets status back to
-    // 'active' so it stops rendering as completed in the UI.
-    await workspace.update({
-      endDate,
-      endTime: String(endTime).length === 5 ? `${endTime}:00` : endTime,
-      status: 'active'
+    // 'active' so it stops rendering as completed in the UI. A
+    // completed one coming back counts toward the 8 and its table name.
+    const wasActive = _effectiveWorkspaceStatus(workspace, _riyadhNow()) === 'active';
+    const ruleError = await _withWorkspaceLock(async (transaction) => {
+      if (!wasActive) {
+        const err = await _activeRulesError(workspace.tableNumber, { excludeId: workspace.workspaceId, transaction });
+        if (err) return err;
+      }
+      await workspace.update({
+        endDate,
+        endTime: String(endTime).length === 5 ? `${endTime}:00` : endTime,
+        status: 'active'
+      }, { transaction });
+      return null;
     });
+    if (ruleError) return res.status(409).json(ruleError);
 
     // Return shaped so the client sees the effective status right
     // away (should be 'active' — the new endTime is in the future).
@@ -187,6 +265,7 @@ exports.createWorkspace = async (req, res) => {
   try {
     const {
       tableNumber,
+      projectName,
       numberOfUsers,
       personName,
       personPhone,
@@ -199,24 +278,19 @@ exports.createWorkspace = async (req, res) => {
       notes
     } = req.body;
 
-    if (!tableNumber || !personName || !startDate || !startTime || !endDate || !endTime) {
+    if (!String(tableNumber || '').trim() || !personName || !startDate || !startTime || !endDate || !endTime) {
       return res.status(400).json({
         message: 'Table number, person name, and period are required',
         messageAr: 'رقم الطاولة واسم الشخص المسؤول والفترة مطلوبة'
       });
     }
 
-    const MAX_ACTIVE_WORKSPACES = 8;
-    const activeCount = await Workspace.count({ where: { status: 'active' } });
-    if (activeCount >= MAX_ACTIVE_WORKSPACES) {
-      return res.status(400).json({
-        message: `Maximum of ${MAX_ACTIVE_WORKSPACES} active workspaces reached. Please complete or cancel an existing workspace first.`,
-        messageAr: `تم الوصول للحد الأقصى ${MAX_ACTIVE_WORKSPACES} مساحات عمل نشطة. يرجى إكمال أو إلغاء مساحة عمل حالية أولاً.`
-      });
-    }
+    const { schedule, error: scheduleError } = _cleanSchedule(req.body.schedule);
+    if (scheduleError) return res.status(400).json(scheduleError);
 
-    const workspace = await Workspace.create({
-      tableNumber,
+    const fields = {
+      tableNumber: String(tableNumber).trim(),
+      projectName: projectName || null,
       numberOfUsers: numberOfUsers || 1,
       personName,
       personPhone,
@@ -225,10 +299,24 @@ exports.createWorkspace = async (req, res) => {
       startTime,
       endDate,
       endTime,
+      schedule: schedule || null,
       photoBefore,
       notes,
       createdById: req.admin.adminId
+    };
+
+    // A workspace recorded after its period ended is already completed
+    // and doesn't take a slot.
+    const isActive = _effectiveWorkspaceStatus({ status: 'active', endDate, endTime }, _riyadhNow()) === 'active';
+    const result = await _withWorkspaceLock(async (transaction) => {
+      if (isActive) {
+        const err = await _activeRulesError(fields.tableNumber, { transaction });
+        if (err) return { err };
+      }
+      return { workspace: await Workspace.create(fields, { transaction }) };
     });
+    if (result.err) return res.status(409).json(result.err);
+    const { workspace } = result;
 
     const createdWorkspace = await Workspace.findByPk(workspace.workspaceId, {
       include: [
@@ -251,6 +339,7 @@ exports.updateWorkspace = async (req, res) => {
     const { id } = req.params;
     const {
       tableNumber,
+      projectName,
       numberOfUsers,
       personName,
       personPhone,
@@ -274,8 +363,15 @@ exports.updateWorkspace = async (req, res) => {
       });
     }
 
-    await workspace.update({
-      tableNumber: tableNumber !== undefined ? tableNumber : workspace.tableNumber,
+    if (tableNumber !== undefined && !String(tableNumber || '').trim()) {
+      return res.status(400).json({ message: 'Table number is required', messageAr: 'رقم الطاولة مطلوب' });
+    }
+    const { schedule, error: scheduleError } = _cleanSchedule(req.body.schedule);
+    if (scheduleError) return res.status(400).json(scheduleError);
+
+    const next = {
+      tableNumber: tableNumber !== undefined ? String(tableNumber).trim() : workspace.tableNumber,
+      projectName: projectName !== undefined ? (projectName || null) : workspace.projectName,
       numberOfUsers: numberOfUsers !== undefined ? numberOfUsers : workspace.numberOfUsers,
       personName: personName !== undefined ? personName : workspace.personName,
       personPhone: personPhone !== undefined ? personPhone : workspace.personPhone,
@@ -284,11 +380,29 @@ exports.updateWorkspace = async (req, res) => {
       startTime: startTime !== undefined ? startTime : workspace.startTime,
       endDate: endDate !== undefined ? endDate : workspace.endDate,
       endTime: endTime !== undefined ? endTime : workspace.endTime,
+      schedule: schedule !== undefined ? schedule : workspace.schedule,
       photoBefore: photoBefore !== undefined ? photoBefore : workspace.photoBefore,
       photoAfter: photoAfter !== undefined ? photoAfter : workspace.photoAfter,
       status: status !== undefined ? status : workspace.status,
       notes: notes !== undefined ? notes : workspace.notes
+    };
+
+    // Only a change that makes the workspace active again, or renames
+    // an active one, is checked — an untouched active row (even an old
+    // duplicate) can still be edited.
+    const now = _riyadhNow();
+    const wasActive = _effectiveWorkspaceStatus(workspace, now) === 'active';
+    const willBeActive = _effectiveWorkspaceStatus(next, now) === 'active';
+    const renamed = _normTable(next.tableNumber) !== _normTable(workspace.tableNumber);
+    const ruleError = await _withWorkspaceLock(async (transaction) => {
+      if (willBeActive && (!wasActive || renamed)) {
+        const err = await _activeRulesError(next.tableNumber, { excludeId: workspace.workspaceId, checkCount: !wasActive, transaction });
+        if (err) return err;
+      }
+      await workspace.update(next, { transaction });
+      return null;
     });
+    if (ruleError) return res.status(409).json(ruleError);
 
     const updatedWorkspace = await Workspace.findByPk(id, {
       include: [
@@ -484,19 +598,19 @@ exports.deleteRating = async (req, res) => {
  */
 exports.getStatistics = async (req, res) => {
   try {
-    const totalWorkspaces = await Workspace.count();
-    const activeWorkspaces = await Workspace.count({ where: { status: 'active' } });
-    const completedWorkspaces = await Workspace.count({ where: { status: 'completed' } });
+    // Counted on the effective status (an 'active' row whose period
+    // ended is completed), same as the list.
+    const now = _riyadhNow();
+    const rows = await Workspace.findAll({ attributes: ['status', 'startDate', 'endDate', 'endTime'] });
+    const statuses = rows.map(w => _effectiveWorkspaceStatus(w, now));
+    const totalWorkspaces = rows.length;
+    const activeWorkspaces = statuses.filter(s => s === 'active').length;
+    const completedWorkspaces = statuses.filter(s => s === 'completed').length;
 
     // Today's workspaces
-    const today = new Date().toISOString().split('T')[0];
-    const todayWorkspaces = await Workspace.count({
-      where: {
-        startDate: { [Op.lte]: today },
-        endDate: { [Op.gte]: today },
-        status: 'active'
-      }
-    });
+    const todayWorkspaces = rows.filter((w, i) => statuses[i] === 'active'
+      && String(w.startDate).slice(0, 10) <= now.date
+      && String(w.endDate).slice(0, 10) >= now.date).length;
 
     res.json({
       totalWorkspaces,

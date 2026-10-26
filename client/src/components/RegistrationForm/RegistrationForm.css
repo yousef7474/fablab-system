@@ -5435,3 +5435,48 @@
   background: linear-gradient(135deg,
     rgba(238, 35, 41, 0.14), rgba(238, 35, 41, 0.04));
 }
+
+/* Required service: "!" policy button on Personal workspace, and the
+   note on a consultation that can't be combined with the chosen one. */
+.registration-page .form-card .rs-info-btn {
+  position: absolute;
+  top: 9px;
+  inset-inline-start: 9px;
+  z-index: 1;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  border: 1.5px solid rgba(251, 191, 36, 0.6);
+  background: rgba(251, 191, 36, 0.14);
+  color: #fbbf24;
+  font: 900 13px/1 'Outfit', system-ui, sans-serif;
+  cursor: pointer;
+  transition: transform 0.15s ease, background 0.15s ease;
+}
+.registration-page .form-card .rs-info-btn:hover,
+.registration-page .form-card .rs-info-btn:focus-visible {
+  transform: scale(1.12);
+  background: rgba(251, 191, 36, 0.28);
+  outline: none;
+}
+.registration-page[data-theme="light"] .form-card .rs-info-btn {
+  color: #b45309;
+  border-color: rgba(217, 119, 6, 0.5);
+  background: rgba(251, 191, 36, 0.16);
+}
+.registration-page .form-card .rs-card-note {
+  margin-top: 6px;
+  font-size: 0.72rem;
+  line-height: 1.4;
+  color: var(--text-lo, #94a3b8);
+}
+.registration-page .form-card .rs-consult-hint {
+  margin: -0.5rem 0 1.25rem;
+  font-size: 0.85rem;
+  color: var(--text-md, #cbd5e1);
+}
+.registration-page[data-theme="light"] .form-card .rs-card-note { color: #64748b; }
+.registration-page[data-theme="light"] .form-card .rs-consult-hint { color: #475569; }

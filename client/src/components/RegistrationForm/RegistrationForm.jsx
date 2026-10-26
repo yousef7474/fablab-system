@@ -18,6 +18,17 @@ import './RegistrationForm.css';
 
 const STORAGE_KEY = 'fablab_registration_form';
 
+// Volunteering is no longer offered on this form — a saved draft or a
+// returning volunteer starts with no type / without that service.
+const dropVolunteer = (type) => (type === 'Volunteer' ? '' : type);
+const CONSULTATIONS = ['In-person consultation', 'Online consultation'];
+const cleanServices = (list) => {
+  const out = (Array.isArray(list) ? list : []).filter(s => s !== 'Volunteering');
+  // In-person and online consultation are one or the other — keep the first.
+  const firstConsultation = out.find(s => CONSULTATIONS.includes(s));
+  return out.filter(s => !CONSULTATIONS.includes(s) || s === firstConsultation);
+};
+
 const getInitialFormData = () => {
   try {
     const saved = localStorage.getItem(STORAGE_KEY);
@@ -26,7 +37,7 @@ const getInitialFormData = () => {
       if (!parsed.formData) return null;
       // The Entity (كيان) unlock is per visit — never restored.
       const { entityAccessToken, ...rest } = parsed.formData;
-      return rest;
+      return { ...rest, applicationType: dropVolunteer(rest.applicationType || ''), requiredServices: cleanServices(rest.requiredServices) };
     }
   } catch (e) {
     console.error('Error loading saved form data:', e);
@@ -131,11 +142,11 @@ const RegistrationForm = () => {
   // ({ applicationType, fablabSection, requiredServices }). It is also
   // written into formData so the steps open pre-selected.
   const [guidedChoice, setGuidedChoice] = useState(null);
-  // /register?type=Volunteer (etc.) — the public website's buttons open
+  // /register?type=Talented (etc.) — the public website's buttons open
   // the form with the application type already chosen.
   const [presetType] = useState(() => {
     const t = searchParams.get('type');
-    return ['Beneficiary', 'Visitor', 'Volunteer', 'Talented', 'Entity'].includes(t) ? t : null;
+    return ['Beneficiary', 'Visitor', 'Talented', 'Entity'].includes(t) ? t : null;
   });
   useEffect(() => {
     if (!presetType) return;
@@ -273,7 +284,7 @@ const RegistrationForm = () => {
     setFormData({
       ...formData,
       existingUserId: userData.userId,
-      applicationType: guidedChoice?.applicationType || presetType || userData.applicationType || '',
+      applicationType: guidedChoice?.applicationType || presetType || dropVolunteer(userData.applicationType || ''),
       firstName: userData.firstName || '',
       lastName: userData.lastName || '',
       name: userData.name || '',

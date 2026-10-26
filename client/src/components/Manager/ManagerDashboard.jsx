@@ -23,6 +23,7 @@ import '../shared/ScheduleV2.css';
 import YearCalendar from '../YearCalendar/YearCalendar';
 import '../Admin/Admin.css';
 import './Manager.css';
+import { WorkspaceScheduleEditor, WorkspaceScheduleChips, scheduleError, scheduleBannerHtml, scheduleBannerClass, SCHEDULE_BANNER_CSS } from '../shared/workspaceSchedule';
 
 // Section colors (matching AdminDashboard)
 const SECTION_COLORS = {
@@ -269,6 +270,7 @@ const ManagerDashboard = () => {
     startTime: '',
     endDate: '',
     endTime: '',
+    schedule: null,
     photoBefore: '',
     notes: ''
   });
@@ -687,6 +689,8 @@ const ManagerDashboard = () => {
       toast.error(isRTL ? 'تم الوصول للحد الأقصى من مساحات العمل (8)' : 'Maximum number of workspaces reached (8)');
       return;
     }
+    const schedErr = scheduleError(workspaceForm.schedule, isRTL);
+    if (schedErr) { toast.error(schedErr); return; }
 
     setWorkspaceLoading(true);
     try {
@@ -697,10 +701,11 @@ const ManagerDashboard = () => {
       setShowWorkspaceModal(false);
       setWorkspaceForm({
         tableNumber: '', projectName: '', numberOfUsers: 1, personName: '', personPhone: '', personEmail: '',
-        startDate: '', startTime: '', endDate: '', endTime: '', photoBefore: '', notes: ''
+        startDate: '', startTime: '', endDate: '', endTime: '', schedule: null, photoBefore: '', notes: ''
       });
     } catch (error) {
-      toast.error(isRTL ? 'خطأ في إضافة مساحة العمل' : 'Error adding workspace');
+      const d = error?.response?.data;
+      toast.error((isRTL ? d?.messageAr : d?.message) || (isRTL ? 'خطأ في إضافة مساحة العمل' : 'Error adding workspace'));
     } finally {
       setWorkspaceLoading(false);
     }
@@ -708,6 +713,8 @@ const ManagerDashboard = () => {
 
   const handleUpdateWorkspace = async () => {
     if (!selectedWorkspace) return;
+    const schedErr = scheduleError(workspaceForm.schedule, isRTL);
+    if (schedErr) { toast.error(schedErr); return; }
 
     setWorkspaceLoading(true);
     try {
@@ -717,7 +724,8 @@ const ManagerDashboard = () => {
       setShowWorkspaceModal(false);
       setSelectedWorkspace(null);
     } catch (error) {
-      toast.error(isRTL ? 'خطأ في تحديث مساحة العمل' : 'Error updating workspace');
+      const d = error?.response?.data;
+      toast.error((isRTL ? d?.messageAr : d?.message) || (isRTL ? 'خطأ في تحديث مساحة العمل' : 'Error updating workspace'));
     } finally {
       setWorkspaceLoading(false);
     }
@@ -800,6 +808,7 @@ const ManagerDashboard = () => {
         startTime: workspace.startTime || '',
         endDate: workspace.endDate || '',
         endTime: workspace.endTime || '',
+        schedule: Array.isArray(workspace.schedule) && workspace.schedule.length ? workspace.schedule : null,
         photoBefore: workspace.photoBefore || '',
         notes: workspace.notes || ''
       });
@@ -807,7 +816,7 @@ const ManagerDashboard = () => {
       setSelectedWorkspace(null);
       setWorkspaceForm({
         tableNumber: '', projectName: '', numberOfUsers: 1, personName: '', personPhone: '', personEmail: '',
-        startDate: '', startTime: '', endDate: '', endTime: '', photoBefore: '', notes: ''
+        startDate: '', startTime: '', endDate: '', endTime: '', schedule: null, photoBefore: '', notes: ''
       });
     }
     setShowWorkspaceModal(true);
@@ -3041,10 +3050,11 @@ const ManagerDashboard = () => {
             .banner-wrapper { box-shadow: none; margin: 0; }
             .print-btn { display: none; }
           }
+          ${SCHEDULE_BANNER_CSS}
         </style>
       </head>
       <body>
-        <div class="banner-wrapper">
+        <div class="banner-wrapper${scheduleBannerClass(workspace.schedule)}">
           <!-- Top Header -->
           <div class="banner-top">
             <div class="banner-logo-left">
@@ -3156,6 +3166,8 @@ const ManagerDashboard = () => {
               <div class="duration-time">${endTimeF}</div>
             </div>
           </div>
+
+          ${scheduleBannerHtml(workspace.schedule, isRTL)}
 
           <!-- Rules & Terms -->
           <div class="rules-section">
@@ -7189,6 +7201,7 @@ const ManagerDashboard = () => {
                           <span className="period-value">{format(parseISO(workspace.endDate), 'MMM d', { locale: isRTL ? ar : enUS })} {formatTimeAMPM(workspace.endTime)}</span>
                         </div>
                       </div>
+                      <WorkspaceScheduleChips schedule={workspace.schedule} isRTL={isRTL} />
 
                       <div className="workspace-points">
                         <span className={`points-badge ${workspace.totalPoints >= 0 ? 'positive' : 'negative'}`}>
@@ -7493,6 +7506,13 @@ const ManagerDashboard = () => {
                       </div>
                     </div>
                   </div>
+                  <WorkspaceScheduleEditor
+                    value={workspaceForm.schedule}
+                    onChange={(schedule) => setWorkspaceForm(f => ({ ...f, schedule }))}
+                    isRTL={isRTL}
+                    defaultStart={workspaceForm.startTime}
+                    defaultEnd={workspaceForm.endTime}
+                  />
                 </div>
 
                 {/* Photo Upload Section */}
