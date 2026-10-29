@@ -23,7 +23,7 @@ import '../shared/ScheduleV2.css';
 import YearCalendar from '../YearCalendar/YearCalendar';
 import '../Admin/Admin.css';
 import './Manager.css';
-import { WorkspaceScheduleEditor, WorkspaceScheduleChips, scheduleError, scheduleBannerHtml, scheduleBannerClass, SCHEDULE_BANNER_CSS } from '../shared/workspaceSchedule';
+import { WorkspaceScheduleEditor, WorkspaceScheduleChips, WorkspaceStatusControl, activationError, scheduleError, scheduleBannerHtml, scheduleBannerClass, SCHEDULE_BANNER_CSS } from '../shared/workspaceSchedule';
 
 // Section colors (matching AdminDashboard)
 const SECTION_COLORS = {
@@ -256,6 +256,8 @@ const ManagerDashboard = () => {
   const [showWorkspaceRatingModal, setShowWorkspaceRatingModal] = useState(false);
   const [selectedWorkspace, setSelectedWorkspace] = useState(null);
   const [workspaceLoading, setWorkspaceLoading] = useState(false);
+  // Edit form opened from the card's "activate" button (new period).
+  const [workspaceActivating, setWorkspaceActivating] = useState(false);
   // Extend-period modal state — { workspace, endDate, endTime, saving }
   // or null when closed. Proper dialog, not a browser prompt.
   const [extendWorkspaceState, setExtendWorkspaceState] = useState(null);
@@ -713,14 +715,18 @@ const ManagerDashboard = () => {
 
   const handleUpdateWorkspace = async () => {
     if (!selectedWorkspace) return;
-    const schedErr = scheduleError(workspaceForm.schedule, isRTL);
+    const schedErr = scheduleError(workspaceForm.schedule, isRTL) || activationError(workspaceForm, isRTL);
     if (schedErr) { toast.error(schedErr); return; }
 
     setWorkspaceLoading(true);
     try {
       await api.put(`/workspaces/${selectedWorkspace.workspaceId}`, workspaceForm);
-      toast.success(isRTL ? 'تم تحديث مساحة العمل بنجاح' : 'Workspace updated successfully');
+      const reactivated = workspaceForm.status === 'active' && selectedWorkspace.status !== 'active';
+      toast.success(reactivated
+        ? (isRTL ? 'تم تفعيل مساحة العمل للفترة الجديدة' : 'Workspace activated for the new period')
+        : (isRTL ? 'تم تحديث مساحة العمل بنجاح' : 'Workspace updated successfully'));
       fetchWorkspaces();
+      fetchWorkspaceStats();
       setShowWorkspaceModal(false);
       setSelectedWorkspace(null);
     } catch (error) {
@@ -794,10 +800,12 @@ const ManagerDashboard = () => {
     }
   };
 
-  const openWorkspaceModal = (workspace = null) => {
+  const openWorkspaceModal = (workspace = null, { activate = false } = {}) => {
+    setWorkspaceActivating(!!(workspace && activate));
     if (workspace) {
       setSelectedWorkspace(workspace);
       setWorkspaceForm({
+        status: activate ? 'active' : (workspace.status || 'active'),
         tableNumber: workspace.tableNumber || '',
         projectName: workspace.projectName || '',
         numberOfUsers: workspace.numberOfUsers || 1,
@@ -7219,7 +7227,7 @@ const ManagerDashboard = () => {
                     <div className="workspace-actions">
                       {workspace.status === 'active' && (
                         <>
-                          <button className="action-btn complete" onClick={() => handleCompleteWorkspace(workspace.workspaceId)} title={isRTL ? 'إكمال' : 'Complete'}>
+                          <button className="action-btn complete" onClick={() => handleCompleteWorkspace(workspace.workspaceId)} title={isRTL ? 'إكمال / إيقاف التفعيل' : 'Complete / deactivate'}>
                             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                               <polyline points="20 6 9 17 4 12"/>
                             </svg>
@@ -7235,6 +7243,16 @@ const ManagerDashboard = () => {
                           workspaces so the manager can re-open a station
                           for the same person without recreating the whole
                           row (auto-close by end date makes this common). */}
+                      {workspace.status !== 'active' && (
+                        <button
+                          className="action-btn"
+                          onClick={() => openWorkspaceModal(workspace, { activate: true })}
+                          title={isRTL ? 'تفعيل المساحة لفترة جديدة' : 'Activate for a new period'}
+                          style={{ background: 'linear-gradient(135deg, #22c55e, #16a34a)', color: '#fff' }}
+                        >
+                          <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" stroke="none"><polygon points="7 4 20 12 7 20 7 4"/></svg>
+                        </button>
+                      )}
                       {(workspace.status === 'active' || workspace.status === 'completed') && (
                         <button
                           className="action-btn"
@@ -7464,6 +7482,15 @@ const ManagerDashboard = () => {
                     </svg>
                     <span>{isRTL ? 'فترة الاستخدام' : 'Usage Period'}</span>
                   </div>
+                  {selectedWorkspace && (
+                    <WorkspaceStatusControl
+                      value={workspaceForm.status}
+                      inactiveValue={selectedWorkspace.status === 'cancelled' ? 'cancelled' : 'completed'}
+                      onChange={(status) => setWorkspaceForm(f => ({ ...f, status }))}
+                      isRTL={isRTL}
+                      activating={workspaceActivating}
+                    />
+                  )}
                   <div className="period-grid">
                     <div className="period-box start">
                       <span className="period-label">{isRTL ? 'البداية' : 'Start'}</span>

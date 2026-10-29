@@ -390,9 +390,20 @@ exports.updateWorkspace = async (req, res) => {
     // Only a change that makes the workspace active again, or renames
     // an active one, is checked — an untouched active row (even an old
     // duplicate) can still be edited.
+    if (!['active', 'completed', 'cancelled'].includes(next.status)) {
+      return res.status(400).json({ message: 'Invalid status', messageAr: 'حالة غير صحيحة' });
+    }
     const now = _riyadhNow();
     const wasActive = _effectiveWorkspaceStatus(workspace, now) === 'active';
     const willBeActive = _effectiveWorkspaceStatus(next, now) === 'active';
+    // Activating (reusing the workspace for a new period) needs a period
+    // that hasn't ended yet — otherwise it would just read as completed.
+    if (status === 'active' && !willBeActive) {
+      return res.status(400).json({
+        message: 'The period has already ended — set new dates to activate the workspace',
+        messageAr: 'نهاية الفترة في الماضي — حدّث التاريخ والوقت لتفعيل المساحة'
+      });
+    }
     const renamed = _normTable(next.tableNumber) !== _normTable(workspace.tableNumber);
     const ruleError = await _withWorkspaceLock(async (transaction) => {
       if (willBeActive && (!wasActive || renamed)) {

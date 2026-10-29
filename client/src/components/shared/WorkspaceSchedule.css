@@ -117,3 +117,15 @@
 .wss-chips .wss-chips-label { color: #1d4ed8 !important; }
 .wss-chips .wss-chip,
 .wss-chips .wss-chip * { color: #1e3a8a !important; }
+
+/* active / inactive switch in the edit form */
+.wss-status { margin-bottom: 1rem; }
+.wss-status-label { display: block; font-size: 0.8rem; font-weight: 700; margin-bottom: 6px; opacity: 0.8; }
+.wss-status .wss-mode button.on.is-active { border-color: #16a34a; background: #16a34a; color: #fff; }
+.wss-status .wss-mode button.on.is-inactive { border-color: #64748b; background: #64748b; color: #fff; }
+.wss-status.is-activating {
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1.5px dashed #16a34a;
+  background: rgba(22, 163, 74, 0.08);
+}

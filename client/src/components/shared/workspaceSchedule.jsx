@@ -122,6 +122,54 @@ export const WorkspaceScheduleEditor = ({ value, onChange, isRTL, defaultStart =
   );
 };
 
+// ── Active / inactive switch (edit form) ────────────────────────
+// A finished workspace is reused for a new period instead of creating
+// a new one: change its dates and pick "Active". "Inactive" stops it and
+// frees its place among the 8. `inactiveValue` keeps a cancelled one
+// cancelled; otherwise inactive means completed.
+export const WorkspaceStatusControl = ({ value, inactiveValue = 'completed', onChange, isRTL, activating }) => {
+  const active = value === 'active';
+  return (
+    <div className={`wss-status ${activating ? 'is-activating' : ''}`}>
+      <span className="wss-status-label">{isRTL ? 'حالة المساحة' : 'Workspace status'}</span>
+      <div className="wss-mode" role="radiogroup" aria-label={isRTL ? 'حالة المساحة' : 'Workspace status'}>
+        <button type="button" role="radio" aria-checked={active} className={active ? 'on is-active' : ''} onClick={() => onChange('active')}>
+          ▶ {isRTL ? 'نشطة' : 'Active'}
+        </button>
+        <button type="button" role="radio" aria-checked={!active} className={!active ? 'on is-inactive' : ''} onClick={() => onChange(inactiveValue)}>
+          ⏸ {isRTL ? 'غير نشطة' : 'Inactive'}
+        </button>
+      </div>
+      <p className="wss-hint">
+        {activating
+          ? (isRTL
+            ? 'حدّث تاريخ ووقت البداية والنهاية للفترة الجديدة ثم احفظ — تُفعَّل المساحة نفسها دون إنشاء مساحة جديدة.'
+            : 'Set the start and end date/time of the new period, then save — the same workspace is reactivated, no new one needed.')
+          : (isRTL
+            ? 'لإعادة تفعيل مساحة سابقة: غيّر التاريخ والوقت واختر «نشطة». «غير نشطة» توقفها وتُخرجها من الحد الأقصى (8).'
+            : 'To reuse a past workspace: change the dates and pick "Active". "Inactive" stops it and frees its place among the 8.')}
+      </p>
+    </div>
+  );
+};
+
+// Before saving an active workspace: its period must end in the future
+// and after it starts. null when fine, else the message to show.
+export const activationError = (form, isRTL) => {
+  if (form.status !== 'active') return null;
+  const at = (d, t) => (d ? new Date(`${String(d).slice(0, 10)}T${String(t || '23:59').slice(0, 5)}:00`) : null);
+  const start = at(form.startDate, form.startTime || '00:00');
+  const end = at(form.endDate, form.endTime);
+  if (!end || Number.isNaN(end.getTime())) return isRTL ? 'حدد تاريخ ووقت نهاية الفترة' : 'Set the end date and time';
+  if (start && end <= start) return isRTL ? 'نهاية الفترة يجب أن تكون بعد بدايتها' : 'The period must end after it starts';
+  if (end.getTime() <= Date.now()) {
+    return isRTL
+      ? 'نهاية الفترة في الماضي — حدّث التاريخ والوقت لتفعيل المساحة'
+      : 'The period has already ended — update the dates to activate the workspace';
+  }
+  return null;
+};
+
 // ── Card chips (workspace list) ─────────────────────────────────
 export const WorkspaceScheduleChips = ({ schedule, isRTL }) => {
   const days = scheduleDays(schedule);
