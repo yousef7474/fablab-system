@@ -63,7 +63,10 @@ const TrainingKit = sequelize.define('TrainingKit', {
   }
 }, {
   tableName: 'training_kits',
-  timestamps: true
+  timestamps: true,
+  // The manager's delete is a soft delete (deletedAt) — gone from every
+  // screen, still recoverable in the database.
+  paranoid: true
 });
 
 module.exports = TrainingKit;

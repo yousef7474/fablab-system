@@ -82,6 +82,9 @@ const PaymentCoupon = require('./PaymentCoupon');
 const TrainingKit = require('./TrainingKit');
 const TrainingKitVersion = require('./TrainingKitVersion');
 const TrainingKitFile = require('./TrainingKitFile');
+const ExecutionPlan = require('./ExecutionPlan');
+const ExecutionPlanVersion = require('./ExecutionPlanVersion');
+const ExecutionPlanFile = require('./ExecutionPlanFile');
 const CalendarEvent = require('./CalendarEvent');
 const StoreItem = require('./StoreItem');
 const StoreOrder = require('./StoreOrder');
@@ -387,6 +390,12 @@ TrainingKit.belongsTo(Employee, { foreignKey: 'employeeId', as: 'author' });
 TrainingKit.hasMany(TrainingKitVersion, { foreignKey: 'kitId', as: 'versions', onDelete: 'CASCADE' });
 TrainingKitVersion.belongsTo(TrainingKit, { foreignKey: 'kitId', as: 'kit' });
 TrainingKit.hasMany(TrainingKitFile, { foreignKey: 'kitId', as: 'files', onDelete: 'CASCADE' });
+
+// Execution plans (الخطة التنفيذية): same shape as the training kits.
+ExecutionPlan.belongsTo(Employee, { foreignKey: 'employeeId', as: 'author' });
+ExecutionPlan.hasMany(ExecutionPlanVersion, { foreignKey: 'planId', as: 'versions', onDelete: 'CASCADE' });
+ExecutionPlanVersion.belongsTo(ExecutionPlan, { foreignKey: 'planId', as: 'plan' });
+ExecutionPlan.hasMany(ExecutionPlanFile, { foreignKey: 'planId', as: 'files', onDelete: 'CASCADE' });
 
 // Registration Closure relationships
 RegistrationClosure.belongsTo(Admin, { foreignKey: 'createdById', as: 'creator', constraints: false });
@@ -837,6 +846,16 @@ const syncDatabase = async () => {
     } catch (backfillError) {
       if (!/does not exist/i.test(backfillError.message)) {
         console.log('summer_programs.teacherIds backfill note:', backfillError.message);
+      }
+    }
+
+    // Soft delete for training kits (paranoid). Explicit so the column
+    // exists before the model starts filtering on it.
+    try {
+      await sequelize.query(`ALTER TABLE training_kits ADD COLUMN IF NOT EXISTS "deletedAt" TIMESTAMP WITH TIME ZONE`);
+    } catch (migrationError) {
+      if (!/does not exist/i.test(migrationError.message)) {
+        console.log('training_kits.deletedAt migration note:', migrationError.message);
       }
     }
 
@@ -1468,6 +1487,9 @@ module.exports = {
   TrainingKit,
   TrainingKitVersion,
   TrainingKitFile,
+  ExecutionPlan,
+  ExecutionPlanVersion,
+  ExecutionPlanFile,
   CalendarEvent,
   StoreItem,
   StoreOrder,

@@ -1,12 +1,9 @@
 // Network helpers shared by the employee, project-manager and manager
 // views. Each view passes its own axios instance (employeeApi or api) and
-// the route prefix it is allowed to use.
+// the route prefix it is allowed to use (see kinds.js).
+import { routesFor } from './kinds';
 
-export const KIT_ROUTES = {
-  mine: { kit: (id) => `/training-kits/mine/${id}`, file: (fid) => `/training-kits/mine/files/${fid}`, doc: (id) => `/training-kits/mine/${id}/document`, zip: (id) => `/training-kits/mine/${id}/zip` },
-  pm: { kit: (id) => `/training-kits/pm/kits/${id}`, file: (fid) => `/training-kits/pm/files/${fid}`, doc: (id) => `/training-kits/pm/kits/${id}/document`, zip: (id) => `/training-kits/pm/kits/${id}/zip`, decide: (id) => `/training-kits/pm/kits/${id}/decide` },
-  admin: { kit: (id) => `/training-kits/admin/kits/${id}`, file: (fid) => `/training-kits/admin/files/${fid}`, doc: (id) => `/training-kits/admin/kits/${id}/document`, zip: (id) => `/training-kits/admin/kits/${id}/zip`, decide: (id) => `/training-kits/admin/kits/${id}/decide` }
-};
+export const KIT_ROUTES = routesFor('/training-kits', 'kits');
 
 export const errorText = (err, fallback) => {
   const d = err?.response?.data;
@@ -74,8 +71,9 @@ export const compressImage = (file) => new Promise((resolve) => {
   img.src = url;
 });
 
-export const uploadFile = async (api, kitId, file, kind) => {
-  const { data } = await api.post(`/training-kits/mine/${kitId}/files`, file, {
+// `url` defaults to the kit's upload route; other kinds pass their own.
+export const uploadFile = async (api, kitId, file, kind, url = KIT_ROUTES.mine.upload(kitId)) => {
+  const { data } = await api.post(url, file, {
     params: { kind },
     headers: {
       'Content-Type': 'application/octet-stream',

@@ -1,15 +1,16 @@
 import React from 'react';
-import { fmtKitNo, fmtDay } from './kitModel';
+import { fmtDay } from './kitModel';
 import { StatusPill } from './KitParts';
+import { KIT_KIND, idOfDoc, numberOfDoc } from './kinds';
 
-// Kit cards — the employee's own kits, the project manager's queue /
+// Cards — the employee's own kits / plans, the project manager's queue /
 // archive and the manager's approvals / approved archive.
-const KitList = ({ kits, onOpen, showAuthor = false, empty }) => {
+const KitList = ({ kits, onOpen, showAuthor = false, empty, kind = KIT_KIND }) => {
   if (!kits.length) {
     return (
       <div className="tk-blank">
-        <span className="big">🎒</span>
-        <b>{empty?.title || 'لا توجد حقائب'}</b>
+        <span className="big">{kind.icon}</span>
+        <b>{empty?.title || 'لا توجد عناصر'}</b>
         {empty?.text && <span>{empty.text}</span>}
         {empty?.action}
       </div>
@@ -18,10 +19,10 @@ const KitList = ({ kits, onOpen, showAuthor = false, empty }) => {
   return (
     <div className="tk-list">
       {kits.map(k => (
-        <button type="button" className="tk-card" key={k.kitId} onClick={() => onOpen(k)}>
-          <span className="no">{fmtKitNo(k.kitNumber)}</span>
+        <button type="button" className="tk-card" key={idOfDoc(k)} onClick={() => onOpen(k)}>
+          <span className="no">{kind.fmtNo(numberOfDoc(k))}</span>
           <div style={{ minWidth: 0 }}>
-            <h4>{k.title || 'برنامج تدريبي بلا اسم'}</h4>
+            <h4>{k.title || kind.untitled}</h4>
             <div className="meta">
               <StatusPill kit={k} />
               {showAuthor && k.author?.name && <span>👤 {k.author.name}</span>}

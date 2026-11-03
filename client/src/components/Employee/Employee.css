@@ -2797,3 +2797,8 @@
   backdrop-filter: none;
   -webkit-backdrop-filter: none;
 }
+
+/* Light theme: brand red is ~4.2:1 on white — deepen it for the small
+   mono labels (active tab number, unit badge). */
+.employee-dashboard[data-theme="light"] .emp-tab.active .emp-tab-key,
+.employee-dashboard[data-theme="light"] .emp-badge { color: #c81e24; }

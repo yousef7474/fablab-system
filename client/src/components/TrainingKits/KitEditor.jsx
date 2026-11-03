@@ -7,6 +7,8 @@ import {
 } from './kitModel';
 import { AutoArea, TagsInput, Seg, AuthedImage, Portal, useBodyLock, Modal, KitHistory } from './KitParts';
 import { KIT_ROUTES, uploadFile, compressImage, downloadFile, printDocument, errorText } from './kitApi';
+import { FORM_OF, FORM_META, analyzeForm } from './kitForms';
+import KitFormScreen from './KitFormScreen';
 import './TrainingKits.css';
 
 const clone = (x) => (typeof structuredClone === 'function' ? structuredClone(x) : JSON.parse(JSON.stringify(x)));
@@ -33,6 +35,8 @@ const KitEditor = ({ api, kit, portalTarget, theme = 'dark', onClose, onSubmitte
   const [historyOpen, setHistoryOpen] = useState(false);
   const [note, setNote] = useState('');
   const [sending, setSending] = useState(false);
+  const [formOpen, setFormOpen] = useState(null); // attachment form key
+  const [formFocus, setFormFocus] = useState(null); // { id } inside the form
   const scrollRef = useRef(null);
   const dirty = useRef(false);
   const latest = useRef(data);
@@ -93,6 +97,14 @@ const KitEditor = ({ api, kit, portalTarget, theme = 'dark', onClose, onSubmitte
   }, []);
 
   const goto = (id) => {
+    // form:<key>:<field id> — an issue inside an attachment form
+    if (String(id).startsWith('form:')) {
+      const [, key, ...rest] = String(id).split(':');
+      const target = rest.join(':');
+      if (target.startsWith('tkf-')) { setFormOpen(key); setFormFocus({ id: target, n: Date.now() }); return; }
+      setFormOpen(null);
+      id = target;
+    }
     const el = document.getElementById(id) || document.getElementById(`tk-${id}`);
     if (!el) return;
     if (el.classList.contains('tk-sec')) { el.scrollIntoView({ behavior: 'smooth', block: 'start' }); return; }
@@ -171,6 +183,14 @@ const KitEditor = ({ api, kit, portalTarget, theme = 'dark', onClose, onSubmitte
   const preview = async () => {
     await persist();
     printDocument(api, KIT_ROUTES.mine.doc(kit.kitId), { draft: 1 }).catch(err => toast.error(errorText(err, 'تعذّر تجهيز المعاينة')));
+  };
+
+  // One attachment form as its own printable page (tests: participant
+  // copy without answers, or the trainer's key).
+  const printPart = async (part, audience) => {
+    await persist();
+    printDocument(api, KIT_ROUTES.mine.doc(kit.kitId), { draft: 1, part, ...(audience ? { audience } : {}) })
+      .catch(err => toast.error(errorText(err, 'تعذّر تجهيز الطباعة')));
   };
 
   // ── submit ──
@@ -536,15 +556,31 @@ const KitEditor = ({ api, kit, portalTarget, theme = 'dark', onClose, onSubmitte
   );
 
   // ── 5. attachments ──
+  // Seven attachments are forms filled here (kitForms.js); the
+  // presentation and the technical files are uploads.
   const renderAttachments = () => (
     <section className="tk-sec" id="tk-s5">
-      {secHead('5', 'مرفقات الحقيبة', 'ارفع ملف كل مرفق هنا مباشرة — يصل نسخة منه إلى المراجعين ويُحفظ مع الحقيبة.', 'attachments')}
+      {secHead('5', 'مرفقات الحقيبة', 'عبّئ نموذج كل مرفق هنا مباشرة — يُحفظ مع الحقيبة ويصل إلى المراجعين، ويُطبع مستندًا مستقلًا. العرض التقديمي وملفات المخرجات التقنية تُرفع كملفات.', 'attachments')}
       <div className="tk-panel">
-        {data.attachments.map((a, i) => (
-          <div className="tk-att" id={`tk-att-${i}`} key={a.label}>
-            <div className="tk-att-name"><span className={`tk-dot ${a.files.length ? 'ok' : ''}`}>✓</span>{a.label}</div>
+        {data.attachments.map((a, i) => {
+          const key = FORM_OF[a.label];
+          const r = key ? analyzeForm(key, data) : null;
+          const done = r ? !r.issues.length : a.files.length > 0;
+          return (
+          <div className={`tk-att${key ? ' tkf-att' : ''}`} id={`tk-att-${i}`} key={a.label}>
+            <div className="tk-att-name"><span className={`tk-dot ${done ? 'ok' : ''}`}>✓</span><span>{a.label}{key && <small className="tkf-att-kind">نموذج في النظام</small>}</span></div>
             <p className="tk-att-inc">{ATTACH_DESC[a.label]}</p>
             <div className="tk-files">
+              {key && (
+                <div className="tkf-att-status">
+                  <span className={`tk-pill ${done ? 'mint' : r.started ? 'amber' : 'muted'}`}>{done ? 'مكتمل' : r.started ? `${r.pct}% · ${ar(r.issues.length, NOTES)}` : 'لم يُعبأ بعد'}</span>
+                  <button type="button" className={`tk-btn sm ${!locked && !done ? 'primary' : ''}`} onClick={() => { setFormFocus(null); setFormOpen(key); }}>
+                    {locked ? '👁 عرض النموذج' : r.started ? '✎ متابعة التعبئة' : '✎ تعبئة النموذج'}
+                  </button>
+                  {r.started && <button type="button" className="tk-btn sm ghost" onClick={() => printPart(key, FORM_META[key].test ? 'participant' : null)} title="معاينة النموذج للطباعة" aria-label={`طباعة ${a.label}`}>🖨</button>}
+                </div>
+              )}
+              {key && (a.files.length > 0 || !locked) && <span className="tk-mini" style={{ margin: 0 }}>ملفات داعمة (اختياري)</span>}
               {a.files.map((f, j) => (
                 <div className="tk-file" key={f.fileId}>
                   <span aria-hidden="true">📎</span>
@@ -557,14 +593,15 @@ const KitEditor = ({ api, kit, portalTarget, theme = 'dark', onClose, onSubmitte
               {(busy[`att${i}`] || []).map(n => <div className="tk-file busy" key={n}><span>⏳</span><span className="name">{n}</span><span className="size">جارٍ الرفع…</span></div>)}
               {!locked && (
                 <label className="tk-up">
-                  ⬆ {a.files.length ? 'إضافة ملف آخر' : 'رفع الملف'}
+                  ⬆ {key ? 'إرفاق ملف داعم' : a.files.length ? 'إضافة ملف آخر' : 'رفع الملف'}
                   <input type="file" multiple hidden onChange={(e) => { addAttachments(i, e.target.files); e.target.value = ''; }} />
                 </label>
               )}
               <AutoArea value={a.note} disabled={locked} placeholder="ملاحظة أو رابط (اختياري)" aria-label={`ملاحظة ${a.label}`} onChange={(v) => set(`attachments.${i}.note`, v)} />
             </div>
           </div>
-        ))}
+          );
+        })}
       </div>
     </section>
   );
@@ -777,6 +814,13 @@ const KitEditor = ({ api, kit, portalTarget, theme = 'dark', onClose, onSubmitte
               <button type="button" className="tk-btn primary" onClick={submit} disabled={sending || (resubmission && !note.trim())}>{sending ? 'جارٍ الإرسال…' : '📨 إرسال'}</button>
             </div>
           </Modal>
+        )}
+
+        {formOpen && (
+          <KitFormScreen fkey={formOpen} data={data} update={update} locked={locked} api={api} kit={kit} theme={theme}
+            focus={formFocus} save={{ state: save.state, text: saveText }}
+            onPrint={printPart}
+            onClose={() => { setFormOpen(null); setFormFocus(null); }} />
         )}
 
         {historyOpen && (

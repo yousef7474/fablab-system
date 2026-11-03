@@ -20,6 +20,7 @@ import { EVALUATION_CATEGORIES, MAX_PER_CRITERION, calculateWeightedTotal, calcu
 import VolunteerManagement from '../Volunteer/VolunteerManagement';
 import ApprovalsHub from './ApprovalsHub';
 import { ManagerKitsTab } from '../TrainingKits/ManagerKits';
+import { ManagerPlansTab } from '../ExecutionPlans/ManagerPlans';
 import '../shared/ScheduleV2.css';
 import YearCalendar from '../YearCalendar/YearCalendar';
 import '../Admin/Admin.css';
@@ -92,7 +93,7 @@ const ManagerDashboard = () => {
   const isRTL = i18n.language === 'ar';
 
   // Valid tabs for URL persistence
-  const validTabs = ['schedule', 'tasks', 'employees', 'todos', 'workspaces', 'volunteers', 'interns', 'education', 'approvals', 'training-kits', 'year-calendar', 'settings'];
+  const validTabs = ['schedule', 'tasks', 'employees', 'todos', 'workspaces', 'volunteers', 'interns', 'education', 'approvals', 'training-kits', 'execution-plans', 'year-calendar', 'settings'];
 
   // Get initial tab from URL, localStorage, or default to 'schedule'
   const getInitialTab = () => {
@@ -3949,6 +3950,18 @@ const ManagerDashboard = () => {
             {sidebarOpen && <span>{isRTL ? 'الحقائب التدريبية' : 'Training Kits'}</span>}
           </button>
           <button
+            className={`nav-item ${activeTab === 'execution-plans' ? 'active' : ''}`}
+            onClick={() => { setActiveTab('execution-plans'); if (window.innerWidth <= 768) setSidebarOpen(false); }}
+            title={isRTL ? 'الخطط التنفيذية' : 'Execution Plans'}
+          >
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <rect x="3" y="4" width="18" height="17" rx="2"/>
+              <path d="M16 2v4M8 2v4M3 10h18"/>
+              <path d="M8 14h3M8 17h6"/>
+            </svg>
+            {sidebarOpen && <span>{isRTL ? 'الخطط التنفيذية' : 'Execution Plans'}</span>}
+          </button>
+          <button
             className={`nav-item ${activeTab === 'workspaces' ? 'active' : ''}`}
             onClick={() => { setActiveTab('workspaces'); if (window.innerWidth <= 768) setSidebarOpen(false); }}
           >
@@ -4069,6 +4082,8 @@ const ManagerDashboard = () => {
               ? (isRTL ? 'الاعتمادات' : 'Approvals')
               : activeTab === 'training-kits'
               ? (isRTL ? 'الحقائب التدريبية' : 'Training Kits')
+              : activeTab === 'execution-plans'
+              ? (isRTL ? 'الخطط التنفيذية' : 'Execution Plans')
               : activeTab === 'workspaces'
               ? (isRTL ? 'مساحات العمل' : 'Workspaces')
               : activeTab === 'volunteers'
@@ -4093,6 +4108,8 @@ const ManagerDashboard = () => {
               ? (isRTL ? 'اعتماد الساعات الإضافية، طلبات زيارة فاب لاب، والفرص التطوعية' : 'Overtime, FabLab visits, and volunteer opportunity approvals')
               : activeTab === 'training-kits'
               ? (isRTL ? 'أرشيف الحقائب التدريبية المعتمدة ومراجعتها' : 'Approved training kits and their reviews')
+              : activeTab === 'execution-plans'
+              ? (isRTL ? 'الخطط التنفيذية الشهرية والربعية لكل قسم ومراجعتها' : 'Monthly and quarterly execution plans and their reviews')
               : activeTab === 'workspaces'
               ? (isRTL ? 'إدارة مساحات العمل للعملاء' : 'Manage customer workspaces')
               : activeTab === 'volunteers'
@@ -5040,6 +5057,7 @@ const ManagerDashboard = () => {
         {activeTab === 'volunteers' && <VolunteerManagement />}
         {activeTab === 'approvals' && <ApprovalsHub />}
         {activeTab === 'training-kits' && <ManagerKitsTab />}
+        {activeTab === 'execution-plans' && <ManagerPlansTab />}
 
         {/* Interns (University Training) Content */}
         {activeTab === 'interns' && (

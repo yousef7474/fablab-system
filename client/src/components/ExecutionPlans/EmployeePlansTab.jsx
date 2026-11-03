@@ -1,0 +1,153 @@
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { toast } from 'react-toastify';
+import employeeApi from '../../config/employeeApi';
+import KitList, { KitFilters } from '../TrainingKits/KitList';
+import KitReview from '../TrainingKits/KitReview';
+import { errorText } from '../TrainingKits/kitApi';
+import PlanEditor from './PlanEditor';
+import { PLAN_KIND } from './planKind';
+import { blankState, analyze } from './planModel';
+import { examplePlanData } from './planExample';
+import '../TrainingKits/TrainingKits.css';
+import './Plans.css';
+
+const R = PLAN_KIND.routes.mine;
+const me = () => { try { return JSON.parse(localStorage.getItem('employeeData') || 'null'); } catch { return null; } };
+
+// Employee dashboard tab «الخطة التنفيذية»: the employee's plans (one per
+// month or quarter), a new plan, and the editor / review screens.
+const EmployeePlansTab = ({ portalTarget, theme }) => {
+  const [plans, setPlans] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [filter, setFilter] = useState('all');
+  const [editing, setEditing] = useState(null); // full plan object
+  const [viewing, setViewing] = useState(null); // planId
+  const [creating, setCreating] = useState(false);
+
+  const load = useCallback(async () => {
+    try {
+      const { data } = await employeeApi.get(R.list);
+      setPlans(Array.isArray(data) ? data : []);
+    } catch (err) {
+      toast.error(errorText(err, 'تعذّر تحميل الخطط'));
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+  useEffect(() => { load(); }, [load]);
+
+  const openEditor = async (id) => {
+    try {
+      const { data } = await employeeApi.get(R.kit(id));
+      setViewing(null);
+      setEditing(data);
+    } catch (err) {
+      toast.error(errorText(err, 'تعذّر فتح الخطة'));
+    }
+  };
+
+  const createFrom = async (data, failText) => {
+    setCreating(true);
+    try {
+      const { data: plan } = await employeeApi.post(R.list, { data, completion: analyze(data).pct });
+      const { data: full } = await employeeApi.get(R.kit(plan.id));
+      setEditing(full);
+      load();
+    } catch (err) {
+      toast.error(errorText(err, failText));
+    } finally {
+      setCreating(false);
+    }
+  };
+  const create = () => createFrom(blankState(me()), 'تعذّر إنشاء خطة جديدة');
+  // A filled example plan — linked to the employee's latest approved
+  // training kit when there is one — to see a complete plan and try the flow.
+  const createExample = async () => {
+    let kit = null;
+    try {
+      const { data } = await employeeApi.get('/training-kits/mine');
+      kit = (Array.isArray(data) ? data : []).find(k => k.status === 'approved') || null;
+    } catch { /* the example works without a kit */ }
+    createFrom(examplePlanData(me(), kit), 'تعذّر إنشاء خطة المثال');
+  };
+
+  const remove = async (p) => {
+    if (!window.confirm(`حذف المسودة «${p.title || 'خطة بلا فترة'}» نهائيًا؟`)) return;
+    try {
+      await employeeApi.delete(R.kit(p.id));
+      toast.success('حُذفت المسودة');
+      load();
+    } catch (err) {
+      toast.error(errorText(err, 'تعذّر الحذف'));
+    }
+  };
+
+  // Editable plans open in the editor; plans under review or approved
+  // open read-only with their history.
+  const open = (p) => (['draft', 'returned'].includes(p.status) ? openEditor(p.id) : setViewing(p.id));
+
+  const counts = useMemo(() => ({
+    all: plans.length,
+    draft: plans.filter(p => p.status === 'draft').length,
+    review: plans.filter(p => ['pm_review', 'manager_review'].includes(p.status)).length,
+    returned: plans.filter(p => p.status === 'returned').length,
+    approved: plans.filter(p => p.status === 'approved').length
+  }), [plans]);
+  const shown = plans.filter(p => filter === 'all'
+    || (filter === 'review' ? ['pm_review', 'manager_review'].includes(p.status) : p.status === filter));
+  const drafts = shown.filter(p => p.status === 'draft' && p.currentVersion === 0);
+
+  const actions = (
+    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+      <button type="button" className="tk-btn" onClick={createExample} disabled={creating} title="خطة مكتملة لترى طريقة التعبئة وتجرّب مسار الاعتماد">📖 ابدأ من خطة مثال</button>
+      <button type="button" className="tk-btn primary" onClick={create} disabled={creating}>＋ {creating ? 'جارٍ الإنشاء…' : 'خطة جديدة'}</button>
+    </div>
+  );
+
+  return (
+    <div className="tk" data-theme={theme} dir="rtl">
+      <div className="tk-tab-head">
+        <div>
+          <h3>🗓 الخطة التنفيذية</h3>
+          <p>عبّئ نموذج الخطة التنفيذية لقسمك لكل شهر أو ربع سنة: المستهدفات ومراحل تنفيذها وملفاتها، ثم أرسلها لمسؤول إدارة المشاريع ثم للمدير للاعتماد. يُحفظ كل إصدار مع ملاحظات المراجعين.</p>
+        </div>
+        {actions}
+      </div>
+
+      <KitFilters value={filter} onChange={setFilter} options={[
+        { key: 'all', label: 'الكل', count: counts.all },
+        { key: 'draft', label: 'مسودات', count: counts.draft },
+        { key: 'returned', label: 'معادة للتعديل', count: counts.returned },
+        { key: 'review', label: 'قيد المراجعة', count: counts.review },
+        { key: 'approved', label: 'معتمدة', count: counts.approved }
+      ]} />
+
+      {loading ? <div className="tk-doc-loading">جارٍ التحميل…</div> : (
+        <KitList kits={shown} onOpen={open} kind={PLAN_KIND} empty={{
+          title: filter === 'all' ? 'لم تبدأ أي خطة بعد' : 'لا توجد خطط في هذا التصنيف',
+          text: filter === 'all' ? 'ابدأ خطة جديدة — تُحفظ تلقائيًا ويمكنك إكمالها لاحقًا. أو افتح خطة مثال مكتملة لترى طريقة التعبئة.' : '',
+          action: filter === 'all' ? actions : null
+        }} />
+      )}
+      {drafts.length > 0 && (
+        <p className="tk-muted-s" style={{ marginTop: 10 }}>
+          لحذف مسودة لم تُرسل بعد:{' '}
+          {drafts.map((p, i) => <React.Fragment key={p.id}>{i > 0 && ' · '}<button type="button" className="tk-more" onClick={() => remove(p)}>حذف «{p.title || 'خطة بلا فترة'}»</button></React.Fragment>)}
+        </p>
+      )}
+
+      {editing && (
+        <PlanEditor api={employeeApi} plan={editing} portalTarget={portalTarget} theme={theme}
+          onClose={() => { setEditing(null); load(); }}
+          onSubmitted={() => { setEditing(null); load(); }} />
+      )}
+      {viewing && (
+        <KitReview api={employeeApi} scope="mine" kitId={viewing} kind={PLAN_KIND} portalTarget={portalTarget} theme={theme}
+          onClose={() => { setViewing(null); load(); }}
+          onEdit={(p) => openEditor(p.id)} />
+      )}
+    </div>
+  );
+};
+
+export default EmployeePlansTab;

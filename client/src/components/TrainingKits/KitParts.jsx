@@ -128,7 +128,7 @@ export const Modal = ({ children, onClose, labelledBy }) => {
 
 // ── History of versions + reviewer comments + what changed ──────
 
-const Step = ({ who, role, decision, comment, at }) => {
+const Step = ({ who, role, decision, comment, at, the }) => {
   if (!decision) {
     return (
       <div className="tk-step">
@@ -143,7 +143,7 @@ const Step = ({ who, role, decision, comment, at }) => {
       <span className={`ico ${ok ? 'ok' : 'back'}`}>{ok ? '✓' : '↩'}</span>
       <div>
         <span className="who">{who || role}</span>{' '}
-        <span>{ok ? (role === 'المدير' ? 'اعتمد الحقيبة' : 'اعتمدت المراجعة وأرسلتها للمدير') : 'أعاد الحقيبة للتعديل'}</span>{' '}
+        <span>{ok ? (role === 'المدير' ? `اعتمد ${the}` : 'اعتمدت المراجعة وأرسلتها للمدير') : `أعاد ${the} للتعديل`}</span>{' '}
         <span className="when">· {fmtDateTime(at)}</span>
         {comment && <div className="cmt">{comment}</div>}
       </div>
@@ -151,7 +151,7 @@ const Step = ({ who, role, decision, comment, at }) => {
   );
 };
 
-export const KitHistory = ({ versions = [], onView, currentVersion }) => {
+export const KitHistory = ({ versions = [], onView, currentVersion, diff = diffData, the = 'الحقيبة' }) => {
   const [open, setOpen] = useState(() => new Set());
   if (!versions.length) {
     return <div className="tk-blank"><span className="big">🗂</span><b>لا توجد إصدارات بعد</b><span>يظهر هنا كل إصدار تُرسله للمراجعة مع ملاحظات المراجعين.</span></div>;
@@ -163,7 +163,7 @@ export const KitHistory = ({ versions = [], onView, currentVersion }) => {
       {list.map(v => {
         const prev = versions.find(x => x.versionNumber === v.versionNumber - 1);
         const showDiff = open.has(v.versionNumber);
-        const changes = showDiff && prev ? diffData(prev.data, v.data) : [];
+        const changes = showDiff && prev ? diff(prev.data, v.data) : [];
         return (
           <article key={v.versionId || v.versionNumber} className={`tk-ver ${v.versionNumber === currentVersion ? 'latest' : ''}`}>
             <div className="tk-ver-head">
@@ -173,9 +173,9 @@ export const KitHistory = ({ versions = [], onView, currentVersion }) => {
               {v.managerDecision === 'approved' && <span className="tk-pill mint">الإصدار المعتمد</span>}
             </div>
             {v.note && <div className="tk-ver-note"><b>ما الذي تغيّر (من مُعدّ الحقيبة):</b>{v.note}</div>}
-            <Step role="مسؤول إدارة المشاريع" who={v.pmName} decision={v.pmDecision} comment={v.pmComment} at={v.pmAt} />
+            <Step role="مسؤول إدارة المشاريع" who={v.pmName} decision={v.pmDecision} comment={v.pmComment} at={v.pmAt} the={the} />
             {(v.pmDecision === 'approved' || v.managerDecision) && (
-              <Step role="المدير" who={v.managerName} decision={v.managerDecision} comment={v.managerComment} at={v.managerAt} />
+              <Step role="المدير" who={v.managerName} decision={v.managerDecision} comment={v.managerComment} at={v.managerAt} the={the} />
             )}
             <div className="tk-ver-actions">
               {onView && <button type="button" className="tk-btn sm" onClick={() => onView(v.versionNumber)}>📄 عرض هذا الإصدار</button>}

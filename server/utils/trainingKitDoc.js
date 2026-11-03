@@ -4,6 +4,7 @@
 // and the "download everything" ZIP, so it embeds the logos and images.
 const fs = require('fs');
 const path = require('path');
+const { FORM_META, FORM_OF, FORM_CSS, filledForms, summaryOf, renderFormBody, partsOf } = require('./trainingKitForms');
 
 const esc = (v) => String(v == null ? '' : v)
   .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -68,6 +69,55 @@ const STATUS_AR = {
   returned: 'معادة للتعديل',
   approved: 'معتمدة'
 };
+
+const DOC_CSS = `
+  *{box-sizing:border-box}
+  body{margin:0;background:#eef1f5;color:#0f172a;font-family:'IBM Plex Sans Arabic','Segoe UI',Tahoma,sans-serif;font-size:13.5px;line-height:1.7}
+  .page{max-width:980px;margin:0 auto;background:#fff;box-shadow:0 10px 40px rgba(15,23,42,.08)}
+  .band{background:linear-gradient(135deg,#1a0a0b,#3a0d10 60%,#EE2329);color:#fff;padding:22px 28px 26px;position:relative;overflow:hidden}
+  .band::before{content:'';position:absolute;inset:0;background-image:linear-gradient(rgba(255,255,255,.06) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.06) 1px,transparent 1px);background-size:24px 24px;pointer-events:none}
+  .band .top{display:flex;align-items:center;justify-content:space-between;gap:12px;position:relative}
+  .band .logos{display:flex;gap:14px;align-items:center}.band .logos img{height:40px;filter:brightness(0) invert(1)}
+  .band .meta{font-family:'JetBrains Mono',monospace;font-size:12px;text-align:left;opacity:.9;line-height:1.6}
+  .band h1{position:relative;margin:18px 0 6px;font-size:28px;line-height:1.3}
+  .band p.desc{position:relative;margin:0;max-width:70ch;opacity:.85}
+  .band ul{position:relative;list-style:none;margin:14px 0 0;padding:0;display:flex;flex-wrap:wrap;gap:6px}
+  .band li{font-size:12px;padding:2px 10px;border:1px solid rgba(255,255,255,.3);border-radius:6px;background:rgba(255,255,255,.06)}
+  .stamp{position:relative;display:inline-block;margin-top:12px;padding:3px 12px;border-radius:999px;background:#fff;color:#b91c1c;font-weight:700;font-size:12px}
+  .body{padding:8px 28px 28px}
+  .sec{margin-top:22px;break-inside:auto}
+  h2{display:flex;align-items:center;gap:10px;font-size:18px;margin:0 0 10px;padding-bottom:6px;border-bottom:2px solid #EE2329}
+  h2 .n{display:inline-grid;place-items:center;min-width:30px;height:30px;border-radius:8px;background:#EE2329;color:#fff;font-family:'JetBrains Mono',monospace;font-size:14px}
+  h3{font-size:14.5px;margin:16px 0 8px;color:#7f1d1d}
+  h3 small{font-weight:400;color:#64748b;font-size:12px}
+  table{width:100%;border-collapse:collapse;margin:0 0 6px}
+  table.kv th{width:200px;text-align:start;vertical-align:top;background:#fdf2f2;color:#7f1d1d;font-weight:600;padding:7px 10px;border:1px solid #f1d5d5}
+  table.kv td{padding:7px 10px;border:1px solid #eceff3;vertical-align:top}
+  table.grid th{background:#1e293b;color:#fff;font-weight:600;font-size:12.5px;padding:7px 8px;text-align:start;border:1px solid #1e293b}
+  table.grid td{padding:7px 8px;border:1px solid #e5e9f0;vertical-align:top}
+  table.grid tbody tr:nth-child(even) td{background:#f8fafc}
+  td.code{font-family:'JetBrains Mono',monospace;font-weight:700;color:#b91c1c;white-space:nowrap}
+  td.muted{color:#64748b;font-size:12.5px}
+  td.ok{color:#15803d;font-weight:700}
+  small{color:#64748b}
+  .nil{color:#94a3b8}
+  ol.objs{margin:0;padding:0;list-style:none;display:grid;gap:6px}
+  ol.objs li{padding:7px 10px;border:1px solid #eceff3;border-radius:8px}
+  ol.objs b{display:inline-block;min-width:34px;color:#b91c1c;font-family:'JetBrains Mono',monospace}
+  .imgs{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:10px}
+  .imgs figure{margin:0;border:1px solid #e5e9f0;border-radius:10px;overflow:hidden}
+  .imgs img{display:block;width:100%;aspect-ratio:4/3;object-fit:contain;background:#f8fafc}
+  .imgs figcaption{padding:6px 10px;font-size:12.5px}
+  .noimg{aspect-ratio:4/3;display:grid;place-items:center;color:#94a3b8;background:#f8fafc}
+  .file{font-size:12.5px}
+  .done{display:flex;align-items:center;gap:14px}.done b{font-size:26px;font-family:'JetBrains Mono',monospace}
+  .bar{flex:1;height:8px;border-radius:4px;background:#e5e9f0;overflow:hidden}.bar i{display:block;height:100%;background:#EE2329}
+  ul.checks{list-style:none;padding:0;margin:10px 0 0}ul.checks li{padding:4px 0;color:#64748b}ul.checks li.ok{color:#15803d}
+  .foot{margin-top:26px;padding-top:10px;border-top:1px solid #e5e9f0;display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px;font-size:11.5px;color:#64748b}
+  @media print{body{background:#fff}.page{box-shadow:none;max-width:none}.band{-webkit-print-color-adjust:exact;print-color-adjust:exact}table.grid th,h2 .n,table.kv th,.bar i{-webkit-print-color-adjust:exact;print-color-adjust:exact}tr,figure{break-inside:avoid}}
+  @page{size:A4;margin:12mm}
+  .formref{margin-bottom:4px}
+${FORM_CSS}`;
 
 /**
  * @param {object} o
@@ -154,13 +204,21 @@ const renderKitDocument = ({ kit, version, data, author, images = {}, files = {}
     <h3>متطلبات الجاهزية قبل التنفيذ</h3>
     ${table(['بند الجاهزية', 'ما يجب تجهيزه أو التحقق منه', 'المدة اللازمة قبل التنفيذ'], (d.readiness || []).map(r => `<tr><td><b>${esc(r.label)}</b></td><td>${dash(r.prepare)}</td><td>${dash(r.lead)}</td></tr>`))}`;
 
-  const sec5 = table(['المرفق', 'ما يجب أن يتضمنه', 'الملفات', 'ملاحظة'], (d.attachments || []).map(a => {
+  // Forms filled in the system go to the appendix (ملحق n); the rest are files.
+  const appx = filledForms(d);
+  const sec5 = table(['المرفق', 'ما يجب أن يتضمنه', 'النموذج والملفات', 'ملاحظة'], (d.attachments || []).map(a => {
     const list = (a.files || []).map(f => {
       const meta = files[f.fileId] || f;
       return `<div class="file">📎 ${esc(meta.name || f.name)} <small>${meta.size ? humanSize(meta.size) : ''}</small></div>`;
     }).join('');
-    return `<tr><td><b>${esc(a.label)}</b></td><td class="muted">${esc(ATTACH_DESC[a.label] || '')}</td><td>${list || '<span class="nil">لم يُرفق</span>'}</td><td>${dash(a.note)}</td></tr>`;
+    const key = FORM_OF[a.label];
+    const k = key ? appx.findIndex(f => f.key === key) : -1;
+    const form = !key ? '' : k >= 0
+      ? `<div class="formref">📝 <b>ملحق ${k + 1}</b> — ${summaryOf(d, key)}</div>`
+      : '<div class="nil">النموذج لم يُعبأ بعد</div>';
+    return `<tr><td><b>${esc(a.label)}</b></td><td class="muted">${esc(ATTACH_DESC[a.label] || '')}</td><td>${form}${list || (key ? '' : '<span class="nil">لم يُرفق</span>')}</td><td>${dash(a.note)}</td></tr>`;
   }));
+  const appendix = appx.map((f, i) => `<section class="sec appx"><h2 class="appx-title"><span class="n">ملحق ${i + 1}</span>${esc(f.label)}</h2>${renderFormBody(f.key, d, { images, version, audience: 'trainer', internal: true })}</section>`).join('');
 
   const v = version || {};
   const sig = (name, at, decision) => (decision === 'approved'
@@ -194,53 +252,7 @@ const renderKitDocument = ({ kit, version, data, author, images = {}, files = {}
 <html dir="rtl" lang="ar"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <title>${esc(c.name || 'حقيبة تدريبية')} — ${fmtKitNo(kit?.kitNumber)}</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&family=JetBrains+Mono:wght@500&display=swap">
-<style>
-  *{box-sizing:border-box}
-  body{margin:0;background:#eef1f5;color:#0f172a;font-family:'IBM Plex Sans Arabic','Segoe UI',Tahoma,sans-serif;font-size:13.5px;line-height:1.7}
-  .page{max-width:980px;margin:0 auto;background:#fff;box-shadow:0 10px 40px rgba(15,23,42,.08)}
-  .band{background:linear-gradient(135deg,#1a0a0b,#3a0d10 60%,#EE2329);color:#fff;padding:22px 28px 26px;position:relative;overflow:hidden}
-  .band::before{content:'';position:absolute;inset:0;background-image:linear-gradient(rgba(255,255,255,.06) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.06) 1px,transparent 1px);background-size:24px 24px;pointer-events:none}
-  .band .top{display:flex;align-items:center;justify-content:space-between;gap:12px;position:relative}
-  .band .logos{display:flex;gap:14px;align-items:center}.band .logos img{height:40px;filter:brightness(0) invert(1)}
-  .band .meta{font-family:'JetBrains Mono',monospace;font-size:12px;text-align:left;opacity:.9;line-height:1.6}
-  .band h1{position:relative;margin:18px 0 6px;font-size:28px;line-height:1.3}
-  .band p.desc{position:relative;margin:0;max-width:70ch;opacity:.85}
-  .band ul{position:relative;list-style:none;margin:14px 0 0;padding:0;display:flex;flex-wrap:wrap;gap:6px}
-  .band li{font-size:12px;padding:2px 10px;border:1px solid rgba(255,255,255,.3);border-radius:6px;background:rgba(255,255,255,.06)}
-  .stamp{position:relative;display:inline-block;margin-top:12px;padding:3px 12px;border-radius:999px;background:#fff;color:#b91c1c;font-weight:700;font-size:12px}
-  .body{padding:8px 28px 28px}
-  .sec{margin-top:22px;break-inside:auto}
-  h2{display:flex;align-items:center;gap:10px;font-size:18px;margin:0 0 10px;padding-bottom:6px;border-bottom:2px solid #EE2329}
-  h2 .n{display:inline-grid;place-items:center;min-width:30px;height:30px;border-radius:8px;background:#EE2329;color:#fff;font-family:'JetBrains Mono',monospace;font-size:14px}
-  h3{font-size:14.5px;margin:16px 0 8px;color:#7f1d1d}
-  h3 small{font-weight:400;color:#64748b;font-size:12px}
-  table{width:100%;border-collapse:collapse;margin:0 0 6px}
-  table.kv th{width:200px;text-align:start;vertical-align:top;background:#fdf2f2;color:#7f1d1d;font-weight:600;padding:7px 10px;border:1px solid #f1d5d5}
-  table.kv td{padding:7px 10px;border:1px solid #eceff3;vertical-align:top}
-  table.grid th{background:#1e293b;color:#fff;font-weight:600;font-size:12.5px;padding:7px 8px;text-align:start;border:1px solid #1e293b}
-  table.grid td{padding:7px 8px;border:1px solid #e5e9f0;vertical-align:top}
-  table.grid tbody tr:nth-child(even) td{background:#f8fafc}
-  td.code{font-family:'JetBrains Mono',monospace;font-weight:700;color:#b91c1c;white-space:nowrap}
-  td.muted{color:#64748b;font-size:12.5px}
-  td.ok{color:#15803d;font-weight:700}
-  small{color:#64748b}
-  .nil{color:#94a3b8}
-  ol.objs{margin:0;padding:0;list-style:none;display:grid;gap:6px}
-  ol.objs li{padding:7px 10px;border:1px solid #eceff3;border-radius:8px}
-  ol.objs b{display:inline-block;min-width:34px;color:#b91c1c;font-family:'JetBrains Mono',monospace}
-  .imgs{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:10px}
-  .imgs figure{margin:0;border:1px solid #e5e9f0;border-radius:10px;overflow:hidden}
-  .imgs img{display:block;width:100%;aspect-ratio:4/3;object-fit:contain;background:#f8fafc}
-  .imgs figcaption{padding:6px 10px;font-size:12.5px}
-  .noimg{aspect-ratio:4/3;display:grid;place-items:center;color:#94a3b8;background:#f8fafc}
-  .file{font-size:12.5px}
-  .done{display:flex;align-items:center;gap:14px}.done b{font-size:26px;font-family:'JetBrains Mono',monospace}
-  .bar{flex:1;height:8px;border-radius:4px;background:#e5e9f0;overflow:hidden}.bar i{display:block;height:100%;background:#EE2329}
-  ul.checks{list-style:none;padding:0;margin:10px 0 0}ul.checks li{padding:4px 0;color:#64748b}ul.checks li.ok{color:#15803d}
-  .foot{margin-top:26px;padding-top:10px;border-top:1px solid #e5e9f0;display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px;font-size:11.5px;color:#64748b}
-  @media print{body{background:#fff}.page{box-shadow:none;max-width:none}.band{-webkit-print-color-adjust:exact;print-color-adjust:exact}table.grid th,h2 .n,table.kv th,.bar i{-webkit-print-color-adjust:exact;print-color-adjust:exact}tr,figure{break-inside:avoid}}
-  @page{size:A4;margin:12mm}
-</style></head>
+<style>${DOC_CSS}</style></head>
 <body><div class="page">
   <header class="band">
     <div class="top">
@@ -260,9 +272,52 @@ const renderKitDocument = ({ kit, version, data, author, images = {}, files = {}
     ${section('5', 'مرفقات الحقيبة', sec5)}
     ${section('6', 'المراجعة العلمية والاعتماد', sec6)}
     ${section('7', 'اكتمال الحقيبة', sec7)}
+    ${appendix}
     <div class="foot"><span>فاب لاب الأحساء — مؤسسة عبدالمنعم الراشد الإنسانية</span><span>إعداد وتطوير النماذج والمنهجية: م. نوف عبدالله البوعبيد</span></div>
   </div>
 </div></body></html>`;
 };
 
-module.exports = { renderKitDocument, fmtKitNo, STATUS_AR };
+/**
+ * One attachment form on its own printable page (?part=<form key>):
+ * tests as the participant's sheet (audience 'participant', no answers)
+ * or the trainer's key; the student guide, reference guide and survey as
+ * handouts. null = no such form.
+ */
+const renderKitPart = ({ kit, version, data, images = {}, part, audience }) => {
+  const meta = FORM_META[part];
+  if (!meta) return null;
+  const d = data || {};
+  const c = d.card || {};
+  const participant = audience === 'participant';
+  const forParticipant = participant || ['guide', 'reference', 'survey'].includes(part);
+  const body = renderFormBody(part, d, { images, version, audience: meta.test ? (participant ? 'participant' : 'trainer') : null, internal: !forParticipant });
+  const fablab = logo('fablab.png'); const found = logo('found.png');
+  const stamp = meta.test ? (participant ? 'نسخة المشارك' : 'نسخة المدرب — مفتاح الإجابة') : forParticipant ? 'للمشارك' : 'للمدرب';
+  return `<!DOCTYPE html>
+<html dir="rtl" lang="ar"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>${esc(meta.label)} — ${esc(c.name || 'حقيبة تدريبية')}</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&family=JetBrains+Mono:wght@500&display=swap">
+<style>${DOC_CSS}
+  .band.part{padding:18px 28px 20px}.band.part h1{font-size:24px;margin-top:14px}
+</style></head>
+<body><div class="page">
+  <header class="band part">
+    <div class="top">
+      <div class="logos">${fablab ? `<img src="${fablab}" alt="FabLab">` : ''}${found ? `<img src="${found}" alt="">` : ''}</div>
+      <div class="meta">${fmtKitNo(kit?.kitNumber)}${forParticipant ? '' : `<br>${version ? `الإصدار ${version.versionNumber}` : 'مسودة'}`}</div>
+    </div>
+    <h1>${esc(meta.label)}</h1>
+    <p class="desc">${esc(c.name || 'برنامج تدريبي بلا اسم')}</p>
+    <span class="stamp">${esc(stamp)}</span>
+  </header>
+  <div class="body">
+    ${body}
+    <div class="foot"><span>فاب لاب الأحساء — مؤسسة عبدالمنعم الراشد الإنسانية</span><span>إعداد وتطوير النماذج والمنهجية: م. نوف عبدالله البوعبيد</span></div>
+  </div>
+</div></body></html>`;
+};
+// [{ key, audience, file }] — the form pages that go into the ZIP.
+renderKitPart.partsOf = partsOf;
+
+module.exports = { renderKitDocument, renderKitPart, fmtKitNo, STATUS_AR };

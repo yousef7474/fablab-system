@@ -138,6 +138,9 @@
 .tk-btn.ok { border-color: transparent; background: linear-gradient(135deg, #15803d, #166534); color: #fff; }
 .tk-btn.warn { border-color: rgba(245, 158, 11, .5); background: var(--tk-amber-soft); color: var(--tk-amber); }
 .tk-btn.ghost { background: transparent; }
+.tk-btn.danger { border-color: rgba(239, 68, 68, .45); background: rgba(239, 68, 68, .1); color: var(--tk-danger, #f87171); }
+.tk-btn.danger.solid { border-color: transparent; background: #b91c1c; color: #fff; }
+.tk[data-theme="light"] .tk-btn.danger { --tk-danger: #b91c1c; }
 .tk-btn.sm { height: 32px; padding: 0 10px; font-size: 12.5px; border-radius: 8px; }
 .tk-btn.icon { width: 38px; padding: 0; }
 @media (max-width: 760px) { .tk-btn .hide-sm, .tk-save .hide-sm { display: none; } .tk-top { gap: 6px; padding: 8px 12px; } }
@@ -563,4 +566,7 @@ select.tk-in option { background: var(--tk-panel); color: var(--tk-ink); }
 
 /* Light theme: the deeper cyan / green fills need white ink */
 .tk[data-theme="light"] .tk-pk.out[aria-pressed="true"],
-.tk[data-theme="light"] .tk-ring.done { color: #fff; }
+.tk[data-theme="light"] .tk-ring.done,
+.tk[data-theme="light"] .tk-dot.ok,
+.tk[data-theme="light"] .tk-ck.ok .tk-box { color: #fff; }
+.tk[data-theme="light"] .tk-pill.mint { color: #166534; }

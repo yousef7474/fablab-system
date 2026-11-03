@@ -39,5 +39,6 @@ router.get('/admin/kits/:id',              adminAuth, requireManager, ctrl.admin
 router.post('/admin/kits/:id/decide',      adminAuth, requireManager, ctrl.adminDecide);
 router.get('/admin/kits/:id/document',     adminAuth, requireManager, ctrl.reviewDocument);
 router.get('/admin/kits/:id/zip',          adminAuth, requireManager, ctrl.reviewZip);
+router.delete('/admin/kits/:id',           adminAuth, requireManager, ctrl.adminDelete);
 
 module.exports = router;

@@ -2,6 +2,8 @@
 // completeness checks of the kit template (قالب الحقيبة التدريبية - فاب لاب
 // الأحساء, by م. نوف عبدالله البوعبيد). Shared by the employee's editor,
 // the reviewers' history view and the change comparison between versions.
+// The attachment forms (data.forms) are defined in kitForms.js.
+import { FORM_OF, blankForms, normalizeForms, analyzeForm, flattenForms } from './kitForms';
 
 export const uid = () => Math.random().toString(36).slice(2, 10);
 export const has = (v) => (Array.isArray(v) ? v.length > 0 : String(v == null ? '' : v).trim() !== '');
@@ -103,7 +105,8 @@ export const blankState = () => ({
   readiness: READINESS.map(l => ({ label: l, prepare: '', lead: '' })),
   attachments: ATTACH.map(a => ({ label: a[0], files: [], note: '' })),
   cert: { type: '', criteria: '' },
-  manual: { filesTested: false, trainerReady: false }
+  manual: { filesTested: false, trainerReady: false },
+  forms: blankForms()
 });
 
 // Fill in anything missing (older drafts, partial data) without losing values.
@@ -132,6 +135,7 @@ export const normalize = (d) => {
     if (!Array.isArray(x.files)) x.files = [];
     return x;
   });
+  s.forms = normalizeForms(d.forms, s);
   return s;
 };
 
@@ -207,7 +211,17 @@ export const analyze = (s) => {
   });
   s.readiness.forEach((r, i) => chk('resources', has(r.prepare) && has(r.lead), `بند الجاهزية «${r.label}»: حدد ما يجب تجهيزه والمدة`, idOf(`readiness.${i}.${has(r.prepare) ? 'lead' : 'prepare'}`), 'resources'));
 
-  s.attachments.forEach((a, i) => chk('attachments', a.files.length > 0, `أرفق ملف «${a.label}»`, `tk-att-${i}`, 'files'));
+  // An attachment with a form counts once, done when its form passes its
+  // own checks; the issue opens the form at its first missing field.
+  s.attachments.forEach((a, i) => {
+    const key = FORM_OF[a.label];
+    if (!key) { chk('attachments', a.files.length > 0, `أرفق ملف «${a.label}»`, `tk-att-${i}`, 'files'); return; }
+    const r = analyzeForm(key, s);
+    const text = !r.issues.length ? '' : r.started
+      ? `«${a.label}»: ${ar(r.issues.length, NOTES)} — ${r.issues[0].text}`
+      : `عبّئ نموذج «${a.label}»`;
+    chk('attachments', !r.issues.length, text, r.issues.length ? `form:${key}:${r.issues[0].target}` : `tk-att-${i}`, 'files');
+  });
 
   chk('approval', has(s.cert.type), 'حدد نوع الشهادة', idOf('cert.type'), 'approval');
   chk('approval', has(s.cert.criteria), 'اكتب معايير استحقاق الشهادة', idOf('cert.criteria'), 'approval');
@@ -264,6 +278,7 @@ export const flatten = (raw) => {
   s.attachments.forEach(a => { put(`att.${a.label}.files`, `المرفقات › ${a.label} › الملفات`, a.files.map(f => f.name)); put(`att.${a.label}.note`, `المرفقات › ${a.label} › ملاحظة`, a.note); });
   put('cert.type', 'الشهادة › النوع', s.cert.type);
   put('cert.criteria', 'الشهادة › معايير الاستحقاق', s.cert.criteria);
+  flattenForms(s, put);
   put('manual.filesTested', 'الاكتمال › تمت تجربة الملفات', s.manual.filesTested);
   put('manual.trainerReady', 'الاكتمال › جاهزة للتنفيذ من مدرب متخصص', s.manual.trainerReady);
   return out;

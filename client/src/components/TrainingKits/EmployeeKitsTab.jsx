@@ -67,6 +67,8 @@ const EmployeeKitsTab = ({ portalTarget, theme }) => {
         try {
           const up = await uploadFile(employeeApi, kit.kitId, img.file, 'image');
           data.images.push({ id: up.fileId.slice(0, 8), outputId: data.outputs[img.output].id, fileId: up.fileId, name: up.name, caption: img.caption });
+          // The student guide shows the assembled model as the final output.
+          if (img.output === 0 && data.forms?.guide?.finalOutput) data.forms.guide.finalOutput.imageFileId = up.fileId;
         } catch { /* the example still works without its pictures */ }
       }
       await employeeApi.put(`/training-kits/mine/${kit.kitId}`, { data, completion: analyze(data).pct });
