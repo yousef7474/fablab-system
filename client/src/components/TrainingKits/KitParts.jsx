@@ -84,6 +84,19 @@ export const AuthedImage = ({ api, url, alt }) => {
 
 export const Portal = ({ target, children }) => createPortal(children, target || document.body);
 
+// Theme of the host page that sets html[data-theme] (admin / manager
+// boards), kept in sync when the user switches it.
+export const useHostTheme = () => {
+  const read = () => (document.documentElement.getAttribute('data-theme') === 'light' ? 'light' : 'dark');
+  const [theme, setTheme] = useState(read);
+  useEffect(() => {
+    const mo = new MutationObserver(() => setTheme(read()));
+    mo.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+    return () => mo.disconnect();
+  }, []);
+  return theme;
+};
+
 // Locks the page behind a full-screen layer.
 export const useBodyLock = () => {
   useEffect(() => {

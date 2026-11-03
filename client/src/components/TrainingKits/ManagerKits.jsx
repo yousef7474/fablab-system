@@ -3,6 +3,7 @@ import { toast } from 'react-toastify';
 import api from '../../config/api';
 import KitList, { KitFilters } from './KitList';
 import KitReview from './KitReview';
+import { useHostTheme } from './KitParts';
 import { errorText } from './kitApi';
 import './TrainingKits.css';
 
@@ -11,6 +12,7 @@ import './TrainingKits.css';
 // plus who the project manager (مسؤول إدارة المشاريع) is.
 
 export const TrainingKitApprovals = () => {
+  const theme = useHostTheme();
   const [kits, setKits] = useState([]);
   const [open, setOpen] = useState(null);
   const load = useCallback(async () => {
@@ -23,7 +25,7 @@ export const TrainingKitApprovals = () => {
   }, []);
   useEffect(() => { load(); }, [load]);
   return (
-    <div className="tk" data-theme="dark" dir="rtl">
+    <div className="tk" data-theme={theme} dir="rtl">
       <div className="tk-tab-head">
         <div>
           <h3>🎒 الحقائب التدريبية بانتظار الاعتماد</h3>
@@ -31,7 +33,7 @@ export const TrainingKitApprovals = () => {
         </div>
       </div>
       <KitList kits={kits} showAuthor onOpen={(k) => setOpen(k.kitId)} empty={{ title: 'لا توجد حقائب بانتظار الاعتماد' }} />
-      {open && <KitReview api={api} scope="admin" kitId={open} onClose={() => { setOpen(null); load(); }} onChanged={load} />}
+      {open && <KitReview api={api} scope="admin" kitId={open} theme={theme} onClose={() => { setOpen(null); load(); }} onChanged={load} />}
     </div>
   );
 };
@@ -82,6 +84,7 @@ const MATCH = {
 };
 
 export const ManagerKitsTab = () => {
+  const theme = useHostTheme();
   const [kits, setKits] = useState([]);
   const [filter, setFilter] = useState('approved');
   const [search, setSearch] = useState('');
@@ -102,10 +105,9 @@ export const ManagerKitsTab = () => {
     && (!q || `${k.title || ''} ${k.author?.name || ''} TK-${String(k.kitNumber).padStart(3, '0')}`.toLowerCase().includes(q)));
 
   return (
-    <div className="tk" data-theme="dark" dir="rtl">
+    <div className="tk" data-theme={theme} dir="rtl">
       <div className="tk-tab-head">
         <div>
-          <h3>🎒 الحقائب التدريبية</h3>
           <p>أرشيف الحقائب التي أعدّها الموظفون: المعتمدة محفوظة هنا للرجوع إليها مستقبلًا، مع كل إصداراتها وملاحظات المراجعة وملفاتها.</p>
         </div>
         <input className="tk-in" style={{ maxWidth: 280 }} placeholder="بحث بالاسم أو الموظف أو الرقم…" value={search} onChange={(e) => setSearch(e.target.value)} aria-label="بحث" />
@@ -118,7 +120,7 @@ export const ManagerKitsTab = () => {
         { key: 'all', label: 'الكل', count: counts.all }
       ]} />
       <KitList kits={shown} showAuthor onOpen={(k) => setOpen(k.kitId)} empty={{ title: filter === 'approved' ? 'لا توجد حقائب معتمدة بعد' : 'لا توجد حقائب هنا' }} />
-      {open && <KitReview api={api} scope="admin" kitId={open} onClose={() => { setOpen(null); load(); }} onChanged={load} />}
+      {open && <KitReview api={api} scope="admin" kitId={open} theme={theme} onClose={() => { setOpen(null); load(); }} onChanged={load} />}
     </div>
   );
 };

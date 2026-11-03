@@ -121,12 +121,12 @@ const renderKitDocument = ({ kit, version, data, author, images = {}, files = {}
       ${row('الفئة المستهدفة', dash(c.target))}
       ${row('الفئة العمرية', has(c.ageMin) || has(c.ageMax) ? `من ${esc(c.ageMin || '—')} إلى ${esc(c.ageMax || '—')} سنة` : dash(''))}
       ${row('عدد المشاركين', has(c.partMin) || has(c.partMax) ? `${esc(c.partMin || '—')} – ${esc(c.partMax || '—')} مشاركًا${has(c.partNote) ? `<br><small>${esc(c.partNote)}</small>` : ''}` : dash(''))}
-      ${row('تقسيم المشاركين', gs ? `${esc(gs)} مشاركين في كل مجموعة${pmax ? ` — ${ar(groups(pmax), GROUPS)} عند الحد الأعلى` : ''}` : dash(''))}
+      ${row('تقسيم المشاركين', gs || has(c.groupNote) ? `${gs ? `${esc(gs)} مشاركين في كل مجموعة${pmax ? ` — ${ar(groups(pmax), GROUPS)} عند الحد الأعلى` : ''}` : ''}${has(c.groupNote) ? `${gs ? '<br>' : ''}<small>${esc(c.groupNote)}</small>` : ''}` : dash(''))}
       ${row('المدة', days && hours ? `${ar(days, DAYS)} × ${ar(hours, HOURS)} يوميًا = ${ar(days * hours, HOURS)} تدريبية` : dash(''))}
       ${row('شروط الالتحاق', dash(c.prereq))}
       ${row('تكلفة المستهلكات', cp || cg ? `${cp ? `${fmt(cp)} ر.س لكل مشارك` : ''}${cp && cg ? ' + ' : ''}${cg ? `${fmt(cg)} ر.س لكل مجموعة` : ''}
         ${cost(pmin) != null ? `<br><small>الإجمالي عند الحد الأدنى: ${fmt(cost(pmin))} ر.س</small>` : ''}
-        ${cost(pmax) != null ? `<br><small>الإجمالي عند الحد الأعلى: ${fmt(cost(pmax))} ر.س</small>` : ''}` : dash(''))}
+        ${cost(pmax) != null ? `<br><small>الإجمالي عند الحد الأعلى: ${fmt(cost(pmax))} ر.س</small>` : ''}${has(c.costNote) ? `<br><small>${multiline(c.costNote)}</small>` : ''}` : (has(c.costNote) ? multiline(c.costNote) : dash('')))}
       ${row('تكلفة تأسيسية غير متكررة', dash(c.setup))}
       ${row('اعتبارات أخرى', dash(c.other))}
       ${row('مُعدّ المحتوى العلمي', dash(c.author))}

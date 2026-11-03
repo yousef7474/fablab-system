@@ -16,7 +16,7 @@
   --tk-field-line: rgba(148, 163, 184, 0.22);
   --tk-ink: var(--ink-primary, #eef2f7);
   --tk-ink-2: var(--ink-secondary, #94a3b8);
-  --tk-muted: var(--ink-muted, #64748b);
+  --tk-muted: #8792a6;
   --tk-red: #EE2329;
   --tk-red-ink: #ff6b6f;
   --tk-red-soft: var(--signal-red-soft, rgba(238, 35, 41, 0.12));
@@ -47,11 +47,11 @@
   --tk-field-line: rgba(15, 23, 42, 0.16);
   --tk-ink: var(--ink-primary, #0f172a);
   --tk-ink-2: var(--ink-secondary, #475569);
-  --tk-muted: var(--ink-muted, #64748b);
+  --tk-muted: #556274;
   --tk-red-ink: #c81e24;
-  --tk-cyan: #0891b2;
+  --tk-cyan: #0e7490;
   --tk-mint: #15803d;
-  --tk-amber: #b45309;
+  --tk-amber: #92400e;
   --tk-violet: #6d28d9;
   --tk-scrim: rgba(15, 23, 42, 0.38);
   --tk-shadow: 0 24px 50px -24px rgba(15, 23, 42, 0.25);
@@ -59,6 +59,9 @@
 .tk *, .tk *::before, .tk *::after { box-sizing: border-box; }
 /* index.css paints every heading --gray-900 — follow the kit's ink instead */
 .tk h1, .tk h2, .tk h3, .tk h4 { color: inherit; font-weight: 700; letter-spacing: 0; }
+/* …and every <p> --gray-600 with a 1rem bottom margin (dark grey on the
+   dark theme). :where() keeps this weaker than the classes below. */
+.tk :where(p) { color: inherit; margin: 0; }
 .tk button { font-family: inherit; }
 .tk .mono { font-family: var(--tk-mono); font-variant-numeric: tabular-nums; }
 
@@ -132,7 +135,7 @@
 .tk-btn:disabled { opacity: .5; cursor: not-allowed; }
 .tk-btn.primary { border-color: transparent; background: linear-gradient(135deg, #EE2329, #b3151a); color: #fff; box-shadow: 0 10px 24px -12px rgba(238, 35, 41, .7); }
 .tk-btn.primary:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 14px 28px -12px rgba(238, 35, 41, .8); }
-.tk-btn.ok { border-color: transparent; background: linear-gradient(135deg, #16a34a, #15803d); color: #fff; }
+.tk-btn.ok { border-color: transparent; background: linear-gradient(135deg, #15803d, #166534); color: #fff; }
 .tk-btn.warn { border-color: rgba(245, 158, 11, .5); background: var(--tk-amber-soft); color: var(--tk-amber); }
 .tk-btn.ghost { background: transparent; }
 .tk-btn.sm { height: 32px; padding: 0 10px; font-size: 12.5px; border-radius: 8px; }
@@ -197,6 +200,28 @@
 .tk-band .tk-meter { background: rgba(255, 255, 255, .14); }
 .tk-pct { display: flex; align-items: center; gap: 12px; }
 @media (max-width: 900px) { .tk-band-in { grid-template-columns: minmax(0, 1fr); gap: 20px; padding: 24px 18px 26px; } .tk-band { margin: 12px 12px 0; } }
+/* Light theme: a light masthead instead of the dark band */
+.tk[data-theme="light"] .tk-band {
+  background:
+    radial-gradient(700px 300px at 85% -20%, rgba(238, 35, 41, .14), transparent 70%),
+    linear-gradient(135deg, #ffffff, #fff4f4);
+  color: #0f172a;
+  border-color: rgba(238, 35, 41, .22);
+  box-shadow: 0 18px 40px -28px rgba(238, 35, 41, .45);
+}
+.tk[data-theme="light"] .tk-band::before {
+  background-image:
+    linear-gradient(rgba(238, 35, 41, .07) 1px, transparent 1px), linear-gradient(90deg, rgba(238, 35, 41, .07) 1px, transparent 1px),
+    linear-gradient(rgba(238, 35, 41, .03) 1px, transparent 1px), linear-gradient(90deg, rgba(238, 35, 41, .03) 1px, transparent 1px);
+}
+.tk[data-theme="light"] .tk-eyebrow { color: #991b1b; }
+.tk[data-theme="light"] .tk-band h1.empty { color: #94a3b8; }
+.tk[data-theme="light"] .tk-band-desc { color: #475569; }
+.tk[data-theme="light"] .tk-chips li { border-color: rgba(15, 23, 42, .14); background: #fff; color: #334155; }
+.tk[data-theme="light"] .tk-tblock { background: rgba(15, 23, 42, .1); border-color: rgba(15, 23, 42, .1); }
+.tk[data-theme="light"] .tk-tblock > div { background: #fff; }
+.tk[data-theme="light"] .tk-tblock dt { color: #64748b; }
+.tk[data-theme="light"] .tk-band .tk-meter { background: rgba(15, 23, 42, .08); }
 
 /* ── Notices ── */
 .tk-wrap { max-width: 1320px; margin: 16px auto 0; padding: 0 20px; }
@@ -309,7 +334,7 @@ select.tk-in option { background: var(--tk-panel); color: var(--tk-ink); }
   color: var(--tk-ink-2); font-size: 14px; font-weight: 700; cursor: pointer; transition: all .15s;
 }
 .tk-seg button:hover { border-color: var(--tk-red); color: var(--tk-ink); }
-.tk-seg button[aria-checked="true"] { background: var(--tk-red); border-color: var(--tk-red); color: #fff; box-shadow: 0 8px 18px -10px rgba(238, 35, 41, .8); }
+.tk-seg button[aria-checked="true"] { background: #d81b25; border-color: #d81b25; color: #fff; box-shadow: 0 8px 18px -10px rgba(238, 35, 41, .8); }
 .tk-lvl { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; }
 .tk-sub { display: inline-flex; align-items: center; gap: 8px; font-size: 13px; color: var(--tk-ink-2); }
 .tk-sub .tk-in { width: 70px; min-height: 38px; text-align: center; }
@@ -333,7 +358,7 @@ select.tk-in option { background: var(--tk-panel); color: var(--tk-ink); }
 .tk-olist > li { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 10px; align-items: start; border-radius: 10px; }
 .tk-items { display: grid; gap: 12px; }
 .tk-item { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 16px; padding: 16px; border: 1px solid var(--tk-line); border-radius: 12px; background: var(--tk-panel-3); }
-.tk-grid.g-out { grid-template-columns: minmax(0, 2fr) minmax(0, 1.5fr) minmax(0, .7fr) minmax(0, 1.2fr); gap: 14px; }
+.tk-grid.g-out { grid-template-columns: minmax(0, 1.8fr) minmax(0, 1.3fr) minmax(0, 1.3fr) minmax(0, 1.1fr); gap: 14px; }
 .tk-list-foot { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; margin-top: 14px; }
 .tk-add { display: inline-flex; align-items: center; gap: 8px; min-height: 40px; padding: 0 14px; border: 1px dashed var(--tk-field-line); border-radius: 10px; background: transparent; color: var(--tk-red-ink); font-size: 14px; font-weight: 800; cursor: pointer; }
 .tk-add:hover { border-color: var(--tk-red); background: var(--tk-red-soft); }
@@ -381,7 +406,7 @@ select.tk-in option { background: var(--tk-panel); color: var(--tk-ink); }
 .tk-pk .t { max-width: 20ch; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .tk-pk.obj:hover { border-color: var(--tk-red); }
 .tk-pk.out:hover { border-color: var(--tk-cyan); }
-.tk-pk.obj[aria-pressed="true"] { background: var(--tk-red); border-color: var(--tk-red); color: #fff; }
+.tk-pk.obj[aria-pressed="true"] { background: #d81b25; border-color: #d81b25; color: #fff; }
 .tk-pk.out[aria-pressed="true"] { background: var(--tk-cyan); border-color: var(--tk-cyan); color: #04131a; }
 
 /* cost tiles */
@@ -535,3 +560,7 @@ select.tk-in option { background: var(--tk-panel); color: var(--tk-ink); }
 @media print {
   .tk-top, .tk-nav, .tk-add, .tk-ibtn, .tk-drop, .tk-list-foot { display: none !important; }
 }
+
+/* Light theme: the deeper cyan / green fills need white ink */
+.tk[data-theme="light"] .tk-pk.out[aria-pressed="true"],
+.tk[data-theme="light"] .tk-ring.done { color: #fff; }

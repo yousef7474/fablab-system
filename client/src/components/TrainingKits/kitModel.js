@@ -91,8 +91,8 @@ export const blankState = () => ({
   v: 1,
   card: {
     name: '', description: '', type: '', level: '', sublevel: '', practical: '', delivery: '', language: '', primaryDomain: '', supportDomains: [], tools: [],
-    objectives: [MAKE.objective()], target: '', ageMin: '', ageMax: '', partMin: '', partMax: '', partNote: '', groupSize: '', prereq: '', days: '', hours: '',
-    author: '', version: '', versionDate: '', costPerson: '', costGroup: '', setup: '', other: ''
+    objectives: [MAKE.objective()], target: '', ageMin: '', ageMax: '', partMin: '', partMax: '', partNote: '', groupSize: '', groupNote: '', prereq: '', days: '', hours: '',
+    author: '', version: '', versionDate: '', costPerson: '', costGroup: '', costNote: '', setup: '', other: ''
   },
   outputs: [MAKE.output()],
   measures: [MAKE.measure()],
@@ -236,8 +236,8 @@ export const flatten = (raw) => {
     name: 'اسم البرنامج', description: 'وصف البرنامج', type: 'نوع البرنامج', level: 'المستوى', sublevel: 'رقم المستوى', practical: 'نوع التطبيق العملي',
     delivery: 'آلية التقديم', language: 'لغة البرنامج', primaryDomain: 'المجال الأساسي', supportDomains: 'المجالات المساندة', tools: 'الأجهزة والبرامج',
     target: 'الفئة المستهدفة', ageMin: 'الحد الأدنى للعمر', ageMax: 'الحد الأعلى للعمر', partMin: 'الحد الأدنى للمشاركين', partMax: 'الحد الأعلى للمشاركين',
-    partNote: 'توزيع المشاركين', groupSize: 'حجم المجموعة', prereq: 'شروط الالتحاق', days: 'عدد الأيام', hours: 'الساعات اليومية', author: 'مُعدّ المحتوى',
-    version: 'رقم الإصدار', versionDate: 'تاريخ التحديث', costPerson: 'التكلفة لكل مشارك', costGroup: 'التكلفة لكل مجموعة', setup: 'التكلفة التأسيسية', other: 'اعتبارات أخرى'
+    partNote: 'توزيع المشاركين', groupSize: 'حجم المجموعة', groupNote: 'تفاصيل تقسيم المشاركين', prereq: 'شروط الالتحاق', days: 'عدد الأيام', hours: 'الساعات اليومية', author: 'مُعدّ المحتوى',
+    version: 'رقم الإصدار', versionDate: 'تاريخ التحديث', costPerson: 'التكلفة لكل مشارك', costGroup: 'التكلفة لكل مجموعة', costNote: 'تفاصيل التكلفة', setup: 'التكلفة التأسيسية', other: 'اعتبارات أخرى'
   };
   Object.entries(CARD).forEach(([k, l]) => put(`card.${k}`, `بطاقة البرنامج › ${l}`, c[k]));
   c.objectives.forEach((o, i) => put(`obj.${o.id}`, `الأهداف › ه${i + 1}`, o.text));

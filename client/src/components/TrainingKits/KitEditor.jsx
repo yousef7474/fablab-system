@@ -298,7 +298,7 @@ const KitEditor = ({ api, kit, portalTarget, theme = 'dark', onClose, onSubmitte
           {field({ key: 'target', label: 'الفئة المستهدفة', req: 1, wide: 1, for: idOf(`${p}target`), hint: 'مثل: طلبة، معلمون، مبتدئون أو ممارسون.', control: text(`${p}target`) })}
           {field({ key: 'age', label: 'الفئة العمرية', req: 1, for: idOf(`${p}ageMin`), hint: 'الحد الأدنى والأعلى للعمر.', control: <div className="tk-pair">{numIn(`${p}ageMin`, { sfx: 'سنة', ph: 'من' })}<span className="sep">إلى</span>{numIn(`${p}ageMax`, { sfx: 'سنة', ph: 'إلى', label: 'الحد الأعلى للعمر' })}</div> })}
           {field({ key: 'part', label: 'عدد المشاركين', req: 1, for: idOf(`${p}partMin`), hint: 'العدد الإجمالي وتوزيعه حسب الفئات عند الحاجة.', control: <><div className="tk-pair">{numIn(`${p}partMin`, { sfx: 'مشارك', sfxW: 52, ph: 'الأدنى' })}<span className="sep">إلى</span>{numIn(`${p}partMax`, { sfx: 'مشارك', sfxW: 52, ph: 'الأعلى', label: 'الحد الأعلى للمشاركين' })}</div>{text(`${p}partNote`, { ph: 'التوزيع حسب الفئات (اختياري)', label: 'توزيع المشاركين حسب الفئات' })}</> })}
-          {field({ key: 'groups', label: 'تقسيم المشاركين', for: idOf(`${p}groupSize`), hint: 'عدد المجموعات وعدد المشاركين في كل مجموعة.', control: numIn(`${p}groupSize`, { sfx: 'مشاركين في كل مجموعة', sfxW: 150, min: 1, ph: '4' }),
+          {field({ key: 'groups', label: 'تقسيم المشاركين', for: idOf(`${p}groupSize`), hint: 'عدد المجموعات وعدد المشاركين في كل مجموعة.', control: <>{numIn(`${p}groupSize`, { sfx: 'مشاركين في كل مجموعة', sfxW: 150, min: 1, ph: '4' })}{text(`${p}groupNote`, { ph: 'تفاصيل التقسيم (اختياري) — مثال: خلط المراحل الدراسية داخل كل مجموعة', label: 'تفاصيل تقسيم المشاركين' })}</>,
             calc: D.gs && D.pmax ? `= ${ar(D.groups(D.pmax), GROUPS)} عند الحد الأعلى${D.pmin ? ` · ${ar(D.groups(D.pmin), GROUPS)} عند الحد الأدنى` : ''}` : '', idle: 'يُحسب عدد المجموعات من عدد المشاركين وحجم المجموعة.' })}
           {field({ key: 'dur', label: 'المدة', req: 1, for: idOf(`${p}days`), hint: 'عدد الأيام × الساعات اليومية، مع إجمالي الساعات.', control: <div className="tk-pair">{numIn(`${p}days`, { sfx: 'أيام', min: 1, ph: '4' })}<span className="sep">×</span>{numIn(`${p}hours`, { sfx: 'ساعات يوميًا', sfxW: 86, step: '0.5', ph: '3', label: 'الساعات اليومية' })}</div>,
             calc: D.d && D.h ? `= ${ar(D.d * D.h, HOURS)} تدريبية إجمالًا` : '', idle: 'يُحسب إجمالي الساعات من عدد الأيام والساعات اليومية.' })}
@@ -321,6 +321,7 @@ const KitEditor = ({ api, kit, portalTarget, theme = 'dark', onClose, onSubmitte
                 })}
                 {D.cg && !D.gs ? <p className="tk-tiles-note">حدد عدد المشاركين في كل مجموعة لاحتساب تكلفة المجموعات.</p> : null}
               </div>
+              <AutoArea id={idOf(`${p}costNote`)} value={val(`${p}costNote`)} disabled={locked} placeholder="تفاصيل التكلفة (اختياري) — مثال: كمية الخامة لكل نموذج وسعرها، والإجمالي للدورة" aria-label="تفاصيل التكلفة" onChange={(v) => set(`${p}costNote`, v)} />
             </>
           ) })}
           {field({ key: 'setup', label: 'تكلفة تأسيسية غير متكررة', for: idOf(`${p}setup`), hint: 'قيمة جهاز أو أداة غير متوفرة، أو لا يوجد.', control: text(`${p}setup`) })}
@@ -359,7 +360,7 @@ const KitEditor = ({ api, kit, portalTarget, theme = 'dark', onClose, onSubmitte
                       <optgroup label="مخرجات أخرى">{OUT_TYPES.filter(t => !t.tech).map(t => <option key={t.v} value={t.v}>{t.v}</option>)}</optgroup>
                     </select>
                   ) })}
-                  {field({ key: 'c', label: 'العدد', req: 1, for: idOf(`${q}count`), control: numIn(`${q}count`, { ph: '0' }) })}
+                  {field({ key: 'c', label: 'العدد', req: 1, for: idOf(`${q}count`), control: text(`${q}count`, { ph: 'مثال: 1 لكل مشارك' }) })}
                   {field({ key: 'o', label: 'الملكية', req: 1, for: idOf(`${q}owner`), control: select(`${q}owner`, OPT.owner) })}
                   {field({ key: 'd', label: 'الوصف المختصر', req: 1, wide: 1, for: idOf(`${q}desc`), control: area(`${q}desc`, { ph: 'شكله ووظيفته وما الذي ينفذه المشارك بنفسه' }) })}
                 </div>
@@ -692,8 +693,18 @@ const KitEditor = ({ api, kit, portalTarget, theme = 'dark', onClose, onSubmitte
           </div>
         </section>
 
-        {(returnedFrom || locked) && (
-          <div className="tk-wrap">
+        {(returnedFrom || locked || data.example) && (
+          <div className="tk-wrap" style={{ display: 'grid', gap: 10 }}>
+            {data.example && !locked && (
+              <div className="tk-note cyan">
+                <span className="tk-note-ico">📖</span>
+                <div style={{ flex: 1 }}>
+                  <b>هذه حقيبة مثال مكتملة — «تعلّم الحركة الميكانيكية»</b>
+                  تعرض طريقة تعبئة كل قسم والربط بين الأهداف (ه) والمخرجات (م) وأيام الخطة. يمكنك التعديل عليها وإرسالها للمراجعة لتجربة مسار الاعتماد، أو العودة وبدء حقيبة جديدة لبرنامجك.
+                </div>
+                <button type="button" className="tk-btn sm ghost" onClick={() => set('example', false)}>إخفاء</button>
+              </div>
+            )}
             {returnedFrom && (
               <div className="tk-note red">
                 <span className="tk-note-ico">↩</span>

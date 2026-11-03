@@ -5,7 +5,8 @@ import KitList, { KitFilters } from './KitList';
 import KitEditor from './KitEditor';
 import KitReview from './KitReview';
 import { blankState, analyze } from './kitModel';
-import { errorText } from './kitApi';
+import { exampleKitData, exampleImages } from './kitExample';
+import { errorText, uploadFile } from './kitApi';
 import './TrainingKits.css';
 
 // Employee dashboard tab «الحقائب التدريبية»: the employee's kits, a new
@@ -55,6 +56,30 @@ const EmployeeKitsTab = ({ portalTarget, theme }) => {
     }
   };
 
+  // A copy of the example kit (real FabLab kit, with its reference
+  // images) — to see a filled kit and to try the review flow.
+  const createExample = async () => {
+    setCreating(true);
+    try {
+      const data = exampleKitData();
+      const { data: kit } = await employeeApi.post('/training-kits/mine', { data, completion: analyze(data).pct });
+      for (const img of exampleImages()) {
+        try {
+          const up = await uploadFile(employeeApi, kit.kitId, img.file, 'image');
+          data.images.push({ id: up.fileId.slice(0, 8), outputId: data.outputs[img.output].id, fileId: up.fileId, name: up.name, caption: img.caption });
+        } catch { /* the example still works without its pictures */ }
+      }
+      await employeeApi.put(`/training-kits/mine/${kit.kitId}`, { data, completion: analyze(data).pct });
+      const { data: full } = await employeeApi.get(`/training-kits/mine/${kit.kitId}`);
+      setEditing(full);
+      load();
+    } catch (err) {
+      toast.error(errorText(err, 'تعذّر إنشاء حقيبة المثال'));
+    } finally {
+      setCreating(false);
+    }
+  };
+
   const remove = async (k) => {
     if (!window.confirm(`حذف المسودة «${k.title || 'بلا اسم'}» نهائيًا؟`)) return;
     try {
@@ -88,7 +113,10 @@ const EmployeeKitsTab = ({ portalTarget, theme }) => {
           <h3>🎒 الحقائب التدريبية</h3>
           <p>عبّئ قالب الحقيبة التدريبية وأرسله لمسؤول إدارة المشاريع ثم للمدير للاعتماد. يُحفظ كل إصدار مع ملاحظات المراجعين، والحقائب المعتمدة تبقى هنا لاستخدامها في طلب ورشة لاحقًا.</p>
         </div>
-        <button type="button" className="tk-btn primary" onClick={create} disabled={creating}>＋ {creating ? 'جارٍ الإنشاء…' : 'حقيبة جديدة'}</button>
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+          <button type="button" className="tk-btn" onClick={createExample} disabled={creating} title="نسخة من حقيبة حقيقية مكتملة لترى طريقة التعبئة وتجرّب مسار الاعتماد">📖 ابدأ من حقيبة مثال</button>
+          <button type="button" className="tk-btn primary" onClick={create} disabled={creating}>＋ {creating ? 'جارٍ الإنشاء…' : 'حقيبة جديدة'}</button>
+        </div>
       </div>
 
       <KitFilters value={filter} onChange={setFilter} options={[
@@ -102,8 +130,13 @@ const EmployeeKitsTab = ({ portalTarget, theme }) => {
       {loading ? <div className="tk-doc-loading">جارٍ التحميل…</div> : (
         <KitList kits={shown} onOpen={open} empty={{
           title: filter === 'all' ? 'لم تبدأ أي حقيبة بعد' : 'لا توجد حقائب في هذا التصنيف',
-          text: filter === 'all' ? 'ابدأ حقيبة جديدة — تُحفظ تلقائيًا ويمكنك إكمالها لاحقًا.' : '',
-          action: filter === 'all' ? <button type="button" className="tk-btn primary" onClick={create} disabled={creating}>＋ حقيبة جديدة</button> : null
+          text: filter === 'all' ? 'ابدأ حقيبة جديدة — تُحفظ تلقائيًا ويمكنك إكمالها لاحقًا. أو افتح حقيبة مثال مكتملة لترى طريقة التعبئة.' : '',
+          action: filter === 'all' ? (
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'center' }}>
+              <button type="button" className="tk-btn" onClick={createExample} disabled={creating}>📖 ابدأ من حقيبة مثال</button>
+              <button type="button" className="tk-btn primary" onClick={create} disabled={creating}>＋ حقيبة جديدة</button>
+            </div>
+          ) : null
         }} />
       )}
       {drafts.length > 0 && (
