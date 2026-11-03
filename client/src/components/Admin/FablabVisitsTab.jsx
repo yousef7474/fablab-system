@@ -617,13 +617,13 @@ const FablabVisitsTab = () => {
   };
 
   return (
-    <div style={{ padding: '16px 4px' }}>
+    <div className="fvt" style={{ padding: '16px 4px' }}>
       {/* Header + summary tiles */}
       <div style={{ marginBottom: 16 }}>
         <h2 style={{ margin: '0 0 6px', fontSize: 22, fontWeight: 800 }}>
           {isRTL ? 'زيارات فاب لاب' : 'FabLab Visits'}
         </h2>
-        <p style={{ margin: 0, color: '#64748b', fontSize: 13 }}>
+        <p style={{ margin: 0, color: 'var(--text-tertiary, #64748b)', fontSize: 13 }}>
           {view === 'slots'
             ? (isRTL ? 'افتح مواعيد الزيارة المتاحة — يختار الزوار من هذه المواعيد فقط، ومجموعة واحدة لكل موعد.' : 'Open the visit slots — visitors can only book these, one group per slot.')
             : (isRTL ? 'مراجعة طلبات الزيارة المستلمة، إرسالها للمدير للاعتماد، ثم إشعار الجهة الزائرة بالقرار.' : 'Review incoming visit requests, send them for manager approval, then notify the visiting entity.')}
@@ -644,7 +644,7 @@ const FablabVisitsTab = () => {
             style={{
               padding: '8px 16px', borderRadius: 9, border: 'none', cursor: 'pointer',
               fontFamily: 'inherit', fontWeight: 800, fontSize: 13,
-              background: view === t.key ? 'linear-gradient(135deg,#0ea5e9,#0284c7)' : 'transparent',
+              background: view === t.key ? 'linear-gradient(135deg,#0284c7,#0369a1)' : 'transparent',
               color: view === t.key ? '#fff' : 'var(--text-secondary, #475569)'
             }}
           >
@@ -658,24 +658,24 @@ const FablabVisitsTab = () => {
       {view === 'requests' && (<>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 10, marginBottom: 16 }}>
         {[
-          { key: 'total',    label: 'الإجمالي',      value: counts.total,    color: '#0f172a' },
-          { key: 'draft',    label: 'مسودّة',        value: counts.draft,    color: '#64748b' },
-          { key: 'pending',  label: 'بانتظار المدير', value: counts.pending,  color: '#d97706' },
-          { key: 'approved', label: 'جاهز لإشعار الزائر', value: counts.approved, color: '#0ea5e9' },
-          { key: 'done',     label: 'مغلقة',         value: counts.done,     color: '#16a34a' },
-          { key: 'rejected', label: 'مرفوض من المدير', value: counts.rejected, color: '#b91c1c' }
+          { key: 'total',    label: 'الإجمالي',      value: counts.total,    color: 'var(--text-primary, #0f172a)' },
+          { key: 'draft',    label: 'مسودّة',        value: counts.draft,    color: 'var(--text-tertiary, #64748b)' },
+          { key: 'pending',  label: 'بانتظار المدير', value: counts.pending,  color: 'var(--fvt-amber)' },
+          { key: 'approved', label: 'جاهز لإشعار الزائر', value: counts.approved, color: 'var(--fvt-sky)' },
+          { key: 'done',     label: 'مغلقة',         value: counts.done,     color: 'var(--fvt-green)' },
+          { key: 'rejected', label: 'مرفوض من المدير', value: counts.rejected, color: 'var(--fvt-red)' }
         ].map(t => (
           <button
             key={t.key}
             onClick={() => setStatusFilter(t.key === 'total' ? 'all' : t.key)}
             style={{
               cursor: 'pointer', textAlign: isRTL ? 'right' : 'left',
-              background: (statusFilter === (t.key === 'total' ? 'all' : t.key)) ? '#f1f5f9' : '#fff',
-              border: (statusFilter === (t.key === 'total' ? 'all' : t.key)) ? `2px solid ${t.color}` : '1px solid #e5e7eb',
+              background: (statusFilter === (t.key === 'total' ? 'all' : t.key)) ? 'var(--bg-tertiary, #f1f5f9)' : 'var(--card-bg, #fff)',
+              border: (statusFilter === (t.key === 'total' ? 'all' : t.key)) ? `2px solid ${t.color}` : '1px solid var(--border-color, #e5e7eb)',
               padding: '12px 14px', borderRadius: 12, transition: 'all 0.16s'
             }}
           >
-            <div style={{ fontSize: 11, letterSpacing: 1, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', marginBottom: 4 }}>{t.label}</div>
+            <div style={{ fontSize: 11, letterSpacing: 1, fontWeight: 700, color: 'var(--text-secondary, #64748b)', textTransform: 'uppercase', marginBottom: 4 }}>{t.label}</div>
             <div style={{ fontSize: 24, fontWeight: 800, color: t.color, lineHeight: 1 }}>{t.value}</div>
           </button>
         ))}
@@ -690,15 +690,16 @@ const FablabVisitsTab = () => {
           placeholder="بحث بالاسم / البريد / الجوال..."
           style={{
             flex: 1, minWidth: 220,
-            padding: '10px 14px', borderRadius: 10, border: '1px solid #e5e7eb',
-            fontFamily: 'inherit', fontSize: 14
+            padding: '10px 14px', borderRadius: 10, border: '1px solid var(--border-color, #e5e7eb)',
+            fontFamily: 'inherit', fontSize: 14,
+            background: 'var(--input-bg, #fff)', color: 'var(--text-primary, #0f172a)'
           }}
         />
         <button
           onClick={fetchAll}
           style={{
-            padding: '10px 18px', borderRadius: 10, border: '1px solid #e5e7eb',
-            background: '#fff', color: '#0f172a', cursor: 'pointer', fontWeight: 600, fontSize: 13
+            padding: '10px 18px', borderRadius: 10, border: '1px solid var(--border-color, #e5e7eb)',
+            background: 'var(--card-bg, #fff)', color: 'var(--text-primary, #0f172a)', cursor: 'pointer', fontWeight: 600, fontSize: 13
           }}
         >
           🔄 تحديث
@@ -707,9 +708,9 @@ const FablabVisitsTab = () => {
 
       {/* List */}
       {loading ? (
-        <div style={{ padding: 60, textAlign: 'center', color: '#64748b' }}>جارٍ التحميل...</div>
+        <div style={{ padding: 60, textAlign: 'center', color: 'var(--text-tertiary, #64748b)' }}>جارٍ التحميل...</div>
       ) : filtered.length === 0 ? (
-        <div style={{ padding: 60, textAlign: 'center', color: '#64748b', background: '#f8fafc', border: '1px dashed #cbd5e1', borderRadius: 12 }}>
+        <div style={{ padding: 60, textAlign: 'center', color: 'var(--text-secondary, #64748b)', background: 'var(--bg-tertiary, #f8fafc)', border: '1px dashed var(--border-color, #cbd5e1)', borderRadius: 12 }}>
           لا توجد طلبات في هذا التصنيف
         </div>
       ) : (
@@ -723,7 +724,7 @@ const FablabVisitsTab = () => {
               transition={{ duration: 0.24 }}
               onClick={() => setOpenVisit(v)}
               style={{
-                background: '#fff', border: '1px solid #e5e7eb', borderRadius: 14, padding: 16,
+                background: 'var(--card-bg, #fff)', border: '1px solid var(--border-color, #e5e7eb)', borderRadius: 14, padding: 16,
                 cursor: 'pointer', transition: 'all 0.16s'
               }}
               whileHover={{ y: -2, boxShadow: '0 12px 28px -14px rgba(15,23,42,0.15)' }}
@@ -732,14 +733,14 @@ const FablabVisitsTab = () => {
                 <div style={{ minWidth: 0, flex: 1 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 4, flexWrap: 'wrap' }}>
                     <span style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 12, fontWeight: 700, color: '#0284c7', background: '#e0f2fe', padding: '3px 10px', borderRadius: 999, letterSpacing: 1 }}>{fmtVisitNo(v.visitNumber)}</span>
-                    <span style={{ fontSize: 16, fontWeight: 800, color: '#0f172a' }}>{v.entityName}</span>
+                    <span style={{ fontSize: 16, fontWeight: 800, color: 'var(--text-primary, #0f172a)' }}>{v.entityName}</span>
                   </div>
-                  <div style={{ fontSize: 13, color: '#475569', marginBottom: 8 }}>
+                  <div style={{ fontSize: 13, color: 'var(--text-secondary, #475569)', marginBottom: 8 }}>
                     المشرف: {v.personInCharge}{v.supervisorJob ? ` (${v.supervisorJob})` : ''} · {v.visitorsCount || 1} زائر
                     {instructorsOf(v).length > 0 && ` · ${instructorsOf(v).length} مرافق`}
                     {v.slotId && <span style={{ marginInlineStart: 8, fontSize: 11, fontWeight: 700, color: '#0284c7', background: '#e0f2fe', padding: '2px 8px', borderRadius: 999 }}>🗓️ موعد محجوز</span>}
                   </div>
-                  <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', fontSize: 12, color: '#64748b' }}>
+                  <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', fontSize: 12, color: 'var(--text-tertiary, #64748b)' }}>
                     <span dir="ltr">📅 {fmtDate(v.visitDate)}  ·  {fmtTime(v.visitStartTime)} → {fmtTime(v.visitEndTime)}</span>
                     <span dir="ltr">✉️ {v.email}</span>
                     <span dir="ltr">📱 {v.phone}</span>
@@ -747,7 +748,7 @@ const FablabVisitsTab = () => {
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 6, flexShrink: 0 }}>
                   <StatusPill v={v} />
-                  <div style={{ fontSize: 11, color: '#94a3b8', fontFamily: 'JetBrains Mono, monospace' }}>{fmtWhen(v.createdAt)}</div>
+                  <div style={{ fontSize: 11, color: 'var(--text-tertiary, #64748b)', fontFamily: 'JetBrains Mono, monospace' }}>{fmtWhen(v.createdAt)}</div>
                 </div>
               </div>
             </motion.div>
@@ -769,20 +770,20 @@ const FablabVisitsTab = () => {
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: 20, scale: 0.96 }}
               onClick={(e) => e.stopPropagation()}
-              style={{ background: '#fff', borderRadius: 18, maxWidth: 720, width: '100%', maxHeight: '90vh', overflow: 'auto' }}
+              style={{ background: 'var(--modal-bg, #fff)', color: 'var(--text-primary, #0f172a)', borderRadius: 18, maxWidth: 720, width: '100%', maxHeight: '90vh', overflow: 'auto' }}
             >
-              <div style={{ padding: 24, borderBottom: '1px solid #e5e7eb', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12 }}>
+              <div style={{ padding: 24, borderBottom: '1px solid var(--border-color, #e5e7eb)', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12 }}>
                 <div style={{ minWidth: 0 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6, flexWrap: 'wrap' }}>
-                    <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: 2, color: '#0ea5e9', textTransform: 'uppercase' }}>طلب زيارة</span>
+                    <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: 2, color: 'var(--fvt-sky)', textTransform: 'uppercase' }}>طلب زيارة</span>
                     <span style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 12, fontWeight: 800, color: '#0284c7', background: '#e0f2fe', padding: '3px 10px', borderRadius: 999, letterSpacing: 1.5 }}>{fmtVisitNo(openVisit.visitNumber)}</span>
                   </div>
-                  <h3 style={{ margin: 0, fontSize: 22, fontWeight: 800, color: '#0f172a' }}>{openVisit.entityName}</h3>
+                  <h3 style={{ margin: 0, fontSize: 22, fontWeight: 800, color: 'var(--text-primary, #0f172a)' }}>{openVisit.entityName}</h3>
                   <div style={{ marginTop: 10 }}><StatusPill v={openVisit} /></div>
                 </div>
                 <button
                   onClick={() => setOpenVisit(null)}
-                  style={{ background: 'none', border: '1px solid #e5e7eb', width: 34, height: 34, borderRadius: 10, cursor: 'pointer', color: '#64748b' }}
+                  style={{ background: 'none', border: '1px solid var(--border-color, #e5e7eb)', width: 34, height: 34, borderRadius: 10, cursor: 'pointer', color: 'var(--text-tertiary, #64748b)' }}
                 >✕</button>
               </div>
 
@@ -799,22 +800,22 @@ const FablabVisitsTab = () => {
                     [openVisit.slotId ? 'تاريخ الزيارة (موعد محجوز)' : 'تاريخ الزيارة', <span dir="ltr">{fmtDate(openVisit.visitDate)}</span>],
                     ['الوقت', <span dir="ltr">{fmtTime(openVisit.visitStartTime)} → {fmtTime(openVisit.visitEndTime)}</span>]
                   ].map(([k, val], i) => (
-                    <div key={i} style={{ background: '#f8fafc', border: '1px solid #e5e7eb', padding: 12, borderRadius: 10 }}>
-                      <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: 1, color: '#64748b', textTransform: 'uppercase', marginBottom: 4 }}>{k}</div>
-                      <div style={{ fontSize: 14, fontWeight: 600, color: '#0f172a' }}>{val}</div>
+                    <div key={i} style={{ background: 'var(--bg-tertiary, #f8fafc)', border: '1px solid var(--border-color, #e5e7eb)', padding: 12, borderRadius: 10 }}>
+                      <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: 1, color: 'var(--text-tertiary, #64748b)', textTransform: 'uppercase', marginBottom: 4 }}>{k}</div>
+                      <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary, #0f172a)' }}>{val}</div>
                     </div>
                   ))}
                 </div>
 
                 {instructorsOf(openVisit).length > 0 && (
                   <div style={{ marginBottom: 16 }}>
-                    <div style={{ fontSize: 12, fontWeight: 700, color: '#0369a1', letterSpacing: 1, marginBottom: 8, textTransform: 'uppercase' }}>
+                    <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--fvt-sky)', letterSpacing: 1, marginBottom: 8, textTransform: 'uppercase' }}>
                       المرافقون ({instructorsOf(openVisit).length})
                     </div>
-                    <div style={{ overflowX: 'auto', border: '1px solid #e5e7eb', borderRadius: 10 }}>
+                    <div style={{ overflowX: 'auto', border: '1px solid var(--border-color, #e5e7eb)', borderRadius: 10 }}>
                       <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13, minWidth: 420 }}>
                         <thead>
-                          <tr style={{ background: '#f0f9ff', color: '#0369a1' }}>
+                          <tr style={{ background: '#f0f9ff', color: 'var(--fvt-sky)' }}>
                             <th style={{ padding: '8px 12px', textAlign: 'start' }}>#</th>
                             <th style={{ padding: '8px 12px', textAlign: 'start' }}>الاسم</th>
                             <th style={{ padding: '8px 12px', textAlign: 'start' }}>الجوال</th>
@@ -823,8 +824,8 @@ const FablabVisitsTab = () => {
                         </thead>
                         <tbody>
                           {instructorsOf(openVisit).map((ins, k) => (
-                            <tr key={k} style={{ borderTop: '1px solid #e5e7eb', color: '#0f172a' }}>
-                              <td style={{ padding: '8px 12px', color: '#64748b' }}>{k + 1}</td>
+                            <tr key={k} style={{ borderTop: '1px solid var(--border-color, #e5e7eb)', color: 'var(--text-primary, #0f172a)' }}>
+                              <td style={{ padding: '8px 12px', color: 'var(--text-tertiary, #64748b)' }}>{k + 1}</td>
                               <td style={{ padding: '8px 12px', fontWeight: 600 }}>{ins.name || '—'}</td>
                               <td style={{ padding: '8px 12px' }} dir="ltr">{ins.phone || '—'}</td>
                               <td style={{ padding: '8px 12px' }}>{ins.job || '—'}</td>
@@ -838,23 +839,23 @@ const FablabVisitsTab = () => {
 
                 {openVisit.purpose && (
                   <div style={{ marginBottom: 16 }}>
-                    <div style={{ fontSize: 12, fontWeight: 700, color: '#0369a1', letterSpacing: 1, marginBottom: 8, textTransform: 'uppercase' }}>الغرض من الزيارة</div>
-                    <div style={{ background: '#f8fafc', border: '1px solid #e5e7eb', padding: 14, borderRadius: 10, whiteSpace: 'pre-wrap', lineHeight: 1.7, fontSize: 13 }}>{openVisit.purpose}</div>
+                    <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--fvt-sky)', letterSpacing: 1, marginBottom: 8, textTransform: 'uppercase' }}>الغرض من الزيارة</div>
+                    <div style={{ background: 'var(--bg-tertiary, #f8fafc)', border: '1px solid var(--border-color, #e5e7eb)', padding: 14, borderRadius: 10, whiteSpace: 'pre-wrap', lineHeight: 1.7, fontSize: 13 }}>{openVisit.purpose}</div>
                   </div>
                 )}
 
                 {openVisit.notes && (
                   <div style={{ marginBottom: 16 }}>
-                    <div style={{ fontSize: 12, fontWeight: 700, color: '#64748b', letterSpacing: 1, marginBottom: 8, textTransform: 'uppercase' }}>ملاحظات</div>
-                    <div style={{ background: '#f8fafc', border: '1px solid #e5e7eb', padding: 14, borderRadius: 10, whiteSpace: 'pre-wrap', lineHeight: 1.7, fontSize: 13 }}>{openVisit.notes}</div>
+                    <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-tertiary, #64748b)', letterSpacing: 1, marginBottom: 8, textTransform: 'uppercase' }}>ملاحظات</div>
+                    <div style={{ background: 'var(--bg-tertiary, #f8fafc)', border: '1px solid var(--border-color, #e5e7eb)', padding: 14, borderRadius: 10, whiteSpace: 'pre-wrap', lineHeight: 1.7, fontSize: 13 }}>{openVisit.notes}</div>
                   </div>
                 )}
 
                 {/* Manager approval history */}
                 {(openVisit.sentForApprovalAt || openVisit.managerNote || openVisit.managerName) && (
                   <div style={{ background: '#fefce8', border: '1px solid #fde68a', borderRadius: 10, padding: 14, marginBottom: 16 }}>
-                    <div style={{ fontSize: 12, fontWeight: 700, color: '#b45309', marginBottom: 8, letterSpacing: 1, textTransform: 'uppercase' }}>سجل الاعتماد</div>
-                    <div style={{ fontSize: 13, color: '#334155', lineHeight: 1.7 }}>
+                    <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--fvt-amber)', marginBottom: 8, letterSpacing: 1, textTransform: 'uppercase' }}>سجل الاعتماد</div>
+                    <div style={{ fontSize: 13, color: 'var(--text-secondary, #334155)', lineHeight: 1.7 }}>
                       {openVisit.sentForApprovalAt && <div>أُرسل للاعتماد: <b>{fmtWhen(openVisit.sentForApprovalAt)}</b> → {openVisit.managerEmail}</div>}
                       {openVisit.approvedAt && <div>اعتمد: <b>{fmtWhen(openVisit.approvedAt)}</b>{openVisit.managerName && ` — ${openVisit.managerName}`}</div>}
                       {openVisit.rejectedAt && <div>رُفض: <b>{fmtWhen(openVisit.rejectedAt)}</b>{openVisit.managerName && ` — ${openVisit.managerName}`}</div>}
@@ -867,7 +868,7 @@ const FablabVisitsTab = () => {
                 {openVisit.visitorDecision !== 'pending' && (
                   <div style={{ background: openVisit.visitorDecision === 'accepted' ? '#eff6ff' : '#fef2f2', border: `1px solid ${openVisit.visitorDecision === 'accepted' ? '#bfdbfe' : '#fecaca'}`, borderRadius: 10, padding: 14, marginBottom: 16 }}>
                     <div style={{ fontSize: 12, fontWeight: 700, color: openVisit.visitorDecision === 'accepted' ? '#1d4ed8' : '#b91c1c', marginBottom: 8, letterSpacing: 1, textTransform: 'uppercase' }}>القرار النهائي</div>
-                    <div style={{ fontSize: 13, color: '#334155', lineHeight: 1.7 }}>
+                    <div style={{ fontSize: 13, color: 'var(--text-secondary, #334155)', lineHeight: 1.7 }}>
                       <div>{openVisit.visitorDecision === 'accepted' ? '✅ تم قبول الزيارة' : '❌ تم رفض الزيارة'}</div>
                       {openVisit.visitorDecisionAt && <div>في: <b>{fmtWhen(openVisit.visitorDecisionAt)}</b>{openVisit.visitorDecisionBy && ` — بواسطة ${openVisit.visitorDecisionBy}`}</div>}
                       {openVisit.visitorEmailSentAt && <div>البريد للزائر: <b>أُرسل</b></div>}
@@ -878,16 +879,16 @@ const FablabVisitsTab = () => {
               </div>
 
               {/* Actions */}
-              <div style={{ padding: 20, borderTop: '1px solid #e5e7eb', display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+              <div style={{ padding: 20, borderTop: '1px solid var(--border-color, #e5e7eb)', display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
                 <button
                   onClick={() => printVisit(openVisit)}
-                  style={{ padding: '10px 18px', borderRadius: 10, border: '1px solid #e5e7eb', background: '#fff', cursor: 'pointer', fontWeight: 600, fontSize: 13 }}
+                  style={{ padding: '10px 18px', borderRadius: 10, border: '1px solid var(--border-color, #e5e7eb)', background: 'var(--card-bg, #fff)', cursor: 'pointer', fontWeight: 600, fontSize: 13 }}
                 >
                   🖨️ طباعة
                 </button>
                 <button
                   onClick={() => deleteVisit(openVisit)}
-                  style={{ padding: '10px 18px', borderRadius: 10, border: '1px solid #fecaca', background: '#fff', color: '#b91c1c', cursor: 'pointer', fontWeight: 600, fontSize: 13 }}
+                  style={{ padding: '10px 18px', borderRadius: 10, border: '1px solid #fecaca', background: 'var(--card-bg, #fff)', color: 'var(--fvt-red)', cursor: 'pointer', fontWeight: 600, fontSize: 13 }}
                 >
                   🗑️ حذف
                 </button>
@@ -896,7 +897,7 @@ const FablabVisitsTab = () => {
                 {openVisit.visitorDecision === 'pending' && openVisit.approvalStatus !== 'approved' && (
                   <button
                     onClick={() => openApprovalModal(openVisit)}
-                    style={{ padding: '10px 18px', borderRadius: 10, border: 'none', background: '#f59e0b', color: '#fff', cursor: 'pointer', fontWeight: 700, fontSize: 13 }}
+                    style={{ padding: '10px 18px', borderRadius: 10, border: 'none', background: '#b45309', color: '#fff', cursor: 'pointer', fontWeight: 700, fontSize: 13 }}
                   >
                     📧 {openVisit.approvalStatus === 'pending' ? 'إعادة الإرسال للمدير' : 'إرسال للمدير للاعتماد'}
                   </button>
@@ -911,14 +912,14 @@ const FablabVisitsTab = () => {
                   <>
                     <button
                       onClick={() => openNotifyModal(openVisit, 'reject')}
-                      style={{ padding: '10px 18px', borderRadius: 10, border: '1px solid #fecaca', background: '#fff', color: '#b91c1c', cursor: 'pointer', fontWeight: 700, fontSize: 13 }}
+                      style={{ padding: '10px 18px', borderRadius: 10, border: '1px solid #fecaca', background: 'var(--card-bg, #fff)', color: 'var(--fvt-red)', cursor: 'pointer', fontWeight: 700, fontSize: 13 }}
                       title="إرسال بريد رفض للزائر مع ملاحظات مخصصة"
                     >
                       ✕ {openVisit.visitorEmailSentAt ? 'إعادة إرسال رفض' : 'رفض وإشعار الزائر'}
                     </button>
                     <button
                       onClick={() => openNotifyModal(openVisit, 'accept')}
-                      style={{ padding: '10px 18px', borderRadius: 10, border: 'none', background: '#16a34a', color: '#fff', cursor: 'pointer', fontWeight: 700, fontSize: 13 }}
+                      style={{ padding: '10px 18px', borderRadius: 10, border: 'none', background: '#15803d', color: '#fff', cursor: 'pointer', fontWeight: 700, fontSize: 13 }}
                       title="إرسال بريد قبول للزائر مع ملاحظات مخصصة"
                     >
                       ✓ {openVisit.visitorEmailSentAt ? 'إعادة إرسال قبول' : 'قبول وإشعار الزائر'}
@@ -942,10 +943,10 @@ const FablabVisitsTab = () => {
             <motion.div
               initial={{ opacity: 0, scale: 0.94 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.94 }}
               onClick={(e) => e.stopPropagation()}
-              style={{ background: '#fff', borderRadius: 18, padding: 26, maxWidth: 460, width: '100%' }}
+              style={{ background: 'var(--card-bg, #fff)', borderRadius: 18, padding: 26, maxWidth: 460, width: '100%' }}
             >
               <h3 style={{ margin: '0 0 6px', fontSize: 20, fontWeight: 800 }}>إرسال للمدير للاعتماد</h3>
-              <p style={{ margin: '0 0 18px', color: '#64748b', fontSize: 13 }}>
+              <p style={{ margin: '0 0 18px', color: 'var(--text-tertiary, #64748b)', fontSize: 13 }}>
                 اختر المدير أو أدخل بريد مخصص. سيتم إرسال رابط لاعتماد الطلب مباشرة من بريده.
               </p>
 
@@ -969,7 +970,7 @@ const FablabVisitsTab = () => {
                     />
                     <div style={{ flex: 1 }}>
                       <div style={{ fontWeight: 700, fontSize: 14 }}>{a.name}</div>
-                      <div style={{ fontSize: 11, color: '#64748b', direction: 'ltr' }}>{a.email}</div>
+                      <div style={{ fontSize: 11, color: 'var(--text-tertiary, #64748b)', direction: 'ltr' }}>{a.email}</div>
                     </div>
                   </label>
                 ))}
@@ -1009,7 +1010,7 @@ const FablabVisitsTab = () => {
                 <button
                   onClick={() => setApproveModal(null)}
                   disabled={sendingApproval}
-                  style={{ padding: '10px 18px', borderRadius: 10, border: '1px solid #e5e7eb', background: '#fff', cursor: 'pointer', fontWeight: 600 }}
+                  style={{ padding: '10px 18px', borderRadius: 10, border: '1px solid var(--border-color, #e5e7eb)', background: 'var(--card-bg, #fff)', cursor: 'pointer', fontWeight: 600 }}
                 >
                   إلغاء
                 </button>
@@ -1018,7 +1019,7 @@ const FablabVisitsTab = () => {
                   disabled={sendingApproval || !approverChoice}
                   style={{
                     padding: '10px 22px', borderRadius: 10, border: 'none',
-                    background: 'linear-gradient(135deg,#0ea5e9,#0284c7)', color: '#fff',
+                    background: 'linear-gradient(135deg,#0284c7,#0369a1)', color: '#fff',
                     cursor: (sendingApproval || !approverChoice) ? 'not-allowed' : 'pointer',
                     opacity: (sendingApproval || !approverChoice) ? 0.5 : 1, fontWeight: 800
                   }}
@@ -1042,12 +1043,12 @@ const FablabVisitsTab = () => {
             <motion.div
               initial={{ opacity: 0, scale: 0.94 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.94 }}
               onClick={(e) => e.stopPropagation()}
-              style={{ background: '#fff', borderRadius: 18, padding: 26, maxWidth: 480, width: '100%' }}
+              style={{ background: 'var(--card-bg, #fff)', borderRadius: 18, padding: 26, maxWidth: 480, width: '100%' }}
             >
               <h3 style={{ margin: '0 0 6px', fontSize: 20, fontWeight: 800, color: notifyModal.decision === 'accept' ? '#16a34a' : '#b91c1c' }}>
                 {notifyModal.decision === 'accept' ? 'قبول الزيارة وإشعار الزائر' : 'رفض الزيارة وإشعار الزائر'}
               </h3>
-              <p style={{ margin: '0 0 12px', color: '#64748b', fontSize: 13 }}>
+              <p style={{ margin: '0 0 12px', color: 'var(--text-tertiary, #64748b)', fontSize: 13 }}>
                 سيتم إرسال بريد إلكتروني للزائر <b dir="ltr">{notifyModal.visit.email}</b> بهذا القرار.
               </p>
 
@@ -1079,7 +1080,7 @@ const FablabVisitsTab = () => {
               </div>
 
               <label style={{ display: 'block', marginBottom: 14 }}>
-                <div style={{ fontSize: 12, fontWeight: 700, color: '#334155', marginBottom: 4 }}>
+                <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-secondary, #334155)', marginBottom: 4 }}>
                   📝 ملاحظات مرفقة بالبريد {notifyModal.decision === 'reject' ? '(مطلوبة كسبب رفض)' : '(اختيارية)'}
                 </div>
                 <textarea
@@ -1091,7 +1092,7 @@ const FablabVisitsTab = () => {
                     : 'مثال: نعتذر — الموعد المطلوب غير متاح، نرحب باقتراح موعد بديل...'}
                   style={{ width: '100%', padding: '10px 12px', borderRadius: 10, border: '1px solid #cbd5e1', fontFamily: 'inherit', fontSize: 14, resize: 'vertical' }}
                 />
-                <div style={{ fontSize: 11, color: '#64748b', marginTop: 4 }}>
+                <div style={{ fontSize: 11, color: 'var(--text-tertiary, #64748b)', marginTop: 4 }}>
                   ستظهر هذه الملاحظات في البريد داخل مربع مميّز بعنوان "📝 ملاحظات مرفقة".
                 </div>
               </label>
@@ -1100,7 +1101,7 @@ const FablabVisitsTab = () => {
                 <button
                   onClick={() => setNotifyModal(null)}
                   disabled={notifying}
-                  style={{ padding: '10px 18px', borderRadius: 10, border: '1px solid #e5e7eb', background: '#fff', cursor: 'pointer', fontWeight: 600 }}
+                  style={{ padding: '10px 18px', borderRadius: 10, border: '1px solid var(--border-color, #e5e7eb)', background: 'var(--card-bg, #fff)', cursor: 'pointer', fontWeight: 600 }}
                 >
                   إلغاء
                 </button>
@@ -1109,7 +1110,7 @@ const FablabVisitsTab = () => {
                   disabled={notifying}
                   style={{
                     padding: '10px 22px', borderRadius: 10, border: 'none',
-                    background: notifyModal.decision === 'accept' ? '#16a34a' : '#dc2626', color: '#fff',
+                    background: notifyModal.decision === 'accept' ? '#15803d' : '#dc2626', color: '#fff',
                     cursor: notifying ? 'not-allowed' : 'pointer',
                     opacity: notifying ? 0.5 : 1, fontWeight: 800
                   }}

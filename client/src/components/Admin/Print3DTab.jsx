@@ -306,10 +306,10 @@ const Print3DTab = () => {
         {[
           { label: isRTL ? 'الكل' : 'Total',              val: stats.total,     tint: '#6366f1' },
           { label: isRTL ? 'جديد' : 'New',                val: stats.submitted, tint: '#8b5cf6' },
-          { label: isRTL ? 'بانتظار القرار' : 'Awaiting', val: stats.quoted,    tint: '#f59e0b' },
-          { label: isRTL ? 'موافق عليه' : 'Accepted',     val: stats.accepted,  tint: '#22c55e' },
-          { label: isRTL ? 'قيد الطباعة' : 'Printing',    val: stats.printing,  tint: '#0ea5e9' },
-          { label: isRTL ? 'مكتمل' : 'Completed',         val: stats.completed, tint: '#16a34a' },
+          { label: isRTL ? 'بانتظار القرار' : 'Awaiting', val: stats.quoted,    tint: '#d97706' },
+          { label: isRTL ? 'موافق عليه' : 'Accepted',     val: stats.accepted,  tint: '#16a34a' },
+          { label: isRTL ? 'قيد الطباعة' : 'Printing',    val: stats.printing,  tint: '#0284c7' },
+          { label: isRTL ? 'مكتمل' : 'Completed',         val: stats.completed, tint: '#15803d' },
           { label: isRTL ? 'الإيراد' : 'Revenue',         val: SAR(stats.revenue), tint: '#EE2329', wide: true }
         ].map((s, i) => (
           <div key={i} className="p3t-stat" style={{ borderColor: `${s.tint}55` }}>
@@ -484,7 +484,7 @@ const Print3DTab = () => {
                               : (fileList.length > 1 ? `📄 Files (${fileList.length})` : '📄 File')}
                           </h4>
                           {fileList.length === 0 ? (
-                            <div style={{ padding: 12, color: '#94a3b8', fontStyle: 'italic', fontSize: 13 }}>
+                            <div style={{ padding: 12, color: 'var(--p3t-muted)', fontStyle: 'italic', fontSize: 13 }}>
                               {isRTL ? 'لا توجد ملفات مرفقة' : 'No files attached'}
                             </div>
                           ) : (

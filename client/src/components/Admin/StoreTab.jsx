@@ -793,14 +793,14 @@ const StoreTab = () => {
         {tab === 'orders' ? (
           <>
             <StatCard label={isRTL ? 'إجمالي الطلبات' : 'Total Orders'} value={stats.totalOrders} tint="#EE2329" />
-            <StatCard label={isRTL ? 'قيد المراجعة' : 'Pending'}          value={stats.pending}       tint="#f59e0b" />
+            <StatCard label={isRTL ? 'قيد المراجعة' : 'Pending'}          value={stats.pending}       tint="#d97706" />
             <StatCard label={isRTL ? 'الإيرادات المؤكدة' : 'Revenue'}     value={SAR(stats.revenue)}   tint="#16a34a" />
           </>
         ) : (
           <>
             <StatCard label={isRTL ? 'إجمالي المنتجات' : 'Total Products'} value={stats.totalItems} tint="#EE2329" />
             <StatCard label={isRTL ? 'نشطة' : 'Active'}             value={stats.activeItems} tint="#16a34a" />
-            <StatCard label={isRTL ? 'مخزون منخفض' : 'Low Stock'}   value={stats.lowStock}    tint="#f59e0b" />
+            <StatCard label={isRTL ? 'مخزون منخفض' : 'Low Stock'}   value={stats.lowStock}    tint="#d97706" />
             <StatCard label={isRTL ? 'نفدت الكمية' : 'Out of Stock'} value={stats.outOfStock} tint="#dc2626" />
           </>
         )}
@@ -930,7 +930,7 @@ const StoreTab = () => {
                         <input type="file" accept="image/*" multiple onChange={handleImageAdd} style={{ display: 'none' }} />
                       </label>
                     </div>
-                    <span style={{ fontSize: 11, color: '#94a3b8', marginTop: 4 }}>
+                    <span style={{ fontSize: 11, color: 'var(--stt-muted)', marginTop: 4 }}>
                       {isRTL ? 'الحد الأقصى لكل صورة 3 ميجا' : 'Max 3MB per image'}
                     </span>
                   </div>
@@ -1113,9 +1113,9 @@ const StoreTab = () => {
                     ))}
                   </tbody>
                   <tfoot>
-                    <tr><td colSpan={3} style={{ textAlign: 'end', color: '#64748b' }}>المجموع الفرعي</td><td style={{ textAlign: 'end', fontFamily: 'JetBrains Mono, monospace' }}>{SAR(orderModal.subtotal)}</td></tr>
+                    <tr><td colSpan={3} style={{ textAlign: 'end', color: 'var(--stt-muted)' }}>المجموع الفرعي</td><td style={{ textAlign: 'end', fontFamily: 'JetBrains Mono, monospace' }}>{SAR(orderModal.subtotal)}</td></tr>
                     {Number(orderModal.taxAmount) > 0 && (
-                      <tr><td colSpan={3} style={{ textAlign: 'end', color: '#64748b' }}>ضريبة {Math.round((orderModal.taxRate || 0) * 100)}%</td><td style={{ textAlign: 'end', fontFamily: 'JetBrains Mono, monospace' }}>{SAR(orderModal.taxAmount)}</td></tr>
+                      <tr><td colSpan={3} style={{ textAlign: 'end', color: 'var(--stt-muted)' }}>ضريبة {Math.round((orderModal.taxRate || 0) * 100)}%</td><td style={{ textAlign: 'end', fontFamily: 'JetBrains Mono, monospace' }}>{SAR(orderModal.taxAmount)}</td></tr>
                     )}
                     <tr className="stt-order-final"><td colSpan={3} style={{ textAlign: 'end' }}>الإجمالي</td><td style={{ textAlign: 'end' }}>{SAR(orderModal.total)}</td></tr>
                   </tfoot>

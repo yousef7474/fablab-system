@@ -1321,14 +1321,13 @@ const SummerFablab = () => {
 
       {/* Season picker — same UX pattern as Mawhba. Active season is
           the destination for new programs / teachers / students. */}
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, alignItems: 'center', marginBottom: 14, padding: '12px 14px', background: '#fff', border: '1px solid #e5e7eb', borderRadius: 12 }}>
-        <span style={{ fontSize: 12, fontWeight: 700, letterSpacing: 1, color: '#64748b', textTransform: 'uppercase' }}>
+      <div className="summer-season-bar">
+        <span style={{ fontSize: 12, fontWeight: 700, letterSpacing: 1, color: 'var(--sm-muted)', textTransform: 'uppercase' }}>
           {isRTL ? 'الموسم' : 'Season'}
         </span>
         <select
           value={activeSeasonId}
           onChange={(e) => setActiveSeasonId(e.target.value)}
-          style={{ padding: '8px 12px', borderRadius: 8, border: '1px solid #e5e7eb', fontFamily: 'inherit', fontSize: 13, background: '#fff', minWidth: 200, cursor: 'pointer' }}
         >
           {seasons.length === 0 && <option value="">{isRTL ? 'لا توجد مواسم' : 'No seasons'}</option>}
           {seasons.map(s => (
@@ -1340,14 +1339,14 @@ const SummerFablab = () => {
         {activeSeasonId && !seasons.find(s => s.seasonId === activeSeasonId)?.isActive && (
           <button
             onClick={() => handleActivateSeason(activeSeasonId)}
-            style={{ padding: '7px 14px', borderRadius: 8, border: '1px solid #f97316', background: 'rgba(249,115,22,0.08)', color: '#c2410c', cursor: 'pointer', fontFamily: 'inherit', fontWeight: 700, fontSize: 12 }}
+            style={{ padding: '7px 14px', borderRadius: 8, border: '1px solid #f97316', background: 'rgba(249,115,22,0.08)', color: 'var(--sm-orange)', cursor: 'pointer', fontFamily: 'inherit', fontWeight: 700, fontSize: 12 }}
           >
             {isRTL ? '⚡ تفعيل هذا الموسم' : '⚡ Activate this season'}
           </button>
         )}
         <button
           onClick={() => setShowNewSeasonModal(true)}
-          style={{ padding: '8px 14px', borderRadius: 8, border: 'none', background: 'linear-gradient(135deg,#f97316,#ea580c)', color: '#fff', cursor: 'pointer', fontFamily: 'inherit', fontWeight: 700, fontSize: 12.5, marginInlineStart: 'auto', boxShadow: '0 4px 12px -4px rgba(249,115,22,0.5)' }}
+          style={{ padding: '8px 14px', borderRadius: 8, border: 'none', background: 'linear-gradient(135deg,#c2410c,#9a3412)', color: '#fff', cursor: 'pointer', fontFamily: 'inherit', fontWeight: 700, fontSize: 12.5, marginInlineStart: 'auto', boxShadow: '0 4px 12px -4px rgba(249,115,22,0.5)' }}
         >
           + {isRTL ? 'موسم جديد' : 'New Season'}
         </button>
@@ -1355,7 +1354,7 @@ const SummerFablab = () => {
           <button
             onClick={() => handleDeleteSeason(seasons.find(s => s.seasonId === activeSeasonId))}
             title={isRTL ? 'حذف الموسم (يجب أن يكون فارغاً)' : 'Delete season (must be empty)'}
-            style={{ padding: '7px 12px', borderRadius: 8, border: '1px solid #fecaca', background: '#fff', color: '#b91c1c', cursor: 'pointer', fontFamily: 'inherit', fontWeight: 700, fontSize: 12 }}
+            style={{ padding: '7px 12px', borderRadius: 8, border: '1px solid #fecaca', background: 'var(--sm-surface)', color: 'var(--sm-red)', cursor: 'pointer', fontFamily: 'inherit', fontWeight: 700, fontSize: 12 }}
           >
             🗑️
           </button>
@@ -1385,9 +1384,9 @@ const SummerFablab = () => {
           </div>
 
           {loading.programs ? (
-            <p style={{ color: '#64748b' }}>{isRTL ? 'جاري التحميل...' : 'Loading...'}</p>
+            <p style={{ color: 'var(--sm-muted)' }}>{isRTL ? 'جاري التحميل...' : 'Loading...'}</p>
           ) : programs.length === 0 ? (
-            <p style={{ color: '#64748b', fontSize: '0.9rem' }}>
+            <p style={{ color: 'var(--sm-muted)', fontSize: '0.9rem' }}>
               {isRTL ? 'لا توجد برامج. ابدأ بإضافة أول برنامج.' : 'No programs yet. Start by adding one.'}
             </p>
           ) : (
@@ -1486,9 +1485,9 @@ const SummerFablab = () => {
           </div>
 
           {loading.teachers ? (
-            <p style={{ color: '#64748b' }}>{isRTL ? 'جاري التحميل...' : 'Loading...'}</p>
+            <p style={{ color: 'var(--sm-muted)' }}>{isRTL ? 'جاري التحميل...' : 'Loading...'}</p>
           ) : teachers.length === 0 ? (
-            <p style={{ color: '#64748b', fontSize: '0.9rem' }}>
+            <p style={{ color: 'var(--sm-muted)', fontSize: '0.9rem' }}>
               {isRTL ? 'لا يوجد معلمون.' : 'No teachers yet.'}
             </p>
           ) : (
@@ -1524,7 +1523,7 @@ const SummerFablab = () => {
                     </div>
                     {Array.isArray(t.ratings) && t.ratings.length > 0 && (
                       <details style={{ marginTop: 6 }}>
-                        <summary style={{ cursor: 'pointer', fontSize: '0.82rem', color: '#475569', fontWeight: 600 }}>
+                        <summary style={{ cursor: 'pointer', fontSize: '0.82rem', color: 'var(--sm-ink-2)', fontWeight: 600 }}>
                           {isRTL ? `سجل التقييمات (${t.ratings.length})` : `Ratings (${t.ratings.length})`}
                         </summary>
                         <div className="teacher-ratings-list">
@@ -1533,7 +1532,7 @@ const SummerFablab = () => {
                               <div>
                                 <strong>{r.type === 'award' ? `+${r.points}` : `−${r.points}`}</strong>
                                 {r.criteria ? ` • ${r.criteria}` : ''}
-                                <div style={{ fontSize: '0.74rem', color: '#64748b' }}>{(r.ratingDate || '').slice(0,10)}</div>
+                                <div style={{ fontSize: '0.74rem', color: 'var(--sm-muted)' }}>{(r.ratingDate || '').slice(0,10)}</div>
                               </div>
                               <button className="summer-btn-danger" onClick={() => deleteRating(r.ratingId)} style={{ padding: '2px 8px', fontSize: '0.72rem' }}>×</button>
                             </div>
@@ -1564,16 +1563,16 @@ const SummerFablab = () => {
             </button>
           </div>
 
-          <p style={{ fontSize: '0.82rem', color: '#64748b', margin: '0 0 0.75rem 0' }}>
+          <p style={{ fontSize: '0.82rem', color: 'var(--sm-muted)', margin: '0 0 0.75rem 0' }}>
             {isRTL ? 'هؤلاء المتطوعون يظهرون أيضاً في تبويب المتطوعين الرئيسي مع نفس سجل التقييمات والفرص.' : 'These volunteers also appear in the main Volunteers tab with the same ratings and opportunity history.'}
           </p>
 
           <MasterShareBar isRTL={isRTL} />
 
           {loading.volunteers ? (
-            <p style={{ color: '#64748b' }}>{isRTL ? 'جاري التحميل...' : 'Loading...'}</p>
+            <p style={{ color: 'var(--sm-muted)' }}>{isRTL ? 'جاري التحميل...' : 'Loading...'}</p>
           ) : summerVolunteers.length === 0 ? (
-            <p style={{ color: '#64748b', fontSize: '0.9rem' }}>
+            <p style={{ color: 'var(--sm-muted)', fontSize: '0.9rem' }}>
               {isRTL ? 'لا يوجد متطوعون مرتبطون ببرامج صيفية.' : 'No volunteers linked to a summer program yet.'}
             </p>
           ) : (
@@ -1645,7 +1644,7 @@ const SummerFablab = () => {
                         className="summer-btn-danger"
                         onClick={() => removeFromSummer(v)}
                         title={isRTL ? 'إزالة من صيف فاب لاب فقط — يبقى في قائمة المتطوعين' : 'Remove from Summer FabLab only — stays in Volunteers list'}
-                        style={{ background: '#fff', color: '#b45309', border: '1px solid #fde68a' }}
+                        style={{ background: 'var(--sm-surface)', color: 'var(--sm-amber)', border: '1px solid #fde68a' }}
                       >
                         {isRTL ? '⇤ إزالة من الصيف' : '⇤ Remove from Summer'}
                       </button>
@@ -1680,7 +1679,7 @@ const SummerFablab = () => {
               <select
                 value={studentProgramFilter}
                 onChange={(e) => setStudentProgramFilter(e.target.value)}
-                style={{ padding: '0.45rem 0.7rem', borderRadius: 8, border: '1.5px solid #e2e8f0', fontFamily: 'inherit' }}
+                style={{ padding: '0.45rem 0.7rem', borderRadius: 8, border: '1.5px solid var(--sm-line)', fontFamily: 'inherit', background: 'var(--sm-surface)', color: 'var(--sm-ink)' }}
               >
                 <option value="">{isRTL ? 'كل البرامج' : 'All programs'}</option>
                 {programs.map(p => (
@@ -1691,7 +1690,7 @@ const SummerFablab = () => {
                 className="summer-btn-secondary"
                 onClick={() => setAttendanceOpen(true)}
                 title={isRTL ? 'فتح صفحة الحضور المخصصة (USB scanner)' : 'Open dedicated attendance page'}
-                style={{ background: '#0ea5e9', color: '#fff', borderColor: '#0ea5e9' }}
+                style={{ background: '#0369a1', color: '#fff', borderColor: '#0369a1' }}
               >
                 {'📷'} {isRTL ? 'صفحة الحضور' : 'Attendance Page'}
               </button>
@@ -1720,17 +1719,17 @@ const SummerFablab = () => {
           </div>
 
           {loading.students ? (
-            <p style={{ color: '#64748b' }}>{isRTL ? 'جاري التحميل...' : 'Loading...'}</p>
+            <p style={{ color: 'var(--sm-muted)' }}>{isRTL ? 'جاري التحميل...' : 'Loading...'}</p>
           ) : filteredStudents.length === 0 ? (
-            <p style={{ color: '#64748b', fontSize: '0.9rem' }}>
+            <p style={{ color: 'var(--sm-muted)', fontSize: '0.9rem' }}>
               {isRTL ? 'لا يوجد طلاب.' : 'No students yet.'}
             </p>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
               <div style={{
                 display: 'flex', alignItems: 'center', gap: '0.5rem',
-                padding: '0.5rem 0.75rem', background: '#f8fafc',
-                borderRadius: 8, fontSize: '0.82rem', color: '#475569'
+                padding: '0.5rem 0.75rem', background: 'var(--sm-surface-2)',
+                borderRadius: 8, fontSize: '0.82rem', color: 'var(--sm-ink-2)'
               }}>
                 <label style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', cursor: 'pointer' }}>
                   <input
@@ -1746,7 +1745,7 @@ const SummerFablab = () => {
                     style={{
                       marginInlineStart: 'auto',
                       padding: '0.25rem 0.75rem', borderRadius: 6,
-                      border: '1px solid #cbd5e1', background: '#fff',
+                      border: '1px solid var(--sm-line)', background: 'var(--sm-surface)', color: 'var(--sm-ink-2)',
                       cursor: 'pointer', fontSize: '0.78rem', fontFamily: 'inherit'
                     }}
                   >
@@ -1770,13 +1769,13 @@ const SummerFablab = () => {
                       />
                       <div className="summer-student-row-name">
                         <strong>{s.name}</strong>
-                        {s.age && <span style={{ marginInlineStart: 8, color: '#64748b', fontSize: '0.82rem' }}>{s.age} {isRTL ? 'سنة' : 'yrs'}</span>}
+                        {s.age && <span style={{ marginInlineStart: 8, color: 'var(--sm-muted)', fontSize: '0.82rem' }}>{s.age} {isRTL ? 'سنة' : 'yrs'}</span>}
                         {!s.nationalId && (
                           <span
                             title={isRTL ? 'رقم الهوية مطلوب للبطاقة' : 'National ID required for the ID card'}
                             style={{
                               marginInlineStart: 8, padding: '2px 8px', borderRadius: 999,
-                              background: 'rgba(245,158,11,0.15)', color: '#92400e',
+                              background: 'rgba(245,158,11,0.15)', color: 'var(--sm-amber)',
                               fontSize: '0.68rem', fontWeight: 700,
                               border: '1px solid rgba(245,158,11,0.35)'
                             }}
@@ -1787,7 +1786,7 @@ const SummerFablab = () => {
                       </div>
                       <div className="summer-student-row-meta">
                         {prog && <span className="summer-volunteer-chip">{prog.name}</span>}
-                        {s.phone && <span dir="ltr" style={{ fontSize: '0.78rem', color: '#475569' }}>{s.phone}</span>}
+                        {s.phone && <span dir="ltr" style={{ fontSize: '0.78rem', color: 'var(--sm-ink-2)' }}>{s.phone}</span>}
                       </div>
                       <div style={{ display: 'flex', gap: '0.4rem' }}>
                         <button
@@ -1859,11 +1858,11 @@ const SummerFablab = () => {
                 { label: isRTL ? 'إجمالي الوقت' : 'Total time', value: `${logSummary.hours}h ${logSummary.minutes}m` }
               ].map((stat, i) => (
                 <div key={i} style={{
-                  background: '#f8fafc', border: '1px solid #e2e8f0',
+                  background: 'var(--sm-surface-2)', border: '1px solid var(--sm-line)',
                   borderRadius: 8, padding: '10px 12px', textAlign: 'center'
                 }}>
-                  <div style={{ fontSize: 11, color: '#64748b', fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5 }}>{stat.label}</div>
-                  <div style={{ fontSize: 18, fontWeight: 800, color: '#0f172a', marginTop: 3 }}>{stat.value}</div>
+                  <div style={{ fontSize: 11, color: 'var(--sm-muted)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5 }}>{stat.label}</div>
+                  <div style={{ fontSize: 18, fontWeight: 800, color: 'var(--sm-ink)', marginTop: 3 }}>{stat.value}</div>
                 </div>
               ))}
             </div>
@@ -1906,25 +1905,25 @@ const SummerFablab = () => {
               )}
             </div>
 
-            <div style={{ flex: 1, overflowY: 'auto', border: '1px solid #e2e8f0', borderRadius: 8 }}>
+            <div style={{ flex: 1, overflowY: 'auto', border: '1px solid var(--sm-line)', borderRadius: 8 }}>
               {logLoading ? (
-                <div style={{ padding: 30, textAlign: 'center', color: '#64748b' }}>
+                <div style={{ padding: 30, textAlign: 'center', color: 'var(--sm-muted)' }}>
                   {isRTL ? 'جارٍ التحميل...' : 'Loading...'}
                 </div>
               ) : logRecords.length === 0 ? (
-                <div style={{ padding: 30, textAlign: 'center', color: '#94a3b8' }}>
+                <div style={{ padding: 30, textAlign: 'center', color: 'var(--sm-muted)' }}>
                   {isRTL ? 'لا يوجد سجل حضور بعد' : 'No attendance records yet'}
                 </div>
               ) : (
                 <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
                   <thead>
-                    <tr style={{ background: '#f8fafc' }}>
-                      <th style={{ padding: '8px 10px', textAlign: 'start', borderBottom: '1px solid #e2e8f0' }}>{isRTL ? 'التاريخ' : 'Date'}</th>
-                      <th style={{ padding: '8px 10px', textAlign: 'start', borderBottom: '1px solid #e2e8f0' }}>{isRTL ? 'الدخول' : 'Check In'}</th>
-                      <th style={{ padding: '8px 10px', textAlign: 'start', borderBottom: '1px solid #e2e8f0' }}>{isRTL ? 'الخروج' : 'Check Out'}</th>
-                      <th style={{ padding: '8px 10px', textAlign: 'start', borderBottom: '1px solid #e2e8f0' }}>{isRTL ? 'المدة' : 'Duration'}</th>
-                      <th style={{ padding: '8px 10px', textAlign: 'start', borderBottom: '1px solid #e2e8f0' }}>{isRTL ? 'الحالة' : 'Status'}</th>
-                      <th style={{ padding: '8px 10px', borderBottom: '1px solid #e2e8f0' }}></th>
+                    <tr style={{ background: 'var(--sm-surface-2)' }}>
+                      <th style={{ padding: '8px 10px', textAlign: 'start', borderBottom: '1px solid var(--sm-line)' }}>{isRTL ? 'التاريخ' : 'Date'}</th>
+                      <th style={{ padding: '8px 10px', textAlign: 'start', borderBottom: '1px solid var(--sm-line)' }}>{isRTL ? 'الدخول' : 'Check In'}</th>
+                      <th style={{ padding: '8px 10px', textAlign: 'start', borderBottom: '1px solid var(--sm-line)' }}>{isRTL ? 'الخروج' : 'Check Out'}</th>
+                      <th style={{ padding: '8px 10px', textAlign: 'start', borderBottom: '1px solid var(--sm-line)' }}>{isRTL ? 'المدة' : 'Duration'}</th>
+                      <th style={{ padding: '8px 10px', textAlign: 'start', borderBottom: '1px solid var(--sm-line)' }}>{isRTL ? 'الحالة' : 'Status'}</th>
+                      <th style={{ padding: '8px 10px', borderBottom: '1px solid var(--sm-line)' }}></th>
                     </tr>
                   </thead>
                   <tbody>
@@ -1948,7 +1947,7 @@ const SummerFablab = () => {
                                   style={{ padding: 4, borderRadius: 4, border: '1.5px solid #7c3aed', width: 100 }}
                                 />
                                 <button onClick={() => saveCheckoutTime(r)} disabled={savingCheckout} style={{ padding: '2px 8px', borderRadius: 4, border: 'none', background: '#7c3aed', color: '#fff', cursor: 'pointer', fontFamily: 'inherit' }}>{savingCheckout ? '…' : '✓'}</button>
-                                <button onClick={cancelEditCheckout} disabled={savingCheckout} style={{ padding: '2px 8px', borderRadius: 4, border: '1px solid #cbd5e1', background: '#fff', cursor: 'pointer', fontFamily: 'inherit' }}>×</button>
+                                <button onClick={cancelEditCheckout} disabled={savingCheckout} style={{ padding: '2px 8px', borderRadius: 4, border: '1px solid var(--sm-line)', background: 'var(--sm-solid)', cursor: 'pointer', fontFamily: 'inherit' }}>×</button>
                               </span>
                             ) : fmtLogTime(r.checkOutAt)}
                           </td>
@@ -1987,7 +1986,7 @@ const SummerFablab = () => {
                                   title={isRTL ? 'حذف تسجيل الخروج فقط' : 'Clear check-out only'}
                                   style={{
                                     padding: '3px 8px', borderRadius: 5,
-                                    border: '1px solid #f59e0b', background: '#fff',
+                                    border: '1px solid #f59e0b', background: 'var(--sm-solid)',
                                     color: '#d97706', cursor: 'pointer', fontFamily: 'inherit',
                                     fontSize: 12, fontWeight: 700
                                   }}
@@ -1999,7 +1998,7 @@ const SummerFablab = () => {
                                   title={isRTL ? 'حذف السجل بالكامل' : 'Delete entire record'}
                                   style={{
                                     padding: '3px 8px', borderRadius: 5,
-                                    border: '1px solid #ef4444', background: '#fff',
+                                    border: '1px solid #ef4444', background: 'var(--sm-solid)',
                                     color: '#ef4444', cursor: 'pointer', fontFamily: 'inherit',
                                     fontSize: 12, fontWeight: 700
                                   }}
@@ -2044,15 +2043,15 @@ const SummerFablab = () => {
                   )}
                 </label>
                 {teachers.length === 0 ? (
-                  <p style={{ fontSize: '0.8rem', color: '#94a3b8', margin: '0.25rem 0' }}>
+                  <p style={{ fontSize: '0.8rem', color: 'var(--sm-muted)', margin: '0.25rem 0' }}>
                     {isRTL
                       ? 'لا يوجد معلمون. أضفهم من تبويب المعلمين أولاً، أو اكتب الاسم في الحقل بالأسفل.'
                       : 'No teachers yet. Add some from the Teachers tab first, or type a name in the free-text field below.'}
                   </p>
                 ) : (
                   <div style={{
-                    border: '1.5px solid #e2e8f0', borderRadius: 8, padding: '0.5rem',
-                    maxHeight: 200, overflowY: 'auto', background: '#fff'
+                    border: '1.5px solid var(--sm-line)', borderRadius: 8, padding: '0.5rem',
+                    maxHeight: 200, overflowY: 'auto', background: 'var(--sm-solid)'
                   }}>
                     {teachers.map(t => {
                       const checked = (programForm.teacherIds || []).includes(t.teacherId);
@@ -2078,7 +2077,7 @@ const SummerFablab = () => {
                           />
                           <span style={{ flex: 1 }}>{t.name}</span>
                           {t.fablabSection && (
-                            <span style={{ fontSize: '0.72rem', color: '#64748b' }}>
+                            <span style={{ fontSize: '0.72rem', color: 'var(--sm-muted)' }}>
                               {sectionLabel(t.fablabSection, isRTL)}
                             </span>
                           )}
@@ -2112,15 +2111,15 @@ const SummerFablab = () => {
               <div className="summer-field full">
                 <label>
                   {isRTL ? 'لون البرنامج' : 'Program Color'}
-                  <span style={{ marginInlineStart: 8, color: '#64748b', fontWeight: 400, fontSize: '0.78rem' }}>
+                  <span style={{ marginInlineStart: 8, color: 'var(--sm-muted)', fontWeight: 400, fontSize: '0.78rem' }}>
                     {isRTL ? '· يُطبع على بطاقات الطلاب' : '· printed on student ID cards'}
                   </span>
                 </label>
                 <div style={{
                   display: 'flex', flexWrap: 'wrap', gap: 6,
                   padding: '8px 10px',
-                  background: '#fff',
-                  border: '1.5px solid #e2e8f0',
+                  background: 'var(--sm-solid)',
+                  border: '1.5px solid var(--sm-line)',
                   borderRadius: 8,
                   alignItems: 'center'
                 }}>
@@ -2146,7 +2145,7 @@ const SummerFablab = () => {
                       />
                     );
                   })}
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginInlineStart: 6, borderInlineStart: '1px solid #e2e8f0', paddingInlineStart: 10 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginInlineStart: 6, borderInlineStart: '1px solid var(--sm-line)', paddingInlineStart: 10 }}>
                     <label
                       title={isRTL ? 'اختر لوناً مخصصاً' : 'Pick a custom color'}
                       style={{ display: 'inline-flex', alignItems: 'center', gap: 4, cursor: 'pointer' }}
@@ -2155,9 +2154,9 @@ const SummerFablab = () => {
                         type="color"
                         value={programForm.color || '#f97316'}
                         onChange={(e) => setProgramForm({ ...programForm, color: e.target.value })}
-                        style={{ width: 32, height: 30, padding: 0, border: '1.5px solid #e2e8f0', borderRadius: 6, cursor: 'pointer' }}
+                        style={{ width: 32, height: 30, padding: 0, border: '1.5px solid var(--sm-line)', borderRadius: 6, cursor: 'pointer' }}
                       />
-                      <span style={{ fontSize: '0.75rem', color: '#64748b', fontWeight: 600 }}>
+                      <span style={{ fontSize: '0.75rem', color: 'var(--sm-muted)', fontWeight: 600 }}>
                         {isRTL ? 'مخصص' : 'Custom'}
                       </span>
                     </label>
@@ -2170,8 +2169,8 @@ const SummerFablab = () => {
                       style={{
                         marginInlineStart: 'auto',
                         padding: '4px 10px', borderRadius: 6,
-                        border: '1px solid #e2e8f0', background: '#fff',
-                        color: '#64748b', cursor: 'pointer', fontSize: '0.75rem',
+                        border: '1px solid var(--sm-line)', background: 'var(--sm-solid)',
+                        color: 'var(--sm-muted)', cursor: 'pointer', fontSize: '0.75rem',
                         fontWeight: 600, fontFamily: 'inherit'
                       }}
                     >
@@ -2199,13 +2198,13 @@ const SummerFablab = () => {
               <div className="summer-field full">
                 <label>{isRTL ? 'متطوعو القسم' : 'Section Volunteers'}</label>
                 {allVolunteers.length === 0 ? (
-                  <p style={{ fontSize: '0.8rem', color: '#94a3b8', margin: '0.25rem 0' }}>
+                  <p style={{ fontSize: '0.8rem', color: 'var(--sm-muted)', margin: '0.25rem 0' }}>
                     {isRTL ? 'لا يوجد متطوعون. أضفهم من تبويب المتطوعين أولاً.' : 'No volunteers yet. Add some from the Volunteers tab first.'}
                   </p>
                 ) : (
                   <div style={{
-                    border: '1.5px solid #e2e8f0', borderRadius: 8, padding: '0.5rem',
-                    maxHeight: 180, overflowY: 'auto', background: '#fff'
+                    border: '1.5px solid var(--sm-line)', borderRadius: 8, padding: '0.5rem',
+                    maxHeight: 180, overflowY: 'auto', background: 'var(--sm-solid)'
                   }}>
                     {allVolunteers.map(v => {
                       const checked = (programForm.sectionVolunteers || []).includes(v.name);
@@ -2312,7 +2311,7 @@ const SummerFablab = () => {
                         return <option key={id} value={id}>{label}</option>;
                       })}
                     </select>
-                    <p style={{ fontSize: '0.75rem', color: '#475569', margin: '6px 0 0 0' }}>
+                    <p style={{ fontSize: '0.75rem', color: 'var(--sm-ink-2)', margin: '6px 0 0 0' }}>
                       {employees.length === 0
                         ? (isRTL ? 'لم يتم تحميل أي موظفين. تحقق من تبويب الموظفين أو حاول إعادة فتح هذه النافذة.' : 'No employees were loaded. Check the Employees tab or reopen this dialog.')
                         : (isRTL ? 'يمكنك تعديل الحقول أدناه قبل الحفظ.' : 'You can edit the fields below before saving.')}
@@ -2467,7 +2466,7 @@ const SummerFablab = () => {
                   style={{
                     padding: '9px 12px', borderRadius: 6, cursor: 'pointer',
                     border: 'none', fontFamily: 'inherit', fontWeight: 700, fontSize: 13,
-                    background: summerVolunteerForm.mode === 'existing' ? '#fff' : 'transparent',
+                    background: summerVolunteerForm.mode === 'existing' ? 'var(--sm-solid)' : 'transparent',
                     color: summerVolunteerForm.mode === 'existing' ? '#0f172a' : '#64748b',
                     boxShadow: summerVolunteerForm.mode === 'existing' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none'
                   }}
@@ -2483,7 +2482,7 @@ const SummerFablab = () => {
                   style={{
                     padding: '9px 12px', borderRadius: 6, cursor: 'pointer',
                     border: 'none', fontFamily: 'inherit', fontWeight: 700, fontSize: 13,
-                    background: summerVolunteerForm.mode === 'manual' ? '#fff' : 'transparent',
+                    background: summerVolunteerForm.mode === 'manual' ? 'var(--sm-solid)' : 'transparent',
                     color: summerVolunteerForm.mode === 'manual' ? '#0f172a' : '#64748b',
                     boxShadow: summerVolunteerForm.mode === 'manual' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none'
                   }}
@@ -2510,7 +2509,7 @@ const SummerFablab = () => {
                   <div className="summer-field full">
                     <label>{isRTL ? 'المتطوع' : 'Volunteer'} *</label>
                     {availableVolunteersForSummer.length === 0 ? (
-                      <p style={{ margin: '4px 0 0 0', fontSize: '0.82rem', color: '#94a3b8' }}>
+                      <p style={{ margin: '4px 0 0 0', fontSize: '0.82rem', color: 'var(--sm-muted)' }}>
                         {isRTL
                           ? 'لا يوجد متطوعون متاحون. أضف متطوعاً من تبويب المتطوعين الرئيسي أولاً، أو استخدم "إضافة يدوي".'
                           : 'No available volunteers. Add one from the main Volunteers tab first, or use "Add manually".'}
@@ -2531,14 +2530,14 @@ const SummerFablab = () => {
                   </div>
                   {summerVolunteerForm.existingVolunteerId && (
                     <div className="summer-field full" style={{
-                      background: '#f8fafc', border: '1px solid #e2e8f0',
+                      background: 'var(--sm-surface-2)', border: '1px solid var(--sm-line)',
                       borderRadius: 8, padding: '10px 12px'
                     }}>
-                      <div style={{ fontSize: '0.75rem', color: '#64748b', fontWeight: 700, letterSpacing: 0.5, marginBottom: 6 }}>
+                      <div style={{ fontSize: '0.75rem', color: 'var(--sm-muted)', fontWeight: 700, letterSpacing: 0.5, marginBottom: 6 }}>
                         {isRTL ? 'بيانات المتطوع' : 'Volunteer info'}
                       </div>
-                      <div style={{ fontSize: '0.9rem', fontWeight: 700, color: '#0f172a' }}>{summerVolunteerForm.name || '—'}</div>
-                      <div style={{ display: 'flex', gap: 12, marginTop: 4, fontSize: '0.78rem', color: '#475569', flexWrap: 'wrap' }}>
+                      <div style={{ fontSize: '0.9rem', fontWeight: 700, color: 'var(--sm-ink)' }}>{summerVolunteerForm.name || '—'}</div>
+                      <div style={{ display: 'flex', gap: 12, marginTop: 4, fontSize: '0.78rem', color: 'var(--sm-ink-2)', flexWrap: 'wrap' }}>
                         {summerVolunteerForm.nationalId && <span dir="ltr">🪪 {summerVolunteerForm.nationalId}</span>}
                         {summerVolunteerForm.phone && <span dir="ltr">📱 {summerVolunteerForm.phone}</span>}
                         {summerVolunteerForm.email && <span dir="ltr">✉ {summerVolunteerForm.email}</span>}
@@ -2698,18 +2697,18 @@ const SummerFablab = () => {
         >
           <div
             onClick={(e) => e.stopPropagation()}
-            style={{ background: '#fff', borderRadius: 16, maxWidth: 460, width: '100%', padding: 24 }}
+            style={{ background: 'var(--sm-solid)', borderRadius: 16, maxWidth: 460, width: '100%', padding: 24 }}
           >
             <h3 style={{ margin: '0 0 6px', fontSize: 20, fontWeight: 800 }}>
               {isRTL ? 'موسم جديد لصيف فاب لاب' : 'New Summer FabLab Season'}
             </h3>
-            <p style={{ margin: '0 0 18px', color: '#64748b', fontSize: 13, lineHeight: 1.6 }}>
+            <p style={{ margin: '0 0 18px', color: 'var(--sm-muted)', fontSize: 13, lineHeight: 1.6 }}>
               {isRTL
                 ? 'الموسم الجديد يبدأ فارغاً — تبقى المواسم السابقة كما هي، ويمكنك التبديل بينها من قائمة اختيار الموسم.'
                 : 'The new season starts empty. Previous seasons stay intact — switch the picker to view them.'}
             </p>
             <label style={{ display: 'block', marginBottom: 12 }}>
-              <div style={{ fontSize: 12, fontWeight: 700, color: '#334155', marginBottom: 4 }}>
+              <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--sm-ink-2)', marginBottom: 4 }}>
                 {isRTL ? 'اسم الموسم *' : 'Season Name *'}
               </div>
               <input
@@ -2717,11 +2716,11 @@ const SummerFablab = () => {
                 value={newSeasonForm.name}
                 onChange={(e) => setNewSeasonForm(f => ({ ...f, name: e.target.value }))}
                 placeholder={isRTL ? `مثال: صيف فاب لاب ${new Date().getFullYear() + 1}` : `e.g. Summer FabLab ${new Date().getFullYear() + 1}`}
-                style={{ width: '100%', padding: '10px 12px', borderRadius: 8, border: '1px solid #cbd5e1', fontFamily: 'inherit', fontSize: 14 }}
+                style={{ width: '100%', padding: '10px 12px', borderRadius: 8, border: '1px solid var(--sm-line)', fontFamily: 'inherit', fontSize: 14 }}
               />
             </label>
             <label style={{ display: 'block', marginBottom: 18 }}>
-              <div style={{ fontSize: 12, fontWeight: 700, color: '#334155', marginBottom: 4 }}>
+              <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--sm-ink-2)', marginBottom: 4 }}>
                 {isRTL ? 'السنة' : 'Year'}
               </div>
               <input
@@ -2729,19 +2728,19 @@ const SummerFablab = () => {
                 value={newSeasonForm.year}
                 onChange={(e) => setNewSeasonForm(f => ({ ...f, year: e.target.value }))}
                 dir="ltr"
-                style={{ width: '100%', padding: '10px 12px', borderRadius: 8, border: '1px solid #cbd5e1', fontFamily: 'inherit', fontSize: 14 }}
+                style={{ width: '100%', padding: '10px 12px', borderRadius: 8, border: '1px solid var(--sm-line)', fontFamily: 'inherit', fontSize: 14 }}
               />
             </label>
             <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
               <button
                 onClick={() => setShowNewSeasonModal(false)}
-                style={{ padding: '10px 18px', borderRadius: 10, border: '1px solid #e5e7eb', background: '#fff', cursor: 'pointer', fontWeight: 600 }}
+                style={{ padding: '10px 18px', borderRadius: 10, border: '1px solid var(--sm-line)', background: 'var(--sm-solid)', cursor: 'pointer', fontWeight: 600 }}
               >
                 {isRTL ? 'إلغاء' : 'Cancel'}
               </button>
               <button
                 onClick={handleCreateSeason}
-                style={{ padding: '10px 22px', borderRadius: 10, border: 'none', background: 'linear-gradient(135deg,#f97316,#ea580c)', color: '#fff', cursor: 'pointer', fontWeight: 800 }}
+                style={{ padding: '10px 22px', borderRadius: 10, border: 'none', background: 'linear-gradient(135deg,#c2410c,#9a3412)', color: '#fff', cursor: 'pointer', fontWeight: 800 }}
               >
                 {isRTL ? 'إنشاء وتفعيل' : 'Create & Activate'}
               </button>

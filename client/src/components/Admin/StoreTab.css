@@ -14,6 +14,8 @@
   --stt-muted: #64748b;
   --stt-danger: #dc2626;
   --stt-ok: #16a34a;
+  --stt-modal-bg: #ffffff;
+  --stt-field-focus: #ffffff;
 
   padding: 4px;
   font-family: 'Cairo', 'Inter', system-ui, sans-serif;
@@ -267,7 +269,7 @@
   padding: 6px 8px;
   border-radius: 6px;
   border: 1px solid var(--stt-line);
-  background: #fff;
+  background: var(--stt-surface);
   cursor: pointer;
   font-family: inherit;
   font-size: 11px;
@@ -333,7 +335,7 @@
 }
 .stt-icon-btn {
   border: 1px solid var(--stt-line);
-  background: #fff;
+  background: var(--stt-surface);
   border-radius: 8px;
   width: 34px;
   height: 34px;
@@ -389,7 +391,7 @@
   border-radius: 12px;
   padding: 12px 14px;
   margin-bottom: 14px;
-  background: #fff;
+  background: var(--stt-surface);
 }
 .stt-pay-panel.is-review { border-color: #bfdbfe; background: #f8fbff; }
 .stt-pay-panel-main {
@@ -443,7 +445,7 @@
   border-radius: 8px;
   font-family: inherit;
   font-size: 13.5px;
-  background: #fff;
+  background: var(--stt-surface);
   color: var(--stt-ink);
   outline: none;
 }
@@ -481,7 +483,7 @@
   padding: 20px;
 }
 .stt-modal {
-  background: #fff;
+  background: var(--stt-modal-bg);
   border-radius: 18px;
   max-width: 600px;
   width: 100%;
@@ -508,7 +510,7 @@
 }
 .stt-close {
   border: 1px solid var(--stt-line);
-  background: #fff;
+  background: var(--stt-surface);
   width: 32px;
   height: 32px;
   border-radius: 8px;
@@ -578,7 +580,7 @@
 .stt-field textarea:focus,
 .stt-field select:focus {
   border-color: var(--stt-brand);
-  background: #fff;
+  background: var(--stt-field-focus);
   box-shadow: 0 0 0 3px rgba(238, 35, 41, 0.14);
 }
 .stt-field textarea { resize: vertical; min-height: 60px; }
@@ -730,7 +732,7 @@
   border-radius: 8px;
   font-family: inherit;
   font-size: 13.5px;
-  background: #fff;
+  background: var(--stt-surface);
   color: var(--stt-ink);
   outline: none;
 }
@@ -754,13 +756,13 @@
 }
 .stt-btn--primary:hover { transform: translateY(-1px); }
 .stt-btn--ghost {
-  background: #fff;
+  background: var(--stt-surface);
   border-color: var(--stt-line);
   color: var(--stt-ink-2);
 }
 .stt-btn--ghost:hover { background: var(--stt-line-2); border-color: var(--stt-ink-2); }
 .stt-btn--danger {
-  background: #fff;
+  background: var(--stt-surface);
   border-color: #fecaca;
   color: var(--stt-danger);
 }
@@ -876,3 +878,45 @@
 .stt-coupon-actions button:hover { background: #f1f5f9; }
 .stt-coupon-actions button.is-on { color: #16a34a; border-color: rgba(22, 163, 74, 0.3); }
 .stt-coupon-actions button.danger { color: #dc2626; border-color: #fecaca; flex: 0; padding: 6px 10px; }
+
+/* ============================================================
+   Dark theme — swap the surface tokens (the tab was light-only:
+   white stat cards / lists under light dark-theme text).
+   ============================================================ */
+html[data-theme="dark"] .stt {
+  --stt-line: rgba(255, 255, 255, 0.09);
+  --stt-line-2: rgba(255, 255, 255, 0.05);
+  --stt-surface: rgba(20, 22, 34, 0.72);
+  --stt-surface-2: rgba(255, 255, 255, 0.03);
+  --stt-modal-bg: #141622;
+  --stt-field-focus: rgba(255, 255, 255, 0.06);
+  --stt-ink: #f2f4fa;
+  --stt-ink-2: #cbd5e1;
+  --stt-muted: #94a3b8;
+  --stt-danger: #f87171;
+  --stt-ok: #4ade80;
+}
+html[data-theme="dark"] .stt-modal { border: 1px solid rgba(255, 255, 255, 0.09); box-shadow: 0 30px 60px -20px rgba(0, 0, 0, 0.8); }
+html[data-theme="dark"] .stt-overlay { background: rgba(4, 6, 12, 0.72); }
+html[data-theme="dark"] .stt-search { color: var(--stt-ink); }
+html[data-theme="dark"] .stt .stt-paid-pill { background: rgba(34, 197, 94, 0.14); color: #4ade80; border-color: rgba(74, 222, 128, 0.35); }
+html[data-theme="dark"] .stt-pay-panel.is-review { background: rgba(59, 130, 246, 0.08); border-color: rgba(96, 165, 250, 0.35); }
+html[data-theme="dark"] .stt-btn--danger { border-color: rgba(248, 113, 113, 0.35); }
+html[data-theme="dark"] .stt-btn--danger:hover { background: rgba(239, 68, 68, 0.1); }
+html[data-theme="dark"] .stt-item-actions button.danger { border-color: rgba(248, 113, 113, 0.35); }
+html[data-theme="dark"] .stt-item-stock { background: rgba(34, 197, 94, 0.12); }
+html[data-theme="dark"] .stt-item-cat { color: #ff7a7e; background: rgba(238, 35, 41, 0.14); }
+html[data-theme="dark"] .stt-item-price,
+html[data-theme="dark"] .stt-order-no,
+html[data-theme="dark"] .stt-order-kicker b { color: #ff6b70; }
+html[data-theme="dark"] .stt-coupon-card { background: linear-gradient(135deg, rgba(20, 22, 34, 0.85) 0%, rgba(238, 35, 41, 0.08) 100%); }
+html[data-theme="dark"] .stt-coupon-code { background: rgba(255, 255, 255, 0.04); color: #f2f4fa; }
+html[data-theme="dark"] .stt-coupon-pct { color: #ff6b70; }
+html[data-theme="dark"] .stt-coupon-desc,
+html[data-theme="dark"] .stt-coupon-meta span { color: #94a3b8; }
+html[data-theme="dark"] .stt-coupon-meta > div { background: rgba(255, 255, 255, 0.04); }
+html[data-theme="dark"] .stt-coupon-meta b { color: #f2f4fa; }
+html[data-theme="dark"] .stt-coupon-actions button { background: rgba(255, 255, 255, 0.04); border-color: rgba(255, 255, 255, 0.09); color: #cbd5e1; }
+html[data-theme="dark"] .stt-coupon-actions button:hover { background: rgba(255, 255, 255, 0.08); }
+html[data-theme="dark"] .stt-coupon-actions button.is-on { color: #4ade80; }
+html[data-theme="dark"] .stt-coupon-actions button.danger { color: #f87171; border-color: rgba(248, 113, 113, 0.35); }

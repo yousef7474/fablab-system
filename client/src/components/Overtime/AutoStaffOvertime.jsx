@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'react-toastify';
 import api from '../../config/api';
+import './Overtime.css';
 
 const fmtHM = (min) => {
   if (!Number.isFinite(min) || min < 0) return '—';
@@ -92,19 +93,14 @@ const AutoStaffOvertime = () => {
   };
 
   return (
-    <div style={{
-      padding: 18, borderRadius: 12,
-      background: 'linear-gradient(135deg, #f5f3ff 0%, #eff6ff 100%)',
-      border: '1px solid #ddd6fe',
-      marginBottom: 20
-    }}>
+    <div className="aso">
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12, flexWrap: 'wrap' }}>
         <div style={{ fontSize: 22 }}>⏱</div>
         <div>
-          <div style={{ fontSize: 17, fontWeight: 800, color: '#5b21b6' }}>
+          <div style={{ fontSize: 17, fontWeight: 800, color: 'var(--aso-violet)' }}>
             {isRTL ? 'الساعات الإضافية التلقائية' : 'Auto Overtime'}
           </div>
-          <div style={{ fontSize: 12, color: '#64748b' }}>
+          <div style={{ fontSize: 12, color: 'var(--aso-muted)' }}>
             {isRTL
               ? 'يُحسب تلقائياً من مسح البطاقة — الدوام الرسمي ٩ ساعات؛ إذا تجاوز الوقت الإضافي ٣٠ دقيقة يُحتسب كاملاً (بما فيه الـ٣٠ دقيقة). أيام الجمعة والسبت تُحتسب كلها ساعات إضافية.'
               : 'Computed from QR scans — 9-hour official day; once the extra time passes 30 min, all of it counts (the 30 min included). Friday and Saturday count entirely as overtime.'}
@@ -115,19 +111,19 @@ const AutoStaffOvertime = () => {
       {/* Filters */}
       <div style={{ display: 'flex', gap: 10, alignItems: 'end', flexWrap: 'wrap', marginBottom: 14 }}>
         <label style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 12 }}>
-          <span style={{ color: '#5b21b6', fontWeight: 700 }}>{isRTL ? 'من' : 'From'}</span>
+          <span style={{ color: 'var(--aso-violet)', fontWeight: 700 }}>{isRTL ? 'من' : 'From'}</span>
           <input type="date" value={from} onChange={(e) => setFrom(e.target.value)}
-            style={{ padding: '6px 10px', borderRadius: 6, border: '1px solid #c4b5fd' }} />
+            style={{ padding: '6px 10px', borderRadius: 6, border: '1px solid var(--aso-line-strong)' }} />
         </label>
         <label style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 12 }}>
-          <span style={{ color: '#5b21b6', fontWeight: 700 }}>{isRTL ? 'إلى' : 'To'}</span>
+          <span style={{ color: 'var(--aso-violet)', fontWeight: 700 }}>{isRTL ? 'إلى' : 'To'}</span>
           <input type="date" value={to} onChange={(e) => setTo(e.target.value)}
-            style={{ padding: '6px 10px', borderRadius: 6, border: '1px solid #c4b5fd' }} />
+            style={{ padding: '6px 10px', borderRadius: 6, border: '1px solid var(--aso-line-strong)' }} />
         </label>
         <label style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 12, flex: '1 1 220px', minWidth: 0 }}>
-          <span style={{ color: '#5b21b6', fontWeight: 700 }}>{isRTL ? 'الموظف' : 'Employee'}</span>
+          <span style={{ color: 'var(--aso-violet)', fontWeight: 700 }}>{isRTL ? 'الموظف' : 'Employee'}</span>
           <select value={staffFilter} onChange={(e) => setStaffFilter(e.target.value)}
-            style={{ padding: '6px 10px', borderRadius: 6, border: '1px solid #c4b5fd', fontFamily: 'inherit', width: '100%' }}>
+            style={{ padding: '6px 10px', borderRadius: 6, border: '1px solid var(--aso-line-strong)', fontFamily: 'inherit', width: '100%' }}>
             <option value="">{isRTL ? 'الكل' : 'All'}</option>
             {staff.map(s => (
               <option key={s.staffId} value={s.staffId}>{s.name}{s.position ? ` — ${s.position}` : ''}</option>
@@ -135,8 +131,8 @@ const AutoStaffOvertime = () => {
           </select>
         </label>
         <div style={{ display: 'flex', gap: 12, marginInlineStart: 'auto', alignItems: 'center' }}>
-          <div style={{ fontSize: 12, color: '#64748b' }}>
-            {isRTL ? 'إجمالي' : 'Total'}: <b style={{ color: '#5b21b6', fontFamily: 'JetBrains Mono, monospace' }}>{fmtHM(totals.overtimeMin)}</b>
+          <div style={{ fontSize: 12, color: 'var(--aso-muted)' }}>
+            {isRTL ? 'إجمالي' : 'Total'}: <b style={{ color: 'var(--aso-violet)', fontFamily: 'JetBrains Mono, monospace' }}>{fmtHM(totals.overtimeMin)}</b>
             <span style={{ marginInlineStart: 8 }}>· {totals.count} {isRTL ? 'يوم' : 'days'}</span>
           </div>
         </div>
@@ -146,8 +142,8 @@ const AutoStaffOvertime = () => {
       <div style={{
         display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap',
         padding: '8px 12px', margin: '0 0 12px',
-        background: '#eff6ff', border: '1px dashed #bfdbfe', borderRadius: 8,
-        fontSize: 12, color: '#1e40af'
+        background: 'var(--aso-hint-bg)', border: '1px dashed var(--aso-hint-line)', borderRadius: 8,
+        fontSize: 12, color: 'var(--aso-hint-ink)'
       }}>
         <span>💡</span>
         <span>
@@ -158,18 +154,18 @@ const AutoStaffOvertime = () => {
       </div>
 
       {/* Table */}
-      <div style={{ overflow: 'auto', borderRadius: 10, border: '1px solid #ddd6fe', background: '#fff' }}>
+      <div style={{ overflow: 'auto', borderRadius: 10, border: '1px solid var(--aso-line)', background: 'var(--aso-surface)' }}>
         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
           <thead>
-            <tr style={{ background: '#ede9fe' }}>
-              <th style={{ padding: 10, textAlign: 'right', color: '#5b21b6', fontWeight: 700 }}>{isRTL ? 'الموظف' : 'Employee'}</th>
-              <th style={{ padding: 10, textAlign: 'right', color: '#5b21b6', fontWeight: 700 }}>{isRTL ? 'التاريخ' : 'Date'}</th>
-              <th style={{ padding: 10, textAlign: 'center', color: '#5b21b6', fontWeight: 700 }}>{isRTL ? 'الدخول' : 'In'}</th>
-              <th style={{ padding: 10, textAlign: 'center', color: '#5b21b6', fontWeight: 700 }}>{isRTL ? 'الخروج' : 'Out'}</th>
-              <th style={{ padding: 10, textAlign: 'center', color: '#5b21b6', fontWeight: 700 }}>{isRTL ? 'الإضافية' : 'Overtime'}</th>
-              <th style={{ padding: 10, textAlign: 'right', color: '#5b21b6', fontWeight: 700, minWidth: 220 }}>
+            <tr style={{ background: 'var(--aso-head)' }}>
+              <th style={{ padding: 10, textAlign: 'right', color: 'var(--aso-violet)', fontWeight: 700 }}>{isRTL ? 'الموظف' : 'Employee'}</th>
+              <th style={{ padding: 10, textAlign: 'right', color: 'var(--aso-violet)', fontWeight: 700 }}>{isRTL ? 'التاريخ' : 'Date'}</th>
+              <th style={{ padding: 10, textAlign: 'center', color: 'var(--aso-violet)', fontWeight: 700 }}>{isRTL ? 'الدخول' : 'In'}</th>
+              <th style={{ padding: 10, textAlign: 'center', color: 'var(--aso-violet)', fontWeight: 700 }}>{isRTL ? 'الخروج' : 'Out'}</th>
+              <th style={{ padding: 10, textAlign: 'center', color: 'var(--aso-violet)', fontWeight: 700 }}>{isRTL ? 'الإضافية' : 'Overtime'}</th>
+              <th style={{ padding: 10, textAlign: 'right', color: 'var(--aso-violet)', fontWeight: 700, minWidth: 220 }}>
                 {isRTL ? 'التفاصيل' : 'Details'}
-                <span style={{ marginInlineStart: 6, fontSize: 10, fontWeight: 500, color: '#8b5cf6' }}>
+                <span style={{ marginInlineStart: 6, fontSize: 10, fontWeight: 500, color: 'var(--aso-violet-2)' }}>
                   📄 {isRTL ? '(تُطبع على السند)' : '(prints on sanad)'}
                 </span>
               </th>
@@ -177,14 +173,14 @@ const AutoStaffOvertime = () => {
           </thead>
           <tbody>
             {loading ? (
-              <tr><td colSpan="6" style={{ padding: 20, textAlign: 'center', color: '#64748b' }}>{isRTL ? 'جارٍ التحميل...' : 'Loading...'}</td></tr>
+              <tr><td colSpan="6" style={{ padding: 20, textAlign: 'center', color: 'var(--aso-muted)' }}>{isRTL ? 'جارٍ التحميل...' : 'Loading...'}</td></tr>
             ) : rows.length === 0 ? (
-              <tr><td colSpan="6" style={{ padding: 20, textAlign: 'center', color: '#64748b' }}>{isRTL ? 'لا توجد ساعات إضافية في هذه الفترة' : 'No overtime in this period'}</td></tr>
+              <tr><td colSpan="6" style={{ padding: 20, textAlign: 'center', color: 'var(--aso-muted)' }}>{isRTL ? 'لا توجد ساعات إضافية في هذه الفترة' : 'No overtime in this period'}</td></tr>
             ) : rows.map(r => {
               const isSaving = savingId === r.attendanceId;
               const isSaved = savedId === r.attendanceId;
               return (
-                <tr key={r.attendanceId} style={{ borderTop: '1px solid #f1f5f9' }}>
+                <tr key={r.attendanceId} style={{ borderTop: '1px solid var(--aso-row-line)' }}>
                   <td style={{ padding: 10, fontWeight: 600 }}>{r.staff?.name || '—'}</td>
                   <td style={{ padding: 10, fontFamily: 'JetBrains Mono, monospace' }}>
                     {r.date}
@@ -196,7 +192,7 @@ const AutoStaffOvertime = () => {
                   </td>
                   <td style={{ padding: 10, fontFamily: 'JetBrains Mono, monospace', textAlign: 'center' }} dir="ltr">{fmtTime(r.checkInAt)}</td>
                   <td style={{ padding: 10, fontFamily: 'JetBrains Mono, monospace', textAlign: 'center' }} dir="ltr">{fmtTime(r.checkOutAt)}</td>
-                  <td style={{ padding: 10, fontFamily: 'JetBrains Mono, monospace', color: '#b91c1c', fontWeight: 700, textAlign: 'center' }} dir="ltr">
+                  <td style={{ padding: 10, fontFamily: 'JetBrains Mono, monospace', color: 'var(--aso-red)', fontWeight: 700, textAlign: 'center' }} dir="ltr">
                     {fmtHM(r.overtimeMinutes)}
                   </td>
                   <td style={{ padding: 8, position: 'relative' }}>
@@ -212,17 +208,17 @@ const AutoStaffOvertime = () => {
                           flex: 1,
                           padding: '7px 10px',
                           borderRadius: 6,
-                          border: `1px solid ${isSaved ? '#16a34a' : '#e0e7ff'}`,
-                          background: isSaved ? '#f0fdf4' : '#fff',
+                          border: `1px solid ${isSaved ? '#16a34a' : 'var(--aso-line)'}`,
+                          background: isSaved ? 'var(--aso-saved)' : 'var(--aso-field)',
                           fontFamily: 'inherit',
                           fontSize: 12.5,
-                          color: '#0f172a',
+                          color: 'var(--aso-ink)',
                           outline: 'none',
                           transition: 'border-color 0.15s, background 0.2s'
                         }}
                       />
                       {isSaving && (
-                        <span style={{ fontSize: 11, color: '#8b5cf6', fontWeight: 700 }}>...</span>
+                        <span style={{ fontSize: 11, color: 'var(--aso-violet-2)', fontWeight: 700 }}>...</span>
                       )}
                       {isSaved && !isSaving && (
                         <span style={{ fontSize: 12, color: '#16a34a', fontWeight: 800 }}>✓</span>

@@ -1,0 +1,19 @@
+/* Status colours for the inline-styled bits of AdminDashboard's own
+   tabs (settings, education, attendance station) — darker on the
+   light theme, lighter on the dark one, so small text stays readable. */
+:root {
+  --ats-ok: #15803d;
+  --ats-warn: #b45309;
+  --ats-bad: #dc2626;
+  --ats-violet: #6d28d9;
+  --ats-indigo: #4f46e5;
+  --ats-sky: #0369a1;
+}
+[data-theme="dark"] {
+  --ats-ok: #4ade80;
+  --ats-warn: #fbbf24;
+  --ats-bad: #f87171;
+  --ats-violet: #c4b5fd;
+  --ats-indigo: #a5b4fc;
+  --ats-sky: #38bdf8;
+}

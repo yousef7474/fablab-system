@@ -4020,7 +4020,7 @@ const ManagerDashboard = () => {
             className="nav-item elite-nav-btn"
             onClick={() => navigate('/elite-dashboard')}
             style={{
-              background: 'linear-gradient(135deg, #006c35, #00a651)',
+              background: 'linear-gradient(135deg, #005c2d, #00843f)',
               color: 'white',
               marginTop: '8px'
             }}
@@ -4401,10 +4401,7 @@ const ManagerDashboard = () => {
                             <span className="sv2-roster-name">{emp.name}</span>
                             {emp.section && (
                               <div className="sv2-roster-secs">
-                                <span className="sv2-roster-sec-chip" style={{
-                                  background: (SECTION_COLORS[emp.section] || '#64748b') + '20',
-                                  color: SECTION_COLORS[emp.section] || '#64748b'
-                                }}>
+                                <span className="sv2-roster-sec-chip" style={{ '--chip': SECTION_COLORS[emp.section] || '#64748b' }}>
                                   {sectionLabels[emp.section] || emp.section}
                                 </span>
                               </div>
@@ -4966,7 +4963,7 @@ const ManagerDashboard = () => {
                           {task.status === 'pending_review' && (
                             <button
                               onClick={() => { handleUpdateTaskStatus(task.taskId, 'completed'); }}
-                              style={{ padding: '0.25rem 0.6rem', borderRadius: 6, border: 'none', background: 'linear-gradient(135deg, #22c55e, #16a34a)', color: 'white', cursor: 'pointer', fontWeight: 700, fontSize: '0.72rem', fontFamily: 'inherit', whiteSpace: 'nowrap' }}
+                              style={{ padding: '0.25rem 0.6rem', borderRadius: 6, border: 'none', background: 'linear-gradient(135deg, #15803d, #166534)', color: 'white', cursor: 'pointer', fontWeight: 700, fontSize: '0.72rem', fontFamily: 'inherit', whiteSpace: 'nowrap' }}
                             >
                               {isRTL ? '✓ اعتماد ومنح نقطة' : '✓ Approve & Award Point'}
                             </button>
@@ -5077,7 +5074,7 @@ const ManagerDashboard = () => {
                 </button>
                 <button
                   className="add-volunteer-btn secondary"
-                  style={{ background: 'linear-gradient(135deg, #0ea5e9, #0284c7)', color: 'white' }}
+                  style={{ background: 'linear-gradient(135deg, #0284c7, #0369a1)', color: 'white' }}
                   onClick={handlePrintAllInternIDCards}
                 >
                   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
@@ -5085,7 +5082,7 @@ const ManagerDashboard = () => {
                 </button>
                 <button
                   className="add-volunteer-btn secondary"
-                  style={{ background: 'linear-gradient(135deg, #22c55e, #16a34a)', color: 'white' }}
+                  style={{ background: 'linear-gradient(135deg, #15803d, #166534)', color: 'white' }}
                   onClick={() => { setInternExportFrom(''); setInternExportTo(''); setShowInternExportModal(true); }}
                 >
                   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
@@ -5173,7 +5170,7 @@ const ManagerDashboard = () => {
                     <button
                       onClick={(e) => { e.stopPropagation(); handlePrintInternIDCard(intern); }}
                       title={isRTL ? 'طباعة بطاقة الحضور' : 'Print ID card'}
-                      style={{ padding: '6px 12px', borderRadius: 6, border: 'none', background: 'linear-gradient(135deg, #0ea5e9, #0284c7)', color: 'white', cursor: 'pointer', fontWeight: 700, fontSize: 12, display: 'inline-flex', alignItems: 'center', gap: 4, fontFamily: 'inherit' }}
+                      style={{ padding: '6px 12px', borderRadius: 6, border: 'none', background: 'linear-gradient(135deg, #0284c7, #0369a1)', color: 'white', cursor: 'pointer', fontWeight: 700, fontSize: 12, display: 'inline-flex', alignItems: 'center', gap: 4, fontFamily: 'inherit' }}
                     >
                       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
                       {isRTL ? 'بطاقة' : 'ID'}
@@ -5181,7 +5178,7 @@ const ManagerDashboard = () => {
                     <button
                       onClick={(e) => { e.stopPropagation(); openInternLog(intern); }}
                       title={isRTL ? 'سجل الحضور' : 'Attendance history'}
-                      style={{ padding: '6px 12px', borderRadius: 6, border: 'none', background: 'linear-gradient(135deg, #22c55e, #16a34a)', color: 'white', cursor: 'pointer', fontWeight: 700, fontSize: 12, display: 'inline-flex', alignItems: 'center', gap: 4, fontFamily: 'inherit' }}
+                      style={{ padding: '6px 12px', borderRadius: 6, border: 'none', background: 'linear-gradient(135deg, #15803d, #166534)', color: 'white', cursor: 'pointer', fontWeight: 700, fontSize: 12, display: 'inline-flex', alignItems: 'center', gap: 4, fontFamily: 'inherit' }}
                     >
                       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
                       {isRTL ? 'الحضور' : 'History'}
@@ -6259,7 +6256,7 @@ const ManagerDashboard = () => {
                   <div>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', flexWrap: 'wrap', gap: '0.5rem' }}>
                       <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 700 }}>{isRTL ? 'التقييم الوظيفي' : 'Performance Evaluations'}</h3>
-                      <button className="add-task-btn" onClick={() => handleExportEvaluations()} style={{ background: 'linear-gradient(135deg, #22c55e, #16a34a)' }}>
+                      <button className="add-task-btn" onClick={() => handleExportEvaluations()} style={{ background: 'linear-gradient(135deg, #15803d, #166534)' }}>
                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                           <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
                         </svg>
@@ -6582,7 +6579,7 @@ const ManagerDashboard = () => {
                       className={`todo-view-btn ${todoView === view.key ? 'active' : ''}`}
                       onClick={() => setTodoView(view.key)}
                     >
-                      <span className="todo-view-icon" style={{ color: view.color }}>{view.icon}</span>
+                      <span className="todo-view-icon" style={{ '--icon': view.color }}>{view.icon}</span>
                       <span className="todo-view-label">{isRTL ? view.labelAr : view.labelEn}</span>
                       {count > 0 && <span className="todo-view-count">{count}</span>}
                     </button>
@@ -7266,7 +7263,7 @@ const ManagerDashboard = () => {
                           className="action-btn"
                           onClick={() => openWorkspaceModal(workspace, { activate: true })}
                           title={isRTL ? 'تفعيل المساحة لفترة جديدة' : 'Activate for a new period'}
-                          style={{ background: 'linear-gradient(135deg, #22c55e, #16a34a)', color: '#fff' }}
+                          style={{ background: 'linear-gradient(135deg, #15803d, #166534)', color: '#fff' }}
                         >
                           <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" stroke="none"><polygon points="7 4 20 12 7 20 7 4"/></svg>
                         </button>
@@ -8994,7 +8991,7 @@ const ManagerDashboard = () => {
             </div>
             <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 16 }}>
               <button onClick={() => setShowInternExportModal(false)} style={{ padding: '9px 16px', borderRadius: 8, border: '1px solid #cbd5e1', background: '#fff', cursor: 'pointer', fontWeight: 700, fontFamily: 'inherit', color: '#334155' }}>{isRTL ? 'إلغاء' : 'Cancel'}</button>
-              <button onClick={downloadAllInternsAttendance} disabled={internExporting} style={{ padding: '9px 18px', borderRadius: 8, border: 'none', background: internExporting ? '#94a3b8' : 'linear-gradient(135deg, #22c55e, #16a34a)', color: '#fff', cursor: internExporting ? 'not-allowed' : 'pointer', fontWeight: 800, fontFamily: 'inherit' }}>
+              <button onClick={downloadAllInternsAttendance} disabled={internExporting} style={{ padding: '9px 18px', borderRadius: 8, border: 'none', background: internExporting ? '#94a3b8' : 'linear-gradient(135deg, #15803d, #166534)', color: '#fff', cursor: internExporting ? 'not-allowed' : 'pointer', fontWeight: 800, fontFamily: 'inherit' }}>
                 {internExporting ? (isRTL ? 'جاري التحميل...' : 'Downloading...') : (isRTL ? '📥 تحميل' : '📥 Download')}
               </button>
             </div>

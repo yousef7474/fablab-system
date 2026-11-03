@@ -15,7 +15,7 @@ const TEMPLATE_META = {
   'technical-trainer': {
     titleAr: 'عقد تعاوني — مدرب تقني',
     titleEn: 'Cooperation Contract — Technical Trainer',
-    accent: '#0f172a'
+    accent: 'var(--text-primary, #0f172a)'
   }
 };
 
@@ -69,8 +69,8 @@ const ContractsManagement = () => {
       titleEn: TEMPLATE_META['technical-trainer'].titleEn,
       descAr: 'عقد تعاون لمدرب تقني ضمن برنامج تدريبي، يشمل مدة العقد، المهام، شروط الاستحقاق، والمكافأة.',
       descEn: 'Cooperation contract for a technical trainer inside a training program, covering duration, tasks, entitlement conditions and compensation.',
-      accent: '#0f172a',
-      accentSoft: 'rgba(15, 23, 42, 0.06)',
+      accent: 'var(--text-primary, #0f172a)',
+      accentSoft: 'var(--bg-hover, rgba(15, 23, 42, 0.06))',
       icon: (
         <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
           <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
@@ -139,10 +139,10 @@ const ContractsManagement = () => {
   return (
     <div dir={isRTL ? 'rtl' : 'ltr'} style={{ padding: '4px 2px' }}>
       <div style={{ marginBottom: 22 }}>
-        <h2 style={{ margin: 0, fontSize: 24, color: '#0f172a', letterSpacing: 1 }}>
+        <h2 style={{ margin: 0, fontSize: 24, color: 'var(--text-primary, #0f172a)', letterSpacing: 1 }}>
           {isRTL ? 'العقود' : 'Contracts'}
         </h2>
-        <p style={{ margin: '6px 0 0 0', color: '#64748b', fontSize: 14 }}>
+        <p style={{ margin: '6px 0 0 0', color: 'var(--text-tertiary, #64748b)', fontSize: 14 }}>
           {isRTL
             ? 'مكتبة نماذج العقود القابلة للطباعة. عبّئ النموذج، احفظه في الأرشيف، وأعِد فتحه لاحقاً للتعديل أو إعادة الطباعة.'
             : 'A library of printable contract templates. Fill the form, save it to the archive, and reopen anytime to edit or reprint.'}
@@ -162,8 +162,8 @@ const ContractsManagement = () => {
             onClick={() => { setEditingContract(null); setOpenTemplate(t.id); }}
             style={{
               textAlign: isRTL ? 'right' : 'left',
-              background: '#ffffff',
-              border: `2px solid ${t.accent}`,
+              background: 'var(--card-bg, #ffffff)',
+              border: '2px solid var(--border-color, #0f172a)',
               borderRadius: 12,
               padding: '18px 20px',
               cursor: 'pointer',
@@ -193,10 +193,10 @@ const ContractsManagement = () => {
               {t.icon}
             </div>
             <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontSize: 16, fontWeight: 800, color: '#0f172a', marginBottom: 4 }}>
+              <div style={{ fontSize: 16, fontWeight: 800, color: 'var(--text-primary, #0f172a)', marginBottom: 4 }}>
                 {isRTL ? t.titleAr : t.titleEn}
               </div>
-              <div style={{ fontSize: 13, color: '#64748b', lineHeight: 1.5 }}>
+              <div style={{ fontSize: 13, color: 'var(--text-tertiary, #64748b)', lineHeight: 1.5 }}>
                 {isRTL ? t.descAr : t.descEn}
               </div>
               <div style={{
@@ -214,24 +214,24 @@ const ContractsManagement = () => {
 
       {/* Archive */}
       <div style={{
-        background: '#fff',
-        border: '1px solid #e2e8f0',
+        background: 'var(--card-bg, #fff)',
+        border: '1px solid var(--border-color, #e2e8f0)',
         borderRadius: 14,
         overflow: 'hidden'
       }}>
         <div style={{
           padding: '14px 20px',
-          borderBottom: '1px solid #e2e8f0',
+          borderBottom: '1px solid var(--border-color, #e2e8f0)',
           display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap',
-          background: 'rgba(241, 245, 249, 0.5)'
+          background: 'var(--bg-tertiary, rgba(241, 245, 249, 0.5))'
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, flex: 1, minWidth: 200 }}>
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#0f172a" strokeWidth="2">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ color: 'var(--text-primary, #0f172a)' }}>
               <polyline points="21 8 21 21 3 21 3 8"/>
               <rect x="1" y="3" width="22" height="5"/>
               <line x1="10" y1="12" x2="14" y2="12"/>
             </svg>
-            <h3 style={{ margin: 0, fontSize: 16, color: '#0f172a', letterSpacing: 0.5 }}>
+            <h3 style={{ margin: 0, fontSize: 16, color: 'var(--text-primary, #0f172a)', letterSpacing: 0.5 }}>
               {isRTL ? `أرشيف العقود (${archive.length})` : `Contracts Archive (${archive.length})`}
             </h3>
           </div>
@@ -242,18 +242,19 @@ const ContractsManagement = () => {
             placeholder={isRTL ? 'بحث بالاسم أو النموذج…' : 'Search by name or template…'}
             style={{
               padding: '8px 12px', borderRadius: 8,
-              border: '1.5px solid #cbd5e1', fontSize: 13,
-              minWidth: 220, fontFamily: 'inherit'
+              border: '1.5px solid var(--border-color, #cbd5e1)', fontSize: 13,
+              minWidth: 220, fontFamily: 'inherit',
+              background: 'var(--input-bg, #fff)', color: 'var(--text-primary, #0f172a)'
             }}
           />
         </div>
 
         {loadingArchive ? (
-          <div style={{ padding: 40, textAlign: 'center', color: '#64748b' }}>
+          <div style={{ padding: 40, textAlign: 'center', color: 'var(--text-tertiary, #64748b)' }}>
             {isRTL ? 'جارٍ التحميل…' : 'Loading…'}
           </div>
         ) : filteredArchive.length === 0 ? (
-          <div style={{ padding: 40, textAlign: 'center', color: '#94a3b8', fontSize: 14 }}>
+          <div style={{ padding: 40, textAlign: 'center', color: 'var(--text-tertiary, #64748b)', fontSize: 14 }}>
             {archive.length === 0
               ? (isRTL ? 'لا توجد عقود محفوظة بعد. عبّئ نموذجاً أعلاه واحفظه لأرشفته.' : 'No saved contracts yet. Fill a template above and save it to archive.')
               : (isRTL ? 'لا نتائج للبحث.' : 'No results for your search.')}
@@ -267,7 +268,7 @@ const ContractsManagement = () => {
                   key={c.contractId}
                   style={{
                     padding: '14px 20px',
-                    borderBottom: '1px solid #f1f5f9',
+                    borderBottom: '1px solid var(--border-light, #f1f5f9)',
                     display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap'
                   }}
                 >
@@ -276,12 +277,12 @@ const ContractsManagement = () => {
                   }} />
                   <div style={{ flex: '1 1 260px', minWidth: 0 }}>
                     <div style={{
-                      fontSize: 14, fontWeight: 800, color: '#0f172a',
+                      fontSize: 14, fontWeight: 800, color: 'var(--text-primary, #0f172a)',
                       overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap'
                     }}>
                       {c.title || (isRTL ? 'عقد بدون عنوان' : 'Untitled contract')}
                     </div>
-                    <div style={{ fontSize: 11.5, color: '#64748b', marginTop: 3, display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+                    <div style={{ fontSize: 11.5, color: 'var(--text-tertiary, #64748b)', marginTop: 3, display: 'flex', gap: 10, flexWrap: 'wrap' }}>
                       <span>{isRTL ? meta.titleAr : meta.titleEn}</span>
                       <span>•</span>
                       <span>{fmtWhen(c.updatedAt || c.createdAt, isRTL)}</span>
@@ -292,8 +293,8 @@ const ContractsManagement = () => {
                       onClick={() => openEdit(c)}
                       title={isRTL ? 'تعديل' : 'Edit'}
                       style={{
-                        padding: '7px 12px', borderRadius: 6, border: '1.5px solid #cbd5e1',
-                        background: '#fff', color: '#334155', fontWeight: 700, fontSize: 12.5,
+                        padding: '7px 12px', borderRadius: 6, border: '1.5px solid var(--border-color, #cbd5e1)',
+                        background: 'var(--card-bg, #fff)', color: 'var(--text-secondary, #334155)', fontWeight: 700, fontSize: 12.5,
                         cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 5
                       }}
                     >
@@ -326,7 +327,7 @@ const ContractsManagement = () => {
                       style={{
                         padding: '7px 10px', borderRadius: 6,
                         border: '1.5px solid rgba(239, 68, 68, 0.35)',
-                        background: '#fff', color: '#ef4444', fontWeight: 700,
+                        background: 'var(--card-bg, #fff)', color: '#dc2626', fontWeight: 700,
                         cursor: 'pointer', display: 'inline-flex', alignItems: 'center'
                       }}
                     >

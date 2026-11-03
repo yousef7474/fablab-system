@@ -64,16 +64,28 @@ const RootRoute = () => {
   return <SiteHome />;
 };
 
+// Boards remember their own theme (dark by default) — match it so the
+// loader doesn't flash white before a dark dashboard.
+const boardIsDark = (path) => {
+  try {
+    if (/^\/(admin\/dashboard|manager\/)/.test(path)) return (localStorage.getItem('adminTheme') || 'dark') === 'dark';
+    if (/^\/(employee\/dashboard|projects)/.test(path)) return (localStorage.getItem('employeeTheme') || 'dark') === 'dark';
+  } catch { /* storage blocked */ }
+  return false;
+};
+
 const RouteFallback = () => {
   // Website pages are dark — avoid a white flash while their chunk loads.
-  const site = isSitePath(useLocation().pathname);
+  const path = useLocation().pathname;
+  const site = isSitePath(path);
+  const board = !site && boardIsDark(path);
   return (
     <div style={{
       minHeight: '100vh',
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
-      background: site ? '#0b0f1d' : 'var(--gray-50, #f9fafb)'
+      background: site ? '#0b0f1d' : board ? '#07080f' : 'var(--gray-50, #f9fafb)'
     }}>
       <div style={{
         width: 42, height: 42,

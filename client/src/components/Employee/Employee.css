@@ -219,8 +219,14 @@
 
   --ink-primary: #eef2f7;
   --ink-secondary: #94a3b8;
-  --ink-muted: #5b6577;
-  --ink-dim: #3f4859;
+  --ink-muted: #8590a3;
+  --ink-dim: #6f7a8e;
+
+  /* Status hues used as text (inline styles in the dashboard) */
+  --emp-amber-ink: #fbbf24;
+  --emp-sky-ink: #38bdf8;
+  --emp-mint-ink: #4ade80;
+  --emp-red-ink: #ff7b7f;
 
   --font-display: 'Bricolage Grotesque', 'Cairo', system-ui, sans-serif;
   --font-body: 'Cairo', 'Inter', 'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif;
@@ -237,6 +243,11 @@
     radial-gradient(900px 600px at 100% 100%, rgba(34, 211, 238, var(--term-body-glow-cyan)), transparent 60%),
     var(--term-bg);
 }
+
+/* index.css paints every h1–h6 --gray-900 and every <p> --gray-600 —
+   unreadable on the dark theme. Inherit instead; classed rules below
+   still win. */
+.employee-dashboard :where(h1, h2, h3, h4, h5, h6, p) { color: inherit; }
 
 /* Ambient grid — subtle red-tinted crosshatch */
 .employee-dashboard::before {
@@ -1713,6 +1724,9 @@
   padding: 4px 12px;
   border-radius: 3px;
   color: #fff;
+  /* Deepen the section hue (set inline) so white text stays readable
+     on the light ones (amber, cyan, green). */
+  background-image: linear-gradient(rgba(0, 0, 0, 0.32), rgba(0, 0, 0, 0.32));
   font-family: var(--font-mono);
   font-size: 0.7rem;
   font-weight: 700;
@@ -2649,8 +2663,15 @@
 
   --ink-primary: #0f172a;
   --ink-secondary: #475569;
-  --ink-muted: #64748b;
-  --ink-dim: #94a3b8;
+  --ink-muted: #556274;
+  --ink-dim: #64748b;
+
+  /* Deeper hues so status text stays readable on white */
+  --signal-red-glow: #dc2626;
+  --emp-amber-ink: #b45309;
+  --emp-sky-ink: #0369a1;
+  --emp-mint-ink: #15803d;
+  --emp-red-ink: #b91c1c;
 }
 
 /* Softer shadow palette for light mode — dark-mode neon glows would
@@ -2761,4 +2782,18 @@
 }
 .employee-dashboard[data-theme="light"] *::-webkit-scrollbar-thumb:hover {
   background: rgba(238, 35, 41, 0.45);
+}
+
+/* design-system.css gives .emp-calendar a white glass card whenever
+   <html> carries no theme — which is always the case here. Put the
+   terminal panel back for the dark theme. */
+.employee-dashboard[data-theme="dark"] .emp-calendar {
+  background: var(--term-panel);
+  border-color: var(--term-border);
+}
+.employee-dashboard[data-theme="dark"] .emp-calendar-grid {
+  background: transparent;
+  border: none;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
 }

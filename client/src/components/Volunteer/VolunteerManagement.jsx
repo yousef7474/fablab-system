@@ -1740,7 +1740,7 @@ const VolunteerManagement = () => {
                 </button>
                 <button
                   className="add-volunteer-btn"
-                  style={{ background: 'linear-gradient(135deg, #16a34a, #15803d)' }}
+                  style={{ background: 'linear-gradient(135deg, #15803d, #166534)' }}
                   onClick={() => setShowOpportunityRequestModal(true)}
                   title={isRTL
                     ? 'إعداد طلب فرصة تطوعية جديدة وإرساله للمدير للاعتماد'

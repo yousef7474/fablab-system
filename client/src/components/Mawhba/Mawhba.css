@@ -67,7 +67,7 @@
 
 .mawhba-btn-primary {
   padding: 0.55rem 1.1rem;
-  background: linear-gradient(135deg, #8b5cf6, #ec4899);
+  background: linear-gradient(135deg, #7c3aed, #db2777);
   color: white;
   border: none;
   border-radius: 8px;
@@ -98,7 +98,7 @@
 
 .mawhba-btn-email {
   padding: 0.55rem 1.1rem;
-  background: linear-gradient(135deg, #f59e0b, #ef4444);
+  background: linear-gradient(135deg, #c2410c, #dc2626);
   color: white;
   border: none;
   border-radius: 8px;
@@ -115,7 +115,7 @@
 
 .mawhba-btn-print {
   padding: 0.55rem 1.1rem;
-  background: linear-gradient(135deg, #6366f1, #8b5cf6);
+  background: linear-gradient(135deg, #4f46e5, #7c3aed);
   color: white;
   border: none;
   border-radius: 8px;
@@ -131,7 +131,7 @@
 }
 .mawhba-btn-colors {
   padding: 0.55rem 1.1rem;
-  background: linear-gradient(135deg, #14b8a6, #06b6d4);
+  background: linear-gradient(135deg, #0f766e, #0e7490);
   color: white;
   border: none;
   border-radius: 8px;
@@ -144,7 +144,7 @@
 
 .mawhba-btn-scanner {
   padding: 0.55rem 1.1rem;
-  background: linear-gradient(135deg, #22c55e, #16a34a);
+  background: linear-gradient(135deg, #15803d, #166534);
   color: white;
   border: none;
   border-radius: 8px;
@@ -157,7 +157,7 @@
 
 .mawhba-btn-export {
   padding: 0.55rem 1.1rem;
-  background: linear-gradient(135deg, #0ea5e9, #0369a1);
+  background: linear-gradient(135deg, #0284c7, #0369a1);
   color: white;
   border: none;
   border-radius: 8px;
@@ -174,7 +174,7 @@
 
 .mawhba-btn-cards-bulk {
   padding: 0.55rem 1.1rem;
-  background: linear-gradient(135deg, #f59e0b, #d97706);
+  background: linear-gradient(135deg, #b45309, #92400e);
   color: white;
   border: none;
   border-radius: 8px;
@@ -191,7 +191,7 @@
 
 .mawhba-btn-attendance-mode {
   padding: 0.55rem 1.1rem;
-  background: linear-gradient(135deg, #22c55e, #16a34a);
+  background: linear-gradient(135deg, #15803d, #166534);
   color: white;
   border: none;
   border-radius: 8px;
@@ -728,7 +728,7 @@
 .mawhba-table tbody tr:hover { background: #faf5ff; }
 .mawhba-table tbody tr.is-selected { background: #f5f3ff; }
 .mawhba-table .mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.82rem; color: #334155; }
-.mawhba-table .muted { color: #94a3b8; }
+.mawhba-table .muted { color: #64748b; }
 .mawhba-table .ellipsis {
   max-width: 180px;
   overflow: hidden;
@@ -864,7 +864,7 @@
 .mawhba-empty {
   padding: 2.5rem 1rem;
   text-align: center;
-  color: #94a3b8;
+  color: #64748b;
   font-size: 0.95rem;
 }
 
@@ -1027,3 +1027,70 @@
   .mawhba-form-grid { grid-template-columns: minmax(0, 1fr); }
   .mawhba-table .ellipsis { max-width: 120px; }
 }
+
+/* ───────── Dark theme ─────────
+   Buttons live in design-system.css; these are the white surfaces
+   (summary bar, table, modals, pickers) that stayed light under the
+   dashboard's light dark-theme text. */
+html[data-theme="dark"] .mawhba-sub,
+html[data-theme="dark"] .mawhba-email-hint,
+html[data-theme="dark"] .mawhba-name-en,
+html[data-theme="dark"] .mawhba-photo-picker-hint { color: #94a3b8; }
+html[data-theme="dark"] .mawhba-search,
+html[data-theme="dark"] .mawhba-select,
+html[data-theme="dark"] .mawhba-field input,
+html[data-theme="dark"] .mawhba-field select,
+html[data-theme="dark"] .mawhba-field textarea {
+  background: rgba(255, 255, 255, 0.04);
+  border-color: rgba(255, 255, 255, 0.1);
+  color: #f2f4fa;
+}
+html[data-theme="dark"] .mawhba-select option,
+html[data-theme="dark"] .mawhba-field select option { background: #141622; color: #f2f4fa; }
+html[data-theme="dark"] .mawhba-summary {
+  background: rgba(255, 255, 255, 0.04);
+  border-color: rgba(255, 255, 255, 0.08);
+  color: #cbd5e1;
+}
+html[data-theme="dark"] .mawhba-summary span { color: #94a3b8; }
+html[data-theme="dark"] .mawhba-summary b,
+html[data-theme="dark"] .mawhba-name-ar,
+html[data-theme="dark"] .mawhba-modal h3,
+html[data-theme="dark"] .mawhba-photo-name,
+html[data-theme="dark"] .mawhba-log-summary b { color: #f2f4fa; }
+html[data-theme="dark"] .mawhba-table-wrap,
+html[data-theme="dark"] .mawhba-log-table-wrap {
+  background: rgba(20, 22, 34, 0.72);
+  border-color: rgba(255, 255, 255, 0.08);
+}
+html[data-theme="dark"] .mawhba-table thead th,
+html[data-theme="dark"] .mawhba-log-table thead th {
+  background: #161827;
+  color: #94a3b8;
+  border-bottom-color: rgba(255, 255, 255, 0.08);
+}
+html[data-theme="dark"] .mawhba-table tbody td,
+html[data-theme="dark"] .mawhba-log-table tbody td {
+  color: #e2e8f0;
+  border-bottom-color: rgba(255, 255, 255, 0.05);
+}
+html[data-theme="dark"] .mawhba-table tbody tr:hover { background: rgba(139, 92, 246, 0.08); }
+html[data-theme="dark"] .mawhba-table tbody tr.is-selected { background: rgba(139, 92, 246, 0.14); }
+html[data-theme="dark"] .mawhba-table .mono { color: #cbd5e1; }
+html[data-theme="dark"] .mawhba-table .muted,
+html[data-theme="dark"] .mawhba-empty { color: #94a3b8; }
+html[data-theme="dark"] .mawhba-modal-overlay { background: rgba(4, 6, 14, 0.7); }
+html[data-theme="dark"] .mawhba-modal {
+  background: #141622;
+  color: #f2f4fa;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+html[data-theme="dark"] .mawhba-field label { color: #cbd5e1; }
+html[data-theme="dark"] .mawhba-email-targets { background: linear-gradient(135deg, rgba(245, 158, 11, 0.14), rgba(236, 72, 153, 0.14)); color: #f5d0fe; }
+html[data-theme="dark"] .mawhba-photo-picker { background: rgba(139, 92, 246, 0.08); border-color: rgba(167, 139, 250, 0.45); }
+html[data-theme="dark"] .mawhba-photo-picker:hover { background: rgba(139, 92, 246, 0.14); }
+html[data-theme="dark"] .mawhba-photo-picker-label { color: #c4b5fd; }
+html[data-theme="dark"] .mawhba-photo-preview { background: rgba(255, 255, 255, 0.04); border-color: rgba(255, 255, 255, 0.08); }
+html[data-theme="dark"] .mawhba-scan-popup { background: #141622; color: #f2f4fa; }
+html[data-theme="dark"] .mawhba-log-summary > div { background: rgba(255, 255, 255, 0.04); border-color: rgba(255, 255, 255, 0.08); }
+html[data-theme="dark"] .mawhba-log-summary span { color: #94a3b8; }

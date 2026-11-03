@@ -1,0 +1,22 @@
+/* Project support tab — tokens for the inline-styled access-code
+   panel and request list, swapped by the admin dark theme. */
+.psa,
+.psa-panel {
+  --psa-violet: #6d28d9;
+  --psa-line: #ddd6fe;
+  --psa-field: #ffffff;
+}
+.psa-panel {
+  border: 1px solid var(--psa-line);
+  background: linear-gradient(135deg, #f5f3ff, #faf5ff);
+  color: var(--text-primary, #0f172a);
+}
+[data-theme="dark"] .psa,
+[data-theme="dark"] .psa-panel {
+  --psa-violet: #c4b5fd;
+  --psa-line: rgba(167, 139, 250, 0.32);
+  --psa-field: rgba(255, 255, 255, 0.05);
+}
+[data-theme="dark"] .psa-panel {
+  background: linear-gradient(135deg, rgba(139, 92, 246, 0.14), rgba(20, 22, 34, 0.72));
+}

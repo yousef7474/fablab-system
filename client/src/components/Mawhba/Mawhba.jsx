@@ -849,7 +849,7 @@ const Mawhba = () => {
           <button
             className="mawhba-btn-primary"
             onClick={() => setShowNewSeasonModal(true)}
-            style={{ background: '#16a34a' }}
+            style={{ background: '#15803d' }}
             title={isRTL ? 'إنشاء موسم جديد' : 'Create a new season'}
           >
             + {isRTL ? 'موسم جديد' : 'New Season'}

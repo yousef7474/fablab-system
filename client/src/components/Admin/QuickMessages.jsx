@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'react-toastify';
 import api from '../../config/api';
+import './QuickMessages.css';
 
 // Pre-composed messages the admin pastes into WhatsApp / SMS / email
 // dozens of times a week. Persisted in the Settings table under
@@ -272,8 +273,8 @@ const QuickMessages = () => {
                     </div>
                   ) : (
                     <div>
-                      <div style={{
-                        fontSize: 11, fontWeight: 700, color: c,
+                      <div className="qm-ink" style={{
+                        fontSize: 11, fontWeight: 700, '--qm-c': c,
                         letterSpacing: 0.5, textTransform: 'uppercase'
                       }}>
                         {t.tag || (isRTL ? 'رسالة' : 'Message')}
@@ -289,9 +290,10 @@ const QuickMessages = () => {
                   {!isEditing && t.url && (
                     <span
                       title={t.url}
+                      className="qm-ink"
                       style={{
                         fontFamily: 'JetBrains Mono, ui-monospace, monospace',
-                        fontSize: 11, color: c, background: c + '11',
+                        fontSize: 11, '--qm-c': c, background: c + '11',
                         border: `1px solid ${c}33`,
                         padding: '3px 8px', borderRadius: 999,
                         maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
@@ -442,10 +444,11 @@ const QuickMessages = () => {
                       {t.url && (
                         <button
                           onClick={() => copyToClipboard(t.url, isRTL ? '🔗 تم نسخ الرابط' : '🔗 Link copied', isRTL)}
+                          className="qm-ink"
                           style={{
                             padding: '10px 14px', borderRadius: 8,
                             border: `1px solid ${c}55`,
-                            background: c + '11', color: c,
+                            background: c + '11', '--qm-c': c,
                             fontFamily: 'inherit', fontWeight: 700, fontSize: 13,
                             cursor: 'pointer'
                           }}

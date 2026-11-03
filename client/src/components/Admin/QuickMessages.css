@@ -1,0 +1,5 @@
+/* Quick messages — each card's text accent is the colour the admin
+   picked; mix it toward the background's opposite so light picks stay
+   readable on white and dark picks on the dark theme. */
+.qm-ink { color: color-mix(in srgb, var(--qm-c, #0ea5e9) 72%, #000); }
+[data-theme="dark"] .qm-ink { color: color-mix(in srgb, var(--qm-c, #0ea5e9) 55%, #fff); }

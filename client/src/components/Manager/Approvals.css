@@ -498,3 +498,38 @@
   .ap-btn { padding: 10px 18px; font-size: 13.5px; }
   .ap-head h2 { font-size: 19px; }
 }
+
+/* Inactive hub badge: tinted pill in the tab's own colour, text mixed
+   toward black (light) / white (dark) so it stays readable. */
+.ap-hub-tab:not(.is-active) .ap-hub-tab-badge {
+  background: color-mix(in srgb, var(--tab-color, #64748b) 14%, transparent);
+  color: color-mix(in srgb, var(--tab-color, #64748b) 68%, #000);
+}
+/* Active tab: labels follow the button's white text (the dark theme's
+   global `span` colour would otherwise grey them). */
+.ap-hub-tab.is-active span { color: inherit; }
+
+/* Dark theme */
+html[data-theme="dark"] .ap-hub-tab:not(.is-active) .ap-hub-tab-badge {
+  background: color-mix(in srgb, var(--tab-color, #64748b) 24%, transparent);
+  color: color-mix(in srgb, var(--tab-color, #64748b) 45%, #fff);
+}
+html[data-theme="dark"] .ap-hub-tab:hover:not(.is-active) {
+  background: var(--glass-strong);
+  border-color: var(--glass-border-strong);
+}
+html[data-theme="dark"] .ap-hub-total b {
+  background: rgba(245, 158, 11, 0.16);
+  border-color: rgba(245, 158, 11, 0.4);
+  color: #fcd34d;
+}
+html[data-theme="dark"] .ap-count--amber {
+  background: rgba(245, 158, 11, 0.14);
+  border-color: rgba(245, 158, 11, 0.4);
+  color: #fcd34d;
+}
+html[data-theme="dark"] .ap-count--sky {
+  background: rgba(14, 165, 233, 0.14);
+  border-color: rgba(14, 165, 233, 0.4);
+  color: #7dd3fc;
+}

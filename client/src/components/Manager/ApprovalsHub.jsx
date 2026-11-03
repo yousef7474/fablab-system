@@ -15,17 +15,19 @@ import './Approvals.css';
 // and let the manager switch between them via a tab bar. Each tab
 // carries a live pending-count badge so the manager can see at a
 // glance where their attention is needed.
+// `solid` is the active-tab fill: a deeper shade of `color` so the
+// white label stays readable (the bright tints fail contrast).
 
 const TABS = [
-  { id: 'overtime',  ar: 'الساعات الإضافية',  en: 'Overtime',           icon: '🕓', color: '#d97706', endpoint: '/overtime/pending' },
-  { id: 'visit',     ar: 'زيارات فاب لاب',    en: 'FabLab Visits',      icon: '🏢', color: '#0ea5e9', endpoint: '/fablab-visits/pending' },
-  { id: 'volunteer', ar: 'الفرص التطوعية',    en: 'Volunteer',          icon: '🤝', color: '#16a34a', endpoint: '/volunteer-opportunity-requests/pending' },
-  { id: 'support',   ar: 'طلبات الدعم',       en: 'Support Requests',   icon: '💜', color: '#8b5cf6', endpoint: '/project-support/pending' },
-  { id: 'kits',      ar: 'الحقائب التدريبية', en: 'Training Kits',      icon: '🎒', color: '#EE2329', endpoint: '/training-kits/admin/kits?scope=pending' },
+  { id: 'overtime',  ar: 'الساعات الإضافية',  en: 'Overtime',           icon: '🕓', color: '#d97706', solid: '#b45309', endpoint: '/overtime/pending' },
+  { id: 'visit',     ar: 'زيارات فاب لاب',    en: 'FabLab Visits',      icon: '🏢', color: '#0ea5e9', solid: '#0369a1', endpoint: '/fablab-visits/pending' },
+  { id: 'volunteer', ar: 'الفرص التطوعية',    en: 'Volunteer',          icon: '🤝', color: '#16a34a', solid: '#15803d', endpoint: '/volunteer-opportunity-requests/pending' },
+  { id: 'support',   ar: 'طلبات الدعم',       en: 'Support Requests',   icon: '💜', color: '#8b5cf6', solid: '#7c3aed', endpoint: '/project-support/pending' },
+  { id: 'kits',      ar: 'الحقائب التدريبية', en: 'Training Kits',      icon: '🎒', color: '#EE2329', solid: '#c81e24', endpoint: '/training-kits/admin/kits?scope=pending' },
   // Archive isn't a "queue" — it's the audit trail of every request
   // ever sent to the manager, so no pending-count endpoint. Rendered
   // as an ordinary tab that shows the historical list w/ reprint.
-  { id: 'archive',   ar: 'الأرشيف',           en: 'Archive',            icon: '🗂', color: '#475569', endpoint: null }
+  { id: 'archive',   ar: 'الأرشيف',           en: 'Archive',            icon: '🗂', color: '#475569', solid: '#475569', endpoint: null }
 ];
 
 const ApprovalsHub = () => {
@@ -86,11 +88,11 @@ const ApprovalsHub = () => {
                 key={t.id}
                 className={`ap-hub-tab ${isActive ? 'is-active' : ''}`}
                 style={isActive ? {
-                  background: t.color,
+                  background: t.solid,
                   color: '#fff',
-                  borderColor: t.color,
+                  borderColor: t.solid,
                   boxShadow: `0 8px 20px -8px ${t.color}80`
-                } : {}}
+                } : { '--tab-color': t.color }}
                 onClick={() => setActive(t.id)}
               >
                 <span className="ap-hub-tab-icon">{t.icon}</span>
@@ -98,10 +100,10 @@ const ApprovalsHub = () => {
                 {count > 0 && (
                   <span
                     className="ap-hub-tab-badge"
-                    style={{
-                      background: isActive ? 'rgba(255,255,255,0.28)' : t.color + '20',
-                      color: isActive ? '#fff' : t.color
-                    }}
+                    style={isActive ? {
+                      background: 'rgba(255,255,255,0.28)',
+                      color: '#fff'
+                    } : { '--tab-color': t.color }}
                   >
                     {count}
                   </span>

@@ -596,11 +596,11 @@ const OvertimeManagement = () => {
             const canPrint = status === 'approved';
             const canSend = status === 'draft' || status === 'rejected';
             return (
-            <div key={row.overtimeId} className="volunteer-card">
+            <div key={row.overtimeId} className="volunteer-card otm-card">
               <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, marginBottom: 10 }}>
                 <div>
-                  <div style={{ fontWeight: 800, fontSize: 17, color: '#0f172a' }}>{row.employeeName}</div>
-                  {row.position && <div style={{ fontSize: 13, color: '#64748b', marginTop: 2 }}>{row.position}</div>}
+                  <div style={{ fontWeight: 800, fontSize: 17, color: 'var(--aso-ink)' }}>{row.employeeName}</div>
+                  {row.position && <div style={{ fontSize: 13, color: 'var(--aso-muted)', marginTop: 2 }}>{row.position}</div>}
                 </div>
                 <div style={{ background: 'linear-gradient(135deg, #6d28d9, #8b5cf6)', color: 'white', padding: '6px 12px', borderRadius: 999, fontSize: 12, fontWeight: 800 }}>
                   {Number(row.totalHours) || 0} {isRTL ? 'ساعة' : 'hrs'}
@@ -619,17 +619,17 @@ const OvertimeManagement = () => {
                   {isRTL ? statusMeta.ar : statusMeta.en}
                 </span>
                 {status === 'approved' && row.approvedBy && (
-                  <span style={{ marginInlineStart: 8, fontSize: 11, color: '#64748b' }}>
+                  <span style={{ marginInlineStart: 8, fontSize: 11, color: 'var(--aso-muted)' }}>
                     · {isRTL ? 'اعتمده:' : 'by'} <b>{row.approvedBy}</b>
                   </span>
                 )}
                 {status === 'rejected' && row.managerNote && (
-                  <span style={{ marginInlineStart: 8, fontSize: 11, color: '#991b1b' }} title={row.managerNote}>
+                  <span style={{ marginInlineStart: 8, fontSize: 11, color: 'var(--aso-red)' }} title={row.managerNote}>
                     · 📝 {row.managerNote.slice(0, 40)}{row.managerNote.length > 40 ? '…' : ''}
                   </span>
                 )}
               </div>
-              <div style={{ fontSize: 13, color: '#475569', lineHeight: 1.9 }}>
+              <div style={{ fontSize: 13, color: 'var(--aso-ink-2)', lineHeight: 1.9 }}>
                 {row.nationalId && <div>🆔 <span dir="ltr">{row.nationalId}</span></div>}
                 {row.phone && <div>📱 <span dir="ltr">{row.phone}</span></div>}
                 {row.email && <div>✉️ <span dir="ltr">{row.email}</span></div>}
@@ -673,8 +673,8 @@ const OvertimeManagement = () => {
                     onClick={() => openSendModal(row)}
                     title={isRTL ? 'إعادة إرسال' : 'Resend email'}
                     style={{
-                      padding: '8px 14px', borderRadius: 8, border: '1px solid #cbd5e1',
-                      background: '#fff', color: '#475569', cursor: 'pointer',
+                      padding: '8px 14px', borderRadius: 8, border: '1px solid var(--aso-btn-line)',
+                      background: 'var(--aso-btn-bg)', color: 'var(--aso-ink-2)', cursor: 'pointer',
                       fontWeight: 700, fontSize: 13, fontFamily: 'inherit'
                     }}
                   >
@@ -690,8 +690,8 @@ const OvertimeManagement = () => {
                       ? (isRTL ? 'تعديل البيانات ثم إعادة طباعة السند' : 'Edit info and reprint the sanad')
                       : (isRTL ? 'تعديل' : 'Edit')}
                   style={{
-                    padding: '8px 14px', borderRadius: 8, border: '1px solid #cbd5e1',
-                    background: '#fff', color: status === 'pending' ? '#94a3b8' : '#334155',
+                    padding: '8px 14px', borderRadius: 8, border: '1px solid var(--aso-btn-line)',
+                    background: 'var(--aso-btn-bg)', color: status === 'pending' ? 'var(--aso-muted)' : 'var(--aso-ink-2)',
                     cursor: status === 'pending' ? 'not-allowed' : 'pointer',
                     fontWeight: 700, fontSize: 13, fontFamily: 'inherit'
                   }}

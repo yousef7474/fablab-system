@@ -282,3 +282,8 @@ span.fvs-pill { cursor: default; }
 @media (prefers-reduced-motion: reduce) {
   .fvs-chip, .fvs-primary { transition: none; }
 }
+
+/* Requests view (FablabVisitsTab) — status colours that hold up on
+   both the light and the dark admin surfaces. */
+.fvt { --fvt-sky: #0369a1; --fvt-amber: #b45309; --fvt-green: #15803d; --fvt-red: #b91c1c; }
+[data-theme="dark"] .fvt { --fvt-sky: #38bdf8; --fvt-amber: #fbbf24; --fvt-green: #4ade80; --fvt-red: #f87171; }

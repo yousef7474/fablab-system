@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'react-toastify';
 import api from '../../config/api';
+import './QuickMessages.css';
 
 // Reusable form-file library — mirrors the QuickMessages tab but each
 // entry carries a downloadable file (Word / PDF / Excel / etc.)
@@ -314,7 +315,7 @@ const QuickForms = () => {
       />
 
       {loading ? (
-        <div style={{ padding: 40, textAlign: 'center', color: '#64748b' }}>
+        <div style={{ padding: 40, textAlign: 'center', color: 'var(--text-tertiary, #64748b)' }}>
           {isRTL ? 'جارٍ التحميل...' : 'Loading...'}
         </div>
       ) : (
@@ -396,8 +397,8 @@ const QuickForms = () => {
                     </div>
                   ) : (
                     <div>
-                      <div style={{
-                        fontSize: 11, fontWeight: 700, color: c,
+                      <div className="qm-ink" style={{
+                        fontSize: 11, fontWeight: 700, '--qm-c': c,
                         letterSpacing: 0.5, textTransform: 'uppercase'
                       }}>
                         {f.tag || (isRTL ? 'فورم' : 'Form')}
@@ -413,9 +414,10 @@ const QuickForms = () => {
                   {hasFile && !isEditing && (
                     <span
                       title={f.fileName}
+                      className="qm-ink"
                       style={{
                         fontFamily: 'JetBrains Mono, ui-monospace, monospace',
-                        fontSize: 11, color: c, background: c + '11',
+                        fontSize: 11, '--qm-c': c, background: c + '11',
                         border: `1px solid ${c}33`,
                         padding: '3px 9px', borderRadius: 999,
                         display: 'inline-flex', alignItems: 'center', gap: 5,
@@ -457,10 +459,11 @@ const QuickForms = () => {
                         <button
                           type="button"
                           onClick={() => pickFileFor(f.id)}
+                          className="qm-ink"
                           style={{
                             padding: '10px 16px', borderRadius: 8,
                             border: `2px dashed ${c}`,
-                            background: c + '11', color: c,
+                            background: c + '11', '--qm-c': c,
                             fontFamily: 'inherit', fontWeight: 800, fontSize: 13,
                             cursor: 'pointer',
                             display: 'inline-flex', alignItems: 'center', gap: 6

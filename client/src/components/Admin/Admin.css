@@ -6183,7 +6183,7 @@
   padding: 8px 0;
   font-family: var(--sv2-font-mono);
   font-size: 0.62rem;
-  color: var(--text-muted, #94a3b8);
+  color: var(--text-tertiary, #64748b);
   letter-spacing: 1.4px;
   text-transform: uppercase;
   font-weight: 700;
@@ -6672,7 +6672,7 @@
 .sv2-empty {
   padding: 32px 20px;
   text-align: center;
-  color: var(--text-muted, #94a3b8);
+  color: var(--text-tertiary, #64748b);
   font-family: var(--sv2-font-mono);
   font-size: 0.78rem;
   letter-spacing: 1px;
@@ -8538,3 +8538,59 @@
   .wse-opt-dot { display: none; }
   .wse-opt input[dir="ltr"] { grid-column: 1; }
 }
+
+/* =============================================================
+   Theme gaps — shared by the admin and manager dashboards
+   ============================================================= */
+
+/* Long sidebars scroll (the scrollbar is hidden on many systems):
+   fade the bottom edge so a clipped last item reads as "more below"
+   instead of a broken button, and leave room to scroll it clear. */
+.sidebar-nav {
+  padding-bottom: 2rem;
+  -webkit-mask-image: linear-gradient(to bottom, #000 calc(100% - 28px), transparent);
+          mask-image: linear-gradient(to bottom, #000 calc(100% - 28px), transparent);
+}
+.admin-sidebar.collapsed .sidebar-nav { padding-bottom: 2rem; }
+.elite-nav-btn span { color: inherit; }
+
+/* ---------- Schedule (sv2) ---------- */
+/* Light theme: the neon metric colours are tuned for the dark canvas
+   (cyan on white was 1.7:1) — use deeper shades of the same hues. */
+html[data-theme="light"] .schedule-v2 {
+  --sv2-cyan: #0e7490;
+  --sv2-mint: #15803d;
+  --sv2-amber: #b45309;
+}
+html[data-theme="light"] .sv2-cal-day.today .sv2-cal-day-num,
+html[data-theme="light"] .sv2-command-kicker,
+html[data-theme="light"] .sv2-panel-tag { color: #c81e24; }
+html[data-theme="dark"] .sv2-cal-day.today .sv2-cal-day-num { color: #ff7a7e; }
+
+/* Section chips get their hue from --chip (set inline); the text is
+   that hue pushed toward black (light) or white (dark). */
+.sv2-roster-sec-chip {
+  background: color-mix(in srgb, var(--chip, #64748b) 13%, transparent);
+  color: color-mix(in srgb, var(--chip, #64748b) 62%, #000);
+}
+.sv2-roster-sec-chip.is-on {
+  background: color-mix(in srgb, var(--chip, #64748b) 62%, #000);
+  border-color: transparent;
+  color: #fff;
+  box-shadow: 0 2px 6px color-mix(in srgb, var(--chip, #64748b) 40%, transparent);
+}
+html[data-theme="dark"] .sv2-roster-sec-chip {
+  background: color-mix(in srgb, var(--chip, #64748b) 24%, transparent);
+  color: color-mix(in srgb, var(--chip, #64748b) 45%, #fff);
+}
+html[data-theme="dark"] .sv2-roster-sec-chip.is-on {
+  background: color-mix(in srgb, var(--chip, #64748b) 70%, #000);
+  color: #fff;
+}
+
+/* Final contrast pass (light: green status / empty-state grey were
+   ~2:1 on white; dark: disabled inputs were slate on slate) */
+html:not([data-theme="dark"]) .status-indicator.active { color: #15803d; }
+html:not([data-theme="dark"]) .empty-state { color: #6b7280; }
+html[data-theme="dark"] .form-group input:disabled,
+html[data-theme="dark"] .form-group input[readonly] { color: #a3b0c2; }

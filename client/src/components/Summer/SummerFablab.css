@@ -1,8 +1,45 @@
 /* Summer FabLab tab — admin dashboard */
 
+.summer-tab,
+.summer-modal-overlay {
+  /* tokens for the inline-styled bits in SummerFablab.jsx */
+  --sm-ink: #0f172a;
+  --sm-ink-2: #475569;
+  --sm-muted: #64748b;
+  --sm-surface: #ffffff;
+  --sm-surface-2: #f8fafc;
+  --sm-solid: #ffffff;
+  --sm-line: #e5e7eb;
+  --sm-orange: #c2410c;
+  --sm-red: #b91c1c;
+  --sm-amber: #92400e;
+}
 .summer-tab {
   padding: 1rem 0.25rem 2.5rem;
   font-family: inherit;
+}
+/* Season picker bar (was inline) */
+.summer-season-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+  margin-bottom: 14px;
+  padding: 12px 14px;
+  background: var(--sm-surface);
+  border: 1px solid var(--sm-line);
+  border-radius: 12px;
+}
+.summer-season-bar select {
+  padding: 8px 12px;
+  border-radius: 8px;
+  border: 1px solid var(--sm-line);
+  font-family: inherit;
+  font-size: 13px;
+  background: var(--sm-surface);
+  color: var(--sm-ink);
+  min-width: 200px;
+  cursor: pointer;
 }
 
 .summer-header {
@@ -49,7 +86,7 @@
 }
 .summer-subnav-btn:hover { background: #e2e8f0; }
 .summer-subnav-btn.active {
-  background: linear-gradient(135deg, #f59e0b, #ef4444);
+  background: linear-gradient(135deg, #c2410c, #dc2626);
   color: white;
   box-shadow: 0 6px 14px -6px rgba(245, 158, 11, 0.55);
 }
@@ -76,7 +113,7 @@
 
 .summer-btn-primary {
   padding: 0.55rem 1.1rem;
-  background: linear-gradient(135deg, #f59e0b, #ef4444);
+  background: linear-gradient(135deg, #c2410c, #dc2626);
   color: white;
   border: none;
   border-radius: 8px;
@@ -331,3 +368,33 @@
   .summer-form-grid { grid-template-columns: minmax(0, 1fr); }
   .summer-subnav-btn { flex: 1 1 calc(50% - 0.5rem); }
 }
+
+/* ---------- Dark theme gaps (panels/cards live in design-system.css) ---------- */
+html[data-theme="dark"] .summer-tab,
+html[data-theme="dark"] .summer-modal-overlay {
+  --sm-ink: #f2f4fa;
+  --sm-ink-2: #cbd5e1;
+  --sm-muted: #94a3b8;
+  --sm-surface: rgba(20, 22, 34, 0.72);
+  --sm-solid: #141622;
+  --sm-surface-2: rgba(255, 255, 255, 0.04);
+  --sm-line: rgba(255, 255, 255, 0.1);
+  --sm-orange: #fb923c;
+  --sm-red: #f87171;
+  --sm-amber: #fcd34d;
+}
+html[data-theme="dark"] .summer-season-bar select option { background: #141622; color: #f2f4fa; }
+html[data-theme="dark"] .summer-subnav { background: rgba(255, 255, 255, 0.04); border: 1px solid rgba(255, 255, 255, 0.08); }
+html[data-theme="dark"] .summer-subnav-btn { color: #cbd5e1; }
+html[data-theme="dark"] .summer-subnav-btn:hover { background: rgba(255, 255, 255, 0.07); }
+html[data-theme="dark"] .summer-subnav-btn.active { color: #fff; }
+html[data-theme="dark"] .summer-panel-header h3,
+html[data-theme="dark"] .summer-modal h3,
+html[data-theme="dark"] .summer-student-row-name { color: #f2f4fa; }
+html[data-theme="dark"] .summer-card-meta span { color: #94a3b8; }
+html[data-theme="dark"] .summer-card-notes { background: rgba(255, 255, 255, 0.04); }
+html[data-theme="dark"] .summer-card-section { background: rgba(245, 158, 11, 0.16); color: #fcd34d; }
+html[data-theme="dark"] .summer-volunteer-chip,
+html[data-theme="dark"] .summer-card-volunteers .summer-volunteer-chip { background: rgba(255, 255, 255, 0.05); border-color: rgba(255, 255, 255, 0.12); color: #e2e8f0; }
+html[data-theme="dark"] .teacher-card { background: linear-gradient(160deg, rgba(99, 102, 241, 0.12), rgba(20, 22, 34, 0.78)); border-color: rgba(129, 140, 248, 0.3); }
+html[data-theme="dark"] .summer-student-row { background: rgba(20, 22, 34, 0.6); border-color: rgba(255, 255, 255, 0.08); }

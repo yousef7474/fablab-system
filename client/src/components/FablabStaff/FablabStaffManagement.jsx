@@ -488,7 +488,7 @@ const FablabStaffManagement = () => {
             )}
             <button
               className="add-opportunity-btn"
-              style={{ background: '#0ea5e9' }}
+              style={{ background: '#0369a1' }}
               onClick={() => setAttendanceMode(true)}
               title={isRTL ? 'صفحة تسجيل الحضور بالماسح' : 'Open scanner attendance page'}
             >
@@ -506,8 +506,8 @@ const FablabStaffManagement = () => {
         {/* Search + Select-all bar */}
         <div style={{
           display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'center',
-          padding: '12px 20px', background: 'white',
-          border: '1px solid #e2e8f0', borderRadius: 12,
+          padding: '12px 20px', background: 'var(--card-bg, #fff)',
+          border: '1px solid var(--border-color, #e2e8f0)', borderRadius: 12,
           margin: '0 0 16px'
         }}>
           <div style={{ position: 'relative', flex: 1, minWidth: 240 }}>
@@ -524,18 +524,19 @@ const FablabStaffManagement = () => {
               style={{
                 width: '100%',
                 padding: isRTL ? '10px 40px 10px 12px' : '10px 12px 10px 40px',
-                border: '1.5px solid #e2e8f0', borderRadius: 10,
-                fontFamily: 'inherit', fontSize: 14
+                border: '1.5px solid var(--border-color, #e2e8f0)', borderRadius: 10,
+                fontFamily: 'inherit', fontSize: 14,
+                background: 'var(--input-bg, #fff)', color: 'var(--text-primary, #0f172a)'
               }}
             />
           </div>
           {staff.length > 0 && (
             <label style={{
               display: 'flex', alignItems: 'center', gap: 8,
-              padding: '8px 14px', background: selected.size === staff.length ? '#ede9fe' : '#f8fafc',
-              border: `1.5px solid ${selected.size === staff.length ? PURPLE : '#e2e8f0'}`,
+              padding: '8px 14px', background: selected.size === staff.length ? '#ede9fe' : 'var(--bg-tertiary, #f8fafc)',
+              border: `1.5px solid ${selected.size === staff.length ? PURPLE : 'var(--border-color, #e2e8f0)'}`,
               borderRadius: 10, cursor: 'pointer',
-              fontSize: 13, fontWeight: 600, color: selected.size === staff.length ? PURPLE_DARK : '#475569'
+              fontSize: 13, fontWeight: 600, color: selected.size === staff.length ? PURPLE_DARK : 'var(--text-secondary, #475569)'
             }}>
               <input
                 type="checkbox"
@@ -555,16 +556,16 @@ const FablabStaffManagement = () => {
 
         <div className="volunteers-grid">
           {loading ? (
-            <div style={{ gridColumn: '1 / -1', padding: 40, textAlign: 'center', color: '#64748b' }}>
+            <div style={{ gridColumn: '1 / -1', padding: 40, textAlign: 'center', color: 'var(--text-tertiary, #64748b)' }}>
               {isRTL ? 'جارٍ التحميل...' : 'Loading...'}
             </div>
           ) : filteredStaff.length === 0 ? (
-            <div style={{ gridColumn: '1 / -1', padding: 40, textAlign: 'center', color: '#64748b' }}>
+            <div style={{ gridColumn: '1 / -1', padding: 40, textAlign: 'center', color: 'var(--text-tertiary, #64748b)' }}>
               <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#cbd5e1" strokeWidth="1.5" style={{ marginBottom: 12 }}>
                 <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
                 <circle cx="9" cy="7" r="4"/>
               </svg>
-              <p style={{ marginBottom: 4, fontWeight: 600, color: '#334155' }}>
+              <p style={{ marginBottom: 4, fontWeight: 600, color: 'var(--text-secondary, #334155)' }}>
                 {isRTL ? 'لا يوجد موظفين بعد' : 'No staff yet'}
               </p>
               <p style={{ fontSize: 13 }}>
@@ -623,22 +624,22 @@ const FablabStaffManagement = () => {
                   <div style={{
                     padding: '10px 14px', background: '#faf5ff',
                     border: '1px solid #ede9fe', borderRadius: 10,
-                    margin: '12px 0', fontSize: 13, color: '#334155',
+                    margin: '12px 0', fontSize: 13, color: 'var(--text-secondary, #334155)',
                     display: 'flex', flexDirection: 'column', gap: 6
                   }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10 }}>
-                      <span style={{ color: '#64748b', fontWeight: 600 }}>{isRTL ? 'رقم الهوية' : 'National ID'}</span>
+                      <span style={{ color: 'var(--text-tertiary, #64748b)', fontWeight: 600 }}>{isRTL ? 'رقم الهوية' : 'National ID'}</span>
                       <span style={{ fontFamily: 'ui-monospace, Menlo, monospace' }}>{row.nationalId || '—'}</span>
                     </div>
                     {row.phone && (
                       <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10 }}>
-                        <span style={{ color: '#64748b', fontWeight: 600 }}>{isRTL ? 'الهاتف' : 'Phone'}</span>
+                        <span style={{ color: 'var(--text-tertiary, #64748b)', fontWeight: 600 }}>{isRTL ? 'الهاتف' : 'Phone'}</span>
                         <span dir="ltr" style={{ fontFamily: 'ui-monospace, Menlo, monospace' }}>{row.phone}</span>
                       </div>
                     )}
                     {row.email && (
                       <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10 }}>
-                        <span style={{ color: '#64748b', fontWeight: 600 }}>{isRTL ? 'البريد' : 'Email'}</span>
+                        <span style={{ color: 'var(--text-tertiary, #64748b)', fontWeight: 600 }}>{isRTL ? 'البريد' : 'Email'}</span>
                         <span dir="ltr" style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '65%' }}>{row.email}</span>
                       </div>
                     )}
@@ -762,11 +763,11 @@ const FablabStaffManagement = () => {
                     {form.profilePhoto ? (
                       <img src={form.profilePhoto} alt="profile" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                     ) : (
-                      <span style={{ fontSize: 36, color: '#94a3b8' }}>👤</span>
+                      <span style={{ fontSize: 36, color: 'var(--text-tertiary, #64748b)' }}>👤</span>
                     )}
                   </div>
                   <div style={{ flex: 1, minWidth: 220 }}>
-                    <div style={{ fontSize: 13, color: '#64748b', marginBottom: 10 }}>
+                    <div style={{ fontSize: 13, color: 'var(--text-tertiary, #64748b)', marginBottom: 10 }}>
                       {isRTL
                         ? 'تُطبع هذه الصورة على بطاقة QR الخاصة بالموظف. إن تُركت فارغة، تُستخدم صورة الهوية.'
                         : 'This photo prints on the staff QR ID card. Falls back to ID photo if empty.'}
@@ -1012,13 +1013,13 @@ const FablabStaffManagement = () => {
           <div
             className="modal-content"
             onClick={(e) => e.stopPropagation()}
-            style={{ maxWidth: 900, background: '#fff', borderRadius: 14, padding: 20, maxHeight: '90vh', overflow: 'auto' }}
+            style={{ maxWidth: 900, background: 'var(--modal-bg, #fff)', color: 'var(--text-primary, #0f172a)', borderRadius: 14, padding: 20, maxHeight: '90vh', overflow: 'auto' }}
           >
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginBottom: 12 }}>
               <h2 style={{ margin: 0, fontSize: 20, color: PURPLE_DARK }}>
                 📅 {isRTL ? `سجل حضور — ${attStaff.name}` : `Attendance — ${attStaff.name}`}
               </h2>
-              <button onClick={() => setAttStaff(null)} style={{ background: 'none', border: 'none', fontSize: 22, color: '#94a3b8', cursor: 'pointer' }}>×</button>
+              <button onClick={() => setAttStaff(null)} style={{ background: 'none', border: 'none', fontSize: 22, color: 'var(--text-tertiary, #64748b)', cursor: 'pointer' }}>×</button>
             </div>
 
             {/* Summary tiles */}
@@ -1076,7 +1077,7 @@ const FablabStaffManagement = () => {
                   <button onClick={submitManualAttendance} disabled={savingManual} style={{ padding: '8px 14px', borderRadius: 8, border: 'none', background: PURPLE, color: '#fff', cursor: 'pointer', fontWeight: 700, fontFamily: 'inherit' }}>
                     {savingManual ? '…' : (isRTL ? 'حفظ' : 'Save')}
                   </button>
-                  <button onClick={() => setShowAddManual(false)} disabled={savingManual} style={{ padding: '8px 14px', borderRadius: 8, border: '1px solid #cbd5e1', background: '#fff', color: '#334155', cursor: 'pointer', fontWeight: 700, fontFamily: 'inherit' }}>
+                  <button onClick={() => setShowAddManual(false)} disabled={savingManual} style={{ padding: '8px 14px', borderRadius: 8, border: '1px solid var(--border-color, #cbd5e1)', background: 'var(--card-bg, #fff)', color: 'var(--text-secondary, #334155)', cursor: 'pointer', fontWeight: 700, fontFamily: 'inherit' }}>
                     {isRTL ? 'إلغاء' : 'Cancel'}
                   </button>
                 </div>
@@ -1085,18 +1086,18 @@ const FablabStaffManagement = () => {
 
             {/* Table */}
             {attLoading ? (
-              <div style={{ padding: 20, textAlign: 'center', color: '#64748b' }}>{isRTL ? 'جارٍ التحميل...' : 'Loading...'}</div>
+              <div style={{ padding: 20, textAlign: 'center', color: 'var(--text-tertiary, #64748b)' }}>{isRTL ? 'جارٍ التحميل...' : 'Loading...'}</div>
             ) : attRecords.length === 0 ? (
-              <div style={{ padding: 20, textAlign: 'center', color: '#64748b' }}>{isRTL ? 'لا يوجد سجل حضور بعد' : 'No records yet'}</div>
+              <div style={{ padding: 20, textAlign: 'center', color: 'var(--text-tertiary, #64748b)' }}>{isRTL ? 'لا يوجد سجل حضور بعد' : 'No records yet'}</div>
             ) : (
-              <div style={{ overflow: 'auto', border: '1px solid #e2e8f0', borderRadius: 8 }}>
+              <div style={{ overflow: 'auto', border: '1px solid var(--border-color, #e2e8f0)', borderRadius: 8 }}>
                 <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
                   <thead>
-                    <tr style={{ background: '#f8fafc' }}>
-                      <th style={{ padding: 10, textAlign: 'right', color: '#64748b', fontWeight: 700 }}>{isRTL ? 'التاريخ' : 'Date'}</th>
-                      <th style={{ padding: 10, textAlign: 'right', color: '#64748b', fontWeight: 700 }}>{isRTL ? 'الدخول' : 'Check-in'}</th>
-                      <th style={{ padding: 10, textAlign: 'right', color: '#64748b', fontWeight: 700 }}>{isRTL ? 'الخروج' : 'Check-out'}</th>
-                      <th style={{ padding: 10, textAlign: 'right', color: '#64748b', fontWeight: 700 }}>{isRTL ? 'المدة' : 'Duration'}</th>
+                    <tr style={{ background: 'var(--bg-tertiary, #f8fafc)' }}>
+                      <th style={{ padding: 10, textAlign: 'right', color: 'var(--text-tertiary, #64748b)', fontWeight: 700 }}>{isRTL ? 'التاريخ' : 'Date'}</th>
+                      <th style={{ padding: 10, textAlign: 'right', color: 'var(--text-tertiary, #64748b)', fontWeight: 700 }}>{isRTL ? 'الدخول' : 'Check-in'}</th>
+                      <th style={{ padding: 10, textAlign: 'right', color: 'var(--text-tertiary, #64748b)', fontWeight: 700 }}>{isRTL ? 'الخروج' : 'Check-out'}</th>
+                      <th style={{ padding: 10, textAlign: 'right', color: 'var(--text-tertiary, #64748b)', fontWeight: 700 }}>{isRTL ? 'المدة' : 'Duration'}</th>
                       <th style={{ padding: 10 }}></th>
                     </tr>
                   </thead>
@@ -1107,9 +1108,9 @@ const FablabStaffManagement = () => {
                       const isEditing = editingCheckoutId === r.attendanceId;
                       return (
                         <tr key={r.attendanceId}>
-                          <td style={{ padding: 10, borderBottom: '1px solid #f1f5f9', fontFamily: 'JetBrains Mono, monospace' }}>{r.date}</td>
-                          <td style={{ padding: 10, borderBottom: '1px solid #f1f5f9', fontFamily: 'JetBrains Mono, monospace' }}>{fmtHms(r.checkInAt)}</td>
-                          <td style={{ padding: 10, borderBottom: '1px solid #f1f5f9', fontFamily: 'JetBrains Mono, monospace' }}>
+                          <td style={{ padding: 10, borderBottom: '1px solid var(--border-light, #f1f5f9)', fontFamily: 'JetBrains Mono, monospace' }}>{r.date}</td>
+                          <td style={{ padding: 10, borderBottom: '1px solid var(--border-light, #f1f5f9)', fontFamily: 'JetBrains Mono, monospace' }}>{fmtHms(r.checkInAt)}</td>
+                          <td style={{ padding: 10, borderBottom: '1px solid var(--border-light, #f1f5f9)', fontFamily: 'JetBrains Mono, monospace' }}>
                             {isEditing ? (
                               <span style={{ display: 'inline-flex', gap: 4, alignItems: 'center' }}>
                                 <input
@@ -1121,14 +1122,14 @@ const FablabStaffManagement = () => {
                                   style={{ padding: 4, borderRadius: 4, border: `1.5px solid ${PURPLE}`, width: 100 }}
                                 />
                                 <button onClick={() => saveCheckoutTime(r)} disabled={savingCheckout} style={{ padding: '2px 8px', borderRadius: 4, border: 'none', background: PURPLE, color: '#fff', cursor: 'pointer', fontFamily: 'inherit' }}>{savingCheckout ? '…' : '✓'}</button>
-                                <button onClick={cancelEditCheckout} disabled={savingCheckout} style={{ padding: '2px 8px', borderRadius: 4, border: '1px solid #cbd5e1', background: '#fff', cursor: 'pointer', fontFamily: 'inherit' }}>×</button>
+                                <button onClick={cancelEditCheckout} disabled={savingCheckout} style={{ padding: '2px 8px', borderRadius: 4, border: '1px solid var(--border-color, #cbd5e1)', background: 'var(--card-bg, #fff)', cursor: 'pointer', fontFamily: 'inherit' }}>×</button>
                               </span>
                             ) : fmtHms(r.checkOutAt)}
                           </td>
-                          <td style={{ padding: 10, borderBottom: '1px solid #f1f5f9', fontFamily: 'JetBrains Mono, monospace' }}>
+                          <td style={{ padding: 10, borderBottom: '1px solid var(--border-light, #f1f5f9)', fontFamily: 'JetBrains Mono, monospace' }}>
                             {dur != null ? `${Math.floor(dur / 60)}h ${dur % 60}m` : '—'}
                           </td>
-                          <td style={{ padding: 10, borderBottom: '1px solid #f1f5f9' }}>
+                          <td style={{ padding: 10, borderBottom: '1px solid var(--border-light, #f1f5f9)' }}>
                             <span style={{ display: 'inline-flex', gap: 4 }}>
                               {!isEditing && r.checkInAt && (
                                 <button

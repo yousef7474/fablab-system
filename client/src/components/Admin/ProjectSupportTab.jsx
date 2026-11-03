@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'react-toastify';
 import api from '../../config/api';
+import './ProjectSupportTab.css';
 
 // Admin's review tab for public project-support requests. Mirrors
 // FablabVisitsTab but simpler: no override-code, no visitor-notify
@@ -111,20 +112,20 @@ const AccessCodePanel = ({ isRTL }) => {
     save({ regenerate: true });
   };
 
-  const btn = { padding: '8px 14px', borderRadius: 10, border: '1px solid #ddd6fe', background: '#fff', color: '#6d28d9', fontWeight: 800, fontSize: 13, cursor: 'pointer', fontFamily: 'inherit' };
+  const btn = { padding: '8px 14px', borderRadius: 10, border: '1px solid var(--psa-line)', background: 'var(--psa-field)', color: 'var(--psa-violet)', fontWeight: 800, fontSize: 13, cursor: 'pointer', fontFamily: 'inherit' };
 
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap', padding: '14px 16px', marginBottom: 18, borderRadius: 14, border: '1px solid #ddd6fe', background: 'linear-gradient(135deg, #f5f3ff, #faf5ff)', color: '#0f172a' }}>
+    <div className="psa-panel" style={{ display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap', padding: '14px 16px', marginBottom: 18, borderRadius: 14 }}>
       <div style={{ flex: '1 1 260px', minWidth: 0 }}>
         <div style={{ fontWeight: 800, fontSize: 15 }}>
           🔒 {isRTL ? 'صفحة طلب الدعم مغلقة — تُفتح برمز دخول' : 'The support form is closed — it opens with an access code'}
         </div>
-        <div style={{ fontSize: 12.5, color: '#64748b', marginTop: 3, lineHeight: 1.6 }}>
+        <div style={{ fontSize: 12.5, color: 'var(--text-tertiary, #64748b)', marginTop: 3, lineHeight: 1.6 }}>
           {isRTL
             ? 'شارك الرمز أو الرابط مع من تريد السماح له بتقديم طلب. تغيير الرمز يوقف القديم فوراً.'
             : 'Share the code or the link with the people who may apply. Changing it stops the old one at once.'}
           {access.updatedAt && (
-            <span style={{ display: 'block', fontSize: 11.5, color: '#94a3b8' }}>
+            <span style={{ display: 'block', fontSize: 11.5, color: 'var(--text-tertiary, #64748b)' }}>
               {isRTL ? 'آخر تغيير:' : 'Last changed:'} {fmtWhen(access.updatedAt)}{access.updatedBy ? ` — ${access.updatedBy}` : ''}
             </span>
           )}
@@ -142,18 +143,18 @@ const AccessCodePanel = ({ isRTL }) => {
             maxLength={20}
             dir="ltr"
             autoFocus
-            style={{ width: 190, padding: '8px 12px', borderRadius: 10, border: '1.5px solid #a78bfa', fontFamily: 'JetBrains Mono, monospace', fontWeight: 800, fontSize: 16, letterSpacing: '0.15em', textAlign: 'center', background: '#fff', color: '#0f172a' }}
+            style={{ width: 190, padding: '8px 12px', borderRadius: 10, border: '1.5px solid #a78bfa', fontFamily: 'JetBrains Mono, monospace', fontWeight: 800, fontSize: 16, letterSpacing: '0.15em', textAlign: 'center', background: 'var(--psa-field)', color: 'var(--text-primary, #0f172a)' }}
           />
           <button type="submit" disabled={saving || draft.length < 4} style={{ ...btn, background: '#6d28d9', color: '#fff', border: 'none', opacity: saving || draft.length < 4 ? 0.6 : 1 }}>
             {saving ? (isRTL ? 'جارٍ الحفظ…' : 'Saving…') : (isRTL ? 'حفظ الرمز' : 'Save code')}
           </button>
-          <button type="button" onClick={() => setEditing(false)} style={{ ...btn, color: '#475569', borderColor: '#e2e8f0' }}>
+          <button type="button" onClick={() => setEditing(false)} style={{ ...btn, color: 'var(--text-secondary, #475569)', borderColor: 'var(--border-color, #e2e8f0)' }}>
             {isRTL ? 'إلغاء' : 'Cancel'}
           </button>
         </form>
       ) : (
         <>
-          <code dir="ltr" style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 22, fontWeight: 800, letterSpacing: '0.2em', padding: '6px 14px', borderRadius: 10, background: '#fff', color: '#6d28d9', border: '1.5px dashed #a78bfa' }}>
+          <code dir="ltr" style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 22, fontWeight: 800, letterSpacing: '0.2em', padding: '6px 14px', borderRadius: 10, background: 'var(--psa-field)', color: 'var(--psa-violet)', border: '1.5px dashed #a78bfa' }}>
             {access.code}
           </code>
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
@@ -489,7 +490,7 @@ const ProjectSupportTab = () => {
   };
 
   return (
-    <div style={{ padding: '4px 2px' }}>
+    <div className="psa" style={{ padding: '4px 2px' }}>
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', marginBottom: 20 }}>
         <div>
@@ -509,10 +510,10 @@ const ProjectSupportTab = () => {
       {/* Status filter pills */}
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 14 }}>
         {[
-          { key: 'all', ar: 'الكل', en: 'All', color: '#64748b' },
-          { key: 'draft', ar: 'مسودة', en: 'Draft', color: '#94a3b8' },
-          { key: 'pending', ar: 'بانتظار المدير', en: 'Pending', color: '#f59e0b' },
-          { key: 'approved', ar: 'معتمد', en: 'Approved', color: '#16a34a' },
+          { key: 'all', ar: 'الكل', en: 'All', color: '#475569' },
+          { key: 'draft', ar: 'مسودة', en: 'Draft', color: 'var(--text-tertiary, #64748b)' },
+          { key: 'pending', ar: 'بانتظار المدير', en: 'Pending', color: '#b45309' },
+          { key: 'approved', ar: 'معتمد', en: 'Approved', color: '#15803d' },
           { key: 'rejected', ar: 'مرفوض', en: 'Rejected', color: '#dc2626' }
         ].map(f => (
           <button
@@ -546,7 +547,7 @@ const ProjectSupportTab = () => {
       />
 
       {loading ? (
-        <div style={{ padding: 40, textAlign: 'center', color: '#64748b' }}>{isRTL ? 'جارٍ التحميل...' : 'Loading...'}</div>
+        <div style={{ padding: 40, textAlign: 'center', color: 'var(--text-tertiary, #64748b)' }}>{isRTL ? 'جارٍ التحميل...' : 'Loading...'}</div>
       ) : filtered.length === 0 ? (
         <div style={{ padding: 40, textAlign: 'center', color: 'var(--text-secondary, #94a3b8)', background: 'var(--card-bg, #fff)', border: '1px dashed var(--border-color, #e2e8f0)', borderRadius: 12 }}>
           {isRTL ? 'لا توجد طلبات مطابقة.' : 'No matching requests.'}
@@ -556,13 +557,13 @@ const ProjectSupportTab = () => {
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead>
               <tr style={{ background: 'var(--bg-secondary, #f8fafc)' }}>
-                <th style={{ padding: '12px 14px', textAlign: 'start', fontSize: 12, fontWeight: 700, color: '#334155', borderBottom: '1px solid var(--border-color, #e2e8f0)' }}>#</th>
-                <th style={{ padding: '12px 14px', textAlign: 'start', fontSize: 12, fontWeight: 700, color: '#334155', borderBottom: '1px solid var(--border-color, #e2e8f0)' }}>{isRTL ? 'مقدم الطلب' : 'Requester'}</th>
-                <th style={{ padding: '12px 14px', textAlign: 'start', fontSize: 12, fontWeight: 700, color: '#334155', borderBottom: '1px solid var(--border-color, #e2e8f0)' }}>{isRTL ? 'المشروع' : 'Project'}</th>
-                <th style={{ padding: '12px 14px', textAlign: 'start', fontSize: 12, fontWeight: 700, color: '#334155', borderBottom: '1px solid var(--border-color, #e2e8f0)' }}>{isRTL ? 'الحالة' : 'Status'}</th>
-                <th style={{ padding: '12px 14px', textAlign: 'start', fontSize: 12, fontWeight: 700, color: '#334155', borderBottom: '1px solid var(--border-color, #e2e8f0)' }}>{isRTL ? 'ملفات' : 'Files'}</th>
-                <th style={{ padding: '12px 14px', textAlign: 'start', fontSize: 12, fontWeight: 700, color: '#334155', borderBottom: '1px solid var(--border-color, #e2e8f0)' }}>{isRTL ? 'الاستلام' : 'Received'}</th>
-                <th style={{ padding: '12px 14px', textAlign: 'center', fontSize: 12, fontWeight: 700, color: '#334155', borderBottom: '1px solid var(--border-color, #e2e8f0)', width: 80 }}>{isRTL ? 'إجراء' : 'Action'}</th>
+                <th style={{ padding: '12px 14px', textAlign: 'start', fontSize: 12, fontWeight: 700, color: 'var(--text-secondary, #334155)', borderBottom: '1px solid var(--border-color, #e2e8f0)' }}>#</th>
+                <th style={{ padding: '12px 14px', textAlign: 'start', fontSize: 12, fontWeight: 700, color: 'var(--text-secondary, #334155)', borderBottom: '1px solid var(--border-color, #e2e8f0)' }}>{isRTL ? 'مقدم الطلب' : 'Requester'}</th>
+                <th style={{ padding: '12px 14px', textAlign: 'start', fontSize: 12, fontWeight: 700, color: 'var(--text-secondary, #334155)', borderBottom: '1px solid var(--border-color, #e2e8f0)' }}>{isRTL ? 'المشروع' : 'Project'}</th>
+                <th style={{ padding: '12px 14px', textAlign: 'start', fontSize: 12, fontWeight: 700, color: 'var(--text-secondary, #334155)', borderBottom: '1px solid var(--border-color, #e2e8f0)' }}>{isRTL ? 'الحالة' : 'Status'}</th>
+                <th style={{ padding: '12px 14px', textAlign: 'start', fontSize: 12, fontWeight: 700, color: 'var(--text-secondary, #334155)', borderBottom: '1px solid var(--border-color, #e2e8f0)' }}>{isRTL ? 'ملفات' : 'Files'}</th>
+                <th style={{ padding: '12px 14px', textAlign: 'start', fontSize: 12, fontWeight: 700, color: 'var(--text-secondary, #334155)', borderBottom: '1px solid var(--border-color, #e2e8f0)' }}>{isRTL ? 'الاستلام' : 'Received'}</th>
+                <th style={{ padding: '12px 14px', textAlign: 'center', fontSize: 12, fontWeight: 700, color: 'var(--text-secondary, #334155)', borderBottom: '1px solid var(--border-color, #e2e8f0)', width: 80 }}>{isRTL ? 'إجراء' : 'Action'}</th>
               </tr>
             </thead>
             <tbody>
@@ -576,15 +577,15 @@ const ProjectSupportTab = () => {
                     onMouseEnter={(e) => e.currentTarget.style.background = 'var(--bg-secondary, #faf5ff)'}
                     onMouseLeave={(e) => e.currentTarget.style.background = ''}
                   >
-                    <td style={{ padding: '12px 14px', fontFamily: 'JetBrains Mono, monospace', fontWeight: 700, color: '#6d28d9', fontSize: 13 }}>{fmtReqNo(r.requestNumber)}</td>
+                    <td style={{ padding: '12px 14px', fontFamily: 'JetBrains Mono, monospace', fontWeight: 700, color: 'var(--psa-violet)', fontSize: 13 }}>{fmtReqNo(r.requestNumber)}</td>
                     <td style={{ padding: '12px 14px', fontSize: 13.5 }}>
                       <div style={{ fontWeight: 700 }}>{r.firstName} {r.lastName || ''}</div>
-                      <div style={{ fontSize: 11.5, color: '#64748b' }} dir="ltr">{r.email}</div>
+                      <div style={{ fontSize: 11.5, color: 'var(--text-tertiary, #64748b)' }} dir="ltr">{r.email}</div>
                     </td>
-                    <td style={{ padding: '12px 14px', fontSize: 13, color: '#334155' }}>
-                      {r.projectTitle || <span style={{ color: '#94a3b8', fontStyle: 'italic' }}>—</span>}
+                    <td style={{ padding: '12px 14px', fontSize: 13, color: 'var(--text-secondary, #334155)' }}>
+                      {r.projectTitle || <span style={{ color: 'var(--text-tertiary, #64748b)', fontStyle: 'italic' }}>—</span>}
                       {supportTypeList(r).length > 0 && (
-                        <div style={{ fontSize: 11, color: '#6d28d9', marginTop: 2 }}>
+                        <div style={{ fontSize: 11, color: 'var(--psa-violet)', marginTop: 2 }}>
                           {supportTypeList(r).map(labelSupportType).join(' · ')}
                         </div>
                       )}
@@ -597,7 +598,7 @@ const ProjectSupportTab = () => {
                     <td style={{ padding: '12px 14px', fontFamily: 'JetBrains Mono, monospace', fontWeight: 700, fontSize: 13 }}>
                       {r.fileCount || 0}
                     </td>
-                    <td style={{ padding: '12px 14px', fontSize: 12, color: '#64748b' }}>{fmtWhen(r.createdAt)}</td>
+                    <td style={{ padding: '12px 14px', fontSize: 12, color: 'var(--text-tertiary, #64748b)' }}>{fmtWhen(r.createdAt)}</td>
                     <td
                       style={{ padding: '12px 14px', textAlign: 'center' }}
                       onClick={(e) => e.stopPropagation()}
@@ -606,7 +607,7 @@ const ProjectSupportTab = () => {
                         onClick={() => deleteRequest(r)}
                         title={isRTL ? 'حذف الطلب نهائياً' : 'Delete permanently'}
                         style={{
-                          background: '#fff',
+                          background: 'var(--card-bg, #fff)',
                           border: '1px solid #fecaca',
                           color: '#b91c1c',
                           padding: '5px 10px',
@@ -639,9 +640,9 @@ const ProjectSupportTab = () => {
             <motion.div
               initial={{ opacity: 0, scale: 0.94, y: 12 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.94, y: 12 }}
               onClick={(e) => e.stopPropagation()}
-              style={{ background: '#fff', borderRadius: 16, maxWidth: 780, width: '100%', maxHeight: '92vh', display: 'flex', flexDirection: 'column' }}
+              style={{ background: 'var(--modal-bg, #fff)', color: 'var(--text-primary, #0f172a)', borderRadius: 16, maxWidth: 780, width: '100%', maxHeight: '92vh', display: 'flex', flexDirection: 'column' }}
             >
-              <div style={{ padding: '18px 22px', borderBottom: '1px solid #e2e8f0', background: 'linear-gradient(135deg, #8b5cf6, #6d28d9)', color: '#fff', borderTopLeftRadius: 16, borderTopRightRadius: 16 }}>
+              <div style={{ padding: '18px 22px', borderBottom: '1px solid var(--border-color, #e2e8f0)', background: 'linear-gradient(135deg, #8b5cf6, #6d28d9)', color: '#fff', borderTopLeftRadius: 16, borderTopRightRadius: 16 }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12 }}>
                   <div>
                     <div style={{ fontSize: 12, letterSpacing: 1.2, opacity: 0.9 }}>طلب دعم مشروع · {fmtReqNo(openReq.requestNumber)}</div>
@@ -656,19 +657,19 @@ const ProjectSupportTab = () => {
               <div style={{ padding: 22, overflowY: 'auto', flex: 1 }}>
                 {/* Personal info */}
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 16 }}>
-                  <div><div style={{ fontSize: 11, fontWeight: 700, color: '#64748b', letterSpacing: 0.6, textTransform: 'uppercase', marginBottom: 2 }}>مقدم الطلب</div><div style={{ fontSize: 14, fontWeight: 700 }}>{openReq.firstName} {openReq.lastName || ''}</div></div>
-                  <div><div style={{ fontSize: 11, fontWeight: 700, color: '#64748b', letterSpacing: 0.6, textTransform: 'uppercase', marginBottom: 2 }}>رقم الهوية</div><div style={{ fontSize: 14, fontWeight: 700 }} dir="ltr">{openReq.nationalId}</div></div>
-                  <div><div style={{ fontSize: 11, fontWeight: 700, color: '#64748b', letterSpacing: 0.6, textTransform: 'uppercase', marginBottom: 2 }}>الجوال</div><div style={{ fontSize: 14, fontWeight: 700 }} dir="ltr">{openReq.phoneNumber}</div></div>
-                  <div><div style={{ fontSize: 11, fontWeight: 700, color: '#64748b', letterSpacing: 0.6, textTransform: 'uppercase', marginBottom: 2 }}>البريد</div><div style={{ fontSize: 14, fontWeight: 700 }} dir="ltr">{openReq.email}</div></div>
-                  {openReq.age && <div><div style={{ fontSize: 11, fontWeight: 700, color: '#64748b', letterSpacing: 0.6, textTransform: 'uppercase', marginBottom: 2 }}>العمر</div><div style={{ fontSize: 14, fontWeight: 700 }}>{openReq.age}</div></div>}
-                  {openReq.city && <div><div style={{ fontSize: 11, fontWeight: 700, color: '#64748b', letterSpacing: 0.6, textTransform: 'uppercase', marginBottom: 2 }}>المدينة</div><div style={{ fontSize: 14, fontWeight: 700 }}>{openReq.city}</div></div>}
+                  <div><div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-tertiary, #64748b)', letterSpacing: 0.6, textTransform: 'uppercase', marginBottom: 2 }}>مقدم الطلب</div><div style={{ fontSize: 14, fontWeight: 700 }}>{openReq.firstName} {openReq.lastName || ''}</div></div>
+                  <div><div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-tertiary, #64748b)', letterSpacing: 0.6, textTransform: 'uppercase', marginBottom: 2 }}>رقم الهوية</div><div style={{ fontSize: 14, fontWeight: 700 }} dir="ltr">{openReq.nationalId}</div></div>
+                  <div><div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-tertiary, #64748b)', letterSpacing: 0.6, textTransform: 'uppercase', marginBottom: 2 }}>الجوال</div><div style={{ fontSize: 14, fontWeight: 700 }} dir="ltr">{openReq.phoneNumber}</div></div>
+                  <div><div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-tertiary, #64748b)', letterSpacing: 0.6, textTransform: 'uppercase', marginBottom: 2 }}>البريد</div><div style={{ fontSize: 14, fontWeight: 700 }} dir="ltr">{openReq.email}</div></div>
+                  {openReq.age && <div><div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-tertiary, #64748b)', letterSpacing: 0.6, textTransform: 'uppercase', marginBottom: 2 }}>العمر</div><div style={{ fontSize: 14, fontWeight: 700 }}>{openReq.age}</div></div>}
+                  {openReq.city && <div><div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-tertiary, #64748b)', letterSpacing: 0.6, textTransform: 'uppercase', marginBottom: 2 }}>المدينة</div><div style={{ fontSize: 14, fontWeight: 700 }}>{openReq.city}</div></div>}
                   {supportTypeList(openReq).length > 0 && (
                     <div style={{ gridColumn: '1 / -1' }}>
-                      <div style={{ fontSize: 11, fontWeight: 700, color: '#64748b', letterSpacing: 0.6, textTransform: 'uppercase', marginBottom: 4 }}>نوع الدعم المطلوب</div>
+                      <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-tertiary, #64748b)', letterSpacing: 0.6, textTransform: 'uppercase', marginBottom: 4 }}>نوع الدعم المطلوب</div>
                       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
                         {supportTypeList(openReq).map(v => (
                           <span key={v} style={{
-                            fontSize: 12, fontWeight: 700, color: '#6d28d9',
+                            fontSize: 12, fontWeight: 700, color: 'var(--psa-violet)',
                             background: '#f5f3ff', border: '1px solid #ede9fe',
                             padding: '4px 10px', borderRadius: 999
                           }}>
@@ -681,7 +682,7 @@ const ProjectSupportTab = () => {
                 </div>
 
                 <div style={{ marginBottom: 16 }}>
-                  <div style={{ fontSize: 11, fontWeight: 700, color: '#64748b', letterSpacing: 0.6, textTransform: 'uppercase', marginBottom: 6 }}>وصف الطلب</div>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-tertiary, #64748b)', letterSpacing: 0.6, textTransform: 'uppercase', marginBottom: 6 }}>وصف الطلب</div>
                   <div style={{ background: '#faf5ff', border: '1px solid #ede9fe', padding: 14, borderRadius: 10, whiteSpace: 'pre-wrap', lineHeight: 1.7, fontSize: 13.5 }}>
                     {openReq.description}
                   </div>
@@ -690,15 +691,15 @@ const ProjectSupportTab = () => {
                 {/* Files */}
                 {Array.isArray(openReq.files) && openReq.files.length > 0 && (
                   <div style={{ marginBottom: 16 }}>
-                    <div style={{ fontSize: 11, fontWeight: 700, color: '#64748b', letterSpacing: 0.6, textTransform: 'uppercase', marginBottom: 6 }}>
+                    <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-tertiary, #64748b)', letterSpacing: 0.6, textTransform: 'uppercase', marginBottom: 6 }}>
                       الملفات المرفقة ({openReq.files.length})
                     </div>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                       {openReq.files.map((f, i) => (
-                        <div key={i} style={{ display: 'flex', gap: 10, alignItems: 'center', padding: '8px 12px', background: '#fff', border: '1px solid #e2e8f0', borderRadius: 8 }}>
+                        <div key={i} style={{ display: 'flex', gap: 10, alignItems: 'center', padding: '8px 12px', background: 'var(--card-bg, #fff)', border: '1px solid var(--border-color, #e2e8f0)', borderRadius: 8 }}>
                           <span style={{ fontSize: 18 }}>{iconFor(f.fileType)}</span>
                           <span style={{ flex: 1, fontWeight: 700, fontSize: 13, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{f.fileName}</span>
-                          <span style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 11, color: '#64748b', padding: '2px 8px', background: '#f1f5f9', borderRadius: 4 }}>{humanBytes(f.fileSize)}</span>
+                          <span style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 11, color: 'var(--text-tertiary, #64748b)', padding: '2px 8px', background: 'var(--bg-tertiary, #f1f5f9)', borderRadius: 4 }}>{humanBytes(f.fileSize)}</span>
                           <button
                             onClick={() => downloadFile(openReq.requestId, i, f)}
                             disabled={downloadingIdx === i}
@@ -722,17 +723,17 @@ const ProjectSupportTab = () => {
                     <div style={{ fontSize: 12, fontWeight: 800, color: openReq.approvalStatus === 'approved' ? '#166534' : '#991b1b', marginBottom: 6 }}>
                       💬 رد الإدارة {openReq.managerName ? `— ${openReq.managerName}` : ''}
                     </div>
-                    <div style={{ fontSize: 13.5, whiteSpace: 'pre-wrap', lineHeight: 1.7, color: '#0f172a' }}>{openReq.managerResponse}</div>
-                    {openReq.userEmailSentAt && <div style={{ fontSize: 11, color: '#64748b', marginTop: 6 }}>✉️ أُرسل للمستفيد: {fmtWhen(openReq.userEmailSentAt)}</div>}
+                    <div style={{ fontSize: 13.5, whiteSpace: 'pre-wrap', lineHeight: 1.7, color: 'var(--text-primary, #0f172a)' }}>{openReq.managerResponse}</div>
+                    {openReq.userEmailSentAt && <div style={{ fontSize: 11, color: 'var(--text-tertiary, #64748b)', marginTop: 6 }}>✉️ أُرسل للمستفيد: {fmtWhen(openReq.userEmailSentAt)}</div>}
                   </div>
                 )}
               </div>
 
-              <div style={{ padding: 16, borderTop: '1px solid #e2e8f0', display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
-                <button onClick={() => printRequest(openReq)} style={{ padding: '10px 18px', borderRadius: 10, border: '1px solid #e2e8f0', background: '#fff', cursor: 'pointer', fontWeight: 700, fontSize: 13 }}>
+              <div style={{ padding: 16, borderTop: '1px solid var(--border-color, #e2e8f0)', display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+                <button onClick={() => printRequest(openReq)} style={{ padding: '10px 18px', borderRadius: 10, border: '1px solid var(--border-color, #e2e8f0)', background: 'var(--card-bg, #fff)', cursor: 'pointer', fontWeight: 700, fontSize: 13 }}>
                   🖨️ طباعة
                 </button>
-                <button onClick={() => deleteRequest(openReq)} style={{ padding: '10px 18px', borderRadius: 10, border: '1px solid #fecaca', background: '#fff', color: '#b91c1c', cursor: 'pointer', fontWeight: 700, fontSize: 13 }}>
+                <button onClick={() => deleteRequest(openReq)} style={{ padding: '10px 18px', borderRadius: 10, border: '1px solid #fecaca', background: 'var(--card-bg, #fff)', color: '#b91c1c', cursor: 'pointer', fontWeight: 700, fontSize: 13 }}>
                   🗑️ حذف
                 </button>
                 {openReq.approvalStatus !== 'approved' && openReq.approvalStatus !== 'rejected' && (
@@ -740,7 +741,7 @@ const ProjectSupportTab = () => {
                     <button
                       onClick={() => openAdminRespondModal(openReq, 'rejected')}
                       title={isRTL ? 'رفض الطلب مباشرة وإرسال الرد للمستفيد دون الرجوع للمدير' : 'Reject directly and email the user without escalating to the manager'}
-                      style={{ padding: '10px 18px', borderRadius: 10, border: '1px solid #fecaca', background: '#fff', color: '#b91c1c', cursor: 'pointer', fontWeight: 700, fontSize: 13 }}
+                      style={{ padding: '10px 18px', borderRadius: 10, border: '1px solid #fecaca', background: 'var(--card-bg, #fff)', color: '#b91c1c', cursor: 'pointer', fontWeight: 700, fontSize: 13 }}
                     >
                       ✕ رفض مباشر
                     </button>
@@ -773,18 +774,18 @@ const ProjectSupportTab = () => {
             <motion.div
               initial={{ opacity: 0, scale: 0.94 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.94 }}
               onClick={(e) => e.stopPropagation()}
-              style={{ background: '#fff', borderRadius: 16, padding: 22, maxWidth: 520, width: '100%' }}
+              style={{ background: 'var(--card-bg, #fff)', borderRadius: 16, padding: 22, maxWidth: 520, width: '100%' }}
             >
               <h3 style={{ margin: '0 0 6px', color: adminRespondModal.decision === 'approved' ? '#16a34a' : '#b91c1c', fontSize: 18 }}>
                 {adminRespondModal.decision === 'approved' ? '✓ اعتماد الطلب مباشرةً' : '✕ رفض الطلب مباشرةً'}
               </h3>
-              <p style={{ margin: '0 0 14px', color: '#64748b', fontSize: 13, lineHeight: 1.7 }}>
+              <p style={{ margin: '0 0 14px', color: 'var(--text-tertiary, #64748b)', fontSize: 13, lineHeight: 1.7 }}>
                 سيتم إرسال الرد مباشرة للمستفيد على بريده دون الرجوع للمدير.
                 &nbsp;<b>{adminRespondModal.request?.firstName} {adminRespondModal.request?.lastName || ''}</b>
                 {adminRespondModal.request?.email && <> · <span dir="ltr">{adminRespondModal.request.email}</span></>}
               </p>
               <label style={{ display: 'block', marginBottom: 14 }}>
-                <div style={{ fontSize: 12, fontWeight: 700, color: '#334155', marginBottom: 4 }}>الرد المرسل للمستفيد *</div>
+                <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-secondary, #334155)', marginBottom: 4 }}>الرد المرسل للمستفيد *</div>
                 <textarea
                   value={adminRespondModal.response}
                   onChange={(e) => setAdminRespondModal(m => ({ ...m, response: e.target.value }))}
@@ -800,7 +801,7 @@ const ProjectSupportTab = () => {
                 <button
                   onClick={() => setAdminRespondModal(null)}
                   disabled={adminResponding}
-                  style={{ padding: '10px 18px', borderRadius: 10, border: '1px solid #cbd5e1', background: '#fff', cursor: 'pointer', fontWeight: 700, fontSize: 13 }}
+                  style={{ padding: '10px 18px', borderRadius: 10, border: '1px solid #cbd5e1', background: 'var(--card-bg, #fff)', cursor: 'pointer', fontWeight: 700, fontSize: 13 }}
                 >
                   إلغاء
                 </button>
@@ -834,14 +835,14 @@ const ProjectSupportTab = () => {
             <motion.div
               initial={{ opacity: 0, scale: 0.94 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.94 }}
               onClick={(e) => e.stopPropagation()}
-              style={{ background: '#fff', borderRadius: 16, padding: 24, maxWidth: 460, width: '100%' }}
+              style={{ background: 'var(--card-bg, #fff)', borderRadius: 16, padding: 24, maxWidth: 460, width: '100%' }}
             >
-              <h3 style={{ margin: '0 0 8px', color: '#6d28d9', fontSize: 18 }}>📧 إرسال الطلب للمدير</h3>
-              <p style={{ margin: '0 0 16px', color: '#64748b', fontSize: 13 }}>
+              <h3 style={{ margin: '0 0 8px', color: 'var(--psa-violet)', fontSize: 18 }}>📧 إرسال الطلب للمدير</h3>
+              <p style={{ margin: '0 0 16px', color: 'var(--text-tertiary, #64748b)', fontSize: 13 }}>
                 سيصل للمدير بريد يحتوي على تفاصيل الطلب مع رابط للاعتماد أو الرفض مع كتابة الرد للمستفيد.
               </p>
               <label style={{ display: 'block', marginBottom: 10 }}>
-                <div style={{ fontSize: 12, fontWeight: 700, color: '#334155', marginBottom: 4 }}>اختيار المدير</div>
+                <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-secondary, #334155)', marginBottom: 4 }}>اختيار المدير</div>
                 <select value={approverChoice} onChange={(e) => setApproverChoice(e.target.value)}
                   style={{ width: '100%', padding: 10, borderRadius: 8, border: '1.5px solid #cbd5e1', fontFamily: 'inherit', fontSize: 14 }}>
                   <option value="">— اختر —</option>
@@ -852,7 +853,7 @@ const ProjectSupportTab = () => {
               </label>
               {approverChoice === '__custom__' && (
                 <label style={{ display: 'block', marginBottom: 14 }}>
-                  <div style={{ fontSize: 12, fontWeight: 700, color: '#334155', marginBottom: 4 }}>البريد الإلكتروني</div>
+                  <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-secondary, #334155)', marginBottom: 4 }}>البريد الإلكتروني</div>
                   <input type="email" value={customEmail} onChange={(e) => setCustomEmail(e.target.value)} dir="ltr"
                     placeholder="manager@example.com"
                     style={{ width: '100%', padding: 10, borderRadius: 8, border: '1.5px solid #cbd5e1', fontFamily: 'inherit', fontSize: 14 }} />
@@ -860,7 +861,7 @@ const ProjectSupportTab = () => {
               )}
               <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 8 }}>
                 <button onClick={() => setApproveModal(null)} disabled={sendingApproval}
-                  style={{ padding: '10px 18px', borderRadius: 10, border: '1px solid #e2e8f0', background: '#fff', cursor: 'pointer', fontWeight: 700 }}>إلغاء</button>
+                  style={{ padding: '10px 18px', borderRadius: 10, border: '1px solid var(--border-color, #e2e8f0)', background: 'var(--card-bg, #fff)', cursor: 'pointer', fontWeight: 700 }}>إلغاء</button>
                 <button onClick={sendForApproval} disabled={sendingApproval}
                   style={{ padding: '10px 22px', borderRadius: 10, border: 'none', background: 'linear-gradient(135deg, #8b5cf6, #6d28d9)', color: '#fff', cursor: sendingApproval ? 'not-allowed' : 'pointer', fontWeight: 800, opacity: sendingApproval ? 0.6 : 1 }}>
                   {sendingApproval ? 'جارٍ الإرسال...' : '📧 إرسال'}

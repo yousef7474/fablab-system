@@ -12,6 +12,7 @@ import { ar, enUS } from 'date-fns/locale';
 import api from '../../config/api';
 import { openWhatsApp, getApprovalMessage, getRejectionMessage } from '../../utils/whatsappHelper';
 import './Admin.css';
+import './AdminTabsTheme.css';
 import '../Manager/Manager.css';
 import { WorkspaceScheduleEditor, WorkspaceScheduleChips, WorkspaceStatusControl, activationError, scheduleError, scheduleBannerHtml, scheduleBannerClass, SCHEDULE_BANNER_CSS } from '../shared/workspaceSchedule';
 import QRScanner from '../QRScanner/QRScanner';
@@ -6847,13 +6848,8 @@ const AdminDashboard = () => {
                                           e.stopPropagation();
                                           setScheduleFilter(isFilterSection ? '' : sec);
                                         }}
-                                        className="sv2-roster-sec-chip"
-                                        style={{
-                                          background: isFilterSection ? color : `${color}20`,
-                                          color: isFilterSection ? '#fff' : color,
-                                          borderColor: isFilterSection ? color : 'transparent',
-                                          boxShadow: isFilterSection ? `0 2px 4px ${color}55` : 'none'
-                                        }}
+                                        className={`sv2-roster-sec-chip ${isFilterSection ? 'is-on' : ''}`}
+                                        style={{ '--chip': color }}
                                         title={isRTL
                                           ? `عرض جدول ${emp.name} في ${sectionLabels[sec] || sec}`
                                           : `Show ${emp.name}'s schedule for ${sectionLabels[sec] || sec}`}
@@ -7451,9 +7447,9 @@ const AdminDashboard = () => {
                 {!selectedEducation && (
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '12px', marginBottom: '20px' }}>
                     {[
-                      { key: 'all',       labelAr: 'الكل',        labelEn: 'All',       count: educations.length, color: '#6d28d9' },
-                      { key: 'pending',   labelAr: 'قيد الانتظار', labelEn: 'Pending',   count: educations.filter(e => e.status === 'pending').length,   color: '#f59e0b' },
-                      { key: 'approved',  labelAr: 'مقبول',        labelEn: 'Approved',  count: educations.filter(e => e.status === 'approved').length,  color: '#22c55e' },
+                      { key: 'all',       labelAr: 'الكل',        labelEn: 'All',       count: educations.length, color: '#6d28d9', ink: 'var(--ats-violet)' },
+                      { key: 'pending',   labelAr: 'قيد الانتظار', labelEn: 'Pending',   count: educations.filter(e => e.status === 'pending').length,   color: '#f59e0b', ink: 'var(--ats-warn)' },
+                      { key: 'approved',  labelAr: 'مقبول',        labelEn: 'Approved',  count: educations.filter(e => e.status === 'approved').length,  color: '#22c55e', ink: 'var(--ats-ok)' },
                       { key: 'active',    labelAr: 'نشط',          labelEn: 'Active',    count: educations.filter(e => e.status === 'active').length,    color: '#3b82f6' },
                       { key: 'completed', labelAr: 'مكتمل',        labelEn: 'Completed', count: educations.filter(e => e.status === 'completed').length, color: '#8b5cf6' },
                       { key: 'rejected',  labelAr: 'مرفوض',        labelEn: 'Rejected',  count: educations.filter(e => e.status === 'rejected').length,  color: '#ef4444' },
@@ -7477,7 +7473,7 @@ const AdminDashboard = () => {
                         <div style={{ fontSize: '11px', color: 'var(--text-secondary, #64748b)', fontWeight: 700, letterSpacing: '0.4px', textTransform: 'uppercase', marginBottom: '6px' }}>
                           {isRTL ? card.labelAr : card.labelEn}
                         </div>
-                        <div style={{ fontSize: '26px', fontWeight: 800, color: card.color, lineHeight: 1 }}>{card.count}</div>
+                        <div style={{ fontSize: '26px', fontWeight: 800, color: card.ink || card.color, lineHeight: 1 }}>{card.count}</div>
                       </button>
                     ))}
                   </div>
@@ -7500,7 +7496,7 @@ const AdminDashboard = () => {
                     ))}
                   </select>
                   <input className="filter-input" placeholder={isRTL ? 'بحث...' : 'Search...'} value={educationFilters.search} onChange={(e) => setEducationFilters({ ...educationFilters, search: e.target.value })} style={{ flex: 1, minWidth: '150px' }} />
-                  <button className="btn btn-primary" onClick={() => fetchEducations()} style={{ background: 'linear-gradient(135deg, #6d28d9, #7c3aed)' }}>
+                  <button className="btn btn-primary" onClick={() => fetchEducations()} style={{ background: 'linear-gradient(135deg, #6d28d9, #7c3aed)', color: '#fff' }}>
                     {isRTL ? 'بحث' : 'Search'}
                   </button>
                 </div>
@@ -7769,7 +7765,7 @@ const AdminDashboard = () => {
                         </thead>
                         <tbody>
                           {educations.length === 0 ? (
-                            <tr><td colSpan="7" style={{ textAlign: 'center', padding: '40px', color: '#94a3b8' }}>{isRTL ? 'لا توجد طلبات تعليم' : 'No education requests'}</td></tr>
+                            <tr><td colSpan="7" style={{ textAlign: 'center', padding: '40px', color: 'var(--text-tertiary, #64748b)' }}>{isRTL ? 'لا توجد طلبات تعليم' : 'No education requests'}</td></tr>
                           ) : educations.map((edu) => (
                             <tr key={edu.educationId}>
                               <td style={{ fontWeight: '600' }}>{edu.educationId}</td>
@@ -10636,7 +10632,7 @@ const AdminDashboard = () => {
                     onClick={() => setAttendanceKioskOpen(true)}
                     style={{
                       padding: '14px 32px', borderRadius: 12,
-                      background: 'linear-gradient(135deg, #16a34a, #059669)',
+                      background: 'linear-gradient(135deg, #15803d, #047857)',
                       color: '#fff', border: 'none', cursor: 'pointer',
                       fontFamily: 'inherit', fontSize: 16, fontWeight: 800,
                       boxShadow: '0 8px 24px rgba(22,163,74,0.35)',
@@ -10702,9 +10698,9 @@ const AdminDashboard = () => {
                       {isRTL ? 'حالة التسجيل' : 'Registration Status'}
                     </h3>
                     <div className="settings-form">
-                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', background: registrationPaused ? '#fef2f2' : '#f0fdf4', borderRadius: '10px', marginBottom: '12px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', background: registrationPaused ? 'rgba(239,68,68,0.08)' : 'rgba(34,197,94,0.08)', borderRadius: '10px', marginBottom: '12px' }}>
                         <div>
-                          <p style={{ margin: 0, fontWeight: '700', fontSize: '15px', color: registrationPaused ? '#dc2626' : '#16a34a' }}>
+                          <p style={{ margin: 0, fontWeight: '700', fontSize: '15px', color: registrationPaused ? 'var(--ats-bad)' : 'var(--ats-ok)' }}>
                             {registrationPaused
                               ? (isRTL ? 'التسجيل متوقف مؤقتاً' : 'Registration is PAUSED')
                               : (isRTL ? 'التسجيل مفعّل' : 'Registration is ACTIVE')}
@@ -10731,7 +10727,7 @@ const AdminDashboard = () => {
                             fontWeight: '700',
                             fontSize: '14px',
                             cursor: savingPause ? 'not-allowed' : 'pointer',
-                            background: registrationPaused ? '#22c55e' : '#ef4444',
+                            background: registrationPaused ? '#15803d' : '#dc2626',
                             color: 'white',
                             transition: 'all 0.2s',
                             opacity: savingPause ? 0.7 : 1
@@ -10757,7 +10753,7 @@ const AdminDashboard = () => {
                           disabled={registrationPaused}
                         />
                         {registrationPaused && pauseReason && (
-                          <p style={{ margin: '6px 0 0', fontSize: '12px', color: '#dc2626' }}>
+                          <p style={{ margin: '6px 0 0', fontSize: '12px', color: 'var(--ats-bad)' }}>
                             {isRTL ? 'لتعديل السبب، قم بتفعيل التسجيل أولاً ثم أعد إيقافه بسبب جديد' : 'To change the reason, enable registration first then pause again with a new reason'}
                           </p>
                         )}
@@ -10775,9 +10771,9 @@ const AdminDashboard = () => {
                       {isRTL ? 'حالة المتجر' : 'Store Status'}
                     </h3>
                     <div className="settings-form">
-                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', background: storeClosed ? '#fffbeb' : '#f0fdf4', borderRadius: '10px', marginBottom: '12px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', background: storeClosed ? 'rgba(245,158,11,0.1)' : 'rgba(34,197,94,0.08)', borderRadius: '10px', marginBottom: '12px' }}>
                         <div>
-                          <p style={{ margin: 0, fontWeight: '700', fontSize: '15px', color: storeClosed ? '#b45309' : '#16a34a' }}>
+                          <p style={{ margin: 0, fontWeight: '700', fontSize: '15px', color: storeClosed ? 'var(--ats-warn)' : 'var(--ats-ok)' }}>
                             {storeClosed
                               ? (isRTL ? 'المتجر مغلق مؤقتاً' : 'Store is CLOSED')
                               : (isRTL ? 'المتجر مفتوح' : 'Store is OPEN')}
@@ -10804,7 +10800,7 @@ const AdminDashboard = () => {
                             fontWeight: '700',
                             fontSize: '14px',
                             cursor: savingStoreClose ? 'not-allowed' : 'pointer',
-                            background: storeClosed ? '#22c55e' : '#f59e0b',
+                            background: storeClosed ? '#15803d' : '#b45309',
                             color: 'white',
                             transition: 'all 0.2s',
                             opacity: savingStoreClose ? 0.7 : 1
@@ -10830,7 +10826,7 @@ const AdminDashboard = () => {
                           disabled={storeClosed}
                         />
                         {storeClosed && storeCloseReason && (
-                          <p style={{ margin: '6px 0 0', fontSize: '12px', color: '#b45309' }}>
+                          <p style={{ margin: '6px 0 0', fontSize: '12px', color: 'var(--ats-warn)' }}>
                             {isRTL ? 'لتعديل السبب، افتح المتجر أولاً ثم أغلقه بسبب جديد' : 'To change the reason, open the store first then close again with a new reason'}
                           </p>
                         )}
@@ -10852,9 +10848,9 @@ const AdminDashboard = () => {
                       {isRTL ? 'زيارات فاب لاب' : 'FabLab Visits'}
                     </h3>
                     <div className="settings-form">
-                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', flexWrap: 'wrap', padding: '12px 16px', background: visitsClosed ? '#fffbeb' : '#f0fdf4', borderRadius: '10px', marginBottom: '12px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', flexWrap: 'wrap', padding: '12px 16px', background: visitsClosed ? 'rgba(245,158,11,0.1)' : 'rgba(34,197,94,0.08)', borderRadius: '10px', marginBottom: '12px' }}>
                         <div style={{ minWidth: 0, flex: '1 1 240px' }}>
-                          <p style={{ margin: 0, fontWeight: '700', fontSize: '15px', color: visitsClosed ? '#b45309' : '#16a34a' }}>
+                          <p style={{ margin: 0, fontWeight: '700', fontSize: '15px', color: visitsClosed ? 'var(--ats-warn)' : 'var(--ats-ok)' }}>
                             {visitsClosed
                               ? (isRTL ? 'التسجيل في الزيارات مغلق' : 'Visit registration is CLOSED')
                               : (isRTL ? 'التسجيل في الزيارات مفتوح' : 'Visit registration is OPEN')}
@@ -10881,7 +10877,7 @@ const AdminDashboard = () => {
                             fontWeight: '700',
                             fontSize: '14px',
                             cursor: savingVisitsClose ? 'not-allowed' : 'pointer',
-                            background: visitsClosed ? '#22c55e' : '#f59e0b',
+                            background: visitsClosed ? '#15803d' : '#b45309',
                             color: 'white',
                             transition: 'all 0.2s',
                             opacity: savingVisitsClose ? 0.7 : 1
@@ -10907,7 +10903,7 @@ const AdminDashboard = () => {
                           disabled={visitsClosed}
                         />
                         {visitsClosed && visitsCloseReason && (
-                          <p style={{ margin: '6px 0 0', fontSize: '12px', color: '#b45309' }}>
+                          <p style={{ margin: '6px 0 0', fontSize: '12px', color: 'var(--ats-warn)' }}>
                             {isRTL ? 'لتعديل السبب، افتح التسجيل أولاً ثم أغلقه بسبب جديد' : 'To change the reason, open registration first then close again with a new reason'}
                           </p>
                         )}
@@ -10930,9 +10926,9 @@ const AdminDashboard = () => {
                       {isRTL ? 'حالة خدمة الطباعة ثلاثية الأبعاد' : '3D Printing Service Status'}
                     </h3>
                     <div className="settings-form">
-                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', background: p3dStatus.effectiveClosed ? '#fffbeb' : '#f0fdf4', borderRadius: '10px', marginBottom: '12px', flexWrap: 'wrap', gap: 10 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', background: p3dStatus.effectiveClosed ? 'rgba(245,158,11,0.1)' : 'rgba(34,197,94,0.08)', borderRadius: '10px', marginBottom: '12px', flexWrap: 'wrap', gap: 10 }}>
                         <div>
-                          <p style={{ margin: 0, fontWeight: '700', fontSize: '15px', color: p3dStatus.effectiveClosed ? '#b45309' : '#16a34a' }}>
+                          <p style={{ margin: 0, fontWeight: '700', fontSize: '15px', color: p3dStatus.effectiveClosed ? 'var(--ats-warn)' : 'var(--ats-ok)' }}>
                             {p3dStatus.effectiveClosed
                               ? (isRTL ? '🔒 الخدمة مغلقة حالياً' : '🔒 Service is CLOSED now')
                               : p3dStatus.disabled
@@ -10964,7 +10960,7 @@ const AdminDashboard = () => {
                             padding: '10px 24px', borderRadius: '10px', border: 'none',
                             fontWeight: '700', fontSize: '14px',
                             cursor: savingP3d ? 'not-allowed' : 'pointer',
-                            background: p3dStatus.disabled ? '#22c55e' : '#f59e0b',
+                            background: p3dStatus.disabled ? '#15803d' : '#b45309',
                             color: 'white', opacity: savingP3d ? 0.7 : 1
                           }}
                         >
@@ -11016,7 +11012,7 @@ const AdminDashboard = () => {
                           style={{ width: '100%', padding: '10px 14px', borderRadius: '8px', border: '1px solid var(--border-color, #e2e8f0)', resize: 'vertical', fontSize: '14px', fontFamily: 'inherit' }}
                         />
                         {p3dStatus.disabled && (
-                          <p style={{ margin: '6px 0 0', fontSize: '12px', color: '#b45309' }}>
+                          <p style={{ margin: '6px 0 0', fontSize: '12px', color: 'var(--ats-warn)' }}>
                             {isRTL ? 'لتعديل الفترة أو السبب، افتح الخدمة أولاً ثم أغلقها بإعدادات جديدة.' : 'To change the window or reason, reopen the service first then close again with new settings.'}
                           </p>
                         )}
@@ -11580,8 +11576,8 @@ const AdminDashboard = () => {
                             style={{
                               display: 'flex', alignItems: 'center', gap: 10,
                               padding: '10px 12px', borderRadius: 8,
-                              border: `1.5px solid ${isHidden ? '#e2e8f0' : '#6366f1'}`,
-                              background: isHidden ? '#f8fafc' : 'rgba(99,102,241,0.06)',
+                              border: `1.5px solid ${isHidden ? 'var(--border-color, #e2e8f0)' : '#6366f1'}`,
+                              background: isHidden ? 'var(--bg-tertiary, #f8fafc)' : 'rgba(99,102,241,0.08)',
                               cursor: isLocked ? 'not-allowed' : 'pointer',
                               opacity: isLocked ? 0.55 : 1,
                               transition: 'all 0.15s'
@@ -11594,7 +11590,7 @@ const AdminDashboard = () => {
                               onChange={() => toggleTabVisibility(item.id)}
                               style={{ accentColor: '#6366f1', width: 18, height: 18, cursor: isLocked ? 'not-allowed' : 'pointer' }}
                             />
-                            <span style={{ fontWeight: 700, color: isHidden ? '#94a3b8' : '#1e293b', fontSize: 14 }}>
+                            <span style={{ fontWeight: 700, color: isHidden ? 'var(--text-tertiary, #64748b)' : 'var(--text-primary, #1e293b)', fontSize: 14 }}>
                               {isRTL ? item.labelAr : item.labelEn}
                             </span>
                           </label>
@@ -11606,8 +11602,8 @@ const AdminDashboard = () => {
                         onClick={() => { setHiddenTabs([]); try { localStorage.removeItem('adminHiddenTabs'); } catch {} }}
                         style={{
                           marginTop: 14, padding: '9px 18px', borderRadius: 8,
-                          border: '1.5px solid #6366f1', background: '#fff',
-                          color: '#6366f1', fontWeight: 700, cursor: 'pointer', fontSize: 13
+                          border: '1.5px solid #6366f1', background: 'var(--card-bg, #fff)',
+                          color: 'var(--ats-indigo)', fontWeight: 700, cursor: 'pointer', fontSize: 13
                         }}
                       >
                         {isRTL ? `إظهار الكل (${hiddenTabs.length} مخفية)` : `Show all (${hiddenTabs.length} hidden)`}

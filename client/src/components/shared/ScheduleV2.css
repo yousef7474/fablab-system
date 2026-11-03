@@ -312,7 +312,7 @@
   padding: 8px 0;
   font-family: var(--sv2-font-mono);
   font-size: 0.62rem;
-  color: var(--text-muted, #94a3b8);
+  color: var(--text-tertiary, #64748b);
   letter-spacing: 1.4px;
   text-transform: uppercase;
   font-weight: 700;
@@ -841,7 +841,7 @@
 .sv2-empty {
   padding: 32px 20px;
   text-align: center;
-  color: var(--text-muted, #94a3b8);
+  color: var(--text-tertiary, #64748b);
   font-family: var(--sv2-font-mono);
   font-size: 0.78rem;
   letter-spacing: 1px;

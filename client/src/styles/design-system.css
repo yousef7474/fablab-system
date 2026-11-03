@@ -2620,3 +2620,13 @@ html:not([data-theme]) .emp-calendar-grid {
   pointer-events: none;
   opacity: 0.5;
 }
+
+/* =============================================================
+   Phase 6 — dark-mode gaps
+   index.css paints every h1–h6 --gray-900 and every <p> --gray-600:
+   near-black on the dark theme, so plain section titles and blurbs
+   that carry no class of their own disappeared. Specificity (0,0,2)
+   — beats the bare element rules, loses to any classed rule.
+   ============================================================= */
+:where(html[data-theme="dark"]) body :is(h1, h2, h3, h4, h5, h6) { color: inherit; }
+:where(html[data-theme="dark"]) body p { color: inherit; }

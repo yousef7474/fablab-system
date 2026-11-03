@@ -48,6 +48,15 @@ const APP_TYPE_AR = {
 // stacking context (z-index:1), so overlays rendered inside it sat
 // underneath the sticky top bar and tabs no matter their z-index.
 // The root still carries the theme CSS variables.
+// Status hues. Light theme gets deeper shades so the same hue still
+// reads as text on a white card; filter pills use the deep set in both
+// themes because they carry white text.
+const STATUS_TONES = {
+  dark:  { approved: '#22c55e', rejected: '#f87171', hold: '#38bdf8', pending: '#f59e0b', draft: '#94a3b8' },
+  light: { approved: '#15803d', rejected: '#b91c1c', hold: '#0369a1', pending: '#b45309', draft: '#64748b' },
+};
+const PILL_TONES = STATUS_TONES.light;
+
 const DashPortal = ({ target, children }) => (target ? createPortal(children, target) : children);
 
 // ---------- Animated integer counter ----------
@@ -128,6 +137,15 @@ const EmployeeDashboard = () => {
   useEffect(() => {
     localStorage.setItem('employeeTheme', theme);
   }, [theme]);
+  // The admin / manager boards put their own theme on <html>, and the
+  // shared design-system rules keyed on it would restyle this page after
+  // in-app navigation. Lift it while the dashboard is shown.
+  useEffect(() => {
+    const root = document.documentElement;
+    const prev = root.getAttribute('data-theme');
+    if (prev) root.removeAttribute('data-theme');
+    return () => { if (prev && !root.hasAttribute('data-theme')) root.setAttribute('data-theme', prev); };
+  }, []);
   // مسؤول إدارة المشاريع gets a link to her review board.
   const [isProjectManager, setIsProjectManager] = useState(false);
   useEffect(() => {
@@ -1371,11 +1389,11 @@ const EmployeeDashboard = () => {
                 </div>
                 <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
                   {[
-                    { key: 'pending',  ar: 'قيد المراجعة', en: 'Pending',  color: '#f59e0b' },
-                    { key: 'approved', ar: 'المعتمدة',    en: 'Approved', color: '#16a34a' },
-                    { key: 'rejected', ar: 'المرفوضة',    en: 'Rejected', color: '#dc2626' },
-                    { key: 'on-hold',  ar: 'معلقة',       en: 'On hold',  color: '#0ea5e9' },
-                    { key: 'all',      ar: 'الكل',        en: 'All',      color: '#64748b' }
+                    { key: 'pending',  ar: 'قيد المراجعة', en: 'Pending',  color: PILL_TONES.pending },
+                    { key: 'approved', ar: 'المعتمدة',    en: 'Approved', color: PILL_TONES.approved },
+                    { key: 'rejected', ar: 'المرفوضة',    en: 'Rejected', color: PILL_TONES.rejected },
+                    { key: 'on-hold',  ar: 'معلقة',       en: 'On hold',  color: PILL_TONES.hold },
+                    { key: 'all',      ar: 'الكل',        en: 'All',      color: PILL_TONES.draft }
                   ].map(f => {
                     const active = regStatusFilter === f.key;
                     const count = f.key === 'all'
@@ -1389,7 +1407,7 @@ const EmployeeDashboard = () => {
                           padding: '6px 14px', borderRadius: 999,
                           border: active ? 'none' : '1px solid var(--term-divider, #334155)',
                           background: active ? f.color : 'transparent',
-                          color: active ? '#fff' : 'var(--emp-text, #cbd5e1)',
+                          color: active ? '#fff' : 'var(--ink-secondary)',
                           fontFamily: 'inherit', fontWeight: 700, fontSize: 12,
                           cursor: 'pointer'
                         }}
@@ -1407,7 +1425,7 @@ const EmployeeDashboard = () => {
                     ? registrations
                     : registrations.filter(r => r.status === regStatusFilter)
                   ).length === 0 ? (
-                    <div className="emp-empty" style={{ padding: 40, textAlign: 'center', color: '#94a3b8' }}>
+                    <div className="emp-empty" style={{ padding: 40, textAlign: 'center', color: 'var(--ink-secondary)' }}>
                       {isRTL ? '— لا توجد طلبات مطابقة —' : '— No matching requests —'}
                     </div>
                   ) : (regStatusFilter === 'all'
@@ -1417,10 +1435,11 @@ const EmployeeDashboard = () => {
                         const uName = r.user?.name || `${r.user?.firstName || ''} ${r.user?.lastName || ''}`.trim() || '—';
                         const appointment = r.appointmentDate || r.visitDate || r.startDate;
                         const appointmentTime = r.appointmentTime || r.visitStartTime || r.startTime;
-                        const statusColor = r.status === 'approved' ? '#16a34a'
-                          : r.status === 'rejected' ? '#dc2626'
-                          : r.status === 'on-hold' ? '#0ea5e9'
-                          : '#f59e0b';
+                        const tones = STATUS_TONES[theme] || STATUS_TONES.dark;
+                        const statusColor = r.status === 'approved' ? tones.approved
+                          : r.status === 'rejected' ? tones.rejected
+                          : r.status === 'on-hold' ? tones.hold
+                          : tones.pending;
                         const services = Array.isArray(r.requiredServices) ? r.requiredServices : [];
                         return (
                           <motion.div
@@ -1436,7 +1455,7 @@ const EmployeeDashboard = () => {
                             <div className="emp-task-card-header">
                               <div>
                                 <h4 style={{ margin: 0 }}>{uName}</h4>
-                                <div style={{ fontSize: 12, color: '#94a3b8', marginTop: 4 }}>
+                                <div style={{ fontSize: 12, color: 'var(--ink-secondary)', marginTop: 4 }}>
                                   {r.fablabSection} · {r.registrationId}
                                 </div>
                               </div>
@@ -1453,19 +1472,19 @@ const EmployeeDashboard = () => {
 
                             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 10, margin: '12px 0' }}>
                               {r.user?.phoneNumber && (
-                                <div><div style={{ fontSize: 10.5, color: '#94a3b8', fontWeight: 700, letterSpacing: 0.6 }}>{isRTL ? 'الجوال' : 'PHONE'}</div><div dir="ltr" style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 13 }}>{r.user.phoneNumber}</div></div>
+                                <div><div style={{ fontSize: 10.5, color: 'var(--ink-secondary)', fontWeight: 700, letterSpacing: 0.6 }}>{isRTL ? 'الجوال' : 'PHONE'}</div><div dir="ltr" style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 13 }}>{r.user.phoneNumber}</div></div>
                               )}
                               {r.user?.email && (
-                                <div><div style={{ fontSize: 10.5, color: '#94a3b8', fontWeight: 700, letterSpacing: 0.6 }}>{isRTL ? 'البريد' : 'EMAIL'}</div><div dir="ltr" style={{ fontSize: 12 }}>{r.user.email}</div></div>
+                                <div><div style={{ fontSize: 10.5, color: 'var(--ink-secondary)', fontWeight: 700, letterSpacing: 0.6 }}>{isRTL ? 'البريد' : 'EMAIL'}</div><div dir="ltr" style={{ fontSize: 12 }}>{r.user.email}</div></div>
                               )}
                               {appointment && (
-                                <div><div style={{ fontSize: 10.5, color: '#94a3b8', fontWeight: 700, letterSpacing: 0.6 }}>{isRTL ? 'الموعد' : 'APPOINTMENT'}</div><div dir="ltr" style={{ fontSize: 13 }}>{appointment}{appointmentTime ? ` · ${String(appointmentTime).slice(0,5)}` : ''}</div></div>
+                                <div><div style={{ fontSize: 10.5, color: 'var(--ink-secondary)', fontWeight: 700, letterSpacing: 0.6 }}>{isRTL ? 'الموعد' : 'APPOINTMENT'}</div><div dir="ltr" style={{ fontSize: 13 }}>{appointment}{appointmentTime ? ` · ${String(appointmentTime).slice(0,5)}` : ''}</div></div>
                               )}
                               {regDuration(r) && (
-                                <div><div style={{ fontSize: 10.5, color: '#94a3b8', fontWeight: 700, letterSpacing: 0.6 }}>{isRTL ? 'المدة' : 'DURATION'}</div><div style={{ fontSize: 13 }}>{regDuration(r)}</div></div>
+                                <div><div style={{ fontSize: 10.5, color: 'var(--ink-secondary)', fontWeight: 700, letterSpacing: 0.6 }}>{isRTL ? 'المدة' : 'DURATION'}</div><div style={{ fontSize: 13 }}>{regDuration(r)}</div></div>
                               )}
                               {r.user?.currentJob && (
-                                <div><div style={{ fontSize: 10.5, color: '#94a3b8', fontWeight: 700, letterSpacing: 0.6 }}>{isRTL ? 'الوظيفة الحالية' : 'CURRENT JOB'}</div><div style={{ fontSize: 13 }}>{r.user.currentJob}</div></div>
+                                <div><div style={{ fontSize: 10.5, color: 'var(--ink-secondary)', fontWeight: 700, letterSpacing: 0.6 }}>{isRTL ? 'الوظيفة الحالية' : 'CURRENT JOB'}</div><div style={{ fontSize: 13 }}>{r.user.currentJob}</div></div>
                               )}
                             </div>
 
@@ -1491,7 +1510,7 @@ const EmployeeDashboard = () => {
                               </div>
                             )}
                             {r.adminNotes && (
-                              <div style={{ background: 'rgba(14,165,233,0.10)', border: '1px solid rgba(14,165,233,0.25)', padding: '10px 14px', borderRadius: 8, fontSize: 13, marginBottom: 10, color: '#0ea5e9' }}>
+                              <div style={{ background: 'rgba(14,165,233,0.10)', border: '1px solid rgba(14,165,233,0.25)', padding: '10px 14px', borderRadius: 8, fontSize: 13, marginBottom: 10, color: 'var(--emp-sky-ink)' }}>
                                 <b>{isRTL ? 'ملاحظات: ' : 'Notes: '}</b>{r.adminNotes}
                               </div>
                             )}
@@ -1515,7 +1534,7 @@ const EmployeeDashboard = () => {
                               </div>
                             )}
                             {r.approvedBy && (
-                              <div style={{ marginTop: 8, fontSize: 11.5, color: '#94a3b8' }}>
+                              <div style={{ marginTop: 8, fontSize: 11.5, color: 'var(--ink-secondary)' }}>
                                 {isRTL ? 'اتخذ القرار: ' : 'Decided by: '}<b>{r.approvedBy}</b>
                                 {r.approvedAt && <> · {new Date(r.approvedAt).toLocaleString(isRTL ? 'ar-SA' : undefined, { dateStyle: 'short', timeStyle: 'short' })}</>}
                               </div>
@@ -1537,7 +1556,7 @@ const EmployeeDashboard = () => {
               const dateObj = dateStr ? new Date(`${dateStr}T00:00:00`) : null;
               const services = Array.isArray(a.services) ? a.services : [];
               const entity = a.entityName || a.visitingEntity;
-              const label = { fontSize: 10.5, color: '#94a3b8', fontWeight: 800, letterSpacing: 0.6, textTransform: 'uppercase', marginBottom: 3 };
+              const label = { fontSize: 10.5, color: 'var(--ink-secondary)', fontWeight: 800, letterSpacing: 0.6, textTransform: 'uppercase', marginBottom: 3 };
               const Field = ({ l, children, ltr }) => (
                 <div style={{ minWidth: 0 }}>
                   <div style={label}>{l}</div>
@@ -1624,7 +1643,7 @@ const EmployeeDashboard = () => {
                           ))}
                         </div>
                         {a.otherServiceDetails && (
-                          <div dir="auto" style={{ fontSize: 12.5, color: '#94a3b8', marginTop: 8, whiteSpace: 'pre-wrap' }}>
+                          <div dir="auto" style={{ fontSize: 12.5, color: 'var(--ink-secondary)', marginTop: 8, whiteSpace: 'pre-wrap' }}>
                             {isRTL ? 'أخرى: ' : 'Other: '}{a.otherServiceDetails}
                           </div>
                         )}
@@ -1636,7 +1655,7 @@ const EmployeeDashboard = () => {
                       <div dir="auto" style={{ marginTop: 4, padding: '12px 14px', borderRadius: 10, background: 'rgba(22,163,74,0.08)', border: '1px solid rgba(22,163,74,0.25)', fontSize: 13.5, lineHeight: 1.8, whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}>
                         {a.serviceDetails
                           ? a.serviceDetails
-                          : <span style={{ color: '#94a3b8' }}>{isRTL ? 'لم يكتب المستفيد تفاصيل للخدمة.' : 'No service details were provided.'}</span>}
+                          : <span style={{ color: 'var(--ink-secondary)' }}>{isRTL ? 'لم يكتب المستفيد تفاصيل للخدمة.' : 'No service details were provided.'}</span>}
                       </div>
                     </div>
                   </motion.div>
@@ -1667,7 +1686,7 @@ const EmployeeDashboard = () => {
                         : (isRTL ? 'رفض الطلب' : 'Reject Registration')}
                     </div>
                     <div style={{ fontSize: 16, fontWeight: 800, marginTop: 4 }}>{regDecideModal.name}</div>
-                    <div style={{ fontSize: 12, color: '#94a3b8', marginTop: 2 }}>{regDecideModal.section}</div>
+                    <div style={{ fontSize: 12, color: 'var(--ink-secondary)', marginTop: 2 }}>{regDecideModal.section}</div>
                   </div>
                   <div style={{ padding: 22 }}>
                     {regDecideModal.mode === 'reject' && (
@@ -1685,7 +1704,7 @@ const EmployeeDashboard = () => {
                       </div>
                     )}
                     <div style={{ marginBottom: 14 }}>
-                      <label style={{ fontSize: 12, fontWeight: 700, color: '#94a3b8', letterSpacing: 0.6, textTransform: 'uppercase' }}>
+                      <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--ink-secondary)', letterSpacing: 0.6, textTransform: 'uppercase' }}>
                         {regDecideModal.mode === 'approve'
                           ? (isRTL ? 'رسالة إضافية (اختياري)' : 'Additional message (optional)')
                           : (isRTL ? 'ملاحظة داخلية (اختياري)' : 'Internal note (optional)')}
@@ -1740,7 +1759,7 @@ const EmployeeDashboard = () => {
               <motion.div variants={itemVariants} className="emp-tasks-tab-head">
                 <div>
                   <h2 style={{ margin: 0 }}>{isRTL ? '🕓 ساعاتي الإضافية' : '🕓 My Overtime'}</h2>
-                  <p style={{ margin: '4px 0 0', color: '#94a3b8', fontSize: 13 }}>
+                  <p style={{ margin: '4px 0 0', color: 'var(--ink-secondary)', fontSize: 13 }}>
                     {isRTL
                       ? 'أنشئ طلب ساعات إضافية، أرسله للمدير للاعتماد، وتابع حالته.'
                       : 'Create an overtime request, send it to the manager, and track its status.'}
@@ -1749,11 +1768,11 @@ const EmployeeDashboard = () => {
                 <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
                   <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
                     {[
-                      { key: 'all',      ar: 'الكل',     en: 'All',      color: '#64748b' },
-                      { key: 'draft',    ar: 'مسودات',   en: 'Drafts',   color: '#94a3b8' },
-                      { key: 'pending',  ar: 'قيد الاعتماد', en: 'Pending', color: '#f59e0b' },
-                      { key: 'approved', ar: 'معتمدة',   en: 'Approved', color: '#16a34a' },
-                      { key: 'rejected', ar: 'مرفوضة',   en: 'Rejected', color: '#dc2626' }
+                      { key: 'all',      ar: 'الكل',     en: 'All',      color: PILL_TONES.draft },
+                      { key: 'draft',    ar: 'مسودات',   en: 'Drafts',   color: PILL_TONES.draft },
+                      { key: 'pending',  ar: 'قيد الاعتماد', en: 'Pending', color: PILL_TONES.pending },
+                      { key: 'approved', ar: 'معتمدة',   en: 'Approved', color: PILL_TONES.approved },
+                      { key: 'rejected', ar: 'مرفوضة',   en: 'Rejected', color: PILL_TONES.rejected }
                     ].map(f => {
                       const active = otStatusFilter === f.key;
                       const count = f.key === 'all'
@@ -1767,7 +1786,7 @@ const EmployeeDashboard = () => {
                             padding: '6px 14px', borderRadius: 999,
                             border: active ? 'none' : '1px solid var(--term-divider, #334155)',
                             background: active ? f.color : 'transparent',
-                            color: active ? '#fff' : 'var(--emp-text, #cbd5e1)',
+                            color: active ? '#fff' : 'var(--ink-secondary)',
                             fontFamily: 'inherit', fontWeight: 700, fontSize: 12, cursor: 'pointer'
                           }}
                         >
@@ -1788,14 +1807,15 @@ const EmployeeDashboard = () => {
               <motion.div variants={itemVariants} className="emp-tasks-grid">
                 <AnimatePresence>
                   {(otStatusFilter === 'all' ? myOvertime : myOvertime.filter(r => r.approvalStatus === otStatusFilter)).length === 0 ? (
-                    <div className="emp-empty" style={{ padding: 40, textAlign: 'center', color: '#94a3b8' }}>
+                    <div className="emp-empty" style={{ padding: 40, textAlign: 'center', color: 'var(--ink-secondary)' }}>
                       {isRTL ? '— لا توجد طلبات —' : '— No requests —'}
                     </div>
                   ) : (otStatusFilter === 'all' ? myOvertime : myOvertime.filter(r => r.approvalStatus === otStatusFilter)).map((r, i) => {
-                    const statusColor = r.approvalStatus === 'approved' ? '#16a34a'
-                      : r.approvalStatus === 'rejected' ? '#dc2626'
-                      : r.approvalStatus === 'pending' ? '#f59e0b'
-                      : '#94a3b8';
+                    const tones = STATUS_TONES[theme] || STATUS_TONES.dark;
+                    const statusColor = r.approvalStatus === 'approved' ? tones.approved
+                      : r.approvalStatus === 'rejected' ? tones.rejected
+                      : r.approvalStatus === 'pending' ? tones.pending
+                      : tones.draft;
                     const statusLabel = r.approvalStatus === 'approved' ? (isRTL ? 'معتمد' : 'Approved')
                       : r.approvalStatus === 'rejected' ? (isRTL ? 'مرفوض' : 'Rejected')
                       : r.approvalStatus === 'pending' ? (isRTL ? 'قيد الاعتماد' : 'Pending')
@@ -1814,7 +1834,7 @@ const EmployeeDashboard = () => {
                         <div className="emp-task-card-header">
                           <div>
                             <h4 style={{ margin: 0 }}>{r.employeeName}</h4>
-                            <div style={{ fontSize: 12, color: '#94a3b8', marginTop: 4 }}>
+                            <div style={{ fontSize: 12, color: 'var(--ink-secondary)', marginTop: 4 }}>
                               {r.periodStart && r.periodEnd ? `${r.periodStart} → ${r.periodEnd}` : (r.periodStart || '—')}
                             </div>
                           </div>
@@ -1824,10 +1844,10 @@ const EmployeeDashboard = () => {
                         </div>
 
                         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 10, margin: '12px 0' }}>
-                          <div><div style={{ fontSize: 10.5, color: '#94a3b8', fontWeight: 700, letterSpacing: 0.6 }}>{isRTL ? 'إجمالي الساعات' : 'TOTAL HOURS'}</div><div style={{ fontFamily: 'JetBrains Mono, monospace', fontWeight: 800, fontSize: 15, color: statusColor }}>{Number(r.totalHours || 0).toFixed(2)}</div></div>
-                          <div><div style={{ fontSize: 10.5, color: '#94a3b8', fontWeight: 700, letterSpacing: 0.6 }}>{isRTL ? 'عدد الأيام' : 'DAYS'}</div><div style={{ fontSize: 14 }}>{(r.days || []).length}</div></div>
+                          <div><div style={{ fontSize: 10.5, color: 'var(--ink-secondary)', fontWeight: 700, letterSpacing: 0.6 }}>{isRTL ? 'إجمالي الساعات' : 'TOTAL HOURS'}</div><div style={{ fontFamily: 'JetBrains Mono, monospace', fontWeight: 800, fontSize: 15, color: statusColor }}>{Number(r.totalHours || 0).toFixed(2)}</div></div>
+                          <div><div style={{ fontSize: 10.5, color: 'var(--ink-secondary)', fontWeight: 700, letterSpacing: 0.6 }}>{isRTL ? 'عدد الأيام' : 'DAYS'}</div><div style={{ fontSize: 14 }}>{(r.days || []).length}</div></div>
                           {r.sentForApprovalAt && (
-                            <div><div style={{ fontSize: 10.5, color: '#94a3b8', fontWeight: 700, letterSpacing: 0.6 }}>{isRTL ? 'أُرسل' : 'SENT'}</div><div style={{ fontSize: 12 }} dir="ltr">{new Date(r.sentForApprovalAt).toLocaleString(isRTL ? 'ar-SA' : undefined, { dateStyle: 'short', timeStyle: 'short' })}</div></div>
+                            <div><div style={{ fontSize: 10.5, color: 'var(--ink-secondary)', fontWeight: 700, letterSpacing: 0.6 }}>{isRTL ? 'أُرسل' : 'SENT'}</div><div style={{ fontSize: 12 }} dir="ltr">{new Date(r.sentForApprovalAt).toLocaleString(isRTL ? 'ar-SA' : undefined, { dateStyle: 'short', timeStyle: 'short' })}</div></div>
                           )}
                         </div>
 
@@ -1859,7 +1879,7 @@ const EmployeeDashboard = () => {
                               </button>
                               <button
                                 onClick={() => otOpenSend(r)}
-                                style={{ padding: '7px 16px', borderRadius: 8, border: 'none', background: '#f59e0b', color: '#fff', cursor: 'pointer', fontFamily: 'inherit', fontWeight: 800, fontSize: 12 }}
+                                style={{ padding: '7px 16px', borderRadius: 8, border: 'none', background: '#f59e0b', color: '#1c1917', cursor: 'pointer', fontFamily: 'inherit', fontWeight: 800, fontSize: 12 }}
                               >
                                 📤 {isRTL ? 'إرسال للمدير' : 'Send to Manager'}
                               </button>
@@ -1890,10 +1910,10 @@ const EmployeeDashboard = () => {
                 >
                   <div style={{ padding: '18px 22px', borderBottom: '1px solid var(--term-divider, #334155)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <div>
-                      <div style={{ fontSize: 11, letterSpacing: 1.2, color: '#f59e0b', textTransform: 'uppercase', fontWeight: 800 }}>
+                      <div style={{ fontSize: 11, letterSpacing: 1.2, color: 'var(--emp-amber-ink)', textTransform: 'uppercase', fontWeight: 800 }}>
                         {otEditingId ? (isRTL ? 'تعديل طلب' : 'Edit Request') : (isRTL ? 'طلب ساعات إضافية' : 'New Overtime Request')}
                       </div>
-                      <div style={{ fontSize: 12, color: '#94a3b8', marginTop: 3 }}>
+                      <div style={{ fontSize: 12, color: 'var(--ink-secondary)', marginTop: 3 }}>
                         {isRTL ? `إجمالي الساعات: ${otTotalHours.toFixed(2)}` : `Total hours: ${otTotalHours.toFixed(2)}`}
                       </div>
                     </div>
@@ -1934,17 +1954,17 @@ const EmployeeDashboard = () => {
                       <div style={{ marginTop: 10, padding: 12, borderRadius: 10, background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.30)' }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
                           <div>
-                            <div style={{ fontSize: 11.5, fontWeight: 800, letterSpacing: 1, color: '#f59e0b' }}>
+                            <div style={{ fontSize: 11.5, fontWeight: 800, letterSpacing: 1, color: 'var(--emp-amber-ink)' }}>
                               {isRTL ? '📥 استيراد من الحضور التلقائي (QR)' : '📥 IMPORT FROM ATTENDANCE (QR)'}
                             </div>
-                            <div style={{ fontSize: 11.5, color: '#94a3b8', marginTop: 2 }}>
+                            <div style={{ fontSize: 11.5, color: 'var(--ink-secondary)', marginTop: 2 }}>
                               {isRTL
                                 ? `${otAutoRows.length} يوم مسجل تجاوز الوقت الرسمي`
                                 : `${otAutoRows.length} scanned day(s) with overtime detected`}
                             </div>
                           </div>
                           <div style={{ display: 'flex', gap: 6 }}>
-                            <button type="button" onClick={otPickAllAuto} style={{ padding: '5px 10px', borderRadius: 6, border: '1px solid var(--term-divider, #334155)', background: 'transparent', color: '#f59e0b', fontSize: 11, cursor: 'pointer', fontFamily: 'inherit' }}>
+                            <button type="button" onClick={otPickAllAuto} style={{ padding: '5px 10px', borderRadius: 6, border: '1px solid var(--term-divider, #334155)', background: 'transparent', color: 'var(--emp-amber-ink)', fontSize: 11, cursor: 'pointer', fontFamily: 'inherit' }}>
                               {isRTL ? 'اختر الكل' : 'Pick all'}
                             </button>
                             <button type="button" onClick={otClearAutoPick} disabled={otAutoPicked.size === 0} style={{ padding: '5px 10px', borderRadius: 6, border: '1px solid var(--term-divider, #334155)', background: 'transparent', color: 'inherit', fontSize: 11, cursor: 'pointer', fontFamily: 'inherit', opacity: otAutoPicked.size === 0 ? 0.5 : 1 }}>
@@ -1954,7 +1974,7 @@ const EmployeeDashboard = () => {
                               type="button"
                               onClick={otImportAutoPicked}
                               disabled={otAutoPicked.size === 0}
-                              style={{ padding: '5px 14px', borderRadius: 6, border: 'none', background: '#f59e0b', color: '#fff', fontSize: 11.5, cursor: otAutoPicked.size === 0 ? 'not-allowed' : 'pointer', fontFamily: 'inherit', fontWeight: 800, opacity: otAutoPicked.size === 0 ? 0.5 : 1 }}
+                              style={{ padding: '5px 14px', borderRadius: 6, border: 'none', background: '#f59e0b', color: '#1c1917', fontSize: 11.5, cursor: otAutoPicked.size === 0 ? 'not-allowed' : 'pointer', fontFamily: 'inherit', fontWeight: 800, opacity: otAutoPicked.size === 0 ? 0.5 : 1 }}
                             >
                               📥 {isRTL ? `استيراد (${otAutoPicked.size})` : `Import (${otAutoPicked.size})`}
                             </button>
@@ -1988,14 +2008,14 @@ const EmployeeDashboard = () => {
                                 <span dir="ltr">
                                   {String(r.date).slice(0, 10)}
                                   {r.isWeekend && (
-                                    <span style={{ marginInlineStart: 5, fontSize: 10, fontWeight: 800, padding: '0 6px', borderRadius: 999, background: 'rgba(245,158,11,0.18)', color: '#f59e0b' }}>
+                                    <span style={{ marginInlineStart: 5, fontSize: 10, fontWeight: 800, padding: '0 6px', borderRadius: 999, background: 'rgba(245,158,11,0.18)', color: 'var(--emp-amber-ink)' }}>
                                       {isRTL ? 'عطلة' : 'Wknd'}
                                     </span>
                                   )}
                                 </span>
                                 <span dir="ltr" style={{ fontFamily: 'JetBrains Mono, monospace' }}>{fmtT(r.checkInAt)} → {fmtT(r.checkOutAt)}</span>
-                                <span style={{ color: '#94a3b8', fontSize: 11.5 }}>{r.reason || (isRTL ? '—' : '—')}</span>
-                                <span style={{ fontFamily: 'JetBrains Mono, monospace', fontWeight: 800, color: '#f59e0b', textAlign: 'end' }}>{hrs} h</span>
+                                <span style={{ color: 'var(--ink-secondary)', fontSize: 11.5 }}>{r.reason || (isRTL ? '—' : '—')}</span>
+                                <span style={{ fontFamily: 'JetBrains Mono, monospace', fontWeight: 800, color: 'var(--emp-amber-ink)', textAlign: 'end' }}>{hrs} h</span>
                               </div>
                             );
                           })}
@@ -2003,7 +2023,7 @@ const EmployeeDashboard = () => {
                       </div>
                     )}
                     {otAutoLinked && otAutoRows.length === 0 && (
-                      <div style={{ marginTop: 10, padding: 10, borderRadius: 8, background: 'rgba(148,163,184,0.05)', fontSize: 12, color: '#94a3b8', textAlign: 'center' }}>
+                      <div style={{ marginTop: 10, padding: 10, borderRadius: 8, background: 'rgba(148,163,184,0.05)', fontSize: 12, color: 'var(--ink-secondary)', textAlign: 'center' }}>
                         {isRTL ? 'لا يوجد ساعات إضافية مسجلة من الحضور بعد.' : 'No overtime detected from QR attendance yet.'}
                       </div>
                     )}
@@ -2015,7 +2035,7 @@ const EmployeeDashboard = () => {
                       </div>
                     )}
 
-                    <div style={{ marginTop: 10, marginBottom: 6, fontSize: 11.5, fontWeight: 800, letterSpacing: 1, color: '#f59e0b' }}>
+                    <div style={{ marginTop: 10, marginBottom: 6, fontSize: 11.5, fontWeight: 800, letterSpacing: 1, color: 'var(--emp-amber-ink)' }}>
                       {isRTL ? 'الأيام والساعات' : 'DAYS & HOURS'}
                     </div>
                     <div className="ot-days-scroll" style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
@@ -2030,7 +2050,7 @@ const EmployeeDashboard = () => {
                         </div>
                       ))}
                     </div>
-                    <button type="button" onClick={otAddDay} style={{ marginTop: 8, padding: '7px 14px', borderRadius: 8, border: '1px dashed var(--term-divider, #334155)', background: 'transparent', color: '#f59e0b', cursor: 'pointer', fontWeight: 700, fontSize: 13, fontFamily: 'inherit' }}>
+                    <button type="button" onClick={otAddDay} style={{ marginTop: 8, padding: '7px 14px', borderRadius: 8, border: '1px dashed var(--term-divider, #334155)', background: 'transparent', color: 'var(--emp-amber-ink)', cursor: 'pointer', fontWeight: 700, fontSize: 13, fontFamily: 'inherit' }}>
                       + {isRTL ? 'إضافة يوم' : 'Add day'}
                     </button>
 
@@ -2051,7 +2071,7 @@ const EmployeeDashboard = () => {
                     <button onClick={otCloseForm} disabled={otBusy} style={{ padding: '9px 18px', borderRadius: 8, border: '1px solid var(--term-divider, #334155)', background: 'transparent', color: 'inherit', cursor: 'pointer', fontFamily: 'inherit', fontWeight: 700 }}>
                       {isRTL ? 'إلغاء' : 'Cancel'}
                     </button>
-                    <button onClick={otSubmitForm} disabled={otBusy} style={{ padding: '9px 22px', borderRadius: 8, border: 'none', background: '#f59e0b', color: '#fff', cursor: 'pointer', fontFamily: 'inherit', fontWeight: 800 }}>
+                    <button onClick={otSubmitForm} disabled={otBusy} style={{ padding: '9px 22px', borderRadius: 8, border: 'none', background: '#f59e0b', color: '#1c1917', cursor: 'pointer', fontFamily: 'inherit', fontWeight: 800 }}>
                       {otBusy ? '…' : otEditingId ? (isRTL ? '✓ حفظ التعديلات' : '✓ Save changes') : (isRTL ? '✓ حفظ كمسودة' : '✓ Save draft')}
                     </button>
                   </div>
@@ -2075,17 +2095,17 @@ const EmployeeDashboard = () => {
                   style={{ background: 'var(--term-panel-solid, #0f172a)', color: 'var(--ink-primary, #e2e8f0)', borderRadius: 14, maxWidth: 480, width: '100%', border: '1px solid var(--term-divider, #334155)' }}
                 >
                   <div style={{ padding: '18px 22px', borderBottom: '1px solid var(--term-divider, #334155)' }}>
-                    <div style={{ fontSize: 11, letterSpacing: 1.2, color: '#f59e0b', textTransform: 'uppercase', fontWeight: 800 }}>
+                    <div style={{ fontSize: 11, letterSpacing: 1.2, color: 'var(--emp-amber-ink)', textTransform: 'uppercase', fontWeight: 800 }}>
                       {isRTL ? 'إرسال للاعتماد' : 'Send for approval'}
                     </div>
-                    <div style={{ fontSize: 12, color: '#94a3b8', marginTop: 4 }}>
+                    <div style={{ fontSize: 12, color: 'var(--ink-secondary)', marginTop: 4 }}>
                       {isRTL
                         ? 'سيتم إرسال الطلب لبريد المدير للمراجعة والاعتماد.'
                         : 'The request will be emailed to the manager for review and approval.'}
                     </div>
                   </div>
                   <div style={{ padding: 22 }}>
-                    <label style={{ fontSize: 12, fontWeight: 700, color: '#94a3b8', letterSpacing: 0.6, textTransform: 'uppercase' }}>
+                    <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--ink-secondary)', letterSpacing: 0.6, textTransform: 'uppercase' }}>
                       {isRTL ? 'بريد المدير *' : 'Manager email *'}
                     </label>
                     {OT_APPROVERS.length > 0 && (
@@ -2116,7 +2136,7 @@ const EmployeeDashboard = () => {
                       <button onClick={otCloseSend} disabled={otBusy} style={{ padding: '9px 18px', borderRadius: 8, border: '1px solid var(--term-divider, #334155)', background: 'transparent', color: 'inherit', cursor: 'pointer', fontFamily: 'inherit', fontWeight: 700 }}>
                         {isRTL ? 'إلغاء' : 'Cancel'}
                       </button>
-                      <button onClick={otSubmitSend} disabled={otBusy} style={{ padding: '9px 22px', borderRadius: 8, border: 'none', background: '#f59e0b', color: '#fff', cursor: 'pointer', fontFamily: 'inherit', fontWeight: 800 }}>
+                      <button onClick={otSubmitSend} disabled={otBusy} style={{ padding: '9px 22px', borderRadius: 8, border: 'none', background: '#f59e0b', color: '#1c1917', cursor: 'pointer', fontFamily: 'inherit', fontWeight: 800 }}>
                         {otBusy ? '…' : (isRTL ? '📤 إرسال للمدير' : '📤 Send to Manager')}
                       </button>
                     </div>
@@ -2139,14 +2159,14 @@ const EmployeeDashboard = () => {
               <motion.div variants={itemVariants} className="emp-tasks-tab-head">
                 <div>
                   <h2 style={{ margin: 0 }}>{isRTL ? '✅ سجل الحضور' : '✅ Attendance Log'}</h2>
-                  <p style={{ margin: '4px 0 0', color: '#94a3b8', fontSize: 13 }}>
+                  <p style={{ margin: '4px 0 0', color: 'var(--ink-secondary)', fontSize: 13 }}>
                     {isRTL
                       ? 'حضورك المُسجّل عبر QR في محطة الحضور. الدوام الرسمي 9 ساعات؛ إذا تجاوز الوقت الإضافي 30 دقيقة يُحتسب كاملاً، وأيام الجمعة والسبت تُحتسب كلها ساعات إضافية.'
                       : 'Your QR-scanned attendance history from the check-in station. The official day is 9 hours; extra time over 30 min counts in full, and Friday/Saturday count entirely as overtime.'}
                   </p>
                 </div>
                 {!myAttendanceLinked && (
-                  <div style={{ padding: '6px 12px', background: 'rgba(220,38,38,0.15)', color: '#dc2626', borderRadius: 6, fontSize: 11.5, fontWeight: 700 }}>
+                  <div style={{ padding: '6px 12px', background: 'rgba(220,38,38,0.15)', color: 'var(--emp-red-ink)', borderRadius: 6, fontSize: 11.5, fontWeight: 700 }}>
                     {isRTL
                       ? 'لا يوجد ربط بسجل حضور فاب لاب — راجع المدير'
                       : 'No linked FabLab-staff record — contact your manager'}
@@ -2156,7 +2176,7 @@ const EmployeeDashboard = () => {
 
               <motion.div variants={itemVariants}>
                 {myAttendance.length === 0 ? (
-                  <div className="emp-empty" style={{ padding: 40, textAlign: 'center', color: '#94a3b8' }}>
+                  <div className="emp-empty" style={{ padding: 40, textAlign: 'center', color: 'var(--ink-secondary)' }}>
                     {myAttendanceLinked
                       ? (isRTL ? '— لا توجد سجلات حضور بعد —' : '— No attendance records yet —')
                       : (isRTL ? '— لا يوجد ربط بحساب حضور —' : '— No linked staff record —')}
@@ -2166,11 +2186,11 @@ const EmployeeDashboard = () => {
                     <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
                       <thead>
                         <tr style={{ background: 'rgba(148,163,184,0.06)' }}>
-                          <th style={{ padding: '10px 12px', textAlign: 'start', fontSize: 11, fontWeight: 800, color: '#94a3b8', letterSpacing: 0.6 }}>{isRTL ? 'التاريخ' : 'DATE'}</th>
-                          <th style={{ padding: '10px 12px', textAlign: 'start', fontSize: 11, fontWeight: 800, color: '#94a3b8', letterSpacing: 0.6 }}>{isRTL ? 'دخول' : 'CHECK-IN'}</th>
-                          <th style={{ padding: '10px 12px', textAlign: 'start', fontSize: 11, fontWeight: 800, color: '#94a3b8', letterSpacing: 0.6 }}>{isRTL ? 'خروج' : 'CHECK-OUT'}</th>
-                          <th style={{ padding: '10px 12px', textAlign: 'center', fontSize: 11, fontWeight: 800, color: '#94a3b8', letterSpacing: 0.6 }}>{isRTL ? 'المدة' : 'DURATION'}</th>
-                          <th style={{ padding: '10px 12px', textAlign: 'start', fontSize: 11, fontWeight: 800, color: '#94a3b8', letterSpacing: 0.6 }}>{isRTL ? 'ملاحظة' : 'REASON'}</th>
+                          <th style={{ padding: '10px 12px', textAlign: 'start', fontSize: 11, fontWeight: 800, color: 'var(--ink-secondary)', letterSpacing: 0.6 }}>{isRTL ? 'التاريخ' : 'DATE'}</th>
+                          <th style={{ padding: '10px 12px', textAlign: 'start', fontSize: 11, fontWeight: 800, color: 'var(--ink-secondary)', letterSpacing: 0.6 }}>{isRTL ? 'دخول' : 'CHECK-IN'}</th>
+                          <th style={{ padding: '10px 12px', textAlign: 'start', fontSize: 11, fontWeight: 800, color: 'var(--ink-secondary)', letterSpacing: 0.6 }}>{isRTL ? 'خروج' : 'CHECK-OUT'}</th>
+                          <th style={{ padding: '10px 12px', textAlign: 'center', fontSize: 11, fontWeight: 800, color: 'var(--ink-secondary)', letterSpacing: 0.6 }}>{isRTL ? 'المدة' : 'DURATION'}</th>
+                          <th style={{ padding: '10px 12px', textAlign: 'start', fontSize: 11, fontWeight: 800, color: 'var(--ink-secondary)', letterSpacing: 0.6 }}>{isRTL ? 'ملاحظة' : 'REASON'}</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -2199,12 +2219,12 @@ const EmployeeDashboard = () => {
                             <tr key={r.attendanceId} style={{ borderTop: '1px solid rgba(148,163,184,0.08)' }}>
                               <td style={{ padding: '10px 12px' }}>
                                 <div dir="ltr" style={{ fontFamily: 'JetBrains Mono, monospace', fontWeight: 700 }}>{String(r.date).slice(0, 10)}</div>
-                                <div style={{ fontSize: 11, color: '#94a3b8' }}>{dayName}</div>
+                                <div style={{ fontSize: 11, color: 'var(--ink-secondary)' }}>{dayName}</div>
                               </td>
                               <td style={{ padding: '10px 12px', fontFamily: 'JetBrains Mono, monospace' }} dir="ltr">{fmtT(r.checkInAt)}</td>
                               <td style={{ padding: '10px 12px', fontFamily: 'JetBrains Mono, monospace' }} dir="ltr">{fmtT(r.checkOutAt)}</td>
-                              <td style={{ padding: '10px 12px', textAlign: 'center', fontFamily: 'JetBrains Mono, monospace', fontWeight: 800, color: r.checkOutAt ? '#16a34a' : '#f59e0b' }}>{dur}</td>
-                              <td style={{ padding: '10px 12px', fontSize: 12, color: '#94a3b8' }}>{r.reason || '—'}</td>
+                              <td style={{ padding: '10px 12px', textAlign: 'center', fontFamily: 'JetBrains Mono, monospace', fontWeight: 800, color: r.checkOutAt ? 'var(--emp-mint-ink)' : 'var(--emp-amber-ink)' }}>{dur}</td>
+                              <td style={{ padding: '10px 12px', fontSize: 12, color: 'var(--ink-secondary)' }}>{r.reason || '—'}</td>
                             </tr>
                           );
                         })}
@@ -2536,7 +2556,7 @@ const EmployeeDashboard = () => {
                       </span>
                     </div>
 
-                    <div style={{ fontSize: '0.85rem', fontWeight: 600, color: '#94a3b8', marginBottom: 12, fontFamily: 'JetBrains Mono, monospace', letterSpacing: 0.5, textTransform: 'uppercase' }}>
+                    <div style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--ink-secondary)', marginBottom: 12, fontFamily: 'JetBrains Mono, monospace', letterSpacing: 0.5, textTransform: 'uppercase' }}>
                       ▸ {isRTL ? 'الطلاب المسجلون' : 'Enrolled Students'}: <span style={{ color: '#EE2329' }}>{workshop.students?.length || 0}</span>
                     </div>
 
