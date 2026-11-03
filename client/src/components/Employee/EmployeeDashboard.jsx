@@ -9,6 +9,7 @@ import { ar, enUS } from 'date-fns/locale';
 import employeeApi from '../../config/employeeApi';
 import { EVALUATION_CATEGORIES } from '../../config/evaluationStructure';
 import YearCalendar from '../YearCalendar/YearCalendar';
+import EmployeeKitsTab from '../TrainingKits/EmployeeKitsTab';
 import './Employee.css';
 
 const SECTION_COLORS = {
@@ -127,6 +128,11 @@ const EmployeeDashboard = () => {
   useEffect(() => {
     localStorage.setItem('employeeTheme', theme);
   }, [theme]);
+  // مسؤول إدارة المشاريع gets a link to her review board.
+  const [isProjectManager, setIsProjectManager] = useState(false);
+  useEffect(() => {
+    employeeApi.get('/training-kits/pm/status').then(({ data }) => setIsProjectManager(!!data?.isPM)).catch(() => {});
+  }, []);
   const [profile, setProfile] = useState(null);
   const [tasks, setTasks] = useState([]);
   const [ratings, setRatings] = useState(null);
@@ -914,6 +920,7 @@ const EmployeeDashboard = () => {
     { key: 'year-calendar', label: isRTL ? 'التقويم السنوي' : 'Year Calendar', icon: '▦' },
     { key: 'ratings',       label: isRTL ? 'التقييمات' : 'Ratings',         icon: '★' },
     { key: 'workshops',     label: isRTL ? 'الورش' : 'Workshops',           icon: '⬡' },
+    { key: 'training-kits', label: isRTL ? 'الحقائب التدريبية' : 'Training Kits', icon: '🎒' },
     { key: 'profile',       label: isRTL ? 'الملف الشخصي' : 'Profile',      icon: '◉' },
   ];
 
@@ -962,6 +969,11 @@ const EmployeeDashboard = () => {
               </svg>
             )}
           </button>
+          {isProjectManager && (
+            <button className="emp-lang-btn" onClick={() => navigate('/projects')} title={isRTL ? 'لوحة إدارة المشاريع — مراجعة الحقائب التدريبية' : 'Projects board — review training kits'} style={{ width: 'auto', padding: '0 12px' }}>
+              🗂 {isRTL ? 'لوحة إدارة المشاريع' : 'Projects board'}
+            </button>
+          )}
           <button className="emp-lang-btn" onClick={toggleLanguage}>
             {i18n.language === 'ar' ? 'EN' : 'ع'}
           </button>
@@ -2783,6 +2795,18 @@ const EmployeeDashboard = () => {
               style={{ padding: '4px 2px' }}
             >
               <YearCalendar apiClient={employeeApi} readOnly />
+            </motion.div>
+          )}
+
+          {activeTab === 'training-kits' && (
+            <motion.div
+              key="training-kits"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -12 }}
+              transition={{ type: 'spring', stiffness: 260, damping: 24 }}
+            >
+              <EmployeeKitsTab portalTarget={dashRoot} theme={theme} />
             </motion.div>
           )}
 

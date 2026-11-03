@@ -79,6 +79,9 @@ const SiteContactMessage = require('./SiteContactMessage');
 const PaymentPage = require('./PaymentPage');
 const PaymentSubmission = require('./PaymentSubmission');
 const PaymentCoupon = require('./PaymentCoupon');
+const TrainingKit = require('./TrainingKit');
+const TrainingKitVersion = require('./TrainingKitVersion');
+const TrainingKitFile = require('./TrainingKitFile');
 const CalendarEvent = require('./CalendarEvent');
 const StoreItem = require('./StoreItem');
 const StoreOrder = require('./StoreOrder');
@@ -378,6 +381,12 @@ WorkshopStudent.belongsTo(Workshop, { foreignKey: 'workshopId', as: 'workshop' }
 PaymentPage.hasMany(PaymentSubmission, { foreignKey: 'pageId', as: 'submissions' });
 PaymentSubmission.belongsTo(PaymentPage, { foreignKey: 'pageId', as: 'page' });
 PaymentPage.hasMany(PaymentCoupon, { foreignKey: 'pageId', as: 'coupons' });
+
+// Training kits: author, submitted versions (edit history) and files.
+TrainingKit.belongsTo(Employee, { foreignKey: 'employeeId', as: 'author' });
+TrainingKit.hasMany(TrainingKitVersion, { foreignKey: 'kitId', as: 'versions', onDelete: 'CASCADE' });
+TrainingKitVersion.belongsTo(TrainingKit, { foreignKey: 'kitId', as: 'kit' });
+TrainingKit.hasMany(TrainingKitFile, { foreignKey: 'kitId', as: 'files', onDelete: 'CASCADE' });
 
 // Registration Closure relationships
 RegistrationClosure.belongsTo(Admin, { foreignKey: 'createdById', as: 'creator', constraints: false });
@@ -1456,6 +1465,9 @@ module.exports = {
   PaymentPage,
   PaymentSubmission,
   PaymentCoupon,
+  TrainingKit,
+  TrainingKitVersion,
+  TrainingKitFile,
   CalendarEvent,
   StoreItem,
   StoreOrder,

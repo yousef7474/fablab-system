@@ -21,6 +21,7 @@ const EducationForm = lazy(() => import('./components/EducationForm/EducationFor
 const StudentRegistration = lazy(() => import('./components/EducationForm/StudentRegistration'));
 const StudentAttendance = lazy(() => import('./components/EducationForm/StudentAttendance'));
 const ManagerDashboard = lazy(() => import('./components/Manager/ManagerDashboard'));
+const ProjectManagerBoard = lazy(() => import('./components/TrainingKits/ProjectManagerBoard'));
 const EmployeeLogin = lazy(() => import('./components/Employee/EmployeeLogin'));
 const EmployeeDashboard = lazy(() => import('./components/Employee/EmployeeDashboard'));
 const WorkshopRegistration = lazy(() => import('./components/WorkshopRegistration/WorkshopRegistration'));
@@ -90,7 +91,7 @@ const RouteFallback = () => {
 const ConditionalLanguageSelector = () => {
   const location = useLocation();
   if (isSitePath(location.pathname)) return null;
-  if (location.pathname === '/admin/login' || location.pathname.startsWith('/manager') || location.pathname.startsWith('/elite') || location.pathname.startsWith('/employee') || location.pathname.startsWith('/workshop') || location.pathname.startsWith('/public/') || location.pathname.startsWith('/fablab-visit') || location.pathname.startsWith('/project-support') || location.pathname.startsWith('/store') || location.pathname.startsWith('/print-service') || location.pathname.startsWith('/print-quote') || location.pathname.startsWith('/pay/')) return null;
+  if (location.pathname === '/admin/login' || location.pathname.startsWith('/manager') || location.pathname.startsWith('/elite') || location.pathname.startsWith('/employee') || location.pathname.startsWith('/projects') || location.pathname.startsWith('/workshop') || location.pathname.startsWith('/public/') || location.pathname.startsWith('/fablab-visit') || location.pathname.startsWith('/project-support') || location.pathname.startsWith('/store') || location.pathname.startsWith('/print-service') || location.pathname.startsWith('/print-quote') || location.pathname.startsWith('/pay/')) return null;
   return <LanguageSelector />;
 };
 
@@ -135,6 +136,7 @@ const AppContent = () => {
           <Route path="/workshop-survey/:token" element={<WorkshopSurvey />} />
           <Route path="/employee/login" element={<EmployeeLogin />} />
           <Route path="/employee/dashboard" element={<EmployeeDashboard />} />
+          <Route path="/projects" element={<ProjectManagerBoard />} />
           {/* Public no-login volunteer report pages (token-gated) */}
           <Route path="/public/volunteer/:token" element={<PublicVolunteerReport />} />
           <Route path="/public/report/:token" element={<PublicAttendanceReport />} />

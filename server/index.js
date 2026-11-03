@@ -96,6 +96,7 @@ app.use('/api/site-admin', siteAdminRoutes);
 // Payment pages: public /pay/:slug checkout + the admin "صفحات الدفع" tab.
 app.use('/api/pay', payRoutes);
 app.use('/api/payment-pages', paymentPageAdminRoutes);
+app.use('/api/training-kits', require('./routes/trainingKitRoutes'));
 app.use('/api/calendar-events', calendarEventRoutes);
 app.use('/api/store', storeRoutes);
 app.use('/api/print3d', print3DRoutes);
