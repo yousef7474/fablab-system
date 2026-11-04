@@ -3,7 +3,7 @@ import { toast } from 'react-toastify';
 import { fmtDateTime, fmtDay, humanSize } from './kitModel';
 import { AutoArea, AuthedImage, Portal, useBodyLock, KitHistory, StatusPill, Modal } from './KitParts';
 import { downloadFile, fetchDocument, printDocument, errorText } from './kitApi';
-import { KIT_KIND, numberOfDoc } from './kinds';
+import { KIT_KIND, numberOfDoc, g } from './kinds';
 import './TrainingKits.css';
 
 /**
@@ -13,7 +13,9 @@ import './TrainingKits.css';
  * it is their turn — the approve / return decision. The manager can also
  * delete it.
  */
-const KitReview = ({ api, scope, kitId, portalTarget, theme = 'dark', onClose, onChanged, onEdit, kind = KIT_KIND }) => {
+// extraActions(doc) — more top-bar buttons (e.g. «طلب ورشة» on an
+// approved kit).
+const KitReview = ({ api, scope, kitId, portalTarget, theme = 'dark', onClose, onChanged, onEdit, extraActions, kind = KIT_KIND }) => {
   useBodyLock();
   const R = kind.routes[scope];
   const [kit, setKit] = useState(null);
@@ -71,8 +73,8 @@ const KitReview = ({ api, scope, kitId, portalTarget, theme = 'dark', onClose, o
       setVersion(data.currentVersion);
       setComment('');
       toast.success(decision === 'return'
-        ? `أُعيدت ${kind.the} إلى الموظف مع ملاحظاتك`
-        : scope === 'pm' ? `اعتُمدت المراجعة وأُرسلت ${kind.the} إلى المدير` : `اعتُمدت ${kind.the} اعتمادًا نهائيًا`);
+        ? `${g(kind, 'أُعيدت', 'أُعيد')} ${kind.the} إلى الموظف مع ملاحظاتك`
+        : scope === 'pm' ? `اعتُمدت المراجعة ${g(kind, 'وأُرسلت', 'وأُرسل')} ${kind.the} إلى المدير` : `${g(kind, 'اعتُمدت', 'اعتُمد')} ${kind.the} اعتمادًا نهائيًا`);
       onChanged?.(data);
     } catch (err) {
       toast.error(errorText(err, 'تعذّر حفظ القرار'));
@@ -85,7 +87,7 @@ const KitReview = ({ api, scope, kitId, portalTarget, theme = 'dark', onClose, o
     setDeleting(true);
     try {
       await api.delete(R.remove(kitId));
-      toast.success(`حُذفت ${kind.the} ${no}`);
+      toast.success(`${g(kind, 'حُذفت', 'حُذف')} ${kind.the} ${no}`);
       setDelOpen(false);
       onChanged?.(null);
       onClose?.();
@@ -126,6 +128,7 @@ const KitReview = ({ api, scope, kitId, portalTarget, theme = 'dark', onClose, o
           {kit && scope === 'mine' && ['draft', 'returned'].includes(kit.status) && onEdit && (
             <button type="button" className="tk-btn primary" onClick={() => onEdit(kit)}>✎ <span className="hide-sm">تعديل {kind.the}</span></button>
           )}
+          {kit && extraActions && extraActions(kit)}
           {kit && scope === 'admin' && R.remove && (
             <button type="button" className="tk-btn danger" onClick={() => { setDelText(''); setDelOpen(true); }} title={`حذف ${kind.the} — للمدير فقط`}>🗑 <span className="hide-sm">حذف</span></button>
           )}
@@ -135,7 +138,7 @@ const KitReview = ({ api, scope, kitId, portalTarget, theme = 'dark', onClose, o
           <div className="tk-review">
             <div className="tk-rv-head">
               <div className="ttl">
-                <div className="sub"><span className="mono">{no}</span><StatusPill kit={kit} />{kit.author?.name && <span>إعداد: <b>{kit.author.name}</b></span>}{kit.submittedAt && <span>آخر إرسال: {fmtDateTime(kit.submittedAt)}</span>}</div>
+                <div className="sub"><span className="mono">{no}</span><StatusPill kit={kit} m={kind.m} />{kit.author?.name && <span>إعداد: <b>{kit.author.name}</b></span>}{kit.submittedAt && <span>آخر إرسال: {fmtDateTime(kit.submittedAt)}</span>}</div>
                 <h2>{kit.title || kind.untitled}</h2>
               </div>
               {(kit.versions || []).length > 0 && (
@@ -155,8 +158,8 @@ const KitReview = ({ api, scope, kitId, portalTarget, theme = 'dark', onClose, o
                 <h3 id="tk-dec-title">قرارك على الإصدار {kit.currentVersion}</h3>
                 <p className="tk-muted-s" style={{ margin: 0 }}>
                   {scope === 'pm'
-                    ? `اعتمادك يرسل ${kind.the} إلى المدير للاعتماد النهائي. الإعادة ترجعها للموظف مع ملاحظاتك ليعدّلها ويرسل إصدارًا جديدًا.`
-                    : `اعتمادك نهائي ويحفظ ${kind.the} في ${kind.archive}. الإعادة ترجعها للموظف، ثم تمر على مسؤول إدارة المشاريع قبل أن تعود إليك.`}
+                    ? `اعتمادك يرسل ${kind.the} إلى المدير للاعتماد النهائي. الإعادة ${g(kind, 'ترجعها', 'ترجعه')} للموظف مع ملاحظاتك ${g(kind, 'ليعدّلها', 'ليعدّله')} ويرسل إصدارًا جديدًا.`
+                    : `اعتمادك نهائي ويحفظ ${kind.the} في ${kind.archive}. الإعادة ${g(kind, 'ترجعها للموظف، ثم تمر', 'ترجعه للموظف، ثم يمر')} على مسؤول إدارة المشاريع قبل أن ${g(kind, 'تعود', 'يعود')} إليك.`}
                 </p>
                 <AutoArea rows={3} value={comment} onChange={setComment} placeholder="الملاحظات — مطلوبة عند الإعادة، واختيارية عند الاعتماد" aria-label="ملاحظات القرار" />
                 <div className="tk-decision-actions">
@@ -180,7 +183,7 @@ const KitReview = ({ api, scope, kitId, portalTarget, theme = 'dark', onClose, o
               );
             })()}
             {kit.status === 'approved' && (
-              <div className="tk-note mint"><span className="tk-note-ico">✓</span><div><b>{kind.a} معتمدة — الإصدار {kit.approvedVersion}</b>اعتُمدت بتاريخ {fmtDay(kit.approvedAt)}.{scope === 'mine' ? kind.approvedMine : ''}</div></div>
+              <div className="tk-note mint"><span className="tk-note-ico">✓</span><div><b>{kind.a} {g(kind, 'معتمدة', 'معتمد')} — الإصدار {kit.approvedVersion}</b>{g(kind, 'اعتُمدت', 'اعتُمد')} بتاريخ {fmtDay(kit.approvedAt)}.{scope === 'mine' ? kind.approvedMine : ''}</div></div>
             )}
 
             <div className="tk-tabs" role="tablist">
@@ -252,7 +255,7 @@ const KitReview = ({ api, scope, kitId, portalTarget, theme = 'dark', onClose, o
         {delOpen && kit && (
           <Modal onClose={() => !deleting && setDelOpen(false)} labelledBy="tk-del-title">
             <h3 id="tk-del-title">حذف {kind.the} {no}</h3>
-            <p>ستختفي «{kit.title || kind.untitled}» من جميع الشاشات: لوحة الموظف ولوحة إدارة المشاريع ولوحة المدير، مع إصداراتها وملفاتها.</p>
+            <p>{g(kind, 'ستختفي', 'سيختفي')} «{kit.title || kind.untitled}» من جميع الشاشات: لوحة الموظف ولوحة إدارة المشاريع ولوحة المدير، مع {g(kind, 'إصداراتها وملفاتها', 'إصداراته وملفاته')}.</p>
             <div className="tk-field">
               <label className="tk-lbl" htmlFor="tk-del-confirm">للتأكيد اكتب الرقم <b className="mono">{no}</b></label>
               <input id="tk-del-confirm" className="tk-in" dir="ltr" autoComplete="off" value={delText} onChange={(e) => setDelText(e.target.value)} placeholder={no} />

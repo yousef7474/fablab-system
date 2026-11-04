@@ -106,8 +106,8 @@ export const useBodyLock = () => {
   }, []);
 };
 
-export const StatusPill = ({ kit }) => {
-  const s = statusOf(kit);
+export const StatusPill = ({ kit, m = false }) => {
+  const s = statusOf(kit, m);
   return <span className={`tk-pill ${s.tone}`}>{s.label}</span>;
 };
 

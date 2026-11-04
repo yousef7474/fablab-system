@@ -304,12 +304,13 @@ export const diffData = (prev, next) => {
 
 export const fmtKitNo = (n) => (n == null ? 'TK-—' : `TK-${String(n).padStart(3, '0')}`);
 
-export const statusOf = (kit) => {
+// m = masculine noun (طلب) — the labels agree with it.
+export const statusOf = (kit, m = false) => {
   switch (kit?.status) {
     case 'pm_review': return { label: 'لدى مسؤول إدارة المشاريع', tone: 'amber' };
     case 'manager_review': return { label: 'لدى المدير للاعتماد', tone: 'cyan' };
-    case 'returned': return { label: kit.returnedBy === 'manager' ? 'أعادها المدير للتعديل' : 'معادة للتعديل', tone: 'red' };
-    case 'approved': return { label: 'معتمدة', tone: 'mint' };
+    case 'returned': return { label: kit.returnedBy === 'manager' ? (m ? 'أعاده المدير للتعديل' : 'أعادها المدير للتعديل') : (m ? 'معاد للتعديل' : 'معادة للتعديل'), tone: 'red' };
+    case 'approved': return { label: m ? 'معتمد' : 'معتمدة', tone: 'mint' };
     default: return { label: 'مسودة', tone: 'muted' };
   }
 };

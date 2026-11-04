@@ -3,6 +3,7 @@
 // م. نوف عبدالله البوعبيد). Shared by the employee's editor, the reviewers'
 // history view and the change comparison between versions.
 import { uid, has, num, getPath, setPath } from '../TrainingKits/kitModel';
+import { NA, FILE_BLOCKS, normalizeBlocks, blockState } from './planFiles';
 
 export { uid, has, num, getPath, setPath };
 export const idOf = (p) => `epf-${p.replace(/\./g, '-')}`;
@@ -13,14 +14,8 @@ export const monthName = (m) => MONTHS[Number(m) - 1] || '';
 export const PERIOD_TYPES = [{ v: 'quarter', l: 'ربع سنوي' }, { v: 'month', l: 'شهري' }];
 export const HEAD_ROLES = ['أساسي', 'مشارك', 'مساند'];
 
-// The three status columns of the template, each with the status that
-// means "the file is attached" (it then needs a file or a link).
-export const BLOCKS = [
-  { key: 'content', label: 'المحتوى المعتمد', statuses: ['مرفق ومعتمد', 'بانتظار الاعتماد', 'لا يتطلب'], attached: 'مرفق ومعتمد' },
-  { key: 'finance', label: 'الملف المالي التفصيلي', statuses: ['مرفق', 'قيد الإعداد', 'لا يتطلب'], attached: 'مرفق' },
-  { key: 'media', label: 'المتطلبات الإعلامية', statuses: ['مرفقة', 'قيد الإعداد', 'لا يتطلب'], attached: 'مرفقة' }
-];
-export const VOLUNTEER_LABEL = 'تصاميم الفرص التطوعية';
+// The four «ملفات المستهدف» — each on its own path (see planFiles.js).
+export { FILE_BLOCKS, NA };
 
 // Employee section codes → the Arabic name used in the plan.
 export const SECTION_AR = {
@@ -42,10 +37,7 @@ export const MAKE = {
     id: uid(), name: '', kpi: '', desc: '', output: '', audience: '', month: '', place: '', time: '',
     phases: [{ id: uid(), task: '', start: '', end: '', criterion: '' }, { id: uid(), task: '', start: '', end: '', criterion: '' }],
     sectionRole: '', headRole: '',
-    content: { status: '', link: '', files: [], kitId: '', kitNo: '', kitTitle: '' },
-    finance: { status: '', link: '', files: [] },
-    media: { status: '', link: '', files: [] },
-    volunteer: { link: '', files: [] },
+    ...normalizeBlocks({}),
     notes: ''
   })
 };
@@ -74,10 +66,7 @@ export const normalize = (d) => {
   s.targets = (Array.isArray(d.targets) ? d.targets : []).map(t => {
     const x = { ...blank, ...t, id: t?.id || uid() };
     x.phases = (Array.isArray(t?.phases) ? t.phases : []).map(p => ({ ...MAKE.phase(), ...p }));
-    ['content', 'finance', 'media', 'volunteer'].forEach(k => {
-      x[k] = { ...blank[k], ...(t?.[k] || {}) };
-      if (!Array.isArray(x[k].files)) x[k].files = [];
-    });
+    Object.assign(x, normalizeBlocks(t || {}));
     return x;
   });
   return s;
@@ -102,16 +91,25 @@ export const planTitle = (s) => {
   return p ? `الخطة التنفيذية — ${p}${has(s.header.section) ? ` · ${s.header.section}` : ''}` : '';
 };
 
-const blockHasProof = (b, key) => (b.files || []).length > 0 || has(b.link) || (key === 'content' && has(b.kitId));
+// What each file block asks for when it is neither linked / filled nor
+// «لا يتطلب».
+const BLOCK_ASK = {
+  content: 'اربط حقيبة تدريبية أو أنشئ حقيبة جديدة، أو اختر «لا يتطلب»',
+  finance: 'أنشئ طلب صرف مالي أو اربط طلبًا قائمًا، أو اختر «لا يتطلب»',
+  media: 'عبّئ نموذج طلب تصميم الإعلان، أو اختر «لا يتطلب»',
+  volunteer: 'عبّئ نموذج الفرص التطوعية، أو اختر «لا يتطلب»'
+};
 
 // Completeness — the template's fields. Each issue knows the field (target
-// id) it points to and the nav section it belongs to.
-export const analyze = (s) => {
+// id) it points to and the nav section it belongs to; `open` names the
+// embedded form to open before jumping (media / volunteer).
+// live = live statuses of the linked kits / financial requests.
+export const analyze = (s, live) => {
   const h = s.header; const sec = {}; const issues = [];
-  const chk = (k, ok, text, target) => {
+  const chk = (k, ok, text, target, open) => {
     const x = sec[k] || (sec[k] = { done: 0, total: 0 });
     x.total++;
-    if (ok) x.done++; else issues.push({ sec: k, text, target });
+    if (ok) x.done++; else issues.push({ sec: k, text, target, open });
   };
   chk('header', h.periodType === 'quarter' ? has(h.quarter) : h.periodType === 'month' ? has(h.month) : false,
     h.periodType === 'month' ? 'اختر شهر الخطة' : h.periodType === 'quarter' ? 'اختر ربع السنة للخطة' : 'حدد نوع فترة الخطة (شهري أو ربع سنوي)', idOf('header.period'));
@@ -135,12 +133,18 @@ export const analyze = (s) => {
       if (any && miss.length) chk(k, false, `${n} › المرحلة ${j + 1}: أكمل ${miss.map(m => m[1]).join('، ')}`, idOf(`${q}phases.${j}.${miss[0][0]}`));
       if (has(p.start) && has(p.end) && p.end < p.start) chk(k, false, `${n} › المرحلة ${j + 1}: تاريخ النهاية قبل تاريخ البداية`, idOf(`${q}phases.${j}.end`));
     });
-    BLOCKS.forEach(b => {
-      const x = t[b.key];
-      chk(k, has(x.status), `${n}: حدد حالة «${b.label}»`, idOf(`${q}${b.key}.status`));
-      if (x.status === b.attached) {
-        chk(k, blockHasProof(x, b.key), `${n}: «${b.label}» ${b.attached} — ارفع الملف أو ضع رابطه${b.key === 'content' ? ' أو اربط حقيبة معتمدة' : ''}`, `ep-blk-${t.id}-${b.key}`);
+    FILE_BLOCKS.forEach(b => {
+      const st = blockState(t, b.key, live);
+      if (st.gone) {
+        chk(k, false, `${n}: ${b.key === 'content' ? 'الحقيبة المرتبطة لم تعد متاحة' : 'طلب الصرف المرتبط لم يعد متاحًا'} — اربط غيره أو أنشئ جديدًا`, `ep-blk-${t.id}-${b.key}`);
+        return;
       }
+      if (st.form && st.missing.length) {
+        const m = st.missing;
+        chk(k, false, `${n} › ${b.label}: أكمل ${m.slice(0, 3).map(x => x.label).join('، ')}${m.length > 3 ? ` و${m.length - 3} غيرها` : ''}`, idOf(`${q}${m[0].path}`), `${b.key}-${t.id}`);
+        return;
+      }
+      chk(k, st.ok, `${n}: «${b.label}» — ${BLOCK_ASK[b.key]}`, `ep-blk-${t.id}-${b.key}`);
     });
   });
 
@@ -152,6 +156,13 @@ export const analyze = (s) => {
 // ─────────────── Change comparison (edit history) ───────────────
 
 const short = (v) => (Array.isArray(v) ? v.join('، ') : String(v == null ? '' : v));
+const MEDIA_F = {
+  activity: 'اسم النشاط', implementer: 'اسم المنفذ', ageMin: 'العمر من', ageMax: 'العمر إلى', timeFrom: 'الوقت من', timeTo: 'الوقت إلى', dayPart: 'الفترة',
+  dateFrom: 'التاريخ من', dateTo: 'التاريخ إلى', beneficiaries: 'عدد المستفيدين', seatsNote: 'توزيع المقاعد', days: 'عدد الأيام الفعلية', gender: 'الفئة المستهدفة',
+  dueDate: 'تاريخ انتهاء التصميم', urgency: 'الأولوية', cost: 'تكلفة البرنامج', notes: 'ملاحظات للتصميم'
+};
+const VOL_F = { coordinatorName: 'منسق الفرص', coordinatorPhone: 'جوال المنسق', location: 'مكان التطوع', mode: 'طريقة التطوع', support: 'الدعم المقدم للمتطوع', risks: 'المخاطر والتحديات' };
+const ROLE_F = { title: 'المسمى', field: 'المجال أو التخصص', count: 'العدد', tasks: 'المهام', skills: 'المهارات', education: 'المؤهل', gender: 'الجنس', ageMin: 'العمر من', ageMax: 'العمر إلى', timeFrom: 'من الساعة', timeTo: 'إلى الساعة' };
 
 // Every field of a plan as [key, label, value], keyed by target / phase ids
 // so a moved or removed item reads as such.
@@ -172,15 +183,25 @@ export const flatten = (raw) => {
     put(`t.${t.id}.month`, `${n} › شهر التنفيذ`, monthName(t.month));
     t.phases.forEach((p, j) => put(`t.${t.id}.p.${p.id}`, `${n} › المرحلة ${j + 1}`,
       [p.task, p.start && `من ${p.start}`, p.end && `إلى ${p.end}`, p.criterion && `— ${p.criterion}`].filter(Boolean).join(' ')));
-    BLOCKS.forEach(b => {
+    FILE_BLOCKS.forEach(b => {
       const x = t[b.key];
       put(`t.${t.id}.${b.key}.status`, `${n} › ${b.label} › الحالة`, x.status);
       put(`t.${t.id}.${b.key}.link`, `${n} › ${b.label} › الرابط`, x.link);
       put(`t.${t.id}.${b.key}.files`, `${n} › ${b.label} › الملفات`, x.files.map(f => f.name));
     });
     put(`t.${t.id}.content.kit`, `${n} › المحتوى المعتمد › الحقيبة المرتبطة`, t.content.kitId ? `${t.content.kitNo} ${t.content.kitTitle}`.trim() : '');
-    put(`t.${t.id}.volunteer.link`, `${n} › ${VOLUNTEER_LABEL} › الرابط`, t.volunteer.link);
-    put(`t.${t.id}.volunteer.files`, `${n} › ${VOLUNTEER_LABEL} › الملفات`, t.volunteer.files.map(f => f.name));
+    put(`t.${t.id}.finance.req`, `${n} › الملف المالي › طلب الصرف المرتبط`, t.finance.requestId ? `${t.finance.requestNo} ${t.finance.requestTitle}`.trim() : '');
+    const mf = t.media.form; const M = `${n} › المتطلبات الإعلامية`;
+    Object.entries(MEDIA_F).forEach(([k, l]) => put(`t.${t.id}.mf.${k}`, `${M} › ${l}`, mf[k]));
+    mf.axes.forEach((a, j) => put(`t.${t.id}.mf.ax.${a.id}`, `${M} › المحور ${j + 1}`, [a.title, a.desc].filter(has).join(' — ')));
+    put(`t.${t.id}.mf.images`, `${M} › الصور`, mf.images.map(im => im.caption || im.name));
+    const vf = t.volunteer.form; const V = `${n} › الفرص التطوعية`;
+    Object.entries(VOL_F).forEach(([k, l]) => put(`t.${t.id}.vf.${k}`, `${V} › ${l}`, vf[k]));
+    vf.roles.forEach((r, j) => {
+      Object.entries(ROLE_F).forEach(([k, l]) => put(`t.${t.id}.vf.r.${r.id}.${k}`, `${V} › الدور ${j + 1} › ${l}`, r[k]));
+      put(`t.${t.id}.vf.r.${r.id}.days`, `${V} › الدور ${j + 1} › الأيام`,
+        [r.dateFrom && `من ${r.dateFrom}`, r.dateTo && `إلى ${r.dateTo}`, r.weekdays.join('، '), !r.dateFrom && r.days && `${r.days} أيام`].filter(Boolean).join(' '));
+    });
   });
   return out;
 };

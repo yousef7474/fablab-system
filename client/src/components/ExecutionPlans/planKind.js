@@ -1,7 +1,8 @@
 // The execution plan as a document type for the shared review screens
 // (KitList, KitReview, KitHistory) — see TrainingKits/kinds.js.
 import { routesFor } from '../TrainingKits/kinds';
-import { fmtPlanNo, normalize, diffData, BLOCKS, VOLUNTEER_LABEL } from './planModel';
+import { fmtPlanNo, normalize, diffData } from './planModel';
+import { FILE_BLOCKS, NA, mediaStarted, volunteerStarted } from './planFiles';
 
 export const PLAN_KIND = {
   key: 'plan',
@@ -16,9 +17,15 @@ export const PLAN_KIND = {
   approvedMine: ' تبقى هنا للرجوع إليها، ونسخة منها في أرشيف المدير.',
   normalize,
   diff: diffData,
-  // Each target's attached files, labelled by target and column.
-  filesOf: (s) => s.targets.flatMap((t, i) => [...BLOCKS, { key: 'volunteer', label: VOLUNTEER_LABEL }]
+  // Files uploaded to a target (older plans), labelled by target and column.
+  filesOf: (s) => s.targets.flatMap((t, i) => FILE_BLOCKS
     .flatMap(b => (t[b.key]?.files || []).map(f => ({ ...f, label: `المستهدف ${i + 1} › ${b.label}` })))),
-  imagesOf: () => [],
-  partsOf: () => []
+  // The ad images attached to each target's media form.
+  imagesOf: (s) => s.targets.flatMap((t, i) => (t.media.status === NA ? [] : t.media.form.images)
+    .map(im => ({ ...im, id: im.fileId, code: `م${i + 1}`, caption: im.caption || `المستهدف ${i + 1} — صورة الإعلان` }))),
+  // Each filled media / volunteer form prints on its own.
+  partsOf: (s) => s.targets.flatMap((t, i) => [
+    t.media.status !== NA && mediaStarted(t.media.form) && { key: `media-${t.id}`, label: `المستهدف ${i + 1} › نموذج طلب تصميم الإعلان` },
+    t.volunteer.status !== NA && volunteerStarted(t.volunteer.form) && { key: `volunteer-${t.id}`, label: `المستهدف ${i + 1} › الفرص التطوعية` }
+  ].filter(Boolean))
 };

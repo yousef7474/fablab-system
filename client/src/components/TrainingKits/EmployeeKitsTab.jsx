@@ -7,6 +7,8 @@ import KitReview from './KitReview';
 import { blankState, analyze } from './kitModel';
 import { exampleKitData, exampleImages } from './kitExample';
 import { errorText, uploadFile } from './kitApi';
+import WorkshopRequestEditor from '../Requests/workshop/WorkshopRequestEditor';
+import { createWorkshopRequest } from '../Requests/workshop/wrApi';
 import './TrainingKits.css';
 
 // Employee dashboard tab «الحقائب التدريبية»: the employee's kits, a new
@@ -18,6 +20,7 @@ const EmployeeKitsTab = ({ portalTarget, theme }) => {
   const [editing, setEditing] = useState(null); // full kit object
   const [viewing, setViewing] = useState(null); // kitId
   const [creating, setCreating] = useState(false);
+  const [wrEditing, setWrEditing] = useState(null); // a workshop request started from an approved kit
 
   const load = useCallback(async () => {
     try {
@@ -77,6 +80,20 @@ const EmployeeKitsTab = ({ portalTarget, theme }) => {
       load();
     } catch (err) {
       toast.error(errorText(err, 'تعذّر إنشاء حقيبة المثال'));
+    } finally {
+      setCreating(false);
+    }
+  };
+
+  // «🛠 طلب ورشة من هذه الحقيبة» — a new request prefilled from the kit.
+  const requestWorkshop = async (k) => {
+    setCreating(true);
+    try {
+      const full = await createWorkshopRequest(employeeApi, k.id || k.kitId);
+      setViewing(null);
+      setWrEditing(full);
+    } catch (err) {
+      toast.error(errorText(err, 'تعذّر إنشاء طلب الورشة'));
     } finally {
       setCreating(false);
     }
@@ -156,7 +173,17 @@ const EmployeeKitsTab = ({ portalTarget, theme }) => {
       {viewing && (
         <KitReview api={employeeApi} scope="mine" kitId={viewing} portalTarget={portalTarget} theme={theme}
           onClose={() => { setViewing(null); load(); }}
-          onEdit={(k) => openEditor(k.kitId)} />
+          onEdit={(k) => openEditor(k.kitId)}
+          extraActions={(k) => (k.status === 'approved' ? (
+            <button type="button" className="tk-btn primary" onClick={() => requestWorkshop(k)} disabled={creating} title="ورشة جديدة مبنية على هذه الحقيبة — تمر على مسؤول إدارة المشاريع ثم المدير">
+              🛠 <span className="hide-sm">{creating ? 'جارٍ الإنشاء…' : 'طلب ورشة من هذه الحقيبة'}</span>
+            </button>
+          ) : null)} />
+      )}
+      {wrEditing && (
+        <WorkshopRequestEditor api={employeeApi} doc={wrEditing} portalTarget={portalTarget} theme={theme}
+          onClose={() => { setWrEditing(null); toast.info('تجد طلب الورشة في تبويب «الطلبات»'); }}
+          onSubmitted={() => { setWrEditing(null); toast.info('تابع حالة الطلب من تبويب «الطلبات»'); }} />
       )}
     </div>
   );

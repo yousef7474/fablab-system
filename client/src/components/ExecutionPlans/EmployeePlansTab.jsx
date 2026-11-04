@@ -3,11 +3,14 @@ import { toast } from 'react-toastify';
 import employeeApi from '../../config/employeeApi';
 import KitList, { KitFilters } from '../TrainingKits/KitList';
 import KitReview from '../TrainingKits/KitReview';
-import { errorText } from '../TrainingKits/kitApi';
+import { errorText, uploadFile } from '../TrainingKits/kitApi';
+import { fmtKitNo } from '../TrainingKits/kitModel';
 import PlanEditor from './PlanEditor';
 import { PLAN_KIND } from './planKind';
 import { blankState, analyze } from './planModel';
-import { examplePlanData } from './planExample';
+import { examplePlanData, exampleMediaImages } from './planExample';
+import { fmtFinanceNo } from './planFiles';
+import { newFinanceData, analyze as financeAnalyze } from '../Requests/finance/frModel';
 import '../TrainingKits/TrainingKits.css';
 import './Plans.css';
 
@@ -60,15 +63,49 @@ const EmployeePlansTab = ({ portalTarget, theme }) => {
     }
   };
   const create = () => createFrom(blankState(me()), 'تعذّر إنشاء خطة جديدة');
-  // A filled example plan — linked to the employee's latest approved
-  // training kit when there is one — to see a complete plan and try the flow.
+  // A filled example plan, to see a complete plan and try the flow. Each
+  // «ملف المستهدف» is shown on its own path: the employee's training kit
+  // (an approved one first), a financial request created for it, media
+  // forms with their ad images and a volunteer form.
   const createExample = async () => {
-    let kit = null;
+    setCreating(true);
     try {
-      const { data } = await employeeApi.get('/training-kits/mine');
-      kit = (Array.isArray(data) ? data : []).find(k => k.status === 'approved') || null;
-    } catch { /* the example works without a kit */ }
-    createFrom(examplePlanData(me(), kit), 'تعذّر إنشاء خطة المثال');
+      let kit = null;
+      try {
+        const { data } = await employeeApi.get('/training-kits/mine');
+        const list = Array.isArray(data) ? data : [];
+        kit = list.find(k => k.status === 'approved') || list[0] || null;
+      } catch { /* the example works without a kit */ }
+      const data = examplePlanData(me(), kit);
+      const { data: plan } = await employeeApi.post(R.list, { data, completion: analyze(data).pct });
+      const id = plan.id;
+      for (const [ti, file, caption] of exampleMediaImages(kit?.title)) {
+        try {
+          const up = await uploadFile(employeeApi, id, file, 'image', R.upload(id));
+          data.targets[ti].media.form.images.push({ fileId: up.fileId, name: up.name, size: up.size, mime: up.mime, caption });
+        } catch { /* the form still opens without that image */ }
+      }
+      // The training program's financial request (a draft — «قيد الإعداد»).
+      try {
+        const t = data.targets[0];
+        const fd = newFinanceData({
+          title: t.name, kind: 'برنامج تدريبي', section: data.header.section,
+          startDate: t.phases[2]?.start, endDate: t.phases[2]?.end, days: 4, beneficiaries: 20,
+          planId: id, planNo: PLAN_KIND.fmtNo(plan.number), targetId: t.id, targetName: t.name,
+          kitId: t.content.kitId, kitNo: t.content.kitNo || (kit ? fmtKitNo(kit.number) : ''), kitTitle: t.content.kitTitle
+        });
+        const { data: fr } = await employeeApi.post('/financial-requests/mine', { data: fd, completion: financeAnalyze(fd).pct });
+        Object.assign(t.finance, { requestId: fr.id, requestNo: fmtFinanceNo(fr.number), requestTitle: fr.title || t.name });
+      } catch { /* the target then asks for a financial request */ }
+      await employeeApi.put(R.kit(id), { data, completion: analyze(data).pct });
+      const { data: full } = await employeeApi.get(R.kit(id));
+      setEditing(full);
+      load();
+    } catch (err) {
+      toast.error(errorText(err, 'تعذّر إنشاء خطة المثال'));
+    } finally {
+      setCreating(false);
+    }
   };
 
   const remove = async (p) => {

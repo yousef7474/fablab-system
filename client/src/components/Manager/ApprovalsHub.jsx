@@ -8,6 +8,7 @@ import ApprovalArchiveTab from '../Admin/ApprovalArchiveTab';
 import ProjectSupportApprovals from './ProjectSupportApprovals';
 import { TrainingKitApprovals } from '../TrainingKits/ManagerKits';
 import { PlanApprovals } from '../ExecutionPlans/ManagerPlans';
+import { RequestApprovals } from '../Requests/ManagerRequests';
 import './Approvals.css';
 
 // Segmented switcher for the manager's Approvals tab. Instead of
@@ -26,6 +27,8 @@ const TABS = [
   { id: 'support',   ar: 'طلبات الدعم',       en: 'Support Requests',   icon: '💜', color: '#8b5cf6', solid: '#7c3aed', endpoint: '/project-support/pending' },
   { id: 'kits',      ar: 'الحقائب التدريبية', en: 'Training Kits',      icon: '🎒', color: '#EE2329', solid: '#c81e24', endpoint: '/training-kits/admin/kits?scope=pending' },
   { id: 'plans',     ar: 'الخطط التنفيذية',  en: 'Execution Plans',    icon: '🗓', color: '#0d9488', solid: '#0f766e', endpoint: '/execution-plans/admin/plans?scope=pending' },
+  // Workshop + financial requests share one queue (several endpoints).
+  { id: 'requests',  ar: 'طلبات الورش والصرف', en: 'Workshop & Finance', icon: '📨', color: '#6366f1', solid: '#4338ca', endpoint: ['/workshop-requests/admin/requests?scope=pending', '/financial-requests/admin/requests?scope=pending'] },
   // Archive isn't a "queue" — it's the audit trail of every request
   // ever sent to the manager, so no pending-count endpoint. Rendered
   // as an ordinary tab that shows the historical list w/ reprint.
@@ -44,10 +47,9 @@ const ApprovalsHub = () => {
   const loadCounts = useCallback(async () => {
     const next = {};
     await Promise.all(TABS.filter(t => t.endpoint).map(async (t) => {
-      try {
-        const { data } = await api.get(t.endpoint);
-        next[t.id] = Array.isArray(data) ? data.length : 0;
-      } catch { next[t.id] = 0; }
+      const eps = Array.isArray(t.endpoint) ? t.endpoint : [t.endpoint];
+      const ns = await Promise.all(eps.map(ep => api.get(ep).then(({ data }) => (Array.isArray(data) ? data.length : 0)).catch(() => 0)));
+      next[t.id] = ns.reduce((a, b) => a + b, 0);
     }));
     setCounts(next);
   }, []);
@@ -124,6 +126,7 @@ const ApprovalsHub = () => {
         {active === 'support'   && <ProjectSupportApprovals />}
         {active === 'kits'      && <TrainingKitApprovals />}
         {active === 'plans'     && <PlanApprovals />}
+        {active === 'requests'  && <RequestApprovals />}
         {active === 'archive'   && <ApprovalArchiveTab />}
       </div>
     </div>

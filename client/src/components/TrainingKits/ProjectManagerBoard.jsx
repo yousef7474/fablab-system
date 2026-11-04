@@ -7,6 +7,8 @@ import KitReview from './KitReview';
 import { errorText } from './kitApi';
 import { KIT_KIND } from './kinds';
 import { PLAN_KIND } from '../ExecutionPlans/planKind';
+import { WR_KIND } from '../Requests/workshop/wrKind';
+import { FR_KIND } from '../Requests/finance/frKind';
 import '../Employee/Employee.css';
 import './TrainingKits.css';
 import '../ExecutionPlans/Plans.css';
@@ -17,7 +19,9 @@ import '../ExecutionPlans/Plans.css';
 // its full history and files.
 const TYPES = [
   { key: 'kits', kind: KIT_KIND, label: 'الحقائب التدريبية', plural: 'الحقائب', none: 'لا توجد حقائب' },
-  { key: 'plans', kind: PLAN_KIND, label: 'الخطط التنفيذية', plural: 'الخطط', none: 'لا توجد خطط' }
+  { key: 'plans', kind: PLAN_KIND, label: 'الخطط التنفيذية', plural: 'الخطط', none: 'لا توجد خطط' },
+  { key: 'workshops', kind: WR_KIND, label: 'طلبات الورش', plural: 'طلبات الورش', none: 'لا توجد طلبات ورش' },
+  { key: 'finance', kind: FR_KIND, label: 'طلبات الصرف', plural: 'طلبات الصرف', none: 'لا توجد طلبات صرف' }
 ];
 const TABS = [
   { key: 'queue', label: 'بانتظار مراجعتي', icon: '⏳' },
@@ -39,8 +43,8 @@ const ProjectManagerBoard = () => {
   const [dashRoot, setDashRoot] = useState(null);
   const [theme, setTheme] = useState(() => localStorage.getItem('employeeTheme') || 'dark');
   const [me, setMe] = useState(null); // { isPM, pmName }
-  const [lists, setLists] = useState({ kits: [], plans: [] });
-  const [type, setType] = useState(() => (localStorage.getItem('pmBoardType') === 'plans' ? 'plans' : 'kits'));
+  const [lists, setLists] = useState({});
+  const [type, setType] = useState(() => { const t = localStorage.getItem('pmBoardType'); return TYPES.some(x => x.key === t) ? t : 'kits'; });
   const [tab, setTab] = useState('queue');
   const [search, setSearch] = useState('');
   const [open, setOpen] = useState(null);

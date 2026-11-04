@@ -1,13 +1,19 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'react-toastify';
 import {
-  MONTHS, QUARTERS, PERIOD_TYPES, HEAD_ROLES, BLOCKS, VOLUNTEER_LABEL, MAKE,
-  normalize, analyze, periodLabel, periodMonths, monthName, idOf, getPath, setPath, has, fmtPlanNo, diffData
+  MONTHS, QUARTERS, PERIOD_TYPES, HEAD_ROLES, MAKE,
+  normalize, analyze, periodLabel, periodMonths, monthName, idOf, getPath, setPath, has, num, fmtPlanNo, diffData
 } from './planModel';
+import { FILE_BLOCKS, NA, blockState, fmtFinanceNo } from './planFiles';
+import { MediaForm, VolunteerForm } from './PlanTargetForms';
 import { PLAN_KIND } from './planKind';
-import { fmtKitNo, fmtDay, humanSize, statusOf, ar, NOTES } from '../TrainingKits/kitModel';
+import { fmtKitNo, fmtDay, humanSize, statusOf, ar, NOTES, blankState as kitBlankState, analyze as kitAnalyze } from '../TrainingKits/kitModel';
 import { AutoArea, Seg, Portal, useBodyLock, Modal, KitHistory } from '../TrainingKits/KitParts';
-import { uploadFile, downloadFile, printDocument, errorText } from '../TrainingKits/kitApi';
+import { uploadFile, downloadFile, printDocument, compressImage, errorText } from '../TrainingKits/kitApi';
+import KitEditor from '../TrainingKits/KitEditor';
+import KitReview from '../TrainingKits/KitReview';
+import { newFinanceData, analyze as financeAnalyze } from '../Requests/finance/frModel';
+import FinanceRequestEditor from '../Requests/finance/FinanceRequestEditor';
 import '../TrainingKits/TrainingKits.css';
 import './Plans.css';
 
@@ -18,6 +24,10 @@ const KPIS = ['عدد المستفيدين من البرامج التدريبي�
   'عدد الزوار والمستفيدين من الفعاليات', 'عدد الشراكات والمبادرات المجتمعية', 'عدد ساعات التطوع', 'نسبة جاهزية الأجهزة والمعدات', 'عدد المنتجات المصنّعة للمستفيدين'];
 const AUDIENCES = ['طلاب المرحلة الابتدائية', 'طلاب المرحلة المتوسطة', 'طلاب المرحلة الثانوية', 'طلاب الجامعات', 'المعلمون والمعلمات', 'رواد الأعمال', 'الأسر والأطفال', 'المجتمع العام', 'فريق فاب لاب الداخلي'];
 const PLACES = ['فاب لاب الأحساء', 'قاعة التدريب', 'معمل الطباعة ثلاثية الأبعاد', 'معمل الإلكترونيات', 'عن بُعد (أون لاين)'];
+const FIN = '/financial-requests/mine';
+const byId = (list) => (Array.isArray(list) ? Object.fromEntries(list.map(x => [x.id || x.kitId || x.requestId, x])) : undefined);
+const docNo = (d) => (d.number != null ? d.number : d.kitNumber != null ? d.kitNumber : d.requestNumber);
+const TONE = { ok: 'mint', wait: 'amber', na: 'muted', red: 'red', none: 'red' };
 
 /**
  * The employee's execution plan form (نموذج الخطة التنفيذية, in the
@@ -32,7 +42,10 @@ const PlanEditor = ({ api, plan, portalTarget, theme = 'dark', onClose, onSubmit
   const [active, setActive] = useState('ep-s1');
   const [showAll, setShowAll] = useState(false);
   const [busy, setBusy] = useState({});
-  const [kits, setKits] = useState([]);
+  const [kits, setKits] = useState(null); // all the employee's kits (any status)
+  const [fins, setFins] = useState(null); // the employee's financial requests
+  const [openForms, setOpenForms] = useState(() => new Set()); // 'media-<tid>' / 'volunteer-<tid>'
+  const [nested, setNested] = useState(null); // { type: 'kit' | 'kitView' | 'finance', doc }
   const [submitOpen, setSubmitOpen] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
   const [note, setNote] = useState('');
@@ -42,15 +55,24 @@ const PlanEditor = ({ api, plan, portalTarget, theme = 'dark', onClose, onSubmit
   const latest = useRef(data);
   const id = plan.id || plan.planId;
 
-  const A = useMemo(() => analyze(data), [data]);
+  // Live statuses of the linked kits / financial requests — they move on
+  // their own review paths, so the plan reads them rather than storing them.
+  const live = useMemo(() => ({ kits: byId(kits), finance: byId(fins) }), [kits, fins]);
+  const liveRef = useRef(live);
+  liveRef.current = live;
+  const A = useMemo(() => analyze(data, live), [data, live]);
   const locked = !['draft', 'returned'].includes(plan.status);
   const h = data.header;
   const months = periodMonths(h);
+  const planNo = fmtPlanNo(plan.number != null ? plan.number : plan.planNumber);
 
-  // The employee's approved training kits, to link as a target's content.
-  useEffect(() => {
-    api.get('/training-kits/mine').then(({ data: list }) => setKits((Array.isArray(list) ? list : []).filter(k => k.status === 'approved'))).catch(() => {});
+  // The employee's kits and financial requests, to link as a target's
+  // content / financial file.
+  const loadLinks = useCallback(() => {
+    api.get('/training-kits/mine').then(({ data: list }) => setKits(Array.isArray(list) ? list : [])).catch(() => {});
+    api.get(FIN).then(({ data: list }) => setFins(Array.isArray(list) ? list : [])).catch(() => {});
   }, [api]);
+  useEffect(() => { loadLinks(); }, [loadLinks]);
 
   // ── state updates ──
   const update = useCallback((fn) => {
@@ -66,7 +88,7 @@ const PlanEditor = ({ api, plan, portalTarget, theme = 'dark', onClose, onSubmit
     dirty.current = false;
     setSave(s => ({ ...s, state: 'pending' }));
     try {
-      await api.put(R.kit(id), { data: latest.current, completion: analyze(latest.current).pct });
+      await api.put(R.kit(id), { data: latest.current, completion: analyze(latest.current, liveRef.current).pct });
       setSave({ state: 'ok', at: new Date() });
       return true;
     } catch (err) {
@@ -103,7 +125,13 @@ const PlanEditor = ({ api, plan, portalTarget, theme = 'dark', onClose, onSubmit
     return () => io.disconnect();
   }, [targetKeys]);
 
-  const goto = (target) => {
+  // `open` = an embedded form ('media-<tid>') to open before jumping.
+  const goto = (target, open) => {
+    if (open && !openForms.has(open)) {
+      setOpenForms(s0 => new Set(s0).add(open));
+      setTimeout(() => goto(target), 160);
+      return;
+    }
     const el = document.getElementById(target);
     if (!el) return;
     if (el.classList.contains('tk-sec')) { el.scrollIntoView({ behavior: 'smooth', block: 'start' }); return; }
@@ -126,7 +154,8 @@ const PlanEditor = ({ api, plan, portalTarget, theme = 'dark', onClose, onSubmit
   const removeTarget = (i) => {
     const t = data.targets[i];
     if (!window.confirm(`حذف «المستهدف ${i + 1}${t.name ? ` — ${t.name}` : ''}» بكل مراحله وملفاته؟`)) return;
-    [...BLOCKS.map(b => b.key), 'volunteer'].forEach(k => (t[k].files || []).forEach(f => dropFile(f.fileId)));
+    FILE_BLOCKS.forEach(b => (t[b.key].files || []).forEach(f => dropFile(f.fileId)));
+    t.media.form.images.forEach(f => dropFile(f.fileId));
     update(n => { n.targets.splice(i, 1); });
   };
   const moveTarget = (i, dir) => update(n => {
@@ -141,35 +170,177 @@ const PlanEditor = ({ api, plan, portalTarget, theme = 'dark', onClose, onSubmit
     if (on) list.add(name); else list.delete(name);
     return { ...b, [key]: [...list] };
   });
-  const addFiles = async (i, key, files) => {
-    const tid = data.targets[i].id;
-    for (const f of Array.from(files || [])) {
-      markBusy(`${tid}-${key}`, f.name, true);
-      try {
-        const up = await uploadFile(api, id, f, 'attachment', R.upload(id));
-        update(n => {
-          const t = n.targets.find(x => x.id === tid);
-          if (t) t[key].files.push({ fileId: up.fileId, name: up.name, size: up.size, mime: up.mime });
-        });
-      } catch (err) {
-        toast.error(errorText(err, `تعذّر رفع الملف ${f.name}`));
-      } finally {
-        markBusy(`${tid}-${key}`, f.name, false);
-      }
-    }
-  };
   const dropFile = (fileId) => { api.delete(R.dropFile(id, fileId)).catch(() => {}); };
   const download = (f) => downloadFile(api, R.file(f.fileId), f.name).catch(err => toast.error(errorText(err, 'تعذّر التنزيل')));
 
-  const linkKit = (i, kitId) => update(n => {
+  // ── linked documents: the content's kit, the financial request ──
+  const linkKit = (i, k) => update(n => {
     const c = n.targets[i].content;
-    const k = kits.find(x => (x.id || x.kitId) === kitId);
-    if (!k) { c.kitId = ''; c.kitNo = ''; c.kitTitle = ''; return; }
-    c.kitId = kitId;
-    c.kitNo = fmtKitNo(k.number != null ? k.number : k.kitNumber);
-    c.kitTitle = k.title || '';
-    if (!c.status) c.status = 'مرفق ومعتمد';
+    c.kitId = k ? (k.id || k.kitId) : '';
+    c.kitNo = k ? fmtKitNo(docNo(k)) : '';
+    c.kitTitle = k ? (k.title || '') : '';
+    if (k && c.status === NA) c.status = '';
   });
+  const linkFinance = (i, r) => update(n => {
+    const x = n.targets[i].finance;
+    x.requestId = r ? (r.id || r.requestId) : '';
+    x.requestNo = r ? fmtFinanceNo(docNo(r)) : '';
+    x.requestTitle = r ? (r.title || '') : '';
+    if (r && x.status === NA) x.status = '';
+  });
+  const setNA = (i, key, on) => set(`targets.${i}.${key}.status`, on ? NA : '');
+
+  // A new training kit for the target (named after it), linked and opened.
+  const createKit = async (i) => {
+    const t = data.targets[i];
+    try {
+      const kd = kitBlankState();
+      kd.card.name = t.name || '';
+      const { data: k } = await api.post('/training-kits/mine', { data: kd, completion: kitAnalyze(kd).pct });
+      linkKit(i, k);
+      loadLinks();
+      const { data: full } = await api.get(`/training-kits/mine/${k.id || k.kitId}`);
+      setNested({ type: 'kit', doc: full });
+      toast.success(`أُنشئت الحقيبة ${fmtKitNo(docNo(k))} وربطت بالمستهدف — تجدها أيضًا في «الحقائب التدريبية»`);
+    } catch (err) {
+      toast.error(errorText(err, 'تعذّر إنشاء الحقيبة'));
+    }
+  };
+  const openKit = async (kitId) => {
+    try {
+      const { data: full } = await api.get(`/training-kits/mine/${kitId}`);
+      setNested(['draft', 'returned'].includes(full.status) ? { type: 'kit', doc: full } : { type: 'kitView', doc: full });
+    } catch (err) {
+      toast.error(errorText(err, 'تعذّر فتح الحقيبة'));
+    }
+  };
+
+  // A new financial request filled from the plan / target, linked and opened.
+  const createFinance = async (i) => {
+    const t = data.targets[i];
+    const kit = t.content.kitId ? live.kits?.[t.content.kitId] : null;
+    let kitCard = null;
+    if (t.content.kitId) {
+      try { kitCard = (await api.get(`/training-kits/mine/${t.content.kitId}`)).data?.data?.card || null; } catch { /* optional */ }
+    }
+    const phases = t.phases.filter(ph => has(ph.start) || has(ph.end));
+    const starts = phases.map(ph => ph.start).filter(has).sort();
+    const ends = phases.map(ph => ph.end).filter(has).sort();
+    try {
+      const fd = newFinanceData({
+        title: t.name || '',
+        section: h.section || '',
+        startDate: starts[0] || '',
+        endDate: ends[ends.length - 1] || '',
+        days: num(kitCard?.days) || '',
+        beneficiaries: num(kitCard?.partMax) || '',
+        planId: id,
+        planNo,
+        targetId: t.id,
+        targetName: t.name || '',
+        kitId: t.content.kitId || '',
+        kitNo: t.content.kitNo || (kit ? fmtKitNo(docNo(kit)) : ''),
+        kitTitle: t.content.kitTitle || kit?.title || '',
+        kind: t.content.kitId ? 'برنامج تدريبي' : ''
+      });
+      const { data: r } = await api.post(FIN, { data: fd, completion: financeAnalyze(fd).pct });
+      linkFinance(i, r);
+      loadLinks();
+      const { data: full } = await api.get(`${FIN}/${r.id || r.requestId}`);
+      setNested({ type: 'finance', doc: full });
+      toast.success(`أُنشئ طلب الصرف ${fmtFinanceNo(docNo(r))} وربط بالمستهدف`);
+    } catch (err) {
+      toast.error(errorText(err, 'تعذّر إنشاء طلب الصرف'));
+    }
+  };
+  const openFinance = async (rid) => {
+    try {
+      const { data: full } = await api.get(`${FIN}/${rid}`);
+      setNested({ type: 'finance', doc: full });
+    } catch (err) {
+      toast.error(errorText(err, 'تعذّر فتح طلب الصرف'));
+    }
+  };
+  const closeNested = () => { setNested(null); loadLinks(); };
+
+  // ── the media form's images ──
+  const addMediaImages = async (i, files) => {
+    const tid = data.targets[i].id;
+    const list = Array.from(files || []).filter(f => /^image\//.test(f.type));
+    if (!list.length) { toast.error('اختر صورة بصيغة PNG أو JPG أو SVG'); return; }
+    for (const f of list) {
+      markBusy(`${tid}-mimg`, f.name, true);
+      try {
+        const small = await compressImage(f);
+        const up = await uploadFile(api, id, small, 'image', R.upload(id));
+        update(n => {
+          const t = n.targets.find(x => x.id === tid);
+          if (t) t.media.form.images.push({ fileId: up.fileId, name: up.name, size: up.size, mime: up.mime, caption: '' });
+        });
+      } catch (err) {
+        toast.error(errorText(err, `تعذّر رفع الصورة ${f.name}`));
+      } finally {
+        markBusy(`${tid}-mimg`, f.name, false);
+      }
+    }
+  };
+
+  // Fills the empty media / volunteer fields from the target, the plan and
+  // the linked kit (programme name, ages, days, seats, axes, up to 3 of the
+  // kit's reference images copied into the plan).
+  const prefill = async (i, key) => {
+    const t = data.targets[i];
+    let kd = null;
+    if (t.content.kitId) {
+      try { kd = (await api.get(`/training-kits/mine/${t.content.kitId}`)).data?.data || null; } catch { /* optional */ }
+    }
+    const me = (() => { try { return JSON.parse(localStorage.getItem('employeeData') || 'null'); } catch { return null; } })();
+    const card = kd?.card || {};
+    const phases = t.phases.filter(ph => has(ph.start));
+    const starts = phases.map(ph => ph.start).sort();
+    const ends = t.phases.map(ph => ph.end).filter(has).sort();
+    const fill = (o, k, v) => { if (!has(o[k]) && has(v)) o[k] = v; };
+    if (key === 'media') {
+      update(n => {
+        const f = n.targets[i].media.form;
+        fill(f, 'activity', card.name || t.name);
+        fill(f, 'implementer', h.head || me?.name);
+        fill(f, 'ageMin', card.ageMin); fill(f, 'ageMax', card.ageMax);
+        fill(f, 'beneficiaries', card.partMax);
+        fill(f, 'days', has(card.days) ? ar(card.days, ['يوم واحد', 'يومان', 'أيام', 'يومًا']) : '');
+        fill(f, 'dateFrom', starts[0]); fill(f, 'dateTo', ends[ends.length - 1]);
+        const filledAxes = f.axes.some(a => has(a.title) || has(a.desc));
+        if (!filledAxes && Array.isArray(kd?.plan) && kd.plan.length) {
+          f.axes = kd.plan.map((d, j) => ({ id: d.id || `ax${j}`, title: d.learn || `اليوم ${j + 1}`, desc: d.topics || '' }));
+        }
+      });
+      // Copy the kit's reference images (the media form needs 3).
+      const have = t.media.form.images.length;
+      const imgs = (kd?.images || []).slice(0, Math.max(0, 3 - have));
+      for (const im of imgs) {
+        try {
+          const res = await api.get(`/training-kits/mine/files/${im.fileId}`, { responseType: 'blob' });
+          const file = new File([res.data], im.name || 'image.jpg', { type: res.data.type || 'image/jpeg' });
+          const up = await uploadFile(api, id, file, 'image', R.upload(id));
+          update(n => { n.targets[i].media.form.images.push({ fileId: up.fileId, name: up.name, size: up.size, mime: up.mime, caption: im.caption || '' }); });
+        } catch { /* skip that image */ }
+      }
+    } else {
+      update(n => {
+        const f = n.targets[i].volunteer.form;
+        fill(f, 'coordinatorName', h.head || me?.name);
+        fill(f, 'location', t.place);
+        const r = f.roles[0];
+        if (r) { fill(r, 'dateFrom', starts[0]); fill(r, 'dateTo', ends[ends.length - 1]); }
+      });
+    }
+    toast.success('عُبّئت الحقول الفارغة من المستهدف والحقيبة المرتبطة — راجعها وأكمل الباقي');
+  };
+  const toggleForm = (k) => setOpenForms(s0 => { const x = new Set(s0); if (x.has(k)) x.delete(k); else x.add(k); return x; });
+  const printPart = async (part) => {
+    await persist();
+    printDocument(api, R.doc(id), { draft: 1, part }).catch(err => toast.error(errorText(err, 'تعذّر تجهيز الطباعة')));
+  };
 
   const preview = async () => {
     await persist();
@@ -209,6 +380,18 @@ const PlanEditor = ({ api, plan, portalTarget, theme = 'dark', onClose, onSubmit
   const dateIn = (path, label) => (
     <input className="tk-in" type="date" id={idOf(path)} value={val(path)} aria-label={label} disabled={locked} onChange={(e) => set(path, e.target.value)} />
   );
+  const timeIn = (path, label) => (
+    <input className="tk-in ep-time" type="time" id={idOf(path)} value={val(path)} aria-label={label} disabled={locked} onChange={(e) => set(path, e.target.value)} />
+  );
+  const numIn = (path, o = {}) => {
+    const input = (
+      <input className="tk-in num" type="number" inputMode="decimal" id={idOf(path)} value={val(path)} min={o.min == null ? 0 : o.min} step="1"
+        placeholder={o.ph || ''} aria-label={o.label} disabled={locked}
+        onChange={(e) => { const v = e.target.value; set(path, v === '' ? '' : (isFinite(+v) ? +v : '')); }} />
+    );
+    return o.sfx ? <span className="tk-affix" style={o.sfxW ? { '--sfx': `${o.sfxW}px` } : undefined}>{input}<span className="sfx">{o.sfx}</span></span> : input;
+  };
+  const segIn = (path, opts, labelId) => <Seg id={idOf(path)} options={opts} value={val(path)} labelledBy={labelId} onChange={(v) => !locked && set(path, v)} />;
   const field = (o) => (
     <div className={`tk-field${o.wide ? ' wide' : ''}`} key={o.key}>
       {o.for
@@ -221,6 +404,8 @@ const PlanEditor = ({ api, plan, portalTarget, theme = 'dark', onClose, onSubmit
   const panelHead = (t, n) => (
     <div className="tk-panel-head"><h3 className="tk-panel-title">{t}</h3>{n && <p className="tk-panel-note">{n}</p>}</div>
   );
+  // Builders handed to the embedded media / volunteer forms.
+  const C = { field, text, area, num: numIn, date: dateIn, time: timeIn, seg: segIn, id: idOf, update, get: getPath };
   const issuesOf = (key) => A.issues.filter(x => x.sec === key);
   const pill = (key) => {
     const c = issuesOf(key).length;
@@ -262,43 +447,144 @@ const PlanEditor = ({ api, plan, portalTarget, theme = 'dark', onClose, onSubmit
         </div>
         <div className="tk-note amber" style={{ marginTop: 18 }}>
           <span className="tk-note-ico">📁</span>
-          <div><b>ملفات المستهدفات</b>ارفع ملف كل مستهدف داخل الخطة مباشرة أو ضع رابطه في الخانة المخصصة، أو اختر «لا يتطلب».</div>
+          <div><b>ملفات المستهدفات — لكل ملف مساره</b>المحتوى المعتمد حقيبة تدريبية تُعتمد من مسؤول إدارة المشاريع ثم المدير، والملف المالي طلب صرف مالي بمساره نفسه، والمتطلبات الإعلامية والفرص التطوعية نموذجان يُعبّآن داخل الخطة — أو اختر «لا يتطلب».</div>
         </div>
       </div>
     </section>
   );
 
   // ── 2. one target ──
-  const statusSeg = (i, b) => (
-    <Seg id={idOf(`targets.${i}.${b.key}.status`)} options={b.statuses} value={data.targets[i][b.key].status} labelledBy={`epl-${b.key}-${i}`}
-      onChange={(v) => !locked && set(`targets.${i}.${b.key}.status`, v)} />
-  );
-  const proof = (i, t, key) => {
+  // Files uploaded by older plans (before each file had its own path):
+  // still shown, downloadable and removable.
+  const legacy = (i, t, key) => {
     const x = t[key];
+    if (!x.files.length && !has(x.link)) return null;
     return (
-      <div className="tk-files">
-        {x.files.map((f, j) => (
-          <div className="tk-file" key={f.fileId}>
-            <span aria-hidden="true">📎</span>
-            <span className="name" title={f.name}>{f.name}</span>
-            <span className="size">{f.size ? humanSize(f.size) : ''}</span>
-            <button type="button" className="tk-ibtn" title="تنزيل" aria-label={`تنزيل ${f.name}`} onClick={() => download(f)}>⬇</button>
-            {!locked && <button type="button" className="tk-ibtn danger" title="حذف" aria-label={`حذف ${f.name}`} onClick={() => { dropFile(f.fileId); update(n => { n.targets[i][key].files.splice(j, 1); }); }}>🗑</button>}
-          </div>
-        ))}
-        {(busy[`${t.id}-${key}`] || []).map(n => <div className="tk-file busy" key={n}><span>⏳</span><span className="name">{n}</span><span className="size">جارٍ الرفع…</span></div>)}
-        <div className="ep-proof-row">
-          {!locked && (
-            <label className="tk-up">
-              ⬆ {x.files.length ? 'ملف آخر' : 'رفع ملف'}
-              <input type="file" multiple hidden onChange={(e) => { addFiles(i, key, e.target.files); e.target.value = ''; }} />
-            </label>
+      <div className="ep-legacy">
+        <small className="tk-muted-s">مرفق سابق في هذه الخطة:</small>
+        <div className="tk-files">
+          {x.files.map((f, j) => (
+            <div className="tk-file" key={f.fileId}>
+              <span aria-hidden="true">📎</span>
+              <span className="name" title={f.name}>{f.name}</span>
+              <span className="size">{f.size ? humanSize(f.size) : ''}</span>
+              <button type="button" className="tk-ibtn" title="تنزيل" aria-label={`تنزيل ${f.name}`} onClick={() => download(f)}>⬇</button>
+              {!locked && <button type="button" className="tk-ibtn danger" title="حذف" aria-label={`حذف ${f.name}`} onClick={() => { dropFile(f.fileId); update(n => { n.targets[i][key].files.splice(j, 1); }); }}>🗑</button>}
+            </div>
+          ))}
+          {has(x.link) && (
+            <div className="ep-proof-row">{text(`targets.${i}.${key}.link`, { label: 'رابط الملف', dir: 'auto' })}
+              {!locked && <button type="button" className="tk-ibtn danger" title="إزالة الرابط" aria-label="إزالة الرابط" onClick={() => set(`targets.${i}.${key}.link`, '')}>🗑</button>}
+            </div>
           )}
-          {text(`targets.${i}.${key}.link`, { ph: 'أو الصق رابط الملف (Google Drive، OneDrive…)', label: 'رابط الملف', dir: 'auto' })}
         </div>
       </div>
     );
   };
+  const naNote = (i, key, text0) => (
+    <div className="ep-na">
+      <span>{text0}</span>
+      {!locked && <button type="button" className="tk-btn sm ghost" onClick={() => setNA(i, key, false)}>تراجع</button>}
+    </div>
+  );
+  const naBtn = (i, key) => !locked && <button type="button" className="tk-btn sm ghost" onClick={() => setNA(i, key, true)}>لا يتطلب</button>;
+  const linkedPill = (d, m) => { const s0 = statusOf(d, m); return <span className={`tk-pill ${s0.tone}`}>{s0.label}</span>; };
+
+  const contentBody = (i, t) => {
+    const x = t.content;
+    if (x.status === NA) return naNote(i, 'content', 'لا يتطلب هذا المستهدف محتوى معتمدًا.');
+    if (has(x.kitId)) {
+      const k = live.kits?.[x.kitId];
+      return (
+        <div className="ep-linked">
+          <span className="tk-chip ep-kitchip"><bdi>🎒 {x.kitNo} — {k?.title || x.kitTitle || 'حقيبة تدريبية'}</bdi></span>
+          {k && linkedPill(k)}
+          <span className="tk-sp" />
+          <button type="button" className="tk-btn sm" onClick={() => openKit(x.kitId)}>{k && ['draft', 'returned'].includes(k.status) && !locked ? '✎ فتح الحقيبة' : '📄 عرض الحقيبة'}</button>
+          {!locked && <button type="button" className="tk-btn sm ghost" onClick={() => linkKit(i, null)}>إلغاء الربط</button>}
+        </div>
+      );
+    }
+    return (
+      <>
+        {!locked && (
+          <div className="ep-linkrow">
+            <select className="tk-in" value="" aria-label="ربط حقيبة تدريبية" disabled={!kits?.length} onChange={(e) => linkKit(i, (kits || []).find(k => (k.id || k.kitId) === e.target.value))}>
+              <option value="">{kits == null ? 'جارٍ تحميل حقائبك…' : kits.length ? '🎒 اربط حقيبة من حقائبك…' : 'لا توجد لديك حقائب بعد'}</option>
+              {(kits || []).map(k => <option key={k.id || k.kitId} value={k.id || k.kitId}>{fmtKitNo(docNo(k))} — {k.title || 'بلا اسم'} · {statusOf(k).label}</option>)}
+            </select>
+            <button type="button" className="tk-btn sm primary" onClick={() => createKit(i)}>＋ حقيبة جديدة لهذا المستهدف</button>
+            {naBtn(i, 'content')}
+          </div>
+        )}
+        <p className="tk-hint">تمر الحقيبة على مسؤول إدارة المشاريع ثم المدير، وتصبح الحالة «مرفق ومعتمد» تلقائيًا عند اعتمادها.</p>
+      </>
+    );
+  };
+  const financeBody = (i, t) => {
+    const x = t.finance;
+    if (x.status === NA) return naNote(i, 'finance', 'لا يتطلب هذا المستهدف صرفًا ماليًا.');
+    if (has(x.requestId)) {
+      const r = live.finance?.[x.requestId];
+      return (
+        <div className="ep-linked">
+          <span className="tk-chip ep-finchip"><bdi>🧾 {x.requestNo} — {r?.title || x.requestTitle || 'طلب صرف مالي'}</bdi></span>
+          {r && linkedPill(r, true)}
+          <span className="tk-sp" />
+          <button type="button" className="tk-btn sm" onClick={() => openFinance(x.requestId)}>{r && ['draft', 'returned'].includes(r.status) && !locked ? '✎ فتح الطلب' : '📄 عرض الطلب'}</button>
+          {!locked && <button type="button" className="tk-btn sm ghost" onClick={() => linkFinance(i, null)}>إلغاء الربط</button>}
+        </div>
+      );
+    }
+    return (
+      <>
+        {!locked && (
+          <div className="ep-linkrow">
+            <button type="button" className="tk-btn sm primary" onClick={() => createFinance(i)}>＋ إنشاء طلب صرف لهذا المستهدف</button>
+            {fins?.length > 0 && (
+              <select className="tk-in" value="" aria-label="ربط طلب صرف قائم" onChange={(e) => linkFinance(i, fins.find(r => (r.id || r.requestId) === e.target.value))}>
+                <option value="">أو اربط طلبًا قائمًا…</option>
+                {fins.map(r => <option key={r.id || r.requestId} value={r.id || r.requestId}>{fmtFinanceNo(docNo(r))} — {r.title || 'بلا اسم'} · {statusOf(r, true).label}</option>)}
+              </select>
+            )}
+            {naBtn(i, 'finance')}
+          </div>
+        )}
+        <p className="tk-hint">طلب الصرف يُعبّأ في النظام (البنود والموارد والتكاليف والتمويل) ويمر على مسؤول إدارة المشاريع ثم المدير.</p>
+      </>
+    );
+  };
+  const formBody = (i, t, key) => {
+    const x = t[key];
+    if (x.status === NA) return naNote(i, key, key === 'media' ? 'لا يتطلب هذا المستهدف متطلبات إعلامية.' : 'لا يحتاج هذا المستهدف إلى متطوعين.');
+    const k = `${key}-${t.id}`;
+    const open = openForms.has(k);
+    const st = blockState(t, key, live);
+    const base = `targets.${i}.${key}.form`;
+    return (
+      <>
+        <div className="ep-linkrow">
+          <button type="button" className={`tk-btn sm ${open ? '' : 'primary'}`} onClick={() => toggleForm(k)} aria-expanded={open}>
+            {open ? '▴ إخفاء النموذج' : st.form ? '✎ متابعة التعبئة' : '✎ تعبئة النموذج'}
+          </button>
+          {st.form && <span className="tk-muted-s">{st.missing.length ? `${ar(st.missing.length, NOTES)} في النموذج` : 'النموذج مكتمل'}</span>}
+          <span className="tk-sp" />
+          {st.form && <button type="button" className="tk-btn sm" onClick={() => printPart(k)}>🖨 طباعة النموذج</button>}
+          {!locked && open && <button type="button" className="tk-btn sm ghost" onClick={() => prefill(i, key)} title="يملأ الحقول الفارغة فقط">⤵ تعبئة من المستهدف والحقيبة</button>}
+          {!locked && !st.form && naBtn(i, key)}
+        </div>
+        {open && (key === 'media'
+          ? <MediaForm f={x.form} base={base} c={C} locked={locked} images={{
+              api, url: R.file, busy: busy[`${t.id}-mimg`] || [],
+              add: (files) => addMediaImages(i, files),
+              remove: (j) => { dropFile(x.form.images[j].fileId); update(n => { n.targets[i].media.form.images.splice(j, 1); }); }
+            }} />
+          : <VolunteerForm f={x.form} base={base} c={C} locked={locked} />)}
+      </>
+    );
+  };
+  const BODY = { content: contentBody, finance: financeBody, media: (i, t) => formBody(i, t, 'media'), volunteer: (i, t) => formBody(i, t, 'volunteer') };
+
   const renderTarget = (t, i) => {
     const q = `targets.${i}.`;
     const inPeriod = (m) => !months.length || months.includes(m);
@@ -369,38 +655,23 @@ const PlanEditor = ({ api, plan, portalTarget, theme = 'dark', onClose, onSubmit
           {!locked && <div className="tk-list-foot"><button type="button" className="tk-add" onClick={() => update(n => { n.targets[i].phases.push(MAKE.phase()); })}>＋ إضافة مرحلة</button></div>}
         </div>
         <div className="tk-panel">
-          {panelHead('ملفات المستهدف', 'لكل بند: الحالة، ثم ارفع الملف أو ضع رابطه — أو «لا يتطلب».')}
-          {BLOCKS.map(b => {
-            const x = t[b.key];
-            const needs = x.status === b.attached;
-            const ok = !needs || x.files.length > 0 || has(x.link) || (b.key === 'content' && has(x.kitId));
+          {panelHead('ملفات المستهدف', 'لكل ملف مساره: الحالة تتبع الحقيبة أو طلب الصرف المرتبط أو اكتمال النموذج — أو «لا يتطلب».')}
+          {FILE_BLOCKS.map(b => {
+            const st = blockState(t, b.key, live);
             return (
               <div className="ep-blk" id={`ep-blk-${t.id}-${b.key}`} key={b.key}>
-                <div className="ep-blk-name"><span className={`tk-dot ${has(x.status) && ok ? 'ok' : ''}`}>✓</span><span id={`epl-${b.key}-${i}`}>{b.label}</span><span className="tk-req" aria-hidden="true">*</span></div>
+                <div className="ep-blk-name">
+                  <span className={`tk-dot ${st.ok && has(st.status) ? 'ok' : ''}`}>✓</span>
+                  <span>{b.label}</span><span className="tk-req" aria-hidden="true">*</span>
+                  <span className={`tk-pill ${TONE[st.tone] || 'muted'} ep-st`}>{st.status || 'لم يُحدد'}</span>
+                </div>
                 <div className="ep-blk-body">
-                  {statusSeg(i, b)}
-                  {b.key === 'content' && (
-                    <div className="ep-kit">
-                      {x.kitId
-                        ? <span className="tk-chip ep-kitchip"><bdi>🎒 {x.kitNo} — {x.kitTitle || 'حقيبة تدريبية'}</bdi>{!locked && <button type="button" aria-label="إلغاء ربط الحقيبة" onClick={() => linkKit(i, '')}>×</button>}</span>
-                        : (
-                          <select className="tk-in" value="" disabled={locked || !kits.length} aria-label="ربط حقيبة تدريبية معتمدة" onChange={(e) => linkKit(i, e.target.value)}>
-                            <option value="">{kits.length ? '🎒 اربط حقيبة تدريبية معتمدة من حقائبك…' : 'لا توجد لديك حقائب تدريبية معتمدة بعد'}</option>
-                            {kits.map(k => <option key={k.id || k.kitId} value={k.id || k.kitId}>{fmtKitNo(k.number != null ? k.number : k.kitNumber)} — {k.title || 'بلا اسم'}</option>)}
-                          </select>
-                        )}
-                    </div>
-                  )}
-                  {x.status !== 'لا يتطلب' && proof(i, t, b.key)}
-                  {needs && !ok && <p className="ep-need">«{b.attached}» — ارفع الملف أو ضع رابطه{b.key === 'content' ? ' أو اربط حقيبة معتمدة' : ''}.</p>}
+                  {BODY[b.key](i, t)}
+                  {legacy(i, t, b.key)}
                 </div>
               </div>
             );
           })}
-          <div className="ep-blk" id={`ep-blk-${t.id}-volunteer`}>
-            <div className="ep-blk-name"><span className={`tk-dot ${t.volunteer.files.length || has(t.volunteer.link) ? 'ok' : ''}`}>✓</span><span>{VOLUNTEER_LABEL}</span><small className="ep-opt">إن وجدت</small></div>
-            <div className="ep-blk-body">{proof(i, t, 'volunteer')}</div>
-          </div>
         </div>
         <div className="tk-panel">
           {field({ key: 'nt', label: 'ملاحظات', for: idOf(`${q}notes`), control: area(`${q}notes`, { rows: 2, ph: 'أي ملاحظة على هذا المستهدف (اختياري)' }) })}
@@ -426,7 +697,7 @@ const PlanEditor = ({ api, plan, portalTarget, theme = 'dark', onClose, onSubmit
           </div>
           {A.issues.length > 0 && (
             <div className="tk-issues">
-              {list.map((x, k) => <button type="button" key={k} className="tk-issue" onClick={() => goto(x.target)}>{x.text}</button>)}
+              {list.map((x, k) => <button type="button" key={k} className="tk-issue" onClick={() => goto(x.target, x.open)}>{x.text}</button>)}
               {A.issues.length > 8 && <button type="button" className="tk-more" onClick={() => setShowAll(v => !v)}>{showAll ? 'عرض أقل' : `عرض الكل (${A.issues.length})`}</button>}
             </div>
           )}
@@ -572,6 +843,16 @@ const PlanEditor = ({ api, plan, portalTarget, theme = 'dark', onClose, onSubmit
               <button type="button" className="tk-btn primary" onClick={submit} disabled={sending || (resubmission && !note.trim())}>{sending ? 'جارٍ الإرسال…' : '📨 إرسال'}</button>
             </div>
           </Modal>
+        )}
+
+        {nested?.type === 'kit' && (
+          <KitEditor api={api} kit={nested.doc} portalTarget={portalTarget} theme={theme} onClose={closeNested} onSubmitted={closeNested} />
+        )}
+        {nested?.type === 'kitView' && (
+          <KitReview api={api} scope="mine" kitId={nested.doc.id || nested.doc.kitId} portalTarget={portalTarget} theme={theme} onClose={closeNested} />
+        )}
+        {nested?.type === 'finance' && (
+          <FinanceRequestEditor api={api} doc={nested.doc} portalTarget={portalTarget} theme={theme} onClose={closeNested} onSubmitted={closeNested} />
         )}
 
         {historyOpen && (

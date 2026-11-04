@@ -98,6 +98,8 @@ app.use('/api/pay', payRoutes);
 app.use('/api/payment-pages', paymentPageAdminRoutes);
 app.use('/api/training-kits', require('./routes/trainingKitRoutes'));
 app.use('/api/execution-plans', require('./routes/executionPlanRoutes'));
+app.use('/api/financial-requests', require('./routes/financialRequestRoutes'));
+app.use('/api/workshop-requests', require('./routes/workshopRequestRoutes'));
 app.use('/api/calendar-events', calendarEventRoutes);
 app.use('/api/store', storeRoutes);
 app.use('/api/print3d', print3DRoutes);

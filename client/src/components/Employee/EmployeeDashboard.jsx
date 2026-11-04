@@ -11,6 +11,7 @@ import { EVALUATION_CATEGORIES } from '../../config/evaluationStructure';
 import YearCalendar from '../YearCalendar/YearCalendar';
 import EmployeeKitsTab from '../TrainingKits/EmployeeKitsTab';
 import EmployeePlansTab from '../ExecutionPlans/EmployeePlansTab';
+import EmployeeRequestsTab from '../Requests/EmployeeRequestsTab';
 import './Employee.css';
 
 const SECTION_COLORS = {
@@ -941,6 +942,7 @@ const EmployeeDashboard = () => {
     { key: 'workshops',     label: isRTL ? 'الورش' : 'Workshops',           icon: '⬡' },
     { key: 'training-kits', label: isRTL ? 'الحقائب التدريبية' : 'Training Kits', icon: '🎒' },
     { key: 'execution-plan', label: isRTL ? 'الخطة التنفيذية' : 'Execution Plan', icon: '🗓' },
+    { key: 'requests',      label: isRTL ? 'الطلبات' : 'Requests',          icon: '📨' },
     { key: 'profile',       label: isRTL ? 'الملف الشخصي' : 'Profile',      icon: '◉' },
   ];
 
@@ -2841,6 +2843,18 @@ const EmployeeDashboard = () => {
               transition={{ type: 'spring', stiffness: 260, damping: 24 }}
             >
               <EmployeePlansTab portalTarget={dashRoot} theme={theme} />
+            </motion.div>
+          )}
+
+          {activeTab === 'requests' && (
+            <motion.div
+              key="requests"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -12 }}
+              transition={{ type: 'spring', stiffness: 260, damping: 24 }}
+            >
+              <EmployeeRequestsTab portalTarget={dashRoot} theme={theme} />
             </motion.div>
           )}
 

@@ -85,6 +85,12 @@ const TrainingKitFile = require('./TrainingKitFile');
 const ExecutionPlan = require('./ExecutionPlan');
 const ExecutionPlanVersion = require('./ExecutionPlanVersion');
 const ExecutionPlanFile = require('./ExecutionPlanFile');
+const WorkshopRequest = require('./WorkshopRequest');
+const WorkshopRequestVersion = require('./WorkshopRequestVersion');
+const WorkshopRequestFile = require('./WorkshopRequestFile');
+const FinancialRequest = require('./FinancialRequest');
+const FinancialRequestVersion = require('./FinancialRequestVersion');
+const FinancialRequestFile = require('./FinancialRequestFile');
 const CalendarEvent = require('./CalendarEvent');
 const StoreItem = require('./StoreItem');
 const StoreOrder = require('./StoreOrder');
@@ -396,6 +402,18 @@ ExecutionPlan.belongsTo(Employee, { foreignKey: 'employeeId', as: 'author' });
 ExecutionPlan.hasMany(ExecutionPlanVersion, { foreignKey: 'planId', as: 'versions', onDelete: 'CASCADE' });
 ExecutionPlanVersion.belongsTo(ExecutionPlan, { foreignKey: 'planId', as: 'plan' });
 ExecutionPlan.hasMany(ExecutionPlanFile, { foreignKey: 'planId', as: 'files', onDelete: 'CASCADE' });
+
+// Workshop requests (طلب ورشة من حقيبة معتمدة): same shape again.
+WorkshopRequest.belongsTo(Employee, { foreignKey: 'employeeId', as: 'author' });
+WorkshopRequest.hasMany(WorkshopRequestVersion, { foreignKey: 'requestId', as: 'versions', onDelete: 'CASCADE' });
+WorkshopRequestVersion.belongsTo(WorkshopRequest, { foreignKey: 'requestId', as: 'request' });
+WorkshopRequest.hasMany(WorkshopRequestFile, { foreignKey: 'requestId', as: 'files', onDelete: 'CASCADE' });
+
+// Financial requests (طلب صرف مالي): same shape again.
+FinancialRequest.belongsTo(Employee, { foreignKey: 'employeeId', as: 'author' });
+FinancialRequest.hasMany(FinancialRequestVersion, { foreignKey: 'requestId', as: 'versions', onDelete: 'CASCADE' });
+FinancialRequestVersion.belongsTo(FinancialRequest, { foreignKey: 'requestId', as: 'request' });
+FinancialRequest.hasMany(FinancialRequestFile, { foreignKey: 'requestId', as: 'files', onDelete: 'CASCADE' });
 
 // Registration Closure relationships
 RegistrationClosure.belongsTo(Admin, { foreignKey: 'createdById', as: 'creator', constraints: false });
@@ -1490,6 +1508,12 @@ module.exports = {
   ExecutionPlan,
   ExecutionPlanVersion,
   ExecutionPlanFile,
+  WorkshopRequest,
+  WorkshopRequestVersion,
+  WorkshopRequestFile,
+  FinancialRequest,
+  FinancialRequestVersion,
+  FinancialRequestFile,
   CalendarEvent,
   StoreItem,
   StoreOrder,

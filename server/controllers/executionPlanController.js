@@ -1,8 +1,11 @@
 // Execution plans (الخطة التنفيذية): each employee fills the plan template
 // for a month or a quarter and sends it through the shared review flow —
 // project manager, then manager. See reviewFlow.js.
-const { ExecutionPlan, ExecutionPlanVersion, ExecutionPlanFile } = require('../models');
-const { renderPlanDocument, fmtPlanNo, periodLabel } = require('../utils/executionPlanDoc');
+const models = require('../models');
+const { renderPlanDocument, renderPlanPart, planParts, fmtPlanNo, periodLabel } = require('../utils/executionPlanDoc');
+
+const { ExecutionPlan, ExecutionPlanVersion, ExecutionPlanFile, TrainingKit } = models;
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const { createReviewFlow } = require('./reviewFlow');
 
 const hasPeriod = (data) => !!periodLabel(data?.header) && /\d{4}/.test(String(data?.header?.year || ''));
@@ -29,6 +32,28 @@ const fileIdsOf = (data) => {
 
 const BLOCKS = [['content', 'المحتوى المعتمد'], ['finance', 'الملف المالي التفصيلي'], ['media', 'المتطلبات الإعلامية'], ['volunteer', 'تصاميم الفرص التطوعية']];
 
+// Live status of the documents the targets link — the content's training
+// kit and the financial request each move on their own review path, so the
+// plan document shows where they are now. A deleted one is simply absent.
+const prepare = async (data) => {
+  const targets = Array.isArray(data?.targets) ? data.targets : [];
+  const ids = (key, field) => [...new Set(targets.map(t => t?.[key]?.[field]).filter(v => typeof v === 'string' && UUID.test(v)))];
+  const kitIds = ids('content', 'kitId');
+  const reqIds = ids('finance', 'requestId');
+  const kits = {}; const finance = {};
+  if (kitIds.length) {
+    (await TrainingKit.findAll({ where: { kitId: kitIds }, attributes: ['kitId', 'kitNumber', 'title', 'status', 'approvedAt'] }))
+      .forEach(k => { kits[k.kitId] = { number: k.kitNumber, title: k.title, status: k.status, approvedAt: k.approvedAt }; });
+  }
+  // FinancialRequest comes with the financial-requests module.
+  const FR = models.FinancialRequest;
+  if (reqIds.length && FR) {
+    (await FR.findAll({ where: { requestId: reqIds }, attributes: ['requestId', 'requestNumber', 'title', 'status', 'approvedAt'] }))
+      .forEach(r => { finance[r.requestId] = { number: r.requestNumber, title: r.title, status: r.status, approvedAt: r.approvedAt }; });
+  }
+  return { live: { kits, finance: FR ? finance : undefined } };
+};
+
 const flow = createReviewFlow({
   Doc: ExecutionPlan,
   Version: ExecutionPlanVersion,
@@ -42,15 +67,24 @@ const flow = createReviewFlow({
   fileIdsOf,
   validData: (data) => !!data.header && Array.isArray(data.targets),
   readyToSend: hasPeriod,
-  // A plan has no separate parts — ?part= is a 404.
-  render: (o) => (o.part ? null : renderPlanDocument({ ...o, plan: o.doc })),
-  zip: ({ data, byId, add, safeName }) => {
+  prepare,
+  // ?part=media-<targetId> / volunteer-<targetId> prints one form alone.
+  render: (o) => (o.part ? renderPlanPart({ ...o, plan: o.doc }) : renderPlanDocument({ ...o, plan: o.doc })),
+  zip: ({ data, byId, add, safeName, renderPart }) => {
     (data.targets || []).forEach((t, i) => {
       const dir = `المستهدف ${i + 1} - ${safeName(t.name || 'بلا اسم')}`;
       BLOCKS.forEach(([key, label]) => (t[key]?.files || []).forEach(f => {
         const row = byId.get(f.fileId);
         if (row) add(`${dir}/${label}/${safeName(row.name)}`, row.content);
       }));
+      (t.media?.status === 'لا يتطلب' ? [] : (t.media?.form?.images || [])).forEach(im => {
+        const row = byId.get(im.fileId);
+        if (row) add(`${dir}/المتطلبات الإعلامية/صور الإعلان/${safeName(row.name)}`, row.content);
+      });
+    });
+    planParts(data).forEach(p => {
+      const html = renderPart(p.key);
+      if (html) add(`النماذج/${safeName(p.file)}.html`, html);
     });
   },
   w: {

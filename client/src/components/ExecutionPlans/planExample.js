@@ -1,13 +1,40 @@
 // A filled example of «نموذج الخطة التنفيذية» — a quarter of a FabLab
 // Al-Ahsa section (3D printing) with four targets: a training program
-// (linked to the employee's approved training kit when there is one), a
-// community open day, preventive maintenance, and an external exhibition.
-// Lets employees see a complete plan and try the review flow.
+// (linked to the employee's training kit when there is one), a community
+// open day, preventive maintenance, and an external exhibition. Each of
+// the four «ملفات المستهدف» is shown on its own path: a linked kit, a
+// financial request (created with the example), filled media forms and a
+// filled volunteer form. Lets employees see a complete plan and try the
+// review flow.
 import { uid, sectionAr } from './planModel';
+import { NA, MAKE_F, normalizeBlocks } from './planFiles';
 import { fmtKitNo } from '../TrainingKits/kitModel';
 
 const phase = (task, start, end, criterion) => ({ id: uid(), task, start, end, criterion });
-const block = (status, link = '') => ({ status, link, files: [] });
+const na = () => ({ status: NA });
+const axis = (title, desc) => ({ id: uid(), title, desc });
+const role = (o) => ({ ...MAKE_F.role(), ...o });
+
+// Ad images for the example's media forms (generated SVG posters).
+const poster = (name, title, sub, hue) => new File([`<svg xmlns="http://www.w3.org/2000/svg" width="800" height="560" viewBox="0 0 800 560">
+  <defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="hsl(${hue},70%,22%)"/><stop offset="1" stop-color="hsl(${hue + 30},80%,45%)"/></linearGradient></defs>
+  <rect width="800" height="560" fill="url(#g)"/>
+  <g fill="none" stroke="rgba(255,255,255,.18)" stroke-width="2">${[0, 1, 2, 3, 4, 5].map(i => `<circle cx="${640 - i * 18}" cy="${150 + i * 12}" r="${60 + i * 26}"/>`).join('')}</g>
+  <rect x="60" y="360" width="680" height="4" fill="#EE2329"/>
+  <text x="740" y="300" text-anchor="end" font-family="Tahoma, Arial" font-size="46" font-weight="700" fill="#fff">${title}</text>
+  <text x="740" y="420" text-anchor="end" font-family="Tahoma, Arial" font-size="26" fill="rgba(255,255,255,.85)">${sub}</text>
+  <text x="60" y="510" font-family="Arial" font-size="22" font-weight="700" fill="#fff">FABLAB Al-Ahsa</text>
+</svg>`], name, { type: 'image/svg+xml' });
+
+// [targetIndex, File, caption] — uploaded by the example's creator.
+export const exampleMediaImages = (kitTitle) => [
+  [0, poster('ad-1.svg', kitTitle || 'تعلّم الحركة الميكانيكية', 'برنامج تدريبي — 4 أيام', 350), 'غلاف الإعلان'],
+  [0, poster('ad-2.svg', 'صمّم ترسك واطبعه', 'التروس ونِسَب النقل والطباعة ثلاثية الأبعاد', 210), 'صورة المخرج'],
+  [0, poster('ad-3.svg', 'من الفكرة إلى نموذج يعمل', 'تجميع نموذج قنديل البحر الميكانيكي', 25), 'صورة من التطبيق'],
+  [1, poster('openday-1.svg', 'يوم مفتوح للطباعة ثلاثية الأبعاد', 'للأسر والأطفال — الدخول مجاني', 190), 'غلاف الإعلان'],
+  [1, poster('openday-2.svg', 'عروض حية', 'شاهد الطابعة وهي تصنع المجسّم', 260), 'العروض الحية'],
+  [1, poster('openday-3.svg', 'ركن التلوين', 'لوّن مجسّمك المطبوع وخذه معك', 300), 'ركن التلوين']
+];
 
 // Next quarter from today (Jan–Mar → the 2nd quarter, …) so the example
 // dates are in the future.
@@ -22,18 +49,10 @@ export const examplePlanData = (employee, kit) => {
   const { quarter, year } = nextQuarter();
   const m1 = 3 * quarter - 2; const m2 = m1 + 1; const m3 = m1 + 2;
   const kitNo = kit ? fmtKitNo(kit.number != null ? kit.number : kit.kitNumber) : '';
-  return {
-    v: 1,
-    example: true,
-    header: {
-      periodType: 'quarter',
-      quarter,
-      month: '',
-      year,
-      section: sectionAr(employee?.section) || 'الطباعة ثلاثية الأبعاد',
-      head: employee?.name || ''
-    },
-    targets: [
+  const head = employee?.name || '';
+  const p1 = [ymd(year, m2, 10), ymd(year, m2, 13)];
+  const openDay = ymd(year, m3, 14);
+  const targets = [
       {
         id: uid(),
         name: `تنفيذ البرنامج التدريبي «${kit?.title || 'تعلّم الحركة الميكانيكية'}»`,
@@ -52,12 +71,28 @@ export const examplePlanData = (employee, kit) => {
         ],
         sectionRole: 'إعداد المحتوى وتنفيذ التدريب، وتوفير الطابعات والخامات، وتقييم المخرجات.',
         headRole: 'أساسي',
-        content: kit
-          ? { status: 'مرفق ومعتمد', link: '', files: [], kitId: kit.id || kit.kitId, kitNo, kitTitle: kit.title || '' }
-          : { status: 'بانتظار الاعتماد', link: '', files: [], kitId: '', kitNo: '', kitTitle: '' },
-        finance: block('قيد الإعداد'),
-        media: block('مرفقة', 'https://drive.google.com/drive/folders/example-media-brief'),
-        volunteer: { link: '', files: [] },
+        content: kit ? { kitId: kit.id || kit.kitId, kitNo, kitTitle: kit.title || '' } : {},
+        // the financial request is created and linked with the example
+        finance: {},
+        media: {
+          form: {
+            activity: `برنامج «${kit?.title || 'تعلّم الحركة الميكانيكية'}» (قسم الطباعة ثلاثية الأبعاد)`,
+            implementer: head,
+            ageMin: 12, ageMax: 15, timeFrom: '16:00', timeTo: '19:00', dayPart: 'مساءً',
+            dateFrom: p1[0], dateTo: p1[1],
+            beneficiaries: 20, seatsNote: '5 مقاعد من قائمة الاحتضان، و15 مقعدًا للتسجيل الخارجي',
+            days: 'أربعة أيام', gender: 'أولاد',
+            axes: [
+              axis('أنواع الحركة الميكانيكية', 'الحركة الدورانية والخطية والترددية والاهتزازية، وأمثلتها في الآلات من حولنا.'),
+              axis('التروس ونِسَب النقل', 'حساب نسبة النقل واتجاه الدوران وأثرهما على السرعة والعزم.'),
+              axis('تجميع نموذج ميكانيكي يعمل', 'تجميع نموذج قنديل البحر وتتبّع انتقال الحركة فيه وتشخيص أعطاله.'),
+              axis('تصميم ترس وطباعته', 'تصميم قطعة في Shapr3D وتجهيزها للطباعة ثلاثية الأبعاد وتركيبها على النموذج.')
+            ],
+            dueDate: ymd(year, m1, 10), urgency: 'غير مستعجل', cost: '150 ر.س',
+            notes: 'إبراز صورة النموذج المتحرك، وذكر أن المشارك يأخذ قطعته المطبوعة معه.'
+          }
+        },
+        volunteer: na(),
         notes: 'يحتاج البرنامج مدربًا مساعدًا واحدًا من فريق القسم.'
       },
       {
@@ -78,10 +113,40 @@ export const examplePlanData = (employee, kit) => {
         ],
         sectionRole: 'تشغيل العروض الحية وطباعة المجسمات وإدارة ركن الطباعة.',
         headRole: 'أساسي',
-        content: { status: 'لا يتطلب', link: '', files: [], kitId: '', kitNo: '', kitTitle: '' },
-        finance: block('قيد الإعداد'),
-        media: block('قيد الإعداد'),
-        volunteer: { link: 'https://drive.google.com/drive/folders/example-volunteer-designs', files: [] },
+        content: na(),
+        finance: na(),
+        media: {
+          form: {
+            activity: 'يوم مفتوح للطباعة ثلاثية الأبعاد للأسر',
+            implementer: head,
+            ageMin: 7, ageMax: 14, timeFrom: '10:00', timeTo: '14:00', dayPart: 'صباحًا',
+            dateFrom: openDay, dateTo: openDay,
+            beneficiaries: 60, seatsNote: 'التسجيل المسبق للأسر، ويُقبل الحضور المباشر حسب السعة',
+            days: 'يوم واحد', gender: 'مختلط',
+            axes: [
+              axis('عروض حية للطباعة', 'طابعتان تعملان أمام الزوار مع شرح مبسّط لكل مرحلة.'),
+              axis('ركن التلوين', 'يلوّن الأطفال مجسّمات مطبوعة مسبقًا ويأخذونها معهم.'),
+              axis('ركن التصميم السريع', 'تجربة تصميم مجسّم بسيط على الجهاز اللوحي مع أحد أعضاء الفريق.')
+            ],
+            dueDate: ymd(year, m3, 1), urgency: 'مستعجل', cost: 'مجاني',
+            notes: 'تصميم مناسب للعائلات بألوان مبهجة، مع رمز QR للتسجيل.'
+          }
+        },
+        volunteer: {
+          form: {
+            coordinatorName: head, coordinatorPhone: '0551234567', location: 'فاب لاب الأحساء — البهو الرئيسي', mode: 'حضوري',
+            roles: [
+              role({ title: 'منظّم ركن العروض الحية', field: 'الطباعة ثلاثية الأبعاد', count: 2, tasks: 'تشغيل العروض مع الفريق، والإجابة عن أسئلة الزوار، وتنظيم الدور أمام الطابعات.',
+                skills: 'معرفة أساسية بالطباعة ثلاثية الأبعاد، ومهارة التواصل مع الأطفال', education: 'طالب جامعي أو خريج', gender: 'الجميع', ageMin: 18, ageMax: 30,
+                dateFrom: openDay, dateTo: openDay, timeFrom: '09:30', timeTo: '14:30' }),
+              role({ title: 'مستقبل الزوار ومنظّم التسجيل', field: 'التنظيم وخدمة الزوار', count: 2, tasks: 'استقبال الأسر، والتحقق من التسجيل، وتوزيع الزوار على الأركان، وتوزيع المجسّمات.',
+                skills: 'التنظيم وحسن التعامل', education: '', gender: 'الجميع', ageMin: 18, ageMax: 35,
+                dateFrom: openDay, dateTo: openDay, timeFrom: '09:30', timeTo: '14:30' })
+            ],
+            support: 'شهادة تطوع موثقة بالساعات، وتدريب قصير قبل الفعالية، ووجبة خفيفة.',
+            risks: 'ازدحام الأركان في ذروة الحضور — يُوزَّع الزوار على فترات كل 30 دقيقة.'
+          }
+        },
         notes: 'تحتاج الفعالية 4 متطوعين لتنظيم الأركان واستقبال الزوار.'
       },
       {
@@ -100,10 +165,10 @@ export const examplePlanData = (employee, kit) => {
         ],
         sectionRole: 'تنفيذ الصيانة والجرد بالكامل.',
         headRole: 'أساسي',
-        content: { status: 'لا يتطلب', link: '', files: [], kitId: '', kitNo: '', kitTitle: '' },
-        finance: block('لا يتطلب'),
-        media: block('لا يتطلب'),
-        volunteer: { link: '', files: [] },
+        content: na(),
+        finance: na(),
+        media: na(),
+        volunteer: na(),
         notes: ''
       },
       {
@@ -122,12 +187,25 @@ export const examplePlanData = (employee, kit) => {
         ],
         sectionRole: 'تجهيز نماذج العرض وتشغيل طابعة حية في الجناح.',
         headRole: 'مشارك',
-        content: { status: 'لا يتطلب', link: '', files: [], kitId: '', kitNo: '', kitTitle: '' },
-        finance: block('لا يتطلب'),
-        media: block('قيد الإعداد'),
-        volunteer: { link: '', files: [] },
-        notes: 'التنسيق العام للمعرض لدى قسم الشراكات.'
+        content: na(),
+        finance: na(),
+        media: na(),
+        volunteer: na(),
+        notes: 'التنسيق العام للمعرض والإعلان عنه لدى قسم الشراكات والجهة المنظِّمة.'
       }
-    ]
+  ];
+  return {
+    v: 1,
+    example: true,
+    header: {
+      periodType: 'quarter',
+      quarter,
+      month: '',
+      year,
+      section: sectionAr(employee?.section) || 'الطباعة ثلاثية الأبعاد',
+      head
+    },
+    // fill each block's missing structure (empty forms, files, links)
+    targets: targets.map(t => ({ ...t, ...normalizeBlocks(t) }))
   };
 };

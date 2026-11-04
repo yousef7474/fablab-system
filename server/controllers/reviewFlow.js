@@ -14,7 +14,15 @@
 //   fileIdsOf(data)      — Set of fileIds the data refers to
 //   render(o)            — printable HTML document
 //   zip(o)               — adds the files to the "download everything" ZIP
-//   w                    — the wording (both nouns are feminine)
+//   prepare(data, doc)   — optional async lookups for render (→ o.extra),
+//                          e.g. the live status of documents a plan links
+//   onApproved(o)        — optional; runs inside the manager's approval
+//                          transaction (e.g. create the workshop). Throw
+//                          { status, message, messageAr } to refuse.
+//   checkSubmit(doc, req) — optional async check before sending; return
+//                          { status, message, messageAr } to refuse
+//   meta(doc)            — optional extra summary fields (e.g. workshopId)
+//   w                    — the wording; w.m = masculine noun (الطلب)
 const path = require('path');
 const sgMail = require('@sendgrid/mail');
 const JSZip = require('jszip');
@@ -86,9 +94,11 @@ const sendFile = (res, f) => {
 
 const createReviewFlow = (cfg) => {
   const { Doc, Version, File, ID, NO, table, lock, fmtNo, titleOf, fileIdsOf, render, zip, w } = cfg;
+  // Gender agreement: g('feminine', 'masculine')
+  const g = (f, m) => (w.m ? m : f);
   const log = (fn, err) => console.error(`${w.logTag} ${fn}:`, err);
   const fail = (res, fn) => (err) => { log(fn, err); res.status(500).json({ message: 'Server error' }); };
-  const notFound = (res) => bad(res, 404, 'Not found', `${w.the} غير موجودة`);
+  const notFound = (res) => bad(res, 404, 'Not found', `${w.the} غير ${g('موجودة', 'موجود')}`);
   const withAuthor = { model: Employee, as: 'author', attributes: ['employeeId', 'name', 'section', 'email'] };
 
   const assignNumber = (transaction) => sequelize.query(
@@ -111,7 +121,8 @@ const createReviewFlow = (cfg) => {
     approvedVersion: d.approvedVersion,
     createdAt: d.createdAt,
     updatedAt: d.updatedAt,
-    author: d.author ? { employeeId: d.author.employeeId, name: d.author.name, section: d.author.section } : undefined
+    author: d.author ? { employeeId: d.author.employeeId, name: d.author.name, section: d.author.section } : undefined,
+    ...(cfg.meta ? cfg.meta(d) : {})
   });
 
   const versions = (id) => Version.findAll({ where: { [ID]: id }, order: [['versionNumber', 'ASC']] });
@@ -153,7 +164,8 @@ const createReviewFlow = (cfg) => {
   const sendDocument = async (req, res, d, picked) => {
     const author = await authorOf(d);
     const { images, files } = await assets(d[ID], picked.data);
-    const html = render({ doc: d, version: picked.version, data: picked.data, author, images, files, part: req.query.part || null, audience: req.query.audience || null });
+    const extra = cfg.prepare ? await cfg.prepare(picked.data || {}, d) : {};
+    const html = render({ doc: d, version: picked.version, data: picked.data, author, images, files, extra, part: req.query.part || null, audience: req.query.audience || null });
     if (!html) return notFound(res);
     res.set('Content-Type', 'text/html; charset=utf-8');
     res.send(html);
@@ -163,6 +175,7 @@ const createReviewFlow = (cfg) => {
     const author = await authorOf(d);
     const data = picked.data || {};
     const { rows, images, files } = await assets(d[ID], data);
+    const extra = cfg.prepare ? await cfg.prepare(data, d) : {};
     const byId = new Map(rows.map(f => [f.fileId, f]));
     const out = new JSZip();
     const used = new Set();
@@ -173,9 +186,9 @@ const createReviewFlow = (cfg) => {
       out.file(q, content);
     };
     const base = `${fmtNo(d[NO])} - ${safeName(d.title || w.a)}${picked.version ? ` - v${picked.version.versionNumber}` : ''}`;
-    add(`${base}.html`, render({ doc: d, version: picked.version, data, author, images, files }));
+    add(`${base}.html`, render({ doc: d, version: picked.version, data, author, images, files, extra }));
     add('data.json', JSON.stringify(data, null, 2));
-    zip({ data, byId, add, safeName, renderPart: (part, audience) => render({ doc: d, version: picked.version, data, author, images, files, part, audience }) });
+    zip({ data, byId, add, safeName, extra, renderPart: (part, audience) => render({ doc: d, version: picked.version, data, author, images, files, extra, part, audience }) });
     const buf = await out.generateAsync({ type: 'nodebuffer', compression: 'DEFLATE', compressionOptions: { level: 6 } });
     res.set('Content-Type', 'application/zip');
     res.set('Content-Disposition', `attachment; filename="${w.zipName}.zip"; filename*=UTF-8''${encodeURIComponent(`${base}.zip`)}`);
@@ -235,7 +248,7 @@ const createReviewFlow = (cfg) => {
       const d = await mine(req);
       if (!d) return notFound(res);
       if (!EDITABLE.includes(d.status)) {
-        return bad(res, 409, 'Under review — cannot be edited', `${w.the} قيد المراجعة ولا يمكن تعديلها الآن`, { code: 'LOCKED' });
+        return bad(res, 409, 'Under review — cannot be edited', `${w.the} قيد المراجعة ولا يمكن ${g('تعديلها', 'تعديله')} الآن`, { code: 'LOCKED' });
       }
       const data = req.body?.data;
       if (!data || typeof data !== 'object' || !cfg.validData(data)) return bad(res, 400, 'Invalid data', `بيانات ${w.the} غير صحيحة`);
@@ -250,7 +263,7 @@ const createReviewFlow = (cfg) => {
     try {
       const d = await mine(req);
       if (!d) return notFound(res);
-      if (d.currentVersion > 0) return bad(res, 409, 'Already submitted', `لا يمكن حذف ${w.one} سبق إرسالها للمراجعة`);
+      if (d.currentVersion > 0) return bad(res, 409, 'Already submitted', `لا يمكن حذف ${w.one} سبق ${g('إرسالها', 'إرساله')} للمراجعة`);
       await File.destroy({ where: { [ID]: d[ID] } });
       await d.destroy({ force: true });
       res.json({ ok: true });
@@ -263,7 +276,7 @@ const createReviewFlow = (cfg) => {
     try {
       const d = await mine(req);
       if (!d) return notFound(res);
-      if (!EDITABLE.includes(d.status)) return bad(res, 409, 'Under review', `${w.the} قيد المراجعة ولا يمكن تعديلها الآن`);
+      if (!EDITABLE.includes(d.status)) return bad(res, 409, 'Under review', `${w.the} قيد المراجعة ولا يمكن ${g('تعديلها', 'تعديله')} الآن`);
       const buf = req.body;
       if (!Buffer.isBuffer(buf) || !buf.length) return bad(res, 400, 'Empty file', 'الملف فارغ');
       if (buf.length > MAX_FILE_BYTES) return bad(res, 413, 'File too large', `الملف أكبر من ${MAX_FILE_BYTES / 1048576} MB`);
@@ -288,7 +301,7 @@ const createReviewFlow = (cfg) => {
     try {
       const d = await mine(req);
       if (!d) return notFound(res);
-      if (!EDITABLE.includes(d.status)) return bad(res, 409, 'Under review', `${w.the} قيد المراجعة ولا يمكن تعديلها الآن`);
+      if (!EDITABLE.includes(d.status)) return bad(res, 409, 'Under review', `${w.the} قيد المراجعة ولا يمكن ${g('تعديلها', 'تعديله')} الآن`);
       const vs = await versions(d[ID]);
       const kept = vs.some(v => fileIdsOf(v.data).has(req.params.fileId));
       if (!kept) await File.destroy({ where: { [ID]: d[ID], fileId: req.params.fileId } });
@@ -309,8 +322,12 @@ const createReviewFlow = (cfg) => {
     try {
       const d = await mine(req);
       if (!d) return notFound(res);
-      if (!EDITABLE.includes(d.status)) return bad(res, 409, 'Already sent', `${w.the} مُرسلة بالفعل وقيد المراجعة`);
+      if (!EDITABLE.includes(d.status)) return bad(res, 409, 'Already sent', `${w.the} ${g('مُرسلة', 'مُرسل')} بالفعل وقيد المراجعة`);
       if (!cfg.readyToSend(d.data)) return bad(res, 400, 'Not ready to send', w.notReady);
+      if (cfg.checkSubmit) {
+        const refuse = await cfg.checkSubmit(d, req);
+        if (refuse) return bad(res, refuse.status || 400, refuse.message || 'Refused', refuse.messageAr);
+      }
       const note = String(req.body?.note || '').trim();
       if (d.currentVersion > 0 && !note) {
         return bad(res, 400, 'Describe what you changed', 'اكتب ما الذي عدّلته في هذا الإصدار قبل إعادة الإرسال');
@@ -330,7 +347,7 @@ const createReviewFlow = (cfg) => {
       const name = d.title || w.a;
       sendMail(w.mailTag, pm.email, `${w.a} للمراجعة — ${name}`,
         `<p>مرحباً ${esc(pm.name)}،</p><p>أرسل <b>${esc(req.employee.name)}</b> ${w.the_} <b>«${esc(name)}»</b> (${fmtNo(d[NO])} — الإصدار ${versionNumber}) لمراجعتك.</p>
-         ${commentBox('ما الذي تغيّر في هذا الإصدار:', note)}<p>افتحي «لوحة إدارة المشاريع» من لوحة الموظف لمراجعتها.</p>`);
+         ${commentBox('ما الذي تغيّر في هذا الإصدار:', note)}<p>افتحي «لوحة إدارة المشاريع» من لوحة الموظف ${g('لمراجعتها', 'لمراجعته')}.</p>`);
       res.json(await full(d));
     } catch (err) { fail(res, 'mySubmit')(err); }
   };
@@ -387,6 +404,7 @@ const createReviewFlow = (cfg) => {
         await d.update(decision === 'approved'
           ? { status: 'approved', returnedBy: null, approvedAt: now, approvedVersion: d.currentVersion }
           : { status: 'returned', returnedBy: 'manager' }, { transaction });
+        if (decision === 'approved' && cfg.onApproved) await cfg.onApproved({ doc: d, version, reviewer, transaction });
       }
     });
     return version;
@@ -406,15 +424,15 @@ const createReviewFlow = (cfg) => {
       if (!dec) return;
       const d = await reviewDoc(req.params.id);
       if (!d) return notFound(res);
-      if (d.status !== 'pm_review') return bad(res, 409, 'Not waiting for your review', `${w.the} ليست بانتظار مراجعتك`);
+      if (d.status !== 'pm_review') return bad(res, 409, 'Not waiting for your review', `${w.the} ${g('ليست', 'ليس')} بانتظار مراجعتك`);
       await decideOn({ d, stage: 'pm', ...dec, reviewer: { name: req.employee.name, id: req.employee.employeeId } });
       const name = d.title || w.a;
       if (dec.decision === 'approved') {
         sendMail(w.mailTag, d.author?.email, `اعتُمدت مراجعة ${w.the} — ${name}`,
-          `<p>مرحباً ${esc(d.author?.name)}،</p><p>راجعت <b>${esc(req.employee.name)}</b> ${w.your} <b>«${esc(name)}»</b> (الإصدار ${d.currentVersion}) وأرسلتها إلى المدير للاعتماد النهائي.</p>${commentBox('ملاحظة:', dec.comment)}`);
+          `<p>مرحباً ${esc(d.author?.name)}،</p><p>راجعت <b>${esc(req.employee.name)}</b> ${w.your} <b>«${esc(name)}»</b> (الإصدار ${d.currentVersion}) ${g('وأرسلتها', 'وأرسلته')} إلى المدير للاعتماد النهائي.</p>${commentBox('ملاحظة:', dec.comment)}`);
       } else {
         sendMail(w.mailTag, d.author?.email, `مطلوب تعديل على ${w.the} — ${name}`,
-          `<p>مرحباً ${esc(d.author?.name)}،</p><p>أعادت <b>${esc(req.employee.name)}</b> ${w.your} <b>«${esc(name)}»</b> (الإصدار ${d.currentVersion}) مع ملاحظات للتعديل:</p>${commentBox('الملاحظات:', dec.comment)}<p>افتح «${w.tab}» في لوحة الموظف، عدّلها ثم أعد إرسالها.</p>`);
+          `<p>مرحباً ${esc(d.author?.name)}،</p><p>أعادت <b>${esc(req.employee.name)}</b> ${w.your} <b>«${esc(name)}»</b> (الإصدار ${d.currentVersion}) مع ملاحظات للتعديل:</p>${commentBox('الملاحظات:', dec.comment)}<p>افتح «${w.tab}» في لوحة الموظف، ${g('عدّلها ثم أعد إرسالها', 'عدّله ثم أعد إرساله')}.</p>`);
       }
       res.json(await full(await reviewDoc(d[ID]), { withDraft: false }));
     } catch (err) { fail(res, 'pmDecide')(err); }
@@ -462,21 +480,24 @@ const createReviewFlow = (cfg) => {
       if (!dec) return;
       const d = await reviewDoc(req.params.id);
       if (!d) return notFound(res);
-      if (d.status !== 'manager_review') return bad(res, 409, 'Not waiting for the manager', `${w.the} ليست بانتظار اعتماد المدير`);
+      if (d.status !== 'manager_review') return bad(res, 409, 'Not waiting for the manager', `${w.the} ${g('ليست', 'ليس')} بانتظار اعتماد المدير`);
       const reviewer = { name: req.admin.fullName || req.admin.username || 'المدير', id: req.admin.adminId };
       const version = await decideOn({ d, stage: 'manager', ...dec, reviewer });
       const name = d.title || w.a;
       const pm = version.pmEmployeeId ? await Employee.findByPk(version.pmEmployeeId) : null;
       const to = [d.author?.email, pm?.email].filter(Boolean);
       if (dec.decision === 'approved') {
-        sendMail(w.mailTag, to, `اعتُمدت ${w.the_} — ${name}`,
+        sendMail(w.mailTag, to, `${g('اعتُمدت', 'اعتُمد')} ${w.the_} — ${name}`,
           `<p>اعتمد <b>${esc(reviewer.name)}</b> ${w.the_} <b>«${esc(name)}»</b> (${fmtNo(d[NO])} — الإصدار ${d.currentVersion}) اعتمادًا نهائيًا.</p>${commentBox('ملاحظة:', dec.comment)}${w.approvedNote || ''}`);
       } else {
         sendMail(w.mailTag, to, `مطلوب تعديل على ${w.the} — ${name}`,
-          `<p>أعاد <b>${esc(reviewer.name)}</b> ${w.the_} <b>«${esc(name)}»</b> (الإصدار ${d.currentVersion}) مع ملاحظات للتعديل:</p>${commentBox('الملاحظات:', dec.comment)}<p>بعد التعديل تُعاد إلى مسؤول إدارة المشاريع ثم إلى المدير.</p>`);
+          `<p>أعاد <b>${esc(reviewer.name)}</b> ${w.the_} <b>«${esc(name)}»</b> (الإصدار ${d.currentVersion}) مع ملاحظات للتعديل:</p>${commentBox('الملاحظات:', dec.comment)}<p>بعد التعديل ${g('تُعاد', 'يُعاد')} إلى مسؤول إدارة المشاريع ثم إلى المدير.</p>`);
       }
       res.json(await full(await reviewDoc(d[ID]), { withDraft: false }));
-    } catch (err) { fail(res, 'adminDecide')(err); }
+    } catch (err) {
+      if (err && err.status && err.messageAr) return bad(res, err.status, err.message || 'Refused', err.messageAr);
+      fail(res, 'adminDecide')(err);
+    }
   };
 
   // Manager only. A soft delete (deletedAt): it disappears from every

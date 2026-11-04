@@ -39,8 +39,12 @@ export const routesFor = (base, items) => ({
 export const idOfDoc = (d) => d?.id || d?.kitId || d?.planId;
 export const numberOfDoc = (d) => (d?.number != null ? d.number : d?.kitNumber != null ? d.kitNumber : d?.planNumber);
 
+// Gender agreement for a kind: g(kind, 'feminine', 'masculine')
+export const g = (kind, f, m) => (kind?.m ? m : f);
+
 export const KIT_KIND = {
   key: 'kit',
+  m: false, // الحقيبة — feminine
   routes: routesFor('/training-kits', 'kits'),
   fmtNo: fmtKitNo,
   icon: '🎒',
@@ -49,7 +53,7 @@ export const KIT_KIND = {
   untitled: 'برنامج تدريبي بلا اسم',
   docTab: '📄 الحقيبة',
   archive: '«الحقائب المعتمدة»',
-  approvedMine: ' ستتمكن قريبًا من اختيارها عند طلب ورشة جديدة.',
+  approvedMine: ' يمكنك طلب ورشة منها من زر «🛠 طلب ورشة من هذه الحقيبة».',
   normalize,
   diff: diffData,
   // Attachment files: [{ fileId, name, size, label }]
