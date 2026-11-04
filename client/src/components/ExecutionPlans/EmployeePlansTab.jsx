@@ -8,7 +8,7 @@ import { fmtKitNo } from '../TrainingKits/kitModel';
 import PlanEditor from './PlanEditor';
 import { PLAN_KIND } from './planKind';
 import { blankState, analyze } from './planModel';
-import { examplePlanData, exampleMediaImages } from './planExample';
+import { examplePlanData, exampleMediaImages, exampleMediaToRequests } from './planExample';
 import { fmtFinanceNo } from './planFiles';
 import { newFinanceData, analyze as financeAnalyze } from '../Requests/finance/frModel';
 import '../TrainingKits/TrainingKits.css';
@@ -66,7 +66,8 @@ const EmployeePlansTab = ({ portalTarget, theme }) => {
   // A filled example plan, to see a complete plan and try the flow. Each
   // «ملف المستهدف» is shown on its own path: the employee's training kit
   // (an approved one first), a financial request created for it, media
-  // forms with their ad images and a volunteer form.
+  // design requests made from the example's forms (with their ad images)
+  // and a volunteer form.
   const createExample = async () => {
     setCreating(true);
     try {
@@ -97,6 +98,8 @@ const EmployeePlansTab = ({ portalTarget, theme }) => {
         const { data: fr } = await employeeApi.post('/financial-requests/mine', { data: fd, completion: financeAnalyze(fd).pct });
         Object.assign(t.finance, { requestId: fr.id, requestNo: fmtFinanceNo(fr.number), requestTitle: fr.title || t.name });
       } catch { /* the target then asks for a financial request */ }
+      // The media forms become design requests on their own path.
+      await exampleMediaToRequests(employeeApi, id, data, R).catch(() => {});
       await employeeApi.put(R.kit(id), { data, completion: analyze(data).pct });
       const { data: full } = await employeeApi.get(R.kit(id));
       setEditing(full);

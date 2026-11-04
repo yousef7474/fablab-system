@@ -17,6 +17,49 @@ export const HEAD_ROLES = ['أساسي', 'مشارك', 'مساند'];
 // The four «ملفات المستهدف» — each on its own path (see planFiles.js).
 export { FILE_BLOCKS, NA };
 
+// ─────────────── The media file → a design request ───────────────
+// «المتطلبات الإعلامية» is a media design request (طلب تصميم إعلان, MR-###)
+// with its own path: employee → design team → employee checks the design →
+// project manager → manager. The target links it (requestId) and reads its
+// stage live; an embedded form from older plans still shows and counts.
+export const fmtMediaNo = (n) => (n == null || n === '' ? 'MR-—' : `MR-${String(n).padStart(3, '0')}`);
+// Where the request is now, as the employee reads it in the plan.
+export const MEDIA_STAGE = {
+  draft: 'مسودة لم تُرسل بعد',
+  design: 'لدى فريق التصميم',
+  employee_check: 'بانتظار مراجعتك للتصميم',
+  pm_review: 'لدى مسؤول إدارة المشاريع',
+  manager_review: 'لدى المدير للاعتماد',
+  returned_employee: 'معاد إليك للتعديل',
+  approved: 'معتمد'
+};
+export const MEDIA_STAGE_TONE = {
+  draft: 'muted', design: 'cyan', employee_check: 'amber', pm_review: 'amber', manager_review: 'cyan', returned_employee: 'red', approved: 'mint'
+};
+// The employee edits the request only in these stages.
+export const MEDIA_EDITABLE = ['draft', 'returned_employee'];
+
+// A target's file block state — the media block follows its linked design
+// request (live.media = { [requestId]: { status, number, title } }; a
+// missing map = not loaded yet, so a link then counts as present). Every
+// other block: planFiles.blockState.
+export const blockStateOf = (t, key, live) => {
+  const x = t[key];
+  if (key === 'media' && x.status !== NA && has(x.requestId)) {
+    const r = live?.media ? live.media[x.requestId] : undefined;
+    if (live?.media && !r) return { status: 'الطلب غير متاح', tone: 'red', ok: false, gone: true };
+    const approved = r?.status === 'approved';
+    return {
+      status: approved ? 'مرفقة' : 'قيد الإعداد',
+      tone: approved ? 'ok' : 'wait',
+      ok: true,
+      linked: r || null,
+      stage: r ? (MEDIA_STAGE[r.status] || r.status) : ''
+    };
+  }
+  return blockState(t, key, live);
+};
+
 // Employee section codes → the Arabic name used in the plan.
 export const SECTION_AR = {
   'Electronics and Programming': 'الإلكترونيات والبرمجة',
@@ -31,13 +74,21 @@ export const SECTION_AR = {
 };
 export const sectionAr = (s) => SECTION_AR[s] || s || '';
 
+// The four file blocks of a target; the media block also carries the
+// link to its design request.
+const blocksOf = (t) => {
+  const b = normalizeBlocks(t || {});
+  b.media = { requestId: '', requestNo: '', requestTitle: '', ...b.media };
+  return b;
+};
+
 export const MAKE = {
   phase: () => ({ id: uid(), task: '', start: '', end: '', criterion: '' }),
   target: () => ({
     id: uid(), name: '', kpi: '', desc: '', output: '', audience: '', month: '', place: '', time: '',
     phases: [{ id: uid(), task: '', start: '', end: '', criterion: '' }, { id: uid(), task: '', start: '', end: '', criterion: '' }],
     sectionRole: '', headRole: '',
-    ...normalizeBlocks({}),
+    ...blocksOf({}),
     notes: ''
   })
 };
@@ -66,7 +117,7 @@ export const normalize = (d) => {
   s.targets = (Array.isArray(d.targets) ? d.targets : []).map(t => {
     const x = { ...blank, ...t, id: t?.id || uid() };
     x.phases = (Array.isArray(t?.phases) ? t.phases : []).map(p => ({ ...MAKE.phase(), ...p }));
-    Object.assign(x, normalizeBlocks(t || {}));
+    Object.assign(x, blocksOf(t));
     return x;
   });
   return s;
@@ -91,19 +142,26 @@ export const planTitle = (s) => {
   return p ? `الخطة التنفيذية — ${p}${has(s.header.section) ? ` · ${s.header.section}` : ''}` : '';
 };
 
+const GONE = {
+  content: 'الحقيبة المرتبطة لم تعد متاحة',
+  finance: 'طلب الصرف المرتبط لم يعد متاحًا',
+  media: 'طلب التصميم المرتبط لم يعد متاحًا',
+  volunteer: 'النموذج غير متاح'
+};
+
 // What each file block asks for when it is neither linked / filled nor
 // «لا يتطلب».
 const BLOCK_ASK = {
   content: 'اربط حقيبة تدريبية أو أنشئ حقيبة جديدة، أو اختر «لا يتطلب»',
   finance: 'أنشئ طلب صرف مالي أو اربط طلبًا قائمًا، أو اختر «لا يتطلب»',
-  media: 'عبّئ نموذج طلب تصميم الإعلان، أو اختر «لا يتطلب»',
+  media: 'أنشئ طلب تصميم إعلان لفريق التصميم أو اربط طلبًا قائمًا، أو اختر «لا يتطلب»',
   volunteer: 'عبّئ نموذج الفرص التطوعية، أو اختر «لا يتطلب»'
 };
 
 // Completeness — the template's fields. Each issue knows the field (target
 // id) it points to and the nav section it belongs to; `open` names the
 // embedded form to open before jumping (media / volunteer).
-// live = live statuses of the linked kits / financial requests.
+// live = live statuses of the linked kits / financial / design requests.
 export const analyze = (s, live) => {
   const h = s.header; const sec = {}; const issues = [];
   const chk = (k, ok, text, target, open) => {
@@ -134,9 +192,15 @@ export const analyze = (s, live) => {
       if (has(p.start) && has(p.end) && p.end < p.start) chk(k, false, `${n} › المرحلة ${j + 1}: تاريخ النهاية قبل تاريخ البداية`, idOf(`${q}phases.${j}.end`));
     });
     FILE_BLOCKS.forEach(b => {
-      const st = blockState(t, b.key, live);
+      const st = blockStateOf(t, b.key, live);
       if (st.gone) {
-        chk(k, false, `${n}: ${b.key === 'content' ? 'الحقيبة المرتبطة لم تعد متاحة' : 'طلب الصرف المرتبط لم يعد متاحًا'} — اربط غيره أو أنشئ جديدًا`, `ep-blk-${t.id}-${b.key}`);
+        chk(k, false, `${n}: ${GONE[b.key]} — اربط غيره أو أنشئ جديدًا`, `ep-blk-${t.id}-${b.key}`);
+        return;
+      }
+      // An unfinished media form from an older plan: it now becomes a
+      // design request (what was filled carries over).
+      if (b.key === 'media' && st.form && st.missing.length) {
+        chk(k, false, `${n}: «${b.label}» — أنشئ طلب تصميم من النموذج (ينتقل إليه ما عبّأته) أو اختر «لا يتطلب»`, `ep-blk-${t.id}-media`);
         return;
       }
       if (st.form && st.missing.length) {
@@ -191,6 +255,7 @@ export const flatten = (raw) => {
     });
     put(`t.${t.id}.content.kit`, `${n} › المحتوى المعتمد › الحقيبة المرتبطة`, t.content.kitId ? `${t.content.kitNo} ${t.content.kitTitle}`.trim() : '');
     put(`t.${t.id}.finance.req`, `${n} › الملف المالي › طلب الصرف المرتبط`, t.finance.requestId ? `${t.finance.requestNo} ${t.finance.requestTitle}`.trim() : '');
+    put(`t.${t.id}.media.req`, `${n} › المتطلبات الإعلامية › طلب التصميم المرتبط`, t.media.requestId ? `${t.media.requestNo || ''} ${t.media.requestTitle || ''}`.trim() : '');
     const mf = t.media.form; const M = `${n} › المتطلبات الإعلامية`;
     Object.entries(MEDIA_F).forEach(([k, l]) => put(`t.${t.id}.mf.${k}`, `${M} › ${l}`, mf[k]));
     mf.axes.forEach((a, j) => put(`t.${t.id}.mf.ax.${a.id}`, `${M} › المحور ${j + 1}`, [a.title, a.desc].filter(has).join(' — ')));

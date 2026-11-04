@@ -33,14 +33,16 @@ const fileIdsOf = (data) => {
 const BLOCKS = [['content', 'المحتوى المعتمد'], ['finance', 'الملف المالي التفصيلي'], ['media', 'المتطلبات الإعلامية'], ['volunteer', 'تصاميم الفرص التطوعية']];
 
 // Live status of the documents the targets link — the content's training
-// kit and the financial request each move on their own review path, so the
-// plan document shows where they are now. A deleted one is simply absent.
+// kit, the financial request and the media design request each move on
+// their own path, so the plan document shows where they are now. A deleted
+// one is simply absent.
 const prepare = async (data) => {
   const targets = Array.isArray(data?.targets) ? data.targets : [];
   const ids = (key, field) => [...new Set(targets.map(t => t?.[key]?.[field]).filter(v => typeof v === 'string' && UUID.test(v)))];
   const kitIds = ids('content', 'kitId');
   const reqIds = ids('finance', 'requestId');
-  const kits = {}; const finance = {};
+  const mediaIds = ids('media', 'requestId');
+  const kits = {}; const finance = {}; const media = {};
   if (kitIds.length) {
     (await TrainingKit.findAll({ where: { kitId: kitIds }, attributes: ['kitId', 'kitNumber', 'title', 'status', 'approvedAt'] }))
       .forEach(k => { kits[k.kitId] = { number: k.kitNumber, title: k.title, status: k.status, approvedAt: k.approvedAt }; });
@@ -51,7 +53,13 @@ const prepare = async (data) => {
     (await FR.findAll({ where: { requestId: reqIds }, attributes: ['requestId', 'requestNumber', 'title', 'status', 'approvedAt'] }))
       .forEach(r => { finance[r.requestId] = { number: r.requestNumber, title: r.title, status: r.status, approvedAt: r.approvedAt }; });
   }
-  return { live: { kits, finance: FR ? finance : undefined } };
+  // MediaRequest comes with the media design-request module.
+  const MR = models.MediaRequest;
+  if (mediaIds.length && MR) {
+    (await MR.findAll({ where: { requestId: mediaIds }, attributes: ['requestId', 'requestNumber', 'title', 'status', 'approvedAt', 'designVersion'] }))
+      .forEach(r => { media[r.requestId] = { number: r.requestNumber, title: r.title, status: r.status, approvedAt: r.approvedAt, designVersion: r.designVersion }; });
+  }
+  return { live: { kits, finance: FR ? finance : undefined, media: MR ? media : undefined } };
 };
 
 const flow = createReviewFlow({
@@ -77,7 +85,9 @@ const flow = createReviewFlow({
         const row = byId.get(f.fileId);
         if (row) add(`${dir}/${label}/${safeName(row.name)}`, row.content);
       }));
-      (t.media?.status === 'لا يتطلب' ? [] : (t.media?.form?.images || [])).forEach(im => {
+      // Ad images of an embedded media form (older plans); a linked design
+      // request carries its own files.
+      (t.media?.status === 'لا يتطلب' || t.media?.requestId ? [] : (t.media?.form?.images || [])).forEach(im => {
         const row = byId.get(im.fileId);
         if (row) add(`${dir}/المتطلبات الإعلامية/صور الإعلان/${safeName(row.name)}`, row.content);
       });

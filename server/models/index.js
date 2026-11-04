@@ -91,6 +91,9 @@ const WorkshopRequestFile = require('./WorkshopRequestFile');
 const FinancialRequest = require('./FinancialRequest');
 const FinancialRequestVersion = require('./FinancialRequestVersion');
 const FinancialRequestFile = require('./FinancialRequestFile');
+const MediaRequest = require('./MediaRequest');
+const MediaRequestEvent = require('./MediaRequestEvent');
+const MediaRequestFile = require('./MediaRequestFile');
 const CalendarEvent = require('./CalendarEvent');
 const StoreItem = require('./StoreItem');
 const StoreOrder = require('./StoreOrder');
@@ -414,6 +417,12 @@ FinancialRequest.belongsTo(Employee, { foreignKey: 'employeeId', as: 'author' })
 FinancialRequest.hasMany(FinancialRequestVersion, { foreignKey: 'requestId', as: 'versions', onDelete: 'CASCADE' });
 FinancialRequestVersion.belongsTo(FinancialRequest, { foreignKey: 'requestId', as: 'request' });
 FinancialRequest.hasMany(FinancialRequestFile, { foreignKey: 'requestId', as: 'files', onDelete: 'CASCADE' });
+
+// Media design requests (طلب تصميم إعلان) — their own line with an event log
+MediaRequest.belongsTo(Employee, { foreignKey: 'employeeId', as: 'author' });
+MediaRequest.hasMany(MediaRequestEvent, { foreignKey: 'requestId', as: 'events', onDelete: 'CASCADE' });
+MediaRequestEvent.belongsTo(MediaRequest, { foreignKey: 'requestId', as: 'request' });
+MediaRequest.hasMany(MediaRequestFile, { foreignKey: 'requestId', as: 'files', onDelete: 'CASCADE' });
 
 // Registration Closure relationships
 RegistrationClosure.belongsTo(Admin, { foreignKey: 'createdById', as: 'creator', constraints: false });
@@ -1514,6 +1523,9 @@ module.exports = {
   FinancialRequest,
   FinancialRequestVersion,
   FinancialRequestFile,
+  MediaRequest,
+  MediaRequestEvent,
+  MediaRequestFile,
   CalendarEvent,
   StoreItem,
   StoreOrder,

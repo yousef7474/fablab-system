@@ -91,6 +91,13 @@ const LIVE_STATUS = {
   draft: 'مسودة', pm_review: 'لدى مسؤول إدارة المشاريع', manager_review: 'لدى المدير للاعتماد', returned: 'معادة للتعديل', approved: 'معتمدة'
 };
 const LIVE_STATUS_M = { ...LIVE_STATUS, returned: 'معاد للتعديل', approved: 'معتمد' };
+// Where a media design request is now (its own path: design team →
+// employee's design check → project manager → manager).
+const MEDIA_STAGE = {
+  draft: 'مسودة لم تُرسل', design: 'لدى فريق التصميم', employee_check: 'بانتظار مراجعة الموظف للتصميم',
+  pm_review: 'لدى مسؤول إدارة المشاريع', manager_review: 'لدى المدير للاعتماد', returned_employee: 'معاد للموظف للتعديل', approved: 'معتمد'
+};
+const fmtMediaNo = (n) => (n == null ? 'MR-—' : `MR-${String(n).padStart(3, '0')}`);
 
 const mediaForm = (t) => {
   const f = obj(obj(t.media).form);
@@ -170,6 +177,12 @@ const blockState = (t, key, live = {}) => {
     const ok = r?.status === 'approved';
     return { status: ok ? b.attached : b.pending, tone: ok ? 'ok' : 'wait', linked: r || null };
   }
+  if (key === 'media' && has(x.requestId)) {
+    const r = live.media ? live.media[x.requestId] : undefined;
+    if (live.media && !r) return { status: 'الطلب غير متاح', tone: 'none', gone: true };
+    const ok = r?.status === 'approved';
+    return { status: ok ? b.attached : b.pending, tone: ok ? 'ok' : 'wait', linked: r || null };
+  }
   if (key === 'media' || key === 'volunteer') {
     const f = key === 'media' ? mediaForm(t) : volunteerForm(t);
     if (key === 'media' ? mediaStarted(f) : volunteerStarted(f)) {
@@ -222,26 +235,8 @@ const datePair = (a, b) => (has(a) || has(b)
   ? `من يوم: <b>${esc(weekdayOf(a) || '—')}</b> تاريخ: <b>${has(a) ? esc(fmtDate(a)) : '—'}</b> &nbsp; إلى يوم: <b>${esc(weekdayOf(b) || '—')}</b> تاريخ: <b>${has(b) ? esc(fmtDate(b)) : '—'}</b>`
   : dash(''));
 
-const mediaBody = (f, images) => `
-  <table class="kv">
-    ${kvRow('اسم النشاط', dash(f.activity))}
-    ${kvRow('اسم المنفذ', dash(f.implementer))}
-    ${kvRow('العمر المستهدف من النشاط', has(f.ageMin) || has(f.ageMax) ? `${esc(f.ageMin || '—')} إلى ${esc(f.ageMax || '—')} سنة` : dash(''))}
-    ${kvRow('الفترة الزمنية', has(f.timeFrom) || has(f.timeTo) ? `من ${esc(f.timeFrom || '—')} إلى ${esc(f.timeTo || '—')} &nbsp; ${['صباحًا', 'مساءً'].map(x => `${f.dayPart === x ? '☑' : '☐'} ${x}`).join(' &nbsp; ')}` : dash(''))}
-    ${kvRow('التاريخ', datePair(f.dateFrom, f.dateTo))}
-    ${kvRow('عدد المستفيدين', has(f.beneficiaries) ? `${esc(f.beneficiaries)}${has(f.seatsNote) ? ` <small>(${esc(f.seatsNote)})</small>` : ''}` : dash(''))}
-    ${kvRow('عدد الأيام الفعلية', dash(f.days))}
-    ${kvRow('الفئة المستهدفة', ['أولاد', 'بنات', 'مختلط'].map(x => `${f.gender === x ? '☑' : '☐'} ${x}`).join(' &nbsp; '))}
-    ${kvRow('تكلفة البرنامج', dash(f.cost))}
-    ${kvRow('تاريخ انتهاء التصميم', `${has(f.dueDate) ? esc(fmtDate(f.dueDate)) : '—'} &nbsp; ${['مستعجل', 'غير مستعجل'].map(x => `${f.urgency === x ? '☑' : '☐'} ${x}`).join(' &nbsp; ')}`)}
-    ${has(f.notes) ? kvRow('ملاحظات للتصميم', multiline(f.notes)) : ''}
-  </table>
-  <h4>المحاور</h4>
-  ${f.axes.filter(a => has(obj(a).title) || has(obj(a).desc)).length
-    ? `<ol class="axes">${f.axes.filter(a => has(obj(a).title) || has(obj(a).desc)).map(a => `<li><b>${esc(a.title || '')}</b>${has(a.desc) ? `<div>${multiline(a.desc)}</div>` : ''}</li>`).join('')}</ol>`
-    : '<p class="nil">—</p>'}
-  <h4>صور الإعلان <small>(${f.images.length} من ${MEDIA_MIN_IMAGES} على الأقل)</small></h4>
-  ${imgGrid(f.images, images)}`;
+// The media form itself is shared with the media design request's document.
+const { mediaBody } = require('./mediaFormDoc');
 
 const volunteerBody = (f) => {
   const tot = volunteerTotals(f);
@@ -308,6 +303,10 @@ const renderPlanDocument = ({ plan, version, data, author, files = {}, images = 
     let body = '';
     if (key === 'content' && has(x.kitId)) body = linkedLine('🎒', 'الحقيبة التدريبية', x.kitNo || fmtKitNo(st.linked?.number), st.linked?.title || x.kitTitle, st.linked, false);
     if (key === 'finance' && has(x.requestId)) body = linkedLine('🧾', 'طلب الصرف المالي', x.requestNo || fmtFinanceNo(st.linked?.number), st.linked?.title || x.requestTitle, st.linked, true);
+    if (key === 'media' && has(x.requestId)) {
+      const l = st.linked;
+      body = `<div class="kit">📣 طلب تصميم الإعلان ${esc(x.requestNo || fmtMediaNo(l?.number))}${has(l?.title || x.requestTitle) ? ` «${esc(l?.title || x.requestTitle)}»` : ''}${l ? ` <small>— ${esc(MEDIA_STAGE[l.status] || l.status || '')}${l.status === 'approved' && l.approvedAt ? ` ${esc(fmtDate(l.approvedAt))}` : ''}${l.designVersion ? ` · التصميم ${esc(l.designVersion)}` : ''}</small>` : ''}</div>`;
+    }
     if (st.form) {
       const a = appxOf(t, key);
       const f = st.form;

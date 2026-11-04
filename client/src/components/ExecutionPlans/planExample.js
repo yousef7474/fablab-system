@@ -3,11 +3,11 @@
 // (linked to the employee's training kit when there is one), a community
 // open day, preventive maintenance, and an external exhibition. Each of
 // the four «ملفات المستهدف» is shown on its own path: a linked kit, a
-// financial request (created with the example), filled media forms and a
-// filled volunteer form. Lets employees see a complete plan and try the
-// review flow.
-import { uid, sectionAr } from './planModel';
-import { NA, MAKE_F, normalizeBlocks } from './planFiles';
+// financial request (created with the example), media design requests
+// (created from the example's media forms) and a filled volunteer form.
+// Lets employees see a complete plan and try the review flow.
+import { uid, sectionAr, analyze, fmtMediaNo } from './planModel';
+import { NA, MAKE_F, normalizeBlocks, mediaStarted } from './planFiles';
 import { fmtKitNo } from '../TrainingKits/kitModel';
 
 const phase = (task, start, end, criterion) => ({ id: uid(), task, start, end, criterion });
@@ -208,4 +208,29 @@ export const examplePlanData = (employee, kit) => {
     // fill each block's missing structure (empty forms, files, links)
     targets: targets.map(t => ({ ...t, ...normalizeBlocks(t) }))
   };
+};
+
+// The example's media forms become design requests, each on its own path
+// (employee → design team → employee's design check → project manager →
+// manager): POST /media-requests/mine/from-plan moves a target's form and
+// its images into a new request, and the target links it. The plan is
+// saved first so the server reads the filled forms; the plan's own copies
+// of the images are then removed. A target whose request can't be created
+// keeps its form.
+export const exampleMediaToRequests = async (api, planId, data, R) => {
+  await api.put(R.kit(planId), { data, completion: analyze(data).pct });
+  for (const t of data.targets) {
+    if (t.media.status === NA || !mediaStarted(t.media.form)) continue;
+    try {
+      const { data: r } = await api.post('/media-requests/mine/from-plan', { planId, targetId: t.id });
+      const images = t.media.form.images;
+      Object.assign(t.media, {
+        requestId: r.id || r.requestId,
+        requestNo: fmtMediaNo(r.number != null ? r.number : r.requestNumber),
+        requestTitle: r.title || '',
+        form: MAKE_F.media()
+      });
+      images.forEach(f => { api.delete(R.dropFile(planId, f.fileId)).catch(() => {}); });
+    } catch { /* the target keeps its form */ }
+  }
 };

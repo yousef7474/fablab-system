@@ -3965,14 +3965,14 @@ const ManagerDashboard = () => {
           <button
             className={`nav-item ${activeTab === 'requests' ? 'active' : ''}`}
             onClick={() => { setActiveTab('requests'); if (window.innerWidth <= 768) setSidebarOpen(false); }}
-            title={isRTL ? 'طلبات الورش والصرف' : 'Workshop & Finance Requests'}
+            title={isRTL ? 'الطلبات — الورش والصرف والتصميم' : 'Workshop, Finance & Design Requests'}
           >
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <path d="M4 4h16v16H4z"/>
               <path d="M4 9h16M9 9v11"/>
               <path d="M12.5 13h5M12.5 16.5h3"/>
             </svg>
-            {sidebarOpen && <span>{isRTL ? 'طلبات الورش والصرف' : 'Requests'}</span>}
+            {sidebarOpen && <span>{isRTL ? 'الطلبات' : 'Requests'}</span>}
           </button>
           <button
             className={`nav-item ${activeTab === 'workspaces' ? 'active' : ''}`}
@@ -4098,7 +4098,7 @@ const ManagerDashboard = () => {
               : activeTab === 'execution-plans'
               ? (isRTL ? 'الخطط التنفيذية' : 'Execution Plans')
               : activeTab === 'requests'
-              ? (isRTL ? 'طلبات الورش والصرف' : 'Workshop & Finance Requests')
+              ? (isRTL ? 'الطلبات' : 'Requests')
               : activeTab === 'workspaces'
               ? (isRTL ? 'مساحات العمل' : 'Workspaces')
               : activeTab === 'volunteers'
@@ -4126,7 +4126,7 @@ const ManagerDashboard = () => {
               : activeTab === 'execution-plans'
               ? (isRTL ? 'الخطط التنفيذية الشهرية والربعية لكل قسم ومراجعتها' : 'Monthly and quarterly execution plans and their reviews')
               : activeTab === 'requests'
-              ? (isRTL ? 'طلبات إقامة الورش من الحقائب المعتمدة وطلبات الصرف المالي' : 'Workshop requests from approved kits and financial requests')
+              ? (isRTL ? 'طلبات الورش من الحقائب المعتمدة، وطلبات الصرف المالي، وطلبات تصميم الإعلانات' : 'Workshop, financial and design requests')
               : activeTab === 'workspaces'
               ? (isRTL ? 'إدارة مساحات العمل للعملاء' : 'Manage customer workspaces')
               : activeTab === 'volunteers'

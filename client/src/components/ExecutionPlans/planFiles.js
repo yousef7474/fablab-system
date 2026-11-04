@@ -8,6 +8,14 @@
 // form's completeness. `status: 'لا يتطلب'` is the only stored choice;
 // older plans' stored statuses, links and files still display and count.
 import { uid, has, num } from '../TrainingKits/kitModel';
+import {
+  WEEKDAYS, DAY_PARTS, GENDERS, URGENCY, MEDIA_MIN_IMAGES, MEDIA_SIGNERS, MEDIA_EXEC,
+  makeAxis, makeMedia, normalizeMedia, mediaMissing, mediaStarted
+} from '../Requests/media/mediaForm';
+
+// The media form lives with the media design request (Requests/media/
+// mediaForm.js); re-exported here for the plan's embedded forms.
+export { WEEKDAYS, DAY_PARTS, GENDERS, URGENCY, MEDIA_MIN_IMAGES, MEDIA_SIGNERS, MEDIA_EXEC, normalizeMedia, mediaMissing, mediaStarted };
 
 export const NA = 'لا يتطلب';
 
@@ -23,29 +31,12 @@ export const fmtFinanceNo = (n) => (n == null || n === '' ? 'FR-—' : `FR-${Str
 
 // ─────────────── Forms ───────────────
 
-export const WEEKDAYS = ['الأحد', 'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'];
-export const DAY_PARTS = ['صباحًا', 'مساءً'];
-export const GENDERS = ['أولاد', 'بنات', 'مختلط'];
-export const URGENCY = ['مستعجل', 'غير مستعجل'];
 export const V_MODES = ['حضوري', 'عن بُعد', 'مدمج'];
 export const V_GENDERS = ['ذكور', 'إناث', 'الجميع'];
-export const MEDIA_MIN_IMAGES = 3;
-
-// The reviewers named on «نموذج اعتماد طلب تصميم إعلان».
-export const MEDIA_SIGNERS = [
-  { role: 'تم تأكيد المحتوى العلمي من: مدير البرامج والمشاريع', name: 'م. نوف بوعبيد' },
-  { role: 'الإعلام', name: 'أ. دانة الدوسري' },
-  { role: 'مشاريع المؤسسة', name: 'أ. لولوة عادل' }
-];
-export const MEDIA_EXEC = { role: 'المسؤول التنفيذي', name: 'أ. زكي اللويم' };
 
 export const MAKE_F = {
-  axis: () => ({ id: uid(), title: '', desc: '' }),
-  media: () => ({
-    activity: '', implementer: '', ageMin: '', ageMax: '', timeFrom: '', timeTo: '', dayPart: '',
-    dateFrom: '', dateTo: '', beneficiaries: '', seatsNote: '', days: '', gender: '',
-    axes: [{ id: uid(), title: '', desc: '' }], images: [], dueDate: '', urgency: '', cost: '', notes: ''
-  }),
+  axis: makeAxis,
+  media: makeMedia,
   role: () => ({
     id: uid(), title: '', field: '', count: '', tasks: '', skills: '', education: '', gender: '', ageMin: '', ageMax: '',
     dateFrom: '', dateTo: '', weekdays: [], days: '', timeFrom: '', timeTo: ''
@@ -54,15 +45,6 @@ export const MAKE_F = {
 };
 
 const obj = (v) => (v && typeof v === 'object' && !Array.isArray(v) ? v : {});
-const fileRef = (f) => (f && typeof f === 'object' && f.fileId ? { fileId: f.fileId, name: f.name || '', size: f.size || 0, mime: f.mime || '', caption: f.caption || '' } : null);
-
-export const normalizeMedia = (raw) => {
-  const b = MAKE_F.media(); const f = obj(raw);
-  const x = { ...b, ...f };
-  x.axes = Array.isArray(f.axes) ? f.axes.map(a => ({ ...MAKE_F.axis(), ...obj(a) })) : b.axes;
-  x.images = (Array.isArray(f.images) ? f.images : []).map(fileRef).filter(Boolean);
-  return x;
-};
 export const normalizeVolunteer = (raw) => {
   const b = MAKE_F.volunteer(); const f = obj(raw);
   const x = { ...b, ...f };
@@ -128,30 +110,6 @@ export const volunteerTotals = (f) => f.roles.reduce((a, r) => {
 // ─────────────── Completeness ───────────────
 // Each returns [{ label, path }] of what is missing; path is relative to
 // the target ('media.form.activity', 'volunteer.form.roles.0.title').
-
-export const mediaMissing = (f) => {
-  const miss = [];
-  const need = (ok, label, path) => { if (!ok) miss.push({ label, path }); };
-  need(has(f.activity), 'اسم النشاط', 'media.form.activity');
-  need(has(f.implementer), 'اسم المنفذ', 'media.form.implementer');
-  need(has(f.ageMin) && has(f.ageMax), 'العمر المستهدف', 'media.form.ageMin');
-  if (num(f.ageMin) != null && num(f.ageMax) != null && num(f.ageMin) > num(f.ageMax)) need(false, 'العمر: الحد الأدنى أكبر من الأعلى', 'media.form.ageMin');
-  need(has(f.timeFrom) && has(f.timeTo), 'الفترة الزمنية', 'media.form.timeFrom');
-  need(has(f.dayPart), 'صباحًا أو مساءً', 'media.form.dayPart');
-  need(has(f.dateFrom) && has(f.dateTo), 'تاريخ النشاط', 'media.form.dateFrom');
-  if (has(f.dateFrom) && has(f.dateTo) && f.dateTo < f.dateFrom) need(false, 'تاريخ النهاية قبل البداية', 'media.form.dateTo');
-  need(num(f.beneficiaries) > 0, 'عدد المستفيدين', 'media.form.beneficiaries');
-  need(has(f.days), 'عدد الأيام الفعلية', 'media.form.days');
-  need(has(f.gender), 'الفئة المستهدفة', 'media.form.gender');
-  need(f.axes.some(a => has(a.title)), 'المحاور', 'media.form.axes.0.title');
-  need(f.images.length >= MEDIA_MIN_IMAGES, `${MEDIA_MIN_IMAGES} صور على الأقل`, 'media.form.images');
-  need(has(f.dueDate), 'تاريخ انتهاء التصميم', 'media.form.dueDate');
-  need(has(f.urgency), 'مستعجل أو غير مستعجل', 'media.form.urgency');
-  need(has(f.cost), 'تكلفة البرنامج', 'media.form.cost');
-  return miss;
-};
-export const mediaStarted = (f) => ['activity', 'implementer', 'ageMin', 'ageMax', 'timeFrom', 'timeTo', 'dayPart', 'dateFrom', 'dateTo', 'beneficiaries', 'seatsNote', 'days', 'gender', 'dueDate', 'urgency', 'cost', 'notes']
-  .some(k => has(f[k])) || f.images.length > 0 || f.axes.some(a => has(a.title) || has(a.desc));
 
 export const volunteerMissing = (f) => {
   const miss = [];

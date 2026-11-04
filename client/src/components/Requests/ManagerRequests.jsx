@@ -7,21 +7,32 @@ import { useHostTheme } from '../TrainingKits/KitParts';
 import { errorText } from '../TrainingKits/kitApi';
 import { WR_KIND } from './workshop/wrKind';
 import { FR_KIND } from './finance/frKind';
+import { MEDIA_KIND } from './media/mediaKind';
+import MediaReview from './media/MediaReview';
 import '../TrainingKits/TrainingKits.css';
 import '../ExecutionPlans/Plans.css';
 import './workshop/WorkshopRequest.css';
 
 // Manager board: workshop requests (طلبات الورش — approving one creates
-// the workshop) and financial requests (طلبات الصرف المالي — approved ones
-// are printed and signed), each after the project manager's review.
+// the workshop), financial requests (طلبات الصرف المالي — approved ones
+// are printed and signed) and design requests (طلبات التصميم — designer ⇄
+// employee first), each after the project manager's review.
 export const REQUEST_TYPES = [
   { key: 'workshop', kind: WR_KIND, label: 'طلبات الورش', none: 'لا توجد طلبات ورش' },
-  { key: 'finance', kind: FR_KIND, label: 'طلبات الصرف المالي', none: 'لا توجد طلبات صرف' }
+  { key: 'finance', kind: FR_KIND, label: 'طلبات الصرف المالي', none: 'لا توجد طلبات صرف' },
+  { key: 'media', kind: MEDIA_KIND, label: 'طلبات التصميم', none: 'لا توجد طلبات تصميم' }
 ];
+// The media request names its manager routes `manager`.
+const adminRoutes = (kind) => kind.routes.admin || kind.routes.manager;
 
 // An approved workshop request shows that its workshop was created.
 const madeWorkshop = (d) => (d.workshopId ? <span className="wr-made">✓ أُنشئت الورشة</span> : null);
 const extraFor = (kind) => (kind === WR_KIND ? madeWorkshop : undefined);
+
+// The review screen for a type: the design request has its own.
+const Review = ({ kind, id, theme, onClose, onChanged }) => (kind === MEDIA_KIND
+  ? <MediaReview api={api} role="manager" requestId={id} theme={theme} onClose={onClose} onChanged={onChanged} />
+  : <KitReview api={api} scope="admin" kind={kind} kitId={id} theme={theme} extraActions={extraFor(kind)} onClose={onClose} onChanged={onChanged} />);
 
 const searchText = (kind, d) => `${d.title || ''} ${d.author?.name || ''} ${kind.fmtNo(d.number)}`.toLowerCase();
 
@@ -34,7 +45,7 @@ export const RequestApprovals = () => {
     const next = {};
     await Promise.all(REQUEST_TYPES.map(async (t) => {
       try {
-        const { data } = await api.get(t.kind.routes.admin.list, { params: { scope: 'pending' } });
+        const { data } = await api.get(adminRoutes(t.kind).list, { params: { scope: 'pending' } });
         next[t.key] = Array.isArray(data) ? data : [];
       } catch (err) {
         next[t.key] = [];
@@ -49,7 +60,7 @@ export const RequestApprovals = () => {
       <div className="tk-tab-head">
         <div>
           <h3>📨 الطلبات بانتظار الاعتماد</h3>
-          <p>طلبات راجعها مسؤول إدارة المشاريع واعتمدها. اعتماد طلب الورشة يُنشئ الورشة في نظام الورش، وطلب الصرف المعتمد يُطبع للتوقيع.</p>
+          <p>طلبات راجعها مسؤول إدارة المشاريع واعتمدها. اعتماد طلب الورشة يُنشئ الورشة في نظام الورش، وطلب الصرف المعتمد يُطبع للتوقيع، وطلب التصميم يصلك بعد موافقة منفذ الطلب على التصميم.</p>
         </div>
       </div>
       {REQUEST_TYPES.map(t => (
@@ -58,7 +69,7 @@ export const RequestApprovals = () => {
           <KitList kits={lists[t.key] || []} kind={t.kind} showAuthor onOpen={(d) => setOpen({ kind: t.kind, id: d.id })} empty={{ title: `${t.none} بانتظار الاعتماد` }} />
         </section>
       ))}
-      {open && <KitReview api={api} scope="admin" kind={open.kind} kitId={open.id} theme={theme} extraActions={extraFor(open.kind)} onClose={() => { setOpen(null); load(); }} onChanged={load} />}
+      {open && <Review kind={open.kind} id={open.id} theme={theme} onClose={() => { setOpen(null); load(); }} onChanged={load} />}
     </div>
   );
 };
@@ -73,7 +84,7 @@ const MATCH = {
 // Sidebar tab: archive of both request types, with a type switch.
 export const ManagerRequestsTab = () => {
   const theme = useHostTheme();
-  const [type, setType] = useState(() => { try { return localStorage.getItem('mgrRequestsType') === 'finance' ? 'finance' : 'workshop'; } catch { return 'workshop'; } });
+  const [type, setType] = useState(() => { try { const t = localStorage.getItem('mgrRequestsType'); return REQUEST_TYPES.some(x => x.key === t) ? t : 'workshop'; } catch { return 'workshop'; } });
   const [lists, setLists] = useState({});
   const [filter, setFilter] = useState('pending');
   const [search, setSearch] = useState('');
@@ -84,7 +95,7 @@ export const ManagerRequestsTab = () => {
     const next = {};
     await Promise.all(REQUEST_TYPES.map(async (t) => {
       try {
-        const { data } = await api.get(t.kind.routes.admin.list);
+        const { data } = await api.get(adminRoutes(t.kind).list);
         next[t.key] = Array.isArray(data) ? data : [];
       } catch (err) {
         next[t.key] = [];
@@ -120,7 +131,9 @@ export const ManagerRequestsTab = () => {
       <p className="tk-muted-s" style={{ margin: '0 0 12px' }}>
         {type === 'workshop'
           ? 'طلبات إقامة ورشة من حقيبة تدريبية معتمدة. اعتمادك النهائي يُنشئ الورشة تلقائيًا في نظام الورش.'
-          : 'طلبات الصرف المالي للبرامج والمشاريع، بعد مراجعة مسؤول إدارة المشاريع. اطبع الطلب المعتمد للتوقيع والختم.'}
+          : type === 'finance'
+            ? 'طلبات الصرف المالي للبرامج والمشاريع، بعد مراجعة مسؤول إدارة المشاريع. اطبع الطلب المعتمد للتوقيع والختم.'
+            : 'طلبات تصميم الإعلانات: يصمّمها فريق التصميم ويراجعها منفذ الطلب، ثم مسؤول إدارة المشاريع، ثم أنت. يظهر سجل المسار كاملًا مع كل نسخة تصميم.'}
       </p>
       <KitFilters value={filter} onChange={setFilter} options={[
         { key: 'pending', label: 'بانتظار اعتمادي', count: counts.pending },
@@ -129,7 +142,7 @@ export const ManagerRequestsTab = () => {
         { key: 'all', label: 'الكل', count: counts.all }
       ]} />
       <KitList kits={shown} kind={T.kind} showAuthor onOpen={(d) => setOpen(d.id)} empty={{ title: T.none }} />
-      {open && <KitReview api={api} scope="admin" kind={T.kind} kitId={open} theme={theme} extraActions={extraFor(T.kind)} onClose={() => { setOpen(null); load(); }} onChanged={load} />}
+      {open && <Review kind={T.kind} id={open} theme={theme} onClose={() => { setOpen(null); load(); }} onChanged={load} />}
     </div>
   );
 };

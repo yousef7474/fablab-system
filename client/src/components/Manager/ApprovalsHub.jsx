@@ -28,7 +28,7 @@ const TABS = [
   { id: 'kits',      ar: 'الحقائب التدريبية', en: 'Training Kits',      icon: '🎒', color: '#EE2329', solid: '#c81e24', endpoint: '/training-kits/admin/kits?scope=pending' },
   { id: 'plans',     ar: 'الخطط التنفيذية',  en: 'Execution Plans',    icon: '🗓', color: '#0d9488', solid: '#0f766e', endpoint: '/execution-plans/admin/plans?scope=pending' },
   // Workshop + financial requests share one queue (several endpoints).
-  { id: 'requests',  ar: 'طلبات الورش والصرف', en: 'Workshop & Finance', icon: '📨', color: '#6366f1', solid: '#4338ca', endpoint: ['/workshop-requests/admin/requests?scope=pending', '/financial-requests/admin/requests?scope=pending'] },
+  { id: 'requests',  ar: 'طلبات الورش والصرف والتصميم', en: 'Requests', icon: '📨', color: '#6366f1', solid: '#4338ca', endpoint: ['/workshop-requests/admin/requests?scope=pending', '/financial-requests/admin/requests?scope=pending', '/media-requests/admin/requests?scope=pending'] },
   // Archive isn't a "queue" — it's the audit trail of every request
   // ever sent to the manager, so no pending-count endpoint. Rendered
   // as an ordinary tab that shows the historical list w/ reprint.

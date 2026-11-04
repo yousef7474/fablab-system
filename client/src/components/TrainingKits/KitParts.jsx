@@ -106,8 +106,10 @@ export const useBodyLock = () => {
   }, []);
 };
 
-export const StatusPill = ({ kit, m = false }) => {
-  const s = statusOf(kit, m);
+// `statusOf` overrides the shared labels for a type with its own stages
+// (the media design request).
+export const StatusPill = ({ kit, m = false, statusOf: own }) => {
+  const s = own ? own(kit) : statusOf(kit, m);
   return <span className={`tk-pill ${s.tone}`}>{s.label}</span>;
 };
 

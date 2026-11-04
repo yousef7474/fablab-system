@@ -24,9 +24,9 @@ const KitList = ({ kits, onOpen, showAuthor = false, empty, kind = KIT_KIND }) =
           <div style={{ minWidth: 0 }}>
             <h4>{k.title || kind.untitled}</h4>
             <div className="meta">
-              <StatusPill kit={k} m={kind.m} />
+              <StatusPill kit={k} m={kind.m} statusOf={kind.statusOf} />
               {showAuthor && k.author?.name && <span>👤 {k.author.name}</span>}
-              {k.currentVersion > 0 && <span>الإصدار {k.currentVersion}</span>}
+              {kind.cardMeta ? kind.cardMeta(k) : (k.currentVersion > 0 && <span>الإصدار {k.currentVersion}</span>)}
               {k.status === 'approved'
                 ? <span>{g(kind, 'اعتُمدت', 'اعتُمد')} {fmtDay(k.approvedAt)}</span>
                 : <span>آخر تحديث {fmtDay(k.updatedAt)}</span>}

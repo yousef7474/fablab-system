@@ -66,6 +66,10 @@
 .ep-linkrow .tk-sp { flex: 1; }
 .ep-linkrow select.tk-in { flex: 1 1 260px; min-width: 0; min-height: 36px; padding: 6px 12px; font-size: 14px; }
 .ep-finchip { background: var(--tk-amber-soft); padding-block: 6px; }
+/* The media file: a linked design request, or an older plan's form that
+   is sent on as one. */
+.ep-mediachip { background: var(--tk-violet-soft, rgba(139, 92, 246, .14)); padding-block: 6px; }
+.ep-legacy-media { display: grid; gap: 10px; padding: 10px 12px; border: 1px dashed var(--tk-border); border-radius: 10px; }
 .ep-na {
   display: flex; flex-wrap: wrap; align-items: center; gap: 10px; padding: 8px 12px; border-radius: 10px;
   border: 1px dashed var(--tk-field-line); color: var(--tk-ink-2); font-size: 14px;

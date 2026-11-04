@@ -1,19 +1,23 @@
 import React, { useState } from 'react';
 import EmployeeWorkshopRequests from './workshop/EmployeeWorkshopRequests';
 import EmployeeFinanceRequests from './finance/EmployeeFinanceRequests';
+import EmployeeMediaRequests from './media/EmployeeMediaRequests';
 import '../TrainingKits/TrainingKits.css';
 import '../ExecutionPlans/Plans.css';
 
 // Employee dashboard tab «الطلبات»: workshop requests (from an approved
-// training kit) and financial requests (طلبات الصرف), each through the
+// training kit), financial requests (طلبات الصرف) and design requests
+// (طلبات تصميم الإعلانات — designer ⇄ employee first), each through the
 // project manager then the manager.
 const TYPES = [
   { key: 'workshop', icon: '🛠', label: 'طلبات الورش' },
-  { key: 'finance', icon: '💰', label: 'طلبات الصرف المالي' }
+  { key: 'finance', icon: '💰', label: 'طلبات الصرف المالي' },
+  { key: 'media', icon: '📣', label: 'طلبات التصميم' }
 ];
+const KEYS = TYPES.map(t => t.key);
 
 const EmployeeRequestsTab = ({ portalTarget, theme }) => {
-  const [type, setType] = useState(() => { try { return localStorage.getItem('empRequestsType') === 'finance' ? 'finance' : 'workshop'; } catch { return 'workshop'; } });
+  const [type, setType] = useState(() => { try { const t = localStorage.getItem('empRequestsType'); return KEYS.includes(t) ? t : 'workshop'; } catch { return 'workshop'; } });
   const pick = (key) => { setType(key); try { localStorage.setItem('empRequestsType', key); } catch { /* ignore */ } };
   return (
     <>
@@ -26,9 +30,9 @@ const EmployeeRequestsTab = ({ portalTarget, theme }) => {
           ))}
         </div>
       </div>
-      {type === 'workshop'
-        ? <EmployeeWorkshopRequests portalTarget={portalTarget} theme={theme} />
-        : <EmployeeFinanceRequests portalTarget={portalTarget} theme={theme} />}
+      {type === 'workshop' && <EmployeeWorkshopRequests portalTarget={portalTarget} theme={theme} />}
+      {type === 'finance' && <EmployeeFinanceRequests portalTarget={portalTarget} theme={theme} />}
+      {type === 'media' && <EmployeeMediaRequests portalTarget={portalTarget} theme={theme} />}
     </>
   );
 };

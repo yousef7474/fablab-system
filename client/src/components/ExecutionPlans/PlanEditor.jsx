@@ -2,9 +2,10 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { toast } from 'react-toastify';
 import {
   MONTHS, QUARTERS, PERIOD_TYPES, HEAD_ROLES, MAKE,
-  normalize, analyze, periodLabel, periodMonths, monthName, idOf, getPath, setPath, has, num, fmtPlanNo, diffData
+  normalize, analyze, periodLabel, periodMonths, monthName, idOf, getPath, setPath, has, num, fmtPlanNo, diffData,
+  blockStateOf, fmtMediaNo, MEDIA_STAGE, MEDIA_STAGE_TONE, MEDIA_EDITABLE
 } from './planModel';
-import { FILE_BLOCKS, NA, blockState, fmtFinanceNo } from './planFiles';
+import { FILE_BLOCKS, NA, fmtFinanceNo, MAKE_F, mediaStarted } from './planFiles';
 import { MediaForm, VolunteerForm } from './PlanTargetForms';
 import { PLAN_KIND } from './planKind';
 import { fmtKitNo, fmtDay, humanSize, statusOf, ar, NOTES, blankState as kitBlankState, analyze as kitAnalyze } from '../TrainingKits/kitModel';
@@ -14,6 +15,9 @@ import KitEditor from '../TrainingKits/KitEditor';
 import KitReview from '../TrainingKits/KitReview';
 import { newFinanceData, analyze as financeAnalyze } from '../Requests/finance/frModel';
 import FinanceRequestEditor from '../Requests/finance/FinanceRequestEditor';
+import { newMediaData, analyze as mediaAnalyze } from '../Requests/media/mediaModel';
+import MediaRequestEditor from '../Requests/media/MediaRequestEditor';
+import MediaReview from '../Requests/media/MediaReview';
 import '../TrainingKits/TrainingKits.css';
 import './Plans.css';
 
@@ -25,6 +29,8 @@ const KPIS = ['عدد المستفيدين من البرامج التدريبي�
 const AUDIENCES = ['طلاب المرحلة الابتدائية', 'طلاب المرحلة المتوسطة', 'طلاب المرحلة الثانوية', 'طلاب الجامعات', 'المعلمون والمعلمات', 'رواد الأعمال', 'الأسر والأطفال', 'المجتمع العام', 'فريق فاب لاب الداخلي'];
 const PLACES = ['فاب لاب الأحساء', 'قاعة التدريب', 'معمل الطباعة ثلاثية الأبعاد', 'معمل الإلكترونيات', 'عن بُعد (أون لاين)'];
 const FIN = '/financial-requests/mine';
+const MEDIA = '/media-requests/mine';
+const DAYS_W = ['يوم واحد', 'يومان', 'أيام', 'يومًا'];
 const byId = (list) => (Array.isArray(list) ? Object.fromEntries(list.map(x => [x.id || x.kitId || x.requestId, x])) : undefined);
 const docNo = (d) => (d.number != null ? d.number : d.kitNumber != null ? d.kitNumber : d.requestNumber);
 const TONE = { ok: 'mint', wait: 'amber', na: 'muted', red: 'red', none: 'red' };
@@ -44,8 +50,10 @@ const PlanEditor = ({ api, plan, portalTarget, theme = 'dark', onClose, onSubmit
   const [busy, setBusy] = useState({});
   const [kits, setKits] = useState(null); // all the employee's kits (any status)
   const [fins, setFins] = useState(null); // the employee's financial requests
+  const [medias, setMedias] = useState(null); // the employee's media design requests
+  const [making, setMaking] = useState(''); // target id whose design request is being created
   const [openForms, setOpenForms] = useState(() => new Set()); // 'media-<tid>' / 'volunteer-<tid>'
-  const [nested, setNested] = useState(null); // { type: 'kit' | 'kitView' | 'finance', doc }
+  const [nested, setNested] = useState(null); // { type: 'kit' | 'kitView' | 'finance' | 'media' | 'mediaView', doc | id }
   const [submitOpen, setSubmitOpen] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
   const [note, setNote] = useState('');
@@ -55,9 +63,9 @@ const PlanEditor = ({ api, plan, portalTarget, theme = 'dark', onClose, onSubmit
   const latest = useRef(data);
   const id = plan.id || plan.planId;
 
-  // Live statuses of the linked kits / financial requests — they move on
-  // their own review paths, so the plan reads them rather than storing them.
-  const live = useMemo(() => ({ kits: byId(kits), finance: byId(fins) }), [kits, fins]);
+  // Live statuses of the linked kits / financial / design requests — they
+  // move on their own paths, so the plan reads them rather than storing them.
+  const live = useMemo(() => ({ kits: byId(kits), finance: byId(fins), media: byId(medias) }), [kits, fins, medias]);
   const liveRef = useRef(live);
   liveRef.current = live;
   const A = useMemo(() => analyze(data, live), [data, live]);
@@ -66,11 +74,12 @@ const PlanEditor = ({ api, plan, portalTarget, theme = 'dark', onClose, onSubmit
   const months = periodMonths(h);
   const planNo = fmtPlanNo(plan.number != null ? plan.number : plan.planNumber);
 
-  // The employee's kits and financial requests, to link as a target's
-  // content / financial file.
+  // The employee's kits, financial and design requests, to link as a
+  // target's content / financial / media file.
   const loadLinks = useCallback(() => {
     api.get('/training-kits/mine').then(({ data: list }) => setKits(Array.isArray(list) ? list : [])).catch(() => {});
     api.get(FIN).then(({ data: list }) => setFins(Array.isArray(list) ? list : [])).catch(() => {});
+    api.get(MEDIA).then(({ data: list }) => setMedias(Array.isArray(list) ? list : [])).catch(() => {});
   }, [api]);
   useEffect(() => { loadLinks(); }, [loadLinks]);
 
@@ -263,6 +272,115 @@ const PlanEditor = ({ api, plan, portalTarget, theme = 'dark', onClose, onSubmit
   };
   const closeNested = () => { setNested(null); loadLinks(); };
 
+  // ── the media file: a design request (طلب تصميم إعلان) ──
+  const linkMedia = (i, r) => update(n => {
+    const x = n.targets[i].media;
+    x.requestId = r ? (r.id || r.requestId) : '';
+    x.requestNo = r ? fmtMediaNo(docNo(r)) : '';
+    x.requestTitle = r ? (r.title || '') : '';
+    if (r && x.status === NA) x.status = '';
+  });
+  // What the request starts from: the target, the plan and the linked kit
+  // (name, ages, seats, days, axes from the kit's days, up to 3 images).
+  const mediaSeed = async (i) => {
+    const t = data.targets[i];
+    let kd = null;
+    if (t.content.kitId) {
+      try { kd = (await api.get(`/training-kits/mine/${t.content.kitId}`)).data?.data || null; } catch { /* optional */ }
+    }
+    const me = (() => { try { return JSON.parse(localStorage.getItem('employeeData') || 'null'); } catch { return null; } })();
+    const card = kd?.card || {};
+    const starts = t.phases.map(ph => ph.start).filter(has).sort();
+    const ends = t.phases.map(ph => ph.end).filter(has).sort();
+    const form = {
+      activity: card.name || t.name || '',
+      implementer: h.head || me?.name || '',
+      ageMin: card.ageMin ?? '',
+      ageMax: card.ageMax ?? '',
+      beneficiaries: card.partMax ?? '',
+      days: has(card.days) ? ar(card.days, DAYS_W) : '',
+      dateFrom: starts[0] || '',
+      dateTo: ends[ends.length - 1] || ''
+    };
+    const axes = Array.isArray(kd?.plan) && kd.plan.length
+      ? kd.plan.map((d, j) => ({ id: d.id || `ax${j}`, title: d.learn || `اليوم ${j + 1}`, desc: d.topics || '' }))
+      : null;
+    return { form, axes, kitImages: (kd?.images || []).slice(0, 3) };
+  };
+  // A new design request for the target, linked and opened. A media form
+  // already filled inside the plan (older plans) moves into it — fields
+  // and images — and is then cleared from the plan.
+  const createMedia = async (i) => {
+    const t = data.targets[i];
+    const tid = t.id;
+    const fromForm = mediaStarted(t.media.form);
+    setMaking(tid);
+    try {
+      let r;
+      if (fromForm) {
+        if (!(await persist())) throw new Error('save');
+        ({ data: r } = await api.post(`${MEDIA}/from-plan`, { planId: id, targetId: tid }));
+      } else {
+        const seed = await mediaSeed(i);
+        const md = newMediaData({
+          planId: id, planNo, targetId: tid, targetName: t.name || '',
+          kitId: t.content.kitId || '', kitNo: t.content.kitNo || '', kitTitle: t.content.kitTitle || '',
+          ...seed.form
+        });
+        // Whatever newMediaData takes, the empty form fields start from the target.
+        md.form = { ...MAKE_F.media(), ...(md.form || {}) };
+        Object.entries(seed.form).forEach(([k, v]) => { if (!has(md.form[k]) && has(v)) md.form[k] = v; });
+        if (seed.axes && !md.form.axes.some(a => has(a.title))) md.form.axes = seed.axes;
+        md.source = { ...(md.source || {}), planId: id, planNo, targetId: tid, targetName: t.name || '', kitId: t.content.kitId || '', kitNo: t.content.kitNo || '' };
+        ({ data: r } = await api.post(MEDIA, { data: md, completion: mediaAnalyze(md).pct }));
+        const rid0 = r.id || r.requestId;
+        // The kit's reference images, copied into the request (it asks for 3).
+        let added = 0;
+        for (const im of seed.kitImages) {
+          try {
+            const res = await api.get(`/training-kits/mine/files/${im.fileId}`, { responseType: 'blob' });
+            const file = new File([res.data], im.name || 'image.jpg', { type: res.data.type || 'image/jpeg' });
+            const up = await uploadFile(api, rid0, file, 'image', `${MEDIA}/${rid0}/files`);
+            md.form.images = [...(md.form.images || []), { fileId: up.fileId, name: up.name, size: up.size, mime: up.mime, caption: im.caption || '' }];
+            added++;
+          } catch { /* skip that image */ }
+        }
+        if (added) await api.put(`${MEDIA}/${rid0}`, { data: md, completion: mediaAnalyze(md).pct }).catch(() => {});
+      }
+      const rid = r.id || r.requestId;
+      update(n => {
+        const x = n.targets.find(y => y.id === tid)?.media;
+        if (!x) return;
+        x.requestId = rid;
+        x.requestNo = fmtMediaNo(docNo(r));
+        x.requestTitle = r.title || '';
+        if (x.status === NA) x.status = '';
+        if (fromForm) x.form = MAKE_F.media();
+      });
+      // The plan's copies of the moved images are no longer needed.
+      if (fromForm) t.media.form.images.forEach(f => dropFile(f.fileId));
+      setOpenForms(s0 => { const x = new Set(s0); x.delete(`media-${tid}`); return x; });
+      loadLinks();
+      const { data: full } = await api.get(`${MEDIA}/${rid}`);
+      setNested({ type: 'media', doc: full });
+      toast.success(`أُنشئ طلب التصميم ${fmtMediaNo(docNo(r))} وربط بالمستهدف${fromForm ? ' — انتقل إليه ما عبّأته في النموذج' : ''}. أرسله لفريق التصميم من «إرسال لفريق التصميم».`);
+    } catch (err) {
+      toast.error(err.message === 'save' ? 'تعذّر حفظ الخطة قبل إنشاء الطلب' : errorText(err, 'تعذّر إنشاء طلب التصميم'));
+    } finally {
+      setMaking('');
+    }
+  };
+  // Editable stages open the request form; the others its review screen
+  // (the design, the full timeline, approving / rejecting the design).
+  const openMedia = async (rid) => {
+    try {
+      const { data: full } = await api.get(`${MEDIA}/${rid}`);
+      setNested(MEDIA_EDITABLE.includes(full.status) ? { type: 'media', doc: full } : { type: 'mediaView', id: rid });
+    } catch (err) {
+      toast.error(errorText(err, 'تعذّر فتح طلب التصميم'));
+    }
+  };
+
   // ── the media form's images ──
   const addMediaImages = async (i, files) => {
     const tid = data.targets[i].id;
@@ -447,7 +565,7 @@ const PlanEditor = ({ api, plan, portalTarget, theme = 'dark', onClose, onSubmit
         </div>
         <div className="tk-note amber" style={{ marginTop: 18 }}>
           <span className="tk-note-ico">📁</span>
-          <div><b>ملفات المستهدفات — لكل ملف مساره</b>المحتوى المعتمد حقيبة تدريبية تُعتمد من مسؤول إدارة المشاريع ثم المدير، والملف المالي طلب صرف مالي بمساره نفسه، والمتطلبات الإعلامية والفرص التطوعية نموذجان يُعبّآن داخل الخطة — أو اختر «لا يتطلب».</div>
+          <div><b>ملفات المستهدفات — لكل ملف مساره</b>المحتوى المعتمد حقيبة تدريبية تُعتمد من مسؤول إدارة المشاريع ثم المدير، والملف المالي طلب صرف مالي بمساره نفسه، والمتطلبات الإعلامية طلب تصميم إعلان يمر على فريق التصميم ثم يعود إليك لمراجعة التصميم ثم مسؤول إدارة المشاريع والمدير، والفرص التطوعية نموذج يُعبّأ داخل الخطة — أو اختر «لا يتطلب».</div>
         </div>
       </div>
     </section>
@@ -559,7 +677,7 @@ const PlanEditor = ({ api, plan, portalTarget, theme = 'dark', onClose, onSubmit
     if (x.status === NA) return naNote(i, key, key === 'media' ? 'لا يتطلب هذا المستهدف متطلبات إعلامية.' : 'لا يحتاج هذا المستهدف إلى متطوعين.');
     const k = `${key}-${t.id}`;
     const open = openForms.has(k);
-    const st = blockState(t, key, live);
+    const st = blockStateOf(t, key, live);
     const base = `targets.${i}.${key}.form`;
     return (
       <>
@@ -583,7 +701,68 @@ const PlanEditor = ({ api, plan, portalTarget, theme = 'dark', onClose, onSubmit
       </>
     );
   };
-  const BODY = { content: contentBody, finance: financeBody, media: (i, t) => formBody(i, t, 'media'), volunteer: (i, t) => formBody(i, t, 'volunteer') };
+  const mediaBody = (i, t) => {
+    const x = t.media;
+    if (x.status === NA) return naNote(i, 'media', 'لا يتطلب هذا المستهدف متطلبات إعلامية.');
+    if (has(x.requestId)) {
+      const r = live.media?.[x.requestId];
+      const editable = r && MEDIA_EDITABLE.includes(r.status);
+      const check = r?.status === 'employee_check';
+      return (
+        <div className="ep-linked">
+          <span className="tk-chip ep-mediachip"><bdi>📣 {r ? fmtMediaNo(docNo(r)) : (x.requestNo || fmtMediaNo(''))} — {r?.title || x.requestTitle || 'طلب تصميم إعلان'}</bdi></span>
+          {r && <span className={`tk-pill ${MEDIA_STAGE_TONE[r.status] || 'muted'}`}>{MEDIA_STAGE[r.status] || r.status}{r.designVersion ? ` · التصميم ${r.designVersion}` : ''}</span>}
+          <span className="tk-sp" />
+          <button type="button" className={`tk-btn sm ${check ? 'primary' : ''}`} onClick={() => openMedia(x.requestId)}>{editable ? '✎ فتح الطلب' : check ? '👁 راجع التصميم' : '📄 عرض الطلب'}</button>
+          {!locked && <button type="button" className="tk-btn sm ghost" onClick={() => linkMedia(i, null)}>إلغاء الربط</button>}
+        </div>
+      );
+    }
+    const k = `media-${t.id}`;
+    const open = openForms.has(k);
+    const legacyForm = mediaStarted(x.form);
+    const st = blockStateOf(t, 'media', live);
+    const busyHere = making === t.id;
+    const linkedIds = new Set(data.targets.map(y => y.media.requestId).filter(has));
+    const free = (medias || []).filter(r => !linkedIds.has(r.id || r.requestId));
+    return (
+      <>
+        {legacyForm && (
+          <div className="ep-legacy-media">
+            <div className="ep-linkrow">
+              <span className="tk-muted-s">📝 نموذج معبّأ داخل الخطة ({st.missing?.length ? `${ar(st.missing.length, NOTES)} في النموذج` : 'مكتمل'}) — يُرسل الآن كطلب تصميم يمر على فريق التصميم.</span>
+              <span className="tk-sp" />
+              {!locked && <button type="button" className="tk-btn sm primary" disabled={busyHere} onClick={() => createMedia(i)}>{busyHere ? '⏳ جارٍ الإنشاء…' : '📨 إرسال كطلب تصميم'}</button>}
+              <button type="button" className="tk-btn sm" onClick={() => toggleForm(k)} aria-expanded={open}>{open ? '▴ إخفاء النموذج' : '👁 عرض النموذج'}</button>
+              <button type="button" className="tk-btn sm" onClick={() => printPart(k)}>🖨 طباعة</button>
+              {!locked && naBtn(i, 'media')}
+            </div>
+            {open && (
+              <MediaForm f={x.form} base={`targets.${i}.media.form`} c={C} locked={locked} images={{
+                api, url: R.file, busy: busy[`${t.id}-mimg`] || [],
+                add: (files) => addMediaImages(i, files),
+                remove: (j) => { dropFile(x.form.images[j].fileId); update(n => { n.targets[i].media.form.images.splice(j, 1); }); }
+              }} />
+            )}
+          </div>
+        )}
+        {!legacyForm && !locked && (
+          <div className="ep-linkrow">
+            <button type="button" className="tk-btn sm primary" disabled={busyHere} onClick={() => createMedia(i)}>{busyHere ? '⏳ جارٍ الإنشاء…' : '＋ إنشاء طلب تصميم لهذا المستهدف'}</button>
+            {free.length > 0 && (
+              <select className="tk-in" value="" aria-label="ربط طلب تصميم قائم" onChange={(e) => linkMedia(i, free.find(r => (r.id || r.requestId) === e.target.value))}>
+                <option value="">أو اربط طلبًا قائمًا…</option>
+                {free.map(r => <option key={r.id || r.requestId} value={r.id || r.requestId}>{fmtMediaNo(docNo(r))} — {r.title || 'بلا اسم'} · {MEDIA_STAGE[r.status] || r.status}</option>)}
+              </select>
+            )}
+            {naBtn(i, 'media')}
+          </div>
+        )}
+        <p className="tk-hint">يذهب طلب التصميم إلى فريق التصميم، ثم يعود إليك لمراجعة التصميم واعتماده أو إعادته بملاحظات، ثم إلى مسؤول إدارة المشاريع فالمدير. تصبح الحالة «مرفقة» عند اعتماده.</p>
+      </>
+    );
+  };
+  const BODY = { content: contentBody, finance: financeBody, media: mediaBody, volunteer: (i, t) => formBody(i, t, 'volunteer') };
 
   const renderTarget = (t, i) => {
     const q = `targets.${i}.`;
@@ -655,9 +834,9 @@ const PlanEditor = ({ api, plan, portalTarget, theme = 'dark', onClose, onSubmit
           {!locked && <div className="tk-list-foot"><button type="button" className="tk-add" onClick={() => update(n => { n.targets[i].phases.push(MAKE.phase()); })}>＋ إضافة مرحلة</button></div>}
         </div>
         <div className="tk-panel">
-          {panelHead('ملفات المستهدف', 'لكل ملف مساره: الحالة تتبع الحقيبة أو طلب الصرف المرتبط أو اكتمال النموذج — أو «لا يتطلب».')}
+          {panelHead('ملفات المستهدف', 'لكل ملف مساره: الحالة تتبع الحقيبة أو طلب الصرف أو طلب التصميم المرتبط أو اكتمال النموذج — أو «لا يتطلب».')}
           {FILE_BLOCKS.map(b => {
-            const st = blockState(t, b.key, live);
+            const st = blockStateOf(t, b.key, live);
             return (
               <div className="ep-blk" id={`ep-blk-${t.id}-${b.key}`} key={b.key}>
                 <div className="ep-blk-name">
@@ -853,6 +1032,13 @@ const PlanEditor = ({ api, plan, portalTarget, theme = 'dark', onClose, onSubmit
         )}
         {nested?.type === 'finance' && (
           <FinanceRequestEditor api={api} doc={nested.doc} portalTarget={portalTarget} theme={theme} onClose={closeNested} onSubmitted={closeNested} />
+        )}
+        {nested?.type === 'media' && (
+          <MediaRequestEditor api={api} doc={nested.doc} portalTarget={portalTarget} theme={theme} onClose={closeNested} onSubmitted={closeNested} />
+        )}
+        {nested?.type === 'mediaView' && (
+          <MediaReview api={api} role="employee" requestId={nested.id} portalTarget={portalTarget} theme={theme}
+            onClose={closeNested} onChanged={loadLinks} onEdit={(d) => openMedia(d?.id || d?.requestId || nested.id)} />
         )}
 
         {historyOpen && (

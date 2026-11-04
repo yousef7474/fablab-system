@@ -9,6 +9,8 @@ import { KIT_KIND } from './kinds';
 import { PLAN_KIND } from '../ExecutionPlans/planKind';
 import { WR_KIND } from '../Requests/workshop/wrKind';
 import { FR_KIND } from '../Requests/finance/frKind';
+import { MEDIA_KIND } from '../Requests/media/mediaKind';
+import MediaReview from '../Requests/media/MediaReview';
 import '../Employee/Employee.css';
 import './TrainingKits.css';
 import '../ExecutionPlans/Plans.css';
@@ -21,7 +23,10 @@ const TYPES = [
   { key: 'kits', kind: KIT_KIND, label: 'الحقائب التدريبية', plural: 'الحقائب', none: 'لا توجد حقائب' },
   { key: 'plans', kind: PLAN_KIND, label: 'الخطط التنفيذية', plural: 'الخطط', none: 'لا توجد خطط' },
   { key: 'workshops', kind: WR_KIND, label: 'طلبات الورش', plural: 'طلبات الورش', none: 'لا توجد طلبات ورش' },
-  { key: 'finance', kind: FR_KIND, label: 'طلبات الصرف', plural: 'طلبات الصرف', none: 'لا توجد طلبات صرف' }
+  { key: 'finance', kind: FR_KIND, label: 'طلبات الصرف', plural: 'طلبات الصرف', none: 'لا توجد طلبات صرف' },
+  // The design request has its own line: designer ⇄ employee before it
+  // reaches the PM, so «معادة» means «with the designer or the employee».
+  { key: 'media', kind: MEDIA_KIND, label: 'طلبات التصميم', plural: 'طلبات التصميم', none: 'لا توجد طلبات تصميم', returnedLabel: 'لدى التصميم أو المنفذ' }
 ];
 const TABS = [
   { key: 'queue', label: 'بانتظار مراجعتي', icon: '⏳' },
@@ -33,7 +38,7 @@ const TABS = [
 const inTab = (k, key) => ({
   queue: k.status === 'pm_review',
   manager: k.status === 'manager_review',
-  returned: k.status === 'returned',
+  returned: ['returned', 'design', 'employee_check', 'returned_employee'].includes(k.status),
   approved: k.status === 'approved',
   all: true
 }[key]);
@@ -132,7 +137,7 @@ const ProjectManagerBoard = () => {
                 <button key={t.key} className={`emp-tab ${tab === t.key ? 'active' : ''}`} onClick={() => setTab(t.key)}>
                   <span className="emp-tab-key">{String(i + 1).padStart(2, '0')}</span>
                   <span className="emp-tab-icon">{t.icon}</span>
-                  <span className="emp-tab-label">{t.key === 'all' ? `كل ${T.plural}` : t.label}{n ? ` (${n})` : ''}</span>
+                  <span className="emp-tab-label">{t.key === 'all' ? `كل ${T.plural}` : t.key === 'returned' && T.returnedLabel ? T.returnedLabel : t.label}{n ? ` (${n})` : ''}</span>
                   {tab === t.key && <span className="emp-tab-indicator" />}
                 </button>
               );
@@ -158,10 +163,11 @@ const ProjectManagerBoard = () => {
         </>
       )}
 
-      {open && dashRoot && (
-        <KitReview api={employeeApi} scope="pm" kind={T.kind} kitId={open} portalTarget={dashRoot} theme={theme}
-          onClose={() => { setOpen(null); load(); }} onChanged={load} />
-      )}
+      {open && dashRoot && (T.key === 'media'
+        ? <MediaReview api={employeeApi} role="pm" requestId={open} portalTarget={dashRoot} theme={theme}
+            onClose={() => { setOpen(null); load(); }} onChanged={load} />
+        : <KitReview api={employeeApi} scope="pm" kind={T.kind} kitId={open} portalTarget={dashRoot} theme={theme}
+            onClose={() => { setOpen(null); load(); }} onChanged={load} />)}
     </div>
   );
 };
