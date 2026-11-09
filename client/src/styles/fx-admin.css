@@ -1,0 +1,888 @@
+/* =============================================================
+   FabLab dashboard theme — admin feature tabs (fx-admin)
+   Builds on styles/fx.css. Brings the admin dashboard tabs (the older
+   "ops terminal" layers: .opsv2 / .wsv2 / .sv2 / .op-*, and the tab
+   families p3t / stt / ppa / sm / fvs / summer / mawhba / customers…)
+   to the studio look: panels with soft shadows, eyebrows instead of mono
+   kickers, KPI tiles, segmented chips with a red-gradient active pill,
+   red-gradient primary actions.
+   Scoped to the ADMIN shell only — the manager board has its own file
+   (fx-manager.css) for the classes both boards share.
+   ============================================================= */
+
+/* Tone inks for numbers / labels (readable on surface and surface-2) */
+.fx.admin-layout {
+  --fxa-red: #c8161d;
+  --fxa-navy: #1f3d63;
+  --fxa-green: #146c41;
+  --fxa-amber: #a35f00;
+  --fxa-violet: #6d28d9;
+  --fxa-sky: #0369a1;
+  --fxa-hero:
+    radial-gradient(620px 260px at 100% 0%, rgba(238, 35, 41, .09), transparent 60%),
+    radial-gradient(520px 260px at 0% 100%, rgba(40, 176, 112, .08), transparent 60%),
+    var(--fx-surface);
+}
+html[data-theme="dark"] .fx.admin-layout {
+  --fxa-red: #ff8a8e;
+  --fxa-navy: #a9c7ef;
+  --fxa-green: #5fe6a6;
+  --fxa-amber: #fbbf24;
+  --fxa-violet: #c4b5fd;
+  --fxa-sky: #7dd3fc;
+  --fxa-hero:
+    radial-gradient(620px 260px at 100% 0%, rgba(238, 35, 41, .16), transparent 60%),
+    radial-gradient(520px 260px at 0% 100%, rgba(40, 176, 112, .12), transparent 60%),
+    var(--fx-surface);
+}
+
+/* ---------- home: page hero (eyebrow + greeting) ---------- */
+:root:root .fx.admin-layout .fxa-hero {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin: 0 0 22px;
+}
+:root:root .fx.admin-layout .fxa-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 8px;
+  font: 500 12.5px/1.4 var(--fx-font);
+  letter-spacing: .04em;
+  color: var(--fx-ink-3);
+}
+:root:root .fx.admin-layout .fxa-live {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  background: #10b981;
+  box-shadow: 0 0 0 0 rgba(16, 185, 129, .6);
+  animation: fxa-ping 2s infinite;
+}
+@keyframes fxa-ping { 70% { box-shadow: 0 0 0 9px rgba(16, 185, 129, 0); } 100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); } }
+:root:root .fx.admin-layout .fxa-hero h2 {
+  margin: 0;
+  font: 600 clamp(24px, 3vw, 34px)/1.15 var(--fx-display);
+  letter-spacing: -.02em;
+  color: var(--fx-ink);
+}
+:root:root .fx.admin-layout .fxa-hero h2 em {
+  font-style: normal;
+  background: var(--fx-grad);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+:root:root .fx.admin-layout .fxa-hero p { margin: 8px 0 0; color: var(--fx-ink-2); font-size: 14.5px; }
+:root:root .fx.admin-layout .fxa-date {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
+  border-radius: 14px;
+  border: 1px solid var(--fx-line);
+  background: var(--fx-surface);
+  box-shadow: var(--fx-shadow-sm);
+  color: var(--fx-ink-2);
+  font-size: 13.5px;
+  font-weight: 500;
+}
+:root:root .fx.admin-layout .fxa-date svg { color: var(--fx-red); }
+:root:root .fx.admin-layout .stats-grid + .dashboard-section,
+:root:root .fx.admin-layout .dashboard-section + .dashboard-section { margin-top: 20px; }
+:root:root .fx.admin-layout .stat-card .stat-content { gap: 2px; }
+
+/* ---------- eyebrows (the old mono "· OPS" kickers) ---------- */
+:root:root .fx.admin-layout:not([data-page="manager"]) :is(.op-kicker, .wsv2-kicker, .sv2-command-kicker, .ppa-kicker, .sm-kicker, .mshare-kicker) {
+  font: 500 12.5px/1.4 var(--fx-font);
+  letter-spacing: .03em;
+  text-transform: none;
+  color: var(--fx-ink-3);
+}
+:root:root .fx.admin-layout:not([data-page="manager"]) :is(.op-kicker, .wsv2-kicker, .sv2-command-kicker)::before {
+  width: 8px; height: 8px;
+  background: #10b981;
+  box-shadow: 0 0 0 0 rgba(16, 185, 129, .6);
+  animation: fxa-ping 2s infinite;
+}
+/* The volunteers / workers / overtime headers inject their kicker with CSS */
+:root:root .fx.admin-layout .opsv2 :is(.volunteers-header, .workers-header) h2::before {
+  font: 500 12.5px/1.4 var(--fx-font) !important;
+  letter-spacing: .03em !important;
+  text-transform: none !important;
+  color: var(--fx-ink-3) !important;
+}
+:root:root .fx.admin-layout[dir="rtl"] .opsv2 .volunteers-header h2::before { content: 'وحدة المتطوعين'; }
+:root:root .fx.admin-layout[dir="rtl"] .opsv2 .workers-header h2::before { content: 'وحدة العمال'; }
+:root:root .fx.admin-layout[dir="rtl"] .opsv2.opsv2-overtime .volunteers-header h2::before { content: 'وحدة الساعات الإضافية'; }
+:root:root .fx.admin-layout[dir="rtl"] .opsv2.opsv2-workers .volunteers-header h2::before { content: 'وحدة العمال'; }
+:root:root .fx.admin-layout[dir="ltr"] .opsv2 .volunteers-header h2::before { content: 'Volunteer operations'; }
+:root:root .fx.admin-layout[dir="ltr"] .opsv2 .workers-header h2::before { content: 'Worker operations'; }
+:root:root .fx.admin-layout[dir="ltr"] .opsv2.opsv2-overtime .volunteers-header h2::before { content: 'Overtime'; }
+:root:root .fx.admin-layout[dir="ltr"] .opsv2.opsv2-workers .volunteers-header h2::before { content: 'Worker operations'; }
+
+/* ---------- command headers → hero panels ---------- */
+:root:root .fx.admin-layout:not([data-page="manager"]) :is(.op-command, .wsv2-command, .sv2-command, .wsv2-student-header),
+:root:root .fx.admin-layout .opsv2 :is(.volunteers-header, .workers-header) {
+  border-radius: var(--fx-r) !important;
+  border: 1px solid var(--fx-line) !important;
+  background: var(--fxa-hero) !important;
+  box-shadow: var(--fx-shadow) !important;
+  padding: 20px 24px !important;
+}
+:root:root .fx.admin-layout:not([data-page="manager"]) :is(.op-command, .wsv2-command, .sv2-command, .wsv2-student-header)::before,
+:root:root .fx.admin-layout:not([data-page="manager"]) :is(.op-command, .wsv2-command, .sv2-command, .wsv2-student-header)::after,
+:root:root .fx.admin-layout .opsv2 :is(.volunteers-header, .workers-header)::before,
+:root:root .fx.admin-layout .opsv2 :is(.volunteers-header, .workers-header)::after { display: none !important; }
+:root:root .fx.admin-layout:not([data-page="manager"]) :is(.op-title, .wsv2-command-title, .sv2-command-title),
+:root:root .fx.admin-layout .opsv2 :is(.volunteers-header, .workers-header) h2 {
+  font: 600 clamp(20px, 2.2vw, 26px)/1.2 var(--fx-display) !important;
+  letter-spacing: -.015em !important;
+  color: var(--fx-ink) !important;
+}
+
+/* ---------- metric tiles (inside the hero panels) ---------- */
+:root:root .fx.admin-layout:not([data-page="manager"]) :is(.op-metric, .wsv2-metric, .sv2-metric) {
+  min-width: 92px;
+  padding: 10px 16px;
+  border-radius: 14px;
+  border: 1px solid var(--fx-line);
+  background: color-mix(in srgb, var(--fx-surface) 80%, transparent);
+  box-shadow: var(--fx-shadow-sm);
+  transition: transform .3s var(--fx-spring), box-shadow .3s;
+}
+:root:root .fx.admin-layout:not([data-page="manager"]) :is(.op-metric, .wsv2-metric, .sv2-metric):hover { transform: translateY(-3px); box-shadow: var(--fx-shadow); border-color: var(--fx-line); }
+:root:root .fx.admin-layout:not([data-page="manager"]) :is(.op-metric .val, .wsv2-metric-value, .sv2-metric-value) {
+  font: 600 26px/1.05 var(--fx-font);
+  letter-spacing: -.02em;
+  font-variant-numeric: tabular-nums;
+}
+:root:root .fx.admin-layout:not([data-page="manager"]) :is(.op-metric .lbl, .wsv2-metric-label, .sv2-metric-label) {
+  font: 500 12px/1.3 var(--fx-font);
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--fx-ink-3);
+}
+:root:root .fx.admin-layout:not([data-page="manager"]) .op-metric.red .val { color: var(--fxa-red); }
+:root:root .fx.admin-layout:not([data-page="manager"]) .op-metric.cyan .val { color: var(--fxa-sky); }
+:root:root .fx.admin-layout:not([data-page="manager"]) .op-metric.mint .val { color: var(--fxa-green); }
+:root:root .fx.admin-layout:not([data-page="manager"]) .op-metric.amber .val { color: var(--fxa-amber); }
+:root:root .fx.admin-layout:not([data-page="manager"]) .op-metric.violet .val { color: var(--fxa-violet); }
+
+/* ---------- panels ---------- */
+:root:root .fx.admin-layout:not([data-page="manager"]) :is(.op-panel, .sv2-panel, .summer-panel, .summer-card, .ppa-card, .sm-panel, .sm-card, .list-panel, .compose-panel, .compose-card, .stt-pay-panel, .mawhba-table-wrap, .mawhba-log-table-wrap, .customers-table-wrap, .sm-table-wrap) {
+  border-radius: var(--fx-r) !important;
+  border: 1px solid var(--fx-line) !important;
+  box-shadow: var(--fx-shadow) !important;
+}
+:root:root .fx.admin-layout:not([data-page="manager"]) :is(.op-panel, .sv2-panel)::before,
+:root:root .fx.admin-layout:not([data-page="manager"]) :is(.op-panel, .sv2-panel)::after { display: none !important; }
+:root:root .fx.admin-layout:not([data-page="manager"]) :is(.sv2-panel-head) { border-bottom: 1px solid var(--fx-line); }
+:root:root .fx.admin-layout:not([data-page="manager"]) :is(.sv2-panel-title, .sm-panel-head h3, .summer-panel-header h3) {
+  font: 600 16px/1.3 var(--fx-display) !important;
+  letter-spacing: -.01em;
+  color: var(--fx-ink) !important;
+}
+/* "[01]" panel numbers become a quiet numbered tag */
+:root:root .fx.admin-layout:not([data-page="manager"]) .sv2-panel-tag {
+  font: 600 11px/1 var(--fx-mono);
+  color: var(--fx-ink-3);
+  background: var(--fx-surface-3);
+  padding: 4px 8px;
+  border-radius: 999px;
+  letter-spacing: 0;
+}
+
+/* ---------- cards: top accent bar + hover lift ---------- */
+:root:root .fx.admin-layout .opsv2 :is(.volunteer-card, .worker-card),
+:root:root .fx.admin-layout:not([data-page="manager"]) :is(.wsv2-card, .stt-item-card, .stt-coupon-card) {
+  border-radius: var(--fx-r) !important;
+  border: 1px solid var(--fx-line) !important;
+  background: var(--fx-surface) !important;
+  box-shadow: var(--fx-shadow) !important;
+  transition: transform .35s var(--fx-spring), box-shadow .3s !important;
+}
+:root:root .fx.admin-layout .opsv2 :is(.volunteer-card, .worker-card):hover,
+:root:root .fx.admin-layout:not([data-page="manager"]) :is(.wsv2-card, .stt-item-card, .stt-coupon-card):hover {
+  transform: translateY(-5px) !important;
+  box-shadow: var(--fx-shadow-lg) !important;
+  border-color: var(--fx-line) !important;
+}
+:root:root .fx.admin-layout .opsv2 :is(.volunteer-card, .worker-card)::before {
+  height: 4px !important;
+  background: var(--fx-grad) !important;
+  box-shadow: none !important;
+}
+:root:root .fx.admin-layout .opsv2 :is(.volunteer-card, .worker-card)::after,
+:root:root .fx.admin-layout:not([data-page="manager"]) .wsv2-card::before,
+:root:root .fx.admin-layout:not([data-page="manager"]) .wsv2-card::after { display: none !important; }
+:root:root .fx.admin-layout:not([data-page="manager"]) .wsv2-card-accent { height: 4px; box-shadow: none; }
+
+/* ---------- action buttons ---------- */
+/* Header action rows: every button white + bordered, the "add" one red */
+:root:root .fx.admin-layout .opsv2 :is(.volunteers-actions, .workers-actions) button {
+  border-radius: 12px !important;
+  font-family: var(--fx-font) !important;
+  font-size: 13.5px !important;
+  font-weight: 600 !important;
+  min-height: 42px;
+  border: 1px solid var(--fx-line-2) !important;
+  background: var(--fx-surface) !important;
+  color: var(--fx-ink) !important;
+  box-shadow: var(--fx-shadow-sm);
+  transition: transform .25s var(--fx-spring), box-shadow .25s, border-color .2s !important;
+}
+:root:root .fx.admin-layout .opsv2 :is(.volunteers-actions, .workers-actions) button:hover {
+  transform: translateY(-2px) !important;
+  border-color: var(--fx-red) !important;
+  background: var(--fx-surface) !important;
+  box-shadow: 0 10px 22px -12px rgba(238, 35, 41, .45) !important;
+}
+:root:root .fx.admin-layout .opsv2 :is(.volunteers-actions, .workers-actions) > :is(.add-volunteer-btn:not(.secondary), .add-worker-btn:not(.secondary)):first-child,
+:root:root .fx.admin-layout .opsv2.opsv2-overtime .add-volunteer-btn {
+  border: 0 !important;
+  color: #fff !important;
+  background: var(--fx-grad) !important;
+  background-size: 180% 100% !important;
+  box-shadow: var(--fx-glow-red) !important;
+}
+:root:root .fx.admin-layout .opsv2 :is(.volunteers-actions, .workers-actions) > :is(.add-volunteer-btn:not(.secondary), .add-worker-btn:not(.secondary)):first-child:hover,
+:root:root .fx.admin-layout .opsv2.opsv2-overtime .add-volunteer-btn:hover {
+  background: var(--fx-grad) !important;
+  background-size: 180% 100% !important;
+  background-position: 100% 0 !important;
+  box-shadow: 0 16px 30px -12px rgba(238, 35, 41, .7) !important;
+}
+
+/* Family primaries → red gradient */
+:root:root .fx.admin-layout:not([data-page="manager"]) :is(.p3t-btn--primary, .stt-btn--primary, .ppa-btn.primary, .sm-btn.primary, .summer-btn-primary, .wsv2-action-btn.primary, .sv2-submit-btn, .mawhba-btn-primary) {
+  border: 0 !important;
+  border-radius: 12px;
+  color: #fff !important;
+  background: var(--fx-grad) !important;
+  background-size: 180% 100% !important;
+  box-shadow: var(--fx-glow-red) !important;
+  transition: transform .25s var(--fx-spring), box-shadow .25s, background-position .6s var(--fx-ease);
+}
+:root:root .fx.admin-layout:not([data-page="manager"]) :is(.p3t-btn--primary, .stt-btn--primary, .ppa-btn.primary, .sm-btn.primary, .summer-btn-primary, .wsv2-action-btn.primary, .sv2-submit-btn, .mawhba-btn-primary):hover:not(:disabled) {
+  transform: translateY(-2px);
+  background-position: 100% 0 !important;
+  box-shadow: 0 16px 30px -12px rgba(238, 35, 41, .7) !important;
+}
+/* Family secondaries → white, bordered */
+:root:root .fx.admin-layout:not([data-page="manager"]) :is(.p3t-btn--ghost, .p3t-btn--secondary, .stt-btn--ghost, .ppa-btn.ghost, .sm-btn.ghost, .summer-btn-secondary, .mawhba-btn-secondary, .mawhba-btn-email, .mawhba-btn-print, .mawhba-btn-cards-bulk, .mawhba-btn-colors, .mawhba-btn-export, .mawhba-header .mawhba-btn-primary:not(:last-child), .fvs-btn:not(.danger):not(.primary)) {
+  border-radius: 12px;
+  border: 1px solid var(--fx-line-2) !important;
+  background: var(--fx-surface) !important;
+  color: var(--fx-ink) !important;
+  box-shadow: var(--fx-shadow-sm);
+}
+:root:root .fx.admin-layout:not([data-page="manager"]) :is(.p3t-btn--ghost, .p3t-btn--secondary, .stt-btn--ghost, .ppa-btn.ghost, .sm-btn.ghost, .summer-btn-secondary, .mawhba-btn-secondary, .mawhba-btn-email, .mawhba-btn-print, .mawhba-btn-cards-bulk, .mawhba-btn-colors, .mawhba-btn-export, .mawhba-header .mawhba-btn-primary:not(:last-child), .fvs-btn:not(.danger):not(.primary)):hover:not(:disabled) {
+  border-color: var(--fx-red) !important;
+  transform: translateY(-2px);
+  box-shadow: 0 10px 22px -12px rgba(238, 35, 41, .45);
+}
+/* Success → green gradient */
+:root:root .fx.admin-layout:not([data-page="manager"]) :is(.p3t-btn--success, .ppa-btn.ok-solid, .sm-btn.ok, .mawhba-btn-scanner, .mawhba-btn-attendance-mode) {
+  border: 0 !important;
+  color: #fff !important;
+  background: linear-gradient(120deg, #136d42, #1f9d5f) !important;
+  box-shadow: 0 10px 24px -10px rgba(31, 157, 95, .7) !important;
+}
+/* Destructive → tinted red */
+:root:root .fx.admin-layout:not([data-page="manager"]) :is(.p3t-btn--danger, .stt-btn--danger, .ppa-btn.danger, .sm-btn.danger, .fvs-btn.danger, .summer-btn-danger) {
+  border-radius: 12px;
+  border: 1px solid color-mix(in srgb, var(--fx-red-ink) 35%, transparent) !important;
+  background: var(--fx-red-soft) !important;
+  color: var(--fx-red-ink) !important;
+  box-shadow: none !important;
+}
+:root:root .fx.admin-layout:not([data-page="manager"]) :is(.p3t-btn--danger, .stt-btn--danger, .ppa-btn.danger, .sm-btn.danger, .fvs-btn.danger, .summer-btn-danger):hover:not(:disabled) {
+  border-color: var(--fx-red-ink) !important;
+}
+
+/* Workshop card actions: quiet tiles */
+:root:root .fx.admin-layout:not([data-page="manager"]) .wsv2-action-btn:not(.primary) {
+  border-radius: 10px;
+  border: 1px solid var(--fx-line);
+  background: var(--fx-surface-2);
+  color: var(--fx-ink-2);
+  transition: transform .25s var(--fx-spring), border-color .2s, color .2s, background .2s;
+}
+:root:root .fx.admin-layout:not([data-page="manager"]) .wsv2-action-btn:not(.primary):hover {
+  transform: translateY(-2px);
+  border-color: color-mix(in srgb, var(--fx-red) 45%, transparent);
+  background: var(--fx-surface);
+  color: var(--fx-ink);
+}
+
+/* ---------- segmented controls (tabs that switch a view) ---------- */
+:root:root .fx.admin-layout:not([data-page="manager"]) :is(.stt-tabs, .ppa-tabs, .customers-tabs, .summer-subnav, .period-selector) {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  padding: 4px;
+  border-radius: 14px;
+  border: 1px solid var(--fx-line);
+  background: var(--fx-surface);
+  box-shadow: var(--fx-shadow-sm);
+}
+:root:root .fx.admin-layout:not([data-page="manager"]) :is(.stt-tab, .ppa-tab, .customers-tab, .summer-subnav-btn, .period-btn) {
+  border: 0 !important;
+  border-radius: 10px !important;
+  background: transparent !important;
+  color: var(--fx-ink-2) !important;
+  font: 500 13.5px/1.2 var(--fx-font) !important;
+  padding: 8px 14px !important;
+  box-shadow: none !important;
+  transition: background .2s, color .2s;
+}
+:root:root .fx.admin-layout:not([data-page="manager"]) :is(.stt-tab, .ppa-tab, .customers-tab, .summer-subnav-btn, .period-btn):hover { background: var(--fx-surface-2) !important; color: var(--fx-ink) !important; }
+:root:root .fx.admin-layout:not([data-page="manager"]) :is(.stt-tab.is-active, .ppa-tab.on, .customers-tab.active, .summer-subnav-btn.active, .period-btn.active) {
+  background: var(--fx-grad) !important;
+  color: #fff !important;
+  box-shadow: 0 8px 18px -10px rgba(238, 35, 41, .8) !important;
+}
+
+/* ---------- chips (filters that narrow a list) ---------- */
+:root:root .fx.admin-layout:not([data-page="manager"]) :is(.p3t-chip, .stt-filter, .ppa-chip, .sm-chip:not([class*="st-"]), .wsv2-filter-btn, .sm-nav-btn) {
+  border-radius: 999px !important;
+  border: 1px solid var(--fx-line) !important;
+  background: var(--fx-surface) !important;
+  color: var(--fx-ink-2) !important;
+  font-family: var(--fx-font) !important;
+  font-weight: 500 !important;
+  box-shadow: var(--fx-shadow-sm);
+  transition: transform .25s var(--fx-spring), border-color .2s, background .2s, color .2s;
+}
+:root:root .fx.admin-layout:not([data-page="manager"]) :is(.p3t-chip, .stt-filter, .ppa-chip, .sm-chip:not([class*="st-"]), .wsv2-filter-btn, .sm-nav-btn):hover {
+  border-color: color-mix(in srgb, var(--fx-red) 45%, transparent) !important;
+  color: var(--fx-ink) !important;
+  transform: translateY(-1px);
+}
+:root:root .fx.admin-layout:not([data-page="manager"]) :is(.p3t-chip.is-active, .stt-filter.is-active, .ppa-chip.on, .sm-chip.on, .wsv2-filter-btn.active, .sm-nav-btn.on) {
+  border-color: transparent !important;
+  background: var(--fx-grad) !important;
+  color: #fff !important;
+  box-shadow: 0 8px 18px -10px rgba(238, 35, 41, .8) !important;
+}
+:root:root .fx.admin-layout:not([data-page="manager"]) :is(.p3t-chip.is-active, .stt-filter.is-active, .wsv2-filter-btn.active) :is(.p3t-chip-count, [class*="count"], span:not([class*="dot"])) {
+  background: rgba(0, 0, 0, .24) !important;
+  color: #fff !important;
+}
+
+/* ---------- stat tiles → KPI cards ---------- */
+:root:root .fx.admin-layout:not([data-page="manager"]) :is(.p3t-stat, .stt-stat, .customer-stat-card, .mawhba-am-stat, .fxa-ed-stat, .ppa-kpi, .sm-kpi) {
+  position: relative;
+  overflow: hidden;
+  border-radius: 16px !important;
+  border: 1px solid var(--fx-line) !important;
+  background: var(--fx-surface) !important;
+  box-shadow: var(--fx-shadow) !important;
+  transition: transform .35s var(--fx-spring), box-shadow .3s !important;
+}
+:root:root .fx.admin-layout:not([data-page="manager"]) :is(.p3t-stat, .stt-stat, .customer-stat-card, .mawhba-am-stat, .fxa-ed-stat, .ppa-kpi, .sm-kpi)::after {
+  content: '';
+  position: absolute;
+  width: 120px; height: 120px;
+  top: -58px; inset-inline-end: -46px;
+  border-radius: 50%;
+  background: var(--fx-grad);
+  opacity: .07;
+  pointer-events: none;
+  transition: transform .6s var(--fx-ease);
+}
+:root:root .fx.admin-layout:not([data-page="manager"]) :is(.p3t-stat, .stt-stat, .customer-stat-card, .mawhba-am-stat, .fxa-ed-stat, .ppa-kpi, .sm-kpi):hover {
+  transform: translateY(-4px) !important;
+  box-shadow: var(--fx-shadow-lg) !important;
+}
+:root:root .fx.admin-layout:not([data-page="manager"]) :is(.p3t-stat, .stt-stat, .customer-stat-card, .mawhba-am-stat, .fxa-ed-stat, .ppa-kpi, .sm-kpi):hover::after { transform: scale(1.4); }
+
+/* Payment-pages + site KPIs: keep their "needs attention" state, swap the mono numbers */
+:root:root .fx.admin-layout:not([data-page="manager"]) :is(.ppa-kpi, .sm-kpi).hot {
+  border-color: color-mix(in srgb, var(--fx-red) 45%, transparent) !important;
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--fx-red) 12%, transparent), var(--fx-shadow) !important;
+}
+:root:root .fx.admin-layout:not([data-page="manager"]) .ppa-kpi.hot { border-color: color-mix(in srgb, var(--fx-amber, #d97706) 55%, transparent) !important; }
+:root:root .fx.admin-layout:not([data-page="manager"]) :is(.ppa-kpi b, .sm-kpi-num) {
+  font: 600 26px/1.05 var(--fx-font);
+  letter-spacing: -.02em;
+  font-variant-numeric: tabular-nums;
+}
+:root:root .fx.admin-layout:not([data-page="manager"]) :is(.ppa-kpi span, .sm-kpi-label) { font: 500 12.5px/1.4 var(--fx-font); color: var(--fx-ink-3); }
+
+/* Education status strip (inline-styled buttons, tagged fxa-ed-stat) */
+:root:root .fx.admin-layout .fxa-ed-stat { padding: 16px 18px !important; text-align: start; }
+:root:root .fx.admin-layout .fxa-ed-stat > div:first-child {
+  font: 500 13px/1.3 var(--fx-font) !important;
+  text-transform: none !important;
+  letter-spacing: 0 !important;
+  color: var(--fx-ink-2) !important;
+}
+:root:root .fx.admin-layout .fxa-ed-stat > div:last-child { font: 600 28px/1.05 var(--fx-font) !important; font-variant-numeric: tabular-nums; }
+:root:root .fx.admin-layout .filters-bar .btn.btn-primary {
+  border: 0;
+  border-radius: 12px;
+  background: var(--fx-grad) !important;
+  color: #fff !important;
+  min-height: 44px;
+  padding: 0 20px;
+  box-shadow: var(--fx-glow-red);
+}
+/* Registrations / users search box: design-system.css boxes the inner input in dark */
+:root:root .fx.admin-layout:not([data-page="manager"]) .search-box {
+  min-height: 44px;
+  border: 1px solid var(--fx-line-2);
+  border-radius: 12px;
+  background: var(--fx-surface-2);
+  transition: border-color .2s, box-shadow .2s, background .2s;
+}
+:root:root .fx.admin-layout:not([data-page="manager"]) .search-box:focus-within {
+  border-color: var(--fx-red);
+  background: var(--fx-surface);
+  box-shadow: var(--fx-ring);
+}
+:root:root .fx.admin-layout:not([data-page="manager"]) .search-box svg { color: var(--fx-ink-3); }
+:root:root .fx.admin-layout:not([data-page="manager"]) .search-box input {
+  border: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  color: var(--fx-ink) !important;
+  font-family: var(--fx-font);
+}
+/* Borrowing search (inline blue) */
+:root:root .fx.admin-layout .filters-bar .btn-action {
+  border: 0 !important;
+  border-radius: 12px !important;
+  min-height: 44px;
+  padding: 0 20px !important;
+  background: var(--fx-grad) !important;
+  color: #fff !important;
+  font-family: var(--fx-font);
+  box-shadow: var(--fx-glow-red);
+  transition: transform .25s var(--fx-spring), box-shadow .25s;
+}
+:root:root .fx.admin-layout .filters-bar .btn-action:hover { transform: translateY(-2px); }
+/* Registrations / users refresh + search buttons (were flat grey) */
+:root:root .fx.admin-layout .filter-btn {
+  min-height: 44px;
+  padding: 0 16px;
+  border-radius: 12px;
+  border: 1px solid var(--fx-line-2);
+  background: var(--fx-surface);
+  color: var(--fx-ink);
+  font-family: var(--fx-font);
+  font-weight: 600;
+  box-shadow: var(--fx-shadow-sm);
+  transition: transform .25s var(--fx-spring), box-shadow .25s, border-color .2s;
+}
+:root:root .fx.admin-layout .filter-btn:hover { background: var(--fx-surface); border-color: var(--fx-red); transform: translateY(-2px); }
+:root:root .fx.admin-layout .filter-btn:has(+ .filter-btn) {
+  border: 0;
+  color: #fff;
+  background: var(--fx-grad);
+  box-shadow: var(--fx-glow-red);
+}
+:root:root .fx.admin-layout .filter-btn:has(+ .filter-btn):hover { background: var(--fx-grad); }
+:root:root .fx.admin-layout .filters-bar :is(.filter-input, .search-input) {
+  min-height: 44px;
+  padding: 0 14px;
+  border-radius: 12px !important;
+  border: 1px solid var(--fx-line-2) !important;
+  background: var(--fx-surface-2) !important;
+  color: var(--fx-ink);
+  font-family: var(--fx-font);
+  outline: none;
+  transition: border-color .2s, box-shadow .2s, background .2s;
+}
+:root:root .fx.admin-layout .filters-bar :is(.filter-input, .search-input):focus {
+  border-color: var(--fx-red) !important;
+  background: var(--fx-surface) !important;
+  box-shadow: var(--fx-ring);
+}
+:root:root .fx.admin-layout .content-header h2 {
+  font: 600 clamp(20px, 2.2vw, 26px)/1.2 var(--fx-display) !important;
+  letter-spacing: -.015em;
+  color: var(--fx-ink);
+}
+
+/* ---------- tables in the tabs ---------- */
+:root:root .fx.admin-layout:not([data-page="manager"]) :is(.mawhba-table, .mawhba-log-table, .customers-table, .sm-table) th {
+  background: var(--fx-surface-2) !important;
+  color: var(--fx-ink-3) !important;
+  font: 600 12px/1.3 var(--fx-font) !important;
+  letter-spacing: .03em;
+  border-bottom: 1px solid var(--fx-line) !important;
+}
+:root:root .fx.admin-layout:not([data-page="manager"]) :is(.mawhba-table, .mawhba-log-table, .customers-table, .sm-table) td { border-bottom: 1px solid var(--fx-line) !important; }
+:root:root .fx.admin-layout:not([data-page="manager"]) :is(.mawhba-table, .mawhba-log-table, .customers-table, .sm-table) tbody tr:hover { background: var(--fx-surface-2) !important; }
+
+/* ---------- per-tab accents brought into the brand palette ---------- */
+/* Overtime: violet table head / accents → navy-tinted neutral */
+:root:root .fx.admin-layout .opsv2.opsv2-overtime .volunteer-card::before { background: var(--fx-grad) !important; }
+/* Summer: orange title stays (seasonal), actions follow the brand */
+:root:root .fx.admin-layout .summer-title { letter-spacing: -.01em; }
+/* Print3D: the blue "materials" button → navy gradient (a settings action) */
+:root:root .fx.admin-layout:not([data-page="manager"]) .p3t-head-side .p3t-btn--primary { background: var(--fx-grad-navy) !important; box-shadow: 0 10px 24px -12px #2A4F7C !important; }
+
+/* Auto-overtime panel: its own tokens → the FabLab palette (navy instead of violet) */
+:root:root .fx.admin-layout :is(.aso, .otm-card) {
+  --aso-ink: var(--fx-ink);
+  --aso-ink-2: var(--fx-ink-2);
+  --aso-muted: var(--fx-ink-3);
+  --aso-violet: var(--fx-navy-ink);
+  --aso-violet-2: var(--fx-navy);
+  --aso-line: var(--fx-line);
+  --aso-line-strong: var(--fx-line-2);
+  --aso-row-line: var(--fx-line);
+  --aso-surface: var(--fx-surface);
+  --aso-field: var(--fx-surface-2);
+  --aso-head: var(--fx-surface-2);
+  --aso-hint-bg: var(--fx-navy-soft);
+  --aso-hint-line: color-mix(in srgb, var(--fx-navy) 30%, transparent);
+  --aso-hint-ink: var(--fx-navy-ink);
+  --aso-btn-bg: var(--fx-surface);
+  --aso-btn-line: var(--fx-line-2);
+}
+:root:root .fx.admin-layout .aso {
+  padding: 20px 22px;
+  border-radius: var(--fx-r);
+  border: 1px solid var(--fx-line);
+  background: var(--fxa-hero) !important;
+  box-shadow: var(--fx-shadow);
+}
+
+/* ---------- opsv2 (analytics / volunteers / workers / overtime) leftovers:
+   the mono, letter-spaced, upper-cased labels break Arabic joining ---------- */
+:root:root .fx.admin-layout .opsv2 { --op-font-mono: var(--fx-font); --op-font-display: var(--fx-font); }
+:root:root .fx.admin-layout .opsv2 :is(.stat-card, .analytics-stat-card, .volunteer-stats, .worker-stats) .stat-label,
+:root:root .fx.admin-layout .opsv2 .date-input-group label {
+  font: 500 12.5px/1.4 var(--fx-font) !important;
+  letter-spacing: 0 !important;
+  text-transform: none !important;
+  color: var(--fx-ink-3) !important;
+}
+:root:root .fx.admin-layout .opsv2 :is(.stat-card, .analytics-stat-card) {
+  border-radius: var(--fx-r) !important;
+  border: 1px solid var(--fx-line) !important;
+  background: var(--fx-surface) !important;
+  box-shadow: var(--fx-shadow);
+}
+:root:root .fx.admin-layout .opsv2 :is(.stat-card, .analytics-stat-card)::before { display: none; }
+:root:root .fx.admin-layout .opsv2 :is(.stat-card, .analytics-stat-card) .stat-value {
+  font: 600 28px/1.05 var(--fx-font) !important;
+  letter-spacing: -.02em !important;
+}
+:root:root .fx.admin-layout .opsv2 .date-input { border-radius: 10px !important; font-family: var(--fx-font) !important; }
+
+:root:root .fx.admin-layout .opsv2 .filter-btn {
+  border-radius: 10px !important;
+  border-color: color-mix(in srgb, var(--fx-red) 40%, transparent) !important;
+  color: var(--fx-red-ink) !important;
+  font-family: var(--fx-font) !important;
+}
+:root:root .fx.admin-layout .opsv2 .filter-btn:hover { background: var(--fx-grad) !important; color: #fff !important; }
+/* Settings → working days: checked chips fell back to indigo */
+:root:root .fx.admin-layout .working-days-checkboxes { --primary-color: #c8161d; }
+
+/* Light-audit fixes: cyan/mint metric numbers, red-on-pink settings toggles, muted subtitles */
+:root:root .fx.admin-layout:not([data-page="manager"]) .wsv2-metric.active .wsv2-metric-value { color: var(--fxa-sky); }
+:root:root .fx.admin-layout:not([data-page="manager"]) .wsv2-metric.completed .wsv2-metric-value { color: var(--fxa-green); }
+:root:root .fx.admin-layout:not([data-page="manager"]) .wsv2-metric.students .wsv2-metric-value { color: var(--fxa-red); }
+:root:root .fx.admin-layout :is(.theme-option, .lang-option).active { color: var(--fx-red-ink); }
+:root:root .fx.admin-layout :is(.stt-head p, .p3t-head p) { color: var(--fx-ink-3); }
+:root:root .fx.admin-layout .opsv2 .empty-state p { color: var(--fx-ink-3); }
+
+/* ---------- Mawhba ---------- */
+:root:root .fx.admin-layout:not([data-page="manager"]) :is(.mawhba-header, .summer-header) {
+  align-items: center;
+  padding: 20px 24px;
+  border-radius: var(--fx-r);
+  border: 1px solid var(--fx-line);
+  background: var(--fxa-hero);
+  box-shadow: var(--fx-shadow);
+}
+:root:root .fx.admin-layout:not([data-page="manager"]) :is(.mawhba-title, .summer-title) {
+  font: 600 clamp(20px, 2.2vw, 26px)/1.2 var(--fx-display);
+  letter-spacing: -.015em;
+  background: none;
+  -webkit-text-fill-color: currentColor;
+  color: var(--fx-ink);
+}
+:root:root .fx.admin-layout:not([data-page="manager"]) :is(.mawhba-sub, .summer-sub) { color: var(--fx-ink-3); }
+/* the header's extra "primary" buttons read as secondaries — drop the red glow they inherit */
+:root:root .fx.admin-layout:not([data-page="manager"]) .mawhba-header .mawhba-btn-primary:not(:last-child) { box-shadow: var(--fx-shadow-sm) !important; }
+:root:root .fx.admin-layout:not([data-page="manager"]) .mawhba-header .mawhba-btn-primary:not(:last-child):hover { box-shadow: 0 10px 22px -12px rgba(238, 35, 41, .45) !important; }
+:root:root .fx.admin-layout:not([data-page="manager"]) :is(.mawhba-btn-primary, .mawhba-btn-secondary, .mawhba-btn-email, .mawhba-btn-print, .mawhba-btn-cards-bulk, .mawhba-btn-colors, .mawhba-btn-scanner, .mawhba-btn-export, .mawhba-btn-attendance-mode) {
+  min-height: 40px;
+  border-radius: 12px;
+  font-family: var(--fx-font);
+  font-weight: 600;
+  transition: transform .25s var(--fx-spring), box-shadow .25s, border-color .2s;
+}
+:root:root .fx.admin-layout:not([data-page="manager"]) :is(.mawhba-btn-email, .mawhba-btn-print, .mawhba-btn-cards-bulk, .mawhba-btn-export):disabled {
+  background: var(--fx-surface-2) !important;
+  color: var(--fx-ink-3) !important;
+  border-color: var(--fx-line) !important;
+  box-shadow: none;
+  transform: none;
+}
+:root:root .fx.admin-layout:not([data-page="manager"]) :is(.mawhba-btn-scanner, .mawhba-btn-attendance-mode):hover { transform: translateY(-2px); }
+:root:root .fx.admin-layout:not([data-page="manager"]) :is(.mawhba-search, .mawhba-select) {
+  min-height: 42px;
+  border: 1px solid var(--fx-line-2);
+  border-radius: 12px;
+  background: var(--fx-surface-2);
+  color: var(--fx-ink);
+}
+:root:root .fx.admin-layout:not([data-page="manager"]) :is(.mawhba-search, .mawhba-select):focus {
+  border-color: var(--fx-red);
+  box-shadow: var(--fx-ring);
+}
+:root:root .fx.admin-layout:not([data-page="manager"]) .mawhba-summary {
+  border-radius: 14px;
+  border: 1px solid var(--fx-line);
+  background: var(--fx-surface);
+  color: var(--fx-ink-3);
+  box-shadow: var(--fx-shadow-sm);
+}
+:root:root .fx.admin-layout:not([data-page="manager"]) .mawhba-summary b { color: var(--fx-ink); }
+
+/* ---------- Project support (inline-styled, hooked by class) ---------- */
+:root:root .fx.admin-layout .psa-head {
+  padding: 20px 24px;
+  border-radius: var(--fx-r);
+  border: 1px solid var(--fx-line);
+  background: var(--fxa-hero);
+  box-shadow: var(--fx-shadow);
+}
+:root:root .fx.admin-layout .psa-head h2 {
+  font: 600 clamp(20px, 2.2vw, 26px)/1.2 var(--fx-display) !important;
+  letter-spacing: -.015em;
+}
+:root:root .fx.admin-layout .psa-head p { color: var(--fx-ink-3) !important; font-size: 13.5px !important; }
+:root:root .fx.admin-layout .psa-panel { border-radius: var(--fx-r) !important; padding: 16px 20px !important; }
+:root:root .fx.admin-layout .psa-chip {
+  border: 1px solid var(--fx-line-2) !important;
+  background: var(--fx-surface) !important;
+  color: var(--fx-ink-2) !important;
+  font: 600 13px/1.2 var(--fx-font) !important;
+  box-shadow: var(--fx-shadow-sm);
+  transition: transform .25s var(--fx-spring), border-color .2s, box-shadow .2s;
+}
+:root:root .fx.admin-layout .psa-chip:hover { transform: translateY(-1px); border-color: var(--fx-red) !important; }
+:root:root .fx.admin-layout .psa-chip.on {
+  border-color: transparent !important;
+  background: var(--fx-grad) !important;
+  color: #fff !important;
+  box-shadow: 0 8px 18px -10px rgba(238, 35, 41, .7);
+}
+:root:root .fx.admin-layout .psa-empty {
+  border-radius: var(--fx-r) !important;
+  border-color: var(--fx-line-2) !important;
+  background: color-mix(in srgb, var(--fx-surface) 70%, transparent) !important;
+  color: var(--fx-ink-3) !important;
+}
+
+/* ---------- Quick messages / quick forms headers ---------- */
+:root:root .fx.admin-layout :is(.qm-head, .psa-head) { align-items: center !important; }
+:root:root .fx.admin-layout .qm-head {
+  padding: 20px 24px;
+  border-radius: var(--fx-r);
+  border: 1px solid var(--fx-line);
+  background: var(--fxa-hero);
+  box-shadow: var(--fx-shadow);
+}
+:root:root .fx.admin-layout .qm-head h2 {
+  font: 600 clamp(20px, 2.2vw, 26px)/1.2 var(--fx-display) !important;
+  letter-spacing: -.015em;
+}
+:root:root .fx.admin-layout .qm-head p { color: var(--fx-ink-3) !important; font-size: 13.5px !important; }
+:root:root .fx.admin-layout .qm-add {
+  min-height: 42px;
+  border-radius: 12px !important;
+  background: var(--fx-grad) !important;
+  background-size: 180% 100% !important;
+  box-shadow: var(--fx-glow-red) !important;
+  font-family: var(--fx-font) !important;
+  font-weight: 600 !important;
+  transition: transform .25s var(--fx-spring), box-shadow .25s, background-position .6s var(--fx-ease);
+}
+:root:root .fx.admin-layout .qm-add:hover {
+  transform: translateY(-2px);
+  background-position: 100% 0 !important;
+  box-shadow: 0 16px 30px -12px rgba(238, 35, 41, .7) !important;
+}
+
+/* ---------- Settings: the open/closed status cards carry a 2px inline border;
+   keep the colour (it is the status) but turn it into a start-edge strip ---------- */
+:root:root .fx.admin-layout .settings-card[style*="2px solid"] {
+  border-width: 1px !important;
+  border-inline-start-width: 4px !important;
+  /* only the start edge keeps the (inline) status colour */
+  border-top-color: var(--fx-line) !important;
+  border-bottom-color: var(--fx-line) !important;
+  border-inline-end-color: var(--fx-line) !important;
+  box-shadow: var(--fx-shadow);
+}
+
+/* ---------- FabLab staff (the shared component inside the admin tab) ---------- */
+:root:root .fx.admin-layout .fxa-staff .volunteers-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 14px;
+  margin-bottom: 18px;
+  padding: 20px 24px;
+  border-radius: var(--fx-r);
+  border: 1px solid var(--fx-line);
+  background: var(--fxa-hero);
+  box-shadow: var(--fx-shadow);
+}
+:root:root .fx.admin-layout .fxa-staff .volunteers-header h2 {
+  margin: 0;
+  font: 600 clamp(20px, 2.2vw, 26px)/1.2 var(--fx-display);
+  letter-spacing: -.015em;
+  color: var(--fx-ink);
+}
+:root:root .fx.admin-layout .fxa-staff .volunteers-header h2::before {
+  display: block;
+  margin-bottom: 6px;
+  font: 500 12.5px/1.4 var(--fx-font);
+  letter-spacing: .03em;
+  color: var(--fx-ink-3);
+}
+:root:root .fx.admin-layout[dir="rtl"] .fxa-staff .volunteers-header h2::before { content: 'فريق فاب لاب'; }
+:root:root .fx.admin-layout[dir="ltr"] .fxa-staff .volunteers-header h2::before { content: 'FabLab team'; }
+:root:root .fx.admin-layout .fxa-staff .volunteers-actions { display: flex; flex-wrap: wrap; gap: 10px; }
+:root:root .fx.admin-layout .fxa-staff .volunteers-actions button {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 42px;
+  padding: 0 18px !important;
+  border-radius: 12px !important;
+  border: 1px solid var(--fx-line-2) !important;
+  background: var(--fx-surface) !important;
+  color: var(--fx-ink) !important;
+  font: 600 13.5px/1 var(--fx-font) !important;
+  box-shadow: var(--fx-shadow-sm) !important;
+  cursor: pointer;
+  transition: transform .25s var(--fx-spring), box-shadow .25s, border-color .2s !important;
+}
+:root:root .fx.admin-layout .fxa-staff .volunteers-actions button svg { width: 18px; height: 18px; }
+:root:root .fx.admin-layout .fxa-staff .volunteers-actions button:hover {
+  transform: translateY(-2px);
+  border-color: var(--fx-red) !important;
+  box-shadow: 0 10px 22px -12px rgba(238, 35, 41, .45) !important;
+}
+:root:root .fx.admin-layout .fxa-staff .volunteers-actions .add-volunteer-btn {
+  border: 0 !important;
+  color: #fff !important;
+  background: var(--fx-grad) !important;
+  background-size: 180% 100% !important;
+  box-shadow: var(--fx-glow-red) !important;
+}
+:root:root .fx.admin-layout .fxa-staff .volunteers-actions .add-volunteer-btn:hover {
+  background-position: 100% 0 !important;
+  box-shadow: 0 16px 30px -12px rgba(238, 35, 41, .7) !important;
+}
+
+/* ---------- FabLab visits (inline-styled tab, hooked by class) ---------- */
+:root:root .fx.admin-layout .fvt-head {
+  padding: 20px 24px;
+  border-radius: var(--fx-r);
+  border: 1px solid var(--fx-line);
+  background: var(--fxa-hero);
+  box-shadow: var(--fx-shadow);
+}
+:root:root .fx.admin-layout .fvt-head h2 {
+  font: 600 clamp(20px, 2.2vw, 26px)/1.2 var(--fx-display) !important;
+  letter-spacing: -.015em;
+  color: var(--fx-ink);
+}
+:root:root .fx.admin-layout .fvt-head p { color: var(--fx-ink-3) !important; font-size: 13.5px !important; }
+:root:root .fx.admin-layout .fvs-switch {
+  border-radius: 14px !important;
+  border: 1px solid var(--fx-line) !important;
+  background: var(--fx-surface) !important;
+  box-shadow: var(--fx-shadow-sm);
+}
+:root:root .fx.admin-layout .fvs-switch-btn {
+  border-radius: 10px !important;
+  font: 600 13.5px/1.2 var(--fx-font) !important;
+  color: var(--fx-ink-2) !important;
+  transition: background .2s, color .2s, box-shadow .2s;
+}
+:root:root .fx.admin-layout .fvs-switch-btn:not(.is-on):hover { background: var(--fx-surface-2) !important; color: var(--fx-ink) !important; }
+:root:root .fx.admin-layout .fvs-switch-btn.is-on {
+  background: var(--fx-grad) !important;
+  color: #fff !important;
+  box-shadow: 0 8px 18px -10px rgba(238, 35, 41, .7);
+}
+:root:root .fx.admin-layout .fvt-stat {
+  position: relative;
+  overflow: hidden;
+  padding: 14px 16px !important;
+  border-radius: 16px !important;
+  border: 1px solid var(--fx-line) !important;
+  background: var(--fx-surface) !important;
+  box-shadow: var(--fx-shadow-sm);
+  font-family: var(--fx-font);
+  transition: transform .3s var(--fx-spring), box-shadow .3s, border-color .2s !important;
+}
+:root:root .fx.admin-layout .fvt-stat::after {
+  content: '';
+  position: absolute;
+  inset-inline-end: -26px;
+  top: -26px;
+  width: 84px;
+  height: 84px;
+  border-radius: 50%;
+  background: var(--fx-grad);
+  opacity: .07;
+  pointer-events: none;
+  transition: transform .4s var(--fx-spring);
+}
+:root:root .fx.admin-layout .fvt-stat:hover { transform: translateY(-3px); box-shadow: var(--fx-shadow); }
+:root:root .fx.admin-layout .fvt-stat:hover::after { transform: scale(1.3); }
+:root:root .fx.admin-layout .fvt-stat.is-on {
+  border-color: var(--fx-red) !important;
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--fx-red) 16%, transparent), var(--fx-shadow-sm);
+}
+:root:root .fx.admin-layout .fvt-stat > div:first-child {
+  font: 600 12px/1.4 var(--fx-font) !important;
+  letter-spacing: 0 !important;
+  text-transform: none !important;
+  color: var(--fx-ink-3) !important;
+}
+:root:root .fx.admin-layout .fvt-stat > div:last-child {
+  font: 600 26px/1.05 var(--fx-font) !important;
+  letter-spacing: -.02em;
+  font-variant-numeric: tabular-nums;
+}
+:root:root .fx.admin-layout .fvt-empty {
+  border-radius: var(--fx-r) !important;
+  border: 1px dashed var(--fx-line-2) !important;
+  background: color-mix(in srgb, var(--fx-surface) 70%, transparent) !important;
+  color: var(--fx-ink-3) !important;
+}
+
+/* Empty states inside the tabs */
+:root:root .fx.admin-layout:not([data-page="manager"]) :is(.wsv2-empty, .sv2-empty, .p3t-empty, .stt-empty, .mawhba-empty) {
+  border-radius: var(--fx-r) !important;
+  border: 1px dashed var(--fx-line-2) !important;
+  background: color-mix(in srgb, var(--fx-surface) 70%, transparent) !important;
+  color: var(--fx-ink-3) !important;
+  font-family: var(--fx-font) !important;
+  letter-spacing: 0 !important;
+}
+
+/* Small mobile niceties */
+@media (max-width: 768px) {
+  :root:root .fx.admin-layout .fxa-hero { margin-bottom: 16px; }
+  :root:root .fx.admin-layout:not([data-page="manager"]) :is(.op-command, .wsv2-command, .sv2-command) { grid-template-columns: minmax(0, 1fr) !important; }
+}

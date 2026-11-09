@@ -41,6 +41,9 @@ import MediaDesignQueue from '../Requests/media/MediaDesignQueue';
 import InstitutionSupportTab from './InstitutionSupportTab';
 import ProjectSupportTab from './ProjectSupportTab';
 import { EDUCATION_SCHEDULE_1448, normalizeArabicTitle } from './educationSchedule1448';
+// Dashboard theme — imported last so it sits on top of the CSS above.
+import '../../styles/fx.css';
+import '../../styles/fx-admin.css';
 
 const COLORS = ['#6366f1', '#22c55e', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4', '#ec4899'];
 
@@ -5405,7 +5408,7 @@ const AdminDashboard = () => {
   }
 
   return (
-    <div className="admin-layout" dir={isRTL ? 'rtl' : 'ltr'}>
+    <div className="admin-layout fx" dir={isRTL ? 'rtl' : 'ltr'}>
       {/* Mobile Sidebar Overlay */}
       <div
         className={`sidebar-overlay ${sidebarOpen ? 'active' : ''}`}
@@ -5513,6 +5516,19 @@ const AdminDashboard = () => {
 
                 className="dashboard-content"
               >
+                {/* Page hero: eyebrow + greeting + today's date */}
+                <div className="fxa-hero">
+                  <div>
+                    <p className="fxa-eyebrow"><span className="fxa-live" aria-hidden="true" />{isRTL ? 'لوحة التحكم · فاب لاب الأحساء' : 'Dashboard · FabLab Al-Ahsa'}</p>
+                    <h2>{isRTL ? <>مرحبًا، <em>{adminData.fullName?.split(' ')[0] || 'بك'}</em></> : <>Welcome, <em>{adminData.fullName?.split(' ')[0] || 'back'}</em></>}</h2>
+                    <p>{isRTL ? 'نظرة سريعة على التسجيلات والطلبات اليوم.' : 'A quick look at registrations and requests today.'}</p>
+                  </div>
+                  <span className="fxa-date">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
+                    {new Intl.DateTimeFormat(isRTL ? 'ar-SA-u-ca-gregory-nu-latn' : 'en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }).format(new Date())}
+                  </span>
+                </div>
+
                 {/* Stats Cards */}
                 <div className="stats-grid">
                   <div className="stat-card primary">
@@ -7448,7 +7464,7 @@ const AdminDashboard = () => {
                     Counts are derived from the currently-loaded page of
                     educations (the same set the table below is showing). */}
                 {!selectedEducation && (
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '12px', marginBottom: '20px' }}>
+                  <div className="fxa-ed-stats" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '12px', marginBottom: '20px' }}>
                     {[
                       { key: 'all',       labelAr: 'الكل',        labelEn: 'All',       count: educations.length, color: '#6d28d9', ink: 'var(--ats-violet)' },
                       { key: 'pending',   labelAr: 'قيد الانتظار', labelEn: 'Pending',   count: educations.filter(e => e.status === 'pending').length,   color: '#f59e0b', ink: 'var(--ats-warn)' },
@@ -7459,6 +7475,7 @@ const AdminDashboard = () => {
                     ].map(card => (
                       <button
                         key={card.key}
+                        className="fxa-ed-stat"
                         onClick={() => setEducationFilters({ ...educationFilters, status: card.key === 'all' ? '' : card.key })}
                         style={{
                           background: `linear-gradient(135deg, ${card.color}12 0%, ${card.color}05 100%)`,
@@ -10523,7 +10540,7 @@ const AdminDashboard = () => {
             {activeTab === 'workers' && (
               <motion.div
                 data-page="manager"
-                className="opsv2"
+                className="opsv2 opsv2-workers"
                 key="workers-ops"
                 initial={{ opacity: 0, y: 12 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -10563,7 +10580,7 @@ const AdminDashboard = () => {
                 .modern-modal, etc.) apply, keeping it visually consistent
                 with the Volunteers and Workers tabs. */}
             {activeTab === 'fablab-staff' && (
-              <div data-page="manager">
+              <div data-page="manager" className="fxa-staff">
                 <FablabStaffManagement />
               </div>
             )}
@@ -11061,7 +11078,7 @@ const AdminDashboard = () => {
                         </div>
                       </div>
                       <div className="form-group">
-                        <label>{isRTL ? 'السبب (إنجليزي)' : 'Reason (English)'} <span style={{ color: '#dc2626' }}>*</span></label>
+                        <label>{isRTL ? 'السبب (إنجليزي)' : 'Reason (English)'} <span style={{ color: 'var(--fx-red-ink, #dc2626)' }}>*</span></label>
                         <input
                           type="text"
                           value={closureForm.reasonEn}

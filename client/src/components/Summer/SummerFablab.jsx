@@ -1345,6 +1345,7 @@ const SummerFablab = () => {
           </button>
         )}
         <button
+          className="summer-btn-primary"
           onClick={() => setShowNewSeasonModal(true)}
           style={{ padding: '8px 14px', borderRadius: 8, border: 'none', background: 'linear-gradient(135deg,#c2410c,#9a3412)', color: '#fff', cursor: 'pointer', fontFamily: 'inherit', fontWeight: 700, fontSize: 12.5, marginInlineStart: 'auto', boxShadow: '0 4px 12px -4px rgba(249,115,22,0.5)' }}
         >

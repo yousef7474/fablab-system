@@ -78,7 +78,7 @@ const ApprovalsHub = () => {
             </>
           ) : (
             <>
-              <span style={{ color: '#16a34a' }}>✓</span>
+              <span style={{ color: 'var(--fx-green-ink, #16a34a)' }}>✓</span>
               <span>{isRTL ? 'لا توجد طلبات بانتظار الاعتماد' : 'No pending approvals'}</span>
             </>
           )}
@@ -91,12 +91,7 @@ const ApprovalsHub = () => {
               <button
                 key={t.id}
                 className={`ap-hub-tab ${isActive ? 'is-active' : ''}`}
-                style={isActive ? {
-                  background: t.solid,
-                  color: '#fff',
-                  borderColor: t.solid,
-                  boxShadow: `0 8px 20px -8px ${t.color}80`
-                } : { '--tab-color': t.color }}
+                style={{ '--tab-color': t.color, '--tab-solid': t.solid }}
                 onClick={() => setActive(t.id)}
               >
                 <span className="ap-hub-tab-icon">{t.icon}</span>
@@ -104,10 +99,6 @@ const ApprovalsHub = () => {
                 {count > 0 && (
                   <span
                     className="ap-hub-tab-badge"
-                    style={isActive ? {
-                      background: 'rgba(255,255,255,0.28)',
-                      color: '#fff'
-                    } : { '--tab-color': t.color }}
                   >
                     {count}
                   </span>

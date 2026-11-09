@@ -13,6 +13,9 @@ import EmployeeKitsTab from '../TrainingKits/EmployeeKitsTab';
 import EmployeePlansTab from '../ExecutionPlans/EmployeePlansTab';
 import EmployeeRequestsTab from '../Requests/EmployeeRequestsTab';
 import './Employee.css';
+import './Employee.fx.css';
+// Dashboard theme — imported last so it sits on top of the CSS above.
+import '../../styles/fx.css';
 
 const SECTION_COLORS = {
   'Electronics and Programming': '#6366f1',
@@ -55,9 +58,31 @@ const APP_TYPE_AR = {
 // themes because they carry white text.
 const STATUS_TONES = {
   dark:  { approved: '#22c55e', rejected: '#f87171', hold: '#38bdf8', pending: '#f59e0b', draft: '#94a3b8' },
-  light: { approved: '#15803d', rejected: '#b91c1c', hold: '#0369a1', pending: '#b45309', draft: '#64748b' },
+  light: { approved: '#15803d', rejected: '#b91c1c', hold: '#0369a1', pending: '#b45309', draft: '#475569' },
 };
 const PILL_TONES = STATUS_TONES.light;
+
+// Sidebar icon tiles (stroke icons, 24-unit grid) for each tab.
+const TAB_ICON_PATHS = {
+  overview: ['M3 3h7v7H3z', 'M14 3h7v7h-7z', 'M14 14h7v7h-7z', 'M3 14h7v7H3z'],
+  tasks: ['M9 11l3 3L22 4', 'M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11'],
+  registrations: ['M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2', 'M9 2h6v4H9z', 'M9 12h6', 'M9 16h4'],
+  overtime: ['M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20z', 'M12 6v6l4 2'],
+  attendance: ['M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2', 'M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8z', 'M16 11l2 2 4-4'],
+  schedule: ['M5 4h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z', 'M16 2v4', 'M8 2v4', 'M3 10h18'],
+  'year-calendar': ['M5 4h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z', 'M3 10h18', 'M8 14h.01', 'M12 14h.01', 'M16 14h.01', 'M8 18h.01', 'M12 18h.01'],
+  ratings: ['M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z'],
+  workshops: ['M22 10L12 5 2 10l10 5 10-5z', 'M6 12v5c3 2 9 2 12 0v-5'],
+  'training-kits': ['M5 7h14a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2z', 'M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2', 'M3 13h18'],
+  'execution-plan': ['M4 22V4', 'M4 4h12l-2 4 2 4H4'],
+  requests: ['M22 12h-6l-2 3h-4l-2-3H2', 'M5.45 5.11L2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z'],
+  profile: ['M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2', 'M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8z']
+};
+const TabIcon = ({ name }) => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    {(TAB_ICON_PATHS[name] || TAB_ICON_PATHS.overview).map(d => <path key={d} d={d} />)}
+  </svg>
+);
 
 const DashPortal = ({ target, children }) => (target ? createPortal(children, target) : children);
 
@@ -221,6 +246,14 @@ const EmployeeDashboard = () => {
   const [selectedDay, setSelectedDay] = useState(null);
   const [apptModal, setApptModal] = useState(null); // schedule appointment summary pop-up
   const [dashRoot, setDashRoot] = useState(null); // portal target for modals (see DashPortal)
+  // Sidebar drawer on small screens (the sidebar is fixed on wide ones).
+  const [navOpen, setNavOpen] = useState(false);
+  useEffect(() => {
+    if (!navOpen) return undefined;
+    const onKey = (e) => { if (e.key === 'Escape') setNavOpen(false); };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [navOpen]);
 
   // Create task modal
   const [showCreateTaskModal, setShowCreateTaskModal] = useState(false);
@@ -954,22 +987,79 @@ const EmployeeDashboard = () => {
   const ringOffset = RING_C - (RING_C * activityPct) / 100;
 
   return (
-    <div ref={setDashRoot} className="employee-dashboard" dir={isRTL ? 'rtl' : 'ltr'} data-page="employee" data-theme={theme}>
+    <div ref={setDashRoot} className={`employee-dashboard fx ${navOpen ? 'nav-open' : ''}`} dir={isRTL ? 'rtl' : 'ltr'} data-page="employee" data-theme={theme}>
+      {/* Sidebar — brand, the employee, the tabs */}
+      <aside className="emp-side" aria-label={isRTL ? 'أقسام لوحة الموظف' : 'Employee dashboard sections'}>
+        <div className="emp-side-brand">
+          <span className="emp-side-logo"><img src="/logo.png" alt="" /></span>
+          <span className="emp-side-brand-text">
+            <b>FABLAB</b>
+            <small>{isRTL ? 'لوحة الموظف' : 'Employee workspace'}</small>
+          </span>
+          <button type="button" className="emp-side-close" onClick={() => setNavOpen(false)} aria-label={isRTL ? 'إغلاق القائمة' : 'Close menu'}>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
+          </button>
+        </div>
+        <div className="emp-side-me">
+          <span className="emp-side-avatar" aria-hidden="true">{(employeeData?.name || '؟').trim().charAt(0)}</span>
+          <span className="emp-side-me-text">
+            <b>{employeeData?.name}</b>
+            <small>
+              {(Array.isArray(employeeData?.sections) && employeeData.sections.length
+                ? employeeData.sections
+                : (employeeData?.section ? [employeeData.section] : [])
+              ).map(s => sectionLabels[s] || s).join(' · ') || '—'}
+            </small>
+          </span>
+        </div>
+        <nav className="emp-tabs emp-nav">
+          {tabs.map((tab) => (
+            <button
+              key={tab.key}
+              type="button"
+              data-tab={tab.key}
+              className={`emp-tab ${activeTab === tab.key ? 'active' : ''}`}
+              aria-current={activeTab === tab.key ? 'page' : undefined}
+              onClick={() => { setActiveTab(tab.key); setNavOpen(false); }}
+            >
+              <span className="emp-tab-icon"><TabIcon name={tab.key} /></span>
+              <span className="emp-tab-label">{tab.label}</span>
+            </button>
+          ))}
+        </nav>
+        <div className="emp-side-foot">
+          {isProjectManager && (
+            <button type="button" className="emp-side-link" onClick={() => navigate('/projects')} title={isRTL ? 'لوحة إدارة المشاريع — مراجعة الحقائب التدريبية والخطط التنفيذية' : 'Projects board — review training kits and execution plans'}>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
+              <span>{isRTL ? 'لوحة إدارة المشاريع' : 'Projects board'}</span>
+            </button>
+          )}
+          <button type="button" className="emp-side-link" onClick={handleLogout}>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+            <span>{isRTL ? 'تسجيل الخروج' : 'Log out'}</span>
+          </button>
+        </div>
+      </aside>
+      <div className="emp-scrim" onClick={() => setNavOpen(false)} aria-hidden="true" />
+
+      <div className="emp-main">
       {/* Top Bar */}
-      <motion.div
-        className="emp-topbar"
-        initial={{ y: -30, opacity: 0 }}
-        animate={{ y: 0, opacity: 1 }}
-        transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
-      >
+      <header className="emp-topbar">
         <div className="emp-topbar-left">
-          <div className="emp-brand-mark" aria-hidden="true" />
+          <button type="button" className="emp-hamburger" onClick={() => setNavOpen(true)} aria-label={isRTL ? 'فتح القائمة' : 'Open menu'} aria-expanded={navOpen}>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M3 6h18M3 12h18M3 18h18"/></svg>
+          </button>
           <div className="emp-brand-block">
-            <h2 className="emp-logo">FABLAB</h2>
-            <span className="emp-badge">{isRTL ? 'وحدة الموظفين · OPS' : 'EMPLOYEE OPS · TERMINAL'}</span>
+            <span className="emp-badge">{isRTL ? 'لوحة الموظف' : 'Employee workspace'} · {format(new Date(), isRTL ? 'EEEE d MMMM' : 'EEEE, MMM d', { locale: isRTL ? ar : enUS })}</span>
+            <h1 className="emp-logo">{(tabs.find(t => t.key === activeTab) || tabs[0]).label}</h1>
           </div>
         </div>
         <div className="emp-topbar-right">
+          {isProjectManager && (
+            <button className="emp-lang-btn emp-pm-btn" onClick={() => navigate('/projects')} title={isRTL ? 'لوحة إدارة المشاريع — مراجعة الحقائب التدريبية والخطط التنفيذية' : 'Projects board — review training kits and execution plans'}>
+              🗂 <span>{isRTL ? 'لوحة إدارة المشاريع' : 'Projects board'}</span>
+            </button>
+          )}
           <button
             className="emp-theme-btn"
             onClick={toggleTheme}
@@ -980,70 +1070,41 @@ const EmployeeDashboard = () => {
           >
             {theme === 'dark' ? (
               /* sun icon → we're currently dark, click for light */
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <circle cx="12" cy="12" r="4"/>
                 <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/>
               </svg>
             ) : (
               /* moon icon → we're currently light, click for dark */
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
               </svg>
             )}
           </button>
-          {isProjectManager && (
-            <button className="emp-lang-btn" onClick={() => navigate('/projects')} title={isRTL ? 'لوحة إدارة المشاريع — مراجعة الحقائب التدريبية والخطط التنفيذية' : 'Projects board — review training kits and execution plans'} style={{ width: 'auto', padding: '0 12px' }}>
-              🗂 {isRTL ? 'لوحة إدارة المشاريع' : 'Projects board'}
-            </button>
-          )}
           <button className="emp-lang-btn" onClick={toggleLanguage}>
             {i18n.language === 'ar' ? 'EN' : 'ع'}
           </button>
           <div className="emp-user-info">
-            <span className="emp-user-name">{employeeData?.name}</span>
-            <span className="emp-user-section">
-              {(Array.isArray(employeeData?.sections) && employeeData.sections.length
-                ? employeeData.sections
-                : (employeeData?.section ? [employeeData.section] : [])
-              ).map(s => sectionLabels[s] || s).join(' · ') || '—'}
+            <span className="emp-user-avatar" aria-hidden="true">{(employeeData?.name || '؟').trim().charAt(0)}</span>
+            <span className="emp-user-text">
+              <span className="emp-user-name">{employeeData?.name}</span>
+              <span className="emp-user-section">
+                {(Array.isArray(employeeData?.sections) && employeeData.sections.length
+                  ? employeeData.sections
+                  : (employeeData?.section ? [employeeData.section] : [])
+                ).map(s => sectionLabels[s] || s).join(' · ') || '—'}
+              </span>
             </span>
           </div>
-          <button className="emp-logout-btn" onClick={handleLogout} title={isRTL ? 'خروج' : 'Logout'}>
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <button className="emp-logout-btn" onClick={handleLogout} title={isRTL ? 'خروج' : 'Logout'} aria-label={isRTL ? 'خروج' : 'Logout'}>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
               <polyline points="16 17 21 12 16 7"/>
               <line x1="21" y1="12" x2="9" y2="12"/>
             </svg>
           </button>
         </div>
-      </motion.div>
-
-      {/* Tab Navigation */}
-      <motion.div
-        className="emp-tabs"
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ duration: 0.4, delay: 0.15 }}
-      >
-        {tabs.map((tab, idx) => (
-          <button
-            key={tab.key}
-            className={`emp-tab ${activeTab === tab.key ? 'active' : ''}`}
-            onClick={() => setActiveTab(tab.key)}
-          >
-            <span className="emp-tab-key">{String(idx + 1).padStart(2, '0')}</span>
-            <span className="emp-tab-icon">{tab.icon}</span>
-            <span className="emp-tab-label">{tab.label}</span>
-            {activeTab === tab.key && (
-              <motion.span
-                layoutId="emp-tab-indicator"
-                className="emp-tab-indicator"
-                transition={{ type: 'spring', stiffness: 380, damping: 30 }}
-              />
-            )}
-          </button>
-        ))}
-      </motion.div>
+      </header>
 
       {/* Content */}
       <div className="emp-content">
@@ -1062,7 +1123,7 @@ const EmployeeDashboard = () => {
               {/* Stat cards */}
               <motion.div variants={itemVariants}>
                 <div className="emp-headline">
-                  <span className="emp-headline-tag">[01] {isRTL ? 'حالة الوحدة' : 'Unit Status'}</span>
+                  <span className="emp-headline-tag">{isRTL ? 'حالة الوحدة' : 'Unit Status'}</span>
                   <h2 className="emp-headline-title">{isRTL ? 'لوحة الأداء' : 'Performance Board'}</h2>
                   <span className="emp-headline-rest" />
                 </div>
@@ -1198,7 +1259,7 @@ const EmployeeDashboard = () => {
               {/* Recent Tasks + Ratings — side by side on large screens */}
               <motion.div variants={itemVariants} style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 22 }}>
                 <div className="emp-section-card">
-                  <h3>{isRTL ? '⬢ آخر المهام' : '⬢ Recent Tasks'}</h3>
+                  <h3>{isRTL ? 'آخر المهام' : 'Recent Tasks'}</h3>
                   <div className="emp-task-list">
                     {tasks.slice(0, 5).map(task => (
                       <div key={task.taskId} className={`emp-task-item priority-${task.priority}`}>
@@ -1254,7 +1315,7 @@ const EmployeeDashboard = () => {
             >
               <motion.div variants={itemVariants} className="emp-tasks-tab-head">
                 <div className="emp-headline" style={{ margin: 0 }}>
-                  <span className="emp-headline-tag">[02] {isRTL ? 'قائمة المهام' : 'Task Queue'}</span>
+                  <span className="emp-headline-tag">{isRTL ? 'قائمة المهام' : 'Task Queue'}</span>
                   <h2 className="emp-headline-title">{isRTL ? 'المهام' : 'Tasks'}</h2>
                 </div>
                 <button className="emp-btn-primary" style={{ padding: '9px 18px' }} onClick={() => setShowCreateTaskModal(true)}>
@@ -1309,7 +1370,7 @@ const EmployeeDashboard = () => {
                         <div>
                           <h4>{task.title}</h4>
                           {task.selfCreated
-                            ? <span className="emp-assigned-by" style={{ color: '#22d3ee' }}>{isRTL ? '◆ مهمة ذاتية' : '◆ Self-created'}</span>
+                            ? <span className="emp-assigned-by" style={{ color: 'var(--emp-sky-ink, #22d3ee)' }}>{isRTL ? '◆ مهمة ذاتية' : '◆ Self-created'}</span>
                             : task.creator && <span className="emp-assigned-by">{isRTL ? 'من المدير:' : 'ASSIGNED BY:'} {task.creator.fullName}</span>
                           }
                         </div>
@@ -1509,7 +1570,7 @@ const EmployeeDashboard = () => {
                             )}
 
                             {r.rejectionReason && (
-                              <div style={{ background: 'rgba(220,38,38,0.10)', border: '1px solid rgba(220,38,38,0.25)', padding: '10px 14px', borderRadius: 8, fontSize: 13, marginBottom: 10, color: '#dc2626' }}>
+                              <div style={{ background: 'rgba(220,38,38,0.10)', border: '1px solid rgba(220,38,38,0.25)', padding: '10px 14px', borderRadius: 8, fontSize: 13, marginBottom: 10, color: 'var(--emp-red-ink, #dc2626)' }}>
                                 <b>{isRTL ? 'سبب الرفض: ' : 'Rejection reason: '}</b>{r.rejectionReason}
                               </div>
                             )}
@@ -1684,7 +1745,7 @@ const EmployeeDashboard = () => {
                   style={{ background: 'var(--term-panel-solid, #0f172a)', color: 'var(--ink-primary, #e2e8f0)', borderRadius: 14, maxWidth: 520, width: '100%', border: '1px solid var(--term-divider, #334155)' }}
                 >
                   <div style={{ padding: '18px 22px', borderBottom: '1px solid var(--term-divider, #334155)' }}>
-                    <div style={{ fontSize: 11, letterSpacing: 1.2, color: regDecideModal.mode === 'approve' ? '#16a34a' : '#dc2626', textTransform: 'uppercase', fontWeight: 800 }}>
+                    <div style={{ fontSize: 11, letterSpacing: 1.2, color: regDecideModal.mode === 'approve' ? 'var(--emp-mint-ink, #16a34a)' : 'var(--emp-red-ink, #dc2626)', textTransform: 'uppercase', fontWeight: 800 }}>
                       {regDecideModal.mode === 'approve'
                         ? (isRTL ? 'اعتماد الطلب' : 'Approve Registration')
                         : (isRTL ? 'رفض الطلب' : 'Reject Registration')}
@@ -1695,7 +1756,7 @@ const EmployeeDashboard = () => {
                   <div style={{ padding: 22 }}>
                     {regDecideModal.mode === 'reject' && (
                       <div style={{ marginBottom: 14 }}>
-                        <label style={{ fontSize: 12, fontWeight: 700, color: '#dc2626', letterSpacing: 0.6, textTransform: 'uppercase' }}>
+                        <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--emp-red-ink, #dc2626)', letterSpacing: 0.6, textTransform: 'uppercase' }}>
                           {isRTL ? 'سبب الرفض *' : 'Rejection reason *'}
                         </label>
                         <textarea
@@ -1877,7 +1938,7 @@ const EmployeeDashboard = () => {
                               </button>
                               <button
                                 onClick={() => otDelete(r)}
-                                style={{ padding: '7px 14px', borderRadius: 8, border: '1px solid #dc2626', background: 'transparent', color: '#dc2626', cursor: 'pointer', fontFamily: 'inherit', fontWeight: 700, fontSize: 12 }}
+                                style={{ padding: '7px 14px', borderRadius: 8, border: '1px solid var(--emp-red-ink, #dc2626)', background: 'transparent', color: 'var(--emp-red-ink, #dc2626)', cursor: 'pointer', fontFamily: 'inherit', fontWeight: 700, fontSize: 12 }}
                               >
                                 🗑 {isRTL ? 'حذف' : 'Delete'}
                               </button>
@@ -2032,7 +2093,7 @@ const EmployeeDashboard = () => {
                       </div>
                     )}
                     {!otAutoLinked && (
-                      <div style={{ marginTop: 10, padding: 10, borderRadius: 8, background: 'rgba(220,38,38,0.10)', border: '1px solid rgba(220,38,38,0.25)', fontSize: 12, color: '#dc2626', textAlign: 'center' }}>
+                      <div style={{ marginTop: 10, padding: 10, borderRadius: 8, background: 'rgba(220,38,38,0.10)', border: '1px solid rgba(220,38,38,0.25)', fontSize: 12, color: 'var(--emp-red-ink, #dc2626)', textAlign: 'center' }}>
                         {isRTL
                           ? '⚠️ حسابك غير مربوط بسجل موظف فاب لاب — لن تظهر خيارات الاستيراد من الحضور. راجع المدير لمطابقة البريد الإلكتروني في السجلين.'
                           : '⚠️ Your account is not linked to a FabLab-staff record — import is unavailable. Ask your manager to align the email between the two records.'}
@@ -2050,7 +2111,7 @@ const EmployeeDashboard = () => {
                           <input type="time" value={d.endTime} onChange={(e) => otUpdateDay(idx, { endTime: e.target.value })} style={{ padding: 7, borderRadius: 6, border: '1px solid var(--term-divider, #334155)', background: 'var(--term-inline-panel, #020617)', color: 'inherit', fontSize: 12, fontFamily: 'inherit' }} />
                           <input type="number" step="0.25" min="0" placeholder="hrs" value={d.hours} onChange={(e) => otUpdateDay(idx, { hours: e.target.value })} style={{ padding: 7, borderRadius: 6, border: '1px solid var(--term-divider, #334155)', background: 'var(--term-inline-panel, #020617)', color: 'inherit', fontSize: 12, fontFamily: 'JetBrains Mono, monospace' }} />
                           <input type="text" placeholder={isRTL ? 'المهمة المنجزة' : 'Task performed'} value={d.task} onChange={(e) => otUpdateDay(idx, { task: e.target.value })} style={{ padding: 7, borderRadius: 6, border: '1px solid var(--term-divider, #334155)', background: 'var(--term-inline-panel, #020617)', color: 'inherit', fontSize: 12, fontFamily: 'inherit' }} />
-                          <button type="button" onClick={() => otRemoveDay(idx)} disabled={otForm.days.length <= 1} style={{ padding: '7px 10px', borderRadius: 6, border: '1px solid #dc2626', background: 'transparent', color: '#dc2626', cursor: otForm.days.length <= 1 ? 'not-allowed' : 'pointer', fontSize: 12, opacity: otForm.days.length <= 1 ? 0.5 : 1 }}>×</button>
+                          <button type="button" onClick={() => otRemoveDay(idx)} disabled={otForm.days.length <= 1} style={{ padding: '7px 10px', borderRadius: 6, border: '1px solid var(--emp-red-ink, #dc2626)', background: 'transparent', color: 'var(--emp-red-ink, #dc2626)', cursor: otForm.days.length <= 1 ? 'not-allowed' : 'pointer', fontSize: 12, opacity: otForm.days.length <= 1 ? 0.5 : 1 }}>×</button>
                         </div>
                       ))}
                     </div>
@@ -2252,7 +2313,7 @@ const EmployeeDashboard = () => {
             >
               <motion.div variants={itemVariants}>
                 <div className="emp-headline">
-                  <span className="emp-headline-tag">[03] {isRTL ? 'الجدول الزمني' : 'Timeline'}</span>
+                  <span className="emp-headline-tag">{isRTL ? 'الجدول الزمني' : 'Timeline'}</span>
                   <h2 className="emp-headline-title">{isRTL ? 'التقويم' : 'Calendar'}</h2>
                   <span className="emp-headline-rest" />
                 </div>
@@ -2375,7 +2436,7 @@ const EmployeeDashboard = () => {
             >
               <motion.div variants={itemVariants}>
                 <div className="emp-headline">
-                  <span className="emp-headline-tag">[04] {isRTL ? 'التقييمات' : 'Ratings'}</span>
+                  <span className="emp-headline-tag">{isRTL ? 'التقييمات' : 'Ratings'}</span>
                   <h2 className="emp-headline-title">{isRTL ? 'ملخص النقاط' : 'Points Summary'}</h2>
                   <span className="emp-headline-rest" />
                 </div>
@@ -2396,7 +2457,7 @@ const EmployeeDashboard = () => {
               </motion.div>
 
               <motion.div className="emp-section-card" variants={itemVariants}>
-                <h3>{isRTL ? '⌘ سجل التقييمات' : '⌘ Rating History'}</h3>
+                <h3>{isRTL ? 'سجل التقييمات' : 'Rating History'}</h3>
                 <div className="emp-ratings-history">
                   {ratings.ratings.map((r, i) => (
                     <motion.div
@@ -2505,7 +2566,7 @@ const EmployeeDashboard = () => {
             >
               <motion.div variants={itemVariants}>
                 <div className="emp-headline">
-                  <span className="emp-headline-tag">[05] {isRTL ? 'الورش' : 'Workshops'}</span>
+                  <span className="emp-headline-tag">{isRTL ? 'الورش' : 'Workshops'}</span>
                   <h2 className="emp-headline-title">{isRTL ? 'الورش التدريبية' : 'Training Workshops'}</h2>
                   <span className="emp-headline-rest" />
                 </div>
@@ -2913,6 +2974,7 @@ const EmployeeDashboard = () => {
 
         </AnimatePresence>
       </div>
+      </div>{/* .emp-main */}
 
       {/* Create Task Modal */}
       <AnimatePresence>

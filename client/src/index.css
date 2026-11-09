@@ -6,6 +6,9 @@
    - JetBrains Mono: tabular numerals for stat values, table
      numeric columns, progress pills */
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Cairo:wght@300;400;500;600;700;800&family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,500;12..96,600;12..96,700;12..96,800&family=JetBrains+Mono:wght@400;500;600;700&display=swap');
+/* Dashboard theme (styles/fx.css): Readex Pro (Arabic + Latin UI text)
+   and Unbounded (Latin display numerals / titles). */
+@import url('https://fonts.googleapis.com/css2?family=Readex+Pro:wght@300;400;500;600;700&family=Unbounded:wght@500;600;700&display=swap');
 
 /* Shared design system: glassy dark tokens + perf hardening.
    Loaded once so both the register page and the admin panel

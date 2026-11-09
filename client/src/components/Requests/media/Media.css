@@ -2,20 +2,22 @@
    styles: the line's stage strip, the timeline and the design previews. */
 
 /* ── Stage strip ── */
-.tk .mr-stages { list-style: none; margin: 0; padding: 12px 14px; display: flex; flex-wrap: wrap; gap: 6px; align-items: center; border: 1px solid var(--tk-line); border-radius: 14px; background: var(--tk-panel); }
+.tk .mr-stages { list-style: none; margin: 0; padding: 12px 14px; display: flex; flex-wrap: wrap; gap: 6px; align-items: center; border: 1px solid var(--tk-line); border-radius: 18px; background: var(--tk-panel); box-shadow: var(--tk-shadow); }
 .tk .mr-stages li { display: inline-flex; align-items: center; gap: 8px; padding: 6px 12px 6px 10px; border-radius: 999px; font-size: 13px; color: var(--tk-muted); border: 1px solid transparent; }
 .tk .mr-stages li + li::before { content: '←'; color: var(--tk-muted); margin-inline-end: 6px; opacity: .7; }
-.tk .mr-stages .dot { width: 24px; height: 24px; border-radius: 50%; display: grid; place-items: center; font-size: 12px; font-weight: 900; background: var(--tk-panel-3); border: 1px solid var(--tk-line); }
+.tk .mr-stages .dot { width: 26px; height: 26px; border-radius: 9px; display: grid; place-items: center; font-size: 12px; font-weight: 900; background: var(--tk-panel-2); border: 1px solid var(--tk-line); }
 .tk .mr-stages li.done { color: var(--tk-ink-2); }
-.tk .mr-stages li.done .dot { background: var(--tk-mint-soft); color: var(--tk-mint); border-color: transparent; }
-.tk .mr-stages li.now { color: var(--tk-ink); font-weight: 700; background: var(--tk-red-soft); border-color: rgba(238, 35, 41, .35); }
-.tk .mr-stages li.now .dot { background: #d81b25; color: #fff; border-color: transparent; }
+.tk .mr-stages li.done .dot { background: var(--tk-grad-good); color: #fff; border-color: transparent; box-shadow: 0 4px 10px -4px rgba(40, 176, 112, .8); }
+.tk .mr-stages li.now { color: var(--tk-ink); font-weight: 600; background: var(--tk-red-soft); border-color: color-mix(in srgb, var(--tk-red) 35%, transparent); }
+.tk .mr-stages li.now .dot { background: var(--tk-grad); color: #fff; border-color: transparent; box-shadow: var(--tk-glow-red); animation: mr-pulse 2.2s infinite; }
+@keyframes mr-pulse { 0% { box-shadow: 0 0 0 0 rgba(238, 35, 41, .45); } 70% { box-shadow: 0 0 0 8px rgba(238, 35, 41, 0); } 100% { box-shadow: 0 0 0 0 rgba(238, 35, 41, 0); } }
 
 /* ── Design view ── */
 .tk .mr-design { display: grid; gap: 12px; }
 .tk .mr-design-head { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; }
 .tk .mr-shots { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 12px; }
-.tk .mr-shot { margin: 0; border: 1px solid var(--tk-line); border-radius: 12px; overflow: hidden; background: var(--tk-panel-2); }
+.tk .mr-shot { margin: 0; border: 1px solid var(--tk-line); border-radius: 16px; overflow: hidden; background: var(--tk-panel); box-shadow: var(--tk-shadow); transition: transform .35s var(--tk-spring), box-shadow .3s; }
+.tk .mr-shot:hover { transform: translateY(-3px); box-shadow: var(--tk-shadow-lg); }
 .tk .mr-shot .ph { display: grid; place-items: center; min-height: 140px; background: var(--tk-panel-3); }
 .tk .mr-shot .ph img { display: block; width: 100%; height: auto; max-height: 260px; object-fit: contain; }
 .tk .mr-shot.big .ph img { max-height: 520px; }
@@ -27,24 +29,24 @@
 .tk .mr-ev { position: relative; display: grid; grid-template-columns: 34px minmax(0, 1fr); gap: 12px; padding: 0 0 18px; }
 .tk .mr-ev::before { content: ''; position: absolute; inset-inline-start: 16px; top: 34px; bottom: 0; width: 2px; background: var(--tk-line); }
 .tk .mr-ev:last-child::before { display: none; }
-.tk .mr-ev .ico { width: 34px; height: 34px; border-radius: 10px; display: grid; place-items: center; font-weight: 900; font-size: 15px; background: var(--tk-panel-3); border: 1px solid var(--tk-line); color: var(--tk-ink-2); }
-.tk .mr-ev.mint .ico { background: var(--tk-mint-soft); color: var(--tk-mint); border-color: transparent; }
-.tk .mr-ev.red .ico { background: var(--tk-red-soft); color: var(--tk-red-ink); border-color: transparent; }
-.tk .mr-ev.violet .ico { background: var(--tk-violet-soft); color: var(--tk-violet); border-color: transparent; }
-.tk .mr-ev.cyan .ico { background: var(--tk-cyan-soft); color: var(--tk-cyan); border-color: transparent; }
-.tk .mr-ev .body { min-width: 0; display: grid; gap: 6px; padding: 10px 14px; border: 1px solid var(--tk-line); border-radius: 12px; background: var(--tk-panel); }
+.tk .mr-ev .ico { width: 34px; height: 34px; border-radius: 11px; display: grid; place-items: center; font-weight: 900; font-size: 15px; background: var(--tk-panel-2); border: 1px solid var(--tk-line); color: var(--tk-ink-2); }
+.tk .mr-ev.mint .ico { background: var(--tk-grad-good); color: #fff; border-color: transparent; box-shadow: 0 8px 18px -10px rgba(40, 176, 112, .9); }
+.tk .mr-ev.red .ico { background: var(--tk-grad); color: #fff; border-color: transparent; box-shadow: 0 8px 18px -10px rgba(238, 35, 41, .9); }
+.tk .mr-ev.violet .ico { background: linear-gradient(135deg, #6d4aff, #a855f7); color: #fff; border-color: transparent; box-shadow: 0 8px 18px -10px rgba(124, 58, 237, .9); }
+.tk .mr-ev.cyan .ico { background: var(--tk-grad-navy); color: #fff; border-color: transparent; box-shadow: var(--tk-glow-navy); }
+.tk .mr-ev .body { min-width: 0; display: grid; gap: 6px; padding: 11px 15px; border: 1px solid var(--tk-line); border-radius: 16px; background: var(--tk-panel); box-shadow: var(--tk-shadow-sm); }
 .tk .mr-ev .head { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; font-size: 13px; }
 .tk .mr-ev .head .when { color: var(--tk-ink-2); font-size: 12.5px; }
 .tk .mr-ev .head .seq { margin-inline-start: auto; color: var(--tk-muted); font-size: 11.5px; }
-.tk .mr-ev .what { font-weight: 700; font-size: 14px; }
+.tk .mr-ev .what { font-weight: 600; font-size: 14px; }
 .tk .mr-ev-files { display: grid; gap: 6px; }
 .tk .mr-ev-files .mr-shot { max-width: 300px; }
 .tk .mr-ev-files { grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); }
 .tk .mr-ev-files .tk-file { grid-column: 1 / -1; }
 
 /* ── Action panels (who acts now) ── */
-.tk .mr-act { display: grid; gap: 12px; padding: 16px 18px; border-radius: 14px; border: 1px solid rgba(238, 35, 41, .35); background: var(--tk-red-soft); }
-.tk .mr-act h3 { margin: 0; font-size: 16px; }
+.tk .mr-act { display: grid; gap: 12px; padding: 18px 20px; border-radius: 20px; border: 1px solid color-mix(in srgb, var(--tk-red) 35%, transparent); background: linear-gradient(135deg, var(--tk-red-soft), transparent 75%), var(--tk-panel); box-shadow: var(--tk-shadow); }
+.tk .mr-act h3 { margin: 0; font-family: var(--tk-display); font-weight: 600; font-size: 16px; }
 .tk .mr-act .row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
 .tk .mr-up-list { display: grid; gap: 6px; }
 .tk .mr-up-list .tk-file input[type="checkbox"] { width: 18px; height: 18px; accent-color: #d81b25; }

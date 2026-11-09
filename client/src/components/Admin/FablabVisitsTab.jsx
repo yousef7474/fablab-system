@@ -619,7 +619,7 @@ const FablabVisitsTab = () => {
   return (
     <div className="fvt" style={{ padding: '16px 4px' }}>
       {/* Header + summary tiles */}
-      <div style={{ marginBottom: 16 }}>
+      <div className="fvt-head" style={{ marginBottom: 16 }}>
         <h2 style={{ margin: '0 0 6px', fontSize: 22, fontWeight: 800 }}>
           {isRTL ? 'زيارات فاب لاب' : 'FabLab Visits'}
         </h2>
@@ -640,6 +640,7 @@ const FablabVisitsTab = () => {
             type="button"
             role="tab"
             aria-selected={view === t.key}
+            className={`fvs-switch-btn${view === t.key ? ' is-on' : ''}`}
             onClick={() => switchView(t.key)}
             style={{
               padding: '8px 16px', borderRadius: 9, border: 'none', cursor: 'pointer',
@@ -656,7 +657,7 @@ const FablabVisitsTab = () => {
       {view === 'slots' && <FablabVisitSlots isRTL={isRTL} onOpenVisit={openVisitById} />}
 
       {view === 'requests' && (<>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 10, marginBottom: 16 }}>
+      <div className="fvt-stats" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 10, marginBottom: 16 }}>
         {[
           { key: 'total',    label: 'الإجمالي',      value: counts.total,    color: 'var(--text-primary, #0f172a)' },
           { key: 'draft',    label: 'مسودّة',        value: counts.draft,    color: 'var(--text-tertiary, #64748b)' },
@@ -667,6 +668,7 @@ const FablabVisitsTab = () => {
         ].map(t => (
           <button
             key={t.key}
+            className={`fvt-stat${statusFilter === (t.key === 'total' ? 'all' : t.key) ? ' is-on' : ''}`}
             onClick={() => setStatusFilter(t.key === 'total' ? 'all' : t.key)}
             style={{
               cursor: 'pointer', textAlign: isRTL ? 'right' : 'left',
@@ -710,7 +712,7 @@ const FablabVisitsTab = () => {
       {loading ? (
         <div style={{ padding: 60, textAlign: 'center', color: 'var(--text-tertiary, #64748b)' }}>جارٍ التحميل...</div>
       ) : filtered.length === 0 ? (
-        <div style={{ padding: 60, textAlign: 'center', color: 'var(--text-secondary, #64748b)', background: 'var(--bg-tertiary, #f8fafc)', border: '1px dashed var(--border-color, #cbd5e1)', borderRadius: 12 }}>
+        <div className="fvt-empty" style={{ padding: 60, textAlign: 'center', color: 'var(--text-secondary, #64748b)', background: 'var(--bg-tertiary, #f8fafc)', border: '1px dashed var(--border-color, #cbd5e1)', borderRadius: 12 }}>
           لا توجد طلبات في هذا التصنيف
         </div>
       ) : (

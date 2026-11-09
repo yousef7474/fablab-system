@@ -1,0 +1,583 @@
+/* =============================================================
+   FabLab dashboard theme — manager board tabs (on top of fx.css)
+   Every manager tab in the studio look: panels, segmented filters,
+   studio cards, KPI chips, the approvals hub, مهامي, settings.
+   Scoped to the manager shell: .admin-layout.fx[data-page="manager"].
+   The shared schedule view (sv2-*) lives in Manager.css so the admin
+   schedule matches.
+   ============================================================= */
+
+/* ---------- layout: tabs render straight under the header ---------- */
+:root:root .fx[data-page="manager"] .admin-main { padding: 0 0 64px; }
+:root:root .fx[data-page="manager"] .admin-main > .admin-header { margin: 0 0 26px; }
+:root:root .fx[data-page="manager"] .admin-main > :not(.admin-header) { margin-inline: 32px; }
+:root:root .fx[data-page="manager"] .admin-main > .tasks-content,
+:root:root .fx[data-page="manager"] .admin-main > .volunteers-content,
+:root:root .fx[data-page="manager"] .admin-main > .volunteers-section,
+:root:root .fx[data-page="manager"] .admin-main > .workspaces-content { padding: 0; }
+:root:root .fx[data-page="manager"] .admin-main > .settings-content { margin-inline: auto; max-width: 980px; padding: 0 32px; }
+@media (max-width: 768px) {
+  :root:root .fx[data-page="manager"] .admin-main { padding: 0 0 48px; }
+  :root:root .fx[data-page="manager"] .admin-main > .admin-header { margin-bottom: 18px; }
+  :root:root .fx[data-page="manager"] .admin-main > :not(.admin-header) { margin-inline: 16px; }
+  :root:root .fx[data-page="manager"] .admin-main > .settings-content { margin-inline: 0; padding: 0 16px; width: auto; max-width: none; }
+}
+
+/* ---------- section heads inside a tab ---------- */
+:root:root .fx[data-page="manager"] :is(.volunteers-header, .content-header) {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  flex-wrap: wrap;
+  margin: 0 0 18px;
+  padding: 0;
+  border: 0;
+  background: none;
+}
+:root:root .fx[data-page="manager"] :is(.volunteers-header, .content-header) :is(h1, h2, h3) {
+  font: 600 clamp(18px, 1.7vw, 22px)/1.25 var(--fx-display);
+  letter-spacing: -.01em;
+  color: var(--fx-ink);
+  margin: 0;
+}
+:root:root .fx[data-page="manager"] .volunteers-actions { display: flex; flex-wrap: wrap; gap: 10px; }
+
+/* ---------- buttons ---------- */
+:root:root .fx[data-page="manager"] :is(.add-volunteer-btn, .add-opportunity-btn, .add-task-btn, .add-workspace-btn, .todo-add-btn-main, .yc-add-btn) {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 42px;
+  padding: 0 18px;
+  border-radius: 12px;
+  font: 600 14px/1 var(--fx-font);
+  transition: transform .25s var(--fx-spring), box-shadow .25s, background-position .6s var(--fx-ease);
+}
+/* the main action of a toolbar = red gradient */
+:root:root .fx[data-page="manager"] :is(.add-workspace-btn, .todo-add-btn-main, .yc-add-btn) {
+  border: 0;
+  color: #fff;
+  background: var(--fx-grad);
+  background-size: 180% 100%;
+  box-shadow: var(--fx-glow-red);
+}
+:root:root .fx[data-page="manager"] :is(.add-workspace-btn, .todo-add-btn-main, .yc-add-btn):hover {
+  transform: translateY(-2px);
+  background-position: 100% 0;
+  box-shadow: 0 16px 30px -12px rgba(238, 35, 41, .7);
+}
+:root:root .fx[data-page="manager"] .add-workspace-btn .btn-icon { display: grid; place-items: center; width: 24px; height: 24px; border-radius: 8px; background: rgba(255, 255, 255, .22); }
+/* secondary toolbar actions = white bordered */
+:root:root .fx[data-page="manager"] .add-volunteer-btn.secondary:not([style*="background"]) {
+  border: 1px solid var(--fx-line-2);
+  background: var(--fx-surface);
+  color: var(--fx-ink);
+  box-shadow: var(--fx-shadow-sm);
+}
+:root:root .fx[data-page="manager"] .add-volunteer-btn.secondary:not([style*="background"]):hover {
+  transform: translateY(-2px);
+  border-color: var(--fx-red);
+  box-shadow: 0 10px 22px -12px rgba(238, 35, 41, .45);
+}
+:root:root .fx[data-page="manager"] :is(.add-volunteer-btn, .add-opportunity-btn):hover { transform: translateY(-2px); }
+
+/* ---------- segmented filters (tasks status, employee sub-tabs) ---------- */
+:root:root .fx[data-page="manager"] .task-filter-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  padding: 5px;
+  margin: 0 0 18px;
+  border-radius: 16px;
+  border: 1px solid var(--fx-line);
+  background: var(--fx-surface);
+  box-shadow: var(--fx-shadow-sm);
+  backdrop-filter: none;
+}
+:root:root .fx[data-page="manager"] .task-filter-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 38px;
+  padding: 0 14px;
+  border: 0;
+  border-radius: 12px;
+  background: transparent;
+  color: var(--fx-ink-2);
+  font: 500 13.5px/1 var(--fx-font);
+  box-shadow: none;
+  transition: background .2s, color .2s, transform .25s var(--fx-spring);
+}
+:root:root .fx[data-page="manager"] .task-filter-tab:hover:not(.active) { background: var(--fx-surface-2); color: var(--fx-ink); }
+:root:root .fx[data-page="manager"] .task-filter-tab.active {
+  background: var(--fx-grad);
+  color: #fff;
+  box-shadow: var(--fx-glow-red);
+}
+:root:root .fx[data-page="manager"] .task-filter-tab .tab-count {
+  min-width: 22px;
+  padding: 1px 7px;
+  border-radius: 99px;
+  background: var(--fx-surface-3);
+  color: var(--fx-ink-2);
+  font: 600 11.5px/1.5 var(--fx-font);
+}
+:root:root .fx[data-page="manager"] .task-filter-tab.active .tab-count { background: #fff; color: #c8161d; }
+:root:root .fx[data-page="manager"] .task-filter-tab.active .tab-dot { background: #fff !important; box-shadow: none; }
+:root:root .fx[data-page="manager"] .task-extra-filter { display: inline-flex; align-items: center; gap: 8px; }
+:root:root .fx[data-page="manager"] .task-extra-filter label { color: var(--fx-ink-2); font-weight: 500; font-size: 13px; }
+:root:root .fx[data-page="manager"] .task-extra-filter select {
+  min-height: 42px;
+  padding: 0 12px;
+  border-radius: 12px;
+  border: 1px solid var(--fx-line-2);
+  background-color: var(--fx-surface);
+  color: var(--fx-ink);
+  font-family: var(--fx-font);
+}
+:root:root .fx[data-page="manager"] .task-extra-filter select:focus { outline: none; border-color: var(--fx-red); box-shadow: var(--fx-ring); }
+
+/* ---------- KPI chips (employees / interns counters) ---------- */
+:root:root .fx[data-page="manager"] .volunteers-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding: 0;
+  border: 0;
+  background: none;
+  box-shadow: none;
+}
+:root:root .fx[data-page="manager"] .volunteers-stats .stat-item {
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 120px;
+  padding: 14px 16px 12px;
+  border-radius: 16px;
+  border: 1px solid var(--fx-line);
+  background: var(--fx-surface);
+  box-shadow: var(--fx-shadow-sm);
+  text-align: start;
+  transition: transform .3s var(--fx-spring), box-shadow .3s;
+}
+:root:root .fx[data-page="manager"] .volunteers-stats .stat-item::before {
+  content: '';
+  position: absolute;
+  inset-block: 0;
+  inset-inline-start: 0;
+  width: 4px;
+  background: var(--fx-grad-navy);
+}
+:root:root .fx[data-page="manager"] .volunteers-stats .stat-item:nth-child(2)::before { background: var(--fx-grad); }
+:root:root .fx[data-page="manager"] .volunteers-stats .stat-item:nth-child(3)::before { background: var(--fx-grad-good); }
+:root:root .fx[data-page="manager"] .volunteers-stats .stat-item:hover { transform: translateY(-3px); box-shadow: var(--fx-shadow); }
+:root:root .fx[data-page="manager"] .volunteers-stats .stat-value { font: 600 24px/1.1 var(--fx-font); color: var(--fx-ink); font-variant-numeric: tabular-nums; }
+:root:root .fx[data-page="manager"] .volunteers-stats .stat-label { font-size: 12.5px; font-weight: 500; color: var(--fx-ink-3); }
+
+/* ---------- studio cards (employees / volunteers / interns) ---------- */
+:root:root .fx[data-page="manager"] .volunteers-grid { gap: 16px; }
+:root:root .fx[data-page="manager"] .volunteer-card {
+  position: relative;
+  overflow: hidden;
+  border-radius: var(--fx-r);
+  border: 1px solid var(--fx-line);
+  background: var(--fx-surface);
+  box-shadow: var(--fx-shadow);
+  transition: transform .35s var(--fx-spring), box-shadow .3s;
+}
+:root:root .fx[data-page="manager"] .volunteer-card::after {
+  content: '';
+  position: absolute;
+  width: 150px; height: 150px;
+  top: -80px; inset-inline-end: -70px;
+  border-radius: 50%;
+  background: var(--fx-grad-navy);
+  opacity: .1;
+  pointer-events: none;
+  transition: transform .6s var(--fx-ease);
+}
+:root:root .fx[data-page="manager"] .volunteer-card:hover { transform: translateY(-5px); box-shadow: var(--fx-shadow-lg); }
+:root:root .fx[data-page="manager"] .volunteer-card:hover::after { transform: scale(1.4); }
+:root:root .fx[data-page="manager"] .volunteer-card .volunteer-avatar {
+  border-radius: 14px;
+  background: var(--fx-grad-navy);
+  color: #fff;
+  box-shadow: 0 10px 20px -10px #2A4F7C;
+  font-family: var(--fx-font);
+  font-weight: 700;
+}
+:root:root .fx[data-page="manager"] .volunteer-card .volunteer-info h3,
+:root:root .fx[data-page="manager"] .volunteer-card .volunteer-info h4 { font: 600 15.5px/1.3 var(--fx-font); color: var(--fx-ink); }
+:root:root .fx[data-page="manager"] .volunteer-card .volunteer-id { color: var(--fx-ink-3); }
+:root:root .fx[data-page="manager"] .volunteer-card .detail-label { color: var(--fx-ink-3); font-size: 12.5px; }
+:root:root .fx[data-page="manager"] .volunteer-card .detail-value { color: var(--fx-ink); font-weight: 600; }
+:root:root .fx[data-page="manager"] .volunteer-card :is(.volunteer-card-header, .volunteer-card-footer) { border-color: var(--fx-line); }
+:root:root .fx[data-page="manager"] .status-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--fx-green-ink);
+  background: var(--fx-green-soft);
+  border: 1px solid color-mix(in srgb, var(--fx-green) 28%, transparent);
+}
+:root:root .fx[data-page="manager"] .status-badge:is(.inactive, .suspended, .rejected) { color: var(--fx-red-ink); background: var(--fx-red-soft); border-color: color-mix(in srgb, var(--fx-red) 28%, transparent); }
+:root:root .fx[data-page="manager"] .status-badge:is(.pending, .on-hold) { color: var(--fx-amber); background: var(--fx-amber-soft); border-color: color-mix(in srgb, var(--fx-amber) 30%, transparent); }
+:root:root .fx[data-page="manager"] .card-action-btn {
+  display: inline-grid;
+  place-items: center;
+  width: 36px; height: 36px;
+  border-radius: 11px;
+  border: 1px solid var(--fx-line);
+  background: var(--fx-surface-2);
+  color: var(--fx-ink-2);
+  transition: background .2s, color .2s, border-color .2s, transform .25s var(--fx-spring);
+}
+:root:root .fx[data-page="manager"] .card-action-btn:hover { transform: scale(1.08); background: var(--fx-navy-soft); color: var(--fx-navy-ink); border-color: transparent; }
+:root:root .fx[data-page="manager"] .card-action-btn.delete:hover { background: var(--fx-red-soft); color: var(--fx-red-ink); }
+:root:root .fx[data-page="manager"] .card-action-btn:not(.edit):not(.delete) { background: var(--fx-grad-navy); color: #fff; border-color: transparent; }
+
+/* public-report link bar (volunteers) */
+:root:root .fx[data-page="manager"] .mshare-bar {
+  border-radius: var(--fx-r);
+  border: 1px solid var(--fx-line);
+  background: var(--fx-surface);
+  box-shadow: var(--fx-shadow);
+}
+:root:root .fx[data-page="manager"] .mshare-bar::before { display: none; }
+:root:root .fx[data-page="manager"] .mshare-kicker { color: var(--fx-red-ink); font-family: var(--fx-font); letter-spacing: .04em; }
+:root:root .fx[data-page="manager"] .mshare-hint { color: var(--fx-ink-2); }
+:root:root .fx[data-page="manager"] .mshare-url { border-radius: 12px; border: 1px solid var(--fx-line-2); background: var(--fx-surface-2); color: var(--fx-ink); }
+:root:root .fx[data-page="manager"] .mshare-btn { border-radius: 10px; border: 1px solid var(--fx-line-2); background: var(--fx-surface); color: var(--fx-ink); }
+:root:root .fx[data-page="manager"] .mshare-btn:hover { border-color: var(--fx-red); color: var(--fx-red-ink); }
+
+/* ---------- empty states: floating tinted icon tile ---------- */
+:root:root .fx[data-page="manager"] :is(.empty-state, .ap-empty, .todo-empty) { color: var(--fx-ink-3); }
+:root:root .fx[data-page="manager"] .empty-state p { color: var(--fx-ink-2); }
+:root:root .fx[data-page="manager"] .empty-state {
+  border-radius: var(--fx-r);
+  border: 1px dashed var(--fx-line-2);
+  background: color-mix(in srgb, var(--fx-surface) 70%, transparent);
+  padding: 46px 20px;
+}
+:root:root .fx[data-page="manager"] .empty-state > svg {
+  box-sizing: content-box;
+  width: 30px; height: 30px;
+  padding: 13px;
+  border-radius: 16px;
+  color: var(--fx-red);
+  background: var(--fx-red-soft);
+  animation: fx-floaty 3.5s ease-in-out infinite;
+}
+:root:root .fx[data-page="manager"] .empty-state :is(h3, h4) { font: 600 17px/1.3 var(--fx-display); color: var(--fx-ink); }
+:root:root .fx[data-page="manager"] :is(.volunteers-grid, .workspaces-grid, .tasks-grid, .assignments-list) > .empty-state { grid-column: 1 / -1; width: 100%; }
+:root:root .fx[data-page="manager"] .empty-state :is(button, .btn) {
+  margin-top: 6px;
+  min-height: 40px;
+  padding: 0 16px;
+  border-radius: 12px;
+  border: 1px solid var(--fx-line-2);
+  background: var(--fx-surface);
+  color: var(--fx-ink);
+  font: 600 13.5px/1 var(--fx-font);
+  box-shadow: var(--fx-shadow-sm);
+  cursor: pointer;
+  transition: transform .25s var(--fx-spring), border-color .2s, box-shadow .25s;
+}
+:root:root .fx[data-page="manager"] .empty-state :is(button, .btn):hover { transform: translateY(-2px); border-color: var(--fx-red); box-shadow: 0 10px 22px -12px rgba(238, 35, 41, .45); }
+
+/* ---------- workspaces ---------- */
+:root:root .fx[data-page="manager"] .workspaces-content .stats-grid > .stat-card:nth-child(1) { --k-grad: var(--fx-grad-navy); --k-c: #2A4F7C; }
+:root:root .fx[data-page="manager"] .workspaces-content .stats-grid > .stat-card:nth-child(2) { --k-grad: var(--fx-grad); --k-c: #EE2329; }
+:root:root .fx[data-page="manager"] .workspaces-content .stats-grid > .stat-card:nth-child(3) { --k-grad: var(--fx-grad-good); --k-c: #28B070; }
+:root:root .fx[data-page="manager"] .workspaces-content .stats-grid > .stat-card:nth-child(4) { --k-grad: var(--fx-grad-amber); --k-c: #f59e0b; }
+:root:root .fx[data-page="manager"] .workspaces-content .stat-card .stat-info { display: flex; flex-direction: column; gap: 4px; }
+:root:root .fx[data-page="manager"] .workspace-actions-bar { padding: 14px 18px; margin-bottom: 18px; }
+:root:root .fx[data-page="manager"] .workspace-actions-bar h3,
+:root:root .fx[data-page="manager"] .workspace-actions-bar h2 { font: 600 16px var(--fx-display); color: var(--fx-ink); }
+:root:root .fx[data-page="manager"] .workspace-count { border-radius: 999px; background: var(--fx-surface-3); color: var(--fx-ink-2); font-weight: 600; }
+:root:root .fx[data-page="manager"] .workspace-card {
+  border-radius: var(--fx-r);
+  border: 1px solid var(--fx-line);
+  background: var(--fx-surface);
+  box-shadow: var(--fx-shadow);
+  overflow: hidden;
+  transition: transform .35s var(--fx-spring), box-shadow .3s;
+}
+:root:root .fx[data-page="manager"] .workspace-card:hover { transform: translateY(-4px); box-shadow: var(--fx-shadow-lg); }
+:root:root .fx[data-page="manager"] .workspace-card .workspace-header { background: var(--fx-surface-2); border-bottom: 1px solid var(--fx-line); }
+:root:root .fx[data-page="manager"] .workspace-card .table-number { font-family: var(--fx-display); color: var(--fx-ink); }
+:root:root .fx[data-page="manager"] .workspace-card .table-label { color: var(--fx-ink-3); }
+:root:root .fx[data-page="manager"] .workspace-card :is(.info-row, .workspace-period) { border-radius: 12px; background: var(--fx-surface-2); }
+:root:root .fx[data-page="manager"] .workspace-card .period-label { color: var(--fx-ink-3); }
+:root:root .fx[data-page="manager"] .workspace-card .period-value { color: var(--fx-ink); }
+:root:root .fx[data-page="manager"] .workspace-card .workspace-actions { border-top: 1px solid var(--fx-line); gap: 8px; }
+:root:root .fx[data-page="manager"] .workspace-card .action-btn {
+  width: 36px; height: 36px;
+  border-radius: 11px;
+  transition: transform .25s var(--fx-spring), box-shadow .25s;
+}
+:root:root .fx[data-page="manager"] .workspace-card .action-btn:hover { transform: translateY(-2px) scale(1.06); box-shadow: var(--fx-shadow); }
+
+/* ---------- approvals hub ---------- */
+:root:root .fx[data-page="manager"] .ap-hub-bar {
+  padding: 16px 18px;
+  margin-bottom: 22px;
+  border-radius: var(--fx-r);
+  border: 1px solid var(--fx-line);
+  background: var(--fx-surface);
+  box-shadow: var(--fx-shadow);
+  backdrop-filter: none;
+}
+:root:root .fx[data-page="manager"] .ap-hub-total { color: var(--fx-ink-2); font-weight: 500; }
+:root:root .fx[data-page="manager"] .ap-hub-total b { font-family: var(--fx-font); border-radius: 10px; }
+:root:root .fx[data-page="manager"] .ap-hub-tabs {
+  gap: 4px;
+  padding: 5px;
+  border-radius: 16px;
+  background: var(--fx-surface-2);
+  border: 1px solid var(--fx-line);
+}
+:root:root .fx[data-page="manager"] .ap-hub-tab {
+  min-height: 40px;
+  padding: 0 14px;
+  border: 0;
+  border-radius: 12px;
+  background: transparent;
+  color: var(--fx-ink-2);
+  font: 500 13.5px/1 var(--fx-font);
+  box-shadow: none;
+  transition: background .2s, color .2s, transform .25s var(--fx-spring), box-shadow .25s;
+}
+:root:root .fx[data-page="manager"] .ap-hub-tab:hover:not(.is-active) { background: var(--fx-surface); color: var(--fx-ink); transform: none; }
+:root:root .fx[data-page="manager"] .ap-hub-tab.is-active {
+  /* deepened solid → solid keeps white text ≥ 4.5:1 for every tab hue (amber included) */
+  background: linear-gradient(120deg, color-mix(in srgb, var(--tab-solid, #c8161d) 78%, #000), var(--tab-solid, #c8161d));
+  color: #fff;
+  font-weight: 600;
+  box-shadow: 0 10px 22px -10px var(--tab-color, #EE2329);
+}
+:root:root .fx[data-page="manager"] .ap-hub-tab-badge {
+  background: color-mix(in srgb, var(--tab-color, #EE2329) 16%, transparent);
+  color: var(--fx-ink);
+  font-family: var(--fx-font);
+  font-weight: 700;
+}
+:root:root .fx[data-page="manager"] .ap-hub-tab.is-active .ap-hub-tab-badge { background: rgba(255, 255, 255, .26); color: #fff; }
+:root:root .fx[data-page="manager"] .ap-head h2,
+:root:root .fx[data-page="manager"] .ap-head h3 { font: 600 clamp(18px, 1.7vw, 22px)/1.25 var(--fx-display); color: var(--fx-ink); }
+:root:root .fx[data-page="manager"] .ap-head { border-bottom-color: var(--fx-line); }
+:root:root .fx[data-page="manager"] .ap-refresh { border-radius: 12px; border: 1px solid var(--fx-line-2); background: var(--fx-surface); color: var(--fx-ink); box-shadow: var(--fx-shadow-sm); }
+:root:root .fx[data-page="manager"] .ap-refresh:hover { border-color: var(--fx-red); color: var(--fx-red-ink); }
+:root:root .fx[data-page="manager"] .ap-empty {
+  border-radius: var(--fx-r);
+  border: 1px dashed var(--fx-line-2);
+  background: color-mix(in srgb, var(--fx-surface) 70%, transparent);
+}
+
+/* ---------- مهامي (todo app) ---------- */
+:root:root .fx[data-page="manager"] .todo-app {
+  border-radius: 22px;
+  border: 1px solid var(--fx-line);
+  background: var(--fx-surface);
+  box-shadow: var(--fx-shadow);
+  overflow: hidden;
+}
+:root:root .fx[data-page="manager"] .todo-sidebar { background: var(--fx-surface-2); border-inline-start: 1px solid var(--fx-line); border-color: var(--fx-line); }
+:root:root .fx[data-page="manager"] .todo-add-btn-main { width: 100%; }
+:root:root .fx[data-page="manager"] .todo-view-btn {
+  min-height: 44px;
+  border-radius: 12px;
+  color: var(--fx-ink-2);
+  font-family: var(--fx-font);
+  transition: background .2s, color .2s, transform .25s var(--fx-ease);
+}
+:root:root .fx[data-page="manager"] .todo-view-btn:hover { background: var(--fx-surface); color: var(--fx-ink); }
+:root:root .fx[data-page="manager"] .todo-view-btn.active {
+  background: var(--fx-surface);
+  color: var(--fx-ink);
+  font-weight: 600;
+  box-shadow: var(--fx-shadow);
+}
+:root:root .fx[data-page="manager"] .todo-view-btn.active .todo-view-icon {
+  display: grid;
+  place-items: center;
+  width: 30px; height: 30px;
+  border-radius: 9px;
+  background: var(--fx-grad);
+  color: #fff;
+  box-shadow: var(--fx-glow-red);
+}
+:root:root .fx[data-page="manager"] .todo-view-label { color: inherit; }
+:root:root .fx[data-page="manager"] .todo-view-count { border-radius: 99px; background: var(--fx-surface-3); color: var(--fx-ink-2); font-family: var(--fx-font); font-weight: 600; }
+:root:root .fx[data-page="manager"] .todo-main-header h1,
+:root:root .fx[data-page="manager"] .todo-main-header h2 { font: 600 22px/1.25 var(--fx-display); color: var(--fx-ink); }
+:root:root .fx[data-page="manager"] .todo-date-subtitle { color: var(--fx-ink-3); }
+:root:root .fx[data-page="manager"] .todo-quick-add {
+  min-height: 48px;
+  border-radius: 14px;
+  border: 1px solid var(--fx-line-2);
+  background: var(--fx-surface-2);
+  box-shadow: none;
+  transition: border-color .2s, box-shadow .2s, background .2s;
+}
+:root:root .fx[data-page="manager"] .todo-quick-add:focus-within { border-color: var(--fx-red); background: var(--fx-surface); box-shadow: var(--fx-ring); }
+:root:root .fx[data-page="manager"] .todo-quick-add-icon { color: var(--fx-red); }
+:root:root .fx[data-page="manager"] .todo-quick-add-input { background: transparent; color: var(--fx-ink); font-family: var(--fx-font); }
+:root:root .fx[data-page="manager"] .todo-empty-icon {
+  display: inline-grid;
+  place-items: center;
+  width: 64px; height: 64px;
+  border-radius: 20px;
+  background: var(--fx-red-soft);
+  color: var(--fx-red);
+  animation: fx-floaty 3.5s ease-in-out infinite;
+}
+:root:root .fx[data-page="manager"] .todo-empty :is(h3, p, span) { color: var(--fx-ink-2); }
+:root:root .fx[data-page="manager"] .todo-item { border-radius: 14px; border: 1px solid var(--fx-line); background: var(--fx-surface); box-shadow: var(--fx-shadow-sm); }
+:root:root .fx[data-page="manager"] .todo-item:hover { border-color: color-mix(in srgb, var(--fx-red) 35%, var(--fx-line)); }
+
+/* ---------- education (school training) ---------- */
+:root:root .fx[data-page="manager"] .filters-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+  padding: 14px 16px;
+  margin-bottom: 18px;
+  border-radius: var(--fx-r);
+  border: 1px solid var(--fx-line);
+  background: var(--fx-surface);
+  box-shadow: var(--fx-shadow);
+}
+:root:root .fx[data-page="manager"] .filters-bar :is(.filter-input, input[type="text"], input[type="search"]) {
+  flex: 1;
+  min-width: 200px;
+  min-height: 44px;
+  padding: 0 14px;
+  border-radius: 12px;
+  border: 1px solid var(--fx-line-2);
+  background: var(--fx-surface-2);
+  color: var(--fx-ink);
+  font-family: var(--fx-font);
+}
+:root:root .fx[data-page="manager"] .filters-bar :is(.filter-input, input):focus { outline: none; border-color: var(--fx-red); background: var(--fx-surface); box-shadow: var(--fx-ring); }
+/* design-system.css resets the dark select with `background: … !important`, which drops the chevron */
+html[data-theme="dark"]:root .fx[data-page="manager"] .filter-select {
+  background-color: var(--fx-surface-2) !important;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='2'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E") !important;
+  background-repeat: no-repeat !important;
+  background-position: left 0.75rem center !important;
+  border-color: var(--fx-line-2) !important;
+}
+html[data-theme="dark"]:root [dir="ltr"] .fx[data-page="manager"] .filter-select,
+html[data-theme="dark"][dir="ltr"]:root .fx[data-page="manager"] .filter-select { background-position: right 0.75rem center !important; }
+:root:root .fx[data-page="manager"] .filters-bar .btn.btn-primary {
+  min-height: 44px;
+  padding: 0 22px;
+  border: 0;
+  border-radius: 12px;
+  color: #fff;
+  background: var(--fx-grad);
+  box-shadow: var(--fx-glow-red);
+  font-weight: 600;
+}
+:root:root .fx[data-page="manager"] .table-container { overflow-x: auto; }
+
+/* ---------- settings ---------- */
+:root:root .fx[data-page="manager"] .settings-content { gap: 20px; }
+:root:root .fx[data-page="manager"] .settings-section { overflow: hidden; }
+:root:root .fx[data-page="manager"] .settings-section-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px 22px;
+  background: transparent;
+  border-bottom: 1px solid var(--fx-line);
+}
+:root:root .fx[data-page="manager"] .settings-section-header > svg {
+  box-sizing: border-box;
+  width: 36px; height: 36px;
+  padding: 8px;
+  border-radius: 11px;
+  background: var(--fx-grad);
+  color: #fff;
+  stroke: #fff;
+  box-shadow: var(--fx-glow-red);
+  flex: none;
+}
+:root:root .fx[data-page="manager"] .settings-section-header h3 { font: 600 16px var(--fx-display); color: var(--fx-ink); margin: 0; }
+:root:root .fx[data-page="manager"] .settings-section-body { padding: 8px 22px 16px; }
+:root:root .fx[data-page="manager"] .setting-item { padding: 14px 0; border-bottom: 1px solid var(--fx-line); }
+:root:root .fx[data-page="manager"] .setting-item:last-child { border-bottom: 0; }
+:root:root .fx[data-page="manager"] .setting-label { color: var(--fx-ink); font-weight: 600; }
+:root:root .fx[data-page="manager"] .setting-description { color: var(--fx-ink-3); }
+:root:root .fx[data-page="manager"] .setting-value { color: var(--fx-ink-2); }
+:root:root .fx[data-page="manager"] :is(.language-toggle-group, .theme-toggle-group) {
+  gap: 4px;
+  padding: 4px;
+  border-radius: 14px;
+  border: 1px solid var(--fx-line);
+  background: var(--fx-surface-2);
+}
+:root:root .fx[data-page="manager"] :is(.lang-btn, .theme-btn) {
+  min-height: 36px;
+  padding: 0 14px;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--fx-ink-2);
+  font: 500 13.5px var(--fx-font);
+  box-shadow: none;
+}
+:root:root .fx[data-page="manager"] :is(.lang-btn, .theme-btn):hover:not(.active) { background: var(--fx-surface); color: var(--fx-ink); }
+:root:root .fx[data-page="manager"] :is(.lang-btn, .theme-btn).active { background: var(--fx-grad); color: #fff; box-shadow: var(--fx-glow-red); }
+:root:root .fx[data-page="manager"] :is(.lang-btn, .theme-btn).active svg { stroke: #fff; color: #fff; }
+:root:root .fx[data-page="manager"] .role-badge { border-radius: 999px; background: var(--fx-grad); color: #fff; box-shadow: var(--fx-glow-red); }
+:root:root .fx[data-page="manager"] .logout-setting-btn {
+  border-radius: 12px;
+  border: 1px solid color-mix(in srgb, var(--fx-red) 35%, transparent);
+  background: transparent;
+  color: var(--fx-red-ink);
+}
+:root:root .fx[data-page="manager"] .logout-setting-btn:hover { background: var(--fx-red-soft); border-color: var(--fx-red); }
+
+/* ---------- year calendar inside the manager board ---------- */
+:root:root .fx[data-page="manager"] .yc :is(.yc-topbar, .yc-stat, .yc-month, .yc-tip) {
+  border-radius: var(--fx-r);
+  border-color: var(--fx-line);
+  box-shadow: var(--fx-shadow);
+}
+:root:root .fx[data-page="manager"] .yc .yc-stat { transition: transform .35s var(--fx-spring), box-shadow .3s; }
+:root:root .fx[data-page="manager"] .yc .yc-stat:hover { transform: translateY(-4px); box-shadow: var(--fx-shadow-lg); }
+:root:root .fx[data-page="manager"] .yc .yc-month-name { font-family: var(--fx-display); }
+:root:root .fx[data-page="manager"] .yc :is(.yc-nav-btn, .yc-year-select, .yc-overlay-btn) { border-radius: 12px; }
+/* contrast: inline stat tints are bright hues (same fix as the employee board), muted labels → ink-2, today = deep red */
+html:not([data-theme="dark"]) .fx[data-page="manager"] .yc .yc-stat-value { filter: brightness(.72); }
+:root:root .fx[data-page="manager"] .yc .yc-legend-item { color: var(--fx-ink-2); }
+:root:root .fx[data-page="manager"] .yc .yc-cell.is-weekend { color: var(--fx-ink-3); }
+:root:root .fx[data-page="manager"] .yc .yc-cell.is-today,
+:root:root .fx[data-page="manager"] .yc .yc-cell.is-today.has-events { background: linear-gradient(135deg, #a8121a, #c8161d); color: #fff; }
+:root:root .fx[data-page="manager"] .yc .yc-cell.is-today .yc-cell-num { color: #fff; }
+
+/* ---------- phones ---------- */
+@media (max-width: 640px) {
+  /* approvals: one swipeable strip instead of a wrapped grid of pills */
+  :root:root .fx[data-page="manager"] .ap-hub-tabs {
+    display: flex;
+    flex-wrap: nowrap;
+    max-width: 100%;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  :root:root .fx[data-page="manager"] .ap-hub-tabs::-webkit-scrollbar { display: none; }
+  :root:root .fx[data-page="manager"] .ap-hub-tab { flex: 0 0 auto; white-space: nowrap; }
+  /* education filters stack full width */
+  :root:root .fx[data-page="manager"] .filters-bar > * { flex: 1 1 100%; width: 100%; min-width: 0; }
+}

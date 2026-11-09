@@ -4,21 +4,21 @@
    both themes follow automatically. */
 
 /* period: type · quarter / month · year */
-.ep-period { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; border-radius: 10px; }
+.ep-period { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; border-radius: 12px; }
 .ep-period .tk-seg { flex: 0 1 auto; }
 .ep-period .ep-month { flex: 0 0 170px; }
 .ep-period .ep-year { flex: 0 0 110px; font-family: var(--tk-mono); }
 .ep-readonly {
-  display: flex; align-items: center; min-height: 42px; padding: 9px 12px; border-radius: 10px;
-  border: 1px dashed var(--tk-field-line); color: var(--tk-ink-2); font-size: 14px;
+  display: flex; align-items: center; min-height: 44px; padding: 9px 12px; border-radius: 12px;
+  border: 1px dashed var(--tk-field-line); background: var(--tk-panel-3); color: var(--tk-ink-2); font-size: 14px;
 }
 
 /* target header */
 .ep-tname { color: var(--tk-ink-2); font-weight: 600; }
 .ep-tactions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 6px; margin-top: -6px; }
 .ep-pn {
-  display: grid; place-items: center; width: 26px; height: 26px; margin-top: 8px; border-radius: 7px;
-  border: 1px solid var(--tk-field-line); font-family: var(--tk-mono); font-size: 12px; color: var(--tk-ink-2);
+  display: grid; place-items: center; width: 28px; height: 28px; margin-top: 8px; border-radius: 9px;
+  background: var(--tk-panel-2); font-family: var(--tk-mono); font-size: 12px; font-weight: 600; color: var(--tk-ink-2);
 }
 
 /* nav: long target names */
@@ -29,33 +29,36 @@
 /* status + file / link blocks */
 .ep-blk {
   display: grid; grid-template-columns: minmax(0, .8fr) minmax(0, 2.2fr); gap: 14px;
-  padding: 14px 0; border-bottom: 1px solid var(--tk-line); border-radius: 10px; scroll-margin-top: 110px;
+  padding: 16px 0; border-bottom: 1px solid var(--tk-line); border-radius: 12px; scroll-margin-top: 112px;
 }
 .ep-blk:last-child { border-bottom: 0; }
-.ep-blk-name { display: flex; align-items: flex-start; gap: 8px; font-weight: 800; line-height: 1.45; padding-top: 8px; }
+.ep-blk-name { display: flex; align-items: flex-start; gap: 8px; font-weight: 600; line-height: 1.45; padding-top: 8px; }
 .ep-blk-name { flex-wrap: wrap; }
 .ep-blk-name .ep-opt { flex-basis: 100%; padding-inline-start: 26px; margin-top: -4px; font-weight: 500; color: var(--tk-ink-2); font-size: 12.5px; }
 .ep-blk-body { display: grid; gap: 10px; min-width: 0; }
 .ep-proof-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
-.ep-proof-row .tk-in { flex: 1 1 240px; min-width: 0; min-height: 36px; padding: 6px 12px; font-size: 14px; }
+.ep-proof-row .tk-in { flex: 1 1 240px; min-width: 0; min-height: 40px; padding: 7px 12px; font-size: 14px; }
 .ep-kit { display: flex; }
-.ep-kit select.tk-in { min-height: 38px; padding: 6px 12px; font-size: 14px; }
+.ep-kit select.tk-in { min-height: 40px; padding: 7px 12px; font-size: 14px; }
 .ep-kitchip { background: var(--tk-cyan-soft); padding-block: 6px; }
-.ep-need { margin: 0; color: var(--tk-amber); font-size: 13px; font-weight: 700; }
+.ep-need { margin: 0; color: var(--tk-amber); font-size: 13px; font-weight: 600; }
 @container (max-width: 640px) { .ep-blk { grid-template-columns: minmax(0, 1fr); gap: 8px; } .ep-blk-name { padding-top: 0; } }
 
 .ep-add-wrap { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin-top: -20px; scroll-margin-top: 110px; }
 
 /* Project-manager board: kits / plans switch above the status tabs */
-.ep-kindbar { padding: 14px 22px 8px; background: var(--term-tabs-bg, transparent); }
-.ep-kindswitch { display: inline-flex; flex-wrap: wrap; gap: 4px; padding: 4px; border: 1px solid var(--tk-border); border-radius: 12px; background: var(--tk-panel); }
+.ep-kindbar { padding: 16px 22px 8px; background: transparent; }
+/* type switch — a segmented bar whose active item is a gradient pill */
+.ep-kindswitch { display: inline-flex; flex-wrap: wrap; gap: 4px; padding: 5px; border: 1px solid var(--tk-line); border-radius: 16px; background: var(--tk-panel); box-shadow: var(--tk-shadow-sm); }
 .ep-kindswitch button {
-  display: inline-flex; align-items: center; gap: 8px; min-height: 40px; padding: 0 16px; border: 1px solid transparent; border-radius: 9px;
-  background: transparent; color: var(--tk-ink-2); font: inherit; font-size: 14.5px; font-weight: 700; cursor: pointer;
+  display: inline-flex; align-items: center; gap: 8px; min-height: 40px; padding: 0 16px; border: 0; border-radius: 12px;
+  background: transparent; color: var(--tk-ink-2); font: inherit; font-size: 14px; font-weight: 500; cursor: pointer;
+  transition: background .2s, color .2s, box-shadow .25s;
 }
-.ep-kindswitch button:hover { color: var(--tk-ink); background: var(--tk-panel-3); }
-.ep-kindswitch button[aria-selected="true"] { color: var(--tk-ink); background: var(--tk-red-soft); border-color: rgba(238, 35, 41, .45); }
+.ep-kindswitch button:hover { color: var(--tk-ink); background: var(--tk-panel-2); }
+.ep-kindswitch button[aria-selected="true"] { color: #fff; font-weight: 600; background: var(--tk-grad); box-shadow: var(--tk-glow-red); }
 .ep-kindswitch .c { min-width: 22px; height: 22px; padding: 0 6px; display: inline-grid; place-items: center; border-radius: 999px; background: #c81e24; color: #fff; font-family: var(--tk-mono); font-size: 12px; }
+.ep-kindswitch button[aria-selected="true"] .c { background: rgba(0, 0, 0, .22); }
 @media (max-width: 640px) { .ep-kindbar { padding: 12px 12px 0; } .ep-kindswitch { display: flex; } .ep-kindswitch button { flex: 1; justify-content: center; padding: 0 10px; font-size: 13.5px; } }
 
 /* ── «ملفات المستهدف»: each file on its own path ── */
@@ -69,17 +72,17 @@
 /* The media file: a linked design request, or an older plan's form that
    is sent on as one. */
 .ep-mediachip { background: var(--tk-violet-soft, rgba(139, 92, 246, .14)); padding-block: 6px; }
-.ep-legacy-media { display: grid; gap: 10px; padding: 10px 12px; border: 1px dashed var(--tk-border); border-radius: 10px; }
+.ep-legacy-media { display: grid; gap: 10px; padding: 12px 14px; border: 1px dashed var(--tk-field-line); border-radius: 14px; }
 .ep-na {
-  display: flex; flex-wrap: wrap; align-items: center; gap: 10px; padding: 8px 12px; border-radius: 10px;
+  display: flex; flex-wrap: wrap; align-items: center; gap: 10px; padding: 9px 12px; border-radius: 12px;
   border: 1px dashed var(--tk-field-line); color: var(--tk-ink-2); font-size: 14px;
 }
 .ep-legacy { display: grid; gap: 6px; padding-top: 4px; }
 
 /* embedded forms (media / volunteer) */
 .ep-form {
-  margin-top: 4px; padding: 16px; border-radius: 12px; border: 1px solid var(--tk-line);
-  background: var(--tk-panel-2, rgba(148, 163, 184, .05));
+  margin-top: 4px; padding: 18px; border-radius: 16px; border: 1px solid var(--tk-line);
+  background: var(--tk-panel-3);
 }
 .ep-inline { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
 .ep-inline .tk-pair { flex: 1 1 240px; }
@@ -95,7 +98,7 @@
 .ep-axis { display: grid; grid-template-columns: 30px minmax(0, 1fr) 36px; gap: 8px; align-items: start; }
 .ep-axis-body { display: grid; gap: 6px; min-width: 0; }
 .ep-axis .ep-pn { margin-top: 8px; }
-.ep-role { padding: 12px 14px; border: 1px solid var(--tk-line); border-radius: 12px; background: var(--tk-panel); }
+.ep-role { padding: 14px 16px; border: 1px solid var(--tk-line); border-radius: 16px; background: var(--tk-panel); box-shadow: var(--tk-shadow-sm); }
 .ep-role-head { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-bottom: 10px; }
 .ep-role-head .ep-pn { margin-top: 0; }
 .ep-role-head b { font-size: 14.5px; }

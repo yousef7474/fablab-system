@@ -1,22 +1,27 @@
 /* Project support tab — tokens for the inline-styled access-code
-   panel and request list, swapped by the admin dark theme. */
+   panel and request list, swapped by the admin dark theme.
+   Brand-aligned: navy for codes/links, red for the primary actions. */
 .psa,
 .psa-panel {
-  --psa-violet: #6d28d9;
-  --psa-line: #ddd6fe;
+  --psa-violet: #1f3d63;
+  --psa-line: #d5e0ee;
+  --psa-line-strong: #7f9cc2;
   --psa-field: #ffffff;
+  --psa-tint: #f3f7fc;
+  --psa-grad: linear-gradient(135deg, #1f3d63 0%, #2A4F7C 55%, #3d6fa8 100%);
+  --psa-solid: var(--fx-grad, linear-gradient(120deg, #b3121a 0%, #d71920 50%, #e0262c 100%));
 }
 .psa-panel {
-  border: 1px solid var(--psa-line);
-  background: linear-gradient(135deg, #f5f3ff, #faf5ff);
+  border: 1px solid var(--fx-line, var(--psa-line));
+  background: var(--fxa-hero, linear-gradient(135deg, #f3f7fc, #ffffff));
+  box-shadow: var(--fx-shadow, none);
   color: var(--text-primary, #0f172a);
 }
 [data-theme="dark"] .psa,
 [data-theme="dark"] .psa-panel {
-  --psa-violet: #c4b5fd;
-  --psa-line: rgba(167, 139, 250, 0.32);
+  --psa-violet: #9cc0ec;
+  --psa-line: rgba(122, 162, 214, 0.28);
+  --psa-line-strong: rgba(156, 192, 236, 0.55);
   --psa-field: rgba(255, 255, 255, 0.05);
-}
-[data-theme="dark"] .psa-panel {
-  background: linear-gradient(135deg, rgba(139, 92, 246, 0.14), rgba(20, 22, 34, 0.72));
+  --psa-tint: rgba(122, 162, 214, 0.10);
 }

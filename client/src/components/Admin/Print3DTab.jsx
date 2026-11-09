@@ -310,10 +310,10 @@ const Print3DTab = () => {
           { label: isRTL ? 'موافق عليه' : 'Accepted',     val: stats.accepted,  tint: '#16a34a' },
           { label: isRTL ? 'قيد الطباعة' : 'Printing',    val: stats.printing,  tint: '#0284c7' },
           { label: isRTL ? 'مكتمل' : 'Completed',         val: stats.completed, tint: '#15803d' },
-          { label: isRTL ? 'الإيراد' : 'Revenue',         val: SAR(stats.revenue), tint: '#EE2329', wide: true }
+          { label: isRTL ? 'الإيراد' : 'Revenue',         val: SAR(stats.revenue), tint: '#EE2329', ink: 'var(--fx-red-ink, #c8161d)', wide: true }
         ].map((s, i) => (
           <div key={i} className="p3t-stat" style={{ borderColor: `${s.tint}55` }}>
-            <div className="p3t-stat-val" style={{ color: s.tint, fontSize: s.wide ? 18 : 24 }}>{s.val}</div>
+            <div className="p3t-stat-val" style={{ color: s.ink || s.tint, fontSize: s.wide ? 18 : 24 }}>{s.val}</div>
             <div className="p3t-stat-label">{s.label}</div>
           </div>
         ))}

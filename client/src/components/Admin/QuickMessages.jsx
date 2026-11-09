@@ -146,7 +146,7 @@ const QuickMessages = () => {
 
   return (
     <div style={{ padding: '4px 2px' }}>
-      <div style={{ marginBottom: 20, display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
+      <div className="qm-head" style={{ marginBottom: 20, display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
         <div>
           <h2 style={{
             margin: '0 0 6px', fontSize: 24, fontWeight: 800,
@@ -161,6 +161,7 @@ const QuickMessages = () => {
           </p>
         </div>
         <button
+          className="qm-add"
           onClick={addNew}
           style={{
             padding: '10px 18px', borderRadius: 10, border: 'none',

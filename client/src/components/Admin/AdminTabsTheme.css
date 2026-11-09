@@ -2,7 +2,7 @@
    tabs (settings, education, attendance station) — darker on the
    light theme, lighter on the dark one, so small text stays readable. */
 :root {
-  --ats-ok: #15803d;
+  --ats-ok: #146c41;
   --ats-warn: #b45309;
   --ats-bad: #dc2626;
   --ats-violet: #6d28d9;

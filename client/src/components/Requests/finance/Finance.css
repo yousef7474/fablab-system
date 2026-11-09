@@ -9,9 +9,10 @@
 .fr-proj-head { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 12px; margin-bottom: 16px; }
 .fr-proj-head .tk-code { align-self: center; margin-top: 18px; }
 .fr-proj-name { flex: 1 1 260px; min-width: 0; }
-.fr-proj-total { display: grid; justify-items: end; gap: 2px; padding: 6px 12px; border-radius: 10px; background: var(--tk-panel-3); border: 1px solid var(--tk-line); }
+.fr-proj-total { position: relative; overflow: hidden; display: grid; justify-items: end; gap: 2px; padding: 8px 16px; border-radius: 14px; background: var(--tk-panel-3); border: 1px solid var(--tk-line); }
+.fr-proj-total::before { content: ''; position: absolute; inset-block: 0; inset-inline-start: 0; width: 4px; background: var(--tk-grad); }
 .fr-proj-total span { font-size: 12px; color: var(--tk-ink-2); }
-.fr-proj-total b { font-family: var(--tk-mono); font-size: 17px; }
+.fr-proj-total b { font-family: var(--tk-mono); font-size: 18px; }
 .fr-proj-total b small, .fr-subtotal b small, .fr-sum b small { font-family: var(--tk-font); font-size: 12px; font-weight: 400; color: var(--tk-ink-2); }
 .fr-proj-foot { flex-wrap: wrap; align-items: center; }
 .fr-secsum { display: flex; flex-wrap: wrap; gap: 6px; margin-inline-start: auto; }
@@ -37,15 +38,16 @@
 
 /* cost summary + pricing */
 .fr-sum { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr); gap: 22px; align-items: start; }
-.fr-sum-rows { display: grid; border: 1px solid var(--tk-line); border-radius: 12px; overflow: hidden; }
+.fr-sum-rows { display: grid; border: 1px solid var(--tk-line); border-radius: 16px; overflow: hidden; background: var(--tk-panel); box-shadow: var(--tk-shadow-sm); }
 .fr-sum-rows > div { display: flex; justify-content: space-between; gap: 12px; padding: 10px 14px; border-bottom: 1px solid var(--tk-line); font-size: 14px; }
 .fr-sum-rows > div:last-child { border-bottom: 0; }
 .fr-sum-rows span { color: var(--tk-ink-2); }
 .fr-sum-rows b { font-family: var(--tk-mono); white-space: nowrap; }
 .fr-sum-rows .tot { background: var(--tk-red-soft); }
-.fr-sum-rows .tot span { color: var(--tk-ink); font-weight: 700; }
+.fr-sum-rows .tot span { color: var(--tk-ink); font-weight: 600; }
+.fr-sum-rows .tot b { color: var(--tk-red-ink); }
 .fr-pricing { grid-template-columns: minmax(0, 1fr); }
-.fr-amount { font-size: 18px; }
+.fr-amount { font-size: 18px; font-family: var(--tk-display); font-weight: 600; }
 .fr-amount small { font-family: var(--tk-font); font-size: 12px; opacity: .8; }
 
 @container (max-width: 860px) {

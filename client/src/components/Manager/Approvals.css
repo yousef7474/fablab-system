@@ -78,6 +78,13 @@
   border-color: #cbd5e1;
   background: #f8fafc;
 }
+.ap-hub-tab.is-active {
+  background: var(--tab-solid);
+  color: #fff;
+  border-color: var(--tab-solid);
+  box-shadow: 0 8px 20px -8px var(--tab-color);
+}
+.ap-hub-tab.is-active .ap-hub-tab-badge { background: rgba(255, 255, 255, 0.28); color: #fff; }
 .ap-hub-tab-icon { font-size: 15px; line-height: 1; }
 .ap-hub-tab-label { line-height: 1; }
 .ap-hub-tab-badge {

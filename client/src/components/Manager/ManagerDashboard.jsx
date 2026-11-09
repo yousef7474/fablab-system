@@ -27,6 +27,9 @@ import YearCalendar from '../YearCalendar/YearCalendar';
 import '../Admin/Admin.css';
 import './Manager.css';
 import { WorkspaceScheduleEditor, WorkspaceScheduleChips, WorkspaceStatusControl, activationError, scheduleError, scheduleBannerHtml, scheduleBannerClass, SCHEDULE_BANNER_CSS } from '../shared/workspaceSchedule';
+// Dashboard theme — imported last so it sits on top of the CSS above.
+import '../../styles/fx.css';
+import '../../styles/fx-manager.css';
 
 // Section colors (matching AdminDashboard)
 const SECTION_COLORS = {
@@ -3862,7 +3865,7 @@ const ManagerDashboard = () => {
     : ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
   return (
-    <div className="admin-layout" data-page="manager" dir={isRTL ? 'rtl' : 'ltr'}>
+    <div className="admin-layout fx" data-page="manager" dir={isRTL ? 'rtl' : 'ltr'}>
       {/* Mobile Sidebar Overlay */}
       <div
         className={`sidebar-overlay ${sidebarOpen ? 'active' : ''}`}
@@ -8113,7 +8116,7 @@ const ManagerDashboard = () => {
                     ))}
                   </select>
                   <input className="filter-input" placeholder={isRTL ? 'بحث...' : 'Search...'} value={educationFilters.search} onChange={(e) => setEducationFilters({ ...educationFilters, search: e.target.value })} style={{ flex: 1, minWidth: '150px' }} />
-                  <button className="btn btn-primary" onClick={() => fetchEducations()} style={{ background: 'linear-gradient(135deg, #6d28d9, #7c3aed)' }}>
+                  <button className="btn btn-primary" onClick={() => fetchEducations()}>
                     {isRTL ? 'بحث' : 'Search'}
                   </button>
                 </div>

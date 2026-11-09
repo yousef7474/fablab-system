@@ -143,9 +143,9 @@ const AccessCodePanel = ({ isRTL }) => {
             maxLength={20}
             dir="ltr"
             autoFocus
-            style={{ width: 190, padding: '8px 12px', borderRadius: 10, border: '1.5px solid #a78bfa', fontFamily: 'JetBrains Mono, monospace', fontWeight: 800, fontSize: 16, letterSpacing: '0.15em', textAlign: 'center', background: 'var(--psa-field)', color: 'var(--text-primary, #0f172a)' }}
+            style={{ width: 190, padding: '8px 12px', borderRadius: 10, border: '1.5px solid var(--psa-line-strong)', fontFamily: 'JetBrains Mono, monospace', fontWeight: 800, fontSize: 16, letterSpacing: '0.15em', textAlign: 'center', background: 'var(--psa-field)', color: 'var(--text-primary, #0f172a)' }}
           />
-          <button type="submit" disabled={saving || draft.length < 4} style={{ ...btn, background: '#6d28d9', color: '#fff', border: 'none', opacity: saving || draft.length < 4 ? 0.6 : 1 }}>
+          <button type="submit" disabled={saving || draft.length < 4} style={{ ...btn, background: 'var(--psa-solid)', color: '#fff', border: 'none', opacity: saving || draft.length < 4 ? 0.6 : 1 }}>
             {saving ? (isRTL ? 'جارٍ الحفظ…' : 'Saving…') : (isRTL ? 'حفظ الرمز' : 'Save code')}
           </button>
           <button type="button" onClick={() => setEditing(false)} style={{ ...btn, color: 'var(--text-secondary, #475569)', borderColor: 'var(--border-color, #e2e8f0)' }}>
@@ -154,7 +154,7 @@ const AccessCodePanel = ({ isRTL }) => {
         </form>
       ) : (
         <>
-          <code dir="ltr" style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 22, fontWeight: 800, letterSpacing: '0.2em', padding: '6px 14px', borderRadius: 10, background: 'var(--psa-field)', color: 'var(--psa-violet)', border: '1.5px dashed #a78bfa' }}>
+          <code dir="ltr" style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 22, fontWeight: 800, letterSpacing: '0.2em', padding: '6px 14px', borderRadius: 10, background: 'var(--psa-field)', color: 'var(--psa-violet)', border: '1.5px dashed var(--psa-line-strong)' }}>
             {access.code}
           </code>
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
@@ -492,7 +492,7 @@ const ProjectSupportTab = () => {
   return (
     <div className="psa" style={{ padding: '4px 2px' }}>
       {/* Header */}
-      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', marginBottom: 20 }}>
+      <div className="psa-head" style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', marginBottom: 20 }}>
         <div>
           <h2 style={{ margin: '0 0 6px', fontSize: 24, fontWeight: 800, color: 'var(--text-primary, #0f172a)' }}>
             💜 {isRTL ? 'طلبات دعم المشاريع' : 'Project Support Requests'}
@@ -518,6 +518,7 @@ const ProjectSupportTab = () => {
         ].map(f => (
           <button
             key={f.key}
+            className={`psa-chip${statusFilter === f.key ? ' on' : ''}`}
             onClick={() => setStatusFilter(f.key)}
             style={{
               padding: '8px 16px', borderRadius: 999,
@@ -549,7 +550,7 @@ const ProjectSupportTab = () => {
       {loading ? (
         <div style={{ padding: 40, textAlign: 'center', color: 'var(--text-tertiary, #64748b)' }}>{isRTL ? 'جارٍ التحميل...' : 'Loading...'}</div>
       ) : filtered.length === 0 ? (
-        <div style={{ padding: 40, textAlign: 'center', color: 'var(--text-secondary, #94a3b8)', background: 'var(--card-bg, #fff)', border: '1px dashed var(--border-color, #e2e8f0)', borderRadius: 12 }}>
+        <div className="psa-empty" style={{ padding: 40, textAlign: 'center', color: 'var(--text-secondary, #94a3b8)', background: 'var(--card-bg, #fff)', border: '1px dashed var(--border-color, #e2e8f0)', borderRadius: 12 }}>
           {isRTL ? 'لا توجد طلبات مطابقة.' : 'No matching requests.'}
         </div>
       ) : (
@@ -642,7 +643,7 @@ const ProjectSupportTab = () => {
               onClick={(e) => e.stopPropagation()}
               style={{ background: 'var(--modal-bg, #fff)', color: 'var(--text-primary, #0f172a)', borderRadius: 16, maxWidth: 780, width: '100%', maxHeight: '92vh', display: 'flex', flexDirection: 'column' }}
             >
-              <div style={{ padding: '18px 22px', borderBottom: '1px solid var(--border-color, #e2e8f0)', background: 'linear-gradient(135deg, #8b5cf6, #6d28d9)', color: '#fff', borderTopLeftRadius: 16, borderTopRightRadius: 16 }}>
+              <div style={{ padding: '18px 22px', borderBottom: '1px solid var(--border-color, #e2e8f0)', background: 'var(--psa-grad)', color: '#fff', borderTopLeftRadius: 16, borderTopRightRadius: 16 }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12 }}>
                   <div>
                     <div style={{ fontSize: 12, letterSpacing: 1.2, opacity: 0.9 }}>طلب دعم مشروع · {fmtReqNo(openReq.requestNumber)}</div>
@@ -670,7 +671,7 @@ const ProjectSupportTab = () => {
                         {supportTypeList(openReq).map(v => (
                           <span key={v} style={{
                             fontSize: 12, fontWeight: 700, color: 'var(--psa-violet)',
-                            background: '#f5f3ff', border: '1px solid #ede9fe',
+                            background: 'var(--psa-tint)', border: '1px solid var(--psa-line)',
                             padding: '4px 10px', borderRadius: 999
                           }}>
                             {labelSupportType(v)}
@@ -683,7 +684,7 @@ const ProjectSupportTab = () => {
 
                 <div style={{ marginBottom: 16 }}>
                   <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-tertiary, #64748b)', letterSpacing: 0.6, textTransform: 'uppercase', marginBottom: 6 }}>وصف الطلب</div>
-                  <div style={{ background: '#faf5ff', border: '1px solid #ede9fe', padding: 14, borderRadius: 10, whiteSpace: 'pre-wrap', lineHeight: 1.7, fontSize: 13.5 }}>
+                  <div style={{ background: 'var(--psa-tint)', border: '1px solid var(--psa-line)', padding: 14, borderRadius: 10, whiteSpace: 'pre-wrap', lineHeight: 1.7, fontSize: 13.5 }}>
                     {openReq.description}
                   </div>
                 </div>
@@ -703,7 +704,7 @@ const ProjectSupportTab = () => {
                           <button
                             onClick={() => downloadFile(openReq.requestId, i, f)}
                             disabled={downloadingIdx === i}
-                            style={{ padding: '6px 12px', border: 'none', borderRadius: 6, background: 'linear-gradient(135deg, #8b5cf6, #6d28d9)', color: '#fff', fontFamily: 'inherit', fontWeight: 700, fontSize: 11.5, cursor: 'pointer' }}
+                            style={{ padding: '6px 12px', border: 'none', borderRadius: 6, background: 'var(--psa-grad)', color: '#fff', fontFamily: 'inherit', fontWeight: 700, fontSize: 11.5, cursor: 'pointer' }}
                           >
                             {downloadingIdx === i ? '...' : (isRTL ? '⬇️ تنزيل' : '⬇️ Download')}
                           </button>
@@ -752,7 +753,7 @@ const ProjectSupportTab = () => {
                     >
                       ✓ اعتماد مباشر
                     </button>
-                    <button onClick={() => openApprovalModal(openReq)} style={{ padding: '10px 20px', borderRadius: 10, border: 'none', background: 'linear-gradient(135deg, #8b5cf6, #6d28d9)', color: '#fff', cursor: 'pointer', fontWeight: 800, fontSize: 13 }}>
+                    <button onClick={() => openApprovalModal(openReq)} style={{ padding: '10px 20px', borderRadius: 10, border: 'none', background: 'var(--psa-solid)', color: '#fff', cursor: 'pointer', fontWeight: 800, fontSize: 13 }}>
                       📧 {openReq.approvalStatus === 'pending' ? 'إعادة الإرسال للمدير' : 'إرسال للمدير للاعتماد'}
                     </button>
                   </>
@@ -863,7 +864,7 @@ const ProjectSupportTab = () => {
                 <button onClick={() => setApproveModal(null)} disabled={sendingApproval}
                   style={{ padding: '10px 18px', borderRadius: 10, border: '1px solid var(--border-color, #e2e8f0)', background: 'var(--card-bg, #fff)', cursor: 'pointer', fontWeight: 700 }}>إلغاء</button>
                 <button onClick={sendForApproval} disabled={sendingApproval}
-                  style={{ padding: '10px 22px', borderRadius: 10, border: 'none', background: 'linear-gradient(135deg, #8b5cf6, #6d28d9)', color: '#fff', cursor: sendingApproval ? 'not-allowed' : 'pointer', fontWeight: 800, opacity: sendingApproval ? 0.6 : 1 }}>
+                  style={{ padding: '10px 22px', borderRadius: 10, border: 'none', background: 'var(--psa-solid)', color: '#fff', cursor: sendingApproval ? 'not-allowed' : 'pointer', fontWeight: 800, opacity: sendingApproval ? 0.6 : 1 }}>
                   {sendingApproval ? 'جارٍ الإرسال...' : '📧 إرسال'}
                 </button>
               </div>
