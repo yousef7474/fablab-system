@@ -29,7 +29,10 @@ employeeApi.interceptors.request.use(
 employeeApi.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (error.response?.status === 401) {
+    // A wrong password on the sign-in form is a 401 too — let the form
+    // show its message instead of reloading the page.
+    const isLogin = /\/employee\/login$/.test(error.config?.url || '');
+    if (error.response?.status === 401 && !isLogin) {
       localStorage.removeItem('employeeToken');
       localStorage.removeItem('employeeData');
       window.location.href = '/employee/login';

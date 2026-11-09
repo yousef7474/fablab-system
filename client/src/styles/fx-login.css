@@ -1,0 +1,291 @@
+/* =============================================================
+   Dashboard sign-in pages (admin / manager and employee) — fx look.
+   Uses the fx tokens (styles/fx.css); the root is `.fx.fx-login`
+   with its own data-theme.
+   ============================================================= */
+:root:root .fx-login {
+  display: grid;
+  grid-template-columns: minmax(380px, 46%) minmax(0, 1fr);
+  min-height: 100vh;
+  min-height: 100dvh;
+  background: var(--fx-bg);
+  color: var(--fx-ink);
+  font-family: var(--fx-font);
+}
+
+/* ---------- brand panel ---------- */
+:root:root .fx-login .fxl-brand {
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 32px;
+  margin: 14px;
+  padding: 34px 38px;
+  border-radius: 28px;
+  color: #fff;
+  background: linear-gradient(160deg, #0b1729 0%, #132846 48%, #1f3d63 100%);
+  box-shadow: 0 30px 70px -30px rgba(11, 23, 41, .7);
+  isolation: isolate;
+}
+/* glow blobs + a faint engineering grid */
+:root:root .fx-login .fxl-brand::before,
+:root:root .fx-login .fxl-brand::after {
+  content: '';
+  position: absolute;
+  z-index: -1;
+  border-radius: 50%;
+  filter: blur(70px);
+  pointer-events: none;
+}
+:root:root .fx-login .fxl-brand::before { width: 420px; height: 420px; top: -160px; inset-inline-start: -140px; background: #EE2329; opacity: .45; animation: fx-drift1 22s ease-in-out infinite alternate; }
+:root:root .fx-login .fxl-brand::after { width: 380px; height: 380px; bottom: -170px; inset-inline-end: -130px; background: #28B070; opacity: .32; animation: fx-drift2 26s ease-in-out infinite alternate; }
+:root:root .fx-login .fxl-brand > * { position: relative; }
+:root:root .fx-login .fxl-brand-mid::before {
+  content: '';
+  position: absolute;
+  inset: -60px -40px;
+  z-index: -1;
+  background-image:
+    linear-gradient(rgba(255, 255, 255, .05) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, .05) 1px, transparent 1px);
+  background-size: 28px 28px;
+  -webkit-mask-image: radial-gradient(ellipse at center, #000 30%, transparent 75%);
+          mask-image: radial-gradient(ellipse at center, #000 30%, transparent 75%);
+  pointer-events: none;
+}
+
+:root:root .fx-login .fxl-brand-top { display: flex; align-items: center; gap: 14px; }
+:root:root .fx-login .fxl-logo {
+  display: grid; place-items: center;
+  width: 62px; height: 62px;
+  flex: none;
+  border-radius: 18px;
+  background: #fff;
+  box-shadow: 0 14px 30px -12px rgba(238, 35, 41, .75), 0 0 0 1px rgba(255, 255, 255, .3);
+  animation: fx-breathe 6s ease-in-out infinite;
+}
+:root:root .fx-login .fxl-logo img { width: 50px; height: 50px; object-fit: contain; }
+:root:root .fx-login .fxl-brand-name { display: flex; flex-direction: column; line-height: 1.35; min-width: 0; }
+:root:root .fx-login .fxl-brand-name strong { font: 700 19px var(--fx-font); color: #fff; }
+:root:root .fx-login .fxl-brand-name small { color: rgba(255, 255, 255, .72); font-size: 13px; }
+
+:root:root .fx-login .fxl-portal {
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 6px 14px 6px 12px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, .18);
+  background: rgba(255, 255, 255, .08);
+  backdrop-filter: blur(6px);
+  font-size: 13px; font-weight: 600;
+  color: #fff;
+}
+:root:root .fx-login .fxl-portal i { width: 8px; height: 8px; border-radius: 50%; background: #3ddc91; box-shadow: 0 0 0 0 rgba(61, 220, 145, .6); animation: fxl-ping 2s infinite; }
+@keyframes fxl-ping { 70% { box-shadow: 0 0 0 9px rgba(61, 220, 145, 0); } 100% { box-shadow: 0 0 0 0 rgba(61, 220, 145, 0); } }
+:root:root .fx-login .fxl-brand h2 {
+  margin: 18px 0 26px;
+  font: 700 clamp(28px, 3.1vw, 42px)/1.25 var(--fx-font);
+  letter-spacing: -.01em;
+  color: #fff;
+}
+:root:root .fx-login .fxl-brand h2 em {
+  font-style: normal;
+  background: linear-gradient(120deg, #ffb4b6 0%, #ffffff 45%, #9ff0c9 100%);
+  -webkit-background-clip: text; background-clip: text;
+  color: transparent;
+}
+:root:root .fx-login .fxl-features { list-style: none; margin: 0; padding: 0; display: grid; gap: 12px; }
+:root:root .fx-login .fxl-features li {
+  display: flex; align-items: center; gap: 14px;
+  padding: 10px 12px;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, .06);
+  border: 1px solid rgba(255, 255, 255, .09);
+  color: rgba(255, 255, 255, .9);
+  font-size: 14.5px;
+  transition: background .25s, transform .3s var(--fx-spring);
+}
+:root:root .fx-login .fxl-features li:hover { background: rgba(255, 255, 255, .1); transform: translateX(-4px); }
+:root:root .fx-login[dir="ltr"] .fxl-features li:hover { transform: translateX(4px); }
+:root:root .fx-login .fxl-ftile {
+  display: grid; place-items: center;
+  width: 40px; height: 40px;
+  flex: none;
+  border-radius: 12px;
+  color: #fff;
+}
+:root:root .fx-login .fxl-ftile svg { width: 20px; height: 20px; }
+:root:root .fx-login .fxl-ftile.t0 { background: linear-gradient(135deg, #b3121a, #e0262c); box-shadow: 0 10px 20px -10px #EE2329; }
+:root:root .fx-login .fxl-ftile.t1 { background: linear-gradient(135deg, #136d42, #1f9d5f); box-shadow: 0 10px 20px -10px #28B070; }
+:root:root .fx-login .fxl-ftile.t2 { background: linear-gradient(135deg, #2A4F7C, #3d6fa8); box-shadow: 0 10px 20px -10px #3d6fa8; }
+:root:root .fx-login .fxl-brand-foot { margin: 0; color: rgba(255, 255, 255, .62); font-size: 12.5px; }
+
+/* ---------- form side ---------- */
+:root:root .fx-login .fxl-main {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 18px;
+  padding: 80px 28px 40px;
+}
+:root:root .fx-login .fxl-tools {
+  position: absolute;
+  top: 22px;
+  inset-inline-end: 26px;
+  display: flex;
+  gap: 8px;
+}
+:root:root .fx-login .fxl-tool {
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  height: 42px;
+  padding: 0 14px;
+  border-radius: 13px;
+  border: 1px solid var(--fx-line);
+  background: var(--fx-surface);
+  color: var(--fx-ink-2);
+  font: 500 13.5px var(--fx-font);
+  box-shadow: var(--fx-shadow-sm);
+  cursor: pointer;
+  transition: transform .3s var(--fx-spring), border-color .2s, color .2s;
+}
+:root:root .fx-login .fxl-tool svg { width: 18px; height: 18px; }
+:root:root .fx-login .fxl-tool.icon { width: 42px; padding: 0; }
+:root:root .fx-login .fxl-tool:hover { transform: translateY(-2px); border-color: var(--fx-red); color: var(--fx-red); }
+:root:root .fx-login .fxl-tool.icon:hover { transform: rotate(-12deg) scale(1.06); }
+
+:root:root .fx-login .fxl-card {
+  width: min(440px, 100%);
+  padding: 34px 32px 30px;
+  border-radius: 26px;
+  border: 1px solid var(--fx-line);
+  background: var(--fx-surface);
+  box-shadow: var(--fx-shadow-lg);
+}
+:root:root .fx-login .fxl-eyebrow {
+  display: flex; align-items: center; gap: 8px;
+  margin: 0 0 10px;
+  color: var(--fx-ink-3);
+  font-size: 12.5px; font-weight: 600;
+  letter-spacing: .04em;
+}
+:root:root .fx-login .fxl-live { width: 8px; height: 8px; border-radius: 50%; background: var(--fx-red); box-shadow: 0 0 0 0 rgba(238, 35, 41, .55); animation: fxl-ping-red 2s infinite; }
+@keyframes fxl-ping-red { 70% { box-shadow: 0 0 0 8px rgba(238, 35, 41, 0); } 100% { box-shadow: 0 0 0 0 rgba(238, 35, 41, 0); } }
+:root:root .fx-login .fxl-card h1 {
+  margin: 0;
+  font: 700 clamp(24px, 2.4vw, 30px)/1.25 var(--fx-font);
+  letter-spacing: -.01em;
+  color: var(--fx-ink);
+  -webkit-text-fill-color: currentColor;
+  background: none;
+}
+:root:root .fx-login .fxl-sub { margin: 8px 0 24px; color: var(--fx-ink-2); font-size: 14.5px; }
+
+:root:root .fx-login .fxl-form { display: grid; gap: 16px; }
+:root:root .fx-login .fxl-field { display: grid; gap: 7px; }
+:root:root .fx-login .fxl-label { font-size: 13px; font-weight: 600; color: var(--fx-ink-2); }
+:root:root .fx-login .fxl-control { position: relative; display: block; }
+:root:root .fx-login .fxl-ficon {
+  position: absolute;
+  top: 50%;
+  inset-inline-start: 14px;
+  transform: translateY(-50%);
+  display: grid; place-items: center;
+  color: var(--fx-ink-3);
+  pointer-events: none;
+  transition: color .2s;
+}
+:root:root .fx-login .fxl-ficon svg { width: 18px; height: 18px; }
+:root:root .fx-login .fxl-control input {
+  width: 100%;
+  height: 50px;
+  padding-inline: 44px 14px;
+  border-radius: 14px;
+  border: 1px solid var(--fx-line-2);
+  background: var(--fx-surface-2);
+  color: var(--fx-ink);
+  font: 400 15px var(--fx-font);
+  outline: none;
+  box-shadow: none;
+  transition: border-color .2s, box-shadow .2s, background .2s;
+}
+:root:root .fx-login .fxl-control.has-end input { padding-inline-end: 48px; }
+:root:root .fx-login .fxl-control input::placeholder { color: var(--fx-ink-3); opacity: 1; }
+:root:root .fx-login .fxl-control input:hover { border-color: color-mix(in srgb, var(--fx-red) 35%, var(--fx-line-2)); }
+:root:root .fx-login .fxl-control input:focus { border-color: var(--fx-red); background: var(--fx-surface); box-shadow: var(--fx-ring); }
+:root:root .fx-login .fxl-control:focus-within .fxl-ficon { color: var(--fx-red); }
+:root:root .fx-login .fxl-eye {
+  position: absolute;
+  top: 50%;
+  inset-inline-end: 8px;
+  transform: translateY(-50%);
+  display: grid; place-items: center;
+  width: 36px; height: 36px;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--fx-ink-3);
+  cursor: pointer;
+  transition: background .2s, color .2s;
+}
+:root:root .fx-login .fxl-eye svg { width: 19px; height: 19px; }
+:root:root .fx-login .fxl-eye:hover { background: var(--fx-surface-3); color: var(--fx-ink); }
+
+:root:root .fx-login .fxl-submit {
+  display: inline-flex; align-items: center; justify-content: center; gap: 10px;
+  width: 100%;
+  height: 52px;
+  margin-top: 6px;
+  border: 0;
+  border-radius: 14px;
+  color: #fff;
+  background: var(--fx-grad);
+  background-size: 180% 100%;
+  box-shadow: var(--fx-glow-red);
+  font: 700 15.5px var(--fx-font);
+  cursor: pointer;
+  transition: transform .25s var(--fx-spring), box-shadow .25s, background-position .6s var(--fx-ease);
+}
+:root:root .fx-login .fxl-submit svg { width: 19px; height: 19px; transition: transform .3s var(--fx-spring); }
+:root:root .fx-login .fxl-submit:hover:not(:disabled) { transform: translateY(-2px); background-position: 100% 0; box-shadow: 0 16px 30px -12px rgba(238, 35, 41, .7); }
+:root:root .fx-login .fxl-submit:hover:not(:disabled) svg { transform: translateX(-4px); }
+:root:root .fx-login[dir="ltr"] .fxl-submit:hover:not(:disabled) svg { transform: translateX(4px); }
+:root:root .fx-login .fxl-submit:active:not(:disabled) { transform: scale(.98); }
+:root:root .fx-login .fxl-submit:disabled { opacity: .7; cursor: progress; }
+:root:root .fx-login .fxl-spin { width: 18px; height: 18px; border-radius: 50%; border: 2.5px solid rgba(255, 255, 255, .35); border-top-color: #fff; animation: fxl-spin .8s linear infinite; }
+@keyframes fxl-spin { to { transform: rotate(360deg); } }
+
+:root:root .fx-login .fxl-back {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 8px 12px;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--fx-ink-2);
+  font: 500 13.5px var(--fx-font);
+  cursor: pointer;
+  transition: background .2s, color .2s;
+}
+:root:root .fx-login .fxl-back svg { width: 16px; height: 16px; }
+:root:root .fx-login .fxl-back:hover { background: var(--fx-surface-3); color: var(--fx-red-ink); }
+
+/* ---------- small screens: the brand panel becomes a compact header ---------- */
+@media (max-width: 900px) {
+  :root:root .fx-login { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto 1fr; }
+  :root:root .fx-login .fxl-brand { margin: 10px 10px 0; padding: 18px 20px; gap: 0; border-radius: 22px; justify-content: flex-start; }
+  :root:root .fx-login .fxl-brand h2,
+  :root:root .fx-login .fxl-features,
+  :root:root .fx-login .fxl-brand-foot { display: none; }
+  :root:root .fx-login .fxl-brand-mid { order: -1; display: none; }
+  :root:root .fx-login .fxl-logo { width: 50px; height: 50px; border-radius: 15px; }
+  :root:root .fx-login .fxl-logo img { width: 40px; height: 40px; }
+  :root:root .fx-login .fxl-main { justify-content: flex-start; padding: 72px 16px 32px; }
+  :root:root .fx-login .fxl-tools { top: 16px; inset-inline-end: 16px; }
+  :root:root .fx-login .fxl-card { padding: 26px 20px 22px; border-radius: 22px; }
+}
+@media (max-width: 900px) {
+  /* the tools sit at the top of the form column, under the brand header */
+  :root:root .fx-login .fxl-main { padding-top: 76px; }
+}
