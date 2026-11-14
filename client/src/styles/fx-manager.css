@@ -15,7 +15,11 @@
 :root:root .fx[data-page="manager"] .admin-main > .volunteers-content,
 :root:root .fx[data-page="manager"] .admin-main > .volunteers-section,
 :root:root .fx[data-page="manager"] .admin-main > .workspaces-content { padding: 0; }
-:root:root .fx[data-page="manager"] .admin-main > .settings-content { margin-inline: auto; max-width: 980px; padding: 0 32px; }
+:root:root .fx[data-page="manager"] .admin-main > .settings-content { max-width: none; width: auto; padding: 0; }
+/* settings sections pair up on wide screens instead of a narrow centred column */
+@media (min-width: 1560px) {
+  :root:root .fx[data-page="manager"] .admin-main > .settings-content { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px; align-items: start; }
+}
 @media (max-width: 768px) {
   :root:root .fx[data-page="manager"] .admin-main { padding: 0 0 48px; }
   :root:root .fx[data-page="manager"] .admin-main > .admin-header { margin-bottom: 18px; }

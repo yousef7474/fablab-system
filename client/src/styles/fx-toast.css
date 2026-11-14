@@ -1,0 +1,157 @@
+/* =============================================================
+   FabLab pop-up notifications (react-toastify) in the "fx" studio
+   look — see components/shared/FxToasts.jsx. A card with a soft tint
+   from the type colour, a gradient icon tile and a gradient timer line.
+   The toasts render outside the dashboards' .fx roots, so the theme is
+   read from <html data-theme> (admin / manager) or from a dark .fx root
+   on the page (employee board, sign-in).
+   ============================================================= */
+
+:root .Toastify {
+  --fxt-surface: rgba(255, 255, 255, .97);
+  --fxt-ink: #0f1b2d;
+  --fxt-ink-3: #5f6c82;
+  --fxt-line: #e5e9f1;
+  --fxt-hover: #edf0f7;
+  --fxt-shadow: 0 2px 4px rgba(15, 27, 45, .05), 0 22px 48px -18px rgba(31, 61, 99, .42);
+  --fxt-tint: .1;
+}
+html[data-theme="dark"] .Toastify,
+:root:has(.fx[data-theme="dark"]) .Toastify {
+  --fxt-surface: rgba(17, 26, 43, .97);
+  --fxt-ink: #eef3fb;
+  --fxt-ink-3: #8f9cb3;
+  --fxt-line: rgba(255, 255, 255, .1);
+  --fxt-hover: rgba(255, 255, 255, .08);
+  --fxt-shadow: inset 0 1px 0 rgba(255, 255, 255, .06), 0 26px 56px -20px rgba(0, 0, 0, .85);
+  --fxt-tint: .18;
+}
+
+:root .Toastify__toast-container { width: auto; padding: 0; }
+
+:root .Toastify__toast-container .Toastify__toast {
+  --fxt-accent: #2A4F7C;
+  --fxt-grad: linear-gradient(135deg, #1f3d63 0%, #2A4F7C 55%, #3d6fa8 100%);
+  width: 380px;
+  max-width: calc(100vw - 32px);
+  min-height: 66px;
+  margin-bottom: 12px;
+  padding: 13px 14px 15px;
+  padding-inline-end: 46px;
+  gap: 12px;
+  border-radius: 18px;
+  border: 1px solid var(--fxt-line);
+  background:
+    radial-gradient(180px 110px at 0% 0%, color-mix(in srgb, var(--fxt-accent) calc(var(--fxt-tint) * 100%), transparent), transparent 72%),
+    var(--fxt-surface);
+  box-shadow: var(--fxt-shadow);
+  -webkit-backdrop-filter: blur(16px) saturate(1.2);
+  backdrop-filter: blur(16px) saturate(1.2);
+  color: var(--fxt-ink);
+  font: 500 14px/1.55 'Readex Pro', 'Cairo', 'Segoe UI', system-ui, sans-serif;
+  letter-spacing: 0;
+  overflow: hidden;
+}
+:root .Toastify__toast-container .Toastify__toast--rtl {
+  background:
+    radial-gradient(180px 110px at 100% 0%, color-mix(in srgb, var(--fxt-accent) calc(var(--fxt-tint) * 100%), transparent), transparent 72%),
+    var(--fxt-surface);
+}
+
+/* per type */
+:root .Toastify__toast-container .Toastify__toast--success {
+  --fxt-accent: #28B070;
+  --fxt-grad: linear-gradient(135deg, #158a52 0%, #28B070 55%, #22b8a0 100%);
+}
+:root .Toastify__toast-container .Toastify__toast--error {
+  --fxt-accent: #EE2329;
+  --fxt-grad: linear-gradient(135deg, #b3121a 0%, #d71920 50%, #e0262c 100%);
+}
+:root .Toastify__toast-container .Toastify__toast--warning {
+  --fxt-accent: #f59e0b;
+  --fxt-grad: linear-gradient(135deg, #f59e0b, #f97316);
+}
+:root .Toastify__toast-container .Toastify__toast--info {
+  --fxt-accent: #3b82f6;
+  --fxt-grad: linear-gradient(135deg, #2A4F7C, #3b82f6);
+}
+
+/* icon tile */
+:root .Toastify__toast-container .Toastify__toast-icon {
+  width: auto;
+  margin: 0;
+  align-self: flex-start;
+}
+:root .Toastify .fxt-icon {
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  border-radius: 12px;
+  color: #fff;
+  background: var(--fxt-grad);
+  box-shadow: 0 10px 20px -10px var(--fxt-accent), inset 0 1px 0 rgba(255, 255, 255, .22);
+}
+:root .Toastify .fxt-icon svg { width: 19px; height: 19px; }
+:root .Toastify .fxt-spin {
+  width: 18px; height: 18px;
+  border-radius: 50%;
+  border: 2.5px solid rgba(255, 255, 255, .35);
+  border-top-color: #fff;
+  animation: fxt-spin .8s linear infinite;
+}
+@keyframes fxt-spin { to { transform: rotate(360deg); } }
+
+/* close */
+:root .Toastify .fxt-close {
+  position: absolute;
+  top: 10px;
+  inset-inline-end: 10px;
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 0;
+  border-radius: 9px;
+  background: transparent;
+  color: var(--fxt-ink-3);
+  cursor: pointer;
+  transition: background .2s, color .2s;
+}
+:root .Toastify .fxt-close svg { width: 15px; height: 15px; }
+:root .Toastify .fxt-close:hover,
+:root .Toastify .fxt-close:focus-visible { background: var(--fxt-hover); color: var(--fxt-ink); outline: none; }
+
+/* timer line */
+:root .Toastify__toast-container .Toastify__progress-bar--wrp {
+  height: 3px;
+  border-radius: 0;
+}
+:root .Toastify__toast-container .Toastify__progress-bar {
+  background: var(--fxt-grad);
+  opacity: 1;
+}
+:root .Toastify__toast-container .Toastify__progress-bar--bg {
+  background: var(--fxt-accent);
+  opacity: .14;
+}
+
+/* phones: full-width cards with a margin, not edge-to-edge strips */
+@media only screen and (max-width: 480px) {
+  :root .Toastify__toast-container {
+    width: 100vw;
+    padding: 10px 10px 0;
+    box-sizing: border-box;
+  }
+  :root .Toastify__toast-container .Toastify__toast {
+    width: 100%;
+    max-width: none;
+    margin-bottom: 8px;
+    border-radius: 16px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root .Toastify .fxt-spin { animation-duration: 1.6s; }
+}

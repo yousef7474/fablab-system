@@ -306,16 +306,4 @@ input, select, textarea {
   border-radius: var(--border-radius-sm);
 }
 
-/* Toast Customization */
-.Toastify__toast {
-  border-radius: var(--border-radius) !important;
-  font-family: inherit !important;
-}
-
-.Toastify__toast--success {
-  background: var(--mint-leaf) !important;
-}
-
-.Toastify__toast--error {
-  background: var(--racing-red) !important;
-}
+/* Toasts: styles/fx-toast.css (components/shared/FxToasts.jsx) */

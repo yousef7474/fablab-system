@@ -35,7 +35,7 @@ employeeApi.interceptors.response.use(
     if (error.response?.status === 401 && !isLogin) {
       localStorage.removeItem('employeeToken');
       localStorage.removeItem('employeeData');
-      window.location.href = '/employee/login';
+      window.location.href = '/login';
     }
     return Promise.reject(error);
   }

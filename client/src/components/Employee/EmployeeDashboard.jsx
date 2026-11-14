@@ -289,7 +289,7 @@ const EmployeeDashboard = () => {
   useEffect(() => {
     const data = localStorage.getItem('employeeData');
     if (!data) {
-      navigate('/employee/login');
+      navigate('/login');
       return;
     }
     const parsed = JSON.parse(data);
@@ -891,7 +891,7 @@ const EmployeeDashboard = () => {
     localStorage.removeItem('employeeToken');
     localStorage.removeItem('employeeData');
     toast.success(isRTL ? 'تم تسجيل الخروج' : 'Logged out');
-    navigate('/employee/login');
+    navigate('/login');
   };
 
   const toggleLanguage = () => {

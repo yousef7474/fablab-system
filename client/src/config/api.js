@@ -33,10 +33,10 @@ api.interceptors.response.use(
   (error) => {
     // A wrong password on the sign-in form is a 401 too — let the form
     // show its message instead of reloading the page.
-    const isLogin = /\/admin\/login$/.test(error.config?.url || '');
+    const isLogin = /\/(admin|auth)\/login$/.test(error.config?.url || '');
     if (error.response?.status === 401 && !isLogin) {
       localStorage.removeItem('adminToken');
-      window.location.href = '/admin/login';
+      window.location.href = '/login';
     }
     return Promise.reject(error);
   }

@@ -33,8 +33,7 @@ const T = {
     regTalented: 'أنا موهوب',
     regInternship: 'التدريب التعاوني',
     // "دخول" menu
-    loginEmployee: 'دخول الموظفين',
-    loginAdmin: 'دخول الإدارة',
+    loginStaff: 'دخول الموظفين والإدارة',
     loginStore: 'طلباتي في المتجر',
 
     // Home
@@ -134,8 +133,7 @@ const T = {
     regStore: 'FabLab store',
     regTalented: 'I am Talented',
     regInternship: 'Cooperative training',
-    loginEmployee: 'Staff login',
-    loginAdmin: 'Admin login',
+    loginStaff: 'Staff & admin login',
     loginStore: 'My store orders',
 
     heroTitle: 'The Future of Creativity Starts Here',

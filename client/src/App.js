@@ -1,8 +1,8 @@
 import React, { lazy, Suspense } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { ThemeProvider, CssBaseline } from '@mui/material';
-import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
+import FxToasts from './components/shared/FxToasts';
 import './i18n';
 import { lightTheme } from './config/theme';
 import LanguageSelector from './components/LanguageSelector';
@@ -14,7 +14,7 @@ const EliteRegistrationForm = lazy(() => import('./components/EliteRegistration/
 const EliteDashboard = lazy(() => import('./components/EliteRegistration/EliteDashboard'));
 const EliteLogin = lazy(() => import('./components/EliteRegistration/EliteLogin'));
 const EliteUserAccount = lazy(() => import('./components/EliteRegistration/EliteUserAccount'));
-const AdminLogin = lazy(() => import('./components/Admin/AdminLogin'));
+const StaffLogin = lazy(() => import('./components/shared/StaffLogin'));
 const AdminDashboard = lazy(() => import('./components/Admin/AdminDashboard'));
 const BorrowingForm = lazy(() => import('./components/BorrowingForm/BorrowingForm'));
 const EducationForm = lazy(() => import('./components/EducationForm/EducationForm'));
@@ -22,7 +22,6 @@ const StudentRegistration = lazy(() => import('./components/EducationForm/Studen
 const StudentAttendance = lazy(() => import('./components/EducationForm/StudentAttendance'));
 const ManagerDashboard = lazy(() => import('./components/Manager/ManagerDashboard'));
 const ProjectManagerBoard = lazy(() => import('./components/TrainingKits/ProjectManagerBoard'));
-const EmployeeLogin = lazy(() => import('./components/Employee/EmployeeLogin'));
 const EmployeeDashboard = lazy(() => import('./components/Employee/EmployeeDashboard'));
 const WorkshopRegistration = lazy(() => import('./components/WorkshopRegistration/WorkshopRegistration'));
 const WorkshopSurvey = lazy(() => import('./components/WorkshopSurvey/WorkshopSurvey'));
@@ -103,7 +102,7 @@ const RouteFallback = () => {
 const ConditionalLanguageSelector = () => {
   const location = useLocation();
   if (isSitePath(location.pathname)) return null;
-  if (location.pathname === '/admin/login' || location.pathname.startsWith('/manager') || location.pathname.startsWith('/elite') || location.pathname.startsWith('/employee') || location.pathname.startsWith('/projects') || location.pathname.startsWith('/workshop') || location.pathname.startsWith('/public/') || location.pathname.startsWith('/fablab-visit') || location.pathname.startsWith('/project-support') || location.pathname.startsWith('/store') || location.pathname.startsWith('/print-service') || location.pathname.startsWith('/print-quote') || location.pathname.startsWith('/pay/')) return null;
+  if (location.pathname === '/login' || location.pathname === '/admin/login' || location.pathname.startsWith('/manager') || location.pathname.startsWith('/elite') || location.pathname.startsWith('/employee') || location.pathname.startsWith('/projects') || location.pathname.startsWith('/workshop') || location.pathname.startsWith('/public/') || location.pathname.startsWith('/fablab-visit') || location.pathname.startsWith('/project-support') || location.pathname.startsWith('/store') || location.pathname.startsWith('/print-service') || location.pathname.startsWith('/print-quote') || location.pathname.startsWith('/pay/')) return null;
   return <LanguageSelector />;
 };
 
@@ -138,7 +137,9 @@ const AppContent = () => {
           <Route path="/educate" element={<EducationForm />} />
           <Route path="/educate/students" element={<StudentRegistration />} />
           <Route path="/educate/attendance" element={<StudentAttendance />} />
-          <Route path="/admin/login" element={<AdminLogin />} />
+          {/* One sign-in for admins, managers and employees */}
+          <Route path="/login" element={<StaffLogin />} />
+          <Route path="/admin/login" element={<Navigate to="/login" replace />} />
           <Route path="/admin/dashboard/*" element={<AdminDashboard />} />
           <Route path="/manager/dashboard/*" element={<ManagerDashboard />} />
           <Route path="/workshop" element={<WorkshopRegistration />} />
@@ -146,7 +147,7 @@ const AppContent = () => {
               workshop; skips the picker step. */}
           <Route path="/workshop/:workshopId" element={<WorkshopRegistration />} />
           <Route path="/workshop-survey/:token" element={<WorkshopSurvey />} />
-          <Route path="/employee/login" element={<EmployeeLogin />} />
+          <Route path="/employee/login" element={<Navigate to="/login" replace />} />
           <Route path="/employee/dashboard" element={<EmployeeDashboard />} />
           <Route path="/projects" element={<ProjectManagerBoard />} />
           {/* Public no-login volunteer report pages (token-gated) */}
@@ -177,17 +178,7 @@ function App() {
       <Router>
         <AppContent />
       </Router>
-      <ToastContainer
-        position="top-right"
-        autoClose={5000}
-        hideProgressBar={false}
-        newestOnTop
-        closeOnClick
-        rtl={false}
-        pauseOnFocusLoss
-        draggable
-        pauseOnHover
-      />
+      <FxToasts />
     </ThemeProvider>
   );
 }

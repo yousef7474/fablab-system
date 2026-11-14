@@ -76,7 +76,7 @@ const ProjectManagerBoard = () => {
   const T = TYPES.find(t => t.key === type);
 
   useEffect(() => {
-    if (!localStorage.getItem('employeeToken')) { navigate('/employee/login'); return; }
+    if (!localStorage.getItem('employeeToken')) { navigate('/login'); return; }
     employeeApi.get('/training-kits/pm/status').then(({ data }) => setMe(data)).catch(() => setMe({ isPM: false }));
   }, [navigate]);
 

@@ -284,7 +284,7 @@ html[data-theme="dark"] .fx,
 :root:root .fx .admin-sidebar.collapsed .nav-item { justify-content: center; padding: 6px; }
 :root:root .fx .admin-sidebar.collapsed .sidebar-nav { padding: 14px 10px; }
 
-:root:root .fx .admin-main { margin-left: 268px; background: transparent; }
+:root:root .fx .admin-main { margin-left: 268px; padding: 0; background: transparent; }
 :root:root .fx[dir="rtl"] .admin-main,
 :root:root [dir="rtl"].fx .admin-main { margin-left: 0; margin-right: 268px; }
 :root:root .fx .admin-sidebar.collapsed ~ .admin-main { margin-left: 84px; }
@@ -355,7 +355,8 @@ html[data-theme="dark"] .fx,
 :root:root .fx .admin-header .admin-role { color: var(--fx-ink-3); font-size: 12px; }
 
 /* ---- content area ---- */
-:root:root .fx .admin-content { padding: 26px 32px 64px; background: transparent; max-width: 1640px; }
+/* The content runs the full width beside the sidebar — no centred column. */
+:root:root .fx .admin-content { padding: 26px 32px 64px; background: transparent; max-width: none; width: auto; }
 @media (max-width: 768px) {
   :root:root .fx .admin-header { padding: 12px 16px; }
   :root:root .fx .admin-content { padding: 18px 16px 48px; }

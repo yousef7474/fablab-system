@@ -5,17 +5,20 @@ import { motion } from 'framer-motion';
 import '../../styles/fx.css';
 import '../../styles/fx-login.css';
 
+// The theme keys the boards read (admin / manager, employee).
+const THEME_KEYS = ['adminTheme', 'employeeTheme'];
+
 // Shared sign-in layout for the dashboards (admin / manager and employee),
 // in the dashboards' "fx" studio look: a navy brand panel with the FabLab
 // logo and what the portal holds, and the form card. The theme toggle
-// writes the same key the dashboard reads (adminTheme / employeeTheme), so
-// the choice carries over after signing in.
-const FxLogin = ({ themeKey, portal, title, subtitle, features = [], children }) => {
+// writes every board's theme key, so the choice carries over whichever
+// board the sign-in opens.
+const FxLogin = ({ portal, title, subtitle, features = [], children }) => {
   const navigate = useNavigate();
   const { i18n } = useTranslation();
   const isRTL = i18n.language === 'ar';
   const [theme, setTheme] = useState(() => {
-    try { return localStorage.getItem(themeKey) || 'dark'; } catch { return 'dark'; }
+    try { return THEME_KEYS.map(k => localStorage.getItem(k)).find(Boolean) || 'dark'; } catch { return 'dark'; }
   });
 
   // The admin boards leave their theme on <html>; the shared design-system
@@ -29,7 +32,7 @@ const FxLogin = ({ themeKey, portal, title, subtitle, features = [], children })
 
   const toggleTheme = () => setTheme(t => {
     const next = t === 'dark' ? 'light' : 'dark';
-    try { localStorage.setItem(themeKey, next); } catch { /* ignore */ }
+    try { THEME_KEYS.forEach(k => localStorage.setItem(k, next)); } catch { /* ignore */ }
     return next;
   });
   const toggleLanguage = () => i18n.changeLanguage(isRTL ? 'en' : 'ar');
@@ -98,7 +101,7 @@ const FxLogin = ({ themeKey, portal, title, subtitle, features = [], children })
 
         <button type="button" className="fxl-back" onClick={() => navigate('/')}>
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><path d={isRTL ? 'm9 18 6-6-6-6' : 'm15 18-6-6 6-6'} /></svg>
-          {isRTL ? 'العودة للتسجيل' : 'Back to Registration'}
+          {isRTL ? 'العودة إلى الموقع' : 'Back to the website'}
         </button>
       </main>
     </div>

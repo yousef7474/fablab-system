@@ -448,7 +448,7 @@ const AdminDashboard = () => {
     const admin = localStorage.getItem('adminData');
 
     if (!token || !admin) {
-      navigate('/admin/login');
+      navigate('/login');
       return;
     }
 
@@ -2766,7 +2766,7 @@ const AdminDashboard = () => {
     localStorage.removeItem('adminToken');
     localStorage.removeItem('adminData');
     toast.success(isRTL ? 'تم تسجيل الخروج بنجاح' : 'Logged out successfully');
-    navigate('/admin/login');
+    navigate('/login');
   };
 
   // Borrowing functions

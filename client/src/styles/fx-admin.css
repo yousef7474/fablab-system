@@ -728,6 +728,19 @@ html[data-theme="dark"] .fx.admin-layout {
   box-shadow: var(--fx-shadow);
 }
 
+/* ---------- Settings: use the full width — two columns of cards on wide screens
+   (the status cards' inline full-row span is dropped there so they pair up) ---------- */
+:root:root .fx.admin-layout .admin-content > .settings-content { max-width: none; width: 100%; margin: 0; padding: 0; }
+:root:root .fx.admin-layout .admin-content > .settings-content > .settings-grid { gap: 20px; }
+:root:root .fx.admin-layout .settings-card[style*="2px solid"] button { white-space: nowrap; flex-shrink: 0; }
+@media (min-width: 1560px) {
+  :root:root .fx.admin-layout .admin-content > .settings-content > .settings-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  :root:root .fx.admin-layout .admin-content > .settings-content > .settings-grid > .settings-card { grid-column: auto !important; }
+}
+
+/* home quick actions: stretch across the row instead of leaving empty tracks */
+:root:root .fx.admin-layout .actions-grid { grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); }
+
 /* ---------- FabLab staff (the shared component inside the admin tab) ---------- */
 :root:root .fx.admin-layout .fxa-staff .volunteers-header {
   display: flex;

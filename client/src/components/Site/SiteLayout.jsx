@@ -38,8 +38,7 @@ export const REGISTER_MENU = [
   ['regInternship', '/internship', 'fa-user-graduate']
 ];
 const LOGIN_MENU = [
-  ['loginEmployee', '/employee/login', 'fa-id-badge'],
-  ['loginAdmin', '/admin/login', 'fa-user-shield'],
+  ['loginStaff', '/login', 'fa-id-badge'],
   ['loginStore', '/store/my-orders', 'fa-receipt']
 ];
 

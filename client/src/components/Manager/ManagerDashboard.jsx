@@ -397,7 +397,7 @@ const ManagerDashboard = () => {
     const admin = localStorage.getItem('adminData');
 
     if (!token || !admin) {
-      navigate('/admin/login');
+      navigate('/login');
       return;
     }
 
@@ -405,12 +405,12 @@ const ManagerDashboard = () => {
       const parsedAdmin = JSON.parse(admin);
       if (parsedAdmin.role !== 'manager' && parsedAdmin.role !== 'admin') {
         toast.error(isRTL ? 'غير مصرح. يتطلب صلاحية مدير.' : 'Access denied. Manager role required.');
-        navigate('/admin/login');
+        navigate('/login');
         return;
       }
       setManagerData(parsedAdmin);
     } catch (e) {
-      navigate('/admin/login');
+      navigate('/login');
     }
   }, [navigate, isRTL]);
 
@@ -3282,7 +3282,7 @@ const ManagerDashboard = () => {
   const handleLogout = () => {
     localStorage.removeItem('adminToken');
     localStorage.removeItem('adminData');
-    navigate('/admin/login');
+    navigate('/login');
   };
 
   // Format date for display
