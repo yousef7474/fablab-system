@@ -15,6 +15,8 @@ import Commitment from './steps/Commitment';
 import SuccessPage from './SuccessPage';
 import FabyBot from './FabyBot';
 import './RegistrationForm.css';
+// The studio look (shell, rail, steps) — loaded last so it sits on top.
+import './RegisterStudio.css';
 
 const STORAGE_KEY = 'fablab_registration_form';
 
@@ -97,6 +99,172 @@ const defaultFormData = {
 
 const THEME_KEY = 'fablab_registration_theme';
 
+// One stroke icon (24-unit grid) per step, for the rail stepper.
+const STEP_ICONS = [
+  ['M9 11l3 3L22 4', 'M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11'],
+  ['M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2', 'M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8z'],
+  ['M3 3h7v7H3z', 'M14 3h7v7h-7z', 'M14 14h7v7h-7z', 'M3 14h7v7H3z'],
+  ['M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z'],
+  ['M5 4h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z', 'M16 2v4', 'M8 2v4', 'M3 10h18'],
+  ['M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z', 'M14 2v6h6', 'M16 13H8', 'M16 17H8'],
+  ['M12 20h9', 'M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4z']
+];
+const RAIL_FEATURES = [
+  { ar: 'استشارات تقنية مع مهندسي الأقسام', en: 'Technical consultations with section engineers', d: ['M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z', 'M8 9h8', 'M8 13h5'] },
+  { ar: 'حجز الأجهزة والمعدات لتنفيذ مشروعك', en: 'Book machines and tools for your project', d: ['M2 6h20v12H2z', 'M6 10v4', 'M10 10v4', 'M14 10v4', 'M18 10v4'] },
+  { ar: 'ورش وبرامج ومساحات عمل للمبتكرين', en: 'Workshops, programs and workspaces', d: ['M22 10L12 5 2 10l10 5 10-5z', 'M6 12v5c3 2 9 2 12 0v-5'] }
+];
+
+const Icon = ({ d }) => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    {d.map(p => <path key={p} d={p} />)}
+  </svg>
+);
+const CHECK = ['M20 6 9 17l-5-5'];
+
+// The page frame: the navy rail (brand, then the stepper while
+// registering) beside the main column (tools + the card). Below 1100px
+// the rail folds into a compact header with a segmented progress bar.
+const StudioShell = ({ isRTL, theme, onToggleTheme, onHome, steps, activeStep, onJump, extra, children }) => {
+  const { i18n } = useTranslation();
+  const inSteps = steps && activeStep >= 0;
+  const total = steps ? steps.length : 0;
+  const n = Math.min(Math.max(activeStep, 0) + 1, total);
+  const pct = total ? Math.round((n / total) * 100) : 0;
+  const toggleLanguage = () => {
+    const next = isRTL ? 'en' : 'ar';
+    i18n.changeLanguage(next);
+    document.dir = next === 'ar' ? 'rtl' : 'ltr';
+  };
+
+  return (
+    <div className="rgx" data-theme={theme} dir={isRTL ? 'rtl' : 'ltr'}>
+      <aside className="rgx-rail">
+        <motion.div
+          className="rgx-rail-in"
+          initial={{ opacity: 0, x: isRTL ? 24 : -24 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ duration: 0.55, ease: [0.2, 0.8, 0.2, 1] }}
+        >
+          <div className="rgx-brand">
+            <span className="rgx-logo"><img src="/fablab.png" alt="" /></span>
+            <span className="rgx-brand-text">
+              <strong>{isRTL ? 'فاب لاب الأحساء' : 'FabLab Al-Ahsa'}</strong>
+              <small>{isRTL ? 'مركز تنمية الإبداع والابتكار' : 'Creativity & Innovation Center'}</small>
+            </span>
+          </div>
+
+          {inSteps ? (
+            <div className="rgx-rail-steps">
+              <p className="rgx-rail-kicker">
+                {isRTL ? `الخطوة ${n} من ${total}` : `Step ${n} of ${total}`}
+                <span>{pct}%</span>
+              </p>
+              <div className="rgx-rail-bar" aria-hidden="true"><i style={{ width: `${pct}%` }} /></div>
+              <ol className="rgx-steps">
+                {steps.map((s, i) => {
+                  const state = i < activeStep ? 'done' : i === activeStep ? 'now' : 'next';
+                  return (
+                    <li key={s.key} className={`rgx-step is-${state}`}>
+                      <button
+                        type="button"
+                        disabled={state !== 'done'}
+                        onClick={() => onJump(i)}
+                        aria-current={state === 'now' ? 'step' : undefined}
+                        title={state === 'done' ? (isRTL ? 'الرجوع لهذه الخطوة' : 'Go back to this step') : undefined}
+                      >
+                        <span className="rgx-step-tile"><Icon d={state === 'done' ? CHECK : STEP_ICONS[i]} /></span>
+                        <span className="rgx-step-text">
+                          <small>{isRTL ? `الخطوة ${i + 1}` : `Step ${i + 1}`}</small>
+                          <b>{s.label}</b>
+                        </span>
+                      </button>
+                    </li>
+                  );
+                })}
+              </ol>
+            </div>
+          ) : (
+            <div className="rgx-rail-intro">
+              <span className="rgx-portal"><i aria-hidden="true" />{isRTL ? 'التسجيل وحجز المواعيد' : 'Registration & appointments'}</span>
+              <h2>{isRTL ? <>من الفكرة<br /><em>إلى النموذج الأول</em></> : <>From the idea<br /><em>to the first prototype</em></>}</h2>
+              <ul className="rgx-feats">
+                {RAIL_FEATURES.map((f, i) => (
+                  <motion.li
+                    key={f.en}
+                    initial={{ opacity: 0, y: 12 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.25 + i * 0.09, duration: 0.45 }}
+                  >
+                    <span className={`rgx-ftile t${i}`}><Icon d={f.d} /></span>
+                    <span>{isRTL ? f.ar : f.en}</span>
+                  </motion.li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          <p className="rgx-rail-foot">{isRTL ? 'فاب لاب الأحساء — مؤسسة عبدالمنعم الراشد الإنسانية' : 'FabLab Al-Ahsa — Abdulmonem Al-Rashed Humanitarian Foundation'}</p>
+        </motion.div>
+      </aside>
+
+      <main className="rgx-main">
+        <header className="rgx-top">
+          <a className="rgx-top-brand" href="/" aria-label={isRTL ? 'فاب لاب الأحساء' : 'FabLab Al-Ahsa'}>
+            <span className="rgx-logo sm"><img src="/fablab.png" alt="" /></span>
+            <span className="rgx-brand-text">
+              <strong>{isRTL ? 'فاب لاب الأحساء' : 'FabLab Al-Ahsa'}</strong>
+              <small>{isRTL ? 'التسجيل وحجز المواعيد' : 'Registration & appointments'}</small>
+            </span>
+          </a>
+          <div className="rgx-tools">
+            {inSteps && onHome && (
+              <button type="button" className="rgx-tool" onClick={onHome} title={isRTL ? 'البدء من جديد' : 'Start over'}>
+                <Icon d={['M3 12a9 9 0 1 0 3-6.7', 'M3 4v5h5']} />
+                <span>{isRTL ? 'من جديد' : 'Start over'}</span>
+              </button>
+            )}
+            <a className="rgx-tool" href="/" title={isRTL ? 'الموقع الرئيسي' : 'Main website'}>
+              <Icon d={['M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z', 'M9 22V12h6v10']} />
+              <span>{isRTL ? 'الموقع' : 'Website'}</span>
+            </a>
+            <button type="button" className="rgx-tool" onClick={toggleLanguage} title={isRTL ? 'English' : 'العربية'}>
+              <Icon d={['M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20z', 'M2 12h20', 'M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z']} />
+              <span>{isRTL ? 'English' : 'العربية'}</span>
+            </button>
+            <button
+              type="button"
+              className="rgx-tool icon"
+              onClick={onToggleTheme}
+              aria-label={theme === 'dark' ? (isRTL ? 'الوضع الفاتح' : 'Light mode') : (isRTL ? 'الوضع الداكن' : 'Dark mode')}
+              title={theme === 'dark' ? (isRTL ? 'الوضع الفاتح' : 'Light mode') : (isRTL ? 'الوضع الداكن' : 'Dark mode')}
+            >
+              {theme === 'dark'
+                ? <Icon d={['M12 16a4 4 0 1 0 0-8 4 4 0 0 0 0 8z', 'M12 2v2', 'M12 20v2', 'M4.93 4.93l1.41 1.41', 'M17.66 17.66l1.41 1.41', 'M2 12h2', 'M20 12h2', 'M4.93 19.07l1.41-1.41', 'M17.66 6.34l1.41-1.41']} />
+                : <Icon d={['M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z']} />}
+            </button>
+          </div>
+        </header>
+
+        {inSteps && (
+          <div className="rgx-mprog">
+            <div className="rgx-mprog-row">
+              <b>{steps[Math.max(activeStep, 0)]?.label}</b>
+              <span>{isRTL ? `الخطوة ${n} من ${total}` : `Step ${n} of ${total}`}</span>
+            </div>
+            <div className="rgx-mprog-bar" aria-hidden="true">
+              {steps.map((s, i) => <i key={s.key} className={i < activeStep ? 'done' : i === activeStep ? 'now' : ''} />)}
+            </div>
+          </div>
+        )}
+
+        <div className="rgx-stage">{children}</div>
+      </main>
+      {extra}
+    </div>
+  );
+};
+
 const RegistrationForm = () => {
   const { t, i18n } = useTranslation();
   const isRTL = i18n.language === 'ar';
@@ -105,11 +273,20 @@ const RegistrationForm = () => {
 
   const [theme, setTheme] = useState(() => {
     try {
-      return localStorage.getItem(THEME_KEY) || 'dark';
+      return localStorage.getItem(THEME_KEY) || 'light';
     } catch (e) {
-      return 'dark';
+      return 'light';
     }
   });
+
+  // The admin / manager boards leave their theme on <html>; the shared
+  // design-system rules keyed on it would restyle this page — lift it.
+  useEffect(() => {
+    const root = document.documentElement;
+    const prev = root.getAttribute('data-theme');
+    if (prev) root.removeAttribute('data-theme');
+    return () => { if (prev && !root.hasAttribute('data-theme')) root.setAttribute('data-theme', prev); };
+  }, []);
 
   const toggleTheme = useCallback(() => {
     setTheme(prev => {
@@ -379,284 +556,128 @@ const RegistrationForm = () => {
 
   if (registrationDisabled) {
     return (
-      <div className="registration-page" data-theme={theme} dir={isRTL ? 'rtl' : 'ltr'}>
-        <div className="registration-container">
-          <motion.div
-            className="form-card"
-            initial={{ opacity: 0, scale: 0.9 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ duration: 0.5 }}
+      <StudioShell isRTL={isRTL} theme={theme} onToggleTheme={toggleTheme}>
+        <motion.section
+          className="rgx-card rgx-closed"
+          initial={{ opacity: 0, y: 18 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, ease: [0.2, 0.8, 0.2, 1] }}
+        >
+          <motion.span
+            className="rgx-closed-ico"
+            initial={{ scale: 0 }}
+            animate={{ scale: 1 }}
+            transition={{ type: 'spring', delay: 0.15 }}
           >
-            <div style={{ textAlign: 'center', padding: '50px 30px' }}>
-              <motion.div
-                initial={{ scale: 0 }}
-                animate={{ scale: 1 }}
-                transition={{ type: 'spring', delay: 0.2 }}
-              >
-                <div style={{ width: '90px', height: '90px', background: '#fef2f2', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 24px' }}>
-                  <svg width="45" height="45" viewBox="0 0 24 24" fill="none" stroke="#ef4444" strokeWidth="2">
-                    <circle cx="12" cy="12" r="10"/>
-                    <line x1="15" y1="9" x2="9" y2="15"/>
-                    <line x1="9" y1="9" x2="15" y2="15"/>
-                  </svg>
-                </div>
-              </motion.div>
-              <motion.h2
-                initial={{ y: 20, opacity: 0 }}
-                animate={{ y: 0, opacity: 1 }}
-                transition={{ delay: 0.3 }}
-                style={{ color: '#dc2626', fontSize: '24px', fontWeight: '700', marginBottom: '12px' }}
-              >
-                {isRTL ? 'التسجيل غير متاح حالياً' : 'Registration Currently Unavailable'}
-              </motion.h2>
-              {disabledReason && (
-                <motion.div
-                  initial={{ y: 20, opacity: 0 }}
-                  animate={{ y: 0, opacity: 1 }}
-                  transition={{ delay: 0.4 }}
-                  style={{ background: '#fef2f2', padding: '16px 24px', borderRadius: '12px', margin: '20px auto', maxWidth: '500px', border: '1px solid #fecaca' }}
-                >
-                  <p style={{ color: '#991b1b', fontSize: '15px', fontWeight: '600', margin: '0 0 4px 0' }}>
-                    {isRTL ? 'السبب:' : 'Reason:'}
-                  </p>
-                  <p style={{ color: '#b91c1c', fontSize: '15px', margin: 0, lineHeight: 1.7 }}>
-                    {disabledReason}
-                  </p>
-                </motion.div>
-              )}
-              <motion.p
-                initial={{ y: 20, opacity: 0 }}
-                animate={{ y: 0, opacity: 1 }}
-                transition={{ delay: 0.5 }}
-                style={{ color: '#666', fontSize: '15px', lineHeight: 1.8, maxWidth: '450px', margin: '16px auto' }}
-              >
-                {isRTL
-                  ? 'نعتذر عن عدم إمكانية التسجيل في الوقت الحالي. يرجى المحاولة لاحقاً أو التواصل مع إدارة فاب لاب للمزيد من المعلومات.'
-                  : 'We apologize that registration is not available at this time. Please try again later or contact FABLAB administration for more information.'}
-              </motion.p>
-              <motion.div
-                initial={{ y: 20, opacity: 0 }}
-                animate={{ y: 0, opacity: 1 }}
-                transition={{ delay: 0.6 }}
-                style={{ display: 'flex', gap: '12px', justifyContent: 'center', marginTop: '28px', flexWrap: 'wrap' }}
-              >
-                <button
-                  className="btn btn-primary"
-                  onClick={() => navigate('/borrow')}
-                  style={{ display: 'flex', alignItems: 'center', gap: '8px' }}
-                >
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
-                    <polyline points="3.27 6.96 12 12.01 20.73 6.96"/>
-                    <line x1="12" y1="22.08" x2="12" y2="12"/>
-                  </svg>
-                  {isRTL ? 'استعارة مكونات' : 'Borrow Components'}
-                </button>
-                <button
-                  className="btn btn-secondary"
-                  onClick={() => window.location.reload()}
-                  style={{ display: 'flex', alignItems: 'center', gap: '8px' }}
-                >
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <polyline points="23 4 23 10 17 10"/>
-                    <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
-                  </svg>
-                  {isRTL ? 'إعادة المحاولة' : 'Try Again'}
-                </button>
-              </motion.div>
+            <Icon d={['M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20z', 'M15 9l-6 6', 'M9 9l6 6']} />
+          </motion.span>
+          <h2>{isRTL ? 'التسجيل غير متاح حالياً' : 'Registration Currently Unavailable'}</h2>
+          {disabledReason && (
+            <div className="rgx-closed-reason">
+              <b>{isRTL ? 'السبب' : 'Reason'}</b>
+              <p>{disabledReason}</p>
             </div>
-          </motion.div>
-        </div>
-      </div>
+          )}
+          <p className="rgx-closed-text">
+            {isRTL
+              ? 'نعتذر عن عدم إمكانية التسجيل في الوقت الحالي. يرجى المحاولة لاحقاً أو التواصل مع إدارة فاب لاب للمزيد من المعلومات.'
+              : 'We apologize that registration is not available at this time. Please try again later or contact FABLAB administration for more information.'}
+          </p>
+          <div className="rgx-closed-actions">
+            <button className="btn btn-primary" onClick={() => navigate('/borrow')}>
+              <Icon d={['M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z', 'M3.27 6.96 12 12.01l8.73-5.05', 'M12 22.08V12']} />
+              {isRTL ? 'استعارة مكونات' : 'Borrow Components'}
+            </button>
+            <button className="btn btn-secondary" onClick={() => window.location.reload()}>
+              <Icon d={['M23 4v6h-6', 'M20.49 15a9 9 0 1 1-2.12-9.36L23 10']} />
+              {isRTL ? 'إعادة المحاولة' : 'Try Again'}
+            </button>
+          </div>
+        </motion.section>
+      </StudioShell>
     );
   }
 
   if (registrationResult) {
     return (
-      <div className="registration-page" data-theme={theme} dir={isRTL ? 'rtl' : 'ltr'}>
-        <div className="registration-container">
-          <div className="form-card">
-            <SuccessPage registration={registrationResult} />
-          </div>
-        </div>
-      </div>
+      <StudioShell isRTL={isRTL} theme={theme} onToggleTheme={toggleTheme}>
+        <section className="rgx-card rgx-success">
+          <SuccessPage registration={registrationResult} />
+        </section>
+      </StudioShell>
     );
   }
 
+  const startOver = () => {
+    setActiveStep(-1);
+    setFormData(defaultFormData);
+    setGuidedChoice(null);
+    clearSavedForm();
+  };
+
   return (
-    <div className="registration-page" data-theme={theme} dir={isRTL ? 'rtl' : 'ltr'}>
-      {/* Sticky top bar — brand identity + actions */}
-      <header className="registration-topbar">
-        <div className="topbar-brand">
-          <div className="topbar-logo">
-            <img src="/logo.png" alt="FABLAB" />
-          </div>
-          <div className="topbar-titles">
-            <span className="topbar-title">{isRTL ? 'فاب لاب الأحساء' : 'FabLab Al-Ahsa'}</span>
-            <span className="topbar-subtitle">{isRTL ? 'مختبر التصنيع الرقمي' : 'Digital Fabrication Lab'}</span>
-          </div>
-        </div>
-        <div className="topbar-actions">
-          {activeStep >= 0 && (
-            <>
-              <button
-                type="button"
-                className="topbar-home-btn"
-                onClick={() => {
-                  setActiveStep(-1);
-                  setFormData(defaultFormData);
-                  setGuidedChoice(null);
-                  clearSavedForm();
-                }}
-                title={isRTL ? 'العودة للرئيسية' : 'Back to Home'}
-                aria-label={isRTL ? 'العودة للرئيسية' : 'Back to Home'}
-              >
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                  <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
-                  <polyline points="9 22 9 12 15 12 15 22"/>
-                </svg>
-                <span>{isRTL ? 'الرئيسية' : 'Home'}</span>
-              </button>
-              <span className="topbar-progress-pill">
-                {String(Math.max(0, activeStep) + 1).padStart(2, '0')} / {String(steps.length).padStart(2, '0')}
-              </span>
-            </>
-          )}
-          <a
-            href="https://main.fablabsahsa.com/"
-            className="topbar-main-link"
-            title={isRTL ? 'العودة للموقع الرئيسي' : 'Back to main site'}
-            aria-label={isRTL ? 'العودة للموقع الرئيسي' : 'Back to main site'}
-          >
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-              <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
-              <polyline points="9 22 9 12 15 12 15 22"/>
-            </svg>
-            <span>{isRTL ? 'الموقع الرئيسي' : 'Main site'}</span>
-          </a>
-          <button
-            type="button"
-            className="theme-toggle"
-            onClick={toggleTheme}
-            aria-label={theme === 'dark' ? (isRTL ? 'الوضع الفاتح' : 'Light mode') : (isRTL ? 'الوضع الداكن' : 'Dark mode')}
-            title={theme === 'dark' ? (isRTL ? 'تفعيل الوضع الفاتح' : 'Switch to light mode') : (isRTL ? 'تفعيل الوضع الداكن' : 'Switch to dark mode')}
-          >
-            <svg className="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
-            </svg>
-            <svg className="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <circle cx="12" cy="12" r="5"/>
-              <line x1="12" y1="1" x2="12" y2="3"/>
-              <line x1="12" y1="21" x2="12" y2="23"/>
-              <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/>
-              <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/>
-              <line x1="1" y1="12" x2="3" y2="12"/>
-              <line x1="21" y1="12" x2="23" y2="12"/>
-              <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/>
-              <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
-            </svg>
-          </button>
-        </div>
-      </header>
-
-      <div className="registration-container">
-        <div style={{ width: '100%' }}>
-          {/* Welcome hero — only on the initial UserLookup screen */}
-          {activeStep === -1 && (
-            <motion.div
-              className="registration-header"
-              initial={{ opacity: 0, y: -20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.7, ease: [0.2, 0.9, 0.2, 1] }}
-            >
-              <div className="registration-eyebrow">
-                <span>{isRTL ? 'مختبر التصنيع الرقمي' : 'DIGITAL FABRICATION LAB'}</span>
-              </div>
-              <motion.h1
-                className="registration-title"
-                initial={{ opacity: 0, y: 12 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.6, delay: 0.2 }}
-              >
-                {isRTL ? (
-                  <>فاب لاب <em>الأحساء</em></>
-                ) : (
-                  <>FabLab <em>Al-Ahsa</em></>
-                )}
-              </motion.h1>
-              <motion.p
-                className="registration-subtitle"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ duration: 0.5, delay: 0.35 }}
-              >
-                {isRTL ? '✨ نظام التسجيل وحجز المواعيد' : '✨ Registration & Appointment System'}
-              </motion.p>
-            </motion.div>
-          )}
-
-          {/* Form Card */}
+      <StudioShell
+        isRTL={isRTL}
+        theme={theme}
+        onToggleTheme={toggleTheme}
+        onHome={startOver}
+        steps={steps}
+        activeStep={activeStep}
+        onJump={(i) => setActiveStep(i)}
+        extra={<FabyBot currentStep={activeStep} formData={formData} />}
+      >
+        {/* Welcome hero — only on the first (lookup) screen */}
+        {activeStep === -1 && (
           <motion.div
-            className="form-card"
-            initial={{ opacity: 0, y: 20 }}
+            className="rgx-hero"
+            initial={{ opacity: 0, y: -14 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 0.2 }}
+            transition={{ duration: 0.6, ease: [0.2, 0.8, 0.2, 1] }}
           >
-            {activeStep === -1 ? (
-              <UserLookup
-                onUserFound={handleUserFound}
-                onNewUser={() => setActiveStep(0)}
-                theme={theme}
-                guidedChoice={guidedChoice}
-                onGuideApply={handleGuideApply}
-                onGuideClear={handleGuideClear}
-              />
-            ) : (
-              <>
-                {/* Stepper */}
-                <div
-                  className="stepper-container"
-                  data-progress={`${String(Math.max(0, activeStep) + 1).padStart(2, '0')} / ${String(steps.length).padStart(2, '0')}`}
-                >
-                  <div className="stepper-wrapper">
-                    {steps.map((step, index) => (
-                      <div
-                        key={step.key}
-                        className={`step-item ${index === activeStep ? 'active' : ''} ${index < activeStep ? 'completed' : ''}`}
-                      >
-                        <div className="step-circle">
-                          {index < activeStep ? '' : String(index + 1).padStart(2, '0')}
-                        </div>
-                        <span className="step-label">{step.label}</span>
-                        {index < steps.length - 1 && <div className="step-connector" />}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Form Content */}
-                <div className="form-content">
-                  <AnimatePresence mode="wait">
-                    <motion.div
-                      key={activeStep}
-                      initial={{ opacity: 0, x: isRTL ? -30 : 30 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      exit={{ opacity: 0, x: isRTL ? 30 : -30 }}
-                      transition={{ duration: 0.3 }}
-                    >
-                      {renderStepContent(activeStep)}
-                    </motion.div>
-                  </AnimatePresence>
-                </div>
-              </>
-            )}
+            <p className="rgx-eyebrow"><i aria-hidden="true" />{isRTL ? 'مرحبًا بك في فاب لاب الأحساء' : 'Welcome to FabLab Al-Ahsa'}</p>
+            <h1>{isRTL ? <>التسجيل <em>وحجز المواعيد</em></> : <>Registration <em>&amp; appointments</em></>}</h1>
+            <p>{isRTL
+              ? 'ابحث برقم هويتك أو جوالك إن سجّلت من قبل، أو ابدأ تسجيلًا جديدًا — أو اختر إحدى خدماتنا بالأسفل.'
+              : "Look yourself up by ID or phone if you've registered before, start a new registration, or pick one of our services below."}</p>
           </motion.div>
-        </div>
-      </div>
+        )}
 
-      {/* FABY - AI Assistant Bot */}
-      <FabyBot currentStep={activeStep} formData={formData} />
-    </div>
+        <motion.section
+          className={`rgx-card${activeStep === -1 ? ' is-landing' : ''}`}
+          initial={{ opacity: 0, y: 18 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, delay: 0.1, ease: [0.2, 0.8, 0.2, 1] }}
+        >
+          {activeStep === -1 ? (
+            <UserLookup
+              onUserFound={handleUserFound}
+              onNewUser={() => setActiveStep(0)}
+              theme={theme}
+              guidedChoice={guidedChoice}
+              onGuideApply={handleGuideApply}
+              onGuideClear={handleGuideClear}
+            />
+          ) : (
+            <div className="rgx-content">
+              <AnimatePresence mode="wait">
+                <motion.div
+                  key={activeStep}
+                  initial={{ opacity: 0, x: isRTL ? -24 : 24 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: isRTL ? 24 : -24 }}
+                  transition={{ duration: 0.28, ease: [0.2, 0.8, 0.2, 1] }}
+                >
+                  <p className="rgx-step-eyebrow">
+                    <span>{String(Math.max(0, activeStep) + 1).padStart(2, '0')}</span>
+                    {steps[activeStep]?.label}
+                  </p>
+                  {renderStepContent(activeStep)}
+                </motion.div>
+              </AnimatePresence>
+            </div>
+          )}
+        </motion.section>
+      </StudioShell>
   );
 };
 

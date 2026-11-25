@@ -104,7 +104,7 @@ const RouteFallback = () => {
 const ConditionalLanguageSelector = () => {
   const location = useLocation();
   if (isSitePath(location.pathname)) return null;
-  if (location.pathname === '/login' || location.pathname === '/admin/login' || location.pathname.startsWith('/manager') || location.pathname.startsWith('/elite') || location.pathname.startsWith('/employee') || location.pathname.startsWith('/projects') || location.pathname.startsWith('/workshop') || location.pathname.startsWith('/public/') || location.pathname.startsWith('/fablab-visit') || location.pathname.startsWith('/project-support') || location.pathname.startsWith('/store') || location.pathname.startsWith('/print-service') || location.pathname.startsWith('/print-quote') || location.pathname.startsWith('/pay/') || location.pathname.startsWith('/forms/') || location.pathname.startsWith('/workspace')) return null;
+  if (location.pathname === '/login' || location.pathname.startsWith('/register') || location.pathname === '/admin/login' || location.pathname.startsWith('/manager') || location.pathname.startsWith('/elite') || location.pathname.startsWith('/employee') || location.pathname.startsWith('/projects') || location.pathname.startsWith('/workshop') || location.pathname.startsWith('/public/') || location.pathname.startsWith('/fablab-visit') || location.pathname.startsWith('/project-support') || location.pathname.startsWith('/store') || location.pathname.startsWith('/print-service') || location.pathname.startsWith('/print-quote') || location.pathname.startsWith('/pay/') || location.pathname.startsWith('/forms/') || location.pathname.startsWith('/workspace')) return null;
   return <LanguageSelector />;
 };
 

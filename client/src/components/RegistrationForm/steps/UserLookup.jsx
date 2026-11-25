@@ -384,12 +384,8 @@ const UserLookup = ({ onUserFound, onNewUser, theme, guidedChoice, onGuideApply,
           type="button"
           className="service-card service-card--support"
           onClick={() => goWithIntercept('support', '/project-support')}
-          style={{
-            borderColor: '#c4b5fd',
-            background: 'linear-gradient(135deg, rgba(139, 92, 246, 0.04), rgba(109, 40, 217, 0.02))'
-          }}
         >
-          <div className="service-card-icon" style={{ background: 'linear-gradient(135deg, #8b5cf6, #6d28d9)' }}>
+          <div className="service-card-icon">
             <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
             </svg>
@@ -421,6 +417,28 @@ const UserLookup = ({ onUserFound, onNewUser, theme, guidedChoice, onGuideApply,
             <div className="service-card-title">{isRTL ? 'الورش التدريبية' : 'Training Workshops'}</div>
             <div className="service-card-description">
               {isRTL ? 'سجّل في ورش الإلكترونيات، الطباعة ثلاثية الأبعاد والمزيد' : 'Sign up for electronics, 3D printing and more'}
+            </div>
+          </div>
+          <div className="service-card-arrow" aria-hidden="true">{isRTL ? '←' : '→'}</div>
+        </button>
+
+        {/* Workspace registration — its own page since the workspaces
+            left the general registration form. */}
+        <button
+          type="button"
+          className="service-card service-card--workspace"
+          onClick={() => navigate('/workspace')}
+        >
+          <div className="service-card-icon">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <rect x="2" y="7" width="20" height="14" rx="2" ry="2"/>
+              <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/>
+            </svg>
+          </div>
+          <div className="service-card-body">
+            <div className="service-card-title">{isRTL ? 'تسجيل مساحات العمل' : 'Workspace Registration'}</div>
+            <div className="service-card-description">
+              {isRTL ? 'احجز إحدى مساحات العمل لتنفيذ مشروعك لفترة تصل إلى شهر' : 'Book one of our workspaces for your project — up to one month'}
             </div>
           </div>
           <div className="service-card-arrow" aria-hidden="true">{isRTL ? '←' : '→'}</div>

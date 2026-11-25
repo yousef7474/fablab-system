@@ -1,0 +1,220 @@
+/* =============================================================
+   /register success screen in the studio look (tokens:
+   RegisterStudio.css). Rendered inside .rgx-card.rgx-success.
+   ============================================================= */
+
+.rgx[data-theme] .rgx-ok {
+  display: grid;
+  gap: 20px;
+  padding: 0;
+  text-align: start;
+  animation: none;
+  container-type: inline-size;
+}
+
+/* under-review banner */
+.rgx[data-theme] .rgx-ok-banner {
+  display: grid;
+  justify-items: center;
+  gap: 6px;
+  padding: 22px 20px 20px;
+  border-radius: 22px;
+  border: 1px solid color-mix(in srgb, var(--r-amber) 30%, transparent);
+  background:
+    radial-gradient(420px 180px at 50% 0%, color-mix(in srgb, var(--r-green) 12%, transparent), transparent 70%),
+    var(--r-amber-soft);
+  text-align: center;
+}
+.rgx[data-theme] .rgx-ok-lottie { width: 120px; height: 120px; margin: -6px auto 0; }
+.rgx[data-theme] .rgx-ok-title {
+  margin: 0;
+  font-size: clamp(20px, 2.4vw, 25px);
+  font-weight: 700;
+  line-height: 1.4;
+  color: var(--r-ink);
+}
+.rgx[data-theme] .rgx-ok-warn {
+  display: inline-flex;
+  align-items: flex-start;
+  gap: 8px;
+  max-width: 560px;
+  margin: 4px 0 0;
+  padding: 10px 14px;
+  border-radius: 14px;
+  background: var(--r-surface);
+  border: 1px solid color-mix(in srgb, var(--r-amber) 35%, transparent);
+  color: var(--r-amber-ink);
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.7;
+  text-align: start;
+}
+.rgx[data-theme] .rgx-ok-warn svg { width: 20px; height: 20px; margin-top: 2px; color: var(--r-amber); }
+
+/* four-stage tracker */
+.rgx[data-theme] .rgx-ok-track {
+  list-style: none;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  margin: 0;
+  padding: 0;
+}
+.rgx[data-theme] .rgx-ok-track li {
+  position: relative;
+  display: grid;
+  justify-items: center;
+  gap: 8px;
+  padding: 0 4px;
+  text-align: center;
+}
+/* connector to the next stage */
+.rgx[data-theme] .rgx-ok-track li:not(:last-child)::after {
+  content: '';
+  position: absolute;
+  inset-block-start: 21px;
+  inset-inline-start: calc(50% + 26px);
+  inset-inline-end: calc(-50% + 26px);
+  height: 3px;
+  border-radius: 3px;
+  background: var(--r-line-2);
+}
+.rgx[data-theme] .rgx-ok-track li.is-done:not(:last-child)::after { background: var(--r-green); }
+.rgx[data-theme] .rgx-ok-dot {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 14px;
+  border: 1px solid var(--r-line-2);
+  background: var(--r-surface-2);
+  color: var(--r-ink-3);
+}
+.rgx[data-theme] .rgx-ok-dot svg { width: 20px; height: 20px; }
+.rgx[data-theme] .rgx-ok-track li.is-done .rgx-ok-dot { border-color: transparent; background: var(--r-grad-good); color: #fff; box-shadow: 0 10px 20px -12px #28B070; }
+.rgx[data-theme] .rgx-ok-track li.is-now .rgx-ok-dot {
+  border-color: transparent;
+  background: linear-gradient(135deg, #d97706, #f59e0b);
+  color: #fff;
+  box-shadow: 0 0 0 5px color-mix(in srgb, #f59e0b 22%, transparent);
+  animation: rgx-ok-pulse 2.2s ease-in-out infinite;
+}
+@keyframes rgx-ok-pulse {
+  50% { box-shadow: 0 0 0 9px color-mix(in srgb, #f59e0b 8%, transparent); }
+}
+.rgx[data-theme] .rgx-ok-label { font-size: 12.5px; font-weight: 600; line-height: 1.45; color: var(--r-ink-3); }
+.rgx[data-theme] .rgx-ok-track li.is-done .rgx-ok-label { color: var(--r-green-ink); }
+.rgx[data-theme] .rgx-ok-track li.is-now .rgx-ok-label { color: var(--r-amber-ink); }
+
+/* request card: QR + details */
+.rgx[data-theme] .rgx-ok .success-card {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  justify-items: center;
+  gap: 18px;
+  max-width: none;
+  margin: 0;
+  padding: 20px;
+  border-radius: 22px;
+  border: 1px solid var(--r-line);
+  background: var(--r-surface-2);
+}
+@container (min-width: 600px) {
+  .rgx[data-theme] .rgx-ok .success-card { grid-template-columns: auto minmax(0, 1fr); align-items: center; justify-items: stretch; gap: 24px; }
+}
+.rgx[data-theme] .rgx-ok .qr-container {
+  display: grid;
+  place-items: center;
+  margin: 0;
+  padding: 14px;
+  border-radius: 18px;
+  border: 1px solid var(--r-line);
+  background: #fff;
+  box-shadow: var(--r-shadow);
+}
+.rgx[data-theme] .rgx-ok .qr-container svg { display: block; }
+.rgx[data-theme] .rgx-ok .registration-details { width: 100%; text-align: start; }
+.rgx[data-theme] .rgx-ok .detail-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 11px 2px;
+  border-bottom: 1px solid var(--r-line);
+}
+.rgx[data-theme] .rgx-ok .detail-row:last-child { border-bottom: 0; }
+.rgx[data-theme] .rgx-ok .detail-label { color: var(--r-ink-3); font-size: 13.5px; font-weight: 500; }
+.rgx[data-theme] .rgx-ok .detail-value { color: var(--r-ink); font-size: 14.5px; font-weight: 700; text-align: end; overflow-wrap: anywhere; unicode-bidi: plaintext; }
+.rgx[data-theme] .rgx-ok .detail-row:first-child .detail-value { font-family: 'JetBrains Mono', ui-monospace, monospace; color: var(--r-red-ink); }
+.rgx[data-theme] .rgx-ok-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 5px 12px;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--r-amber) 35%, transparent);
+  background: var(--r-amber-soft);
+  color: var(--r-amber-ink);
+  font-size: 12.5px;
+  font-weight: 700;
+}
+.rgx[data-theme] .rgx-ok-status i { width: 7px; height: 7px; border-radius: 50%; background: #f59e0b; }
+
+/* what happens next */
+.rgx[data-theme] .rgx-ok-next {
+  margin: 0;
+  padding: 16px 18px;
+  border-radius: 18px;
+  border: 1px solid color-mix(in srgb, var(--r-navy) 22%, transparent);
+  background: var(--r-navy-soft);
+}
+.rgx[data-theme] .rgx-ok-next-title { margin: 0 0 8px; font-size: 14.5px; font-weight: 700; color: var(--r-navy-ink); }
+.rgx[data-theme] .rgx-ok-next ul { margin: 0; padding-inline-start: 20px; display: grid; gap: 4px; }
+.rgx[data-theme] .rgx-ok-next li { font-size: 14px; line-height: 1.75; color: var(--r-ink-2); }
+.rgx[data-theme] .rgx-ok-next li::marker { color: var(--r-navy); }
+.rgx[data-theme] .rgx-ok-next li.is-alert { color: var(--r-red-ink); font-weight: 700; }
+.rgx[data-theme] .rgx-ok-next li.is-alert::marker { color: var(--r-red); }
+.rgx[data-theme] .rgx-ok-next-foot { margin: 10px 0 0; font-size: 13px; line-height: 1.7; color: var(--r-ink-3); }
+
+.rgx[data-theme] .rgx-ok .success-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 10px;
+  margin: 0;
+}
+.rgx[data-theme] .rgx-ok .success-buttons .btn { min-width: 180px; }
+
+@media (max-width: 640px) {
+  .rgx[data-theme] .rgx-ok-banner { padding: 18px 14px 16px; }
+  .rgx[data-theme] .rgx-ok-lottie { width: 96px; height: 96px; }
+  .rgx[data-theme] .rgx-ok-track li:not(:last-child)::after { inset-block-start: 19px; inset-inline-start: calc(50% + 22px); inset-inline-end: calc(-50% + 22px); }
+  .rgx[data-theme] .rgx-ok-dot { width: 40px; height: 40px; border-radius: 12px; }
+  .rgx[data-theme] .rgx-ok-label { font-size: 11.5px; }
+  .rgx[data-theme] .rgx-ok .success-card { padding: 16px; }
+  .rgx[data-theme] .rgx-ok .success-buttons .btn { flex: 1 1 100%; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rgx[data-theme] .rgx-ok-track li.is-now .rgx-ok-dot { animation: none; }
+}
+
+/* print: the request card on white, no shadows, buttons hidden */
+@media print {
+  .rgx-ok { gap: 14px !important; }
+  .rgx-ok-banner, .rgx-ok-next, .rgx-ok .success-card {
+    background: #fff !important;
+    border: 1px solid #cbd5e1 !important;
+    box-shadow: none !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+  .rgx-ok-lottie, .rgx-ok .success-buttons { display: none !important; }
+  .rgx-ok-title, .rgx-ok .detail-value { color: #0f1b2d !important; }
+  .rgx-ok .detail-label, .rgx-ok-label { color: #475569 !important; }
+  .rgx-ok .success-card { break-inside: avoid; }
+  .rgx-ok-track li.is-now .rgx-ok-dot { animation: none !important; box-shadow: none !important; }
+  /* the "registered" toast is a screen thing */
+  .Toastify { display: none !important; }
+}

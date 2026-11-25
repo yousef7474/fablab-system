@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { motion } from 'framer-motion';
 import api from '../../../config/api';
+import './DateTimeSelection.studio.css';
 
 // Types that book a single appointment (date + time + duration).
 // Entity (كيان) books a meeting the same way as a beneficiary.
@@ -364,8 +365,9 @@ const DateTimeSelection = ({ formData, onChange, onNext, onBack }) => {
       </h2>
       <p className="step-description">
         {isRTL
-          ? `أوقات العمل: ${(() => { const dayNamesAr = ['أحد','إثنين','ثلاثاء','أربعاء','خميس','جمعة','سبت']; const sorted = [...workingHours.workingDays].sort(); return sorted.length > 0 ? `${dayNamesAr[sorted[0]]} - ${dayNamesAr[sorted[sorted.length-1]]}` : ''; })()}، ${formatTimeAMPM(workingHours.startTime)} - ${formatTimeAMPM(workingHours.endTime)}`
-          : `Working hours: ${(() => { const dayNamesEn = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday']; const sorted = [...workingHours.workingDays].sort(); return sorted.length > 0 ? `${dayNamesEn[sorted[0]]} - ${dayNamesEn[sorted[sorted.length-1]]}` : ''; })()}, ${formatTimeAMPM(workingHours.startTime)} - ${formatTimeAMPM(workingHours.endTime)}`}
+          ? `أوقات العمل: ${(() => { const dayNamesAr = ['أحد','إثنين','ثلاثاء','أربعاء','خميس','جمعة','سبت']; const sorted = [...workingHours.workingDays].sort(); return sorted.length > 0 ? `${dayNamesAr[sorted[0]]} - ${dayNamesAr[sorted[sorted.length-1]]}` : ''; })()}، `
+          : `Working hours: ${(() => { const dayNamesEn = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday']; const sorted = [...workingHours.workingDays].sort(); return sorted.length > 0 ? `${dayNamesEn[sorted[0]]} - ${dayNamesEn[sorted[sorted.length-1]]}` : ''; })()}, `}
+        <bdi dir="ltr">{formatTimeAMPM(workingHours.startTime)} - {formatTimeAMPM(workingHours.endTime)}</bdi>
       </p>
 
       {/* Calendar View for appointment types */}
@@ -490,9 +492,9 @@ const DateTimeSelection = ({ formData, onChange, onNext, onBack }) => {
                 </svg>
                 <div className="warning-content">
                   <strong>{isRTL ? 'إغلاق التسجيل:' : 'Registration Closures:'}</strong>
-                  <ul style={{ margin: '6px 0 0', paddingInlineStart: '18px' }}>
+                  <ul className="rgx-dt-closures">
                     {closures.map(c => (
-                      <li key={c.closureId} style={{ fontSize: '13px' }}>
+                      <li key={c.closureId}>
                         {String(c.startDate).slice(0, 10)} → {String(c.endDate).slice(0, 10)}
                         {' — '}
                         {isRTL ? (c.reasonAr || c.reasonEn) : c.reasonEn}
@@ -543,17 +545,16 @@ const DateTimeSelection = ({ formData, onChange, onNext, onBack }) => {
                 </svg>
                 <span>
                   {isRTL ? 'التاريخ المحدد: ' : 'Selected Date: '}
-                  <strong>{new Date(selectedDate).toLocaleDateString(isRTL ? 'ar-SA' : 'en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</strong>
+                  <strong>{new Date(selectedDate).toLocaleDateString(isRTL ? 'ar-SA-u-ca-gregory-nu-latn' : 'en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</strong>
                 </span>
               </div>
 
               {/* Override info banner */}
               {effectiveHours?.isOverride && (
                 <motion.div
-                  className="info-banner"
+                  className="info-banner warning"
                   initial={{ opacity: 0, y: -10 }}
                   animate={{ opacity: 1, y: 0 }}
-                  style={{ background: '#fef3c7', border: '1px solid #f59e0b', color: '#92400e', marginBottom: '12px' }}
                 >
                   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                     <circle cx="12" cy="12" r="10"/>
@@ -620,12 +621,15 @@ const DateTimeSelection = ({ formData, onChange, onNext, onBack }) => {
                   </svg>
                   <span>
                     {formData.appointmentDuration
-                      ? (isRTL
-                          ? `تم اختيار الموعد: ${formatTimeAMPM(formData.appointmentTime)} - ${formatTimeAMPM(getEndTime(formData.appointmentTime, formData.appointmentDuration))}`
-                          : `Appointment: ${formatTimeAMPM(formData.appointmentTime)} - ${formatTimeAMPM(getEndTime(formData.appointmentTime, formData.appointmentDuration))}`)
-                      : (isRTL
-                          ? `تم اختيار الوقت: ${formatTimeAMPM(formData.appointmentTime)} - يرجى اختيار المدة`
-                          : `Time selected: ${formatTimeAMPM(formData.appointmentTime)} - Please select duration`)}
+                      ? <>
+                          {isRTL ? 'تم اختيار الموعد: ' : 'Appointment: '}
+                          <bdi dir="ltr">{formatTimeAMPM(formData.appointmentTime)} - {formatTimeAMPM(getEndTime(formData.appointmentTime, formData.appointmentDuration))}</bdi>
+                        </>
+                      : <>
+                          {isRTL ? 'تم اختيار الوقت: ' : 'Time selected: '}
+                          <bdi dir="ltr">{formatTimeAMPM(formData.appointmentTime)}</bdi>
+                          {isRTL ? ' - يرجى اختيار المدة' : ' - Please select duration'}
+                        </>}
                   </span>
                 </motion.div>
               )}

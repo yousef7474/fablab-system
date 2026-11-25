@@ -5,6 +5,7 @@ import QRCode from 'react-qr-code';
 import confetti from 'canvas-confetti';
 import Lottie from 'lottie-react';
 import successAnimation from '../../lottie/success.json';
+import './SuccessPage.studio.css';
 
 const formatTimeAMPM = (time24) => {
   if (!time24) return '';
@@ -28,7 +29,7 @@ const SuccessPage = ({ registration }) => {
         origin: { y: 0.7 },
         ...opts,
         particleCount: Math.floor(200 * particleRatio),
-        colors: ['#a78bfa', '#22d3ee', '#f472b6', '#a3e635', '#fb923c']
+        colors: ['#EE2329', '#2A4F7C', '#28B070', '#f59e0b', '#8db4e6']
       });
     };
     // Layered burst for richer effect
@@ -39,83 +40,79 @@ const SuccessPage = ({ registration }) => {
     fire(0.1,  { spread: 120, startVelocity: 45 });
   }, []);
 
+  // Stroke icons (24-unit grid) for the four-stage tracker.
   const steps = [
-    { icon: '📝', labelAr: 'تم إرسال الطلب', labelEn: 'Request Submitted', done: true },
-    { icon: '🔍', labelAr: 'قيد مراجعة المهندس', labelEn: 'Engineer Review', done: false, active: true },
-    { icon: '📧', labelAr: 'رسالة تأكيد بالبريد', labelEn: 'Confirmation Email', done: false },
-    { icon: '🏢', labelAr: 'الحضور لفاب لاب', labelEn: 'Visit FabLab', done: false },
+    { d: ['M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z', 'M14 2v6h6', 'M9 15l2 2 4-4'], labelAr: 'تم إرسال الطلب', labelEn: 'Request Submitted', done: true },
+    { d: ['M11 19a8 8 0 1 0 0-16 8 8 0 0 0 0 16z', 'M21 21l-4.35-4.35'], labelAr: 'قيد مراجعة المهندس', labelEn: 'Engineer Review', done: false, active: true },
+    { d: ['M4 4h16a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z', 'M22 6l-10 7L2 6'], labelAr: 'رسالة تأكيد بالبريد', labelEn: 'Confirmation Email', done: false },
+    { d: ['M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z', 'M9 22V12h6v10'], labelAr: 'الحضور لفاب لاب', labelEn: 'Visit FabLab', done: false },
   ];
+  const Icon = ({ d }) => (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      {d.map(p => <path key={p} d={p} />)}
+    </svg>
+  );
 
   return (
-    <div className="success-page" style={{ padding: '2rem 1.5rem' }}>
-      {/* Warning Banner */}
+    <div className="success-page rgx-ok">
+      {/* Under-review banner */}
       <motion.div
+        className="rgx-ok-banner"
         initial={{ opacity: 0, y: -10 }}
         animate={{ opacity: 1, y: 0 }}
-        style={{ background: '#fffbeb', border: '2px solid #f59e0b', borderRadius: 16, padding: '1.5rem', marginBottom: '2rem', textAlign: 'center' }}
       >
         <motion.div
+          className="rgx-ok-lottie"
           initial={{ scale: 0 }}
           animate={{ scale: 1 }}
           transition={{ type: 'spring', stiffness: 200 }}
-          style={{ width: 140, height: 140, margin: '0 auto 0.5rem' }}
         >
-          <Lottie animationData={successAnimation} loop={false} autoplay style={{ width: '100%', height: '100%' }} />
+          {/* frames 45-56 shrink the tick away — stop on the full tick */}
+          <Lottie animationData={successAnimation} loop={false} autoplay initialSegment={[0, 45]} style={{ width: '100%', height: '100%' }} />
         </motion.div>
 
         <motion.h2
+          className="rgx-ok-title"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 0.2 }}
-          style={{ color: '#92400e', fontSize: '1.3rem', fontWeight: 800, margin: '0 0 0.5rem' }}
         >
           {isRTL ? 'تم استلام طلبك — قيد المراجعة' : 'Request Received — Under Review'}
         </motion.h2>
 
         <motion.p
+          className="rgx-ok-warn"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 0.3 }}
-          style={{ color: '#78350f', fontSize: '1rem', fontWeight: 600, lineHeight: 1.7, margin: 0 }}
         >
-          {isRTL
-            ? '⚠ لا تحضر إلى فاب لاب حتى تستلم رسالة تأكيد عبر البريد الإلكتروني من المهندس المسؤول'
-            : '⚠ Do NOT come to FabLab until you receive a confirmation email from the responsible engineer'}
+          <Icon d={['M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z', 'M12 9v4', 'M12 17h.01']} />
+          <span>
+            {isRTL
+              ? 'لا تحضر إلى فاب لاب حتى تستلم رسالة تأكيد عبر البريد الإلكتروني من المهندس المسؤول'
+              : 'Do NOT come to FabLab until you receive a confirmation email from the responsible engineer'}
+          </span>
         </motion.p>
       </motion.div>
 
-      {/* Steps Tracker */}
-      <motion.div
+      {/* Stage tracker */}
+      <motion.ol
+        className="rgx-ok-track"
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.35 }}
-        style={{ display: 'flex', justifyContent: 'center', alignItems: 'flex-start', gap: 0, margin: '0 0 2rem', padding: '0 0.5rem' }}
       >
         {steps.map((s, i) => (
-          <React.Fragment key={i}>
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', flex: 1, maxWidth: 90 }}>
-              <div style={{
-                width: 44, height: 44, borderRadius: '50%',
-                background: s.done ? '#22c55e' : s.active ? '#f59e0b' : '#e2e8f0',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                fontSize: '1.2rem', color: s.done || s.active ? 'white' : '#94a3b8',
-                boxShadow: s.active ? '0 0 0 4px rgba(245,158,11,0.25)' : 'none',
-                transition: 'all 0.3s'
-              }}>
-                {s.done ? '✓' : s.icon}
-              </div>
-              <span style={{ fontSize: '0.68rem', color: s.done ? '#166534' : s.active ? '#92400e' : '#64748b', fontWeight: 600, marginTop: 6, textAlign: 'center', lineHeight: 1.3 }}>
-                {isRTL ? s.labelAr : s.labelEn}
-              </span>
-            </div>
-            {i < steps.length - 1 && (
-              <div style={{ height: 3, flex: '0 0 20px', background: s.done ? '#22c55e' : '#e2e8f0', borderRadius: 2, marginTop: 20, alignSelf: 'flex-start' }} />
-            )}
-          </React.Fragment>
+          <li key={i} className={s.done ? 'is-done' : s.active ? 'is-now' : ''}>
+            <span className="rgx-ok-dot">
+              <Icon d={s.done ? ['M20 6 9 17l-5-5'] : s.d} />
+            </span>
+            <span className="rgx-ok-label">{isRTL ? s.labelAr : s.labelEn}</span>
+          </li>
         ))}
-      </motion.div>
+      </motion.ol>
 
-      {/* Registration Details Card */}
+      {/* Registration details card */}
       <motion.div
         className="success-card"
         initial={{ opacity: 0, y: 20 }}
@@ -149,30 +146,29 @@ const SuccessPage = ({ registration }) => {
           </div>
           <div className="detail-row">
             <span className="detail-label">{isRTL ? 'الحالة' : 'Status'}</span>
-            <span style={{ padding: '4px 14px', borderRadius: 8, fontWeight: 700, fontSize: '0.85rem', background: '#fef3c7', color: '#92400e', border: '1.5px solid #f59e0b' }}>
-              {isRTL ? '⏳ قيد المراجعة' : '⏳ UNDER REVIEW'}
+            <span className="rgx-ok-status">
+              <i aria-hidden="true" />
+              {isRTL ? 'قيد المراجعة' : 'UNDER REVIEW'}
             </span>
           </div>
         </div>
       </motion.div>
 
-      {/* What to Expect */}
+      {/* What to expect */}
       <motion.div
+        className="rgx-ok-next"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ delay: 0.5 }}
-        style={{ margin: '1.5rem 0', padding: '1rem 1.25rem', background: '#f0f9ff', borderRadius: 12, border: '1px solid #bae6fd' }}
       >
-        <p style={{ fontWeight: 700, color: '#0c4a6e', marginBottom: '0.5rem', fontSize: '0.9rem' }}>
-          {isRTL ? 'ماذا بعد؟' : 'What happens next?'}
-        </p>
-        <ul style={{ margin: 0, paddingInlineStart: '1.25rem', color: '#0369a1', fontSize: '0.85rem', lineHeight: 2 }}>
+        <p className="rgx-ok-next-title">{isRTL ? 'ماذا بعد؟' : 'What happens next?'}</p>
+        <ul>
           <li>{isRTL ? 'سيراجع المهندس المسؤول طلبك' : 'The responsible engineer will review your request'}</li>
           <li>{isRTL ? 'ستستلم رسالة تأكيد أو رفض عبر البريد الإلكتروني' : 'You will receive an acceptance or rejection email'}</li>
           <li>{isRTL ? 'في حالة القبول، يمكنك الحضور في الموعد المحدد' : 'If accepted, you can come at the scheduled time'}</li>
-          <li style={{ color: '#dc2626', fontWeight: 700 }}>{isRTL ? 'لا تحضر بدون رسالة تأكيد!' : 'Do NOT come without a confirmation email!'}</li>
+          <li className="is-alert">{isRTL ? 'لا تحضر بدون رسالة تأكيد!' : 'Do NOT come without a confirmation email!'}</li>
         </ul>
-        <p style={{ margin: '0.75rem 0 0', fontSize: '0.82rem', color: '#64748b' }}>
+        <p className="rgx-ok-next-foot">
           {isRTL ? 'في حال عدم استلام رد خلال 48 ساعة، تواصل معنا عبر البريد أو الهاتف.' : 'If you don\'t hear back within 48 hours, contact us via email or phone.'}
         </p>
       </motion.div>
@@ -185,20 +181,11 @@ const SuccessPage = ({ registration }) => {
         transition={{ delay: 0.6 }}
       >
         <button className="btn btn-primary" onClick={handlePrint}>
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <polyline points="6 9 6 2 18 2 18 9"/>
-            <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/>
-            <rect x="6" y="14" width="12" height="8"/>
-          </svg>
+          <Icon d={['M6 9V2h12v7', 'M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2', 'M6 14h12v8H6z']} />
           {t('print')}
         </button>
         <button className="btn btn-secondary" onClick={handleNewRegistration}>
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/>
-            <path d="M21 3v5h-5"/>
-            <path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/>
-            <path d="M8 16H3v5"/>
-          </svg>
+          <Icon d={['M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8', 'M21 3v5h-5', 'M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16', 'M8 16H3v5']} />
           {isRTL ? 'تسجيل جديد' : 'New Registration'}
         </button>
       </motion.div>

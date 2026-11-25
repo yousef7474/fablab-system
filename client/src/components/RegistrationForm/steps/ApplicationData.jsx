@@ -226,7 +226,7 @@ const ApplicationData = ({ formData, onChange, onNext, onBack }) => {
               transition={{ delay: 0.35 }}
             >
               <label className="form-label">
-                {isRTL ? 'اسم الجهة التابع لها (مدرسة/جامعة/شركة/إلخ)' : 'Organization Name (School/University/Company/etc.)'} <span style={{ color: '#dc2626' }}>*</span>
+                {isRTL ? 'اسم الجهة التابع لها (مدرسة/جامعة/شركة/إلخ)' : 'Organization Name (School/University/Company/etc.)'} <span className="required">*</span>
               </label>
               <input
                 type="text"
@@ -264,87 +264,20 @@ const ApplicationData = ({ formData, onChange, onNext, onBack }) => {
               <label className="form-label">
                 {isRTL ? 'الصورة الشخصية (للبطاقة)' : 'Profile Picture (for ID Card)'}
               </label>
-              <div style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '1rem',
-                flexWrap: 'wrap'
-              }}>
+              <div className="rgx-photo">
                 {formData.profilePicture ? (
-                  <div style={{
-                    position: 'relative',
-                    width: '100px',
-                    height: '120px',
-                    borderRadius: '8px',
-                    overflow: 'hidden',
-                    border: '2px solid #16a34a',
-                    boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
-                  }}>
-                    <img
-                      src={formData.profilePicture}
-                      alt="Profile"
-                      style={{
-                        width: '100%',
-                        height: '100%',
-                        objectFit: 'cover'
-                      }}
-                    />
-                    <button
-                      type="button"
-                      onClick={removeProfilePicture}
-                      style={{
-                        position: 'absolute',
-                        top: '4px',
-                        right: '4px',
-                        width: '24px',
-                        height: '24px',
-                        background: '#16a34a',
-                        color: 'white',
-                        border: 'none',
-                        borderRadius: '50%',
-                        cursor: 'pointer',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        fontSize: '14px',
-                        fontWeight: 'bold'
-                      }}
-                    >
-                      ×
-                    </button>
+                  <div className="rgx-photo-img">
+                    <img src={formData.profilePicture} alt="Profile" />
+                    <button type="button" onClick={removeProfilePicture} aria-label={isRTL ? 'إزالة الصورة' : 'Remove photo'}>×</button>
                   </div>
                 ) : (
-                  <div
-                    onClick={() => fileInputRef.current?.click()}
-                    style={{
-                      width: '100px',
-                      height: '120px',
-                      border: '2px dashed #ccc',
-                      borderRadius: '8px',
-                      display: 'flex',
-                      flexDirection: 'column',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      cursor: 'pointer',
-                      transition: 'all 0.2s',
-                      background: '#f9f9f9'
-                    }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.borderColor = '#16a34a';
-                      e.currentTarget.style.background = '#f0fdf4';
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.borderColor = '#ccc';
-                      e.currentTarget.style.background = '#f9f9f9';
-                    }}
-                  >
-                    <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#999" strokeWidth="1.5">
-                      <path d="M12 5v14M5 12h14"/>
+                  <button type="button" className="rgx-photo-pick" onClick={() => fileInputRef.current?.click()}>
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                      <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+                      <circle cx="12" cy="13" r="4"/>
                     </svg>
-                    <span style={{ fontSize: '11px', color: '#666', marginTop: '4px', textAlign: 'center' }}>
-                      {isRTL ? 'إضافة صورة' : 'Add Photo'}
-                    </span>
-                  </div>
+                    {isRTL ? 'إضافة صورة' : 'Add Photo'}
+                  </button>
                 )}
                 <input
                   ref={fileInputRef}
@@ -353,23 +286,21 @@ const ApplicationData = ({ formData, onChange, onNext, onBack }) => {
                   onChange={handleProfilePictureChange}
                   style={{ display: 'none' }}
                 />
-                <div style={{ flex: 1, minWidth: '200px' }}>
-                  <p style={{ margin: 0, fontSize: '13px', color: '#666', lineHeight: 1.5 }}>
-                    {isRTL ? (
-                      <>
-                        📷 الصورة ستُطبع على بطاقة الهوية الخاصة بك<br />
-                        • الحجم الأقصى: 5 ميجابايت<br />
-                        • جميع صيغ الصور مدعومة
-                      </>
-                    ) : (
-                      <>
-                        📷 Photo will be printed on your ID card<br />
-                        • Max size: 5MB<br />
-                        • All image formats supported
-                      </>
-                    )}
-                  </p>
-                </div>
+                <p className="rgx-photo-hint">
+                  {isRTL ? (
+                    <>
+                      الصورة ستُطبع على بطاقة الهوية الخاصة بك<br />
+                      • الحجم الأقصى: 5 ميجابايت<br />
+                      • جميع صيغ الصور مدعومة
+                    </>
+                  ) : (
+                    <>
+                      Photo will be printed on your ID card<br />
+                      • Max size: 5MB<br />
+                      • All image formats supported
+                    </>
+                  )}
+                </p>
               </div>
             </motion.div>
           </>
@@ -500,39 +431,23 @@ const ApplicationData = ({ formData, onChange, onNext, onBack }) => {
       {/* Conflict warnings */}
       {conflicts.length > 0 && (
         <motion.div
-          className="conflicts-warning"
+          className="conflicts-warning rgx-conflicts"
           initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
-          style={{
-            background: '#fef2f2',
-            border: '1px solid #fecaca',
-            borderRadius: '12px',
-            padding: '1rem',
-            marginTop: '1rem'
-          }}
         >
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.75rem' }}>
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#dc2626" strokeWidth="2">
+          <div className="rgx-conflicts-head">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
               <circle cx="12" cy="12" r="10"/>
               <line x1="12" y1="8" x2="12" y2="12"/>
               <line x1="12" y1="16" x2="12.01" y2="16"/>
             </svg>
-            <span style={{ color: '#dc2626', fontWeight: '600' }}>
-              {isRTL ? 'تم العثور على تعارض في البيانات' : 'Data Conflict Found'}
-            </span>
+            <span>{isRTL ? 'تم العثور على تعارض في البيانات' : 'Data Conflict Found'}</span>
           </div>
           {conflicts.map((conflict, index) => (
-            <div key={index} style={{
-              background: 'white',
-              padding: '0.75rem',
-              borderRadius: '8px',
-              marginBottom: index < conflicts.length - 1 ? '0.5rem' : 0
-            }}>
-              <p style={{ color: '#991b1b', margin: 0, fontSize: '0.9rem' }}>
-                {isRTL ? conflict.messageAr : conflict.message}
-              </p>
+            <div key={index} className="rgx-conflict">
+              <p>{isRTL ? conflict.messageAr : conflict.message}</p>
               {conflict.existingUser && (
-                <p style={{ color: '#666', margin: '0.5rem 0 0 0', fontSize: '0.85rem' }}>
+                <p>
                   {isRTL ? 'المستخدم المسجل: ' : 'Registered user: '}
                   <strong>{conflict.existingUser.name}</strong>
                   {conflict.existingUser.email && ` (${conflict.existingUser.email})`}
@@ -541,7 +456,7 @@ const ApplicationData = ({ formData, onChange, onNext, onBack }) => {
               )}
             </div>
           ))}
-          <p style={{ color: '#666', margin: '0.75rem 0 0 0', fontSize: '0.85rem' }}>
+          <p>
             {isRTL
               ? 'يرجى استخدام خيار "البحث" في الصفحة الرئيسية للدخول بحسابك المسجل، أو تعديل البيانات المتعارضة.'
               : 'Please use the "Search" option on the home page to login with your registered account, or modify the conflicting data.'}
