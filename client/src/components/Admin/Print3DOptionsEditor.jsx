@@ -37,7 +37,7 @@ const Toggle = ({ on, onChange, disabled, isRTL }) => (
   </button>
 );
 
-const Print3DOptionsEditor = ({ initial, canEdit, isRTL, onClose, onSaved }) => {
+const Print3DOptionsEditor = ({ initial, canEdit, isRTL, onClose, onSaved, apiClient = api }) => {
   const [draft, setDraft] = useState(() => toDraft(initial));
   const [saving, setSaving] = useState(false);
   const [dirty, setDirty] = useState(false);
@@ -147,7 +147,7 @@ const Print3DOptionsEditor = ({ initial, canEdit, isRTL, onClose, onSaved }) => 
           enabled: !!c.enabled
         }))
       };
-      const { data } = await api.put('/print3d/options', payload);
+      const { data } = await apiClient.put('/print3d/options', payload);
       toast.success(isRTL ? 'تم حفظ الخامات والألوان' : 'Materials & colors saved');
       setDirty(false);
       onSaved(data);

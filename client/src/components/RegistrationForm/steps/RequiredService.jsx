@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
+import React, { useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
+import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import WorkspacePolicyDialog from '../WorkspacePolicy';
 
 // In-person and online consultation are one or the other.
 const CONSULTATIONS = ['In-person consultation', 'Online consultation'];
@@ -9,7 +9,15 @@ const CONSULTATIONS = ['In-person consultation', 'Online consultation'];
 const RequiredService = ({ formData, onChange, onNext, onBack, theme }) => {
   const { t, i18n } = useTranslation();
   const isRTL = i18n.language === 'ar';
-  const [showPolicy, setShowPolicy] = useState(false);
+
+  // Workspaces have their own page (/workspace) now; drop the old choice
+  // if a saved draft still carries it.
+  useEffect(() => {
+    if (formData.requiredServices.includes('Personal workspace')) {
+      onChange({ requiredServices: formData.requiredServices.filter(s => s !== 'Personal workspace') });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const services = [
     {
@@ -48,18 +56,6 @@ const RequiredService = ({ formData, onChange, onNext, onBack, theme }) => {
           <line x1="10" y1="10" x2="10" y2="14"/>
           <line x1="14" y1="10" x2="14" y2="14"/>
           <line x1="18" y1="10" x2="18" y2="14"/>
-        </svg>
-      )
-    },
-    {
-      value: 'Personal workspace',
-      labelEn: 'Personal Workspace',
-      labelAr: 'مساحة عمل شخصية',
-      icon: (
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-          <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
-          <line x1="3" y1="9" x2="21" y2="9"/>
-          <line x1="9" y1="21" x2="9" y2="9"/>
         </svg>
       )
     },
@@ -139,17 +135,6 @@ const RequiredService = ({ formData, onChange, onNext, onBack, theme }) => {
               className={`checkbox-card ${isSelected ? 'selected' : ''} ${isDisabled ? 'disabled' : ''}`}
               onClick={() => !isDisabled && handleServiceToggle(service.value)}
             >
-              {service.value === 'Personal workspace' && (
-                <button
-                  type="button"
-                  className="rs-info-btn"
-                  onClick={(e) => { e.stopPropagation(); setShowPolicy(true); }}
-                  title={isRTL ? 'سياسة استخدام مساحة العمل' : 'Workspace policy'}
-                  aria-label={isRTL ? 'سياسة استخدام مساحة العمل' : 'Workspace policy'}
-                >
-                  !
-                </button>
-              )}
               <div className="checkbox-card-check">
                 {isSelected && (
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
@@ -181,9 +166,10 @@ const RequiredService = ({ formData, onChange, onNext, onBack, theme }) => {
         </p>
       )}
 
-      {showPolicy && (
-        <WorkspacePolicyDialog theme={theme} isRTL={isRTL} onClose={() => setShowPolicy(false)} />
-      )}
+      <p className="rs-consult-hint">
+        {isRTL ? 'لحجز مساحة عمل: ' : 'To book a workspace: '}
+        <Link to="/workspace">{isRTL ? 'صفحة تسجيل مساحات العمل' : 'the workspace registration page'}</Link>
+      </p>
 
       {formData.requiredServices.includes('Other') && (
         <motion.div

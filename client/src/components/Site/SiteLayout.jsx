@@ -31,6 +31,7 @@ export const REGISTER_MENU = [
   ['regServices', '/register', 'fa-clipboard-list'],
   ['regWorkshops', '/workshop', 'fa-chalkboard-teacher'],
   ['regVisit', '/fablab-visit', 'fa-building'],
+  ['regWorkspace', '/workspace', 'fa-laptop'],
   ['regProjectSupport', '/project-support', 'fa-lightbulb'],
   ['reg3d', '/print-service', 'fa-cube'],
   ['regStore', '/store', 'fa-store'],

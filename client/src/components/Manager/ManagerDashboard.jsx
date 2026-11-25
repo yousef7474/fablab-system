@@ -27,6 +27,7 @@ import YearCalendar from '../YearCalendar/YearCalendar';
 import '../Admin/Admin.css';
 import './Manager.css';
 import { WorkspaceScheduleEditor, WorkspaceScheduleChips, WorkspaceStatusControl, activationError, scheduleError, scheduleBannerHtml, scheduleBannerClass, SCHEDULE_BANNER_CSS } from '../shared/workspaceSchedule';
+import WorkspaceRequests from '../shared/WorkspaceRequests';
 // Dashboard theme — imported last so it sits on top of the CSS above.
 import '../../styles/fx.css';
 import '../../styles/fx-manager.css';
@@ -7114,6 +7115,8 @@ const ManagerDashboard = () => {
         {/* Workspaces Content */}
         {activeTab === 'workspaces' && (
           <div className="workspaces-content">
+            {/* Requests from the public /workspace page */}
+            <WorkspaceRequests isRTL={isRTL} />
             {/* Stats Cards */}
             <div className="stats-grid">
               <div className="stat-card">

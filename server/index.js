@@ -37,6 +37,9 @@ const fablabVisitRoutes = require('./routes/fablabVisitRoutes');
 const siteRoutes = require('./routes/siteRoutes');
 const siteAdminRoutes = require('./routes/siteAdminRoutes');
 const { publicRouter: payRoutes, adminRouter: paymentPageAdminRoutes } = require('./routes/paymentPageRoutes');
+const { publicRouter: fabFormPublicRoutes, adminRouter: fabFormAdminRoutes } = require('./routes/fabFormRoutes');
+const { seedFabForms } = require('./controllers/fabFormController');
+const { publicRouter: workspacePublicRoutes, adminRouter: workspaceRequestRoutes } = require('./routes/workspaceRequestRoutes');
 const calendarEventRoutes = require('./routes/calendarEventRoutes');
 const storeRoutes = require('./routes/storeRoutes');
 const print3DRoutes = require('./routes/print3DRoutes');
@@ -98,6 +101,12 @@ app.use('/api/site-admin', siteAdminRoutes);
 // Payment pages: public /pay/:slug checkout + the admin "صفحات الدفع" tab.
 app.use('/api/pay', payRoutes);
 app.use('/api/payment-pages', paymentPageAdminRoutes);
+// FabLab forms: public /forms/:slug + the admin "نماذج فاب لاب" tab.
+app.use('/api/forms', fabFormPublicRoutes);
+app.use('/api/fablab-forms', fabFormAdminRoutes);
+// Workspace registration: public /workspace page + admin/manager review.
+app.use('/api/public/workspace', workspacePublicRoutes);
+app.use('/api/workspace-requests', workspaceRequestRoutes);
 app.use('/api/training-kits', require('./routes/trainingKitRoutes'));
 app.use('/api/execution-plans', require('./routes/executionPlanRoutes'));
 app.use('/api/financial-requests', require('./routes/financialRequestRoutes'));
@@ -191,6 +200,9 @@ const startServer = async () => {
     // Seed initial mailing-list customers (idempotent — no-op if table
     // already has rows). Runs after sync so the customers table exists.
     await seedInitialCustomers();
+
+    // The first FabLab form (the لقاء registration), created once.
+    await seedFabForms();
 
     // Backfill the approval archive from historical rows (idempotent —
     // skips anything already archived). Existing pending / approved /

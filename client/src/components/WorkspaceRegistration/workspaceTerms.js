@@ -1,12 +1,20 @@
-import React, { useEffect, useRef } from 'react';
-import { createPortal } from 'react-dom';
-import { motion } from 'framer-motion';
-import './RegistrationGuide.css';
+// The workspace terms shown on /workspace before a request can be sent.
+// RULES: «شروط وأحكام استخدام مساحة العمل» (the printed workspace banner in
+// the admin / manager boards — keep them in step). POLICY: «سياسة استخدام
+// مساحة العمل والدعم الفني» (moved here from the registration form).
 
-// Main points of «سياسة استخدام مساحة العمل والدعم الفني» (FabLab
-// Al-Ahsa, Abdulmonem Al-Rashed Humanitarian Foundation), shown from
-// the "!" next to the Personal workspace service.
-const POINTS = [
+export const RULES = [
+  { ar: 'يجب الحفاظ على نظافة وترتيب مساحة العمل في جميع الأوقات', en: 'Keep the workspace clean and organized at all times' },
+  { ar: 'يجب وضع كيس بلاستيكي على الطاولة قبل البدء بالعمل', en: 'Place a plastic cover on the table before starting work' },
+  { ar: 'يمنع إتلاف أو إلحاق الضرر بالأدوات والمعدات', en: 'Do not damage or misuse tools and equipment' },
+  { ar: 'يجب إعادة جميع الأدوات إلى أماكنها بعد الاستخدام وعدم فقدانها', en: 'Return all tools to their places after use — do not lose them' },
+  { ar: 'الالتزام بالفترة الزمنية المحددة للحجز فقط', en: 'You may only use the workspace during your reserved period' },
+  { ar: 'في حال الحاجة لوقت إضافي، يجب عمل حجز جديد', en: 'If you need more time, you must make a new reservation' },
+  { ar: 'يجب ارتداء معدات السلامة عند استخدام الآلات', en: 'Wear safety gear when operating machinery' },
+  { ar: 'يمنع إدخال الطعام والمشروبات إلى منطقة العمل', en: 'No food or drinks allowed in the work area' }
+];
+
+export const POLICY = [
   {
     ar: ['خدمة تمكينية', 'نوفّر لك بيئة عمل آمنة والأدوات والأجهزة والإرشاد الفني لتنفّذ مشروعك بنفسك؛ مساحة العمل ليست خدمة لتنفيذ المشروع نيابةً عنك.'],
     en: ['An enabling service', 'We provide a safe space, tools, equipment and technical guidance so you can build your project yourself — the workspace is not a service that builds it for you.']
@@ -48,61 +56,3 @@ const POINTS = [
     en: ['Professional conduct', 'Mutual respect comes first: no insults, mockery or pressure on staff. Feedback and complaints go through the official channels.']
   }
 ];
-
-const WorkspacePolicyDialog = ({ theme, isRTL, onClose }) => {
-  const closeRef = useRef(null);
-
-  useEffect(() => { closeRef.current?.focus(); }, []);
-  useEffect(() => {
-    const onKey = (e) => { if (e.key === 'Escape') onClose(); };
-    document.addEventListener('keydown', onKey);
-    return () => document.removeEventListener('keydown', onKey);
-  }, [onClose]);
-
-  return createPortal(
-    <div className="rg-overlay" data-theme={theme === 'light' ? 'light' : 'dark'} dir={isRTL ? 'rtl' : 'ltr'} onClick={onClose}>
-      <motion.div
-        className="wsp-dialog"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="wsp-title"
-        onClick={e => e.stopPropagation()}
-        initial={{ opacity: 0, y: 16, scale: 0.97 }}
-        animate={{ opacity: 1, y: 0, scale: 1 }}
-        transition={{ type: 'spring', stiffness: 320, damping: 26 }}
-      >
-        <div className="wsp-head">
-          <div className="wsp-icon" aria-hidden="true">!</div>
-          <div>
-            <h3 id="wsp-title" className="wsp-title">
-              {isRTL ? 'سياسة استخدام مساحة العمل والدعم الفني' : 'Workspace & Technical Support Policy'}
-            </h3>
-            <p className="wsp-sub">{isRTL ? 'أبرز النقاط — فاب لاب الأحساء' : 'Key points — FabLab Al-Ahsa'}</p>
-          </div>
-        </div>
-        <ol className="wsp-list">
-          {POINTS.map((p, i) => {
-            const [title, text] = isRTL ? p.ar : p.en;
-            return (
-              <li key={i} className="wsp-item">
-                <span className="wsp-num">{i + 1}</span>
-                <div>
-                  <b>{title}</b>
-                  <p>{text}</p>
-                </div>
-              </li>
-            );
-          })}
-        </ol>
-        <div className="wsp-foot">
-          <button ref={closeRef} type="button" className="ent-btn primary" onClick={onClose}>
-            {isRTL ? 'فهمت' : 'Got it'}
-          </button>
-        </div>
-      </motion.div>
-    </div>,
-    document.body
-  );
-};
-
-export default WorkspacePolicyDialog;

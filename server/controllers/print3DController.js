@@ -1,6 +1,6 @@
 const crypto = require('crypto');
 const { Op } = require('sequelize');
-const { Print3DRequest, Settings } = require('../models');
+const { Print3DRequest, Settings, Employee } = require('../models');
 const { sequelize } = require('../config/database');
 const sgMail = require('@sendgrid/mail');
 const { computePrint3dStatus } = require('./settingsController');
@@ -8,6 +8,7 @@ const {
   DEFAULT_PRINT3D_OPTIONS, rateKeyFor, normCode, normHex,
   validatePrint3dOptions, sanitizePrint3dOptions, publicPrint3dOptions, isColorOffered
 } = require('../utils/print3dOptions');
+const { PRINT3D_STAFF_KEY, print3dStaffEmails, isPrint3dStaff } = require('../utils/print3dStaff');
 if (process.env.SENDGRID_API_KEY) sgMail.setApiKey(process.env.SENDGRID_API_KEY);
 
 const PRINT3D_NOTIFY_EMAIL = 'fablabspec@fablabsahsa.com';
@@ -17,6 +18,16 @@ const fmtRequestNumber = (n) => n == null ? '—' : `P3D-${String(n).padStart(4,
 const _publicOrigin = () =>
   process.env.PUBLIC_APP_URL ||
   (process.env.NODE_ENV === 'production' ? 'https://fablabsahsa.com' : 'http://localhost:3000');
+
+// The same heads-up the ops inbox gets, to the 3D printing staff — with
+// the button opening their employee board instead of the admin one.
+const _notifyStaff = async (subject, html, text) => {
+  try {
+    const staff = await print3dStaffEmails();
+    if (!staff.length) return;
+    await _sendMail(staff, subject, html.split('/admin/dashboard?tab=print3d').join('/employee/dashboard'), text);
+  } catch (e) { console.error('print3d staff email:', e.message); }
+};
 
 const DEFAULT_RATES = {
   PLA: 1.5, PETG: 2.0, TPU: 3.0,
@@ -309,6 +320,7 @@ exports.publicCreate = async (req, res) => {
           </div>
         </div>`;
         await _sendMail(PRINT3D_NOTIFY_EMAIL, `طلب طباعة ثلاثية الأبعاد ${reqNo} — ${r.customerName}`, adminHtml, `New 3D print request ${reqNo} from ${r.customerName}`);
+        await _notifyStaff(`طلب طباعة ثلاثية الأبعاد ${reqNo} — ${r.customerName}`, adminHtml, `New 3D print request ${reqNo} from ${r.customerName}`);
 
         const customerHtml = `<div style="font-family:Segoe UI,Tahoma,Arial,sans-serif;color:#0f172a;background:#f4f6fb;padding:24px" dir="rtl">
           <div style="max-width:640px;margin:0 auto;background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 4px 20px rgba(15,23,42,0.08)">
@@ -419,6 +431,7 @@ exports.publicDecide = async (req, res) => {
           </div>
         </div>`;
         await _sendMail(PRINT3D_NOTIFY_EMAIL, `قرار العميل — ${reqNo} (${decision === 'accept' ? 'قبول' : 'رفض'})`, html, `Customer ${decision} on ${reqNo}`);
+        await _notifyStaff(`قرار العميل — ${reqNo} (${decision === 'accept' ? 'قبول' : 'رفض'})`, html, `Customer ${decision} on ${reqNo}`);
       } catch (e) { console.error('print3d decision email:', e); }
     });
 
@@ -949,6 +962,45 @@ exports.remove = async (req, res) => {
     await r.destroy();
     res.json({ ok: true });
   } catch (err) {
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+// GET /api/print3d/access (employee board) — does this employee run the
+// 3D printing service?
+exports.staffAccess = async (req, res) => {
+  try {
+    res.json({ allowed: await isPrint3dStaff(req.employee) });
+  } catch (err) {
+    console.error('print3d staffAccess:', err);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+// GET /api/print3d/staff — the staff list + active employees to pick from.
+exports.getStaff = async (req, res) => {
+  try {
+    const [emails, employees] = await Promise.all([
+      print3dStaffEmails(),
+      Employee.findAll({ where: { isActive: true }, attributes: ['employeeId', 'name', 'email', 'section'], order: [['name', 'ASC']] })
+    ]);
+    res.json({ emails, employees });
+  } catch (err) {
+    console.error('print3d getStaff:', err);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+// PUT /api/print3d/staff — body { emails: [...] }
+exports.updateStaff = async (req, res) => {
+  try {
+    const list = Array.isArray(req.body?.emails) ? req.body.emails : null;
+    if (!list) return res.status(400).json({ message: 'emails must be a list', messageAr: 'قائمة البريد غير صحيحة' });
+    const emails = [...new Set(list.map(e => String(e).trim().toLowerCase()).filter(e => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e)))].slice(0, 20);
+    await Settings.upsert({ key: PRINT3D_STAFF_KEY, value: emails });
+    res.json({ emails });
+  } catch (err) {
+    console.error('print3d updateStaff:', err);
     res.status(500).json({ message: 'Server error' });
   }
 };

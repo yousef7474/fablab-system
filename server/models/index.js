@@ -79,6 +79,9 @@ const SiteContactMessage = require('./SiteContactMessage');
 const PaymentPage = require('./PaymentPage');
 const PaymentSubmission = require('./PaymentSubmission');
 const PaymentCoupon = require('./PaymentCoupon');
+const FabForm = require('./FabForm');
+const FabFormResponse = require('./FabFormResponse');
+const WorkspaceRequest = require('./WorkspaceRequest');
 const TrainingKit = require('./TrainingKit');
 const TrainingKitVersion = require('./TrainingKitVersion');
 const TrainingKitFile = require('./TrainingKitFile');
@@ -393,6 +396,10 @@ WorkshopStudent.belongsTo(Workshop, { foreignKey: 'workshopId', as: 'workshop' }
 PaymentPage.hasMany(PaymentSubmission, { foreignKey: 'pageId', as: 'submissions' });
 PaymentSubmission.belongsTo(PaymentPage, { foreignKey: 'pageId', as: 'page' });
 PaymentPage.hasMany(PaymentCoupon, { foreignKey: 'pageId', as: 'coupons' });
+
+// FabLab forms (admin "نماذج فاب لاب") and their answers
+FabForm.hasMany(FabFormResponse, { foreignKey: 'formId', as: 'responses' });
+FabFormResponse.belongsTo(FabForm, { foreignKey: 'formId', as: 'form' });
 
 // Training kits: author, submitted versions (edit history) and files.
 TrainingKit.belongsTo(Employee, { foreignKey: 'employeeId', as: 'author' });
@@ -1511,6 +1518,9 @@ module.exports = {
   PaymentPage,
   PaymentSubmission,
   PaymentCoupon,
+  FabForm,
+  FabFormResponse,
+  WorkspaceRequest,
   TrainingKit,
   TrainingKitVersion,
   TrainingKitFile,

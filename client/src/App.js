@@ -37,6 +37,8 @@ const MyOrdersPage = lazy(() => import('./components/Store/MyOrdersPage'));
 const PrintServicePage = lazy(() => import('./components/Print3D/PrintServicePage'));
 const PrintQuotePage = lazy(() => import('./components/Print3D/PrintQuotePage'));
 const PaymentPage = lazy(() => import('./components/PaymentPage/PaymentPage'));
+const FabFormPage = lazy(() => import('./components/FabForm/FabFormPage'));
+const WorkspaceRegistration = lazy(() => import('./components/WorkspaceRegistration/WorkspaceRegistration'));
 // Public website (replaces the old main.fablabsahsa.com)
 const SiteHome = lazy(() => import('./components/Site/SiteHome'));
 const SiteAbout = lazy(() => import('./components/Site/SiteAbout'));
@@ -102,7 +104,7 @@ const RouteFallback = () => {
 const ConditionalLanguageSelector = () => {
   const location = useLocation();
   if (isSitePath(location.pathname)) return null;
-  if (location.pathname === '/login' || location.pathname === '/admin/login' || location.pathname.startsWith('/manager') || location.pathname.startsWith('/elite') || location.pathname.startsWith('/employee') || location.pathname.startsWith('/projects') || location.pathname.startsWith('/workshop') || location.pathname.startsWith('/public/') || location.pathname.startsWith('/fablab-visit') || location.pathname.startsWith('/project-support') || location.pathname.startsWith('/store') || location.pathname.startsWith('/print-service') || location.pathname.startsWith('/print-quote') || location.pathname.startsWith('/pay/')) return null;
+  if (location.pathname === '/login' || location.pathname === '/admin/login' || location.pathname.startsWith('/manager') || location.pathname.startsWith('/elite') || location.pathname.startsWith('/employee') || location.pathname.startsWith('/projects') || location.pathname.startsWith('/workshop') || location.pathname.startsWith('/public/') || location.pathname.startsWith('/fablab-visit') || location.pathname.startsWith('/project-support') || location.pathname.startsWith('/store') || location.pathname.startsWith('/print-service') || location.pathname.startsWith('/print-quote') || location.pathname.startsWith('/pay/') || location.pathname.startsWith('/forms/') || location.pathname.startsWith('/workspace')) return null;
   return <LanguageSelector />;
 };
 
@@ -155,6 +157,7 @@ const AppContent = () => {
           <Route path="/public/report/:token" element={<PublicAttendanceReport />} />
           <Route path="/public/overtime/:token" element={<PublicOvertimeApproval />} />
           <Route path="/fablab-visit" element={<FablabVisitForm />} />
+          <Route path="/workspace" element={<WorkspaceRegistration />} />
           <Route path="/public/fablab-visit/:token" element={<PublicFablabVisitApproval />} />
           <Route path="/project-support" element={<ProjectSupportForm />} />
           <Route path="/public/project-support/:token" element={<PublicProjectSupportApproval />} />
@@ -164,6 +167,7 @@ const AppContent = () => {
           <Route path="/print-quote/:token" element={<PrintQuotePage />} />
           {/* Payment link created in the admin "صفحات الدفع" tab */}
           <Route path="/pay/:slug" element={<PaymentPage />} />
+          <Route path="/forms/:slug" element={<FabFormPage />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </Suspense>

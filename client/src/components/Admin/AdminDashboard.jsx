@@ -37,6 +37,8 @@ import StoreTab from './StoreTab';
 import Print3DTab from './Print3DTab';
 import SiteManager from './SiteManager';
 import PaymentPagesTab from './PaymentPagesTab';
+import FabFormsTab from './FabFormsTab';
+import WorkspaceRequests from '../shared/WorkspaceRequests';
 import MediaDesignQueue from '../Requests/media/MediaDesignQueue';
 import InstitutionSupportTab from './InstitutionSupportTab';
 import ProjectSupportTab from './ProjectSupportTab';
@@ -104,7 +106,7 @@ const AdminDashboard = () => {
   const isRTL = i18n.language === 'ar';
 
   // Valid tabs for URL persistence
-  const validTabs = ['dashboard', 'registrations', 'users', 'employees', 'schedule', 'analytics', 'borrowing', 'education', 'workshops', 'workspaces', 'volunteers', 'workers', 'fablab-staff', 'summer', 'mawhba', 'overtime', 'trainer-assistants', 'contracts', 'customers', 'fablab-visits', 'project-support', 'store', 'print3d', 'institution-support', 'year-calendar', 'attendance-station', 'quick-messages', 'quick-forms', 'payment-pages', 'media-design', 'site', 'settings'];
+  const validTabs = ['dashboard', 'registrations', 'users', 'employees', 'schedule', 'analytics', 'borrowing', 'education', 'workshops', 'workspaces', 'volunteers', 'workers', 'fablab-staff', 'summer', 'mawhba', 'overtime', 'trainer-assistants', 'contracts', 'customers', 'fablab-visits', 'project-support', 'store', 'print3d', 'institution-support', 'year-calendar', 'attendance-station', 'quick-messages', 'quick-forms', 'fablab-forms', 'payment-pages', 'media-design', 'site', 'settings'];
 
   // Get initial tab from URL, localStorage, or default to 'dashboard'
   const getInitialTab = () => {
@@ -221,6 +223,9 @@ const AdminDashboard = () => {
   const [visitsClosed, setVisitsClosed] = useState(false);
   const [visitsCloseReason, setVisitsCloseReason] = useState('');
   const [savingVisitsClose, setSavingVisitsClose] = useState(false);
+  const [wsRegClosed, setWsRegClosed] = useState(false);
+  const [wsRegCloseReason, setWsRegCloseReason] = useState('');
+  const [savingWsRegClose, setSavingWsRegClose] = useState(false);
 
   // 3D printing closure (temporary, with optional date window)
   const [p3dStatus, setP3dStatus] = useState({
@@ -812,6 +817,39 @@ const AdminDashboard = () => {
     }
   };
 
+  // Workspace registration closure — same as visits: the public
+  // /workspace page shows the reason and the server rejects requests.
+  const fetchWsRegStatus = async () => {
+    try {
+      const response = await api.get('/settings/workspace-registration-status');
+      setWsRegClosed(!!response.data.disabled);
+      setWsRegCloseReason(response.data.reason || '');
+    } catch (error) {
+      console.error('Error fetching workspace registration status:', error);
+    }
+  };
+
+  const handleToggleWsReg = async () => {
+    setSavingWsRegClose(true);
+    try {
+      const newDisabled = !wsRegClosed;
+      await api.put('/settings/workspace-registration-status', {
+        disabled: newDisabled,
+        reason: newDisabled ? wsRegCloseReason : ''
+      });
+      setWsRegClosed(newDisabled);
+      if (!newDisabled) setWsRegCloseReason('');
+      toast.success(isRTL
+        ? (newDisabled ? 'تم إغلاق التسجيل في مساحات العمل' : 'تم فتح التسجيل في مساحات العمل')
+        : (newDisabled ? 'Workspace registration closed' : 'Workspace registration open'));
+    } catch (error) {
+      console.error('Error updating workspace registration status:', error);
+      toast.error(isRTL ? (error.response?.data?.messageAr || 'خطأ في تحديث حالة مساحات العمل') : 'Error updating workspace registration');
+    } finally {
+      setSavingWsRegClose(false);
+    }
+  };
+
   // 3D printing closure — mirrors store but adds an optional date
   // window so admin can schedule a maintenance period in advance.
   const fetchPrint3dStatus = async () => {
@@ -982,6 +1020,7 @@ const AdminDashboard = () => {
       fetchRegistrationStatus();
       fetchStoreStatus();
       fetchVisitsStatus();
+      fetchWsRegStatus();
       fetchPrint3dStatus();
       fetchClosures();
     } else if (activeTab === 'borrowing') {
@@ -5233,6 +5272,7 @@ const AdminDashboard = () => {
     { id: 'attendance-station', icon: 'attendance-station', labelEn: 'Attendance Station', labelAr: 'محطة الحضور' },
     { id: 'quick-messages', icon: 'quick-messages', labelEn: 'Quick Messages', labelAr: 'رسائل جاهزة' },
     { id: 'quick-forms', icon: 'quick-forms', labelEn: 'Ready Forms', labelAr: 'الفورم الجاهز' },
+    { id: 'fablab-forms', icon: 'fablab-forms', labelEn: 'FabLab Forms', labelAr: 'نماذج فاب لاب' },
     { id: 'payment-pages', icon: 'payment-pages', labelEn: 'Payment Pages', labelAr: 'صفحات الدفع' },
     { id: 'media-design', icon: 'media-design', labelEn: 'Design Requests', labelAr: 'طلبات التصميم' },
     { id: 'site', icon: 'site', labelEn: 'Website', labelAr: 'الموقع الإلكتروني' },
@@ -5260,6 +5300,7 @@ const AdminDashboard = () => {
       customers: <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>,
       contracts: <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="9" y1="13" x2="15" y2="13"/><line x1="9" y1="17" x2="15" y2="17"/></svg>,
       'media-design': <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 11v2a1 1 0 0 0 1 1h2l5 4V6L6 10H4a1 1 0 0 0-1 1z"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/><path d="M18.5 5.5a9 9 0 0 1 0 13"/></svg>,
+      'fablab-forms': <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="4" y="3" width="16" height="18" rx="2.5"/><line x1="8" y1="8" x2="16" y2="8"/><line x1="8" y1="12" x2="16" y2="12"/><polyline points="8 16 9.5 17.5 12 15"/></svg>,
       'payment-pages': <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2.5" y="5" width="19" height="14" rx="2.5"/><line x1="2.5" y1="10" x2="21.5" y2="10"/><line x1="6.5" y1="15" x2="10.5" y2="15"/></svg>,
       site: <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>,
       'quick-messages': <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>,
@@ -8007,6 +8048,8 @@ const AdminDashboard = () => {
             {activeTab === 'workspaces' && workspaceAuthenticated && (
             <div data-page="manager">
               <motion.div key="workspaces" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="workspaces-content">
+                {/* Requests from the public /workspace page */}
+                <WorkspaceRequests isRTL={isRTL} />
                 {/* Stats Cards */}
                 <div className="stats-grid">
                   <div className="stat-card">
@@ -10565,6 +10608,7 @@ const AdminDashboard = () => {
             {/* Store Tab */}
             {activeTab === 'store' && <StoreTab />}
             {activeTab === 'print3d' && <Print3DTab />}
+            {activeTab === 'fablab-forms' && <FabFormsTab isRTL={isRTL} />}
             {activeTab === 'payment-pages' && <PaymentPagesTab isRTL={isRTL} />}
             {activeTab === 'media-design' && <MediaDesignQueue />}
             {activeTab === 'site' && <SiteManager />}
@@ -10924,6 +10968,81 @@ const AdminDashboard = () => {
                           disabled={visitsClosed}
                         />
                         {visitsClosed && visitsCloseReason && (
+                          <p style={{ margin: '6px 0 0', fontSize: '12px', color: 'var(--ats-warn)' }}>
+                            {isRTL ? 'لتعديل السبب، افتح التسجيل أولاً ثم أغلقه بسبب جديد' : 'To change the reason, open registration first then close again with a new reason'}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Workspace registration closure — same as visits. Closing
+                      shows the reason on /workspace and the server rejects
+                      new requests. */}
+                  <div className="settings-card" style={{ gridColumn: '1 / -1', border: wsRegClosed ? '2px solid #f59e0b' : '2px solid #22c55e', background: wsRegClosed ? 'rgba(245,158,11,0.03)' : 'rgba(34,197,94,0.03)' }}>
+                    <h3 style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={wsRegClosed ? '#f59e0b' : '#22c55e'} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <rect x="2" y="7" width="20" height="14" rx="2" ry="2"/>
+                        <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/>
+                      </svg>
+                      {isRTL ? 'تسجيل مساحات العمل' : 'Workspace Registration'}
+                    </h3>
+                    <div className="settings-form">
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', flexWrap: 'wrap', padding: '12px 16px', background: wsRegClosed ? 'rgba(245,158,11,0.1)' : 'rgba(34,197,94,0.08)', borderRadius: '10px', marginBottom: '12px' }}>
+                        <div style={{ minWidth: 0, flex: '1 1 240px' }}>
+                          <p style={{ margin: 0, fontWeight: '700', fontSize: '15px', color: wsRegClosed ? 'var(--ats-warn)' : 'var(--ats-ok)' }}>
+                            {wsRegClosed
+                              ? (isRTL ? 'التسجيل في مساحات العمل مغلق' : 'Workspace registration is CLOSED')
+                              : (isRTL ? 'التسجيل في مساحات العمل مفتوح' : 'Workspace registration is OPEN')}
+                          </p>
+                          <p style={{ margin: '4px 0 0 0', fontSize: '13px', color: 'var(--text-secondary, #64748b)' }}>
+                            {isRTL ? 'عند الإغلاق لا تقبل صفحة تسجيل مساحات العمل طلبات جديدة ويظهر السبب للمستخدمين' : 'When closed, the workspace page takes no new requests and shows the reason'}
+                          </p>
+                        </div>
+                        <button
+                          onClick={() => {
+                            if (wsRegClosed) {
+                              handleToggleWsReg();
+                            } else if (!wsRegCloseReason.trim()) {
+                              toast.error(isRTL ? 'يرجى إدخال سبب الإغلاق أولاً' : 'Please enter a reason first');
+                            } else {
+                              handleToggleWsReg();
+                            }
+                          }}
+                          disabled={savingWsRegClose}
+                          style={{
+                            padding: '10px 24px',
+                            borderRadius: '10px',
+                            border: 'none',
+                            fontWeight: '700',
+                            fontSize: '14px',
+                            cursor: savingWsRegClose ? 'not-allowed' : 'pointer',
+                            background: wsRegClosed ? '#15803d' : '#b45309',
+                            color: 'white',
+                            transition: 'all 0.2s',
+                            opacity: savingWsRegClose ? 0.7 : 1
+                          }}
+                        >
+                          {savingWsRegClose
+                            ? (isRTL ? 'جاري الحفظ...' : 'Saving...')
+                            : wsRegClosed
+                              ? (isRTL ? 'فتح التسجيل' : 'Open Registration')
+                              : (isRTL ? 'إغلاق التسجيل' : 'Close Registration')}
+                        </button>
+                      </div>
+                      <div className="form-group">
+                        <label style={{ fontWeight: '600' }}>
+                          {isRTL ? 'سبب الإغلاق (سيظهر للمستخدمين)' : 'Closure Reason (shown to users)'}
+                        </label>
+                        <textarea
+                          value={wsRegCloseReason}
+                          onChange={(e) => setWsRegCloseReason(e.target.value)}
+                          placeholder={isRTL ? 'مثال: مساحات العمل مشغولة بالكامل حتى نهاية الشهر' : 'e.g., All workspaces are booked until the end of the month'}
+                          rows={3}
+                          style={{ width: '100%', padding: '10px 14px', borderRadius: '8px', border: '1px solid var(--border-color, #e2e8f0)', resize: 'vertical', fontSize: '14px', fontFamily: 'inherit' }}
+                          disabled={wsRegClosed}
+                        />
+                        {wsRegClosed && wsRegCloseReason && (
                           <p style={{ margin: '6px 0 0', fontSize: '12px', color: 'var(--ats-warn)' }}>
                             {isRTL ? 'لتعديل السبب، افتح التسجيل أولاً ثم أغلقه بسبب جديد' : 'To change the reason, open registration first then close again with a new reason'}
                           </p>

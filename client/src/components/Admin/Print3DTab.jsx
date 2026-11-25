@@ -4,6 +4,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'react-toastify';
 import api from '../../config/api';
 import Print3DOptionsEditor from './Print3DOptionsEditor';
+import Print3DStaffAccess from './Print3DStaffAccess';
+import Print3DServiceStatus from './Print3DServiceStatus';
 import './Print3DTab.css';
 
 const API_URL = process.env.NODE_ENV === 'production'
@@ -38,9 +40,13 @@ const canManageOptions = () => {
   }
 };
 
-const Print3DTab = () => {
+// The admin tab, and — with `staffView` — the same tab on the employee
+// board for the 3D printing staff (apiClient = employeeApi, tokenKey =
+// 'employeeToken'), who also open / close the service from here.
+const Print3DTab = ({ apiClient = api, tokenKey = 'adminToken', staffView = false }) => {
   const { i18n } = useTranslation();
   const isRTL = i18n.language === 'ar';
+  const [showStaff, setShowStaff] = useState(false);
 
   const [rows, setRows] = useState([]);
   const [rates, setRates] = useState(null);
@@ -74,9 +80,9 @@ const Print3DTab = () => {
     setLoading(true);
     try {
       const [r, rt, op] = await Promise.all([
-        api.get('/print3d'),
-        api.get('/print3d/rates').catch(() => ({ data: null })),
-        api.get('/print3d/options').catch(() => ({ data: null }))
+        apiClient.get('/print3d'),
+        apiClient.get('/print3d/rates').catch(() => ({ data: null })),
+        apiClient.get('/print3d/options').catch(() => ({ data: null }))
       ]);
       setRows(Array.isArray(r.data) ? r.data : []);
       setRates(rt.data);
@@ -86,7 +92,7 @@ const Print3DTab = () => {
     } finally {
       setLoading(false);
     }
-  }, [isRTL]);
+  }, [isRTL, apiClient]);
 
   useEffect(() => { fetchAll(); }, [fetchAll]);
 
@@ -128,7 +134,7 @@ const Print3DTab = () => {
     setNotifyCustomer(false);
     setIncludeNote(false);
     try {
-      const { data } = await api.get(`/print3d/${r.requestId}`);
+      const { data } = await apiClient.get(`/print3d/${r.requestId}`);
       setDetail(data);
       if (data.materialRate != null) setRateOverride(data.materialRate);
       if (data.setupFee != null) setSetupOverride(data.setupFee);
@@ -154,7 +160,7 @@ const Print3DTab = () => {
       if (rateOverride !== '' && Number.isFinite(Number(rateOverride))) body.materialRate = Number(rateOverride);
       if (setupOverride !== '' && Number.isFinite(Number(setupOverride))) body.setupFee = Number(setupOverride);
       if (multiOverride !== '' && Number.isFinite(Number(multiOverride))) body.multiColorFee = Number(multiOverride);
-      const { data } = await api.post(`/print3d/${selected.requestId}/quote`, body);
+      const { data } = await apiClient.post(`/print3d/${selected.requestId}/quote`, body);
       toast.success(isRTL ? 'تم إرسال عرض السعر' : 'Quote sent');
       setDetail(data);
       setRows(rs => rs.map(x => x.requestId === selected.requestId ? { ...x, ...data, fileData: undefined } : x));
@@ -169,7 +175,7 @@ const Print3DTab = () => {
     if (!statusEdit) return;
     setSavingStatus(true);
     try {
-      const { data } = await api.patch(`/print3d/${selected.requestId}/status`, {
+      const { data } = await apiClient.patch(`/print3d/${selected.requestId}/status`, {
         status: statusEdit,
         adminNotes: adminNote,
         notifyCustomer,
@@ -197,7 +203,7 @@ const Print3DTab = () => {
 
   const markPaid = async () => {
     try {
-      const { data } = await api.post(`/print3d/${selected.requestId}/mark-paid`);
+      const { data } = await apiClient.post(`/print3d/${selected.requestId}/mark-paid`);
       setDetail(data);
       setRows(rs => rs.map(x => x.requestId === selected.requestId ? { ...x, paidAt: data.paidAt } : x));
       toast.success(isRTL ? 'تم تسجيل الدفع' : 'Marked as paid');
@@ -209,7 +215,7 @@ const Print3DTab = () => {
   const deleteRequest = async () => {
     if (!window.confirm(isRTL ? 'حذف طلب الطباعة نهائياً؟' : 'Delete this print request permanently?')) return;
     try {
-      await api.delete(`/print3d/${selected.requestId}`);
+      await apiClient.delete(`/print3d/${selected.requestId}`);
       setRows(rs => rs.filter(x => x.requestId !== selected.requestId));
       closeDetail();
       toast.success(isRTL ? 'تم الحذف' : 'Deleted');
@@ -227,7 +233,7 @@ const Print3DTab = () => {
           ? `${API_URL}/print3d/${selected.requestId}/download/${index}`
           : `${API_URL}/print3d/${selected.requestId}/download`;
         const res = await fetch(url, {
-          headers: { Authorization: `Bearer ${localStorage.getItem('adminToken') || ''}` }
+          headers: { Authorization: `Bearer ${localStorage.getItem(tokenKey) || ''}` }
         });
         if (!res.ok) throw new Error('download failed');
         const blob = await res.blob();
@@ -253,7 +259,7 @@ const Print3DTab = () => {
     setOptions(data);
     // Rates may have changed with the save — refresh the header chips
     // and quote placeholders.
-    api.get('/print3d/rates').then(res => setRates(res.data)).catch(() => {});
+    apiClient.get('/print3d/rates').then(res => setRates(res.data)).catch(() => {});
   };
 
   // Lookups over the full list (disabled entries included) so older
@@ -298,8 +304,16 @@ const Print3DTab = () => {
           >
             ⚙️ {isRTL ? 'الخامات والألوان' : 'Materials & colors'}
           </button>
+          {!staffView && canManageOptions() && (
+            <button type="button" className="p3t-btn p3t-btn--ghost p3t-btn--sm" onClick={() => setShowStaff(true)}>
+              👤 {isRTL ? 'موظفو الخدمة' : 'Service staff'}
+            </button>
+          )}
         </div>
       </div>
+
+      {/* Open / close the service (the admins do this from Settings) */}
+      {staffView && <Print3DServiceStatus apiClient={apiClient} isRTL={isRTL} />}
 
       {/* Stats */}
       <div className="p3t-stats">
@@ -749,12 +763,18 @@ const Print3DTab = () => {
         {showOptions && options && (
           <Print3DOptionsEditor
             initial={options}
-            canEdit={canManageOptions()}
+            canEdit={staffView || canManageOptions()}
             isRTL={isRTL}
+            apiClient={apiClient}
             onClose={() => setShowOptions(false)}
             onSaved={onOptionsSaved}
           />
         )}
+      </AnimatePresence>
+
+      {/* Which employees run the service from their own board */}
+      <AnimatePresence>
+        {showStaff && <Print3DStaffAccess isRTL={isRTL} onClose={() => setShowStaff(false)} />}
       </AnimatePresence>
     </div>
   );

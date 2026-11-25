@@ -36,6 +36,9 @@ Settings.seedDefaults = async () => {
     // Materials + colors the customer can pick on the 3D print form.
     // Managers edit the list from the 3D Printing tab.
     { key: 'print3d_options',         value: DEFAULT_PRINT3D_OPTIONS },
+    // Employees who run the 3D printing service from their own board
+    // (by email). Admins change the list from the 3D Printing tab.
+    { key: 'print3d_staff_emails',    value: ['saad.m.alsalman@gmail.com'] },
     // FabLab store category library — admin picks from this list when
     // adding a new item, or types a new one which gets appended here
     // for future use.

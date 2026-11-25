@@ -12,6 +12,7 @@ import YearCalendar from '../YearCalendar/YearCalendar';
 import EmployeeKitsTab from '../TrainingKits/EmployeeKitsTab';
 import EmployeePlansTab from '../ExecutionPlans/EmployeePlansTab';
 import EmployeeRequestsTab from '../Requests/EmployeeRequestsTab';
+import Print3DTab from '../Admin/Print3DTab';
 import './Employee.css';
 import './Employee.fx.css';
 // Dashboard theme — imported last so it sits on top of the CSS above.
@@ -76,6 +77,7 @@ const TAB_ICON_PATHS = {
   'training-kits': ['M5 7h14a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2z', 'M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2', 'M3 13h18'],
   'execution-plan': ['M4 22V4', 'M4 4h12l-2 4 2 4H4'],
   requests: ['M22 12h-6l-2 3h-4l-2-3H2', 'M5.45 5.11L2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z'],
+  print3d: ['M6 9V2h12v7', 'M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2', 'M6 14h12v8H6z'],
   profile: ['M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2', 'M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8z']
 };
 const TabIcon = ({ name }) => (
@@ -177,6 +179,16 @@ const EmployeeDashboard = () => {
   const [isProjectManager, setIsProjectManager] = useState(false);
   useEffect(() => {
     employeeApi.get('/training-kits/pm/status').then(({ data }) => setIsProjectManager(!!data?.isPM)).catch(() => {});
+  }, []);
+  // The 3D printing staff (admin 3D Printing tab → موظفو الخدمة) run the
+  // service from here with the same access as the admins.
+  const [isPrint3dStaff, setIsPrint3dStaff] = useState(false);
+  useEffect(() => {
+    employeeApi.get('/print3d/access').then(({ data }) => {
+      setIsPrint3dStaff(!!data?.allowed);
+      // A saved tab from when they had access.
+      if (!data?.allowed) setActiveTab(t => (t === 'print3d' ? 'overview' : t));
+    }).catch(() => {});
   }, []);
   const [profile, setProfile] = useState(null);
   const [tasks, setTasks] = useState([]);
@@ -976,6 +988,7 @@ const EmployeeDashboard = () => {
     { key: 'training-kits', label: isRTL ? 'الحقائب التدريبية' : 'Training Kits', icon: '🎒' },
     { key: 'execution-plan', label: isRTL ? 'الخطة التنفيذية' : 'Execution Plan', icon: '🗓' },
     { key: 'requests',      label: isRTL ? 'الطلبات' : 'Requests',          icon: '📨' },
+    ...(isPrint3dStaff ? [{ key: 'print3d', label: isRTL ? 'الطباعة ثلاثية الأبعاد' : '3D Printing', icon: '🖨' }] : []),
     { key: 'profile',       label: isRTL ? 'الملف الشخصي' : 'Profile',      icon: '◉' },
   ];
 
@@ -2916,6 +2929,18 @@ const EmployeeDashboard = () => {
               transition={{ type: 'spring', stiffness: 260, damping: 24 }}
             >
               <EmployeeRequestsTab portalTarget={dashRoot} theme={theme} />
+            </motion.div>
+          )}
+
+          {activeTab === 'print3d' && isPrint3dStaff && (
+            <motion.div
+              key="print3d"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -12 }}
+              transition={{ type: 'spring', stiffness: 260, damping: 24 }}
+            >
+              <Print3DTab apiClient={employeeApi} tokenKey="employeeToken" staffView />
             </motion.div>
           )}
 
