@@ -12,6 +12,8 @@ const { sendFormConfirmation } = require('../utils/fabFormEmail');
 
 const REF_SEQ_KEY = 'fab_form_ref_seq';
 const SEEDED_KEY = 'fab_forms_seeded';
+const LIQAA_EN_KEY = 'fab_forms_liqaa_en';
+const EN_COLUMNS = { titleEn: 'VARCHAR(200)', descriptionEn: 'TEXT', successMessageEn: 'TEXT', closedMessageEn: 'TEXT' };
 const SLUG_RE = /^[a-z0-9][a-z0-9-]{2,39}$/;
 
 const _str = (v, max) => String(v == null ? '' : v).trim().slice(0, max);
@@ -50,6 +52,7 @@ const CLOSED_MESSAGES = {
 };
 // The admin's own "closed" text wins, except when the form is simply full.
 const _closedText = (form, reason) => (reason !== 'full' && form.closedMessage) || CLOSED_MESSAGES[reason][1];
+const _closedTextEn = (form, reason) => (reason !== 'full' && form.closedMessageEn) || CLOSED_MESSAGES[reason][0];
 
 // The form settings the admin sent → a clean object (throws FormError).
 async function _formFields(b, { partial = false, formId = null } = {}) {
@@ -59,8 +62,10 @@ async function _formFields(b, { partial = false, formId = null } = {}) {
     if (!out.title) throw new FormError('The title is required', 'عنوان النموذج مطلوب');
   }
   if (!partial || b.description !== undefined) out.description = _str(b.description, 8000) || null;
+  if (!partial || b.titleEn !== undefined) out.titleEn = _str(b.titleEn, 200) || null;
+  if (!partial || b.descriptionEn !== undefined) out.descriptionEn = _str(b.descriptionEn, 8000) || null;
   if (!partial || b.fields !== undefined) out.fields = validateFields(b.fields || []);
-  for (const k of ['closedMessage', 'successMessage']) {
+  for (const k of ['closedMessage', 'successMessage', 'closedMessageEn', 'successMessageEn']) {
     if (!partial || b[k] !== undefined) out[k] = _str(b[k], 2000) || null;
   }
   for (const k of ['opensAt', 'closesAt']) {
@@ -237,13 +242,18 @@ exports.getPublicForm = async (req, res) => {
       form: {
         slug: form.slug,
         title: form.title,
+        titleEn: form.titleEn || null,
         description: form.description,
+        descriptionEn: form.descriptionEn || null,
         fields: reason ? [] : form.fields,
+        // Whether the form offers English (the closed screen has no fields).
+        hasEn: !!(form.titleEn || (form.fields || []).some(f => f.labelEn)),
         opensAt: form.opensAt,
         closesAt: form.closesAt
       },
       closedReason: reason,
-      closedMessage: reason ? _closedText(form, reason) : null
+      closedMessage: reason ? _closedText(form, reason) : null,
+      closedMessageEn: reason ? _closedTextEn(form, reason) : null
     });
   } catch (e) { _fail(res, e); }
 };
@@ -259,8 +269,7 @@ exports.submitForm = async (req, res) => {
 
     const closedFirst = closedReason(form, form.maxResponses ? await FabFormResponse.count({ where: { formId: form.formId } }) : 0);
     if (closedFirst) {
-      const [en] = CLOSED_MESSAGES[closedFirst];
-      return res.status(409).json({ message: en, messageAr: _closedText(form, closedFirst), closedReason: closedFirst });
+      return res.status(409).json({ message: _closedTextEn(form, closedFirst), messageAr: _closedText(form, closedFirst), closedReason: closedFirst });
     }
 
     const fields = form.fields || [];
@@ -275,8 +284,7 @@ exports.submitForm = async (req, res) => {
       const count = await FabFormResponse.count({ where: { formId: form.formId }, transaction: t });
       const reason = closedReason(form, count);
       if (reason) {
-        const [en] = CLOSED_MESSAGES[reason];
-        const err = new FormError(en, _closedText(form, reason));
+        const err = new FormError(_closedTextEn(form, reason), _closedText(form, reason));
         err.status = 409;
         throw err;
       }
@@ -298,28 +306,71 @@ exports.submitForm = async (req, res) => {
       sendFormConfirmation({ to: response.respondentEmail, name: response.respondentName, form, response })
         .catch(e => console.error('Form confirmation email failed:', e.message));
     }
-    res.status(201).json({ reference: response.reference, successMessage: form.successMessage || null });
+    res.status(201).json({
+      reference: response.reference,
+      successMessage: form.successMessage || null,
+      successMessageEn: form.successMessageEn || null
+    });
   } catch (e) { _fail(res, e); }
 };
 
 // ---------- startup ----------
 
-// Creates the لقاء registration form once (switched off for review).
+// Startup: make sure the English columns exist (older databases), create
+// the لقاء registration form once (switched off for review), and give it
+// its English text once.
 exports.seedFabForms = async () => {
-  try {
-    if (await Settings.findByPk(SEEDED_KEY)) return;
-    if (!(await FabForm.count({ where: { slug: LIQAA_FORM.slug } }))) {
-      await FabForm.create({
-        ...LIQAA_FORM,
-        fields: validateFields(LIQAA_FORM.fields),
-        isActive: false,
-        sendConfirmation: true,
-        createdBy: 'FabLab'
-      });
-      console.log('📝 FabLab forms: created the لقاء registration form (inactive)');
+  for (const [col, type] of Object.entries(EN_COLUMNS)) {
+    try {
+      await sequelize.query(`ALTER TABLE fab_forms ADD COLUMN IF NOT EXISTS "${col}" ${type}`);
+    } catch (e) {
+      if (!/does not exist/i.test(e.message)) console.log(`fab_forms.${col} migration note:`, e.message);
     }
-    await Settings.upsert({ key: SEEDED_KEY, value: true });
+  }
+  try {
+    if (!(await Settings.findByPk(SEEDED_KEY))) {
+      if (!(await FabForm.count({ where: { slug: LIQAA_FORM.slug } }))) {
+        await FabForm.create({
+          ...LIQAA_FORM,
+          fields: validateFields(LIQAA_FORM.fields),
+          isActive: false,
+          sendConfirmation: true,
+          createdBy: 'FabLab'
+        });
+        console.log('📝 FabLab forms: created the لقاء registration form (inactive)');
+      }
+      await Settings.upsert({ key: SEEDED_KEY, value: true });
+    }
   } catch (e) {
     console.log('FabLab forms seed skipped:', e.message);
+  }
+  try {
+    if (await Settings.findByPk(LIQAA_EN_KEY)) return;
+    const form = await FabForm.findOne({ where: { slug: LIQAA_FORM.slug } });
+    if (form) {
+      // Fill only what is still empty — never overwrite the admin's edits.
+      const patch = {};
+      for (const k of ['titleEn', 'descriptionEn', 'successMessageEn', 'closedMessageEn']) {
+        if (!form[k] && LIQAA_FORM[k]) patch[k] = LIQAA_FORM[k];
+      }
+      const byId = Object.fromEntries(LIQAA_FORM.fields.map(f => [f.id, f]));
+      patch.fields = validateFields((form.fields || []).map(f => {
+        const en = byId[f.id];
+        if (!en) return f;
+        const next = { ...f };
+        if (!next.labelEn && en.labelEn) next.labelEn = en.labelEn;
+        if (!next.helpEn && en.helpEn) next.helpEn = en.helpEn;
+        if (!next.placeholderEn && en.placeholderEn) next.placeholderEn = en.placeholderEn;
+        // Option English only when the Arabic options are still the seeded ones.
+        if (en.optionsEn && !(next.optionsEn || []).some(Boolean)
+          && JSON.stringify(next.options) === JSON.stringify(en.options)) next.optionsEn = en.optionsEn;
+        return next;
+      }));
+      await form.update(patch);
+      console.log('📝 FabLab forms: added English to the لقاء form');
+    }
+    await Settings.upsert({ key: LIQAA_EN_KEY, value: true });
+  } catch (e) {
+    console.log('FabLab forms English seed skipped:', e.message);
   }
 };

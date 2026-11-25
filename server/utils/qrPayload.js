@@ -27,7 +27,7 @@
 // still work everywhere they already worked.
 
 const KNOWN_ROLES = new Set([
-  'STAFF', 'VOL', 'WORKER', 'MAWHBA', 'SUMMER', 'INTERN', 'TRAINER', 'WORKSHOP'
+  'STAFF', 'VOL', 'WORKER', 'MAWHBA', 'SUMMER', 'INTERN', 'TRAINER', 'WORKSHOP', 'WSM'
 ]);
 
 const ROLE_LABELS_AR = {
@@ -38,7 +38,8 @@ const ROLE_LABELS_AR = {
   SUMMER:   'طالب صيف فاب لاب',
   INTERN:   'متدرب جامعي',
   TRAINER:  'مدرب معاون',
-  WORKSHOP: 'طالب ورشة'
+  WORKSHOP: 'طالب ورشة',
+  WSM:      'عضو مساحة عمل'
 };
 
 // Build the QR payload string for a card.

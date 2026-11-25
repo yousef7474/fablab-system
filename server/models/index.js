@@ -82,6 +82,8 @@ const PaymentCoupon = require('./PaymentCoupon');
 const FabForm = require('./FabForm');
 const FabFormResponse = require('./FabFormResponse');
 const WorkspaceRequest = require('./WorkspaceRequest');
+const WorkspaceDayLog = require('./WorkspaceDayLog');
+const WorkspaceAttendance = require('./WorkspaceAttendance');
 const TrainingKit = require('./TrainingKit');
 const TrainingKitVersion = require('./TrainingKitVersion');
 const TrainingKitFile = require('./TrainingKitFile');
@@ -400,6 +402,10 @@ PaymentPage.hasMany(PaymentCoupon, { foreignKey: 'pageId', as: 'coupons' });
 // FabLab forms (admin "نماذج فاب لاب") and their answers
 FabForm.hasMany(FabFormResponse, { foreignKey: 'formId', as: 'responses' });
 FabFormResponse.belongsTo(FabForm, { foreignKey: 'formId', as: 'form' });
+
+// Workspace bookings: the day-by-day ratings of an accepted booking
+WorkspaceRequest.hasMany(WorkspaceDayLog, { foreignKey: 'requestId', as: 'dayLogs' });
+WorkspaceDayLog.belongsTo(WorkspaceRequest, { foreignKey: 'requestId', as: 'request' });
 
 // Training kits: author, submitted versions (edit history) and files.
 TrainingKit.belongsTo(Employee, { foreignKey: 'employeeId', as: 'author' });
@@ -890,6 +896,16 @@ const syncDatabase = async () => {
     } catch (migrationError) {
       if (!/does not exist/i.test(migrationError.message)) {
         console.log('training_kits.deletedAt migration note:', migrationError.message);
+      }
+    }
+
+    // Workspace bookings gained a team (members JSON) after the table
+    // was first created.
+    try {
+      await sequelize.query(`ALTER TABLE workspace_requests ADD COLUMN IF NOT EXISTS "members" JSON NOT NULL DEFAULT '[]'::json`);
+    } catch (migrationError) {
+      if (!/does not exist/i.test(migrationError.message)) {
+        console.log('workspace_requests.members migration note:', migrationError.message);
       }
     }
 
@@ -1521,6 +1537,8 @@ module.exports = {
   FabForm,
   FabFormResponse,
   WorkspaceRequest,
+  WorkspaceDayLog,
+  WorkspaceAttendance,
   TrainingKit,
   TrainingKitVersion,
   TrainingKitFile,

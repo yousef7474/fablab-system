@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'react-toastify';
 import * as XLSX from 'xlsx';
 import api from '../../config/api';
-import { FormQuestions, visibleFields } from '../FabForm/FabFormPage';
+import { FormQuestions, visibleFields, tr } from '../FabForm/FabFormPage';
 import '../FabForm/FabFormPage.css';
 import './FabFormsTab.css';
 
@@ -78,6 +78,7 @@ const blankField = (type) => {
 const NEW_FORM = () => ({
   title: '', description: '', slug: '', isActive: false, opensAt: '', closesAt: '', maxResponses: '',
   successMessage: '', closedMessage: '', sendConfirmation: true,
+  titleEn: '', descriptionEn: '', successMessageEn: '', closedMessageEn: '',
   fields: [
     { ...blankField('short'), label: 'الاسم الكامل', required: true },
     { ...blankField('phone'), label: 'رقم الجوال', required: true, placeholder: '05xxxxxxxx' },
@@ -89,6 +90,8 @@ const toDraft = (form) => ({
   opensAt: toLocalInput(form.opensAt), closesAt: toLocalInput(form.closesAt),
   maxResponses: form.maxResponses ?? '', successMessage: form.successMessage || '', closedMessage: form.closedMessage || '',
   sendConfirmation: form.sendConfirmation !== false,
+  titleEn: form.titleEn || '', descriptionEn: form.descriptionEn || '',
+  successMessageEn: form.successMessageEn || '', closedMessageEn: form.closedMessageEn || '',
   fields: (form.fields || []).map(f => ({ help: '', showIf: null, ...f }))
 });
 
@@ -100,6 +103,14 @@ const answerText = (field, value) => {
   return String(value);
 };
 
+// Options' English, padded to the options' length (index-aligned).
+const enList = (field) => {
+  const en = [...(field.optionsEn || [])];
+  while (en.length < (field.options || []).length) en.push('');
+  return en.slice(0, (field.options || []).length);
+};
+const hasEnglish = (field) => !!(field.labelEn || field.helpEn || field.placeholderEn || (field.optionsEn || []).some(Boolean));
+
 const Portal = ({ children }) => createPortal(children, document.querySelector('.admin-layout.fx') || document.body);
 
 // ─────────────────────────── Question card (editor) ───────────────────────────
@@ -110,24 +121,42 @@ const QuestionCard = ({ field, index, fields, isRTL, open, onOpen, onChange, onM
   const ctlLater = field.showIf && !controllers.some(c => c.id === field.showIf.field);
   const set = (patch) => onChange({ ...field, ...patch });
 
+  const [enOpen, setEnOpen] = useState(() => hasEnglish(field));
   const setOption = (i, v) => {
     const opts = [...field.options];
+    const en = enList(field);
     const lines = v.split(/\r?\n/).map(s => s.trim()).filter(Boolean);
-    if (lines.length > 1) opts.splice(i, 1, ...lines); // pasted several lines → several options
-    else opts[i] = v;
-    set({ options: opts });
+    if (lines.length > 1) { // pasted several lines → several options
+      opts.splice(i, 1, ...lines);
+      en.splice(i, 1, en[i] || '', ...lines.slice(1).map(() => ''));
+    } else opts[i] = v;
+    set({ options: opts, optionsEn: en });
+  };
+  const setOptionEn = (i, v) => {
+    const en = enList(field);
+    en[i] = v;
+    set({ optionsEn: en });
   };
   const moveOption = (i, dir) => {
     const j = i + dir;
     if (j < 0 || j >= field.options.length) return;
     const opts = [...field.options];
+    const en = enList(field);
     [opts[i], opts[j]] = [opts[j], opts[i]];
-    set({ options: opts });
+    [en[i], en[j]] = [en[j], en[i]];
+    set({ options: opts, optionsEn: en });
   };
+  const removeOption = (i) => set({ options: field.options.filter((_, j) => j !== i), optionsEn: enList(field).filter((_, j) => j !== i) });
   const changeType = (type) => {
     const next = blankField(type);
-    const keep = { id: field.id, label: field.label, help: field.help, required: type === 'section' ? false : field.required, showIf: field.showIf };
-    if ((CHOICE.includes(type) || type === 'consent') && field.options?.length) next.options = type === 'consent' ? [field.options[0]] : field.options;
+    const keep = {
+      id: field.id, label: field.label, help: field.help, labelEn: field.labelEn, helpEn: field.helpEn,
+      required: type === 'section' ? false : field.required, showIf: field.showIf
+    };
+    if ((CHOICE.includes(type) || type === 'consent') && field.options?.length) {
+      next.options = type === 'consent' ? [field.options[0]] : field.options;
+      next.optionsEn = type === 'consent' ? [enList(field)[0] || ''] : enList(field);
+    }
     onChange({ ...next, ...keep });
   };
 
@@ -143,6 +172,7 @@ const QuestionCard = ({ field, index, fields, isRTL, open, onOpen, onChange, onM
             {isRTL ? meta.ar : meta.en}
             {field.required && <i className="ffa-tag red">{isRTL ? 'إلزامي' : 'Required'}</i>}
             {field.showIf && <i className="ffa-tag blue">{isRTL ? 'مشروط' : 'Conditional'}</i>}
+            {hasEnglish(field) && <i className="ffa-tag en">EN</i>}
             {CHOICE.includes(field.type) && <i className="ffa-tag">{field.options.length} {isRTL ? 'خيارات' : 'options'}</i>}
           </small>
         </span>
@@ -198,10 +228,10 @@ const QuestionCard = ({ field, index, fields, isRTL, open, onOpen, onChange, onM
                 className={error && !o.trim() ? 'bad' : ''} />
               <button type="button" onClick={() => moveOption(i, -1)} title={isRTL ? 'لأعلى' : 'Up'}><I d="m18 15-6-6-6 6" /></button>
               <button type="button" onClick={() => moveOption(i, 1)} title={isRTL ? 'لأسفل' : 'Down'}><I d="m6 9 6 6 6-6" /></button>
-              <button type="button" className="danger" disabled={field.options.length <= 1} onClick={() => set({ options: field.options.filter((_, j) => j !== i) })} title={isRTL ? 'حذف' : 'Remove'}><I d="M18 6 6 18M6 6l12 12" /></button>
+              <button type="button" className="danger" disabled={field.options.length <= 1} onClick={() => removeOption(i)} title={isRTL ? 'حذف' : 'Remove'}><I d="M18 6 6 18M6 6l12 12" /></button>
             </div>
           ))}
-          <button type="button" className="ffa-add-opt" onClick={() => set({ options: [...field.options, `${isRTL ? 'الخيار' : 'Option'} ${field.options.length + 1}`] })}>
+          <button type="button" className="ffa-add-opt" onClick={() => set({ options: [...field.options, `${isRTL ? 'الخيار' : 'Option'} ${field.options.length + 1}`], optionsEn: [...enList(field), ''] })}>
             ＋ {isRTL ? 'إضافة خيار' : 'Add option'}
           </button>
         </div>
@@ -229,6 +259,48 @@ const QuestionCard = ({ field, index, fields, isRTL, open, onOpen, onChange, onM
           )}
         </div>
       )}
+
+      <div className={`ffa-en${enOpen ? ' open' : ''}`}>
+        <button type="button" className="ffa-en-toggle" onClick={() => setEnOpen(o => !o)} aria-expanded={enOpen}>
+          <span className="ffa-en-badge">EN</span>
+          {isRTL ? 'الترجمة الإنجليزية (اختياري)' : 'English translation (optional)'}
+          {hasEnglish(field) && !enOpen && <i className="ffa-tag en">✓</i>}
+          <span className="ffa-en-chev"><I d="m6 9 6 6 6-6" /></span>
+        </button>
+        {enOpen && (
+          <div className="ffa-en-body">
+            <p className="ffa-note">{isRTL
+              ? 'تظهر للزائر عند اختيار English. اتركها فارغة ليظهر النص العربي.'
+              : 'Shown when the visitor picks English. Leave empty to show the Arabic.'}</p>
+            <label className="ffa-field">
+              <span>{field.type === 'section' ? (isRTL ? 'عنوان القسم بالإنجليزية' : 'Section title (English)') : field.type === 'consent' ? (isRTL ? 'نص الإقرار بالإنجليزية' : 'Statement (English)') : (isRTL ? 'السؤال بالإنجليزية' : 'Question (English)')}</span>
+              <textarea dir="ltr" rows={(field.labelEn || '').length > 70 ? 3 : 1} value={field.labelEn || ''} onChange={(e) => set({ labelEn: e.target.value })} placeholder="e.g. Full name" />
+            </label>
+            <label className="ffa-field">
+              <span>{isRTL ? 'الوصف بالإنجليزية' : 'Help text (English)'}</span>
+              <textarea dir="ltr" rows={1} value={field.helpEn || ''} onChange={(e) => set({ helpEn: e.target.value })} />
+            </label>
+            {['short', 'paragraph', 'email', 'phone', 'number'].includes(field.type) && (
+              <label className="ffa-field">
+                <span>{isRTL ? 'النص الإرشادي بالإنجليزية' : 'Placeholder (English)'}</span>
+                <input dir="ltr" value={field.placeholderEn || ''} onChange={(e) => set({ placeholderEn: e.target.value })} />
+              </label>
+            )}
+            {(CHOICE.includes(field.type) || field.type === 'consent') && (
+              <div className="ffa-en-opts">
+                <span className="ffa-mini-label">{field.type === 'consent' ? (isRTL ? 'نص مربع الموافقة بالإنجليزية' : 'Tick-box text (English)') : (isRTL ? 'الخيارات بالإنجليزية' : 'Options (English)')}</span>
+                {(field.type === 'consent' ? field.options.slice(0, 1) : field.options).map((o, i) => (
+                  <div className="ffa-en-opt" key={i}>
+                    <span className="ffa-en-ar" title={o}>{o || '—'}</span>
+                    <I d={isRTL ? 'M19 12H5M11 18l-6-6 6-6' : 'M5 12h14M13 6l6 6-6 6'} />
+                    <input dir="ltr" value={enList(field)[i] || ''} onChange={(e) => setOptionEn(i, e.target.value)} placeholder={`Option ${i + 1}`} />
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+      </div>
 
       <div className="ffa-q-foot">
         <div className="ffa-cond">
@@ -271,6 +343,7 @@ const FormEditor = ({ isRTL, form, onClose, onSaved }) => {
   const [saving, setSaving] = useState(false);
   const [problems, setProblems] = useState({});
   const [preview, setPreview] = useState({});
+  const [previewLang, setPreviewLang] = useState('ar');
   const dirty = JSON.stringify(draft) !== initial;
   const set = (patch) => setDraft(d => ({ ...d, ...patch }));
   const hasEmail = draft.fields.some(f => f.type === 'email');
@@ -294,7 +367,11 @@ const FormEditor = ({ isRTL, form, onClose, onSaved }) => {
     return { ...d, fields };
   });
   const duplicateField = (i) => setDraft(d => {
-    const copy = { ...d.fields[i], id: newId(), options: d.fields[i].options ? [...d.fields[i].options] : undefined };
+    const copy = {
+      ...d.fields[i], id: newId(),
+      options: d.fields[i].options ? [...d.fields[i].options] : undefined,
+      optionsEn: d.fields[i].optionsEn ? [...d.fields[i].optionsEn] : undefined
+    };
     const fields = [...d.fields];
     fields.splice(i + 1, 0, copy);
     setOpenId(copy.id);
@@ -330,7 +407,12 @@ const FormEditor = ({ isRTL, form, onClose, onSaved }) => {
       opensAt: fromLocalInput(draft.opensAt), closesAt: fromLocalInput(draft.closesAt),
       maxResponses: draft.maxResponses === '' ? null : Number(draft.maxResponses),
       successMessage: draft.successMessage, closedMessage: draft.closedMessage, sendConfirmation: draft.sendConfirmation,
-      fields: draft.fields.map(f => ({ ...f, label: f.label.trim(), options: f.options?.map(o => o.trim()) }))
+      titleEn: draft.titleEn, descriptionEn: draft.descriptionEn,
+      successMessageEn: draft.successMessageEn, closedMessageEn: draft.closedMessageEn,
+      fields: draft.fields.map(f => ({
+        ...f, label: f.label.trim(), options: f.options?.map(o => o.trim()),
+        optionsEn: f.options ? enList(f).map(o => (o || '').trim()) : undefined
+      }))
     };
     if (draft.slug.trim()) payload.slug = draft.slug.trim().toLowerCase();
     setSaving(true);
@@ -407,6 +489,13 @@ const FormEditor = ({ isRTL, form, onClose, onSaved }) => {
                     <input value={draft.title} onChange={(e) => set({ title: e.target.value })} /></label>
                   <label className="ffa-field"><span>{isRTL ? 'الوصف' : 'Description'}</span>
                     <textarea rows={5} value={draft.description} onChange={(e) => set({ description: e.target.value })} /></label>
+                  <div className="ffa-en-block">
+                    <span className="ffa-mini-label"><span className="ffa-en-badge">EN</span>{isRTL ? 'بالإنجليزية (اختياري) — يظهر زر English للزائر عند تعبئتها' : 'English (optional) — visitors get an English button once filled'}</span>
+                    <label className="ffa-field"><span>{isRTL ? 'العنوان بالإنجليزية' : 'Title (English)'}</span>
+                      <input dir="ltr" value={draft.titleEn} onChange={(e) => set({ titleEn: e.target.value })} /></label>
+                    <label className="ffa-field"><span>{isRTL ? 'الوصف بالإنجليزية' : 'Description (English)'}</span>
+                      <textarea dir="ltr" rows={4} value={draft.descriptionEn} onChange={(e) => set({ descriptionEn: e.target.value })} /></label>
+                  </div>
                   <label className="ffa-field"><span>{isRTL ? 'اسم الرابط (اختياري)' : 'Link name (optional)'}</span>
                     <div className="ffa-slug" dir="ltr">
                       <em>fablabsahsa.com/forms/</em>
@@ -440,6 +529,13 @@ const FormEditor = ({ isRTL, form, onClose, onSaved }) => {
                     <textarea rows={2} value={draft.successMessage} onChange={(e) => set({ successMessage: e.target.value })} placeholder={isRTL ? 'شكرًا لك، وصلتنا إجابتك.' : 'Thank you — we received your answers.'} /></label>
                   <label className="ffa-field"><span>{isRTL ? 'رسالة عند إغلاق النموذج' : 'When the form is closed'}</span>
                     <textarea rows={2} value={draft.closedMessage} onChange={(e) => set({ closedMessage: e.target.value })} placeholder={isRTL ? 'هذا النموذج لا يستقبل ردودًا حاليًا' : 'This form is not taking responses right now'} /></label>
+                  <div className="ffa-en-block">
+                    <span className="ffa-mini-label"><span className="ffa-en-badge">EN</span>{isRTL ? 'الرسائل بالإنجليزية (اختياري)' : 'Messages in English (optional)'}</span>
+                    <label className="ffa-field"><span>{isRTL ? 'بعد الإرسال' : 'After submitting'}</span>
+                      <textarea dir="ltr" rows={2} value={draft.successMessageEn} onChange={(e) => set({ successMessageEn: e.target.value })} placeholder="Thank you — we received your answers." /></label>
+                    <label className="ffa-field"><span>{isRTL ? 'عند إغلاق النموذج' : 'When the form is closed'}</span>
+                      <textarea dir="ltr" rows={2} value={draft.closedMessageEn} onChange={(e) => set({ closedMessageEn: e.target.value })} placeholder="This form is not taking responses right now" /></label>
+                  </div>
                   <button type="button" className={`ffa-switch${draft.sendConfirmation ? ' on' : ''}`} onClick={() => set({ sendConfirmation: !draft.sendConfirmation })} aria-pressed={draft.sendConfirmation}>
                     <i />{isRTL ? 'إرسال نسخة من الإجابات لبريد المسجّل' : 'Email the respondent a copy'}
                   </button>
@@ -451,14 +547,20 @@ const FormEditor = ({ isRTL, form, onClose, onSaved }) => {
             )}
 
             {view === 'preview' && (
-              <div className="ffp ffp--embed" dir={isRTL ? 'rtl' : 'ltr'}>
+              <div className="ffp ffp--embed" dir={previewLang === 'ar' ? 'rtl' : 'ltr'}>
+                <div className="ffa-preview-lang" role="tablist" dir={isRTL ? 'rtl' : 'ltr'}>
+                  <span>{isRTL ? 'معاينة بـ' : 'Preview in'}</span>
+                  {[['ar', 'العربية'], ['en', 'English']].map(([k, label]) => (
+                    <button key={k} type="button" role="tab" aria-selected={previewLang === k} className={previewLang === k ? 'on' : ''} onClick={() => setPreviewLang(k)}>{label}</button>
+                  ))}
+                </div>
                 <div className="ffp-hero">
                   <span className="ffp-hero-strip" aria-hidden="true" />
-                  <h1>{draft.title || (isRTL ? 'نموذج بلا عنوان' : 'Untitled form')}</h1>
-                  {draft.description && <p className="ffp-desc">{draft.description}</p>}
+                  <h1>{tr(draft, 'title', previewLang) || (isRTL ? 'نموذج بلا عنوان' : 'Untitled form')}</h1>
+                  {tr(draft, 'description', previewLang) && <p className="ffp-desc">{tr(draft, 'description', previewLang)}</p>}
                 </div>
                 <div style={{ height: 14 }} />
-                <FormQuestions fields={draft.fields.filter(f => f.label.trim())} answers={preview} lang={isRTL ? 'ar' : 'en'}
+                <FormQuestions fields={draft.fields.filter(f => f.label.trim())} answers={preview} lang={previewLang}
                   onChange={(id, v) => setPreview(p => {
                     const next = { ...p, [id]: v };
                     const still = new Set(visibleFields(draft.fields, next).map(f => f.id));

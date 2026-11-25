@@ -14,7 +14,8 @@ const {
   Intern, InternAttendance,
   MawhbaStudent, MawhbaAttendance,
   SummerStudent, SummerStudentAttendance, SummerProgram,
-  WorkshopStudent, Workshop
+  WorkshopStudent, Workshop,
+  WorkspaceAttendance, WorkspaceRequest
 } = require('../models');
 
 // ---- helpers ---------------------------------------------------
@@ -96,6 +97,34 @@ const _staffRows = async (from, to) => {
       name: st.name || '',
       nationalId: st.nationalId || '',
       phone: st.phone || '',
+      date: _isoDate(r.date),
+      checkIn: _fmtTime(r.checkInAt),
+      checkOut: _fmtTime(r.checkOutAt),
+      durationMin: _durationMin(r.checkInAt, r.checkOutAt)
+    };
+  });
+};
+
+// Workspace team members (cards FL:WSM:<national ID>), grouped by booking.
+const _workspaceRows = async (from, to) => {
+  const records = await WorkspaceAttendance.findAll({
+    where: _dateWhere('date', from, to),
+    order: [['date', 'ASC'], ['checkInAt', 'ASC']]
+  });
+  const reqs = await WorkspaceRequest.findAll({
+    where: { requestId: { [Op.in]: [...new Set(records.map(r => r.requestId))] } },
+    attributes: ['requestId', 'requestNumber', 'unitCode', 'members']
+  });
+  const byId = Object.fromEntries(reqs.map(r => [r.requestId, r]));
+  return records.map(r => {
+    const q = byId[r.requestId];
+    const m = (Array.isArray(q?.members) ? q.members : []).find(x => x.nationalId === r.personKey || x.userId === r.personKey) || {};
+    return {
+      category: 'مساحات العمل',
+      group: q ? `${q.unitCode.replace('WS', 'مساحة العمل ')} · ${q.requestNumber}` : '—',
+      name: r.memberName || m.name || '',
+      nationalId: m.nationalId || r.personKey,
+      phone: m.phoneNumber || '',
       date: _isoDate(r.date),
       checkIn: _fmtTime(r.checkInAt),
       checkOut: _fmtTime(r.checkOutAt),
@@ -279,6 +308,7 @@ exports.exportUnifiedAttendance = async (req, res) => {
     if (pick('mawhba'))    tasks.push(_mawhbaRows(from, to));
     if (pick('summer'))    tasks.push(_summerRows(from, to));
     if (pick('workshop'))  tasks.push(_workshopRows(from, to));
+    if (pick('workspace')) tasks.push(_workspaceRows(from, to));
 
     const results = await Promise.all(tasks);
     const rows = results.flat();

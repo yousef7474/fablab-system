@@ -410,6 +410,51 @@ html[data-theme="dark"] .fx .ffa-modal :is(input, select) { color-scheme: dark; 
 }
 :root:root .fx .ffp--embed :is(input.ffp-input, textarea.ffp-input, select.ffp-input):focus { background-color: #fff; border-color: #2A4F7C; box-shadow: 0 0 0 4px rgba(42, 79, 124, .1); }
 
+/* English translation (per question + form settings) */
+:root:root .fx .ffa-tag.en { background: var(--fx-green-soft); color: var(--fx-green-ink); letter-spacing: .04em; }
+:root:root .fx .ffa-en-badge {
+  display: inline-grid; place-items: center; flex: none;
+  min-width: 26px; height: 20px; padding: 0 6px; margin-inline-end: 8px;
+  border-radius: 6px; background: var(--fx-grad-navy); color: #fff;
+  font: 700 10.5px var(--fx-font); letter-spacing: .06em; vertical-align: 1px;
+}
+:root:root .fx .ffa-en { border-radius: 14px; border: 1px dashed var(--fx-line-2); background: var(--fx-surface-2); }
+:root:root .fx .ffa-en.open { border-style: solid; }
+:root:root .fx .ffa-en-toggle {
+  display: flex; align-items: center; gap: 6px; width: 100%;
+  min-height: 44px; padding: 8px 12px; border: 0; border-radius: 14px;
+  background: transparent; color: var(--fx-ink-2); font: 600 13px var(--fx-font); text-align: start; cursor: pointer;
+}
+:root:root .fx .ffa-en-toggle:hover { color: var(--fx-ink); }
+:root:root .fx .ffa-en-chev { margin-inline-start: auto; display: grid; transition: transform .2s; }
+:root:root .fx .ffa-en.open .ffa-en-chev { transform: rotate(180deg); }
+:root:root .fx .ffa-en-chev svg { width: 16px; height: 16px; }
+:root:root .fx .ffa-en-body { display: grid; gap: 10px; padding: 0 12px 12px; }
+:root:root .fx .ffa-en-body .ffa-note { margin: 0; }
+:root:root .fx .ffa-en-opts { display: grid; gap: 8px; }
+:root:root .fx .ffa-en-opt { display: grid; grid-template-columns: minmax(0, 1fr) 16px minmax(0, 1.3fr); align-items: center; gap: 8px; }
+:root:root .fx .ffa-en-opt > svg { width: 16px; height: 16px; color: var(--fx-ink-3); }
+:root:root .fx .ffa-en-ar {
+  min-width: 0; padding: 0 10px; height: 42px; line-height: 42px;
+  border-radius: 11px; background: var(--fx-surface-3); color: var(--fx-ink-2);
+  font-size: 13.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+:root:root .fx .ffa-modal .ffa-en-opt input {
+  width: 100%; min-width: 0; height: 42px; padding: 0 12px;
+  border-radius: 11px; border: 1px solid var(--fx-line-2);
+  background: var(--fx-surface); color: var(--fx-ink); font: 400 14px var(--fx-font); outline: none; box-shadow: none;
+}
+:root:root .fx .ffa-modal .ffa-en-opt input:focus { border-color: var(--fx-navy); box-shadow: 0 0 0 3px var(--fx-navy-soft); }
+:root:root .fx .ffa-en-block { display: grid; gap: 10px; padding: 12px; border-radius: 14px; border: 1px dashed var(--fx-line-2); background: var(--fx-surface-2); }
+:root:root .fx .ffa-en-block .ffa-mini-label { display: flex; align-items: center; }
+/* preview language switch */
+:root:root .fx .ffa-preview-lang { display: flex; align-items: center; gap: 6px; margin: 0 0 12px; font: 600 12.5px var(--fx-font); color: #5f6c82; }
+:root:root .fx .ffa-preview-lang button {
+  min-height: 36px; padding: 0 14px; border-radius: 10px;
+  border: 1px solid #cfd7e4; background: #fff; color: #3f4d63; font: 600 13px var(--fx-font); cursor: pointer;
+}
+:root:root .fx .ffa-preview-lang button.on { background: #2A4F7C; border-color: #2A4F7C; color: #fff; }
+
 /* response detail */
 :root:root .fx .ffa-answers { display: grid; gap: 10px; margin: 0; }
 :root:root .fx .ffa-answers > div { padding: 12px 14px; border-radius: 12px; background: var(--fx-surface-2); border: 1px solid var(--fx-line); }
@@ -430,4 +475,7 @@ html[data-theme="dark"] .fx .ffa-modal :is(input, select) { color-scheme: dark; 
   :root:root .fx .ffa-modal-body { padding: 12px; }
   :root:root .fx .ffa-search { min-width: 0; flex: 1; }
   :root:root .fx .ffa-resp-tools { width: 100%; }
+  :root:root .fx .ffa-en-opt { grid-template-columns: minmax(0, 1fr); gap: 4px; }
+  :root:root .fx .ffa-en-opt > svg { display: none; }
+  :root:root .fx .ffa-en-ar { height: auto; line-height: 1.6; padding: 4px 10px; background: transparent; }
 }

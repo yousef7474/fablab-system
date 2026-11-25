@@ -2,6 +2,8 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { toast } from 'react-toastify';
 import api from '../../config/api';
+import WorkspaceDayLogs from './WorkspaceDayLogs';
+import { printWorkspaceBanner, printWorkspaceCards } from './workspacePrint';
 import './WorkspaceRequests.css';
 
 // Requests from the public /workspace page, at the top of the workspaces
@@ -55,6 +57,7 @@ const WorkspaceRequests = ({ isRTL }) => {
   const [note, setNote] = useState('');
   const [busy, setBusy] = useState(false);
   const [open, setOpen] = useState(true);
+  const [logsFor, setLogsFor] = useState(null);
   const L = (pair) => (isRTL ? pair[0] : pair[1]);
 
   const load = useCallback(async () => {
@@ -133,6 +136,19 @@ const WorkspaceRequests = ({ isRTL }) => {
     }
   };
 
+  // ID cards: open the window on the click (popup blockers), fill it once the QR codes load.
+  const printCards = async (r) => {
+    const w = window.open('', '_blank');
+    if (w) w.document.write(`<p style="font-family:sans-serif;padding:24px">${isRTL ? 'جاري تجهيز البطاقات…' : 'Preparing the cards…'}</p>`);
+    try {
+      const { data } = await api.get(`/workspace-requests/${r.requestId}/cards`);
+      printWorkspaceCards(data.request, data.cards, w);
+    } catch (err) {
+      if (w) w.close();
+      toast.error(errMsg(err, isRTL));
+    }
+  };
+
   const copyLink = () => {
     const url = `${window.location.origin}/workspace`;
     navigator.clipboard?.writeText(url).then(
@@ -149,7 +165,7 @@ const WorkspaceRequests = ({ isRTL }) => {
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M22 12h-6l-2 3h-4l-2-3H2" /><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z" /></svg>
           </span>
           <span>
-            <small>{isRTL ? 'من صفحة تسجيل مساحات العمل' : 'From the workspace registration page'}</small>
+            <small>{isRTL ? 'من صفحة تسجيل مساحات العمل · 8 مساحات مجانية' : 'From the workspace registration page · 8 free workspaces'}</small>
             <strong>{isRTL ? 'طلبات تسجيل مساحات العمل' : 'Workspace registration requests'}</strong>
           </span>
           {data.counts.pending > 0 && <em className="wsr-badge">{data.counts.pending}</em>}
@@ -236,6 +252,19 @@ const WorkspaceRequests = ({ isRTL }) => {
                         <div><dt>{isRTL ? 'المشروع' : 'Project'}</dt><dd>{r.projectName}</dd></div>
                         <div><dt>{isRTL ? 'التواصل' : 'Contact'}</dt><dd><a href={`tel:${r.phone}`} dir="ltr">{r.phone}</a> · <a href={`mailto:${r.email}`} dir="ltr">{r.email}</a></dd></div>
                       </dl>
+                      {Array.isArray(r.members) && r.members.length > 0 && (
+                        <ul className="wsr-team">
+                          {r.members.map((m, i) => (
+                            <li key={`${m.userId || m.nationalId || i}`}>
+                              <span className="wsr-team-n">{i + 1}</span>
+                              <b>{m.name}</b>
+                              {i === 0 && <em>{isRTL ? 'القائد' : 'Leader'}</em>}
+                              {m.isNew && <i>{isRTL ? 'مستخدم جديد' : 'New user'}</i>}
+                              {m.nationalId && <small dir="ltr">{m.nationalId}</small>}
+                            </li>
+                          ))}
+                        </ul>
+                      )}
                       {r.projectDescription && <p className="wsr-desc">{r.projectDescription}</p>}
                       {clash && (
                         <p className="wsr-warn">
@@ -250,6 +279,23 @@ const WorkspaceRequests = ({ isRTL }) => {
                           {r.decidedAt ? ` · ${new Date(r.decidedAt).toLocaleDateString(isRTL ? 'ar-SA-u-ca-gregory-nu-latn' : 'en-GB')}` : ''}
                           {r.decisionNote ? <><br />{r.decisionNote}</> : null}
                         </p>
+                      )}
+                      {r.status === 'approved' && (
+                        <div className="wsr-booktools">
+                          <button type="button" className="wsr-tool" onClick={() => printWorkspaceBanner(r)}>
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><path d="M6 9V2h12v7" /><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2" /><path d="M6 14h12v8H6z" /></svg>
+                            {isRTL ? 'طباعة اللوحة' : 'Print banner'}
+                          </button>
+                          <button type="button" className="wsr-tool" onClick={() => printCards(r)}>
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2" /><circle cx="9" cy="11" r="2.5" /><path d="M14 10h4M14 14h4M6 17c.6-1.6 1.8-2.5 3-2.5s2.4.9 3 2.5" /></svg>
+                            {isRTL ? 'بطاقات الأعضاء' : 'Member cards'}
+                          </button>
+                          <button type="button" className="wsr-tool" onClick={() => setLogsFor(r)}>
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" /></svg>
+                            {isRTL ? 'التقييم اليومي' : 'Daily rating'}
+                            {r.dayLogs?.count > 0 && <span>{r.dayLogs.count} · {r.dayLogs.avg}★</span>}
+                          </button>
+                        </div>
                       )}
                       <div className="wsr-actions">
                         {r.status !== 'approved' && (
@@ -272,6 +318,10 @@ const WorkspaceRequests = ({ isRTL }) => {
             )}
           </motion.div>
         )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {logsFor && <WorkspaceDayLogs request={logsFor} isRTL={isRTL} onClose={() => setLogsFor(null)} onChanged={load} />}
       </AnimatePresence>
 
       <AnimatePresence>

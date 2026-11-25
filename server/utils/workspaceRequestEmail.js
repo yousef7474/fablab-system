@@ -37,6 +37,7 @@ const _details = (r) => `
     <tr><td style="padding:8px 14px;color:#64748b">الوقت اليومي:</td><td style="padding:8px 14px;font-family:monospace" dir="ltr">${_esc(r.startTime)} → ${_esc(r.endTime)}</td></tr>
     <tr><td style="padding:8px 14px;color:#64748b">المشروع:</td><td style="padding:8px 14px">${_esc(r.projectName)}</td></tr>
     <tr><td style="padding:8px 14px;color:#64748b">عدد الأشخاص:</td><td style="padding:8px 14px">${_esc(r.peopleCount)}</td></tr>
+    ${Array.isArray(r.members) && r.members.length ? `<tr><td style="padding:8px 14px;color:#64748b;vertical-align:top">الفريق:</td><td style="padding:8px 14px;line-height:1.9">${r.members.map((m, i) => `${_esc(m.name)}${i === 0 ? ' <span style="color:#c8161d;font-size:12px">(قائد الفريق)</span>' : ''}`).join('<br>')}</td></tr>` : ''}
   </table>`;
 
 const _shell = (color, kicker, title, body) => `<!doctype html><html dir="rtl"><body style="margin:0;font-family:Segoe UI,Tahoma,Arial,sans-serif;background:#f4f6fb;color:#0f172a;padding:24px">

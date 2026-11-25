@@ -16,6 +16,10 @@ const WorkspaceRequest = sequelize.define('WorkspaceRequest', {
   projectName: { type: DataTypes.STRING(200), allowNull: false },
   projectDescription: { type: DataTypes.TEXT, allowNull: true },
   peopleCount: { type: DataTypes.INTEGER, allowNull: false, defaultValue: 1 },
+  // The team, leader first: [{ userId, firstName, lastName, name, sex,
+  // nationality, nationalId, phoneNumber, email, currentJob, isNew }] —
+  // returning users are linked by userId, new ones become User rows.
+  members: { type: DataTypes.JSON, allowNull: false, defaultValue: [] },
   unitCode: { type: DataTypes.STRING(10), allowNull: false },                       // WS1 … WS8
   startDate: { type: DataTypes.DATEONLY, allowNull: false },
   endDate: { type: DataTypes.DATEONLY, allowNull: false },

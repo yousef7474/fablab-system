@@ -95,6 +95,13 @@ export const fmtWhen = (d, lang) => (d ? new Date(d).toLocaleString(lang === 'ar
   timeZone: 'Asia/Riyadh', weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', hour: 'numeric', minute: '2-digit'
 }) : '');
 
+// A form / question text in the shown language: the admin's English when
+// it exists, otherwise the Arabic. Options keep their Arabic value (that
+// is what is stored); only the label changes.
+export const tr = (obj, key, lang) => (lang === 'en' && obj?.[`${key}En`]) || obj?.[key] || '';
+export const optText = (f, i, lang) => (lang === 'en' && f.optionsEn?.[i]) || f.options?.[i] || '';
+export const formHasEnglish = (form) => !!(form && (form.hasEn || form.titleEn || (form.fields || []).some(f => f.labelEn)));
+
 // Which fields are shown for these answers (showIf on an earlier choice).
 export const visibleFields = (fields, answers) => {
   const shown = [];
@@ -152,8 +159,8 @@ export const FormQuestions = ({ fields, answers, errors = {}, onChange, lang = '
           if (f.type === 'section') {
             return (
               <motion.section key={f.id} className="ffp-section" layout initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, height: 0 }}>
-                <h2>{f.label}</h2>
-                {f.help && <p>{f.help}</p>}
+                <h2>{tr(f, 'label', lang)}</h2>
+                {tr(f, 'help', lang) && <p>{tr(f, 'help', lang)}</p>}
               </motion.section>
             );
           }
@@ -177,12 +184,12 @@ export const FormQuestions = ({ fields, answers, errors = {}, onChange, lang = '
                 <label className="ffp-label" htmlFor={['radio', 'checkbox'].includes(f.type) ? undefined : `${name}-in`}>
                   <span className="ffp-qn">{qn}</span>
                   <span className="ffp-label-text">
-                    {f.label}
+                    {tr(f, 'label', lang)}
                     {f.required ? <b className="ffp-req" aria-label={t.required}>*</b> : <em className="ffp-opt">{t.optional}</em>}
                   </span>
                 </label>
               )}
-              {f.help && f.type !== 'consent' && <p className="ffp-help">{f.help}</p>}
+              {tr(f, 'help', lang) && f.type !== 'consent' && <p className="ffp-help">{tr(f, 'help', lang)}</p>}
 
               {['short', 'email', 'phone', 'number'].includes(f.type) && (
                 <input
@@ -192,7 +199,7 @@ export const FormQuestions = ({ fields, answers, errors = {}, onChange, lang = '
                   inputMode={f.type === 'number' ? 'decimal' : f.type === 'phone' ? 'tel' : f.type === 'email' ? 'email' : undefined}
                   dir={['email', 'phone', 'number'].includes(f.type) ? 'ltr' : undefined}
                   autoComplete={f.type === 'email' ? 'email' : f.type === 'phone' ? 'tel' : undefined}
-                  placeholder={f.placeholder || ''}
+                  placeholder={tr(f, 'placeholder', lang)}
                   value={v ?? ''}
                   onChange={(e) => set(e.target.value)}
                   disabled={disabled}
@@ -204,7 +211,7 @@ export const FormQuestions = ({ fields, answers, errors = {}, onChange, lang = '
                   id={`${name}-in`}
                   className="ffp-input ffp-textarea"
                   rows={4}
-                  placeholder={f.placeholder || ''}
+                  placeholder={tr(f, 'placeholder', lang)}
                   value={v ?? ''}
                   onChange={(e) => set(e.target.value)}
                   disabled={disabled}
@@ -223,30 +230,30 @@ export const FormQuestions = ({ fields, answers, errors = {}, onChange, lang = '
               {f.type === 'dropdown' && (
                 <select id={`${name}-in`} className="ffp-input ffp-select" value={v ?? ''} onChange={(e) => set(e.target.value)} disabled={disabled} aria-invalid={!!err}>
                   <option value="">{t.choose}</option>
-                  {f.options.map(o => <option key={o} value={o}>{o}</option>)}
+                  {f.options.map((o, i) => <option key={o} value={o}>{optText(f, i, lang)}</option>)}
                 </select>
               )}
               {f.type === 'radio' && (
-                <div className="ffp-options" role="radiogroup" aria-label={f.label}>
-                  {f.options.map(o => (
+                <div className="ffp-options" role="radiogroup" aria-label={tr(f, 'label', lang)}>
+                  {f.options.map((o, i) => (
                     <label key={o} className={`ffp-option${v === o ? ' on' : ''}`}>
                       <input type="radio" name={name} checked={v === o} onChange={() => set(o)} onClick={() => { if (v === o && !f.required) set(''); }} disabled={disabled} />
                       <i className="ffp-dot" aria-hidden="true" />
-                      <span>{o}</span>
+                      <span>{optText(f, i, lang)}</span>
                     </label>
                   ))}
                 </div>
               )}
               {f.type === 'checkbox' && (
-                <div className="ffp-options" role="group" aria-label={f.label}>
-                  {f.options.map(o => {
+                <div className="ffp-options" role="group" aria-label={tr(f, 'label', lang)}>
+                  {f.options.map((o, i) => {
                     const list = Array.isArray(v) ? v : [];
                     const on = list.includes(o);
                     return (
                       <label key={o} className={`ffp-option is-box${on ? ' on' : ''}`}>
                         <input type="checkbox" checked={on} onChange={() => set(on ? list.filter(x => x !== o) : [...list, o])} disabled={disabled} />
                         <i className="ffp-box" aria-hidden="true">{TICK}</i>
-                        <span>{o}</span>
+                        <span>{optText(f, i, lang)}</span>
                       </label>
                     );
                   })}
@@ -257,9 +264,9 @@ export const FormQuestions = ({ fields, answers, errors = {}, onChange, lang = '
                   <input type="checkbox" checked={!!v} onChange={() => set(!v)} disabled={disabled} />
                   <i className="ffp-box" aria-hidden="true">{TICK}</i>
                   <span className="ffp-consent-text">
-                    <span className="ffp-consent-label">{f.label}{f.required && <b className="ffp-req">*</b>}</span>
-                    {f.help && <small>{f.help}</small>}
-                    <strong>{f.options?.[0] || (lang === 'ar' ? 'أوافق' : 'I agree')}</strong>
+                    <span className="ffp-consent-label">{tr(f, 'label', lang)}{f.required && <b className="ffp-req">*</b>}</span>
+                    {tr(f, 'help', lang) && <small>{tr(f, 'help', lang)}</small>}
+                    <strong>{optText(f, 0, lang) || (lang === 'ar' ? 'أوافق' : 'I agree')}</strong>
                   </span>
                 </label>
               )}
@@ -283,12 +290,14 @@ export const FormQuestions = ({ fields, answers, errors = {}, onChange, lang = '
 const FabFormPage = () => {
   const { slug } = useParams();
   const { i18n } = useTranslation();
-  const lang = i18n.language === 'en' ? 'en' : 'ar';
-  const t = T[lang];
-  const isRTL = lang === 'ar';
-
   const [state, setState] = useState('loading'); // loading | ready | closed | notfound | error | done
   const [form, setForm] = useState(null);
+  // English only when the admin wrote it; otherwise the form stays Arabic
+  // and the language button is hidden.
+  const hasEn = formHasEnglish(form);
+  const lang = (hasEn || !form) && i18n.language === 'en' ? 'en' : 'ar';
+  const t = T[lang];
+  const isRTL = lang === 'ar';
   const [closed, setClosed] = useState(null); // { reason, message }
   const [answers, setAnswers] = useState({});
   const [errors, setErrors] = useState({});
@@ -305,7 +314,7 @@ const FabFormPage = () => {
     if (prev) root.removeAttribute('data-theme');
     return () => { if (prev && !root.hasAttribute('data-theme')) root.setAttribute('data-theme', prev); };
   }, []);
-  useEffect(() => { if (form?.title) document.title = `${form.title} · ${t.brand}`; }, [form, t.brand]);
+  useEffect(() => { if (form?.title) document.title = `${tr(form, 'title', lang)} · ${t.brand}`; }, [form, lang, t.brand]);
 
   const load = useCallback(async () => {
     setState('loading');
@@ -313,7 +322,7 @@ const FabFormPage = () => {
       const { data } = await api.get(`/forms/${encodeURIComponent(slug)}`);
       setForm(data.form);
       if (data.closedReason) {
-        setClosed({ reason: data.closedReason, message: data.closedMessage });
+        setClosed({ reason: data.closedReason, message: data.closedMessage, messageEn: data.closedMessageEn });
         setState('closed');
       } else {
         setState('ready');
@@ -371,7 +380,7 @@ const FabFormPage = () => {
       const d = err.response?.data || {};
       const status = err.response?.status;
       if (status === 409) {
-        setClosed({ reason: d.closedReason || 'inactive', message: lang === 'ar' ? d.messageAr : d.message });
+        setClosed({ reason: d.closedReason || 'inactive', message: d.messageAr, messageEn: d.message });
         setState('closed');
       } else if (status === 400 && Array.isArray(d.errors)) {
         const mapped = {};
@@ -414,10 +423,12 @@ const FabFormPage = () => {
           <span className="ffp-logo"><img src="/fablab.png" alt="" /></span>
           <span className="ffp-brand-text"><strong>{t.brand}</strong><small>{t.brandSub}</small></span>
         </a>
-        <button type="button" className="ffp-lang" onClick={toggleLang}>
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><circle cx="12" cy="12" r="10" /><line x1="2" y1="12" x2="22" y2="12" /><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" /></svg>
-          {t.lang}
-        </button>
+        {hasEn && (
+          <button type="button" className="ffp-lang" onClick={toggleLang}>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><circle cx="12" cy="12" r="10" /><line x1="2" y1="12" x2="22" y2="12" /><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" /></svg>
+            {t.lang}
+          </button>
+        )}
       </header>
 
       <main className="ffp-main">
@@ -448,12 +459,12 @@ const FabFormPage = () => {
           <>
             {form && (
               <div className="ffp-hero compact">
-                <h1>{form.title}</h1>
+                <h1>{tr(form, 'title', lang)}</h1>
               </div>
             )}
             <Status tone="amber"
               title={closed?.reason === 'not_yet' ? t.notYetTitle : t.closedTitle}
-              text={closed?.message}
+              text={(lang === 'en' && closed?.messageEn) || closed?.message}
               icon={closed?.reason === 'not_yet'
                 ? <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></svg>
                 : <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="4" y="11" width="16" height="10" rx="2" /><path d="M8 11V7a4 4 0 0 1 8 0v4" /></svg>}>
@@ -467,7 +478,7 @@ const FabFormPage = () => {
 
         {state === 'done' && (
           <Status tone="green" title={t.doneTitle}
-            text={done?.successMessage || t.doneDefault}
+            text={(lang === 'en' ? done?.successMessageEn : done?.successMessage) || t.doneDefault}
             icon={<motion.svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round"><motion.path d="M20 6 9 17l-5-5" initial={{ pathLength: 0 }} animate={{ pathLength: 1 }} transition={{ duration: 0.6, delay: 0.2 }} /></motion.svg>}>
             {done?.reference && (
               <div className="ffp-ref">
@@ -484,8 +495,8 @@ const FabFormPage = () => {
           <form className="ffp-form" onSubmit={submit} noValidate>
             <motion.div className="ffp-hero" initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.45 }}>
               <span className="ffp-hero-strip" aria-hidden="true" />
-              <h1>{form.title}</h1>
-              {form.description && <p className="ffp-desc">{form.description}</p>}
+              <h1>{tr(form, 'title', lang)}</h1>
+              {tr(form, 'description', lang) && <p className="ffp-desc">{tr(form, 'description', lang)}</p>}
               <div className="ffp-meta">
                 {requiredShown.length > 0 && <span className="ffp-chip"><b className="ffp-req">*</b> {t.requiredNote}</span>}
                 {form.closesAt && <span className="ffp-chip">⏰ {t.closesAt}: {fmtWhen(form.closesAt, lang)}</span>}

@@ -16,6 +16,9 @@ const crypto = require('crypto');
 //   section             a heading + text between questions (no answer)
 // `showIf` shows a field only when an earlier radio / dropdown / checkbox
 // answer is `value`.
+// English (optional): `labelEn`, `helpEn`, `placeholderEn` and `optionsEn`
+// (parallel to `options`). The Arabic text stays the canonical value —
+// answers and showIf always use the Arabic option.
 
 const TYPES = ['short', 'paragraph', 'email', 'phone', 'number', 'date', 'time', 'radio', 'dropdown', 'checkbox', 'consent', 'section'];
 const CHOICE = ['radio', 'dropdown', 'checkbox'];
@@ -53,13 +56,38 @@ function validateFields(input) {
     const label = _str(raw.label, 600);
     if (!label) throw new FormError(`Field ${n}: the question text is required`, `السؤال ${n}: نص السؤال مطلوب`);
     const f = { id, type, label, help: _str(raw.help, 2000) || '', required: type !== 'section' && !!raw.required };
-    if (['short', 'paragraph', 'email', 'phone', 'number'].includes(type)) f.placeholder = _str(raw.placeholder, 200) || '';
-    if (CHOICE.includes(type) || type === 'consent') {
-      const opts = [...new Set((Array.isArray(raw.options) ? raw.options : []).map(o => _str(o, 300)).filter(Boolean))].slice(0, MAX_OPTIONS);
-      if (type === 'consent') f.options = [opts[0] || 'أوافق'];
-      else if (!opts.length) throw new FormError(`Field ${n}: add at least one option`, `السؤال ${n}: أضف خيارًا واحدًا على الأقل`);
-      else f.options = opts;
+    f.labelEn = _str(raw.labelEn, 600);
+    f.helpEn = _str(raw.helpEn, 2000);
+    if (['short', 'paragraph', 'email', 'phone', 'number'].includes(type)) {
+      f.placeholder = _str(raw.placeholder, 200) || '';
+      f.placeholderEn = _str(raw.placeholderEn, 200);
     }
+    if (CHOICE.includes(type) || type === 'consent') {
+      // Keep each option's English beside it while dropping blanks / repeats.
+      const rawEn = Array.isArray(raw.optionsEn) ? raw.optionsEn : [];
+      const pairs = [];
+      const taken = new Set();
+      (Array.isArray(raw.options) ? raw.options : []).forEach((o, k) => {
+        const ar = _str(o, 300);
+        if (!ar || taken.has(ar)) return;
+        taken.add(ar);
+        pairs.push([ar, _str(rawEn[k], 300)]);
+      });
+      const list = pairs.slice(0, MAX_OPTIONS);
+      if (type === 'consent') {
+        f.options = [list[0]?.[0] || 'أوافق'];
+        f.optionsEn = [list[0]?.[1] || ''];
+      } else if (!list.length) {
+        throw new FormError(`Field ${n}: add at least one option`, `السؤال ${n}: أضف خيارًا واحدًا على الأقل`);
+      } else {
+        f.options = list.map(x => x[0]);
+        f.optionsEn = list.map(x => x[1]);
+      }
+      if (!f.optionsEn.some(Boolean)) delete f.optionsEn;
+    }
+    if (!f.labelEn) delete f.labelEn;
+    if (!f.helpEn) delete f.helpEn;
+    if (f.placeholderEn === '') delete f.placeholderEn;
     if (type === 'number') {
       f.min = _num(raw.min);
       f.max = _num(raw.max);
@@ -182,6 +210,7 @@ function respondentOf(fields, answers) {
 const LIQAA_FORM = {
   slug: 'asla-tech-2026',
   title: 'التسجيل في لقاء أصالتك (ASLA TECH 2026)',
+  titleEn: 'Register for the Asalatak Meetup (ASLA TECH 2026)',
   description: [
     'لقاء الابتكار والبحث العلمي وبراءات الاختراع',
     'لقاء حواري مع / م. فوزي العيسى - مستشار الفاب لاب',
@@ -191,30 +220,53 @@ const LIQAA_FORM = {
     'سيصلك تأكيد الحضور قبل أسبوع من الموعد وقبل يومين منه، ويُعوَّض المقعد غير المؤكد حضوره من قائمة الانتظار.',
     'يُرجى الحضور قبل الموعد بربع ساعة على الأقل لاستلام بطاقة الاسم.'
   ].join('\n'),
+  descriptionEn: [
+    'Innovation, Scientific Research & Patents Meetup',
+    'An open conversation with Eng. Fawzi Al-Essa — FabLab Advisor',
+    '',
+    '(Attendance conditions)',
+    'Minimum age is 13; there is no upper age limit.',
+    'You will receive an attendance confirmation one week and two days before the event; unconfirmed seats are offered to the waiting list.',
+    'Please arrive at least 15 minutes early to collect your name badge.'
+  ].join('\n'),
   successMessage: 'تم تسجيلك بنجاح. سيصلك تأكيد الحضور قبل أسبوع من الموعد وقبل يومين منه.',
+  successMessageEn: "You're registered. You will receive an attendance confirmation one week and two days before the event.",
   closedMessage: 'التسجيل في اللقاء مغلق حاليًا.',
+  closedMessageEn: 'Registration for this meetup is currently closed.',
   fields: [
-    { id: 'full_name', type: 'short', label: 'الاسم الكامل', required: true },
-    { id: 'age', type: 'number', label: 'العمر', required: true, min: 13, help: 'الحد الأدنى للعمر 13 سنة' },
-    { id: 'phone', type: 'phone', label: 'رقم الجوال', required: true, placeholder: '05xxxxxxxx' },
-    { id: 'email', type: 'email', label: 'البريد الإلكتروني', required: true, placeholder: 'name@example.com' },
-    { id: 'entity', type: 'radio', label: 'الجهة', required: true, options: ['مدرسة', 'جامعة', 'عمل', 'مستقل'] },
-    { id: 'interest', type: 'short', label: 'المجال المهتم به', required: true },
-    { id: 'has_idea', type: 'radio', label: 'هل لديك فكرة ابتكارية ترغب في عرضها؟', required: false, options: ['نعم', 'لا'] },
+    { id: 'full_name', type: 'short', label: 'الاسم الكامل', labelEn: 'Full name', required: true },
+    { id: 'age', type: 'number', label: 'العمر', labelEn: 'Age', required: true, min: 13, help: 'الحد الأدنى للعمر 13 سنة', helpEn: 'Minimum age is 13' },
+    { id: 'phone', type: 'phone', label: 'رقم الجوال', labelEn: 'Mobile number', required: true, placeholder: '05xxxxxxxx', placeholderEn: '05xxxxxxxx' },
+    { id: 'email', type: 'email', label: 'البريد الإلكتروني', labelEn: 'Email', required: true, placeholder: 'name@example.com', placeholderEn: 'name@example.com' },
     {
-      id: 'idea', type: 'paragraph', label: 'وصف عام مختصر للفكرة', required: false, maxWords: 100,
+      id: 'entity', type: 'radio', label: 'الجهة', labelEn: 'Affiliation', required: true,
+      options: ['مدرسة', 'جامعة', 'عمل', 'مستقل'], optionsEn: ['School', 'University', 'Work', 'Independent']
+    },
+    { id: 'interest', type: 'short', label: 'المجال المهتم به', labelEn: 'Field of interest', required: true },
+    {
+      id: 'has_idea', type: 'radio', label: 'هل لديك فكرة ابتكارية ترغب في عرضها؟', labelEn: 'Do you have an innovative idea you would like to present?',
+      required: false, options: ['نعم', 'لا'], optionsEn: ['Yes', 'No']
+    },
+    {
+      id: 'idea', type: 'paragraph', label: 'وصف عام مختصر للفكرة', labelEn: 'A brief overview of your idea', required: false, maxWords: 100,
       help: 'لا يتجاوز 100 كلمة، ودون ذكر تفاصيل تقنية سرية حفاظًا على جِدّة الفكرة',
+      helpEn: 'No more than 100 words — please leave out confidential technical details to protect the novelty of your idea',
       showIf: { field: 'has_idea', value: 'نعم' }
     },
-    { id: 'wants_consult', type: 'radio', label: 'هل ترغب بحجز استشارة فردية مسبقة؟', required: false, options: ['نعم', 'لا'] },
     {
-      id: 'consult_area', type: 'radio', label: 'ما مجال الاستشارة؟', required: false,
+      id: 'wants_consult', type: 'radio', label: 'هل ترغب بحجز استشارة فردية مسبقة؟', labelEn: 'Would you like to book a one-to-one consultation in advance?',
+      required: false, options: ['نعم', 'لا'], optionsEn: ['Yes', 'No']
+    },
+    {
+      id: 'consult_area', type: 'radio', label: 'ما مجال الاستشارة؟', labelEn: 'What is the consultation about?', required: false,
       options: ['براءات', 'تصنيع', 'إلكترونيات', 'دعم واحتضان', 'ناشئين'],
+      optionsEn: ['Patents', 'Manufacturing', 'Electronics', 'Support & incubation', 'Startups'],
       showIf: { field: 'wants_consult', value: 'نعم' }
     },
     {
-      id: 'pledge', type: 'consent', required: true, options: ['أتعهد وأوافق'],
-      label: 'أتعهد بتأكيد حضوري عند استلام رسالة التذكير، وأفهم أن المقعد غير المؤكد يُعوَّض من قائمة الانتظار'
+      id: 'pledge', type: 'consent', required: true, options: ['أتعهد وأوافق'], optionsEn: ['I pledge and agree'],
+      label: 'أتعهد بتأكيد حضوري عند استلام رسالة التذكير، وأفهم أن المقعد غير المؤكد يُعوَّض من قائمة الانتظار',
+      labelEn: 'I pledge to confirm my attendance when I receive the reminder message, and I understand that an unconfirmed seat will be offered to the waiting list'
     }
   ]
 };

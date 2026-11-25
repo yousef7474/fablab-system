@@ -142,14 +142,15 @@ const UnifiedAttendancePage = ({ open, onClose, isRTL }) => {
 
   const hydrate = useCallback(async () => {
     try {
-      const [m, v, s, i, su, tr, ws] = await Promise.allSettled([
+      const [m, v, s, i, su, tr, ws, wsp] = await Promise.allSettled([
         api.get('/mawhba/attendance/today'),
         api.get('/volunteers/attendance/today'),
         api.get('/fablab-staff/attendance/today'),
         api.get('/interns/attendance/today'),
         api.get('/summer/attendance/today'),
         api.get('/trainer-assistants/attendance/today'),
-        api.get('/workshops/students/attendance/today')
+        api.get('/workshops/students/attendance/today'),
+        api.get('/workspace-requests/attendance/today')
       ]);
       const mData  = m.status  === 'fulfilled' ? m.value.data  : null;
       const vData  = v.status  === 'fulfilled' ? v.value.data  : null;
@@ -158,6 +159,7 @@ const UnifiedAttendancePage = ({ open, onClose, isRTL }) => {
       const suData = su.status === 'fulfilled' ? su.value.data : null;
       const trData = tr.status === 'fulfilled' ? tr.value.data : null;
       const wsData = ws.status === 'fulfilled' ? ws.value.data : null;
+      const wspData = wsp.status === 'fulfilled' ? wsp.value.data : null;
 
       const combined = [];
       // FabLab staff first — they're the fixed team on-site
@@ -225,6 +227,15 @@ const UnifiedAttendancePage = ({ open, onClose, isRTL }) => {
           students: g.students
         }));
       }
+      // Workspace teams — one group per booking (مساحة العمل N · WS-0001)
+      if (Array.isArray(wspData?.groups)) {
+        wspData.groups.forEach(g => combined.push({
+          category: 'workspace',
+          course: g.course,
+          color: '#2A4F7C',
+          students: g.students
+        }));
+      }
       setGroups(combined);
 
       const mStats  = mData?.stats  || { checkins: 0, checkouts: 0 };
@@ -234,9 +245,10 @@ const UnifiedAttendancePage = ({ open, onClose, isRTL }) => {
       const suStats = suData?.stats || { checkins: 0, checkouts: 0 };
       const trStats = trData?.stats || { checkins: 0, checkouts: 0 };
       const wsStats = wsData?.stats || { checkins: 0, checkouts: 0 };
+      const wspStats = wspData?.stats || { checkins: 0, checkouts: 0 };
       setSessionStats(prev => ({
-        checkins:  (mStats.checkins  || 0) + (vStats.checkins  || 0) + (sStats.checkins  || 0) + (iStats.checkins  || 0) + (suStats.checkins  || 0) + (trStats.checkins  || 0) + (wsStats.checkins  || 0),
-        checkouts: (mStats.checkouts || 0) + (vStats.checkouts || 0) + (sStats.checkouts || 0) + (iStats.checkouts || 0) + (suStats.checkouts || 0) + (trStats.checkouts || 0) + (wsStats.checkouts || 0),
+        checkins:  (mStats.checkins  || 0) + (vStats.checkins  || 0) + (sStats.checkins  || 0) + (iStats.checkins  || 0) + (suStats.checkins  || 0) + (trStats.checkins  || 0) + (wsStats.checkins  || 0) + (wspStats.checkins  || 0),
+        checkouts: (mStats.checkouts || 0) + (vStats.checkouts || 0) + (sStats.checkouts || 0) + (iStats.checkouts || 0) + (suStats.checkouts || 0) + (trStats.checkouts || 0) + (wsStats.checkouts || 0) + (wspStats.checkouts || 0),
         errors: prev.errors
       }));
     } catch (err) {
@@ -310,7 +322,8 @@ const UnifiedAttendancePage = ({ open, onClose, isRTL }) => {
     TRAINER:  '/trainer-assistants/attendance/scan',
     MAWHBA:   '/mawhba/attendance/scan',
     SUMMER:   '/summer/attendance/scan',
-    WORKSHOP: '/workshops/students/attendance/scan'
+    WORKSHOP: '/workshops/students/attendance/scan',
+    WSM:      '/workspace-requests/attendance/scan'
   };
 
   const handleScan = useCallback(async (code) => {
@@ -337,7 +350,8 @@ const UnifiedAttendancePage = ({ open, onClose, isRTL }) => {
           TRAINER:  { name: data.trainer?.name,   badge: isRTL ? 'مدرب معاون' : 'Assistant Trainer',                          badgeType: isRTL ? 'مدرب معاون'          : 'Assistant Trainer',   color: '#059669' },
           MAWHBA:   { name: data.student?.nameAr || data.student?.nameEn, badge: data.student?.courseName || (isRTL ? 'موهبة' : 'Mawhba'), badgeType: isRTL ? 'طالب موهبة'  : 'Mawhba student',      color: data.color || '#8b5cf6' },
           SUMMER:   { name: data.student?.name,   badge: data.student?.program?.name || (isRTL ? 'صيف فاب لاب' : 'Summer'),    badgeType: isRTL ? 'طالب صيف فاب لاب'    : 'Summer FabLab student', color: data.color || '#f97316' },
-          WORKSHOP: { name: data.student?.name,   badge: data.workshop?.title || (isRTL ? 'ورشة' : 'Workshop'),                 badgeType: isRTL ? 'طالب ورشة'          : 'Workshop student',    color: data.workshop?.color || '#1a56db' }
+          WORKSHOP: { name: data.student?.name,   badge: data.workshop?.title || (isRTL ? 'ورشة' : 'Workshop'),                 badgeType: isRTL ? 'طالب ورشة'          : 'Workshop student',    color: data.workshop?.color || '#1a56db' },
+          WSM:      { name: data.member?.name,    badge: data.member?.unitLabel || (isRTL ? 'مساحة عمل' : 'Workspace'),         badgeType: isRTL ? 'عضو مساحة عمل'      : 'Workspace member',    color: '#2A4F7C' }
         }[parsed.role];
 
         const payload = {
@@ -622,14 +636,15 @@ const UnifiedAttendancePage = ({ open, onClose, isRTL }) => {
       : 'This will delete ALL of today\'s attendance records across all sections. Are you sure?')) return;
     setClearingToday(true);
     try {
-      const [m, v, s, i, su, tr, ws] = await Promise.allSettled([
+      const [m, v, s, i, su, tr, ws, wsp] = await Promise.allSettled([
         api.delete('/mawhba/attendance/today'),
         api.delete('/volunteers/attendance/today'),
         api.delete('/fablab-staff/attendance/today'),
         api.delete('/interns/attendance/today'),
         api.delete('/summer/attendance/today'),
         api.delete('/trainer-assistants/attendance/today'),
-        api.delete('/workshops/students/attendance/today')
+        api.delete('/workshops/students/attendance/today'),
+        api.delete('/workspace-requests/attendance/today')
       ]);
       const mCount  = m.status  === 'fulfilled' ? (m.value.data?.count  || 0) : 0;
       const vCount  = v.status  === 'fulfilled' ? (v.value.data?.count  || 0) : 0;
@@ -638,7 +653,8 @@ const UnifiedAttendancePage = ({ open, onClose, isRTL }) => {
       const suCount = su.status === 'fulfilled' ? (su.value.data?.count || 0) : 0;
       const trCount = tr.status === 'fulfilled' ? (tr.value.data?.count || 0) : 0;
       const wsCount = ws.status === 'fulfilled' ? (ws.value.data?.count || 0) : 0;
-      const total   = mCount + vCount + sCount + iCount + suCount + trCount + wsCount;
+      const wspCount = wsp.status === 'fulfilled' ? (wsp.value.data?.count || 0) : 0;
+      const total   = mCount + vCount + sCount + iCount + suCount + trCount + wsCount + wspCount;
       setGroups([]);
       setRecentScans([]);
       setSessionStats({ checkins: 0, checkouts: 0, errors: 0 });
@@ -678,7 +694,8 @@ const UnifiedAttendancePage = ({ open, onClose, isRTL }) => {
     intern: '🎒',
     summer: '☀️',
     mawhba: '📚',
-    workshop: '🛠'
+    workshop: '🛠',
+    workspace: '💼'
   })[cat] || '👤';
 
   const scanIcon = (kind) => ({
@@ -748,8 +765,8 @@ const UnifiedAttendancePage = ({ open, onClose, isRTL }) => {
             </div>
             <div className="as-ready-hint">
               {isRTL
-                ? 'وجّه الماسح نحو رمز QR على أي بطاقة — متطوع، موظف، مدرب، متدرب أو طالب. سيتم تصنيف المسح تلقائياً.'
-                : 'Point the scanner at any QR badge — volunteer, staff, trainer, intern or student. The scan will be categorized automatically.'}
+                ? 'وجّه الماسح نحو رمز QR على أي بطاقة — متطوع، موظف، مدرب، متدرب، طالب أو عضو مساحة عمل. سيتم تصنيف المسح تلقائياً.'
+                : 'Point the scanner at any QR badge — volunteer, staff, trainer, intern, student or workspace member. The scan will be categorized automatically.'}
             </div>
           </div>
           <div className="as-stats">
