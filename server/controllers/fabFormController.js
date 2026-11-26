@@ -1,10 +1,11 @@
 const crypto = require('crypto');
 const { Op, fn, col } = require('sequelize');
 const { sequelize } = require('../config/database');
-const { FabForm, FabFormResponse, Settings } = require('../models');
+const { FabForm, FabFormResponse, PaymentPage, PaymentSubmission, Settings } = require('../models');
 const { rateLimited } = require('../utils/siteContent');
 const { FormError, validateFields, cleanAnswers, respondentOf, LIQAA_FORM } = require('../utils/fabForms');
 const { sendFormConfirmation } = require('../utils/fabFormEmail');
+const { _closedReason: payClosedReason } = require('./paymentPageController');
 
 // FabLab forms (admin "نماذج فاب لاب"): the admin builds a form, shares
 // /forms/:slug, and turns it on / off by hand or between an open and a
@@ -48,8 +49,49 @@ const CLOSED_MESSAGES = {
   inactive: ['This form is not taking responses right now', 'هذا النموذج لا يستقبل ردودًا حاليًا'],
   not_yet: ['This form opens soon', 'لم يُفتح هذا النموذج بعد'],
   ended: ['This form has closed', 'انتهت فترة هذا النموذج'],
-  full: ['All places have been taken', 'اكتمل العدد المسموح به']
+  full: ['All places have been taken', 'اكتمل العدد المسموح به'],
+  payment: ['Registration is paused — payment is not available right now', 'التسجيل متوقف مؤقتًا — الدفع غير متاح حاليًا']
 };
+
+// ---------- payment (a linked "صفحات الدفع" page) ----------
+
+const PAY_TAKES_A_PLACE = ['pending', 'verified'];
+
+// pageId → { page, taken } for the given payment pages.
+async function _payPages(ids, transaction) {
+  const want = [...new Set(ids.filter(Boolean))];
+  if (!want.length) return new Map();
+  const pages = await PaymentPage.findAll({ where: { pageId: { [Op.in]: want } }, transaction });
+  const rows = await PaymentSubmission.findAll({
+    attributes: ['pageId', [fn('COUNT', col('submissionId')), 'n']],
+    where: { pageId: { [Op.in]: want }, status: { [Op.in]: PAY_TAKES_A_PLACE } },
+    group: ['pageId'],
+    raw: true,
+    transaction
+  });
+  const taken = Object.fromEntries(rows.map(r => [r.pageId, Number(r.n)]));
+  return new Map(pages.map(p => [p.pageId, { page: p, taken: taken[p.pageId] || 0 }]));
+}
+
+// The form's payment state: null (no payment) or { page, reason } where
+// `reason` says why paying is not possible now (a missing page counts as closed).
+const _payState = (form, pages) => {
+  if (!form.paymentPageId) return null;
+  const hit = pages.get(form.paymentPageId);
+  if (!hit) return { page: null, reason: 'closed' };
+  return { page: hit.page, reason: payClosedReason(hit.page, hit.taken) };
+};
+
+// A full payment page makes the form "full"; any other reason pauses it.
+const _withPayment = (reason, pay) => reason || (pay?.reason ? (pay.reason === 'full' ? 'full' : 'payment') : null);
+
+const _paySummary = (page) => (page ? {
+  title: page.title,
+  amount: Number(page.amount),
+  baseAmount: page.baseAmount != null ? Number(page.baseAmount) : null,
+  discountPercent: Number(page.discountPercent) || 0
+} : null);
+
 // The admin's own "closed" text wins, except when the form is simply full.
 const _closedText = (form, reason) => (reason !== 'full' && form.closedMessage) || CLOSED_MESSAGES[reason][1];
 const _closedTextEn = (form, reason) => (reason !== 'full' && form.closedMessageEn) || CLOSED_MESSAGES[reason][0];
@@ -85,6 +127,13 @@ async function _formFields(b, { partial = false, formId = null } = {}) {
   }
   if (!partial || b.sendConfirmation !== undefined) out.sendConfirmation = b.sendConfirmation !== false;
   if (!partial || b.isActive !== undefined) out.isActive = !!b.isActive;
+  if (!partial || b.paymentPageId !== undefined) {
+    const id = b.paymentPageId ? String(b.paymentPageId) : null;
+    if (id && !(/^[0-9a-f-]{36}$/i.test(id) && await PaymentPage.count({ where: { pageId: id } }))) {
+      throw new FormError('That payment page no longer exists', 'صفحة الدفع المختارة غير موجودة');
+    }
+    out.paymentPageId = id;
+  }
   if (b.slug !== undefined && b.slug !== null && String(b.slug).trim() !== '') {
     const slug = String(b.slug).trim().toLowerCase();
     if (!SLUG_RE.test(slug)) {
@@ -108,20 +157,37 @@ const _counts = async (ids) => {
   return Object.fromEntries(rows.map(r => [r.formId, Number(r.n)]));
 };
 
-const _formJson = (form, count = 0) => ({
-  ...form.toJSON(),
-  url: `${_origin()}/forms/${form.slug}`,
-  responseCount: count,
-  closedReason: closedReason(form, count)
-});
+const _formJson = (form, count = 0, pages = new Map()) => {
+  const pay = _payState(form, pages);
+  return {
+    ...form.toJSON(),
+    url: `${_origin()}/forms/${form.slug}`,
+    responseCount: count,
+    closedReason: _withPayment(closedReason(form, count), pay),
+    payment: pay ? {
+      pageId: form.paymentPageId,
+      missing: !pay.page,
+      slug: pay.page?.slug || null,
+      closedReason: pay.reason,
+      ...(_paySummary(pay.page) || {})
+    } : null
+  };
+};
+const _oneFormJson = async (form) => {
+  const [counts, pages] = await Promise.all([_counts([form.formId]), _payPages([form.paymentPageId])]);
+  return _formJson(form, counts[form.formId] || 0, pages);
+};
 
 // ---------- admin ----------
 
 exports.listForms = async (req, res) => {
   try {
     const forms = await FabForm.findAll({ order: [['createdAt', 'DESC']] });
-    const counts = await _counts(forms.map(f => f.formId));
-    res.json({ forms: forms.map(f => _formJson(f, counts[f.formId] || 0)) });
+    const [counts, pages] = await Promise.all([
+      _counts(forms.map(f => f.formId)),
+      _payPages(forms.map(f => f.paymentPageId))
+    ]);
+    res.json({ forms: forms.map(f => _formJson(f, counts[f.formId] || 0, pages)) });
   } catch (e) { _fail(res, e); }
 };
 
@@ -129,8 +195,7 @@ exports.getForm = async (req, res) => {
   try {
     const form = await FabForm.findByPk(req.params.id);
     if (!form) return res.status(404).json({ message: 'Form not found', messageAr: 'النموذج غير موجود' });
-    const counts = await _counts([form.formId]);
-    res.json({ form: _formJson(form, counts[form.formId] || 0) });
+    res.json({ form: await _oneFormJson(form) });
   } catch (e) { _fail(res, e); }
 };
 
@@ -144,7 +209,7 @@ exports.createForm = async (req, res) => {
       }
     }
     const form = await FabForm.create({ ...data, createdBy: _who(req), updatedBy: _who(req) });
-    res.status(201).json({ form: _formJson(form, 0) });
+    res.status(201).json({ form: await _oneFormJson(form) });
   } catch (e) { _fail(res, e); }
 };
 
@@ -159,8 +224,7 @@ exports.updateForm = async (req, res) => {
       throw new FormError('The close time must be after the open time', 'وقت الإغلاق يجب أن يكون بعد وقت الفتح');
     }
     await form.update({ ...data, updatedBy: _who(req) });
-    const counts = await _counts([form.formId]);
-    res.json({ form: _formJson(form, counts[form.formId] || 0) });
+    res.json({ form: await _oneFormJson(form) });
   } catch (e) { _fail(res, e); }
 };
 
@@ -169,8 +233,7 @@ exports.setActive = async (req, res) => {
     const form = await FabForm.findByPk(req.params.id);
     if (!form) return res.status(404).json({ message: 'Form not found', messageAr: 'النموذج غير موجود' });
     await form.update({ isActive: !!req.body.isActive, updatedBy: _who(req) });
-    const counts = await _counts([form.formId]);
-    res.json({ form: _formJson(form, counts[form.formId] || 0) });
+    res.json({ form: await _oneFormJson(form) });
   } catch (e) { _fail(res, e); }
 };
 
@@ -188,7 +251,7 @@ exports.duplicateForm = async (req, res) => {
       ...rest, slug, title: `${src.title} (نسخة)`.slice(0, 200), isActive: false,
       createdBy: _who(req), updatedBy: _who(req)
     });
-    res.status(201).json({ form: _formJson(form, 0) });
+    res.status(201).json({ form: await _oneFormJson(form) });
   } catch (e) { _fail(res, e); }
 };
 
@@ -217,7 +280,29 @@ exports.listResponses = async (req, res) => {
     const form = await FabForm.findByPk(req.params.id);
     if (!form) return res.status(404).json({ message: 'Form not found', messageAr: 'النموذج غير موجود' });
     const responses = await FabFormResponse.findAll({ where: { formId: form.formId }, order: [['createdAt', 'DESC']] });
-    res.json({ form: _formJson(form, responses.length), responses });
+    // Each response's payment: the newest one that still counts, else the newest.
+    const pays = responses.length ? await PaymentSubmission.findAll({
+      attributes: ['submissionId', 'formResponseId', 'reference', 'status', 'amount', 'method', 'createdAt'],
+      where: { formResponseId: { [Op.in]: responses.map(r => r.responseId) } },
+      order: [['createdAt', 'DESC']]
+    }) : [];
+    const payOf = {};
+    pays.forEach(p => {
+      const cur = payOf[p.formResponseId];
+      if (!cur || (cur.status === 'rejected' && p.status !== 'rejected')) payOf[p.formResponseId] = p;
+    });
+    const pages = await _payPages([form.paymentPageId]);
+    res.json({
+      form: _formJson(form, responses.length, pages),
+      responses: responses.map(r => {
+        const { payToken, ...rest } = r.toJSON();
+        const p = payOf[r.responseId];
+        return {
+          ...rest,
+          payment: p ? { reference: p.reference, status: p.status, amount: Number(p.amount), method: p.method, createdAt: p.createdAt } : null
+        };
+      })
+    });
   } catch (e) { _fail(res, e); }
 };
 
@@ -237,7 +322,8 @@ exports.getPublicForm = async (req, res) => {
     const form = await FabForm.findOne({ where: { slug: String(req.params.slug || '').toLowerCase() } });
     if (!form) return res.status(404).json({ message: 'Form not found', messageAr: 'النموذج غير موجود' });
     const count = form.maxResponses ? await FabFormResponse.count({ where: { formId: form.formId } }) : 0;
-    const reason = closedReason(form, count);
+    const pay = _payState(form, await _payPages([form.paymentPageId]));
+    const reason = _withPayment(closedReason(form, count), pay);
     res.json({
       form: {
         slug: form.slug,
@@ -247,9 +333,11 @@ exports.getPublicForm = async (req, res) => {
         descriptionEn: form.descriptionEn || null,
         fields: reason ? [] : form.fields,
         // Whether the form offers English (the closed screen has no fields).
-        hasEn: !!(form.titleEn || (form.fields || []).some(f => f.labelEn)),
+        hasEn: !!(form.titleEn || (form.fields || []).some(f => f.labelEn || f.contentEn)),
         opensAt: form.opensAt,
-        closesAt: form.closesAt
+        closesAt: form.closesAt,
+        // Paid after sending (title + price of the linked payment page).
+        payment: pay?.page ? _paySummary(pay.page) : null
       },
       closedReason: reason,
       closedMessage: reason ? _closedText(form, reason) : null,
@@ -267,7 +355,10 @@ exports.submitForm = async (req, res) => {
     const form = await FabForm.findOne({ where: { slug } });
     if (!form) return res.status(404).json({ message: 'Form not found', messageAr: 'النموذج غير موجود' });
 
-    const closedFirst = closedReason(form, form.maxResponses ? await FabFormResponse.count({ where: { formId: form.formId } }) : 0);
+    const closedFirst = _withPayment(
+      closedReason(form, form.maxResponses ? await FabFormResponse.count({ where: { formId: form.formId } }) : 0),
+      _payState(form, await _payPages([form.paymentPageId]))
+    );
     if (closedFirst) {
       return res.status(409).json({ message: _closedTextEn(form, closedFirst), messageAr: _closedText(form, closedFirst), closedReason: closedFirst });
     }
@@ -278,11 +369,12 @@ exports.submitForm = async (req, res) => {
       return res.status(400).json({ message: errors[0].message, messageAr: errors[0].messageAr, errors });
     }
 
-    const response = await sequelize.transaction(async (t) => {
+    const result = await sequelize.transaction(async (t) => {
       // One submission at a time per form (response limit) and for the reference number.
       await sequelize.query('SELECT pg_advisory_xact_lock(hashtext(:k))', { replacements: { k: 'fab-form-ref' }, transaction: t });
       const count = await FabFormResponse.count({ where: { formId: form.formId }, transaction: t });
-      const reason = closedReason(form, count);
+      const pay = _payState(form, await _payPages([form.paymentPageId], t));
+      const reason = _withPayment(closedReason(form, count), pay);
       if (reason) {
         const err = new FormError(_closedTextEn(form, reason), _closedText(form, reason));
         err.status = 409;
@@ -292,34 +384,52 @@ exports.submitForm = async (req, res) => {
       const next = (Number(seq?.value) || 0) + 1;
       await Settings.upsert({ key: REF_SEQ_KEY, value: next }, { transaction: t });
       const who = respondentOf(fields, answers);
-      return FabFormResponse.create({
+      const created = await FabFormResponse.create({
         formId: form.formId,
         reference: `F-${String(next).padStart(4, '0')}`,
         answers,
         fieldsSnapshot: fields,
         respondentName: who.name,
-        respondentEmail: who.email
+        respondentEmail: who.email,
+        payToken: pay?.page ? crypto.randomUUID() : null
       }, { transaction: t });
+      return { response: created, payPage: pay?.page || null };
     });
+    const { response, payPage } = result;
+    // Where the respondent pays: the linked page, pre-filled from this response.
+    const payment = payPage ? {
+      ..._paySummary(payPage),
+      url: `/pay/${payPage.slug}?fr=${response.payToken}`
+    } : null;
 
     if (form.sendConfirmation && response.respondentEmail) {
-      sendFormConfirmation({ to: response.respondentEmail, name: response.respondentName, form, response })
-        .catch(e => console.error('Form confirmation email failed:', e.message));
+      sendFormConfirmation({
+        to: response.respondentEmail, name: response.respondentName, form, response,
+        payment: payment ? { title: payment.title, amount: payment.amount, url: `${_origin()}${payment.url}` } : null
+      }).catch(e => console.error('Form confirmation email failed:', e.message));
     }
     res.status(201).json({
       reference: response.reference,
       successMessage: form.successMessage || null,
-      successMessageEn: form.successMessageEn || null
+      successMessageEn: form.successMessageEn || null,
+      payment
     });
   } catch (e) { _fail(res, e); }
 };
 
 // ---------- startup ----------
 
-// Startup: make sure the English columns exist (older databases), create
+// Startup: make sure the payment and English columns exist (older databases), create
 // the لقاء registration form once (switched off for review), and give it
 // its English text once.
 exports.seedFabForms = async () => {
+  for (const [table, column] of [['fab_forms', 'paymentPageId'], ['fab_form_responses', 'payToken'], ['payment_submissions', 'formResponseId']]) {
+    try {
+      await sequelize.query(`ALTER TABLE ${table} ADD COLUMN IF NOT EXISTS "${column}" UUID`);
+    } catch (e) {
+      if (!/does not exist/i.test(e.message)) console.log(`${table}.${column} migration note:`, e.message);
+    }
+  }
   for (const [col, type] of Object.entries(EN_COLUMNS)) {
     try {
       await sequelize.query(`ALTER TABLE fab_forms ADD COLUMN IF NOT EXISTS "${col}" ${type}`);

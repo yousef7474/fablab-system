@@ -33,6 +33,7 @@ const T = {
     footnote: 'تُراجع كل دفعة يدوياً من فريق فاب لاب الأحساء، وتصلك الفاتورة على بريدك بعد التأكيد.',
     errName: 'اكتب اسمك الكامل', errPhone: 'رقم جوال غير صحيح', errEmail: 'بريد إلكتروني غير صحيح', errMethod: 'اختر طريقة الدفع', errProof: 'ارفع إيصال التحويل', errTerms: 'يرجى الموافقة على الشروط',
     errFile: 'الملف يجب أن يكون صورة أو PDF بحجم لا يتجاوز 10 ميجابايت', errGeneric: 'تعذّر إرسال الطلب — حاول مرة أخرى',
+    fromForm: 'دفع تسجيلك في', fromFormRef: 'رقم التسجيل', alreadyPaid: (ref) => `لديك دفع مسجّل لهذا التسجيل (${ref}) — لا حاجة للدفع مرة أخرى.`,
     okTitle: 'تم استلام طلبك', okBank: 'استلمنا إيصال التحويل وسيتحقق منه فريق فاب لاب. تصلك الفاتورة على بريدك بعد التأكيد.',
     okMada: 'احضر إلى فاب لاب الأحساء وادفع المبلغ عبر جهاز مدى مع ذكر رقم المرجع. تصلك الفاتورة بعد الدفع.',
     okTitleDone: 'تم تأكيد طلبك', viewInvoice: 'عرض الفاتورة', okFree: 'حصلت على خصم كامل — تم تأكيد طلبك ولا يوجد أي مبلغ مستحق. أرسلنا الفاتورة إلى بريدك.', confirmed: 'مؤكد',
@@ -62,6 +63,7 @@ const T = {
     footnote: 'Every payment is reviewed by the FabLab Al-Ahsa team; your invoice is emailed once it is confirmed.',
     errName: 'Enter your full name', errPhone: 'Invalid mobile number', errEmail: 'Invalid email', errMethod: 'Choose a payment method', errProof: 'Upload the transfer receipt', errTerms: 'Please accept the terms',
     errFile: 'The file must be an image or PDF up to 10 MB', errGeneric: 'Could not send — please try again',
+    fromForm: 'Payment for your registration in', fromFormRef: 'Registration', alreadyPaid: (ref) => `This registration already has a payment (${ref}) — no need to pay again.`,
     okTitle: 'Request received', okBank: 'We received your transfer receipt; the FabLab team will verify it and email your invoice.',
     okMada: 'Visit FabLab Al-Ahsa and pay on the mada machine, quoting your reference. Your invoice follows the payment.',
     okTitleDone: 'Request confirmed', viewInvoice: 'View invoice', okFree: 'You got a full discount — your request is confirmed with nothing to pay. Your invoice was emailed.', confirmed: 'Confirmed',
@@ -164,6 +166,9 @@ const PaymentPage = () => {
   const [coupon, setCoupon] = useState(null); // { code, percent, discount, subtotal, amount }
   const [codeBusy, setCodeBusy] = useState(false);
   const [codeError, setCodeError] = useState('');
+  // Paying after a FabLab form (/pay/xxx?fr=<token>): that registration.
+  const [formToken] = useState(() => new URLSearchParams(window.location.search).get('fr') || '');
+  const [fromForm, setFromForm] = useState(null); // { reference, formTitle, formTitleEn, payment }
   const fileRef = useRef(null);
 
   useEffect(() => {
@@ -182,10 +187,25 @@ const PaymentPage = () => {
         document.title = `${data.title} · FABLAB Al-Ahsa`;
         const linkCode = new URLSearchParams(window.location.search).get('code');
         if (linkCode && data.isOpen) { setCodeOpen(true); setCodeInput(linkCode); applyCode(linkCode); }
+        if (formToken) {
+          api.get(`/pay/${encodeURIComponent(slug)}/form/${encodeURIComponent(formToken)}`)
+            .then(({ data: f }) => {
+              if (!alive) return;
+              setFromForm(f);
+              // Pre-fill what the form already asked; never overwrite typing.
+              setForm(prev => ({
+                ...prev,
+                fullName: prev.fullName || f.fullName || '',
+                phone: prev.phone || f.phone || '',
+                email: prev.email || f.email || ''
+              }));
+            })
+            .catch(() => {});
+        }
       })
       .catch(err => { if (alive) setLoadState(err?.response?.status === 404 ? 'notfound' : 'error'); });
     return () => { alive = false; };
-  }, [slug]);
+  }, [slug, formToken]);
 
   const closed = page && !page.isOpen ? page.closedReason || 'closed' : null;
   // What the customer pays: the page price, less a discount code if applied.
@@ -270,6 +290,7 @@ const PaymentPage = () => {
         method: isFree ? 'free' : method,
         termsAccepted: agreed,
         couponCode: coupon?.code || undefined,
+        formToken: fromForm ? formToken : undefined,
         proof: !isFree && method === 'bank_transfer' && proof
           ? { fileName: proof.name.replace(/\.[^.]+$/, '') + '.' + proof.type, fileType: proof.type, fileData: proof.dataUrl }
           : undefined
@@ -448,6 +469,19 @@ const PaymentPage = () => {
             </motion.div>
           ) : (
             <motion.form key="form" className="pp-form" onSubmit={submit} noValidate initial={{ opacity: 1 }} exit={{ opacity: 0, y: -10 }}>
+              {fromForm && (
+                <div className={`pp-fromform${fromForm.payment ? ' paid' : ''}`}>
+                  <span className="pp-fromform-ico" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="4" y="3" width="16" height="18" rx="2.5" /><path d="M8 8h8M8 12h8M8 16l1.5 1.5L12 15" /></svg>
+                  </span>
+                  <div>
+                    <small>{t.fromForm}</small>
+                    <b>{(!isRTL && fromForm.formTitleEn) || fromForm.formTitle}</b>
+                    <span>{t.fromFormRef}: <span dir="ltr">{fromForm.reference}</span></span>
+                    {fromForm.payment && <em>{t.alreadyPaid(fromForm.payment.reference)}</em>}
+                  </div>
+                </div>
+              )}
               <Section n="01" title={t.s1} delay={0.15}>
                 <div className="pp-fields">
                   <label className={`pp-field pp-span ${errors.fullName ? 'bad' : ''}`} data-field="fullName">

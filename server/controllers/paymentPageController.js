@@ -1,7 +1,7 @@
 const crypto = require('crypto');
 const { Op } = require('sequelize');
 const { sequelize } = require('../config/database');
-const { PaymentPage, PaymentSubmission, PaymentCoupon, Settings } = require('../models');
+const { PaymentPage, PaymentSubmission, PaymentCoupon, FabForm, FabFormResponse, Settings } = require('../models');
 const { IMAGE_TYPES, sendBinary, rateLimited } = require('../utils/siteContent');
 const { buildReceiptHtml, sendPaymentReceived, sendPaymentVerified, sendPaymentRejected } = require('../utils/paymentPageDocs');
 
@@ -292,6 +292,49 @@ exports.getPublicCover = async (req, res) => {
   }
 };
 
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+// The FabLab form response a `?fr=` token points to, if its form pays
+// through this page; else null.
+async function _formResponseFor(page, token, transaction) {
+  if (!token || !UUID_RE.test(String(token))) return null;
+  const r = await FabFormResponse.findOne({
+    where: { payToken: String(token) },
+    include: [{ model: FabForm, as: 'form', attributes: ['formId', 'title', 'titleEn', 'paymentPageId'] }],
+    transaction
+  });
+  return r && r.form && r.form.paymentPageId === page.pageId ? r : null;
+}
+
+// GET /api/pay/:slug/form/:token — who is paying after sending a FabLab
+// form: their details to pre-fill, and a payment they already made.
+exports.getFormPrefill = async (req, res) => {
+  try {
+    if (!SLUG_RE.test(req.params.slug)) return res.status(404).json({ message: 'Not found' });
+    const page = await PaymentPage.findOne({ where: { slug: req.params.slug } });
+    const r = page ? await _formResponseFor(page, req.params.token) : null;
+    if (!r) return res.status(404).json({ message: 'Not found', messageAr: 'الرابط غير صحيح' });
+    const phoneField = (r.fieldsSnapshot || []).find(f => f.type === 'phone' && r.answers?.[f.id]);
+    const paid = await PaymentSubmission.findOne({
+      attributes: ['reference', 'status'],
+      where: { formResponseId: r.responseId, status: { [Op.in]: TAKES_A_PLACE } },
+      order: [['createdAt', 'DESC']]
+    });
+    res.json({
+      reference: r.reference,
+      formTitle: r.form.title,
+      formTitleEn: r.form.titleEn || null,
+      fullName: r.respondentName || '',
+      email: r.respondentEmail || '',
+      phone: phoneField ? String(r.answers[phoneField.id]) : '',
+      payment: paid ? { reference: paid.reference, status: paid.status } : null
+    });
+  } catch (error) {
+    console.error('getFormPrefill:', error);
+    res.status(500).json({ message: 'Server error', messageAr: 'خطأ في الخادم' });
+  }
+};
+
 // POST /api/pay/:slug/coupon — { code } → the price with that code.
 exports.checkCoupon = async (req, res) => {
   try {
@@ -313,7 +356,7 @@ exports.checkCoupon = async (req, res) => {
   }
 };
 
-// POST /api/pay/:slug — { fullName, phone, email, method, proof?, note?, termsAccepted, couponCode? }
+// POST /api/pay/:slug — { fullName, phone, email, method, proof?, note?, termsAccepted, couponCode?, formToken? }
 exports.submitPayment = async (req, res) => {
   try {
     if (!SLUG_RE.test(req.params.slug)) return res.status(404).json({ message: 'Not found' });
@@ -358,6 +401,8 @@ exports.submitPayment = async (req, res) => {
       if (page.terms && b.termsAccepted !== true) {
         throw { status: 400, message: 'Please accept the terms', messageAr: 'يرجى الموافقة على الشروط' };
       }
+      // Paying after a FabLab form: tie the payment to that response.
+      const formResponse = await _formResponseFor(page, b.formToken, t);
       const dup = await PaymentSubmission.findOne({
         where: { pageId: page.pageId, status: { [Op.in]: TAKES_A_PLACE }, [Op.or]: [{ phone }, { email }] },
         transaction: t
@@ -391,6 +436,7 @@ exports.submitPayment = async (req, res) => {
         proofFile: proof ? proof.data : null,
         proofType: proof ? proof.type : null,
         proofName: proof ? proof.name : null,
+        formResponseId: formResponse ? formResponse.responseId : null,
         ...(free ? { status: 'verified', paidAt: new Date(), reviewedAt: new Date(), reviewedBy: 'تلقائي — خصم كامل' } : {})
       }, { transaction: t });
       return { page, sub };
@@ -524,6 +570,13 @@ exports.deletePage = async (req, res) => {
   try {
     const page = await PaymentPage.findByPk(req.params.id);
     if (!page) return res.status(404).json({ message: 'Not found', messageAr: 'الصفحة غير موجودة' });
+    const linked = await FabForm.findOne({ where: { paymentPageId: page.pageId }, attributes: ['title'] });
+    if (linked) {
+      return res.status(409).json({
+        message: `The form "${linked.title}" pays through this page — remove the payment from that form first`,
+        messageAr: `النموذج «${linked.title}» مرتبط بهذه الصفحة للدفع — أزل الدفع من النموذج أولاً`
+      });
+    }
     const verified = await PaymentSubmission.count({ where: { pageId: page.pageId, status: 'verified' } });
     if (verified) {
       return res.status(409).json({ message: 'This page has verified payments — close it instead', messageAr: 'لا يمكن حذف صفحة عليها مدفوعات مؤكدة — يمكنك إغلاقها بدلاً من ذلك' });
@@ -545,9 +598,20 @@ exports.listSubmissions = async (req, res) => {
     if (!page) return res.status(404).json({ message: 'Not found', messageAr: 'الصفحة غير موجودة' });
     const subs = await PaymentSubmission.findAll({ where: { pageId: page.pageId }, order: [['createdAt', 'DESC']] });
     const stats = await _statsFor([page.pageId]);
+    // Payments made after a FabLab form: that form's title and response number.
+    const fromIds = [...new Set(subs.map(s => s.formResponseId).filter(Boolean))];
+    const fromRows = fromIds.length ? await FabFormResponse.findAll({
+      attributes: ['responseId', 'reference'],
+      where: { responseId: { [Op.in]: fromIds } },
+      include: [{ model: FabForm, as: 'form', attributes: ['title'] }]
+    }) : [];
+    const from = Object.fromEntries(fromRows.map(r => [r.responseId, { reference: r.reference, title: r.form?.title || '' }]));
     res.json({
       page: _pageJson(page, stats.get(page.pageId)),
-      submissions: subs.map(s => ({ ...s.toJSON(), ..._priceOf(s), hasProof: !!s.proofType, receiptUrl: receiptUrl(s) }))
+      submissions: subs.map(s => ({
+        ...s.toJSON(), ..._priceOf(s), hasProof: !!s.proofType, receiptUrl: receiptUrl(s),
+        fromForm: s.formResponseId ? from[s.formResponseId] || null : null
+      }))
     });
   } catch (error) {
     console.error('listSubmissions:', error);

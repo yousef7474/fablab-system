@@ -498,6 +498,7 @@ const Submissions = ({ isRTL, pageId, onBack, onChanged, manager }) => {
                       <a href={`mailto:${s.email}`} dir="ltr">{s.email}</a>
                       <span>{fmtDateTime(s.createdAt, isRTL)}</span>
                     </div>
+                    {s.fromForm && <p className="ppa-note">📝 {isRTL ? 'من نموذج' : 'From form'} «{s.fromForm.title}» · <span dir="ltr">{s.fromForm.reference}</span></p>}
                     {s.note && <p className="ppa-note">💬 {s.note}</p>}
                     {s.reviewNote && <p className={`ppa-note ${s.status === 'rejected' ? 'bad' : ''}`}>📝 {s.reviewNote}{s.reviewedBy ? ` — ${s.reviewedBy}` : ''}</p>}
                   </div>

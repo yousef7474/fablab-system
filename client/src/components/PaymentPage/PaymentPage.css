@@ -451,3 +451,18 @@
 .pp-free b { font-size: 1rem; color: #166534; }
 .pp-free p { margin-top: 4px !important; font-size: 0.86rem; line-height: 1.75; color: #14532d; }
 .pp-chip.ok { background: #dcfce7; color: #166534; }
+
+
+/* paying after a FabLab form */
+.pp-fromform {
+  display: flex; gap: 12px; align-items: flex-start; margin-bottom: 6px; padding: 14px 16px;
+  border-radius: 16px; border: 1px solid #d5e2f2; background: linear-gradient(180deg, #f2f6fc, #eaf1fa);
+}
+.pp-fromform-ico { display: grid; place-items: center; flex: none; width: 36px; height: 36px; border-radius: 11px; color: #fff; background: linear-gradient(135deg, #1f3d63, #2A4F7C 55%, #3d6fa8); }
+.pp-fromform-ico svg { width: 19px; height: 19px; }
+.pp-fromform > div { display: grid; gap: 2px; min-width: 0; }
+.pp-fromform small { color: var(--pp-muted); font-size: 12px; }
+.pp-fromform b { font-size: 15px; color: #1f3d63; overflow-wrap: anywhere; }
+.pp-fromform span { color: var(--pp-muted); font-size: 13px; }
+.pp-fromform em { margin-top: 6px; font-style: normal; font-size: 13px; font-weight: 600; color: #b45309; }
+.pp-fromform.paid { border-color: #f5d49b; background: linear-gradient(180deg, #fffaf0, #fff4e0); }

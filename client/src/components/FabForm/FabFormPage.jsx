@@ -45,7 +45,17 @@ const T = {
     retry: 'إعادة المحاولة',
     tooMany: 'محاولات كثيرة، حاول بعد قليل.',
     sendFailed: 'تعذّر الإرسال، حاول مرة أخرى.',
-    lang: 'English'
+    lang: 'English',
+    termsAgree: 'قرأت الشروط والأحكام وأوافق عليها',
+    fee: 'رسوم التسجيل',
+    sar: 'ر.س',
+    payAfter: 'تُدفع بعد إرسال النموذج',
+    payStepTitle: 'الدفع بعد الإرسال',
+    payStepText: (amount) => `بعد إرسال النموذج ستنتقل إلى صفحة الدفع لإتمام دفع ${amount} ر.س بالتحويل البنكي أو مدى.`,
+    submitPay: 'إرسال والمتابعة للدفع',
+    payNowTitle: 'خطوة أخيرة: إتمام الدفع',
+    payNowText: 'تسجيلك محفوظ. أكمل الدفع حتى يُعتمد — وصلك الرابط أيضًا على بريدك.',
+    payNow: 'ادفع الآن'
   },
   en: {
     brand: 'FabLab Al-Ahsa',
@@ -81,7 +91,17 @@ const T = {
     retry: 'Try again',
     tooMany: 'Too many attempts — try again shortly.',
     sendFailed: 'Could not send — please try again.',
-    lang: 'العربية'
+    lang: 'العربية',
+    termsAgree: 'I have read and agree to the terms and conditions',
+    fee: 'Registration fee',
+    sar: 'SAR',
+    payAfter: 'paid after you submit',
+    payStepTitle: 'Payment after submitting',
+    payStepText: (amount) => `After you submit, you'll go to the payment page to pay ${amount} SAR by bank transfer or mada.`,
+    submitPay: 'Submit & continue to payment',
+    payNowTitle: 'Last step: complete your payment',
+    payNowText: 'Your registration is saved. Complete the payment to confirm it — the link is in your email too.',
+    payNow: 'Pay now'
   }
 };
 
@@ -90,6 +110,13 @@ const PHONE_RE = /^\+?\d{8,15}$/;
 const toLatinDigits = (s) => String(s).replace(/[٠-٩]/g, d => '٠١٢٣٤٥٦٧٨٩'.indexOf(d));
 const countWords = (s) => String(s || '').trim().split(/\s+/).filter(Boolean).length;
 const isEmpty = (v) => v == null || v === '' || v === false || (Array.isArray(v) && v.length === 0);
+// Shown but never answered; ticked with one box.
+export const NO_ANSWER = ['section', 'note'];
+const TICKED = ['consent', 'terms'];
+export const fmtMoney = (n) => {
+  const v = Number(n) || 0;
+  return Number.isInteger(v) ? String(v) : v.toFixed(2);
+};
 
 export const fmtWhen = (d, lang) => (d ? new Date(d).toLocaleString(lang === 'ar' ? 'ar-SA-u-ca-gregory-nu-latn' : 'en-GB', {
   timeZone: 'Asia/Riyadh', weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', hour: 'numeric', minute: '2-digit'
@@ -114,7 +141,7 @@ export const visibleFields = (fields, answers) => {
     }
     if (ok) {
       shown.push(f);
-      if (f.type !== 'section') seen[f.id] = answers[f.id];
+      if (!NO_ANSWER.includes(f.type)) seen[f.id] = answers[f.id];
     }
   }
   return shown;
@@ -122,7 +149,7 @@ export const visibleFields = (fields, answers) => {
 
 // One field's problem (mirrors server/utils/fabForms.js cleanAnswers), or null.
 export const checkField = (f, v, t) => {
-  if (f.type === 'section') return null;
+  if (NO_ANSWER.includes(f.type)) return null;
   const val = typeof v === 'string' ? v.trim() : v;
   if (isEmpty(val)) return f.required ? t.required : null;
   switch (f.type) {
@@ -164,6 +191,19 @@ export const FormQuestions = ({ fields, answers, errors = {}, onChange, lang = '
               </motion.section>
             );
           }
+          if (f.type === 'note') {
+            return (
+              <motion.aside key={f.id} className="ffp-note" layout initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, height: 0 }}>
+                <span className="ffp-note-icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"><circle cx="12" cy="12" r="9" /><path d="M12 11v5M12 8h.01" /></svg>
+                </span>
+                <div className="ffp-note-body">
+                  {tr(f, 'label', lang) && <h3>{tr(f, 'label', lang)}</h3>}
+                  {tr(f, 'content', lang) && <p>{tr(f, 'content', lang)}</p>}
+                </div>
+              </motion.aside>
+            );
+          }
           qn += 1;
           const v = answers[f.id];
           const err = errors[f.id];
@@ -173,14 +213,14 @@ export const FormQuestions = ({ fields, answers, errors = {}, onChange, lang = '
             <motion.div
               key={f.id}
               id={name}
-              className={`ffp-q${err ? ' has-error' : ''}${f.type === 'consent' ? ' is-consent' : ''}`}
+              className={`ffp-q${err ? ' has-error' : ''}${f.type === 'consent' ? ' is-consent' : ''}${f.type === 'terms' ? ' is-terms' : ''}`}
               layout
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, height: 0, marginBottom: 0 }}
               transition={{ duration: 0.22 }}
             >
-              {f.type !== 'consent' && (
+              {!TICKED.includes(f.type) && (
                 <label className="ffp-label" htmlFor={['radio', 'checkbox'].includes(f.type) ? undefined : `${name}-in`}>
                   <span className="ffp-qn">{qn}</span>
                   <span className="ffp-label-text">
@@ -189,7 +229,7 @@ export const FormQuestions = ({ fields, answers, errors = {}, onChange, lang = '
                   </span>
                 </label>
               )}
-              {tr(f, 'help', lang) && f.type !== 'consent' && <p className="ffp-help">{tr(f, 'help', lang)}</p>}
+              {tr(f, 'help', lang) && !TICKED.includes(f.type) && <p className="ffp-help">{tr(f, 'help', lang)}</p>}
 
               {['short', 'email', 'phone', 'number'].includes(f.type) && (
                 <input
@@ -270,6 +310,22 @@ export const FormQuestions = ({ fields, answers, errors = {}, onChange, lang = '
                   </span>
                 </label>
               )}
+              {f.type === 'terms' && (
+                <>
+                  <div className="ffp-terms-head">
+                    <span className="ffp-terms-icon" aria-hidden="true">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z" /><path d="M14 3v5h5M9 13h6M9 17h4" /></svg>
+                    </span>
+                    <h3>{tr(f, 'label', lang)}<b className="ffp-req" aria-label={t.required}>*</b></h3>
+                  </div>
+                  <div className="ffp-terms-box" tabIndex={0} aria-label={tr(f, 'label', lang)}>{tr(f, 'content', lang)}</div>
+                  <label className={`ffp-consent ffp-terms-agree${v ? ' on' : ''}`}>
+                    <input type="checkbox" checked={!!v} onChange={() => set(!v)} disabled={disabled} />
+                    <i className="ffp-box" aria-hidden="true">{TICK}</i>
+                    <span className="ffp-consent-text"><strong>{optText(f, 0, lang) || t.termsAgree}</strong></span>
+                  </label>
+                </>
+              )}
 
               <AnimatePresence>
                 {err && (
@@ -286,6 +342,22 @@ export const FormQuestions = ({ fields, answers, errors = {}, onChange, lang = '
     </div>
   );
 };
+
+// "You pay after sending" card (public page + admin preview).
+export const PayStep = ({ payment, t }) => (
+  <div className="ffp-paystep">
+    <span className="ffp-paystep-icon" aria-hidden="true">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><rect x="2.5" y="5" width="19" height="14" rx="2.5" /><path d="M2.5 10h19M6.5 15h4" /></svg>
+    </span>
+    <div className="ffp-paystep-body">
+      <b>{t.payStepTitle}</b>
+      <span>{payment.title}</span>
+      <p>{t.payStepText(fmtMoney(payment.amount))}</p>
+    </div>
+    <span className="ffp-paystep-amount"><b dir="ltr">{fmtMoney(payment.amount)}</b><small>{t.sar}</small></span>
+  </div>
+);
+export const FORM_TEXT = T;
 
 const FabFormPage = () => {
   const { slug } = useParams();
@@ -335,7 +407,8 @@ const FabFormPage = () => {
 
   const fields = useMemo(() => form?.fields || [], [form]);
   const shown = useMemo(() => visibleFields(fields, answers), [fields, answers]);
-  const requiredShown = shown.filter(f => f.required && f.type !== 'section');
+  const requiredShown = shown.filter(f => f.required && !NO_ANSWER.includes(f.type));
+  const payment = form?.payment || null;
   const requiredDone = requiredShown.filter(f => !isEmpty(typeof answers[f.id] === 'string' ? answers[f.id].trim() : answers[f.id])).length;
 
   const onChange = (id, val) => {
@@ -364,9 +437,9 @@ const FabFormPage = () => {
 
     const payload = {};
     shown.forEach(f => {
-      if (f.type === 'section') return;
+      if (NO_ANSWER.includes(f.type)) return;
       const v = answers[f.id];
-      if (f.type === 'consent') payload[f.id] = !!v;
+      if (TICKED.includes(f.type)) payload[f.id] = !!v;
       else if (!isEmpty(v)) payload[f.id] = typeof v === 'string' ? v.trim() : v;
     });
 
@@ -487,7 +560,20 @@ const FabFormPage = () => {
                 <small>{t.keepRef}</small>
               </div>
             )}
-            <a className="ffp-btn ghost" href="/">{t.home}</a>
+            {done?.payment ? (
+              <motion.div className="ffp-paynow" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.35 }}>
+                <span className="ffp-paynow-kicker">{t.payNowTitle}</span>
+                <b className="ffp-paynow-title">{done.payment.title}</b>
+                <span className="ffp-paynow-amount"><b dir="ltr">{fmtMoney(done.payment.amount)}</b> {t.sar}</span>
+                <p>{t.payNowText}</p>
+                <a className="ffp-btn primary big" href={done.payment.url}>
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" aria-hidden="true"><rect x="2.5" y="5" width="19" height="14" rx="2.5" /><path d="M2.5 10h19M6.5 15h4" /></svg>
+                  {t.payNow}
+                </a>
+              </motion.div>
+            ) : (
+              <a className="ffp-btn ghost" href="/">{t.home}</a>
+            )}
           </Status>
         )}
 
@@ -500,6 +586,7 @@ const FabFormPage = () => {
               <div className="ffp-meta">
                 {requiredShown.length > 0 && <span className="ffp-chip"><b className="ffp-req">*</b> {t.requiredNote}</span>}
                 {form.closesAt && <span className="ffp-chip">⏰ {t.closesAt}: {fmtWhen(form.closesAt, lang)}</span>}
+                {payment && <span className="ffp-chip pay">💳 {t.fee}: <b dir="ltr">{fmtMoney(payment.amount)}</b> {t.sar} — {t.payAfter}</span>}
               </div>
             </motion.div>
 
@@ -520,10 +607,12 @@ const FabFormPage = () => {
               )}
             </AnimatePresence>
 
+            {payment && <PayStep payment={payment} t={t} />}
+
             <div className="ffp-actions">
               <button type="submit" className="ffp-btn primary big" disabled={sending}>
                 {sending ? <><span className="ffp-spin" aria-hidden="true" />{t.sending}</> : <>
-                  {t.submit}
+                  {payment ? t.submitPay : t.submit}
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" aria-hidden="true"><path d={isRTL ? 'M19 12H5M11 18l-6-6 6-6' : 'M5 12h14M13 6l6 6-6 6'} /></svg>
                 </>}
               </button>

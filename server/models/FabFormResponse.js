@@ -12,7 +12,10 @@ const FabFormResponse = sequelize.define('FabFormResponse', {
   fieldsSnapshot: { type: DataTypes.JSON, allowNull: false, defaultValue: [] },
   // The first name / email field's answer, for lists and the confirmation email.
   respondentName: { type: DataTypes.STRING(200), allowNull: true },
-  respondentEmail: { type: DataTypes.STRING(200), allowNull: true }
+  respondentEmail: { type: DataTypes.STRING(200), allowNull: true },
+  // When the form has a payment page: opens that page pre-filled and ties
+  // the payment to this response (/pay/:slug?fr=<payToken>).
+  payToken: { type: DataTypes.UUID, allowNull: true }
 }, {
   tableName: 'fab_form_responses',
   timestamps: true,

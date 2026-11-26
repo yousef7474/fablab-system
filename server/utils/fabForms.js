@@ -14,14 +14,22 @@ const crypto = require('crypto');
 //   checkbox            any of `options`
 //   consent             one tick box; `options[0]` is its text
 //   section             a heading + text between questions (no answer)
+//   note                a highlighted note: optional title + `content` (no answer)
+//   terms               terms & conditions: title + `content` + an "I agree"
+//                       tick box (`options[0]`); always required
 // `showIf` shows a field only when an earlier radio / dropdown / checkbox
 // answer is `value`.
 // English (optional): `labelEn`, `helpEn`, `placeholderEn` and `optionsEn`
 // (parallel to `options`). The Arabic text stays the canonical value —
 // answers and showIf always use the Arabic option.
 
-const TYPES = ['short', 'paragraph', 'email', 'phone', 'number', 'date', 'time', 'radio', 'dropdown', 'checkbox', 'consent', 'section'];
+const TYPES = ['short', 'paragraph', 'email', 'phone', 'number', 'date', 'time', 'radio', 'dropdown', 'checkbox', 'consent', 'section', 'note', 'terms'];
 const CHOICE = ['radio', 'dropdown', 'checkbox'];
+// Shown to the respondent but never answered.
+const NO_ANSWER = ['section', 'note'];
+const TICKED = ['consent', 'terms'];
+const TERMS_TITLE = 'الشروط والأحكام';
+const TERMS_TICK = 'قرأت الشروط والأحكام وأوافق عليها';
 const MAX_FIELDS = 100;
 const MAX_OPTIONS = 60;
 const TEXT_MAX = { short: 500, paragraph: 5000 };
@@ -53,16 +61,26 @@ function validateFields(input) {
     let id = ID_RE.test(raw.id || '') ? raw.id : newFieldId();
     while (seen.has(id)) id = newFieldId();
     seen.add(id);
-    const label = _str(raw.label, 600);
-    if (!label) throw new FormError(`Field ${n}: the question text is required`, `السؤال ${n}: نص السؤال مطلوب`);
-    const f = { id, type, label, help: _str(raw.help, 2000) || '', required: type !== 'section' && !!raw.required };
+    const label = _str(raw.label, 600) || (type === 'terms' ? TERMS_TITLE : '');
+    if (!label && type !== 'note') throw new FormError(`Field ${n}: the question text is required`, `السؤال ${n}: نص السؤال مطلوب`);
+    const f = {
+      id, type, label, help: _str(raw.help, 2000) || '',
+      required: type === 'terms' || (!NO_ANSWER.includes(type) && !!raw.required)
+    };
+    if (type === 'note' || type === 'terms') {
+      f.content = _str(raw.content, 20000);
+      f.contentEn = _str(raw.contentEn, 20000);
+      if (type === 'terms' && !f.content) throw new FormError(`Field ${n}: the terms text is required`, `العنصر ${n}: نص الشروط والأحكام مطلوب`);
+      if (type === 'note' && !f.content && !label) throw new FormError(`Field ${n}: write the note`, `العنصر ${n}: اكتب نص الملاحظة`);
+      if (!f.contentEn) delete f.contentEn;
+    }
     f.labelEn = _str(raw.labelEn, 600);
     f.helpEn = _str(raw.helpEn, 2000);
     if (['short', 'paragraph', 'email', 'phone', 'number'].includes(type)) {
       f.placeholder = _str(raw.placeholder, 200) || '';
       f.placeholderEn = _str(raw.placeholderEn, 200);
     }
-    if (CHOICE.includes(type) || type === 'consent') {
+    if (CHOICE.includes(type) || TICKED.includes(type)) {
       // Keep each option's English beside it while dropping blanks / repeats.
       const rawEn = Array.isArray(raw.optionsEn) ? raw.optionsEn : [];
       const pairs = [];
@@ -74,8 +92,8 @@ function validateFields(input) {
         pairs.push([ar, _str(rawEn[k], 300)]);
       });
       const list = pairs.slice(0, MAX_OPTIONS);
-      if (type === 'consent') {
-        f.options = [list[0]?.[0] || 'أوافق'];
+      if (TICKED.includes(type)) {
+        f.options = [list[0]?.[0] || (type === 'terms' ? TERMS_TICK : 'أوافق')];
         f.optionsEn = [list[0]?.[1] || ''];
       } else if (!list.length) {
         throw new FormError(`Field ${n}: add at least one option`, `السؤال ${n}: أضف خيارًا واحدًا على الأقل`);
@@ -129,11 +147,11 @@ function cleanAnswers(fields, body) {
   const fail = (f, en, ar) => errors.push({ field: f.id, message: `${f.label}: ${en}`, messageAr: `${f.label}: ${ar}` });
 
   for (const f of fields) {
-    if (f.type === 'section' || !isShown(f, answers)) continue;
+    if (NO_ANSWER.includes(f.type) || !isShown(f, answers)) continue;
     let v = input[f.id];
     if (typeof v === 'string') v = v.trim();
     if (f.type === 'checkbox' && !Array.isArray(v)) v = _isEmpty(v) ? [] : [v];
-    if (f.type === 'consent') v = v === true || v === 'true' || v === 1;
+    if (TICKED.includes(f.type)) v = v === true || v === 'true' || v === 1;
     if (_isEmpty(v)) {
       if (f.required) fail(f, 'required', 'مطلوب');
       continue;
@@ -176,6 +194,7 @@ function cleanAnswers(fields, body) {
         if (!v.every(x => f.options.includes(x))) { fail(f, 'pick from the options', 'اختر من الخيارات'); continue; }
         break;
       case 'consent':
+      case 'terms':
         v = true;
         break;
       default:
@@ -190,18 +209,20 @@ function cleanAnswers(fields, body) {
 function answerText(field, value) {
   if (value == null || value === '') return '';
   if (Array.isArray(value)) return value.join('، ');
-  if (field?.type === 'consent') return value ? (field.options?.[0] || 'نعم') : '';
+  if (TICKED.includes(field?.type)) return value ? (field.options?.[0] || 'نعم') : '';
   return String(value);
 }
 
-// Who answered: the first short / name-like answer and the first email.
+// Who answered: the first short / name-like answer, the first email and phone.
 function respondentOf(fields, answers) {
   const email = fields.find(f => f.type === 'email' && answers[f.id]);
+  const phone = fields.find(f => f.type === 'phone' && answers[f.id]);
   const nameField = fields.find(f => f.type === 'short' && /اسم|name/i.test(f.label) && answers[f.id])
     || fields.find(f => f.type === 'short' && answers[f.id]);
   return {
     name: nameField ? String(answers[nameField.id]).slice(0, 200) : null,
-    email: email ? answers[email.id] : null
+    email: email ? answers[email.id] : null,
+    phone: phone ? answers[phone.id] : null
   };
 }
 
@@ -271,4 +292,4 @@ const LIQAA_FORM = {
   ]
 };
 
-module.exports = { TYPES, CHOICE, FormError, validateFields, cleanAnswers, isShown, answerText, respondentOf, newFieldId, LIQAA_FORM };
+module.exports = { TYPES, CHOICE, NO_ANSWER, FormError, validateFields, cleanAnswers, isShown, answerText, respondentOf, newFieldId, LIQAA_FORM };

@@ -27,6 +27,9 @@ const FabForm = sequelize.define('FabForm', {
   maxResponses: { type: DataTypes.INTEGER, allowNull: true },
   // Email the respondent a copy of their answers (needs an email field).
   sendConfirmation: { type: DataTypes.BOOLEAN, allowNull: false, defaultValue: true },
+  // A payment page (admin "صفحات الدفع") the respondent pays through after
+  // sending the form. null = no payment.
+  paymentPageId: { type: DataTypes.UUID, allowNull: true },
   createdBy: { type: DataTypes.STRING(150), allowNull: true },
   updatedBy: { type: DataTypes.STRING(150), allowNull: true }
 }, {

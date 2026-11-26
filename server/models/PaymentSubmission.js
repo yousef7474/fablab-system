@@ -33,7 +33,9 @@ const PaymentSubmission = sequelize.define('PaymentSubmission', {
   reviewNote: { type: DataTypes.TEXT, allowNull: true },
   reviewedBy: { type: DataTypes.STRING(150), allowNull: true },
   reviewedAt: { type: DataTypes.DATE, allowNull: true },
-  paidAt: { type: DataTypes.DATE, allowNull: true }
+  paidAt: { type: DataTypes.DATE, allowNull: true },
+  // Paid from a FabLab form (the response it belongs to), or null.
+  formResponseId: { type: DataTypes.UUID, allowNull: true }
 }, {
   tableName: 'payment_submissions',
   timestamps: true,

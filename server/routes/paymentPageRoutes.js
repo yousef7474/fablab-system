@@ -9,6 +9,7 @@ const publicRouter = express.Router();
 publicRouter.get('/receipt/:token', ctrl.getReceipt);
 publicRouter.get('/:slug', ctrl.getPublicPage);
 publicRouter.get('/:slug/cover', ctrl.getPublicCover);
+publicRouter.get('/:slug/form/:token', ctrl.getFormPrefill);
 publicRouter.post('/:slug/coupon', ctrl.checkCoupon);
 publicRouter.post('/:slug', ctrl.submitPayment);
 

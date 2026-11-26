@@ -352,3 +352,64 @@
 @media (prefers-reduced-motion: reduce) {
   .ffp *, .ffp *::before, .ffp *::after { transition-duration: .01ms !important; animation-duration: .01ms !important; }
 }
+
+
+/* ---------- notes ---------- */
+.ffp-note {
+  display: flex; gap: 14px; align-items: flex-start;
+  padding: 16px 18px; border-radius: var(--ffp-radius);
+  background: linear-gradient(180deg, #f2f6fc, #eaf1fa);
+  border: 1px solid #d5e2f2; border-inline-start: 4px solid var(--ffp-navy);
+}
+.ffp-note-icon { display: grid; place-items: center; flex: none; width: 34px; height: 34px; border-radius: 11px; color: #fff; background: linear-gradient(135deg, #1f3d63, #2A4F7C 55%, #3d6fa8); }
+.ffp-note-icon svg { width: 19px; height: 19px; }
+.ffp-note-body { display: grid; gap: 4px; min-width: 0; }
+.ffp-note-body h3 { font-size: 15.5px; font-weight: 700; color: var(--ffp-navy-ink); }
+.ffp-note-body p { color: var(--ffp-ink-2); font-size: 14.5px; line-height: 1.85; white-space: pre-line; overflow-wrap: anywhere; }
+
+/* ---------- terms & conditions ---------- */
+.ffp-terms-head { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
+.ffp-terms-icon { display: grid; place-items: center; flex: none; width: 34px; height: 34px; border-radius: 11px; color: #fff; background: linear-gradient(135deg, #b3121a, #e0262c); }
+.ffp-terms-icon svg { width: 18px; height: 18px; }
+.ffp-terms-head h3 { font-size: 16.5px; font-weight: 700; }
+.ffp-terms-box {
+  max-height: 240px; overflow-y: auto; padding: 14px 16px; margin-bottom: 12px;
+  border-radius: 14px; border: 1px solid var(--ffp-line); background: var(--ffp-soft);
+  color: var(--ffp-ink-2); font-size: 14px; line-height: 1.95; white-space: pre-line; overflow-wrap: anywhere;
+  scrollbar-width: thin; outline: none;
+}
+.ffp-terms-box:focus-visible { border-color: var(--ffp-navy); box-shadow: 0 0 0 4px rgba(42, 79, 124, .12); }
+.ffp-q.is-terms .ffp-terms-agree { margin: 0; }
+
+/* ---------- payment ---------- */
+.ffp-chip.pay { color: var(--ffp-red-ink); background: #fff1f1; border-color: #ffd2d4; }
+.ffp-chip.pay b { font-weight: 700; }
+.ffp-paystep {
+  display: flex; align-items: center; gap: 14px; margin-top: 4px; margin-bottom: 18px;
+  padding: 16px 18px; border-radius: var(--ffp-radius); background: var(--ffp-card);
+  border: 1px solid #ffd2d4; box-shadow: var(--ffp-shadow);
+}
+.ffp-paystep-icon { display: grid; place-items: center; flex: none; width: 42px; height: 42px; border-radius: 13px; color: #fff; background: linear-gradient(135deg, #b3121a, #e0262c); box-shadow: 0 10px 20px -10px rgba(238, 35, 41, .8); }
+.ffp-paystep-icon svg { width: 22px; height: 22px; }
+.ffp-paystep-body { display: grid; gap: 2px; min-width: 0; flex: 1; }
+.ffp-paystep-body b { font-size: 15px; }
+.ffp-paystep-body > span { color: var(--ffp-navy-ink); font-weight: 600; font-size: 14px; }
+.ffp-paystep-body p { color: var(--ffp-ink-3); font-size: 13px; line-height: 1.7; }
+.ffp-paystep-amount { display: grid; justify-items: center; flex: none; padding: 8px 14px; border-radius: 14px; background: #fff1f1; color: var(--ffp-red-ink); }
+.ffp-paystep-amount b { font-size: 24px; line-height: 1.1; font-weight: 800; }
+.ffp-paystep-amount small { font-size: 12px; font-weight: 600; }
+.ffp-paynow {
+  display: grid; justify-items: center; gap: 6px; width: 100%; max-width: 440px; margin-top: 6px;
+  padding: 20px; border-radius: 20px; background: linear-gradient(180deg, #fff6f6, #fff); border: 1px solid #ffd2d4;
+}
+.ffp-paynow-kicker { font-size: 12.5px; font-weight: 700; color: var(--ffp-red-ink); }
+.ffp-paynow-title { font-size: 16px; }
+.ffp-paynow-amount { color: var(--ffp-ink-2); font-size: 14px; }
+.ffp-paynow-amount b { font-size: 30px; font-weight: 800; color: var(--ffp-red); }
+.ffp-paynow p { max-width: 380px; color: var(--ffp-ink-3); font-size: 13.5px; line-height: 1.8; }
+.ffp-paynow .ffp-btn { margin-top: 8px; text-decoration: none; }
+@media (max-width: 560px) {
+  .ffp-paystep { flex-wrap: wrap; }
+  .ffp-paystep-amount { order: -1; margin-inline-start: auto; }
+  .ffp-paynow .ffp-btn.big { width: 100%; }
+}

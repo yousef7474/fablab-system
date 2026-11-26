@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'react-toastify';
 import * as XLSX from 'xlsx';
 import api from '../../config/api';
-import { FormQuestions, visibleFields, tr } from '../FabForm/FabFormPage';
+import { FormQuestions, visibleFields, tr, PayStep, FORM_TEXT, NO_ANSWER, fmtMoney } from '../FabForm/FabFormPage';
 import '../FabForm/FabFormPage.css';
 import './FabFormsTab.css';
 
@@ -37,6 +37,16 @@ const copyText = (text, isRTL) => {
 };
 const newId = () => `f_${Math.random().toString(16).slice(2, 10)}`;
 const CHOICE = ['radio', 'dropdown', 'checkbox'];
+const TICKED = ['consent', 'terms'];
+const TEXT_BLOCK = ['note', 'terms'];
+const TERMS_TITLE = 'الشروط والأحكام';
+const TERMS_TICK = 'قرأت الشروط والأحكام وأوافق عليها';
+const PAY_STATE = {
+  null: { ar: 'مفتوحة', en: 'Open', cls: 'live' },
+  closed: { ar: 'مغلقة', en: 'Closed', cls: 'off' },
+  expired: { ar: 'انتهى موعدها', en: 'Expired', cls: 'ended' },
+  full: { ar: 'مكتملة', en: 'Full', cls: 'full' }
+};
 
 const I = ({ d, children }) => (
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{d ? <path d={d} /> : children}</svg>
@@ -54,22 +64,30 @@ const TYPES = {
   dropdown: { ar: 'قائمة منسدلة', en: 'Dropdown', icon: <I><rect x="3" y="5" width="18" height="14" rx="2.5" /><path d="m9 11 3 3 3-3" /></I> },
   checkbox: { ar: 'اختيار متعدد', en: 'Checkboxes', icon: <I><rect x="3" y="3" width="18" height="18" rx="4" /><path d="m8 12 3 3 5-6" /></I> },
   consent: { ar: 'إقرار / موافقة', en: 'Consent', icon: <I><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" /><path d="m9 12 2 2 4-4" /></I> },
-  section: { ar: 'عنوان قسم', en: 'Section heading', icon: <I d="M4 6h16M4 12h10M4 18h7" /> }
+  section: { ar: 'عنوان قسم', en: 'Section heading', icon: <I d="M4 6h16M4 12h10M4 18h7" /> },
+  note: { ar: 'ملاحظة', en: 'Note', icon: <I><circle cx="12" cy="12" r="9" /><path d="M12 11v5M12 8h.01" /></I> },
+  terms: { ar: 'الشروط والأحكام', en: 'Terms & conditions', icon: <I><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z" /><path d="M14 3v5h5M9 13h6M9 17h4" /></I> }
 };
+const CARD_ICON = <I><rect x="2.5" y="5" width="19" height="14" rx="2.5" /><path d="M2.5 10h19M6.5 15h4" /></I>;
 const TYPE_ORDER = ['short', 'paragraph', 'radio', 'checkbox', 'dropdown', 'email', 'phone', 'number', 'date', 'time', 'consent', 'section'];
+// Every type for the type picker on a card (the add menu lists questions only).
+const ALL_TYPES = [...TYPE_ORDER, 'note', 'terms'];
 
 const STATUS = {
   live: { ar: 'مفعّل الآن', en: 'Live', cls: 'live' },
   inactive: { ar: 'متوقف', en: 'Off', cls: 'off' },
   not_yet: { ar: 'مجدول', en: 'Scheduled', cls: 'soon' },
   ended: { ar: 'انتهت المدة', en: 'Ended', cls: 'ended' },
-  full: { ar: 'اكتمل العدد', en: 'Full', cls: 'full' }
+  full: { ar: 'اكتمل العدد', en: 'Full', cls: 'full' },
+  payment: { ar: 'الدفع متوقف', en: 'Payment paused', cls: 'ended' }
 };
 
 const blankField = (type) => {
   const f = { id: newId(), type, label: '', help: '', required: false, showIf: null };
   if (CHOICE.includes(type)) f.options = ['الخيار 1', 'الخيار 2'];
   if (type === 'consent') { f.options = ['أوافق']; f.required = true; }
+  if (type === 'note') f.content = '';
+  if (type === 'terms') { f.label = TERMS_TITLE; f.content = ''; f.options = [TERMS_TICK]; f.required = true; }
   if (['short', 'paragraph', 'email', 'phone', 'number'].includes(type)) f.placeholder = '';
   if (type === 'number') { f.min = null; f.max = null; }
   if (type === 'short' || type === 'paragraph') f.maxWords = null;
@@ -77,7 +95,7 @@ const blankField = (type) => {
 };
 const NEW_FORM = () => ({
   title: '', description: '', slug: '', isActive: false, opensAt: '', closesAt: '', maxResponses: '',
-  successMessage: '', closedMessage: '', sendConfirmation: true,
+  successMessage: '', closedMessage: '', sendConfirmation: true, paymentPageId: null,
   titleEn: '', descriptionEn: '', successMessageEn: '', closedMessageEn: '',
   fields: [
     { ...blankField('short'), label: 'الاسم الكامل', required: true },
@@ -90,6 +108,7 @@ const toDraft = (form) => ({
   opensAt: toLocalInput(form.opensAt), closesAt: toLocalInput(form.closesAt),
   maxResponses: form.maxResponses ?? '', successMessage: form.successMessage || '', closedMessage: form.closedMessage || '',
   sendConfirmation: form.sendConfirmation !== false,
+  paymentPageId: form.paymentPageId || null,
   titleEn: form.titleEn || '', descriptionEn: form.descriptionEn || '',
   successMessageEn: form.successMessageEn || '', closedMessageEn: form.closedMessageEn || '',
   fields: (form.fields || []).map(f => ({ help: '', showIf: null, ...f }))
@@ -99,8 +118,18 @@ const toDraft = (form) => ({
 const answerText = (field, value) => {
   if (value == null || value === '') return '';
   if (Array.isArray(value)) return value.join('، ');
-  if (field?.type === 'consent') return value ? (field.options?.[0] || 'نعم') : '';
+  if (TICKED.includes(field?.type)) return value ? (field.options?.[0] || 'نعم') : '';
   return String(value);
+};
+// What a card shows in place of a question number.
+const badgeOf = (field, index) => ({ section: '§', note: 'i', terms: '✓' }[field.type] || index + 1);
+// A field the admin has not finished (no text / an empty option).
+const isIncomplete = (f) => (f.type === 'note' ? !(f.label.trim() || (f.content || '').trim())
+  : f.type === 'terms' ? !(f.content || '').trim()
+    : !f.label.trim() || (CHOICE.includes(f.type) && f.options.some(o => !o.trim())));
+const payStatusText = (p, isRTL) => {
+  const m = { pending: ['قيد المراجعة', 'Pending'], verified: ['مدفوع', 'Paid'], rejected: ['مرفوض', 'Rejected'], free: ['مجاني', 'Free'] }[p?.status];
+  return p ? (m ? m[isRTL ? 0 : 1] : p.status) : (isRTL ? 'لم يدفع' : 'Not paid');
 };
 
 // Options' English, padded to the options' length (index-aligned).
@@ -109,7 +138,7 @@ const enList = (field) => {
   while (en.length < (field.options || []).length) en.push('');
   return en.slice(0, (field.options || []).length);
 };
-const hasEnglish = (field) => !!(field.labelEn || field.helpEn || field.placeholderEn || (field.optionsEn || []).some(Boolean));
+const hasEnglish = (field) => !!(field.labelEn || field.helpEn || field.contentEn || field.placeholderEn || (field.optionsEn || []).some(Boolean));
 
 const Portal = ({ children }) => createPortal(children, document.querySelector('.admin-layout.fx') || document.body);
 
@@ -151,11 +180,22 @@ const QuestionCard = ({ field, index, fields, isRTL, open, onOpen, onChange, onM
     const next = blankField(type);
     const keep = {
       id: field.id, label: field.label, help: field.help, labelEn: field.labelEn, helpEn: field.helpEn,
-      required: type === 'section' ? false : field.required, showIf: field.showIf
+      required: type === 'terms' ? true : NO_ANSWER.includes(type) ? false : field.required, showIf: field.showIf
     };
-    if ((CHOICE.includes(type) || type === 'consent') && field.options?.length) {
-      next.options = type === 'consent' ? [field.options[0]] : field.options;
-      next.optionsEn = type === 'consent' ? [enList(field)[0] || ''] : enList(field);
+    if (TEXT_BLOCK.includes(type)) {
+      keep.content = field.content || field.help || '';
+      keep.contentEn = field.contentEn || field.helpEn || '';
+      keep.help = '';
+      keep.helpEn = '';
+      if (type === 'terms' && !field.label.trim()) keep.label = TERMS_TITLE;
+    }
+    if (TEXT_BLOCK.includes(field.type) && !TEXT_BLOCK.includes(type)) {
+      keep.help = field.content || '';
+      keep.helpEn = field.contentEn || '';
+    }
+    if ((CHOICE.includes(type) || TICKED.includes(type)) && field.options?.length && !TICKED.includes(field.type)) {
+      next.options = TICKED.includes(type) ? [field.options[0]] : field.options;
+      next.optionsEn = TICKED.includes(type) ? [enList(field)[0] || ''] : enList(field);
     }
     onChange({ ...next, ...keep });
   };
@@ -164,10 +204,10 @@ const QuestionCard = ({ field, index, fields, isRTL, open, onOpen, onChange, onM
     return (
       <motion.div layout className={`ffa-q is-closed${error ? ' has-error' : ''}`} onClick={onOpen} role="button" tabIndex={0}
         onKeyDown={(e) => { if (e.key === 'Enter') onOpen(); }}>
-        <span className={`ffa-q-num t-${field.type}`}>{field.type === 'section' ? '§' : index + 1}</span>
+        <span className={`ffa-q-num t-${field.type}`}>{badgeOf(field, index)}</span>
         <span className="ffa-q-icon">{meta.icon}</span>
         <span className="ffa-q-sum">
-          <b>{field.label || <em>{isRTL ? 'سؤال بلا عنوان' : 'Untitled question'}</em>}</b>
+          <b>{field.label || (field.type === 'note' && field.content ? field.content.slice(0, 80) : <em>{isRTL ? 'سؤال بلا عنوان' : 'Untitled question'}</em>)}</b>
           <small>
             {isRTL ? meta.ar : meta.en}
             {field.required && <i className="ffa-tag red">{isRTL ? 'إلزامي' : 'Required'}</i>}
@@ -184,11 +224,11 @@ const QuestionCard = ({ field, index, fields, isRTL, open, onOpen, onChange, onM
   return (
     <motion.div layout className={`ffa-q is-open${error ? ' has-error' : ''}`} initial={{ opacity: 0.6 }} animate={{ opacity: 1 }}>
       <div className="ffa-q-head">
-        <span className={`ffa-q-num t-${field.type}`}>{field.type === 'section' ? '§' : index + 1}</span>
+        <span className={`ffa-q-num t-${field.type}`}>{badgeOf(field, index)}</span>
         <label className="ffa-type">
           <span className="ffa-q-icon">{meta.icon}</span>
           <select value={field.type} onChange={(e) => changeType(e.target.value)} aria-label={isRTL ? 'نوع السؤال' : 'Question type'}>
-            {TYPE_ORDER.map(t => <option key={t} value={t}>{isRTL ? TYPES[t].ar : TYPES[t].en}</option>)}
+            {ALL_TYPES.map(t => <option key={t} value={t}>{isRTL ? TYPES[t].ar : TYPES[t].en}</option>)}
           </select>
         </label>
         <div className="ffa-q-tools">
@@ -200,15 +240,34 @@ const QuestionCard = ({ field, index, fields, isRTL, open, onOpen, onChange, onM
       </div>
 
       <label className="ffa-field">
-        <span>{field.type === 'section' ? (isRTL ? 'عنوان القسم' : 'Section title') : field.type === 'consent' ? (isRTL ? 'نص الإقرار' : 'Statement') : (isRTL ? 'السؤال' : 'Question')} *</span>
+        <span>
+          {field.type === 'section' ? (isRTL ? 'عنوان القسم' : 'Section title')
+            : field.type === 'consent' ? (isRTL ? 'نص الإقرار' : 'Statement')
+              : field.type === 'note' ? (isRTL ? 'عنوان الملاحظة (اختياري)' : 'Note title (optional)')
+                : field.type === 'terms' ? (isRTL ? 'عنوان الشروط' : 'Terms title')
+                  : (isRTL ? 'السؤال' : 'Question')}
+          {field.type !== 'note' && ' *'}
+        </span>
         <textarea rows={field.label.length > 70 ? 3 : 1} value={field.label} onChange={(e) => set({ label: e.target.value })}
-          placeholder={isRTL ? 'اكتب نص السؤال' : 'Type the question'} className={error && !field.label.trim() ? 'bad' : ''} />
+          placeholder={field.type === 'note' ? (isRTL ? 'مثال: ملاحظة مهمة' : 'e.g. Important') : (isRTL ? 'اكتب نص السؤال' : 'Type the question')}
+          className={error && !field.label.trim() && !TEXT_BLOCK.includes(field.type) ? 'bad' : ''} />
       </label>
-      <label className="ffa-field">
-        <span>{field.type === 'section' ? (isRTL ? 'نص توضيحي' : 'Text') : (isRTL ? 'وصف / ملاحظة (اختياري)' : 'Help text (optional)')}</span>
-        <textarea rows={1} value={field.help || ''} onChange={(e) => set({ help: e.target.value })}
-          placeholder={isRTL ? 'يظهر تحت السؤال بخط أصغر' : 'Shown under the question'} />
-      </label>
+      {TEXT_BLOCK.includes(field.type) ? (
+        <label className="ffa-field">
+          <span>{field.type === 'terms' ? (isRTL ? 'نص الشروط والأحكام' : 'Terms text') : (isRTL ? 'نص الملاحظة' : 'Note text')} *</span>
+          <textarea rows={field.type === 'terms' ? 8 : 3} value={field.content || ''} onChange={(e) => set({ content: e.target.value })}
+            placeholder={field.type === 'terms'
+              ? (isRTL ? 'اكتب كل بند في سطر…' : 'One clause per line…')
+              : (isRTL ? 'معلومة تظهر للزائر داخل النموذج، مثل موعد الحضور أو ما يجب إحضاره' : 'Information shown inside the form, e.g. what to bring')}
+            className={error && !(field.content || '').trim() ? 'bad' : ''} />
+        </label>
+      ) : (
+        <label className="ffa-field">
+          <span>{field.type === 'section' ? (isRTL ? 'نص توضيحي' : 'Text') : (isRTL ? 'وصف / ملاحظة (اختياري)' : 'Help text (optional)')}</span>
+          <textarea rows={1} value={field.help || ''} onChange={(e) => set({ help: e.target.value })}
+            placeholder={isRTL ? 'يظهر تحت السؤال بخط أصغر' : 'Shown under the question'} />
+        </label>
+      )}
 
       {['short', 'paragraph', 'email', 'phone', 'number'].includes(field.type) && (
         <label className="ffa-field">
@@ -237,10 +296,11 @@ const QuestionCard = ({ field, index, fields, isRTL, open, onOpen, onChange, onM
         </div>
       )}
 
-      {field.type === 'consent' && (
+      {TICKED.includes(field.type) && (
         <label className="ffa-field">
           <span>{isRTL ? 'نص مربع الموافقة' : 'Tick-box text'}</span>
-          <input value={field.options?.[0] || ''} onChange={(e) => set({ options: [e.target.value] })} placeholder={isRTL ? 'أتعهد وأوافق' : 'I agree'} />
+          <input value={field.options?.[0] || ''} onChange={(e) => set({ options: [e.target.value] })}
+            placeholder={field.type === 'terms' ? TERMS_TICK : (isRTL ? 'أتعهد وأوافق' : 'I agree')} />
         </label>
       )}
 
@@ -273,23 +333,31 @@ const QuestionCard = ({ field, index, fields, isRTL, open, onOpen, onChange, onM
               ? 'تظهر للزائر عند اختيار English. اتركها فارغة ليظهر النص العربي.'
               : 'Shown when the visitor picks English. Leave empty to show the Arabic.'}</p>
             <label className="ffa-field">
-              <span>{field.type === 'section' ? (isRTL ? 'عنوان القسم بالإنجليزية' : 'Section title (English)') : field.type === 'consent' ? (isRTL ? 'نص الإقرار بالإنجليزية' : 'Statement (English)') : (isRTL ? 'السؤال بالإنجليزية' : 'Question (English)')}</span>
-              <textarea dir="ltr" rows={(field.labelEn || '').length > 70 ? 3 : 1} value={field.labelEn || ''} onChange={(e) => set({ labelEn: e.target.value })} placeholder="e.g. Full name" />
+              <span>{field.type === 'section' ? (isRTL ? 'عنوان القسم بالإنجليزية' : 'Section title (English)') : field.type === 'consent' ? (isRTL ? 'نص الإقرار بالإنجليزية' : 'Statement (English)') : TEXT_BLOCK.includes(field.type) ? (isRTL ? 'العنوان بالإنجليزية' : 'Title (English)') : (isRTL ? 'السؤال بالإنجليزية' : 'Question (English)')}</span>
+              <textarea dir="ltr" rows={(field.labelEn || '').length > 70 ? 3 : 1} value={field.labelEn || ''} onChange={(e) => set({ labelEn: e.target.value })}
+                placeholder={field.type === 'terms' ? 'Terms & conditions' : 'e.g. Full name'} />
             </label>
-            <label className="ffa-field">
-              <span>{isRTL ? 'الوصف بالإنجليزية' : 'Help text (English)'}</span>
-              <textarea dir="ltr" rows={1} value={field.helpEn || ''} onChange={(e) => set({ helpEn: e.target.value })} />
-            </label>
+            {TEXT_BLOCK.includes(field.type) ? (
+              <label className="ffa-field">
+                <span>{field.type === 'terms' ? (isRTL ? 'نص الشروط بالإنجليزية' : 'Terms text (English)') : (isRTL ? 'نص الملاحظة بالإنجليزية' : 'Note text (English)')}</span>
+                <textarea dir="ltr" rows={field.type === 'terms' ? 6 : 2} value={field.contentEn || ''} onChange={(e) => set({ contentEn: e.target.value })} />
+              </label>
+            ) : (
+              <label className="ffa-field">
+                <span>{isRTL ? 'الوصف بالإنجليزية' : 'Help text (English)'}</span>
+                <textarea dir="ltr" rows={1} value={field.helpEn || ''} onChange={(e) => set({ helpEn: e.target.value })} />
+              </label>
+            )}
             {['short', 'paragraph', 'email', 'phone', 'number'].includes(field.type) && (
               <label className="ffa-field">
                 <span>{isRTL ? 'النص الإرشادي بالإنجليزية' : 'Placeholder (English)'}</span>
                 <input dir="ltr" value={field.placeholderEn || ''} onChange={(e) => set({ placeholderEn: e.target.value })} />
               </label>
             )}
-            {(CHOICE.includes(field.type) || field.type === 'consent') && (
+            {(CHOICE.includes(field.type) || TICKED.includes(field.type)) && (
               <div className="ffa-en-opts">
-                <span className="ffa-mini-label">{field.type === 'consent' ? (isRTL ? 'نص مربع الموافقة بالإنجليزية' : 'Tick-box text (English)') : (isRTL ? 'الخيارات بالإنجليزية' : 'Options (English)')}</span>
-                {(field.type === 'consent' ? field.options.slice(0, 1) : field.options).map((o, i) => (
+                <span className="ffa-mini-label">{TICKED.includes(field.type) ? (isRTL ? 'نص مربع الموافقة بالإنجليزية' : 'Tick-box text (English)') : (isRTL ? 'الخيارات بالإنجليزية' : 'Options (English)')}</span>
+                {(TICKED.includes(field.type) ? field.options.slice(0, 1) : field.options).map((o, i) => (
                   <div className="ffa-en-opt" key={i}>
                     <span className="ffa-en-ar" title={o}>{o || '—'}</span>
                     <I d={isRTL ? 'M19 12H5M11 18l-6-6 6-6' : 'M5 12h14M13 6l6 6-6 6'} />
@@ -323,7 +391,9 @@ const QuestionCard = ({ field, index, fields, isRTL, open, onOpen, onChange, onM
           )}
           {ctlLater && <small className="ffa-warn">{isRTL ? 'الشرط يعتمد على سؤال لاحق وسيُلغى عند الحفظ' : 'Depends on a later question — will be dropped on save'}</small>}
         </div>
-        {field.type !== 'section' && (
+        {field.type === 'terms' ? (
+          <span className="ffa-tag red">{isRTL ? 'الموافقة إلزامية دائمًا' : 'Agreement always required'}</span>
+        ) : !NO_ANSWER.includes(field.type) && (
           <button type="button" className={`ffa-switch${field.required ? ' on' : ''}`} onClick={() => set({ required: !field.required })} aria-pressed={field.required}>
             <i />{isRTL ? 'إلزامي' : 'Required'}
           </button>
@@ -344,7 +414,16 @@ const FormEditor = ({ isRTL, form, onClose, onSaved }) => {
   const [problems, setProblems] = useState({});
   const [preview, setPreview] = useState({});
   const [previewLang, setPreviewLang] = useState('ar');
+  const [payPages, setPayPages] = useState(null); // the "صفحات الدفع" pages
+  const [payPicking, setPayPicking] = useState(false);
   const dirty = JSON.stringify(draft) !== initial;
+  const loadPayPages = useCallback(async () => {
+    try { const { data } = await api.get('/payment-pages'); setPayPages(Array.isArray(data) ? data : []); }
+    catch (err) { setPayPages(p => p || []); toast.error(errMsg(err, isRTL, isRTL ? 'تعذّر تحميل صفحات الدفع' : 'Could not load payment pages')); }
+  }, [isRTL]);
+  useEffect(() => { if (draft.paymentPageId || payPicking) { if (!payPages) loadPayPages(); } }, [draft.paymentPageId, payPicking, payPages, loadPayPages]);
+  const payPage = draft.paymentPageId ? (payPages || []).find(p => p.pageId === draft.paymentPageId) || null : null;
+  const openPayPicker = () => { setPayPicking(true); setAdding(false); setTimeout(() => document.getElementById('ffa-pay')?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 80); };
   const set = (patch) => setDraft(d => ({ ...d, ...patch }));
   const hasEmail = draft.fields.some(f => f.type === 'email');
 
@@ -392,13 +471,11 @@ const FormEditor = ({ isRTL, form, onClose, onSaved }) => {
 
   const save = async () => {
     const bad = {};
-    draft.fields.forEach(f => {
-      if (!f.label.trim() || (CHOICE.includes(f.type) && f.options.some(o => !o.trim()))) bad[f.id] = true;
-    });
+    draft.fields.forEach(f => { if (isIncomplete(f)) bad[f.id] = true; });
     if (!draft.title.trim()) { setView('settings'); toast.error(isRTL ? 'عنوان النموذج مطلوب' : 'The title is required'); return; }
     if (Object.keys(bad).length) {
       setProblems(bad); setView('questions'); setOpenId(Object.keys(bad)[0]);
-      toast.error(isRTL ? 'أكمل نص كل سؤال وخياراته' : 'Fill in every question and option');
+      toast.error(isRTL ? 'أكمل نص كل سؤال وخياراته (ونص الشروط والملاحظات)' : 'Fill in every question, option, note and terms text');
       return;
     }
     setProblems({});
@@ -407,6 +484,7 @@ const FormEditor = ({ isRTL, form, onClose, onSaved }) => {
       opensAt: fromLocalInput(draft.opensAt), closesAt: fromLocalInput(draft.closesAt),
       maxResponses: draft.maxResponses === '' ? null : Number(draft.maxResponses),
       successMessage: draft.successMessage, closedMessage: draft.closedMessage, sendConfirmation: draft.sendConfirmation,
+      paymentPageId: draft.paymentPageId || null,
       titleEn: draft.titleEn, descriptionEn: draft.descriptionEn,
       successMessageEn: draft.successMessageEn, closedMessageEn: draft.closedMessageEn,
       fields: draft.fields.map(f => ({
@@ -425,7 +503,7 @@ const FormEditor = ({ isRTL, form, onClose, onSaved }) => {
     } finally { setSaving(false); }
   };
 
-  const qCount = draft.fields.filter(f => f.type !== 'section').length;
+  const qCount = draft.fields.filter(f => !NO_ANSWER.includes(f.type)).length;
 
   return (
     <Portal>
@@ -464,8 +542,88 @@ const FormEditor = ({ isRTL, form, onClose, onSaved }) => {
                   ))}
                   {!draft.fields.length && <div className="ffa-empty small">{isRTL ? 'لا توجد أسئلة بعد — أضف أول سؤال.' : 'No questions yet — add the first one.'}</div>}
                 </div>
+
+                {(draft.paymentPageId || payPicking) && (
+                  <div id="ffa-pay" className={`ffa-pay${draft.paymentPageId ? ' is-set' : ''}`}>
+                    <div className="ffa-pay-head">
+                      <span className="ffa-pay-ico">{CARD_ICON}</span>
+                      <div className="ffa-pay-title">
+                        <b>{isRTL ? 'الدفع بعد الإرسال' : 'Payment after submitting'}</b>
+                        <small>{isRTL
+                          ? 'بعد إرسال النموذج يظهر للمسجّل زر «ادفع الآن» ينقله لصفحة الدفع وبياناته معبأة، ويصله الرابط على بريده.'
+                          : 'After submitting, the person gets a “Pay now” button to the payment page with their details filled in, and the link by email.'}</small>
+                      </div>
+                      {draft.paymentPageId && !payPicking && (
+                        <div className="ffa-pay-tools">
+                          <button type="button" className="ffa-btn" onClick={() => setPayPicking(true)}>{isRTL ? 'تغيير' : 'Change'}</button>
+                          <button type="button" className="ffa-btn danger" onClick={() => set({ paymentPageId: null })}>{isRTL ? 'إزالة الدفع' : 'Remove'}</button>
+                        </div>
+                      )}
+                    </div>
+
+                    {draft.paymentPageId && !payPicking && (
+                      payPage ? (
+                        <div className="ffa-pay-page">
+                          <div>
+                            <b>{payPage.title}</b>
+                            <span className={`ffa-state ${PAY_STATE[payPage.closedReason || null].cls}`}><i />{isRTL ? PAY_STATE[payPage.closedReason || null].ar : PAY_STATE[payPage.closedReason || null].en}</span>
+                          </div>
+                          <span className="ffa-pay-amount"><b dir="ltr">{fmtMoney(payPage.amount)}</b> {isRTL ? 'ر.س' : 'SAR'}</span>
+                          <small>
+                            {payPage.maxPayers ? (isRTL ? `${payPage.stats?.seatsLeft ?? 0} مقعد متبقٍ من ${payPage.maxPayers}` : `${payPage.stats?.seatsLeft ?? 0} of ${payPage.maxPayers} places left`) : (isRTL ? 'بلا حد للعدد' : 'No limit')}
+                            {' · '}{(payPage.methods || []).map(m => (m === 'mada' ? (isRTL ? 'مدى' : 'mada') : (isRTL ? 'تحويل بنكي' : 'bank transfer'))).join(isRTL ? ' و' : ' & ')}
+                          </small>
+                          {payPage.closedReason && (
+                            <p className="ffa-note warn">{isRTL ? 'صفحة الدفع غير متاحة الآن، لذلك سيظهر النموذج متوقفًا للزوار حتى تُفتح.' : 'The payment page is not open, so the form shows as paused until it opens.'}</p>
+                          )}
+                        </div>
+                      ) : (
+                        <div className="ffa-loading small">{payPages ? (isRTL ? 'صفحة الدفع المرتبطة لم تعد موجودة — اختر غيرها.' : 'The linked payment page no longer exists — pick another.') : (isRTL ? 'جارٍ التحميل…' : 'Loading…')}</div>
+                      )
+                    )}
+
+                    {payPicking && (
+                      <div className="ffa-pay-pick">
+                        {!payPages ? <div className="ffa-loading small">{isRTL ? 'جارٍ التحميل…' : 'Loading…'}</div>
+                          : !payPages.length ? (
+                            <p className="ffa-note">{isRTL ? 'لا توجد صفحات دفع بعد. أنشئ صفحة بالتكلفة وطريقة الدفع من تبويب «صفحات الدفع» ثم اخترها هنا.' : 'No payment pages yet. Create one (price and payment methods) in the Payment Pages tab, then pick it here.'}</p>
+                          ) : payPages.map(p => {
+                            const st = PAY_STATE[p.closedReason || null];
+                            return (
+                              <button key={p.pageId} type="button" className={`ffa-pay-opt${draft.paymentPageId === p.pageId ? ' on' : ''}`}
+                                onClick={() => { set({ paymentPageId: p.pageId }); setPayPicking(false); }}>
+                                <span className="ffa-pay-opt-main"><b>{p.title}</b><small>{p.slug ? `/pay/${p.slug}` : ''}</small></span>
+                                <span className={`ffa-state ${st.cls}`}><i />{isRTL ? st.ar : st.en}</span>
+                                <span className="ffa-pay-amount"><b dir="ltr">{fmtMoney(p.amount)}</b> {isRTL ? 'ر.س' : 'SAR'}</span>
+                              </button>
+                            );
+                          })}
+                        <div className="ffa-pay-pick-foot">
+                          <a className="ffa-btn" href="/admin/dashboard?tab=payment-pages" target="_blank" rel="noopener noreferrer">＋ {isRTL ? 'إنشاء صفحة دفع جديدة' : 'New payment page'}</a>
+                          <button type="button" className="ffa-btn ghost" onClick={loadPayPages}>{isRTL ? 'تحديث القائمة' : 'Refresh'}</button>
+                          <span className="ffa-grow" />
+                          <button type="button" className="ffa-btn ghost" onClick={() => setPayPicking(false)}>{isRTL ? 'إلغاء' : 'Cancel'}</button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+
                 <div className="ffa-add">
-                  <button type="button" className="ffa-btn primary" onClick={() => setAdding(a => !a)}>＋ {isRTL ? 'إضافة سؤال' : 'Add question'}</button>
+                  <div className="ffa-add-row">
+                    <button type="button" className="ffa-btn primary" onClick={() => setAdding(a => !a)}>＋ {isRTL ? 'إضافة سؤال' : 'Add question'}</button>
+                    <button type="button" className="ffa-btn ffa-add-kind" onClick={() => addField('note')}>
+                      <span className="ffa-type-ico t-note">{TYPES.note.icon}</span>{isRTL ? 'إضافة ملاحظة' : 'Add note'}
+                    </button>
+                    <button type="button" className="ffa-btn ffa-add-kind" onClick={() => addField('terms')}>
+                      <span className="ffa-type-ico t-terms">{TYPES.terms.icon}</span>{isRTL ? 'إضافة الشروط والأحكام' : 'Add terms & conditions'}
+                    </button>
+                    {!draft.paymentPageId && !payPicking && (
+                      <button type="button" className="ffa-btn ffa-add-kind" onClick={openPayPicker}>
+                        <span className="ffa-type-ico t-pay">{CARD_ICON}</span>{isRTL ? 'إضافة دفع' : 'Add payment'}
+                      </button>
+                    )}
+                  </div>
                   <AnimatePresence>
                     {adding && (
                       <motion.div className="ffa-types" initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -6 }}>
@@ -560,13 +718,14 @@ const FormEditor = ({ isRTL, form, onClose, onSaved }) => {
                   {tr(draft, 'description', previewLang) && <p className="ffp-desc">{tr(draft, 'description', previewLang)}</p>}
                 </div>
                 <div style={{ height: 14 }} />
-                <FormQuestions fields={draft.fields.filter(f => f.label.trim())} answers={preview} lang={previewLang}
+                <FormQuestions fields={draft.fields.filter(f => !isIncomplete(f))} answers={preview} lang={previewLang}
                   onChange={(id, v) => setPreview(p => {
                     const next = { ...p, [id]: v };
                     const still = new Set(visibleFields(draft.fields, next).map(f => f.id));
                     Object.keys(next).forEach(k => { if (!still.has(k)) delete next[k]; });
                     return next;
                   })} />
+                {payPage && <PayStep payment={{ title: payPage.title, amount: payPage.amount }} t={FORM_TEXT[previewLang]} />}
                 <p className="ffa-note center">{isRTL ? 'معاينة فقط — الإجابات هنا لا تُرسل.' : 'Preview only — nothing here is sent.'}</p>
               </div>
             )}
@@ -600,13 +759,15 @@ const Responses = ({ isRTL, formId, manager, onBack }) => {
   // Columns: the form's questions now, plus any older question only found in answers.
   const columns = useMemo(() => {
     if (!data?.form) return [];
-    const cols = (data.form.fields || []).filter(f => f.type !== 'section');
+    const cols = (data.form.fields || []).filter(f => !NO_ANSWER.includes(f.type));
     const ids = new Set(cols.map(c => c.id));
     (data.responses || []).forEach(r => (r.fieldsSnapshot || []).forEach(f => {
-      if (f.type !== 'section' && !ids.has(f.id)) { ids.add(f.id); cols.push({ ...f, old: true }); }
+      if (!NO_ANSWER.includes(f.type) && !ids.has(f.id)) { ids.add(f.id); cols.push({ ...f, old: true }); }
     }));
     return cols;
   }, [data]);
+  // A payment column when the form pays through a page (or did before).
+  const showPay = !!(data?.form?.payment || (data?.responses || []).some(r => r.payment));
 
   const rows = useMemo(() => {
     const list = data?.responses || [];
@@ -618,9 +779,11 @@ const Responses = ({ isRTL, formId, manager, onBack }) => {
 
   const exportXlsx = () => {
     const form = data.form;
-    const header = [isRTL ? 'رقم التسجيل' : 'Reference', isRTL ? 'تاريخ الإرسال' : 'Submitted', ...columns.map(c => c.label)];
+    const payHead = showPay ? [isRTL ? 'حالة الدفع' : 'Payment', isRTL ? 'رقم الدفع' : 'Payment ref', isRTL ? 'المبلغ' : 'Amount'] : [];
+    const header = [isRTL ? 'رقم التسجيل' : 'Reference', isRTL ? 'تاريخ الإرسال' : 'Submitted', ...payHead, ...columns.map(c => c.label)];
     const body = (data.responses || []).map(r => [
       r.reference, fmtDateTime(r.createdAt, isRTL),
+      ...(showPay ? [payStatusText(r.payment, isRTL), r.payment?.reference || '', r.payment ? r.payment.amount : ''] : []),
       ...columns.map(c => answerText(c, r.answers?.[c.id]))
     ]);
     const ws = XLSX.utils.aoa_to_sheet([header, ...body]);
@@ -679,6 +842,7 @@ const Responses = ({ isRTL, formId, manager, onBack }) => {
                 <tr>
                   <th>{isRTL ? 'الرقم' : 'Ref'}</th>
                   <th>{isRTL ? 'التاريخ' : 'Date'}</th>
+                  {showPay && <th>{isRTL ? 'الدفع' : 'Payment'}</th>}
                   {columns.map(c => <th key={c.id} title={c.label} className={c.old ? 'old' : ''}>{c.label}</th>)}
                 </tr>
               </thead>
@@ -687,6 +851,12 @@ const Responses = ({ isRTL, formId, manager, onBack }) => {
                   <tr key={r.responseId} onClick={() => setOpen(r)}>
                     <td><b className="ffa-ref" dir="ltr">{r.reference}</b></td>
                     <td className="nowrap">{fmtDateTime(r.createdAt, isRTL)}</td>
+                    {showPay && (
+                      <td className="nowrap">
+                        <span className={`ffa-paychip ${r.payment?.status || 'none'}`}>{payStatusText(r.payment, isRTL)}</span>
+                        {r.payment?.reference && <small className="ffa-payref" dir="ltr">{r.payment.reference}</small>}
+                      </td>
+                    )}
                     {columns.map(c => {
                       const txt = answerText(c, r.answers?.[c.id]);
                       return <td key={c.id} title={txt}>{txt.length > 60 ? `${txt.slice(0, 60)}…` : (txt || <span className="ffa-dash">—</span>)}</td>;
@@ -711,8 +881,19 @@ const Responses = ({ isRTL, formId, manager, onBack }) => {
                   <button type="button" className="ffa-x" onClick={() => setOpen(null)} aria-label={isRTL ? 'إغلاق' : 'Close'}><I d="M18 6 6 18M6 6l12 12" /></button>
                 </div>
                 <div className="ffa-modal-body">
+                  {showPay && (
+                    <div className={`ffa-paybox ${open.payment?.status || 'none'}`}>
+                      <span className="ffa-pay-ico">{CARD_ICON}</span>
+                      <div>
+                        <b>{payStatusText(open.payment, isRTL)}</b>
+                        <small>{open.payment
+                          ? <><span dir="ltr">{open.payment.reference}</span> · {fmtMoney(open.payment.amount)} {isRTL ? 'ر.س' : 'SAR'} · {fmtDateTime(open.payment.createdAt, isRTL)}</>
+                          : (isRTL ? 'لم يُسجَّل دفع لهذا الرد بعد — يُراجَع الدفع من تبويب «صفحات الدفع».' : 'No payment for this response yet — payments are reviewed in the Payment Pages tab.')}</small>
+                      </div>
+                    </div>
+                  )}
                   <dl className="ffa-answers">
-                    {(open.fieldsSnapshot?.length ? open.fieldsSnapshot : columns).filter(f => f.type !== 'section' && open.answers?.[f.id] != null).map(f => (
+                    {(open.fieldsSnapshot?.length ? open.fieldsSnapshot : columns).filter(f => !NO_ANSWER.includes(f.type) && open.answers?.[f.id] != null).map(f => (
                       <div key={f.id}><dt>{f.label}</dt><dd>{answerText(f, open.answers[f.id])}</dd></div>
                     ))}
                   </dl>
@@ -818,7 +999,7 @@ const FabFormsTab = ({ isRTL }) => {
               <div className="ffa-cards">
                 {forms.map((f, i) => {
                   const st = STATUS[f.closedReason || 'live'];
-                  const qn = (f.fields || []).filter(x => x.type !== 'section').length;
+                  const qn = (f.fields || []).filter(x => !NO_ANSWER.includes(x.type)).length;
                   return (
                     <motion.article key={f.formId} className={`ffa-card ${st.cls}`} initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.04 }}>
                       <div className="ffa-card-top">
@@ -831,6 +1012,13 @@ const FabFormsTab = ({ isRTL }) => {
                       {f.description && <p className="ffa-card-desc">{f.description}</p>}
                       <div className="ffa-card-meta">
                         <span><I d="M9 11l3 3L22 4" />{qn} {isRTL ? 'سؤال' : 'questions'}</span>
+                        {f.payment && (
+                          <span className={`ffa-paymeta${f.payment.closedReason ? ' warn' : ''}`}>
+                            {CARD_ICON}
+                            {f.payment.missing ? (isRTL ? 'صفحة الدفع محذوفة' : 'Payment page deleted')
+                              : <>{fmtMoney(f.payment.amount)} {isRTL ? 'ر.س' : 'SAR'} · {f.payment.title}</>}
+                          </span>
+                        )}
                         {f.opensAt && <span><I><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></I>{isRTL ? 'يُفتح' : 'Opens'} {fmtDateTime(f.opensAt, isRTL)}</span>}
                         {f.closesAt && <span><I><rect x="4" y="11" width="16" height="10" rx="2" /><path d="M8 11V7a4 4 0 0 1 8 0v4" /></I>{isRTL ? 'يُغلق' : 'Closes'} {fmtDateTime(f.closesAt, isRTL)}</span>}
                       </div>
