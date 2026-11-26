@@ -38,6 +38,7 @@ const PrintServicePage = lazy(() => import('./components/Print3D/PrintServicePag
 const PrintQuotePage = lazy(() => import('./components/Print3D/PrintQuotePage'));
 const PaymentPage = lazy(() => import('./components/PaymentPage/PaymentPage'));
 const FabFormPage = lazy(() => import('./components/FabForm/FabFormPage'));
+const FabFormAttend = lazy(() => import('./components/FabForm/FabFormAttend'));
 const WorkspaceRegistration = lazy(() => import('./components/WorkspaceRegistration/WorkspaceRegistration'));
 // Public website (replaces the old main.fablabsahsa.com)
 const SiteHome = lazy(() => import('./components/Site/SiteHome'));
@@ -167,6 +168,7 @@ const AppContent = () => {
           <Route path="/print-quote/:token" element={<PrintQuotePage />} />
           {/* Payment link created in the admin "صفحات الدفع" tab */}
           <Route path="/pay/:slug" element={<PaymentPage />} />
+          <Route path="/forms/attend/:token" element={<FabFormAttend />} />
           <Route path="/forms/:slug" element={<FabFormPage />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>

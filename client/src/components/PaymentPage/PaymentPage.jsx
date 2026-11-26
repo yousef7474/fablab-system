@@ -3,6 +3,7 @@ import { useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { motion, AnimatePresence } from 'framer-motion';
 import api from '../../config/api';
+import { MAX_FILE, groupIban, readFile, compressImage } from './receiptFile';
 import './PaymentPage.css';
 
 // Public checkout behind a payment link (/pay/:slug): a "ticket" with the
@@ -11,7 +12,6 @@ import './PaymentPage.css';
 
 const API_BASE = String(api.defaults.baseURL || '/api').replace(/\/$/, '');
 const API_ORIGIN = API_BASE.replace(/\/api$/, '');
-const MAX_FILE = 10 * 1024 * 1024;
 
 const T = {
   ar: {
@@ -78,29 +78,6 @@ const T = {
 
 const fmtAmount = (n) => Number(n || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const fmtPct = (p) => `${Number(p).toLocaleString('en-US', { maximumFractionDigits: 2 })}%`;
-const groupIban = (iban) => String(iban || '').replace(/\s+/g, '').replace(/(.{4})/g, '$1 ').trim();
-
-// Phone photos of receipts are big — shrink images before upload.
-const readFile = (file) => new Promise((resolve, reject) => {
-  const reader = new FileReader();
-  reader.onload = () => resolve(String(reader.result));
-  reader.onerror = reject;
-  reader.readAsDataURL(file);
-});
-const compressImage = (dataUrl, maxSide = 1800, quality = 0.85) => new Promise((resolve) => {
-  const img = new Image();
-  img.onload = () => {
-    const scale = Math.min(1, maxSide / Math.max(img.width, img.height));
-    const canvas = document.createElement('canvas');
-    canvas.width = Math.round(img.width * scale);
-    canvas.height = Math.round(img.height * scale);
-    canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
-    resolve(canvas.toDataURL('image/jpeg', quality));
-  };
-  img.onerror = () => resolve(dataUrl);
-  img.src = dataUrl;
-});
-
 const Icon = {
   lock: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="4" y="11" width="16" height="10" rx="2.5"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>,
   bank: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M3 10h18L12 4 3 10z"/><path d="M5 10v8M9.5 10v8M14.5 10v8M19 10v8"/><path d="M3 20h18"/></svg>,

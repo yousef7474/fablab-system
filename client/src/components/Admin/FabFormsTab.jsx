@@ -68,6 +68,15 @@ const TYPES = {
   note: { ar: 'ملاحظة', en: 'Note', icon: <I><circle cx="12" cy="12" r="9" /><path d="M12 11v5M12 8h.01" /></I> },
   terms: { ar: 'الشروط والأحكام', en: 'Terms & conditions', icon: <I><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z" /><path d="M14 3v5h5M9 13h6M9 17h4" /></I> }
 };
+// Reminder choices: days before the event.
+const REMINDER_DAYS = [
+  [14, 'قبل أسبوعين', '2 weeks before'], [7, 'قبل أسبوع', '1 week before'], [3, 'قبل 3 أيام', '3 days before'],
+  [2, 'قبل يومين', '2 days before'], [1, 'قبل يوم', '1 day before']
+];
+const ATTEND = { yes: ['سيحضر', 'Attending', 'yes'], no: ['اعتذر', 'Not attending', 'no'] };
+const attendText = (a, isRTL) => (ATTEND[a] ? ATTEND[a][isRTL ? 0 : 1] : (isRTL ? 'لم يرد' : 'No answer'));
+// A form that takes payment needs required, always-shown name / phone / email questions.
+const payerMissing = (fields) => ['short', 'phone', 'email'].filter(type => !fields.some(f => f.type === type && f.required && !f.showIf));
 const CARD_ICON = <I><rect x="2.5" y="5" width="19" height="14" rx="2.5" /><path d="M2.5 10h19M6.5 15h4" /></I>;
 const TYPE_ORDER = ['short', 'paragraph', 'radio', 'checkbox', 'dropdown', 'email', 'phone', 'number', 'date', 'time', 'consent', 'section'];
 // Every type for the type picker on a card (the add menu lists questions only).
@@ -96,6 +105,7 @@ const blankField = (type) => {
 const NEW_FORM = () => ({
   title: '', description: '', slug: '', isActive: false, opensAt: '', closesAt: '', maxResponses: '',
   successMessage: '', closedMessage: '', sendConfirmation: true, paymentPageId: null,
+  eventStartsAt: '', reminderDays: [7, 2], askAttendance: true, reminderMessage: '',
   titleEn: '', descriptionEn: '', successMessageEn: '', closedMessageEn: '',
   fields: [
     { ...blankField('short'), label: 'الاسم الكامل', required: true },
@@ -109,6 +119,8 @@ const toDraft = (form) => ({
   maxResponses: form.maxResponses ?? '', successMessage: form.successMessage || '', closedMessage: form.closedMessage || '',
   sendConfirmation: form.sendConfirmation !== false,
   paymentPageId: form.paymentPageId || null,
+  eventStartsAt: toLocalInput(form.eventStartsAt), reminderDays: Array.isArray(form.reminderDays) ? form.reminderDays : [7, 2],
+  askAttendance: form.askAttendance !== false, reminderMessage: form.reminderMessage || '',
   titleEn: form.titleEn || '', descriptionEn: form.descriptionEn || '',
   successMessageEn: form.successMessageEn || '', closedMessageEn: form.closedMessageEn || '',
   fields: (form.fields || []).map(f => ({ help: '', showIf: null, ...f }))
@@ -473,6 +485,11 @@ const FormEditor = ({ isRTL, form, onClose, onSaved }) => {
     const bad = {};
     draft.fields.forEach(f => { if (isIncomplete(f)) bad[f.id] = true; });
     if (!draft.title.trim()) { setView('settings'); toast.error(isRTL ? 'عنوان النموذج مطلوب' : 'The title is required'); return; }
+    if (draft.paymentPageId && payerMissing(draft.fields).length) {
+      setView('questions');
+      toast.error(isRTL ? 'النموذج المرتبط بالدفع يحتاج أسئلة إلزامية للاسم (إجابة قصيرة) ورقم الجوال والبريد الإلكتروني' : 'A form with payment needs required name (short answer), phone and email questions');
+      return;
+    }
     if (Object.keys(bad).length) {
       setProblems(bad); setView('questions'); setOpenId(Object.keys(bad)[0]);
       toast.error(isRTL ? 'أكمل نص كل سؤال وخياراته (ونص الشروط والملاحظات)' : 'Fill in every question, option, note and terms text');
@@ -485,6 +502,8 @@ const FormEditor = ({ isRTL, form, onClose, onSaved }) => {
       maxResponses: draft.maxResponses === '' ? null : Number(draft.maxResponses),
       successMessage: draft.successMessage, closedMessage: draft.closedMessage, sendConfirmation: draft.sendConfirmation,
       paymentPageId: draft.paymentPageId || null,
+      eventStartsAt: fromLocalInput(draft.eventStartsAt), reminderDays: draft.reminderDays,
+      askAttendance: draft.askAttendance, reminderMessage: draft.reminderMessage,
       titleEn: draft.titleEn, descriptionEn: draft.descriptionEn,
       successMessageEn: draft.successMessageEn, closedMessageEn: draft.closedMessageEn,
       fields: draft.fields.map(f => ({
@@ -548,10 +567,10 @@ const FormEditor = ({ isRTL, form, onClose, onSaved }) => {
                     <div className="ffa-pay-head">
                       <span className="ffa-pay-ico">{CARD_ICON}</span>
                       <div className="ffa-pay-title">
-                        <b>{isRTL ? 'الدفع بعد الإرسال' : 'Payment after submitting'}</b>
+                        <b>{isRTL ? 'الدفع ضمن النموذج' : 'Payment inside the form'}</b>
                         <small>{isRTL
-                          ? 'بعد إرسال النموذج يظهر للمسجّل زر «ادفع الآن» ينقله لصفحة الدفع وبياناته معبأة، ويصله الرابط على بريده.'
-                          : 'After submitting, the person gets a “Pay now” button to the payment page with their details filled in, and the link by email.'}</small>
+                          ? 'يدفع المسجّل في آخر النموذج (تحويل بنكي مع الإيصال أو مدى) ولا يُرسل التسجيل دون دفع. يُحفظ الدفع في تبويب «صفحات الدفع» للمراجعة.'
+                          : 'People pay at the end of the form (bank transfer with the receipt, or mada); the form is not sent without it. Payments are reviewed in the Payment Pages tab.'}</small>
                       </div>
                       {draft.paymentPageId && !payPicking && (
                         <div className="ffa-pay-tools">
@@ -561,6 +580,11 @@ const FormEditor = ({ isRTL, form, onClose, onSaved }) => {
                       )}
                     </div>
 
+                    {draft.paymentPageId && payerMissing(draft.fields).length > 0 && (
+                      <p className="ffa-note warn">{isRTL
+                        ? `أضف أسئلة إلزامية (غير مشروطة) لـ: ${payerMissing(draft.fields).map(x => ({ short: 'الاسم (إجابة قصيرة)', phone: 'رقم الجوال', email: 'البريد الإلكتروني' }[x])).join('، ')} — يُؤخذ منها اسم الدافع وجواله وبريده.`
+                        : `Add required (not conditional) questions for: ${payerMissing(draft.fields).map(x => ({ short: 'name (short answer)', phone: 'phone', email: 'email' }[x])).join(', ')} — the payer's details come from them.`}</p>
+                    )}
                     {draft.paymentPageId && !payPicking && (
                       payPage ? (
                         <div className="ffa-pay-page">
@@ -682,6 +706,37 @@ const FormEditor = ({ isRTL, form, onClose, onSaved }) => {
                 </section>
 
                 <section className="ffa-panel">
+                  <h4>{isRTL ? 'موعد الفعالية والتذكير' : 'Event & reminders'}</h4>
+                  <label className="ffa-field"><span>{isRTL ? 'موعد بداية الفعالية' : 'Event starts at'}</span>
+                    <input type="datetime-local" value={draft.eventStartsAt} onChange={(e) => set({ eventStartsAt: e.target.value })} /></label>
+                  <div className="ffa-field">
+                    <span>{isRTL ? 'إرسال تذكير بالبريد' : 'Email a reminder'}</span>
+                    <div className="ffa-chips">
+                      {REMINDER_DAYS.map(([d, ar, en]) => {
+                        const on = draft.reminderDays.includes(d);
+                        return (
+                          <button key={d} type="button" className={`ffa-chip${on ? ' on' : ''}`} aria-pressed={on}
+                            onClick={() => set({ reminderDays: on ? draft.reminderDays.filter(x => x !== d) : [...draft.reminderDays, d].sort((a, b) => b - a) })}>
+                            {on ? '✓ ' : ''}{isRTL ? ar : en}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                  <button type="button" className={`ffa-switch${draft.askAttendance ? ' on' : ''}`} onClick={() => set({ askAttendance: !draft.askAttendance })} aria-pressed={draft.askAttendance}>
+                    <i />{isRTL ? 'اطلب تأكيد الحضور أو الاعتذار في التذكير' : 'Ask people to confirm or decline in the reminder'}
+                  </button>
+                  <label className="ffa-field"><span>{isRTL ? 'نص إضافي في رسالة التذكير (اختياري)' : 'Extra reminder text (optional)'}</span>
+                    <textarea rows={2} value={draft.reminderMessage} onChange={(e) => set({ reminderMessage: e.target.value })}
+                      placeholder={isRTL ? 'مثال: يُرجى الحضور قبل الموعد بربع ساعة، والمقعد غير المؤكد يُعوَّض من قائمة الانتظار.' : 'e.g. Please arrive 15 minutes early; unconfirmed seats go to the waiting list.'} /></label>
+                  <p className={`ffa-note${!draft.eventStartsAt && draft.reminderDays.length ? ' warn' : ''}`}>{!draft.eventStartsAt
+                    ? (isRTL ? 'حدّد موعد الفعالية لتعمل التذكيرات.' : 'Set the event time for reminders to go out.')
+                    : (isRTL
+                      ? 'يصل التذكير لكل من سجّل قبل موعده ولديه بريد إلكتروني، عدا من اعتذر أو رُفض دفعه. وتظهر ردود الحضور في قائمة الردود.'
+                      : 'Everyone who registered before a reminder is due and has an email gets it, except those who declined or whose payment was rejected. Attendance answers show in the responses.')}</p>
+                </section>
+
+                <section className="ffa-panel">
                   <h4>{isRTL ? 'الرسائل' : 'Messages'}</h4>
                   <label className="ffa-field"><span>{isRTL ? 'رسالة بعد الإرسال' : 'After submitting'}</span>
                     <textarea rows={2} value={draft.successMessage} onChange={(e) => set({ successMessage: e.target.value })} placeholder={isRTL ? 'شكرًا لك، وصلتنا إجابتك.' : 'Thank you — we received your answers.'} /></label>
@@ -768,6 +823,8 @@ const Responses = ({ isRTL, formId, manager, onBack }) => {
   }, [data]);
   // A payment column when the form pays through a page (or did before).
   const showPay = !!(data?.form?.payment || (data?.responses || []).some(r => r.payment));
+  // An attendance column once the form asks for it at an event (or has answers).
+  const showAttend = !!((data?.form?.eventStartsAt && data?.form?.askAttendance) || (data?.responses || []).some(r => r.attendance));
 
   const rows = useMemo(() => {
     const list = data?.responses || [];
@@ -780,10 +837,12 @@ const Responses = ({ isRTL, formId, manager, onBack }) => {
   const exportXlsx = () => {
     const form = data.form;
     const payHead = showPay ? [isRTL ? 'حالة الدفع' : 'Payment', isRTL ? 'رقم الدفع' : 'Payment ref', isRTL ? 'المبلغ' : 'Amount'] : [];
-    const header = [isRTL ? 'رقم التسجيل' : 'Reference', isRTL ? 'تاريخ الإرسال' : 'Submitted', ...payHead, ...columns.map(c => c.label)];
+    const attendHead = showAttend ? [isRTL ? 'تأكيد الحضور' : 'Attendance'] : [];
+    const header = [isRTL ? 'رقم التسجيل' : 'Reference', isRTL ? 'تاريخ الإرسال' : 'Submitted', ...payHead, ...attendHead, ...columns.map(c => c.label)];
     const body = (data.responses || []).map(r => [
       r.reference, fmtDateTime(r.createdAt, isRTL),
       ...(showPay ? [payStatusText(r.payment, isRTL), r.payment?.reference || '', r.payment ? r.payment.amount : ''] : []),
+      ...(showAttend ? [attendText(r.attendance, isRTL)] : []),
       ...columns.map(c => answerText(c, r.answers?.[c.id]))
     ]);
     const ws = XLSX.utils.aoa_to_sheet([header, ...body]);
@@ -843,6 +902,7 @@ const Responses = ({ isRTL, formId, manager, onBack }) => {
                   <th>{isRTL ? 'الرقم' : 'Ref'}</th>
                   <th>{isRTL ? 'التاريخ' : 'Date'}</th>
                   {showPay && <th>{isRTL ? 'الدفع' : 'Payment'}</th>}
+                  {showAttend && <th>{isRTL ? 'الحضور' : 'Attendance'}</th>}
                   {columns.map(c => <th key={c.id} title={c.label} className={c.old ? 'old' : ''}>{c.label}</th>)}
                 </tr>
               </thead>
@@ -856,6 +916,9 @@ const Responses = ({ isRTL, formId, manager, onBack }) => {
                         <span className={`ffa-paychip ${r.payment?.status || 'none'}`}>{payStatusText(r.payment, isRTL)}</span>
                         {r.payment?.reference && <small className="ffa-payref" dir="ltr">{r.payment.reference}</small>}
                       </td>
+                    )}
+                    {showAttend && (
+                      <td className="nowrap"><span className={`ffa-paychip ${ATTEND[r.attendance]?.[2] === 'yes' ? 'verified' : r.attendance === 'no' ? 'rejected' : 'none'}`}>{attendText(r.attendance, isRTL)}</span></td>
                     )}
                     {columns.map(c => {
                       const txt = answerText(c, r.answers?.[c.id]);
@@ -891,6 +954,13 @@ const Responses = ({ isRTL, formId, manager, onBack }) => {
                           : (isRTL ? 'لم يُسجَّل دفع لهذا الرد بعد — يُراجَع الدفع من تبويب «صفحات الدفع».' : 'No payment for this response yet — payments are reviewed in the Payment Pages tab.')}</small>
                       </div>
                     </div>
+                  )}
+                  {showAttend && (
+                    <p className="ffa-note">
+                      {isRTL ? 'الحضور: ' : 'Attendance: '}<b>{attendText(open.attendance, isRTL)}</b>
+                      {open.attendanceAt ? ` · ${fmtDateTime(open.attendanceAt, isRTL)}` : ''}
+                      {(open.remindersSent || []).length > 0 && ` · ${isRTL ? 'أُرسل تذكير قبل' : 'Reminded'} ${open.remindersSent.slice().sort((a, b) => b - a).join(isRTL ? ' و' : ', ')} ${isRTL ? 'أيام' : 'days before'}`}
+                    </p>
                   )}
                   <dl className="ffa-answers">
                     {(open.fieldsSnapshot?.length ? open.fieldsSnapshot : columns).filter(f => !NO_ANSWER.includes(f.type) && open.answers?.[f.id] != null).map(f => (
@@ -1012,6 +1082,7 @@ const FabFormsTab = ({ isRTL }) => {
                       {f.description && <p className="ffa-card-desc">{f.description}</p>}
                       <div className="ffa-card-meta">
                         <span><I d="M9 11l3 3L22 4" />{qn} {isRTL ? 'سؤال' : 'questions'}</span>
+                        {f.eventStartsAt && <span><I><rect x="3" y="4" width="18" height="18" rx="2.5" /><path d="M16 2v4M8 2v4M3 10h18" /></I>{isRTL ? 'الفعالية' : 'Event'} {fmtDateTime(f.eventStartsAt, isRTL)}</span>}
                         {f.payment && (
                           <span className={`ffa-paymeta${f.payment.closedReason ? ' warn' : ''}`}>
                             {CARD_ICON}

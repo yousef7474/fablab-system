@@ -58,6 +58,7 @@ const { seedInitialCustomers } = require('./utils/seedCustomers');
 const { backfillApprovalArchive } = require('./utils/backfillApprovalArchive');
 const { startTaskReminderScheduler } = require('./utils/taskReminderScheduler');
 const { startEliteCourseScheduler } = require('./utils/eliteCourseScheduler');
+const { startFabFormReminderScheduler } = require('./utils/fabFormReminders');
 const { processWeeklyCredits, reconcileEvaluationCriterion } = require('./controllers/activityController');
 
 const app = express();
@@ -219,6 +220,7 @@ const startServer = async () => {
     startBorrowingScheduler();
     startTaskReminderScheduler();
     startEliteCourseScheduler();
+    startFabFormReminderScheduler();
 
     // Boot-time catch-up: award any missed weekly credits (server may
     // have been down over a Sunday) and reconcile the cat9_c1

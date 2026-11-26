@@ -549,3 +549,13 @@ html[data-theme="dark"] .fx .ffa-modal :is(input, select) { color-scheme: dark; 
   :root:root .fx .ffa-pay-opt { grid-template-columns: minmax(0, 1fr) auto; }
   :root:root .fx .ffa-pay-opt .ffa-state { display: none; }
 }
+
+
+/* reminder day chips */
+:root:root .fx .ffa-chips { display: flex; flex-wrap: wrap; gap: 8px; }
+:root:root .fx .ffa-chip {
+  padding: 7px 14px; border-radius: 999px; border: 1px solid var(--fx-line-2); background: var(--fx-surface-2);
+  color: var(--fx-ink-2); font: 600 13px var(--fx-font); cursor: pointer; transition: background .2s, color .2s, border-color .2s;
+}
+:root:root .fx .ffa-chip.on { color: var(--fx-navy-ink); border-color: color-mix(in srgb, var(--fx-navy) 45%, var(--fx-line-2)); background: var(--fx-navy-soft); }
+:root:root .fx .ffa-detail .ffa-note b { color: var(--fx-ink); }

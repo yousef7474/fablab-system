@@ -5,7 +5,7 @@ const { FabForm, FabFormResponse, PaymentPage, PaymentSubmission, Settings } = r
 const { rateLimited } = require('../utils/siteContent');
 const { FormError, validateFields, cleanAnswers, respondentOf, LIQAA_FORM } = require('../utils/fabForms');
 const { sendFormConfirmation } = require('../utils/fabFormEmail');
-const { _closedReason: payClosedReason } = require('./paymentPageController');
+const { _closedReason: payClosedReason, createPayment, afterPayment, paymentResult, publicPageInfo } = require('./paymentPageController');
 
 // FabLab forms (admin "نماذج فاب لاب"): the admin builds a form, shares
 // /forms/:slug, and turns it on / off by hand or between an open and a
@@ -16,6 +16,9 @@ const SEEDED_KEY = 'fab_forms_seeded';
 const LIQAA_EN_KEY = 'fab_forms_liqaa_en';
 const EN_COLUMNS = { titleEn: 'VARCHAR(200)', descriptionEn: 'TEXT', successMessageEn: 'TEXT', closedMessageEn: 'TEXT' };
 const SLUG_RE = /^[a-z0-9][a-z0-9-]{2,39}$/;
+// "Days before the event" a reminder can go out.
+const REMINDER_DAYS = [14, 7, 3, 2, 1];
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 const _str = (v, max) => String(v == null ? '' : v).trim().slice(0, max);
 const _origin = () => process.env.PUBLIC_APP_URL
@@ -32,6 +35,11 @@ const _date = (v) => {
 };
 const _fail = (res, e) => {
   if (e instanceof FormError) return res.status(e.status).json({ message: e.message, messageAr: e.messageAr });
+  // A payment step error (createPayment): flagged so the page shows it there.
+  if (e && e.status && !(e instanceof Error)) {
+    const { status, ...body } = e;
+    return res.status(status).json({ ...body, scope: 'payment' });
+  }
   console.error('FabLab forms error:', e);
   return res.status(500).json({ message: 'Server error', messageAr: 'خطأ في الخادم' });
 };
@@ -127,6 +135,17 @@ async function _formFields(b, { partial = false, formId = null } = {}) {
   }
   if (!partial || b.sendConfirmation !== undefined) out.sendConfirmation = b.sendConfirmation !== false;
   if (!partial || b.isActive !== undefined) out.isActive = !!b.isActive;
+  if (!partial || b.eventStartsAt !== undefined) {
+    const d = _date(b.eventStartsAt);
+    if (d === undefined) throw new FormError('Invalid event time', 'موعد الفعالية غير صحيح');
+    out.eventStartsAt = d;
+  }
+  if (!partial || b.reminderDays !== undefined) {
+    const list = Array.isArray(b.reminderDays) ? b.reminderDays.map(Number) : [];
+    out.reminderDays = REMINDER_DAYS.filter(d => list.includes(d));
+  }
+  if (!partial || b.askAttendance !== undefined) out.askAttendance = b.askAttendance !== false;
+  if (!partial || b.reminderMessage !== undefined) out.reminderMessage = _str(b.reminderMessage, 2000) || null;
   if (!partial || b.paymentPageId !== undefined) {
     const id = b.paymentPageId ? String(b.paymentPageId) : null;
     if (id && !(/^[0-9a-f-]{36}$/i.test(id) && await PaymentPage.count({ where: { pageId: id } }))) {
@@ -145,6 +164,18 @@ async function _formFields(b, { partial = false, formId = null } = {}) {
   }
   return out;
 }
+
+// A form that takes payment needs the payer's name, phone and email:
+// required, always-shown questions of those kinds.
+const _checkPayerFields = (fields) => {
+  const has = (type) => (fields || []).some(f => f.type === type && f.required && !f.showIf);
+  if (!has('short') || !has('phone') || !has('email')) {
+    throw new FormError(
+      'A form with payment needs required name (short answer), phone and email questions',
+      'النموذج المرتبط بالدفع يحتاج أسئلة إلزامية للاسم (إجابة قصيرة) ورقم الجوال والبريد الإلكتروني'
+    );
+  }
+};
 
 const _counts = async (ids) => {
   if (!ids.length) return {};
@@ -202,6 +233,7 @@ exports.getForm = async (req, res) => {
 exports.createForm = async (req, res) => {
   try {
     const data = await _formFields(req.body);
+    if (data.paymentPageId) _checkPayerFields(data.fields);
     if (!data.slug) {
       for (let i = 0; i < 5 && !data.slug; i++) {
         const s = _newSlug();
@@ -218,6 +250,8 @@ exports.updateForm = async (req, res) => {
     const form = await FabForm.findByPk(req.params.id);
     if (!form) return res.status(404).json({ message: 'Form not found', messageAr: 'النموذج غير موجود' });
     const data = await _formFields(req.body, { partial: true, formId: form.formId });
+    const payPageId = data.paymentPageId !== undefined ? data.paymentPageId : form.paymentPageId;
+    if (payPageId) _checkPayerFields(data.fields !== undefined ? data.fields : form.fields);
     const opens = data.opensAt !== undefined ? data.opensAt : form.opensAt;
     const closes = data.closesAt !== undefined ? data.closesAt : form.closesAt;
     if (opens && closes && new Date(opens) >= new Date(closes)) {
@@ -295,7 +329,7 @@ exports.listResponses = async (req, res) => {
     res.json({
       form: _formJson(form, responses.length, pages),
       responses: responses.map(r => {
-        const { payToken, ...rest } = r.toJSON();
+        const { payToken, attendToken, ...rest } = r.toJSON();
         const p = payOf[r.responseId];
         return {
           ...rest,
@@ -336,8 +370,10 @@ exports.getPublicForm = async (req, res) => {
         hasEn: !!(form.titleEn || (form.fields || []).some(f => f.labelEn || f.contentEn)),
         opensAt: form.opensAt,
         closesAt: form.closesAt,
-        // Paid after sending (title + price of the linked payment page).
-        payment: pay?.page ? _paySummary(pay.page) : null
+        eventStartsAt: form.eventStartsAt,
+        // Paid inside the form before it is sent: the linked page's price,
+        // methods, bank / mada details and terms.
+        payment: pay?.page && !reason ? await publicPageInfo(pay.page) : null
       },
       closedReason: reason,
       closedMessage: reason ? _closedText(form, reason) : null,
@@ -346,6 +382,10 @@ exports.getPublicForm = async (req, res) => {
   } catch (e) { _fail(res, e); }
 };
 
+// POST /api/forms/:slug — { answers, payment? }. A form with a payment
+// page is only accepted together with its payment ({ method, proof?,
+// couponCode?, termsAccepted }): both are saved in one transaction, so a
+// failed payment saves nothing.
 exports.submitForm = async (req, res) => {
   try {
     const slug = String(req.params.slug || '').toLowerCase();
@@ -368,8 +408,12 @@ exports.submitForm = async (req, res) => {
     if (errors.length) {
       return res.status(400).json({ message: errors[0].message, messageAr: errors[0].messageAr, errors });
     }
+    const who = respondentOf(fields, answers);
+    if (form.paymentPageId && (!who.name || !who.phone || !who.email)) {
+      throw new FormError('Enter your name, phone and email to pay', 'أدخل الاسم ورقم الجوال والبريد الإلكتروني لإتمام الدفع');
+    }
 
-    const result = await sequelize.transaction(async (t) => {
+    const { response, page, sub } = await sequelize.transaction(async (t) => {
       // One submission at a time per form (response limit) and for the reference number.
       await sequelize.query('SELECT pg_advisory_xact_lock(hashtext(:k))', { replacements: { k: 'fab-form-ref' }, transaction: t });
       const count = await FabFormResponse.count({ where: { formId: form.formId }, transaction: t });
@@ -383,7 +427,6 @@ exports.submitForm = async (req, res) => {
       const seq = await Settings.findByPk(REF_SEQ_KEY, { transaction: t });
       const next = (Number(seq?.value) || 0) + 1;
       await Settings.upsert({ key: REF_SEQ_KEY, value: next }, { transaction: t });
-      const who = respondentOf(fields, answers);
       const created = await FabFormResponse.create({
         formId: form.formId,
         reference: `F-${String(next).padStart(4, '0')}`,
@@ -391,21 +434,25 @@ exports.submitForm = async (req, res) => {
         fieldsSnapshot: fields,
         respondentName: who.name,
         respondentEmail: who.email,
-        payToken: pay?.page ? crypto.randomUUID() : null
+        attendToken: crypto.randomUUID()
       }, { transaction: t });
-      return { response: created, payPage: pay?.page || null };
+      if (!pay?.page) return { response: created };
+      // The payment, in the same transaction: no payment, no registration.
+      const p = req.body?.payment || {};
+      const paid = await createPayment(t, { pageId: pay.page.pageId }, {
+        fullName: who.name, phone: who.phone, email: who.email,
+        method: p.method, proof: p.proof, couponCode: p.couponCode, termsAccepted: p.termsAccepted === true,
+        note: `${form.title} — ${created.reference}`
+      }, { formResponseId: created.responseId });
+      return { response: created, page: paid.page, sub: paid.sub };
     });
-    const { response, payPage } = result;
-    // Where the respondent pays: the linked page, pre-filled from this response.
-    const payment = payPage ? {
-      ..._paySummary(payPage),
-      url: `/pay/${payPage.slug}?fr=${response.payToken}`
-    } : null;
 
+    if (sub) afterPayment(page, sub);
+    const payment = sub ? { ...paymentResult(sub), title: page.title } : null;
     if (form.sendConfirmation && response.respondentEmail) {
       sendFormConfirmation({
         to: response.respondentEmail, name: response.respondentName, form, response,
-        payment: payment ? { title: payment.title, amount: payment.amount, url: `${_origin()}${payment.url}` } : null
+        payment: payment ? { title: payment.title, amount: payment.amount, reference: payment.reference, status: payment.status, method: payment.method } : null
       }).catch(e => console.error('Form confirmation email failed:', e.message));
     }
     res.status(201).json({
@@ -417,15 +464,71 @@ exports.submitForm = async (req, res) => {
   } catch (e) { _fail(res, e); }
 };
 
+// ---------- attendance (reminder email link, /forms/attend/:token) ----------
+
+const _attendee = async (token) => {
+  if (!UUID_RE.test(String(token || ''))) return null;
+  return FabFormResponse.findOne({
+    where: { attendToken: String(token) },
+    include: [{ model: FabForm, as: 'form', attributes: ['formId', 'title', 'titleEn', 'eventStartsAt', 'askAttendance'] }]
+  });
+};
+const _attendJson = (r) => ({
+  reference: r.reference,
+  name: r.respondentName,
+  title: r.form?.title,
+  titleEn: r.form?.titleEn || null,
+  eventStartsAt: r.form?.eventStartsAt || null,
+  attendance: r.attendance,
+  attendanceAt: r.attendanceAt,
+  // No more answers once the event has started.
+  locked: !!(r.form?.eventStartsAt && Date.now() >= new Date(r.form.eventStartsAt).getTime())
+});
+
+exports.getAttendance = async (req, res) => {
+  try {
+    const r = await _attendee(req.params.token);
+    if (!r || !r.form) return res.status(404).json({ message: 'Invalid link', messageAr: 'الرابط غير صحيح' });
+    res.json(_attendJson(r));
+  } catch (e) { _fail(res, e); }
+};
+
+exports.setAttendance = async (req, res) => {
+  try {
+    if (rateLimited(req, 'form-attend', 30, 10 * 60 * 1000)) {
+      return res.status(429).json({ message: 'Too many attempts — try again later', messageAr: 'محاولات كثيرة، حاول لاحقًا' });
+    }
+    const answer = req.body?.answer;
+    if (!['yes', 'no'].includes(answer)) return res.status(400).json({ message: 'Choose yes or no', messageAr: 'اختر الحضور أو الاعتذار' });
+    const r = await _attendee(req.params.token);
+    if (!r || !r.form) return res.status(404).json({ message: 'Invalid link', messageAr: 'الرابط غير صحيح' });
+    if (_attendJson(r).locked) return res.status(409).json({ message: 'The event has already started', messageAr: 'بدأت الفعالية، لا يمكن تعديل الرد' });
+    await r.update({ attendance: answer, attendanceAt: new Date() });
+    res.json(_attendJson(r));
+  } catch (e) { _fail(res, e); }
+};
+
 // ---------- startup ----------
 
-// Startup: make sure the payment and English columns exist (older databases), create
+// Startup: make sure the payment, reminder and English columns exist (older databases), create
 // the لقاء registration form once (switched off for review), and give it
 // its English text once.
 exports.seedFabForms = async () => {
-  for (const [table, column] of [['fab_forms', 'paymentPageId'], ['fab_form_responses', 'payToken'], ['payment_submissions', 'formResponseId']]) {
+  for (const [table, column, type] of [
+    ['fab_forms', 'paymentPageId', 'UUID'],
+    ['fab_forms', 'eventStartsAt', 'TIMESTAMP WITH TIME ZONE'],
+    ['fab_forms', 'reminderDays', `JSON NOT NULL DEFAULT '[7,2]'::json`],
+    ['fab_forms', 'askAttendance', 'BOOLEAN NOT NULL DEFAULT true'],
+    ['fab_forms', 'reminderMessage', 'TEXT'],
+    ['fab_form_responses', 'payToken', 'UUID'],
+    ['fab_form_responses', 'remindersSent', `JSON NOT NULL DEFAULT '[]'::json`],
+    ['fab_form_responses', 'attendance', 'VARCHAR(10)'],
+    ['fab_form_responses', 'attendanceAt', 'TIMESTAMP WITH TIME ZONE'],
+    ['fab_form_responses', 'attendToken', 'UUID'],
+    ['payment_submissions', 'formResponseId', 'UUID']
+  ]) {
     try {
-      await sequelize.query(`ALTER TABLE ${table} ADD COLUMN IF NOT EXISTS "${column}" UUID`);
+      await sequelize.query(`ALTER TABLE ${table} ADD COLUMN IF NOT EXISTS "${column}" ${type}`);
     } catch (e) {
       if (!/does not exist/i.test(e.message)) console.log(`${table}.${column} migration note:`, e.message);
     }

@@ -247,32 +247,38 @@ function _sendInvoiceEmail(page, sub) {
 
 // ═════════════════════════ PUBLIC ═════════════════════════
 
+// What a customer sees of a page (the checkout, or the payment step of a
+// FabLab form): price, places, methods with the bank / mada details, terms.
+async function publicPageInfo(page) {
+  const taken = await _taken(page.pageId);
+  const reason = closedReason(page, taken);
+  const { bank, mada } = await _paymentSettings();
+  const methods = (page.methods || []).filter(m => METHODS.includes(m));
+  return {
+    slug: page.slug,
+    title: page.title,
+    description: page.description,
+    ...(({ amount, baseAmount, discountPercent, discountValue }) => ({ amount, baseAmount, discountPercent, discountValue }))(_priceOf(page)),
+    maxPayers: page.maxPayers,
+    seatsLeft: page.maxPayers ? Math.max(0, page.maxPayers - taken) : null,
+    closesAt: page.closesAt,
+    isOpen: !reason,
+    closedReason: reason,
+    methods,
+    bank: methods.includes('bank_transfer') ? bank : null,
+    mada: methods.includes('mada') ? mada : null,
+    terms: page.terms,
+    cover: page.coverMime ? `/pay/${page.slug}/cover?v=${new Date(page.updatedAt).getTime()}` : null
+  };
+}
+
 // GET /api/pay/:slug
 exports.getPublicPage = async (req, res) => {
   try {
     if (!SLUG_RE.test(req.params.slug)) return res.status(404).json({ message: 'Not found' });
     const page = await PaymentPage.findOne({ where: { slug: req.params.slug } });
     if (!page) return res.status(404).json({ message: 'Payment page not found', messageAr: 'صفحة الدفع غير موجودة' });
-    const taken = await _taken(page.pageId);
-    const reason = closedReason(page, taken);
-    const { bank, mada } = await _paymentSettings();
-    const methods = (page.methods || []).filter(m => METHODS.includes(m));
-    res.json({
-      slug: page.slug,
-      title: page.title,
-      description: page.description,
-      ...(({ amount, baseAmount, discountPercent, discountValue }) => ({ amount, baseAmount, discountPercent, discountValue }))(_priceOf(page)),
-      maxPayers: page.maxPayers,
-      seatsLeft: page.maxPayers ? Math.max(0, page.maxPayers - taken) : null,
-      closesAt: page.closesAt,
-      isOpen: !reason,
-      closedReason: reason,
-      methods,
-      bank: methods.includes('bank_transfer') ? bank : null,
-      mada: methods.includes('mada') ? mada : null,
-      terms: page.terms,
-      cover: page.coverMime ? `/pay/${page.slug}/cover?v=${new Date(page.updatedAt).getTime()}` : null
-    });
+    res.json(await publicPageInfo(page));
   } catch (error) {
     console.error('getPublicPage:', error);
     res.status(500).json({ message: 'Server error', messageAr: 'خطأ في الخادم' });
@@ -356,108 +362,119 @@ exports.checkCoupon = async (req, res) => {
   }
 };
 
-// POST /api/pay/:slug — { fullName, phone, email, method, proof?, note?, termsAccepted, couponCode?, formToken? }
+// Takes one payment on a page inside the caller's transaction — the
+// /pay/:slug checkout, or a FabLab form that is paid before it is sent.
+// `where` = { slug } or { pageId }; `b` = { fullName, phone, email,
+// method, proof?, note?, termsAccepted, couponCode?, formToken? }.
+// Throws { status, message, messageAr, code? }.
+async function createPayment(t, where, b, { formResponseId = null } = {}) {
+  const fullName = _str(b.fullName, 150);
+  const phone = _str(b.phone, 30).replace(/[^\d+]/g, '');
+  const email = _str(b.email, 150).toLowerCase();
+  const method = _str(b.method, 20);
+  const note = _str(b.note, 1000) || null;
+  if (fullName.length < 3 || phone.replace(/\D/g, '').length < 9 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    throw { status: 400, code: 'PAYER', message: 'Please enter your full name, phone and a valid email', messageAr: 'يرجى إدخال الاسم الكامل والجوال وبريد إلكتروني صحيح' };
+  }
+  // One reference sequence for every page.
+  await sequelize.query('SELECT pg_advisory_xact_lock(hashtext(:k))', { replacements: { k: 'payment-page-ref' }, transaction: t });
+  const page = await PaymentPage.findOne({ where, transaction: t, lock: t.LOCK.UPDATE });
+  if (!page) throw { status: 404, message: 'Payment page not found', messageAr: 'صفحة الدفع غير موجودة' };
+  const reason = closedReason(page, await _taken(page.pageId, t));
+  if (reason) {
+    const [message, messageAr] = CLOSED_MESSAGES[reason];
+    throw { status: 403, code: 'CLOSED', closedReason: reason, message, messageAr };
+  }
+  // A discount code is checked again here, under the page lock, so its
+  // use limit can't be overrun.
+  const coupon = b.couponCode ? await _applyCoupon(page, b.couponCode, t) : null;
+  const payAmount = coupon ? coupon.amount : Number(page.amount);
+  // 100% off (page discount or code): nothing to pay — no method, no
+  // receipt, and it is confirmed right away.
+  const free = payAmount <= 0;
+  if (!free && !(page.methods || []).includes(method)) {
+    throw { status: 400, code: 'METHOD', message: 'Choose a payment method', messageAr: 'اختر طريقة الدفع' };
+  }
+  let proof = null;
+  if (!free && method === 'bank_transfer') {
+    proof = _parseProof(b.proof);
+    if (!proof) throw { status: 400, code: 'PROOF_REQUIRED', message: 'Upload the transfer receipt (image or PDF, up to 10 MB)', messageAr: 'ارفع إيصال التحويل (صورة أو PDF حتى 10 ميجابايت)' };
+  }
+  if (page.terms && b.termsAccepted !== true) {
+    throw { status: 400, code: 'TERMS', message: 'Please accept the terms', messageAr: 'يرجى الموافقة على الشروط' };
+  }
+  // Paying from an older "pay after the form" link: tie it to that response.
+  const linked = formResponseId ? null : await _formResponseFor(page, b.formToken, t);
+  const dup = await PaymentSubmission.findOne({
+    where: { pageId: page.pageId, status: { [Op.in]: TAKES_A_PLACE }, [Op.or]: [{ phone }, { email }] },
+    transaction: t
+  });
+  if (dup) {
+    throw { status: 409, code: 'DUPLICATE', reference: dup.reference, message: `You already have a payment on this page (${dup.reference})`, messageAr: `لديك طلب دفع مسجل مسبقاً في هذه الصفحة (${dup.reference})` };
+  }
+  // References never repeat, even after a request is deleted: a
+  // counter in settings, never below the highest one in the table.
+  const [rows] = await sequelize.query(
+    `SELECT reference FROM payment_submissions WHERE reference ~ '^PAY-[0-9]+$' ORDER BY LENGTH(reference) DESC, reference DESC LIMIT 1`,
+    { transaction: t }
+  );
+  const seq = await Settings.findByPk(REF_SEQ_KEY, { transaction: t });
+  const next = Math.max(Number(seq?.value) || 0, parseInt(String(rows?.[0]?.reference || 'PAY-0000').slice(4), 10) || 0) + 1;
+  await Settings.upsert({ key: REF_SEQ_KEY, value: next }, { transaction: t });
+  const sub = await PaymentSubmission.create({
+    pageId: page.pageId,
+    reference: `PAY-${String(next).padStart(4, '0')}`,
+    fullName, phone, email, note,
+    method: free ? 'free' : method,
+    amount: free ? 0 : payAmount,
+    baseAmount: page.baseAmount != null ? page.baseAmount : page.amount,
+    couponCode: coupon ? coupon.code : null,
+    couponPercent: coupon ? coupon.pct : 0,
+    couponDiscount: coupon ? coupon.discount : 0,
+    couponApprovedBy: coupon ? coupon.coupon.approvedBy : null,
+    discountPercent: page.discountPercent || 0,
+    discountAppliedBy: Number(page.discountPercent) > 0 ? page.discountAppliedBy : null,
+    discountApprovedBy: Number(page.discountPercent) > 0 ? page.discountApprovedBy : null,
+    proofFile: proof ? proof.data : null,
+    proofType: proof ? proof.type : null,
+    proofName: proof ? proof.name : null,
+    formResponseId: formResponseId || (linked ? linked.responseId : null),
+    ...(free ? { status: 'verified', paidAt: new Date(), reviewedAt: new Date(), reviewedBy: 'تلقائي — خصم كامل' } : {})
+  }, { transaction: t });
+  return { page, sub };
+}
+
+// After the transaction commits: the invoice (nothing to pay) or the
+// "we received your request" email.
+function afterPayment(page, sub) {
+  if (sub.status === 'verified') {
+    _sendInvoiceEmail(page, sub);
+  } else {
+    _paymentSettings()
+      .then(({ bank, mada }) => sendPaymentReceived(page, sub, { bank, mada, receiptUrl: receiptUrl(sub) }))
+      .catch(() => {});
+  }
+}
+
+const paymentResult = (sub) => ({
+  reference: sub.reference,
+  status: sub.status,
+  method: sub.method,
+  ..._priceOf(sub),
+  couponCode: sub.couponCode,
+  receiptUrl: `/api/pay/receipt/${sub.receiptToken}`
+});
+
+// POST /api/pay/:slug — see createPayment for the body.
 exports.submitPayment = async (req, res) => {
   try {
     if (!SLUG_RE.test(req.params.slug)) return res.status(404).json({ message: 'Not found' });
     if (rateLimited(req, `pay:${req.params.slug}`, 8, 10 * 60 * 1000)) {
       return res.status(429).json({ message: 'Too many attempts — try again in a few minutes', messageAr: 'محاولات كثيرة — حاول مجدداً بعد دقائق' });
     }
-    const b = req.body || {};
-    const fullName = _str(b.fullName, 150);
-    const phone = _str(b.phone, 30).replace(/[^\d+]/g, '');
-    const email = _str(b.email, 150).toLowerCase();
-    const method = _str(b.method, 20);
-    const note = _str(b.note, 1000) || null;
-    if (fullName.length < 3 || phone.replace(/\D/g, '').length < 9 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-      return res.status(400).json({ message: 'Please enter your full name, phone and a valid email', messageAr: 'يرجى إدخال الاسم الكامل والجوال وبريد إلكتروني صحيح' });
-    }
-
-    const result = await sequelize.transaction(async (t) => {
-      // One reference sequence for every page.
-      await sequelize.query('SELECT pg_advisory_xact_lock(hashtext(:k))', { replacements: { k: 'payment-page-ref' }, transaction: t });
-      const page = await PaymentPage.findOne({ where: { slug: req.params.slug }, transaction: t, lock: t.LOCK.UPDATE });
-      if (!page) throw { status: 404, message: 'Payment page not found', messageAr: 'صفحة الدفع غير موجودة' };
-      const reason = closedReason(page, await _taken(page.pageId, t));
-      if (reason) {
-        const [message, messageAr] = CLOSED_MESSAGES[reason];
-        throw { status: 403, code: 'CLOSED', closedReason: reason, message, messageAr };
-      }
-      // A discount code is checked again here, under the page lock, so its
-      // use limit can't be overrun.
-      const coupon = b.couponCode ? await _applyCoupon(page, b.couponCode, t) : null;
-      const payAmount = coupon ? coupon.amount : Number(page.amount);
-      // 100% off (page discount or code): nothing to pay — no method, no
-      // receipt, and it is confirmed right away.
-      const free = payAmount <= 0;
-      if (!free && !(page.methods || []).includes(method)) {
-        throw { status: 400, message: 'Choose a payment method', messageAr: 'اختر طريقة الدفع' };
-      }
-      let proof = null;
-      if (!free && method === 'bank_transfer') {
-        proof = _parseProof(b.proof);
-        if (!proof) throw { status: 400, code: 'PROOF_REQUIRED', message: 'Upload the transfer receipt (image or PDF, up to 10 MB)', messageAr: 'ارفع إيصال التحويل (صورة أو PDF حتى 10 ميجابايت)' };
-      }
-      if (page.terms && b.termsAccepted !== true) {
-        throw { status: 400, message: 'Please accept the terms', messageAr: 'يرجى الموافقة على الشروط' };
-      }
-      // Paying after a FabLab form: tie the payment to that response.
-      const formResponse = await _formResponseFor(page, b.formToken, t);
-      const dup = await PaymentSubmission.findOne({
-        where: { pageId: page.pageId, status: { [Op.in]: TAKES_A_PLACE }, [Op.or]: [{ phone }, { email }] },
-        transaction: t
-      });
-      if (dup) {
-        throw { status: 409, code: 'DUPLICATE', reference: dup.reference, message: `You already have a payment on this page (${dup.reference})`, messageAr: `لديك طلب دفع مسجل مسبقاً في هذه الصفحة (${dup.reference})` };
-      }
-      // References never repeat, even after a request is deleted: a
-      // counter in settings, never below the highest one in the table.
-      const [rows] = await sequelize.query(
-        `SELECT reference FROM payment_submissions WHERE reference ~ '^PAY-[0-9]+$' ORDER BY LENGTH(reference) DESC, reference DESC LIMIT 1`,
-        { transaction: t }
-      );
-      const seq = await Settings.findByPk(REF_SEQ_KEY, { transaction: t });
-      const next = Math.max(Number(seq?.value) || 0, parseInt(String(rows?.[0]?.reference || 'PAY-0000').slice(4), 10) || 0) + 1;
-      await Settings.upsert({ key: REF_SEQ_KEY, value: next }, { transaction: t });
-      const sub = await PaymentSubmission.create({
-        pageId: page.pageId,
-        reference: `PAY-${String(next).padStart(4, '0')}`,
-        fullName, phone, email, note,
-        method: free ? 'free' : method,
-        amount: free ? 0 : payAmount,
-        baseAmount: page.baseAmount != null ? page.baseAmount : page.amount,
-        couponCode: coupon ? coupon.code : null,
-        couponPercent: coupon ? coupon.pct : 0,
-        couponDiscount: coupon ? coupon.discount : 0,
-        couponApprovedBy: coupon ? coupon.coupon.approvedBy : null,
-        discountPercent: page.discountPercent || 0,
-        discountAppliedBy: Number(page.discountPercent) > 0 ? page.discountAppliedBy : null,
-        discountApprovedBy: Number(page.discountPercent) > 0 ? page.discountApprovedBy : null,
-        proofFile: proof ? proof.data : null,
-        proofType: proof ? proof.type : null,
-        proofName: proof ? proof.name : null,
-        formResponseId: formResponse ? formResponse.responseId : null,
-        ...(free ? { status: 'verified', paidAt: new Date(), reviewedAt: new Date(), reviewedBy: 'تلقائي — خصم كامل' } : {})
-      }, { transaction: t });
-      return { page, sub };
-    });
-
-    const { page, sub } = result;
-    if (sub.status === 'verified') {
-      _sendInvoiceEmail(page, sub);
-    } else {
-      _paymentSettings()
-        .then(({ bank, mada }) => sendPaymentReceived(page, sub, { bank, mada, receiptUrl: receiptUrl(sub) }))
-        .catch(() => {});
-    }
-    res.status(201).json({
-      reference: sub.reference,
-      status: sub.status,
-      method: sub.method,
-      ..._priceOf(sub),
-      couponCode: sub.couponCode,
-      receiptUrl: `/api/pay/receipt/${sub.receiptToken}`
-    });
+    const { page, sub } = await sequelize.transaction(t => createPayment(t, { slug: req.params.slug }, req.body || {}));
+    afterPayment(page, sub);
+    res.status(201).json(paymentResult(sub));
   } catch (error) {
     if (error && error.status) {
       const { status, ...body } = error;
@@ -817,3 +834,7 @@ exports.deleteCoupon = async (req, res) => {
 };
 
 exports._closedReason = closedReason;
+exports.createPayment = createPayment;
+exports.afterPayment = afterPayment;
+exports.paymentResult = paymentResult;
+exports.publicPageInfo = publicPageInfo;

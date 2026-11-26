@@ -30,6 +30,13 @@ const FabForm = sequelize.define('FabForm', {
   // A payment page (admin "صفحات الدفع") the respondent pays through after
   // sending the form. null = no payment.
   paymentPageId: { type: DataTypes.UUID, allowNull: true },
+  // The event the form registers for: reminder emails go out this many
+  // days before it (utils/fabFormReminders.js), optionally asking each
+  // person to confirm or decline, plus the admin's own reminder text.
+  eventStartsAt: { type: DataTypes.DATE, allowNull: true },
+  reminderDays: { type: DataTypes.JSON, allowNull: false, defaultValue: [7, 2] },
+  askAttendance: { type: DataTypes.BOOLEAN, allowNull: false, defaultValue: true },
+  reminderMessage: { type: DataTypes.TEXT, allowNull: true },
   createdBy: { type: DataTypes.STRING(150), allowNull: true },
   updatedBy: { type: DataTypes.STRING(150), allowNull: true }
 }, {

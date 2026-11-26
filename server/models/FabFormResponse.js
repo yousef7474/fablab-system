@@ -15,7 +15,13 @@ const FabFormResponse = sequelize.define('FabFormResponse', {
   respondentEmail: { type: DataTypes.STRING(200), allowNull: true },
   // When the form has a payment page: opens that page pre-filled and ties
   // the payment to this response (/pay/:slug?fr=<payToken>).
-  payToken: { type: DataTypes.UUID, allowNull: true }
+  payToken: { type: DataTypes.UUID, allowNull: true },
+  // Event reminders: the "days before" already sent, and the person's
+  // answer from the reminder link (yes | no) behind `attendToken`.
+  remindersSent: { type: DataTypes.JSON, allowNull: false, defaultValue: [] },
+  attendance: { type: DataTypes.STRING(10), allowNull: true },
+  attendanceAt: { type: DataTypes.DATE, allowNull: true },
+  attendToken: { type: DataTypes.UUID, allowNull: true }
 }, {
   tableName: 'fab_form_responses',
   timestamps: true,

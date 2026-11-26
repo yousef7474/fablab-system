@@ -6,6 +6,9 @@ const { requireManager } = require('../middleware/roleMiddleware');
 // Public form behind the shared link (/forms/:slug). Never 401: the
 // client sends any 401 to the sign-in page.
 const publicRouter = express.Router();
+// "Will you attend?" from the event reminder email.
+publicRouter.get('/attend/:token', ctrl.getAttendance);
+publicRouter.post('/attend/:token', ctrl.setAttendance);
 publicRouter.get('/:slug', ctrl.getPublicForm);
 publicRouter.post('/:slug', ctrl.submitForm);
 

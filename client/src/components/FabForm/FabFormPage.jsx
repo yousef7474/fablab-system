@@ -3,7 +3,11 @@ import { useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { motion, AnimatePresence } from 'framer-motion';
 import api from '../../config/api';
+import FormPayment, { checkPayment, payAmountOf, fmtSar } from './FormPayment';
+import { proofPayload } from '../PaymentPage/receiptFile';
 import './FabFormPage.css';
+
+const API_ORIGIN = String(api.defaults.baseURL || '/api').replace(/\/$/, '').replace(/\/api$/, '');
 
 // Public FabLab form (/forms/:slug) — our own replacement for Google
 // Forms. The admin builds the questions in "نماذج فاب لاب"; the server
@@ -49,13 +53,18 @@ const T = {
     termsAgree: 'قرأت الشروط والأحكام وأوافق عليها',
     fee: 'رسوم التسجيل',
     sar: 'ر.س',
-    payAfter: 'تُدفع بعد إرسال النموذج',
-    payStepTitle: 'الدفع بعد الإرسال',
-    payStepText: (amount) => `بعد إرسال النموذج ستنتقل إلى صفحة الدفع لإتمام دفع ${amount} ر.س بالتحويل البنكي أو مدى.`,
-    submitPay: 'إرسال والمتابعة للدفع',
-    payNowTitle: 'خطوة أخيرة: إتمام الدفع',
-    payNowText: 'تسجيلك محفوظ. أكمل الدفع حتى يُعتمد — وصلك الرابط أيضًا على بريدك.',
-    payNow: 'ادفع الآن'
+    payAfter: 'تُدفع ضمن النموذج',
+    payStepTitle: 'الدفع ضمن النموذج',
+    payStepText: (amount) => `يدفع المسجّل ${amount} ر.س في آخر النموذج (تحويل بنكي مع الإيصال أو مدى)، ولا يُرسل التسجيل دون دفع.`,
+    submitPay: 'ادفع وأرسل التسجيل',
+    submitFree: 'تأكيد التسجيل',
+    eventAt: 'موعد الفعالية',
+    payDone: 'الدفع',
+    payRef: 'رقم الدفع',
+    payBank: 'وصلنا إيصال التحويل، وبعد مراجعته تصلك الفاتورة على بريدك.',
+    payMada: 'ادفع المبلغ بجهاز مدى عند حضورك إلى فاب لاب، مع ذكر رقم الدفع.',
+    payFree: 'تم تأكيد تسجيلك دون دفع (خصم كامل).',
+    viewReceipt: 'عرض الإيصال'
   },
   en: {
     brand: 'FabLab Al-Ahsa',
@@ -95,13 +104,18 @@ const T = {
     termsAgree: 'I have read and agree to the terms and conditions',
     fee: 'Registration fee',
     sar: 'SAR',
-    payAfter: 'paid after you submit',
-    payStepTitle: 'Payment after submitting',
-    payStepText: (amount) => `After you submit, you'll go to the payment page to pay ${amount} SAR by bank transfer or mada.`,
-    submitPay: 'Submit & continue to payment',
-    payNowTitle: 'Last step: complete your payment',
-    payNowText: 'Your registration is saved. Complete the payment to confirm it — the link is in your email too.',
-    payNow: 'Pay now'
+    payAfter: 'paid inside the form',
+    payStepTitle: 'Payment inside the form',
+    payStepText: (amount) => `People pay ${amount} SAR at the end of the form (bank transfer with the receipt, or mada); the registration is not sent without it.`,
+    submitPay: 'Pay & submit',
+    submitFree: 'Confirm registration',
+    eventAt: 'Event',
+    payDone: 'Payment',
+    payRef: 'Payment ref',
+    payBank: 'We received your transfer receipt; once it is checked, your invoice is emailed to you.',
+    payMada: 'Pay by mada when you arrive at FabLab, quoting your payment reference.',
+    payFree: 'Your registration is confirmed with nothing to pay (full discount).',
+    viewReceipt: 'View receipt'
   }
 };
 
@@ -376,6 +390,10 @@ const FabFormPage = () => {
   const [banner, setBanner] = useState('');
   const [sending, setSending] = useState(false);
   const [done, setDone] = useState(null);
+  // The payment step (forms linked to a payment page).
+  const [pay, setPay] = useState({ method: '', proof: null, agreed: false, coupon: null });
+  const [payErrors, setPayErrors] = useState({});
+  const [payServerError, setPayServerError] = useState('');
 
   useEffect(() => { document.documentElement.lang = lang; }, [lang]);
   // A dashboard opened earlier in this tab may have left its theme on
@@ -393,6 +411,8 @@ const FabFormPage = () => {
     try {
       const { data } = await api.get(`/forms/${encodeURIComponent(slug)}`);
       setForm(data.form);
+      const methods = data.form?.payment?.methods || [];
+      setPay({ method: methods.length === 1 ? methods[0] : '', proof: null, agreed: false, coupon: null });
       if (data.closedReason) {
         setClosed({ reason: data.closedReason, message: data.closedMessage, messageEn: data.closedMessageEn });
         setState('closed');
@@ -423,6 +443,8 @@ const FabFormPage = () => {
     if (banner) setBanner('');
   };
 
+  const scrollToPay = () => document.getElementById('ffp-pay')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+
   const scrollToFirst = (errs) => {
     const first = shown.find(f => errs[f.id]);
     if (first) document.getElementById(`q-${first.id}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -433,7 +455,11 @@ const FabFormPage = () => {
     const errs = {};
     shown.forEach(f => { const m = checkField(f, answers[f.id], t); if (m) errs[f.id] = m; });
     setErrors(errs);
+    const pErrs = payment ? checkPayment(payment, pay, lang) : {};
+    setPayErrors(pErrs);
+    setPayServerError('');
     if (Object.keys(errs).length) { setBanner(t.fixErrors); scrollToFirst(errs); return; }
+    if (Object.keys(pErrs).length) { setBanner(t.fixErrors); scrollToPay(); return; }
 
     const payload = {};
     shown.forEach(f => {
@@ -445,14 +471,28 @@ const FabFormPage = () => {
 
     setSending(true);
     try {
-      const { data } = await api.post(`/forms/${encodeURIComponent(slug)}`, { answers: payload });
+      const { data } = await api.post(`/forms/${encodeURIComponent(slug)}`, {
+        answers: payload,
+        payment: payment ? {
+          method: payAmountOf(payment, pay) <= 0 ? 'free' : pay.method,
+          proof: pay.method === 'bank_transfer' ? proofPayload(pay.proof) : undefined,
+          couponCode: pay.coupon?.code || undefined,
+          termsAccepted: !!pay.agreed
+        } : undefined
+      });
       setDone(data);
       setState('done');
       window.scrollTo({ top: 0, behavior: 'smooth' });
     } catch (err) {
       const d = err.response?.data || {};
       const status = err.response?.status;
-      if (status === 409) {
+      if (d.scope === 'payment' && d.code !== 'CLOSED') {
+        // A payment problem: nothing was saved — show it on the payment step.
+        if (String(d.code || '').startsWith('COUPON_')) setPay(p => ({ ...p, coupon: null }));
+        setPayServerError((lang === 'ar' ? d.messageAr : d.message) || d.messageAr || t.sendFailed);
+        setBanner(t.fixErrors);
+        scrollToPay();
+      } else if (status === 409 || (status === 403 && d.code === 'CLOSED')) {
         setClosed({ reason: d.closedReason || 'inactive', message: d.messageAr, messageEn: d.message });
         setState('closed');
       } else if (status === 400 && Array.isArray(d.errors)) {
@@ -560,20 +600,18 @@ const FabFormPage = () => {
                 <small>{t.keepRef}</small>
               </div>
             )}
-            {done?.payment ? (
+            {done?.payment && (
               <motion.div className="ffp-paynow" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.35 }}>
-                <span className="ffp-paynow-kicker">{t.payNowTitle}</span>
-                <b className="ffp-paynow-title">{done.payment.title}</b>
-                <span className="ffp-paynow-amount"><b dir="ltr">{fmtMoney(done.payment.amount)}</b> {t.sar}</span>
-                <p>{t.payNowText}</p>
-                <a className="ffp-btn primary big" href={done.payment.url}>
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" aria-hidden="true"><rect x="2.5" y="5" width="19" height="14" rx="2.5" /><path d="M2.5 10h19M6.5 15h4" /></svg>
-                  {t.payNow}
-                </a>
+                <span className="ffp-paynow-kicker">{t.payDone} · {done.payment.title}</span>
+                <span className="ffp-paynow-amount"><b dir="ltr">{fmtSar(done.payment.amount)}</b> {t.sar}</span>
+                <span className="ffp-paynow-ref">{t.payRef}: <b dir="ltr">{done.payment.reference}</b></span>
+                <p>{done.payment.status === 'verified' ? t.payFree : done.payment.method === 'mada' ? t.payMada : t.payBank}</p>
+                {done.payment.receiptUrl && (
+                  <a className="ffp-btn ghost" href={`${API_ORIGIN}${done.payment.receiptUrl}`} target="_blank" rel="noopener noreferrer">{t.viewReceipt}</a>
+                )}
               </motion.div>
-            ) : (
-              <a className="ffp-btn ghost" href="/">{t.home}</a>
             )}
+            <a className="ffp-btn ghost" href="/">{t.home}</a>
           </Status>
         )}
 
@@ -586,6 +624,7 @@ const FabFormPage = () => {
               <div className="ffp-meta">
                 {requiredShown.length > 0 && <span className="ffp-chip"><b className="ffp-req">*</b> {t.requiredNote}</span>}
                 {form.closesAt && <span className="ffp-chip">⏰ {t.closesAt}: {fmtWhen(form.closesAt, lang)}</span>}
+                {form.eventStartsAt && <span className="ffp-chip">📅 {t.eventAt}: {fmtWhen(form.eventStartsAt, lang)}</span>}
                 {payment && <span className="ffp-chip pay">💳 {t.fee}: <b dir="ltr">{fmtMoney(payment.amount)}</b> {t.sar} — {t.payAfter}</span>}
               </div>
             </motion.div>
@@ -607,12 +646,20 @@ const FabFormPage = () => {
               )}
             </AnimatePresence>
 
-            {payment && <PayStep payment={payment} t={t} />}
+            {payment && (
+              <FormPayment info={payment} value={pay} lang={lang} disabled={sending} errors={payErrors} serverError={payServerError}
+                onChange={(patch) => {
+                  setPay(p => ({ ...p, ...patch }));
+                  setPayErrors(e => { const n = { ...e }; Object.keys(patch).forEach(k => delete n[k === 'agreed' ? 'terms' : k]); return n; });
+                  setPayServerError('');
+                  if (banner) setBanner('');
+                }} />
+            )}
 
             <div className="ffp-actions">
               <button type="submit" className="ffp-btn primary big" disabled={sending}>
                 {sending ? <><span className="ffp-spin" aria-hidden="true" />{t.sending}</> : <>
-                  {payment ? t.submitPay : t.submit}
+                  {payment ? (payAmountOf(payment, pay) <= 0 ? t.submitFree : t.submitPay) : t.submit}
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" aria-hidden="true"><path d={isRTL ? 'M19 12H5M11 18l-6-6 6-6' : 'M5 12h14M13 6l6 6-6 6'} /></svg>
                 </>}
               </button>
