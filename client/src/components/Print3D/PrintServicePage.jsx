@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'react-toastify';
 import axios from 'axios';
+import StudioShell, { useStudioTheme } from '../RegistrationForm/StudioShell';
 import './PrintService.css';
 
 const API_URL = process.env.NODE_ENV === 'production'
@@ -27,10 +28,27 @@ const isLightHex = (hex) => {
 const MAX_FILE_MB = 40;
 const MAX_FILES = 5;
 
+// The studio rail's intro for this service.
+const RAIL_INTRO = (isRTL) => ({
+  portal: isRTL ? 'خدمة الطباعة ثلاثية الأبعاد' : '3D printing service',
+  title: isRTL ? <>ارفع تصميمك<br /><em>ونطبعه لك بدقة</em></> : <>Upload your design<br /><em>we print it precisely</em></>,
+  features: [
+    { ar: 'حتى 5 ملفات STL · OBJ · 3MF · STEP · ZIP', en: 'Up to 5 files — STL · OBJ · 3MF · STEP · ZIP', d: ['M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4', 'M17 8l-5-5-5 5', 'M12 3v12'] },
+    { ar: 'اختر الخامة واللون أو لونًا لكل جزء', en: 'Pick the material and colour — or one per part', d: ['M12 22a10 10 0 1 1 0-20c5.5 0 10 4 10 9 0 3-2.5 5-5 5h-2a2 2 0 0 0-1 3.7A1.5 1.5 0 0 1 12 22z', 'M7.5 10.5h.01', 'M12 7.5h.01', 'M16.5 10.5h.01'] },
+    { ar: 'يصلك عرض السعر بالبريد قبل البدء', en: 'The quote reaches your email before we start', d: ['M4 4h16a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z', 'M22 6l-10 7L2 6'] }
+  ]
+});
+
 const PrintServicePage = () => {
   const { i18n } = useTranslation();
   const isRTL = i18n.language === 'ar';
   const navigate = useNavigate();
+  const [theme, toggleTheme] = useStudioTheme();
+  const shell = {
+    isRTL, theme, onToggleTheme: toggleTheme, servicesHref: '/register',
+    subtitle: isRTL ? 'خدمة الطباعة ثلاثية الأبعاد' : '3D printing service',
+    intro: RAIL_INTRO(isRTL)
+  };
 
   const [supported, setSupported] = useState(['stl','obj','3mf','step','stp','ply','gcode','zip']);
 
@@ -271,9 +289,9 @@ const PrintServicePage = () => {
 
   if (result) {
     return (
-      <div className="p3d" dir={isRTL ? 'rtl' : 'ltr'}>
+      <StudioShell {...shell}>
         <motion.div
-          className="p3d-success"
+          className="rgx-card p3d-success"
           initial={{ opacity: 0, scale: 0.94, y: 20 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
           transition={{ duration: 0.4, ease: 'easeOut' }}
@@ -294,56 +312,33 @@ const PrintServicePage = () => {
               : 'We will review the file and email you a quote shortly. You can accept or reject via the link in that email.'}
           </p>
           <div className="p3d-success-actions">
-            <button type="button" onClick={() => navigate('/register')}>{isRTL ? 'الرئيسية' : 'Home'}</button>
-            <button type="button" className="ghost" onClick={() => { setResult(null); setFiles([]); setTerms(false); setForm(f => ({ ...f, notes: '' })); }}>
+            <button type="button" className="btn btn-primary" onClick={() => navigate('/register')}>{isRTL ? 'كل الخدمات' : 'All services'}</button>
+            <button type="button" className="btn btn-secondary" onClick={() => { setResult(null); setFiles([]); setTerms(false); setForm(f => ({ ...f, notes: '' })); }}>
               {isRTL ? 'طلب طباعة آخر' : 'Another request'}
             </button>
           </div>
         </motion.div>
-      </div>
+      </StudioShell>
     );
   }
 
   return (
-    <div className="p3d" dir={isRTL ? 'rtl' : 'ltr'}>
+    <StudioShell {...shell}>
       {/* Everything under .p3d-inner gets blurred when the service is
-          closed, mirroring the store's pattern. The overlay + card
-          then sit ABOVE it so the notice is always clearly visible. */}
+          closed; the overlay + card sit above it. */}
       <div className={`p3d-inner ${closureStatus.effectiveClosed ? 'is-blurred' : ''}`}>
-      {/* Topbar */}
-      <header className="p3d-topbar">
-        <button type="button" className="p3d-brand" onClick={() => navigate('/register')}>
-          <img src="/logo.png" alt="" />
-          <div>
-            <div className="p3d-brand-title">{isRTL ? 'فاب لاب الأحساء' : 'FabLab Al-Ahsa'}</div>
-            <div className="p3d-brand-sub">{isRTL ? 'خدمة الطباعة ثلاثية الأبعاد' : '3D Printing Service'}</div>
-          </div>
-        </button>
-        <div className="p3d-topbar-actions">
-          <button
-            type="button"
-            className="p3d-lang"
-            onClick={() => i18n.changeLanguage(isRTL ? 'en' : 'ar')}
-          >{isRTL ? 'EN' : 'ع'}</button>
-          <button type="button" className="p3d-home" onClick={() => navigate('/register')}>
-            {isRTL ? 'الرئيسية' : 'Home'}
-          </button>
-        </div>
-      </header>
-
-      {/* Hero */}
-      <div className="p3d-hero">
-        <div className="p3d-hero-inner">
-          <span className="p3d-hero-eyebrow">
-            {isRTL ? '🖨️ خدمة الطباعة ثلاثية الأبعاد' : '🖨️ 3D PRINTING SERVICE'}
-          </span>
-          <h1>{isRTL ? 'ارفع تصميمك — نطبعه لك بأعلى دقة' : 'Upload your design — we print it precisely'}</h1>
-          <p>{isRTL
-            ? 'ارفع ملف الطباعة، اختر الخامة واللون، وستصلك تكلفة الطباعة قبل البدء.'
-            : 'Upload your file, pick material and color — we quote before printing.'}
-          </p>
-        </div>
-      </div>
+      <motion.div
+        className="rgx-hero"
+        initial={{ opacity: 0, y: -12 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5, ease: [0.2, 0.8, 0.2, 1] }}
+      >
+        <p className="rgx-eyebrow"><i aria-hidden="true" />{isRTL ? 'خدمة الطباعة ثلاثية الأبعاد' : '3D printing service'}</p>
+        <h1>{isRTL ? <>ارفع تصميمك — <em>نطبعه لك بدقة</em></> : <>Upload your design — <em>we print it precisely</em></>}</h1>
+        <p>{isRTL
+          ? 'ارفع ملف الطباعة، اختر الخامة واللون، وستصلك تكلفة الطباعة على بريدك قبل البدء.'
+          : 'Upload your file, pick the material and colour — we email you the price before printing.'}</p>
+      </motion.div>
 
       <form onSubmit={submit} className="p3d-form">
         {/* SECTION: Personal Info */}
@@ -398,8 +393,8 @@ const PrintServicePage = () => {
                 <b>{supported.map(s => s.toUpperCase()).join(', ')}</b>
                 {isRTL ? ` — الحد الأقصى ${MAX_FILE_MB} ميجا لكل ملف` : ` — max ${MAX_FILE_MB}MB per file`}
               </p>
-              <p style={{ marginTop: 4, fontSize: 12, color: '#94a3b8' }}>
-                💡 {isRTL
+              <p className="p3d-tip">
+                {isRTL
                   ? `للأعمال التي تزيد عن ${MAX_FILES} ملفات، ضعها في مجلد وارفعها كملف مضغوط .zip`
                   : `Need more than ${MAX_FILES} files? Put them in a folder and upload as a .zip archive.`}
               </p>
@@ -451,7 +446,7 @@ const PrintServicePage = () => {
 
           {/* Dropzone stays visible until MAX_FILES reached */}
           {files.length < MAX_FILES && (
-            <label className="p3d-dropzone" style={files.length > 0 ? { marginTop: 12 } : undefined}>
+            <label className={`p3d-dropzone${files.length > 0 ? ' has-files' : ''}`}>
               <input
                 type="file"
                 multiple
@@ -483,14 +478,8 @@ const PrintServicePage = () => {
             </label>
           )}
           {files.length >= MAX_FILES && (
-            <div style={{
-              marginTop: 12, padding: '12px 14px',
-              background: 'rgba(14,165,233,0.08)',
-              border: '1px solid rgba(14,165,233,0.28)',
-              borderRadius: 10, fontSize: 13, color: '#0369a1',
-              display: 'flex', alignItems: 'center', gap: 10
-            }}>
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+            <div className="p3d-limit">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/>
               </svg>
               <span>
@@ -735,7 +724,7 @@ const PrintServicePage = () => {
 
           <button
             type="submit"
-            className="p3d-submit"
+            className="btn btn-primary btn-submit p3d-submit"
             disabled={!canSubmit || submitting}
           >
             {submitting
@@ -787,8 +776,8 @@ const PrintServicePage = () => {
                 </div>
               )}
               <div className="p3d-closed-actions">
-                <button type="button" onClick={() => navigate('/register')}>
-                  {isRTL ? 'العودة للصفحة الرئيسية' : 'Back to home'}
+                <button type="button" className="btn btn-primary" onClick={() => navigate('/register')}>
+                  {isRTL ? 'كل الخدمات' : 'All services'}
                 </button>
               </div>
               <div className="p3d-closed-hint">
@@ -855,7 +844,7 @@ const PrintServicePage = () => {
                 )}
               </div>
               <div className="p3d-modal-foot">
-                <button type="button" onClick={() => { setTerms(true); setShowTerms(false); }}>
+                <button type="button" className="btn btn-primary" onClick={() => { setTerms(true); setShowTerms(false); }}>
                   {isRTL ? 'قبول والمتابعة' : 'Accept & continue'}
                 </button>
               </div>
@@ -863,7 +852,7 @@ const PrintServicePage = () => {
           </motion.div>
         )}
       </AnimatePresence>
-    </div>
+    </StudioShell>
   );
 };
 

@@ -56,96 +56,65 @@ const ReturnDate = ({ formData, onChange, onNext, onBack }) => {
         {isRTL ? 'اختر تاريخ إرجاع المكونات (الحد الأقصى 30 يومًا)' : 'Select the component return date (maximum 30 days)'}
       </p>
 
-      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
+      <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }}>
         {/* Borrow Date Display */}
-        <div style={{
-          background: '#f0f7ff',
-          padding: '16px',
-          borderRadius: '12px',
-          marginBottom: '20px',
-          border: '1px solid #bfdbfe'
-        }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <span style={{ fontWeight: '600', color: '#1e40af' }}>
-              {isRTL ? 'تاريخ الاستعارة:' : 'Borrow Date:'}
-            </span>
-            <span style={{ color: '#1e40af' }}>
-              {formatDate(formData.borrowDate || borrowDate)}
-            </span>
-          </div>
+        <div className="bfx-borrowed">
+          <span>{isRTL ? 'تاريخ الاستعارة' : 'Borrow date'}</span>
+          <b>{formatDate(formData.borrowDate || borrowDate)}</b>
         </div>
 
         {/* Return Date Picker */}
         <div className="form-group">
-          <label className="form-label" style={{ fontSize: '16px', fontWeight: '600' }}>
-            {isRTL ? 'تاريخ الإرجاع المتوقع *' : 'Expected Return Date *'}
+          <label className="form-label" htmlFor="bfx-return">
+            {isRTL ? 'تاريخ الإرجاع المتوقع' : 'Expected Return Date'} <span className="required">*</span>
           </label>
           <input
+            id="bfx-return"
             type="date"
             className="form-input"
             value={formData.expectedReturnDate}
             min={today}
             max={maxDate}
             onChange={(e) => onChange({ expectedReturnDate: e.target.value })}
-            style={{ fontSize: '16px', padding: '14px' }}
           />
         </div>
 
         {/* Period Summary */}
         {formData.expectedReturnDate && (
           <motion.div
+            className={`bfx-period ${days <= 7 ? 'is-short' : days <= 20 ? 'is-mid' : 'is-long'}`}
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
-            style={{
-              background: days <= 7 ? '#d4edda' : days <= 20 ? '#fff3cd' : '#f8d7da',
-              padding: '20px',
-              borderRadius: '12px',
-              marginTop: '20px',
-              textAlign: 'center'
-            }}
           >
-            <div style={{ fontSize: '36px', fontWeight: '700', color: days <= 7 ? '#155724' : days <= 20 ? '#856404' : '#721c24' }}>
-              {days}
+            <div className="bfx-period-n">
+              <b>{days}</b>
+              <span>{isRTL ? 'يوم' : days === 1 ? 'day' : 'days'}</span>
             </div>
-            <div style={{ fontSize: '16px', color: days <= 7 ? '#155724' : days <= 20 ? '#856404' : '#721c24', fontWeight: '600' }}>
-              {isRTL ? 'يوم' : days === 1 ? 'day' : 'days'}
-            </div>
-            <div style={{ marginTop: '12px', fontSize: '14px', color: '#666' }}>
-              <span>{isRTL ? 'من' : 'From'} {formatDate(formData.borrowDate || borrowDate)}</span>
-              <br />
-              <span>{isRTL ? 'إلى' : 'To'} {formatDate(formData.expectedReturnDate)}</span>
+            <div className="bfx-period-range">
+              <span>{isRTL ? 'من' : 'From'} <b>{formatDate(formData.borrowDate || borrowDate)}</b></span>
+              <span>{isRTL ? 'إلى' : 'To'} <b>{formatDate(formData.expectedReturnDate)}</b></span>
             </div>
           </motion.div>
         )}
 
-        <div style={{
-          background: '#f8fafc',
-          padding: '12px 16px',
-          borderRadius: '8px',
-          marginTop: '16px',
-          fontSize: '13px',
-          color: '#64748b',
-          display: 'flex',
-          alignItems: 'center',
-          gap: '8px'
-        }}>
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+        <div className="info-banner">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
             <circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/>
           </svg>
-          {isRTL ? 'الحد الأقصى لفترة الاستعارة 30 يومًا. للفترات الأطول، يجب تقديم طلب جديد.' : 'Maximum borrowing period is 30 days. For longer periods, a new request must be submitted.'}
+          <span>{isRTL ? 'الحد الأقصى لفترة الاستعارة 30 يومًا. للفترات الأطول، يجب تقديم طلب جديد.' : 'Maximum borrowing period is 30 days. For longer periods, a new request must be submitted.'}</span>
         </div>
       </motion.div>
 
-      <div className="form-navigation" style={{ marginTop: '24px' }}>
+      <div className="form-navigation">
         <button className="btn btn-secondary" onClick={onBack}>
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ transform: isRTL ? 'rotate(180deg)' : 'none' }}>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ transform: isRTL ? 'rotate(180deg)' : 'none' }} aria-hidden="true">
             <path d="m15 18-6-6 6-6"/>
           </svg>
           {isRTL ? 'السابق' : 'Previous'}
         </button>
         <button className="btn btn-primary" onClick={onNext} disabled={!formData.expectedReturnDate}>
           {isRTL ? 'التالي' : 'Next'}
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ transform: isRTL ? 'rotate(180deg)' : 'none' }}>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ transform: isRTL ? 'rotate(180deg)' : 'none' }} aria-hidden="true">
             <path d="m9 18 6-6-6-6"/>
           </svg>
         </button>

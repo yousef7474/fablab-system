@@ -475,7 +475,7 @@ const WorkspaceRegistration = () => {
   };
 
   const shellProps = {
-    isRTL, theme, onToggleTheme: toggleTheme, intro,
+    isRTL, theme, onToggleTheme: toggleTheme, intro, servicesHref: '/register',
     subtitle: tx('تسجيل مساحات العمل', 'Workspace registration')
   };
 
@@ -577,7 +577,6 @@ const WorkspaceRegistration = () => {
               <Icon d={isRTL ? ICONS.back : ICONS.next} />
             </button>
             {hasDraft && <button type="button" className="btn btn-secondary" onClick={() => { startOver(); go(0); }}>{tx('طلب جديد', 'New request')}</button>}
-            <button type="button" className="wsx-link" onClick={() => navigate('/register')}>{tx('صفحة التسجيل والخدمات الأخرى', 'Registration & other services')}</button>
           </div>
         </motion.section>
       </StudioShell>

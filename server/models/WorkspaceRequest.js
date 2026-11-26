@@ -30,10 +30,15 @@ const WorkspaceRequest = sequelize.define('WorkspaceRequest', {
   decisionNote: { type: DataTypes.TEXT, allowNull: true },
   decidedBy: { type: DataTypes.STRING(150), allowNull: true },
   decidedAt: { type: DataTypes.DATE, allowNull: true },
-  decisionEmailSentAt: { type: DataTypes.DATE, allowNull: true }
+  decisionEmailSentAt: { type: DataTypes.DATE, allowNull: true },
+  // What changed after submission: [{ action: 'edited' | 'extended' |
+  // 'deleted', at, by, from?, to?, note? }].
+  history: { type: DataTypes.JSON, allowNull: false, defaultValue: [] }
 }, {
   tableName: 'workspace_requests',
   timestamps: true,
+  // Deleting keeps the row (deletedAt) so every person's archive stays whole.
+  paranoid: true,
   indexes: [{ fields: ['status'] }, { fields: ['unitCode'] }, { fields: ['startDate', 'endDate'] }]
 });
 

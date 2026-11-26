@@ -1133,6 +1133,73 @@
   .rgx[data-theme] .btn-submit { min-width: 0; }
 }
 
+/* rail: quick contact (desktop landing) */
+.rgx-rail-contact { display: grid; gap: 6px; margin-top: 4px; }
+.rgx-rail-contact small { font-size: 12px; color: rgba(255, 255, 255, .6); }
+.rgx-rail-contact a {
+  display: flex; align-items: center; gap: 10px; padding: 7px 10px; border-radius: 12px;
+  color: rgba(255, 255, 255, .88) !important; text-decoration: none; font-size: 12.5px;
+  border: 1px solid rgba(255, 255, 255, .08); background: rgba(255, 255, 255, .04);
+}
+.rgx-rail-contact a:hover { background: rgba(255, 255, 255, .1); }
+.rgx-rail-contact svg { width: 16px; height: 16px; flex: none; color: #9ff0c9; }
+.rgx-rail-contact span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* =============================================================
+   Landing on laptops / desktops: everything on one screen —
+   start (lookup) beside a compact services grid; contact moves
+   into the rail.
+   ============================================================= */
+.rgx[data-theme] .service-card-group { display: grid; gap: 8px; align-content: start; }
+.rgx[data-theme] .service-card-group .service-suboptions { margin: 0; flex-direction: column; }
+.rgx[data-theme] .service-card-group .service-suboption { width: 100%; justify-content: flex-start; }
+.rgx[data-theme] .service-card-group.is-open .service-card { border-color: color-mix(in srgb, var(--sv) 45%, var(--r-line)) !important; background: var(--r-surface) !important; }
+@media (min-width: 1100px) {
+  .rgx-stage { padding-bottom: 28px; }
+  .rgx-hero { margin: 6px 0 14px; }
+  .rgx[data-theme] .rgx-hero h1 { font-size: clamp(26px, 2.3vw, 32px); }
+  .rgx[data-theme] .rgx-hero > p:last-child { margin-top: 6px; font-size: 14.5px; }
+  .rgx-eyebrow { margin-bottom: 6px; }
+  .rgx-card.is-landing { padding: 22px 24px; }
+  .rgx[data-theme] .rgx-card.is-landing .user-lookup {
+    grid-template-columns: minmax(290px, .85fr) minmax(0, 1.5fr);
+    column-gap: 24px;
+    align-items: start;
+  }
+  .rgx[data-theme] .rgx-card.is-landing .ul-start { display: grid; align-content: start; padding-inline-end: 24px; border-inline-end: 1px solid var(--r-line); }
+  .rgx[data-theme] .rgx-card.is-landing .user-lookup-title { font-size: 20px; }
+  .rgx[data-theme] .rgx-card.is-landing .user-lookup-description { margin-bottom: 14px; font-size: 14px; }
+  .rgx[data-theme] .rgx-card.is-landing .rg-launch { flex-wrap: wrap; padding: 12px; gap: 10px; margin-bottom: 14px; }
+  .rgx[data-theme] .rgx-card.is-landing .rg-launch-text { flex-basis: calc(100% - 60px); }
+  .rgx[data-theme] .rgx-card.is-landing .rg-launch-cta { width: 100%; justify-content: center; }
+  .rgx[data-theme] .rgx-card.is-landing .service-divider { margin: 0 0 12px; }
+  .rgx[data-theme] .rgx-card.is-landing .service-cards-grid { gap: 8px; align-items: start; }
+  .rgx[data-theme] .rgx-card.is-landing .service-card--consult { grid-column: auto; }
+  .rgx[data-theme] .rgx-card.is-landing .service-card { padding: 9px 11px; gap: 10px; min-height: 58px; }
+  .rgx[data-theme] .rgx-card.is-landing .service-card-icon { width: 38px; height: 38px; border-radius: 11px; }
+  .rgx[data-theme] .rgx-card.is-landing .service-card-icon svg { width: 19px; height: 19px; }
+  .rgx[data-theme] .rgx-card.is-landing .service-card-title { font-size: 14px; }
+  .rgx[data-theme] .rgx-card.is-landing .service-card-description {
+    font-size: 12px; line-height: 1.5;
+    display: -webkit-box; -webkit-line-clamp: 1; -webkit-box-orient: vertical; overflow: hidden;
+  }
+  .rgx[data-theme] .rgx-card.is-landing .service-card-badge { display: none; }
+  .rgx[data-theme] .rgx-card.is-landing .service-card-arrow { width: 26px; height: 26px; font-size: 13px; }
+  .rgx[data-theme] .rgx-card.is-landing .contact-strip { display: none; }
+  .rgx[data-theme] .rgx-card.is-landing .user-lookup-buttons .btn { white-space: nowrap; padding: 0 12px; gap: 7px; font-size: 14px; }
+  .rgx[data-theme] .rgx-card.is-landing .user-lookup-buttons .btn svg { width: 17px; height: 17px; }
+}
+@media (min-width: 1100px) and (max-height: 820px) {
+  /* short laptop screens (1366×768): a little tighter still */
+  .rgx .faby-welcome-popup { display: none !important; }
+  .rgx-top { padding-block: 10px; }
+  .rgx[data-theme] .rgx-hero > p:last-child { display: none; }
+  .rgx[data-theme] .rgx-card.is-landing .user-lookup-description { display: none; }
+  .rgx-rail-intro { gap: 16px; }
+  .rgx-rail-intro h2 { font-size: 26px; }
+  .rgx-feats li { padding: 8px 10px; font-size: 13px; }
+}
+
 /* phones: the bot's automatic greeting would cover the step and its
    buttons — the bot itself stays (tap it to chat) */
 @media (max-width: 640px) {

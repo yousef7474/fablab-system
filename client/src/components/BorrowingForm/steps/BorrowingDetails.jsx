@@ -61,7 +61,7 @@ const BorrowingDetails = ({ formData, onChange, onNext, onBack }) => {
       </p>
 
       {/* Section Selection */}
-      <div className="selection-grid">
+      <div className="selection-grid bfx-sections">
         {sections.map((section, index) => (
           <motion.div
             key={section.value}
@@ -77,72 +77,60 @@ const BorrowingDetails = ({ formData, onChange, onNext, onBack }) => {
         ))}
       </div>
 
-      {/* Purpose */}
-      <div className="form-group" style={{ marginTop: '24px' }}>
-        <label className="form-label">{isRTL ? 'الغرض من الاستعارة *' : 'Purpose of Borrowing *'}</label>
-        <textarea
-          className="form-input"
-          rows="3"
-          placeholder={isRTL ? 'اشرح سبب حاجتك للمكونات' : 'Explain why you need the components'}
-          value={formData.purpose}
-          onChange={(e) => onChange({ purpose: e.target.value })}
-          style={{ textAlign: isRTL ? 'right' : 'left', resize: 'vertical' }}
-        />
-      </div>
+      <div className="form-grid bfx-details">
+        {/* Purpose */}
+        <div className="form-group">
+          <label className="form-label">{isRTL ? 'الغرض من الاستعارة' : 'Purpose of Borrowing'} <span className="required">*</span></label>
+          <textarea
+            className="form-textarea"
+            rows="3"
+            placeholder={isRTL ? 'اشرح سبب حاجتك للمكونات' : 'Explain why you need the components'}
+            value={formData.purpose}
+            onChange={(e) => onChange({ purpose: e.target.value })}
+          />
+        </div>
 
-      {/* Component Description */}
-      <div className="form-group">
-        <label className="form-label">{isRTL ? 'وصف المكونات *' : 'Component Description *'}</label>
-        <textarea
-          className="form-input"
-          rows="3"
-          placeholder={isRTL ? 'قم بوصف المكونات التي تريد استعارتها (النوع، الكمية، إلخ)' : 'Describe the components you want to borrow (type, quantity, etc.)'}
-          value={formData.componentDescription}
-          onChange={(e) => onChange({ componentDescription: e.target.value })}
-          style={{ textAlign: isRTL ? 'right' : 'left', resize: 'vertical' }}
-        />
+        {/* Component Description */}
+        <div className="form-group">
+          <label className="form-label">{isRTL ? 'وصف المكونات' : 'Component Description'} <span className="required">*</span></label>
+          <textarea
+            className="form-textarea"
+            rows="3"
+            placeholder={isRTL ? 'قم بوصف المكونات التي تريد استعارتها (النوع، الكمية، إلخ)' : 'Describe the components you want to borrow (type, quantity, etc.)'}
+            value={formData.componentDescription}
+            onChange={(e) => onChange({ componentDescription: e.target.value })}
+          />
+        </div>
       </div>
 
       {/* Photo Upload */}
-      <div className="form-group">
-        <label className="form-label">{isRTL ? 'صورة المكونات *' : 'Component Photo *'}</label>
+      <div className="form-group bfx-photo-group">
+        <label className="form-label">{isRTL ? 'صورة المكونات' : 'Component Photo'} <span className="required">*</span></label>
         <div
-          style={{
-            border: '2px dashed #cbd5e1',
-            borderRadius: '12px',
-            padding: '24px',
-            textAlign: 'center',
-            cursor: 'pointer',
-            background: formData.componentPhotoBefore ? '#f0f7ff' : '#f8fafc',
-            transition: 'all 0.3s ease'
-          }}
+          className={`bfx-drop${formData.componentPhotoBefore ? ' has-photo' : ''}`}
+          role="button"
+          tabIndex={0}
           onClick={() => fileInputRef.current?.click()}
+          onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); fileInputRef.current?.click(); } }}
         >
           {formData.componentPhotoBefore ? (
-            <div>
-              <img
-                src={formData.componentPhotoBefore}
-                alt="Component"
-                style={{ maxWidth: '200px', maxHeight: '150px', borderRadius: '8px', objectFit: 'cover' }}
-              />
-              <p style={{ marginTop: '8px', color: '#22c55e', fontWeight: '600' }}>
-                {isRTL ? 'تم رفع الصورة - اضغط لتغييرها' : 'Photo uploaded - click to change'}
-              </p>
-            </div>
+            <>
+              <img src={formData.componentPhotoBefore} alt="Component" />
+              <span className="bfx-drop-text">
+                <b>{isRTL ? 'تم رفع الصورة' : 'Photo uploaded'}</b>
+                <small>{isRTL ? 'اضغط لتغييرها' : 'Click to change'}</small>
+              </span>
+            </>
           ) : (
-            <div>
-              <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" strokeWidth="2" style={{ margin: '0 auto' }}>
-                <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
-                <circle cx="8.5" cy="8.5" r="1.5"/>
-                <polyline points="21 15 16 10 5 21"/>
-              </svg>
-              <p style={{ marginTop: '12px', color: '#64748b' }}>
-                {isRTL ? 'اضغط لرفع صورة المكونات' : 'Click to upload component photo'}
-              </p>
-              <p style={{ fontSize: '12px', color: '#94a3b8' }}>
-                {isRTL ? 'الحد الأقصى: 5 ميجابايت' : 'Max size: 5MB'}
-              </p>
-            </div>
+            <>
+              <span className="bfx-drop-ico" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2" /><circle cx="8.5" cy="8.5" r="1.5" /><polyline points="21 15 16 10 5 21" /></svg>
+              </span>
+              <span className="bfx-drop-text">
+                <b>{isRTL ? 'اضغط لرفع صورة المكونات' : 'Click to upload a component photo'}</b>
+                <small>{isRTL ? 'الحد الأقصى: 5 ميجابايت' : 'Max size: 5MB'}</small>
+              </span>
+            </>
           )}
           <input
             ref={fileInputRef}
@@ -156,14 +144,14 @@ const BorrowingDetails = ({ formData, onChange, onNext, onBack }) => {
 
       <div className="form-navigation">
         <button className="btn btn-secondary" onClick={onBack}>
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ transform: isRTL ? 'rotate(180deg)' : 'none' }}>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ transform: isRTL ? 'rotate(180deg)' : 'none' }} aria-hidden="true">
             <path d="m15 18-6-6 6-6"/>
           </svg>
           {isRTL ? 'السابق' : 'Previous'}
         </button>
         <button className="btn btn-primary" onClick={onNext} disabled={!canProceed}>
           {isRTL ? 'التالي' : 'Next'}
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ transform: isRTL ? 'rotate(180deg)' : 'none' }}>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ transform: isRTL ? 'rotate(180deg)' : 'none' }} aria-hidden="true">
             <path d="m9 18 6-6-6-6"/>
           </svg>
         </button>

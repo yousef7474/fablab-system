@@ -2,6 +2,7 @@ import React, { useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { motion } from 'framer-motion';
 import { toast } from 'react-toastify';
+import { NavArrow } from './TeacherInfo';
 
 const RoomPhoto = ({ formData, onChange, onNext, onBack }) => {
   const { i18n } = useTranslation();
@@ -73,99 +74,65 @@ const RoomPhoto = ({ formData, onChange, onNext, onBack }) => {
         {isRTL ? `التقط صور للقاعة قبل بدء الفترة التعليمية (حتى ${MAX_PHOTOS} صور)` : `Take photos of the room before the education period starts (up to ${MAX_PHOTOS} photos)`}
       </p>
 
-      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
+      <motion.div initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }}>
         {/* Photo thumbnails grid */}
         {photos.length > 0 && (
-          <div style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fill, minmax(120px, 1fr))',
-            gap: '12px',
-            marginBottom: '16px'
-          }}>
+          <div className="edu-photos">
             {photos.map((photo, index) => (
-              <div key={index} style={{ position: 'relative', borderRadius: '12px', overflow: 'hidden', border: '2px solid #e2e8f0' }}>
-                <img
-                  src={photo}
-                  alt={`Room ${index + 1}`}
-                  style={{ width: '100%', height: '100px', objectFit: 'cover', display: 'block' }}
-                />
+              <div key={index} className="edu-photo">
+                <img src={photo} alt={`Room ${index + 1}`} />
                 <button
+                  type="button"
+                  className="edu-x"
                   onClick={() => handleRemovePhoto(index)}
-                  style={{
-                    position: 'absolute', top: '4px', right: '4px',
-                    background: 'rgba(239, 68, 68, 0.9)', color: 'white',
-                    border: 'none', borderRadius: '50%', width: '24px', height: '24px',
-                    cursor: 'pointer', display: 'flex', alignItems: 'center',
-                    justifyContent: 'center', fontSize: '14px', lineHeight: 1
-                  }}
+                  aria-label={isRTL ? 'حذف الصورة' : 'Remove photo'}
                 >
-                  x
+                  ×
                 </button>
               </div>
             ))}
           </div>
         )}
 
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/*"
+          capture="environment"
+          multiple
+          onChange={handleFileChange}
+          style={{ display: 'none' }}
+        />
+
         {/* Upload area */}
         {photos.length < MAX_PHOTOS && (
-          <div
+          <button
+            type="button"
+            className="edu-drop"
             onClick={() => fileInputRef.current?.click()}
-            style={{
-              border: '3px dashed #cbd5e1',
-              borderRadius: '16px',
-              padding: '30px',
-              textAlign: 'center',
-              cursor: 'pointer',
-              background: '#fafafa',
-              transition: 'all 0.3s ease',
-              minHeight: '120px',
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
-              justifyContent: 'center'
-            }}
           >
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept="image/*"
-              capture="environment"
-              multiple
-              onChange={handleFileChange}
-              style={{ display: 'none' }}
-            />
-            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" strokeWidth="1.5" style={{ marginBottom: '12px' }}>
-              <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
-              <circle cx="8.5" cy="8.5" r="1.5"/>
-              <polyline points="21 15 16 10 5 21"/>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" aria-hidden="true">
+              <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
+              <circle cx="12" cy="13" r="4" />
             </svg>
-            <p style={{ color: '#64748b', fontWeight: '600', margin: '0 0 4px' }}>
+            <b>
               {isRTL ? `انقر لرفع صور القاعة (${photos.length}/${MAX_PHOTOS})` : `Click to upload room photos (${photos.length}/${MAX_PHOTOS})`}
-            </p>
-            <p style={{ color: '#94a3b8', fontSize: '13px', margin: 0 }}>
+            </b>
+            <small>
               {isRTL ? 'الحد الأقصى 5 ميجابايت لكل صورة' : 'Max 5MB per image'}
-            </p>
-          </div>
+            </small>
+          </button>
         )}
       </motion.div>
 
-      <div className="form-navigation" style={{ marginTop: '24px' }}>
-        <button className="btn btn-secondary" onClick={onBack}>
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ transform: isRTL ? 'rotate(180deg)' : 'none' }}>
-            <path d="m15 18-6-6 6-6"/>
-          </svg>
+      <div className="form-navigation">
+        <button type="button" className="btn btn-secondary" onClick={onBack}>
+          <NavArrow dir="back" isRTL={isRTL} />
           {isRTL ? 'السابق' : 'Previous'}
         </button>
-        <button
-          className="btn btn-primary"
-          onClick={onNext}
-          disabled={!canProceed}
-          style={{ background: canProceed ? 'linear-gradient(135deg, #6d28d9, #7c3aed)' : undefined }}
-        >
+        <button type="button" className="btn btn-primary" onClick={onNext} disabled={!canProceed}>
           {isRTL ? 'التالي' : 'Next'}
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ transform: isRTL ? 'rotate(180deg)' : 'none' }}>
-            <path d="m9 18 6-6-6-6"/>
-          </svg>
+          <NavArrow dir="next" isRTL={isRTL} />
         </button>
       </div>
     </div>

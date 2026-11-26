@@ -21,8 +21,11 @@ adminRouter.delete('/attendance/today', ctrl.clearAttendanceToday);
 // Admin + manager boards: review, print, rate day by day.
 adminRouter.use(requireManager);
 adminRouter.get('/', ctrl.list);
+adminRouter.get('/people', ctrl.people);
 adminRouter.delete('/logs/:logId', ctrl.removeLog);
 adminRouter.patch('/:id/decision', ctrl.decide);
+adminRouter.put('/:id', ctrl.update);
+adminRouter.post('/:id/extend', ctrl.extend);
 adminRouter.get('/:id/cards', ctrl.cards);
 adminRouter.get('/:id/logs', ctrl.listLogs);
 adminRouter.post('/:id/logs', ctrl.addLog);

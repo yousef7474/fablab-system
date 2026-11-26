@@ -1,0 +1,152 @@
+/* ============================================================
+   Elite entry pages (login, registration) inside the registration
+   studio frame. The old emerald variables follow the studio's
+   tokens, so EliteRegistration.css picks up light + dark; the rules
+   below line the form up with the studio's fields and buttons.
+   ============================================================ */
+
+.rgx[data-theme] {
+  --elite-emerald: var(--r-red);
+  --elite-emerald-dark: var(--r-red-ink);
+  --elite-emerald-light: color-mix(in srgb, var(--r-red) 22%, transparent);
+  --elite-emerald-50: var(--r-red-soft);
+  --elite-surface: var(--r-surface-2);
+  --elite-card: var(--r-surface);
+  --elite-border: var(--r-line-2);
+  --elite-border-light: var(--r-line);
+  --elite-text: var(--r-ink);
+  --elite-text-secondary: var(--r-ink-2);
+  --elite-text-muted: var(--r-ink-3);
+  --elite-shadow-sm: var(--r-shadow-sm);
+  --elite-shadow: var(--r-shadow-sm);
+  --elite-shadow-md: var(--r-shadow);
+  --elite-shadow-lg: var(--r-shadow-lg);
+  --elite-radius: 14px;
+  --elite-radius-lg: 22px;
+  --elite-font: var(--r-font);
+}
+
+.rgx[data-theme] .elx { font-family: var(--r-font); color: var(--r-ink); }
+.rgx[data-theme] .elx-login { max-width: 560px; }
+
+/* step titles: start-aligned like the studio, no centred underline */
+.rgx[data-theme] .elx .step-title { text-align: start; padding-bottom: 0; margin-bottom: 20px; }
+.rgx[data-theme] .elx .step-title::after { display: none; }
+
+/* fields */
+.rgx[data-theme] .elx .form-row { gap: 14px; }
+.rgx[data-theme] .elx .form-group { margin-bottom: 16px; }
+.rgx[data-theme] .elx .form-group label {
+  margin-bottom: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--r-ink-2);
+}
+.rgx[data-theme] .elx .form-group label .required { color: var(--r-red); }
+.rgx[data-theme] .elx .form-group :is(input, select, textarea) {
+  width: 100%;
+  min-height: 50px;
+  padding: 12px 16px;
+  border: 1px solid var(--r-line-2);
+  border-radius: 14px;
+  background: var(--r-surface);
+  color: var(--r-ink);
+  font: 500 15px var(--r-font);
+  box-shadow: var(--r-shadow-sm);
+  transition: border-color .2s, box-shadow .2s;
+}
+.rgx[data-theme] .elx .form-group :is(input, select, textarea):focus {
+  outline: none;
+  border-color: var(--r-red);
+  box-shadow: var(--r-ring);
+}
+.rgx[data-theme] .elx .form-group :is(input, textarea)::placeholder { color: var(--r-ink-3); opacity: .8; }
+
+/* profile photo */
+.rgx[data-theme] .elx .profile-upload-section { margin-bottom: 20px; }
+.rgx[data-theme] .elx .profile-upload-circle { width: 96px; height: 96px; background: var(--r-surface-2); }
+.rgx[data-theme] .elx .upload-overlay { background: color-mix(in srgb, var(--r-red) 85%, transparent); }
+
+/* password helpers: met = green */
+.rgx[data-theme] .elx .password-info { border-radius: 16px; }
+.rgx[data-theme] .elx .password-requirements { border-radius: 14px; }
+.rgx[data-theme] .elx .password-requirements li.met,
+.rgx[data-theme] .elx .password-requirements li.met::before { color: var(--r-green); }
+
+/* terms step */
+.rgx[data-theme] .elx .terms-info,
+.rgx[data-theme] .elx .terms-summary,
+.rgx[data-theme] .elx .terms-checkbox { border-radius: 16px; }
+.rgx[data-theme] .elx .highlight-icon.support { background: var(--r-green-soft); }
+.rgx[data-theme] .elx .highlight-icon.support svg { stroke: var(--r-green); }
+.rgx[data-theme] .elx .highlight-icon.categories { background: var(--r-navy-soft); }
+.rgx[data-theme] .elx .highlight-icon.categories svg { stroke: var(--r-navy); }
+.rgx[data-theme] .elx .highlight-icon.duration { background: var(--r-amber-soft); }
+.rgx[data-theme] .elx .highlight-icon.duration svg { stroke: var(--r-amber); }
+.rgx[data-theme] .elx .highlight-icon.minimum { background: var(--r-red-soft); }
+.rgx[data-theme] .elx .highlight-icon.minimum svg { stroke: var(--r-red); }
+.rgx[data-theme] .elx .terms-checkbox .checkmark { background: var(--r-surface); }
+.rgx[data-theme] .elx .read-terms-btn { border-radius: 12px; }
+
+/* navigation: the studio buttons */
+.rgx[data-theme] .elx .form-navigation { margin-top: 22px; padding-top: 18px; border-top: 1px solid var(--r-line); }
+.rgx[data-theme] .elx .form-navigation .btn-primary { margin-inline-start: auto; }
+.rgx[data-theme] .elx .loading-spinner { border-color: rgba(255, 255, 255, .35); border-top-color: #fff; }
+
+/* success */
+.rgx[data-theme] .elx-success { text-align: center; padding: 40px 28px; }
+.rgx[data-theme] .elx-success .success-icon {
+  width: 92px;
+  height: 92px;
+  margin: 0 auto 20px;
+  display: grid;
+  place-items: center;
+  border-radius: 28px;
+  background: var(--r-green-soft);
+  border: 1px solid color-mix(in srgb, var(--r-green) 35%, transparent);
+}
+.rgx[data-theme] .elx-success .success-icon svg { stroke: var(--r-green); width: 48px; height: 48px; }
+.rgx[data-theme] .elx-success h2 { margin: 0 0 8px; font-size: 26px; font-weight: 700; color: var(--r-ink); }
+.rgx[data-theme] .elx-success > p { margin: 0 0 22px; color: var(--r-ink-2); }
+.rgx[data-theme] .elx-success .user-info-display { border-radius: 16px; margin-bottom: 22px; }
+.rgx[data-theme] .elx-success .success-buttons { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; }
+
+/* the "already a member / sign in" row under the card */
+.rgx[data-theme] .elx-alt {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 10px 14px;
+  margin-top: 16px;
+  font-size: 14px;
+  color: var(--r-ink-3);
+}
+.rgx[data-theme] .elx-alt .btn { min-height: 44px; padding: 0 18px; font-size: 14px; }
+
+/* terms modal */
+.rgx[data-theme] .terms-modal-overlay { background: rgba(7, 12, 22, .6); backdrop-filter: blur(6px); }
+.rgx[data-theme] .terms-modal { background: var(--r-surface); border: 1px solid var(--r-line); border-radius: 24px; box-shadow: var(--r-shadow-lg); }
+.rgx[data-theme] .terms-modal-header { background: var(--r-grad-navy); }
+.rgx[data-theme] .terms-modal-footer { border-top-color: var(--r-line); background: var(--r-surface-2); }
+
+/* laptops: a little tighter so a step fits the screen */
+@media (min-width: 1100px) {
+  .rgx[data-theme] .elx .step-title { margin-bottom: 14px; }
+  .rgx[data-theme] .elx .form-group { margin-bottom: 12px; }
+  .rgx[data-theme] .elx .form-group label { margin-bottom: 6px; }
+  .rgx[data-theme] .elx .form-group :is(input, select) { min-height: 46px; padding-block: 10px; }
+  .rgx[data-theme] .elx .form-navigation { margin-top: 16px; padding-top: 14px; }
+}
+
+@media (max-width: 640px) {
+  .rgx[data-theme] .elx .form-row { grid-template-columns: minmax(0, 1fr); gap: 0; }
+  .rgx[data-theme] .elx .form-navigation .btn { flex: 1 1 auto; }
+}
+.rgx[data-theme] .terms-modal-header h2 { color: #fff; }
+
+/* ---------- Elite account (/elite/account): full-width studio page ---------- */
+.rgx.elx-account { display: block; font-family: var(--r-font); }
+.rgx[data-theme] .elx-account .elite-loading,
+.rgx[data-theme].elx-account .elite-loading { min-height: 60vh; display: grid; place-items: center; }
+.rgx[data-theme] .elite-account-container { max-width: 1400px; padding: 20px clamp(14px, 3vw, 28px) 48px; }

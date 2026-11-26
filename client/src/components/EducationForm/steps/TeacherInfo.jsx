@@ -4,6 +4,13 @@ import { motion } from 'framer-motion';
 import { toast } from 'react-toastify';
 import api from '../../../config/api';
 
+export const NavArrow = ({ dir, isRTL }) => (
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"
+    style={{ transform: isRTL ? 'rotate(180deg)' : 'none' }}>
+    <path d={dir === 'next' ? 'm9 18 6-6-6-6' : 'm15 18-6-6 6-6'} />
+  </svg>
+);
+
 const TeacherInfo = ({ formData, onChange, onNext }) => {
   const { i18n } = useTranslation();
   const isRTL = i18n.language === 'ar';
@@ -62,14 +69,14 @@ const TeacherInfo = ({ formData, onChange, onNext }) => {
         {isRTL ? 'معلومات المعلم' : 'Teacher Information'}
       </h2>
       <p className="step-description">
-        {isRTL ? 'أدخل رقم الهوية أو رقم الهاتف للتحقق' : 'Enter National ID or Phone Number to verify'}
+        {isRTL ? 'أدخل رقم الهوية أو رقم الهاتف للتحقق — إن سجّلت في فاب لاب سابقًا سنجلب بياناتك تلقائيًا.' : 'Enter your National ID or phone number — if you registered at FabLab before, we fetch your details.'}
       </p>
 
-      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
+      <motion.div initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }}>
         {/* Lookup */}
         <div className="form-group">
-          <label className="form-label">{isRTL ? 'رقم الهوية أو رقم الهاتف *' : 'National ID or Phone Number *'}</label>
-          <div style={{ display: 'flex', gap: '10px' }}>
+          <label className="form-label">{isRTL ? 'رقم الهوية أو رقم الهاتف' : 'National ID or Phone Number'} <span className="required">*</span></label>
+          <div className="edu-lookup">
             <input
               type="text"
               className="form-input"
@@ -77,68 +84,56 @@ const TeacherInfo = ({ formData, onChange, onNext }) => {
               value={identifier}
               onChange={(e) => setIdentifier(e.target.value)}
               onKeyPress={(e) => e.key === 'Enter' && handleCheck()}
-              style={{ flex: 1, textAlign: isRTL ? 'right' : 'left' }}
             />
-            <button
-              className="btn btn-primary"
-              onClick={handleCheck}
-              disabled={loading}
-              style={{ minWidth: '100px', background: 'linear-gradient(135deg, #6d28d9, #7c3aed)' }}
-            >
-              {loading ? <span className="loading-spinner" /> : (isRTL ? 'تحقق' : 'Check')}
+            <button type="button" className="btn btn-primary" onClick={handleCheck} disabled={loading}>
+              {loading ? <span className="loading-spinner" /> : (
+                <>
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><circle cx="11" cy="11" r="8" /><path d="m21 21-4.35-4.35" /></svg>
+                  {isRTL ? 'تحقق' : 'Check'}
+                </>
+              )}
             </button>
           </div>
         </div>
 
         {/* User Found */}
         {userFound && (
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            style={{
-              background: '#f0fdf4',
-              border: '2px solid #22c55e',
-              borderRadius: '12px',
-              padding: '16px',
-              marginTop: '16px'
-            }}
-          >
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#22c55e" strokeWidth="2">
-                <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
-                <polyline points="22 4 12 14.01 9 11.01"/>
+          <motion.div className="edu-found" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
+            <div className="edu-found-head">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+                <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
+                <polyline points="22 4 12 14.01 9 11.01" />
               </svg>
-              <span style={{ fontWeight: '700', color: '#155724' }}>{isRTL ? 'تم العثور على المستخدم' : 'User Found'}</span>
+              <span>{isRTL ? 'تم العثور على المستخدم' : 'User Found'}</span>
             </div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', fontSize: '14px' }}>
-              <div><span style={{ color: '#64748b' }}>{isRTL ? 'الاسم:' : 'Name:'}</span> <strong>{formData.firstName} {formData.lastName}</strong></div>
-              <div><span style={{ color: '#64748b' }}>{isRTL ? 'الهاتف:' : 'Phone:'}</span> <strong>{formData.phoneNumber}</strong></div>
-              <div><span style={{ color: '#64748b' }}>{isRTL ? 'البريد:' : 'Email:'}</span> <strong>{formData.email}</strong></div>
-              {formData.nationalId && <div><span style={{ color: '#64748b' }}>{isRTL ? 'الهوية:' : 'ID:'}</span> <strong>{formData.nationalId}</strong></div>}
-            </div>
+            <dl className="edu-facts">
+              <div><dt>{isRTL ? 'الاسم' : 'Name'}</dt><dd>{formData.firstName} {formData.lastName}</dd></div>
+              <div><dt>{isRTL ? 'الهاتف' : 'Phone'}</dt><dd><bdi>{formData.phoneNumber}</bdi></dd></div>
+              <div><dt>{isRTL ? 'البريد' : 'Email'}</dt><dd><bdi>{formData.email}</bdi></dd></div>
+              {formData.nationalId && <div><dt>{isRTL ? 'الهوية' : 'ID'}</dt><dd><bdi>{formData.nationalId}</bdi></dd></div>}
+            </dl>
           </motion.div>
         )}
 
         {/* New User Form */}
         {isNewUser && !userFound && (
-          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} style={{ marginTop: '16px' }}>
-            <div style={{ background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: '12px', padding: '12px', marginBottom: '16px' }}>
-              <span style={{ color: '#1e40af', fontSize: '14px' }}>
-                {isRTL ? 'مستخدم جديد - يرجى إكمال البيانات الشخصية' : 'New user - please complete personal information'}
-              </span>
+          <motion.div className="edu-new" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
+            <div className="info-banner" style={{ margin: '0 0 16px' }}>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><circle cx="12" cy="12" r="10" /><path d="M12 16v-4M12 8h.01" /></svg>
+              <span>{isRTL ? 'مستخدم جديد - يرجى إكمال البيانات الشخصية' : 'New user - please complete personal information'}</span>
             </div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+            <div className="form-grid">
               <div className="form-group">
-                <label className="form-label">{isRTL ? 'الاسم الأول *' : 'First Name *'}</label>
+                <label className="form-label">{isRTL ? 'الاسم الأول' : 'First Name'} <span className="required">*</span></label>
                 <input type="text" className="form-input" value={formData.firstName} onChange={(e) => onChange({ firstName: e.target.value })} />
               </div>
               <div className="form-group">
-                <label className="form-label">{isRTL ? 'اسم العائلة *' : 'Last Name *'}</label>
+                <label className="form-label">{isRTL ? 'اسم العائلة' : 'Last Name'} <span className="required">*</span></label>
                 <input type="text" className="form-input" value={formData.lastName} onChange={(e) => onChange({ lastName: e.target.value })} />
               </div>
               <div className="form-group">
                 <label className="form-label">{isRTL ? 'الجنس' : 'Gender'}</label>
-                <select className="form-input" value={formData.sex} onChange={(e) => onChange({ sex: e.target.value })}>
+                <select className="form-select" value={formData.sex} onChange={(e) => onChange({ sex: e.target.value })}>
                   <option value="">{isRTL ? 'اختر' : 'Select'}</option>
                   <option value="Male">{isRTL ? 'ذكر' : 'Male'}</option>
                   <option value="Female">{isRTL ? 'أنثى' : 'Female'}</option>
@@ -153,11 +148,11 @@ const TeacherInfo = ({ formData, onChange, onNext }) => {
                 <input type="text" className="form-input" value={formData.nationalId} onChange={(e) => onChange({ nationalId: e.target.value })} />
               </div>
               <div className="form-group">
-                <label className="form-label">{isRTL ? 'رقم الهاتف *' : 'Phone Number *'}</label>
-                <input type="text" className="form-input" value={formData.phoneNumber} onChange={(e) => onChange({ phoneNumber: e.target.value })} />
+                <label className="form-label">{isRTL ? 'رقم الهاتف' : 'Phone Number'} <span className="required">*</span></label>
+                <input type="tel" className="form-input" value={formData.phoneNumber} onChange={(e) => onChange({ phoneNumber: e.target.value })} />
               </div>
-              <div className="form-group" style={{ gridColumn: 'span 2' }}>
-                <label className="form-label">{isRTL ? 'البريد الإلكتروني *' : 'Email *'}</label>
+              <div className="form-group full-width">
+                <label className="form-label">{isRTL ? 'البريد الإلكتروني' : 'Email'} <span className="required">*</span></label>
                 <input type="email" className="form-input" value={formData.email} onChange={(e) => onChange({ email: e.target.value })} />
               </div>
             </div>
@@ -165,18 +160,10 @@ const TeacherInfo = ({ formData, onChange, onNext }) => {
         )}
       </motion.div>
 
-      <div className="form-navigation" style={{ marginTop: '24px' }}>
-        <div />
-        <button
-          className="btn btn-primary"
-          onClick={onNext}
-          disabled={!canProceed()}
-          style={{ background: canProceed() ? 'linear-gradient(135deg, #6d28d9, #7c3aed)' : undefined }}
-        >
+      <div className="form-navigation">
+        <button type="button" className="btn btn-primary" onClick={onNext} disabled={!canProceed()}>
           {isRTL ? 'التالي' : 'Next'}
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ transform: isRTL ? 'rotate(180deg)' : 'none' }}>
-            <path d="m9 18 6-6-6-6"/>
-          </svg>
+          <NavArrow dir="next" isRTL={isRTL} />
         </button>
       </div>
     </div>

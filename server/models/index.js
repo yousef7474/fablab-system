@@ -903,6 +903,8 @@ const syncDatabase = async () => {
     // was first created.
     try {
       await sequelize.query(`ALTER TABLE workspace_requests ADD COLUMN IF NOT EXISTS "members" JSON NOT NULL DEFAULT '[]'::json`);
+      await sequelize.query(`ALTER TABLE workspace_requests ADD COLUMN IF NOT EXISTS "history" JSON NOT NULL DEFAULT '[]'::json`);
+      await sequelize.query(`ALTER TABLE workspace_requests ADD COLUMN IF NOT EXISTS "deletedAt" TIMESTAMP WITH TIME ZONE`);
     } catch (migrationError) {
       if (!/does not exist/i.test(migrationError.message)) {
         console.log('workspace_requests.members migration note:', migrationError.message);

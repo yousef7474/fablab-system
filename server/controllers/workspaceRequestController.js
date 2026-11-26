@@ -6,9 +6,9 @@ const { rateLimited } = require('../utils/siteContent');
 const { buildQrPayload, requireRole } = require('../utils/qrPayload');
 const {
   UNITS, UNIT_CODES, HOURS, MAX_MONTHS, MAX_DAYS_AHEAD, HOLDS, APPLICANT_TYPES,
-  BookingError, checkPeriod, overlaps, riyadhToday, workingDaysIn, addDays
+  BookingError, checkPeriod, overlaps, riyadhToday, workingDaysIn, addDays, addMonths
 } = require('../utils/workspaceBooking');
-const { sendReceived, sendOpsNotice, sendDecision } = require('../utils/workspaceRequestEmail');
+const { sendReceived, sendOpsNotice, sendDecision, sendUpdated } = require('../utils/workspaceRequestEmail');
 
 // Workspace registration: the public /workspace page books one of the 8
 // free workspaces for a period and a daily time, for a team of 1–4 people
@@ -183,7 +183,7 @@ exports.publicLookup = async (req, res) => {
 // Checks the team and resolves it to stored members. New people are
 // returned with `isNew` (their User rows are created inside the booking
 // transaction).
-async function _resolveMembers(list, applicantType) {
+async function _resolveMembers(list, applicantType, t = null) {
   if (!Array.isArray(list) || list.length < 1 || list.length > MAX_PEOPLE) {
     throw _err(400, 'INVALID', `A team has 1 to ${MAX_PEOPLE} people`, `عدد أفراد الفريق من 1 إلى ${MAX_PEOPLE}`, 'members');
   }
@@ -192,7 +192,7 @@ async function _resolveMembers(list, applicantType) {
     const raw = list[i] || {};
     const at = (f) => `members.${i}.${f}`;
     if (raw.existingUserId) {
-      const user = await User.findByPk(_str(raw.existingUserId, 30));
+      const user = await User.findByPk(_str(raw.existingUserId, 30), { transaction: t });
       if (!user) throw _err(400, 'INVALID', 'Registered user not found', 'لم يتم العثور على المستخدم المسجّل', at('existingUserId'), { index: i });
       out.push({
         userId: user.userId, firstName: user.firstName || '', lastName: user.lastName || '',
@@ -222,7 +222,7 @@ async function _resolveMembers(list, applicantType) {
     if (!PHONE_RE.test(m.phoneNumber)) throw _err(400, 'INVALID', 'Invalid mobile number', 'رقم جوال غير صحيح', at('phoneNumber'), { index: i });
     if (!EMAIL_RE.test(m.email)) throw _err(400, 'INVALID', 'Invalid email', 'بريد إلكتروني غير صحيح', at('email'), { index: i });
     // Already registered? Then they should be looked up instead.
-    const clash = await User.findOne({ where: { [Op.or]: [{ nationalId: m.nationalId }, { phoneNumber: m.phoneNumber }, { email: m.email }] } });
+    const clash = await User.findOne({ where: { [Op.or]: [{ nationalId: m.nationalId }, { phoneNumber: m.phoneNumber }, { email: m.email }] }, transaction: t });
     if (clash) {
       const field = clash.nationalId === m.nationalId ? 'nationalId' : clash.phoneNumber === m.phoneNumber ? 'phoneNumber' : 'email';
       throw _err(409, 'MEMBER_EXISTS', `Person ${i + 1} is already registered — use the lookup`,
@@ -239,6 +239,31 @@ async function _resolveMembers(list, applicantType) {
     }
   });
   return out;
+}
+
+// New people (isNew, no userId yet) become registered users (U#…), like
+// the main registration. Runs inside the booking lock / transaction.
+async function _createUsers(members, t) {
+  let nextId = null;
+  for (const m of members.filter(x => x.isNew && !x.userId)) {
+    if (!nextId) {
+      const [[top]] = await sequelize.query(
+        `SELECT MAX(CAST(SUBSTRING("userId" FROM 3) AS INTEGER)) AS n FROM users WHERE "userId" ~ '^U#[0-9]+$'`,
+        { transaction: t }
+      );
+      nextId = (Number(top?.n) || 0) + 1;
+    }
+    let userId = `U#${String(nextId).padStart(5, '0')}`;
+    // eslint-disable-next-line no-await-in-loop
+    while (await User.findByPk(userId, { transaction: t })) { nextId += 1; userId = `U#${String(nextId).padStart(5, '0')}`; }
+    nextId += 1;
+    await User.create({
+      userId, applicationType: m.applicationType || 'Beneficiary', firstName: m.firstName, lastName: m.lastName, name: m.name,
+      sex: m.sex, nationality: m.nationality, nationalId: m.nationalId, phoneNumber: m.phoneNumber,
+      email: m.email, currentJob: m.currentJob, nationalAddress: m.nationalAddress
+    }, { transaction: t });
+    m.userId = userId;
+  }
 }
 
 exports.publicSubmit = async (req, res) => {
@@ -274,28 +299,7 @@ exports.publicSubmit = async (req, res) => {
       if (taken.has(data.unitCode)) {
         throw _err(409, 'UNIT_TAKEN', 'This workspace was just taken — pick another', 'تم حجز مساحة العمل هذه للتو، اختر مساحة أخرى', 'unitCode');
       }
-      // New people become registered users (U#…), like the main registration.
-      let nextId = null;
-      for (const m of members.filter(x => x.isNew)) {
-        if (!nextId) {
-          // Highest U# number so far, read inside the lock / transaction.
-          const [[top]] = await sequelize.query(
-            `SELECT MAX(CAST(SUBSTRING("userId" FROM 3) AS INTEGER)) AS n FROM users WHERE "userId" ~ '^U#[0-9]+$'`,
-            { transaction: t }
-          );
-          nextId = (Number(top?.n) || 0) + 1;
-        }
-        let userId = `U#${String(nextId).padStart(5, '0')}`;
-        // eslint-disable-next-line no-await-in-loop
-        while (await User.findByPk(userId, { transaction: t })) { nextId += 1; userId = `U#${String(nextId).padStart(5, '0')}`; }
-        nextId += 1;
-        await User.create({
-          userId, applicationType: m.applicationType, firstName: m.firstName, lastName: m.lastName, name: m.name,
-          sex: m.sex, nationality: m.nationality, nationalId: m.nationalId, phoneNumber: m.phoneNumber,
-          email: m.email, currentJob: m.currentJob, nationalAddress: m.nationalAddress
-        }, { transaction: t });
-        m.userId = userId;
-      }
+      await _createUsers(members, t);
       const seq = await Settings.findByPk(REF_SEQ_KEY, { transaction: t });
       const next = (Number(seq?.value) || 0) + 1;
       await Settings.upsert({ key: REF_SEQ_KEY, value: next }, { transaction: t });
@@ -383,11 +387,236 @@ exports.remove = async (req, res) => {
   try {
     const r = await WorkspaceRequest.findByPk(req.params.id);
     if (!r) return res.status(404).json({ message: 'Request not found', messageAr: 'الطلب غير موجود' });
-    await sequelize.transaction(async (t) => {
-      await WorkspaceDayLog.destroy({ where: { requestId: r.requestId }, transaction: t });
-      await r.destroy({ transaction: t });
-    });
+    // Kept in the database (deletedAt) — it stays in each person's archive
+    // and frees the workspace.
+    await r.update({ history: [...(r.history || []), { action: 'deleted', at: new Date(), by: _who(req) }] });
+    await r.destroy();
     res.json({ ok: true });
+  } catch (e) { _fail(res, e); }
+};
+
+// Admin period check: like the public one, but an ongoing booking may have
+// started in the past and the admin may go past one month.
+function _checkAdminPeriod(p, workingDays) {
+  const ok = (d) => DATE_RE.test(d || '') && !Number.isNaN(Date.parse(d));
+  if (!ok(p.startDate)) throw new BookingError('Pick a start date', 'اختر تاريخ البداية', 'startDate');
+  if (!ok(p.endDate)) throw new BookingError('Pick an end date', 'اختر تاريخ النهاية', 'endDate');
+  if (p.endDate < p.startDate) throw new BookingError('The end date is before the start date', 'تاريخ النهاية قبل تاريخ البداية', 'endDate');
+  if (p.endDate > addDays(p.startDate, 366)) throw new BookingError('A booking can last a year at most', 'لا تتجاوز مدة الحجز سنة', 'endDate');
+  const TIME = /^([01]\d|2[0-3]):(00|30)$/;
+  if (!TIME.test(p.startTime || '') || !TIME.test(p.endTime || '')) throw new BookingError('Pick the daily times', 'اختر وقت البداية والنهاية', 'startTime');
+  if (p.startTime < HOURS.start || p.endTime > HOURS.end) {
+    throw new BookingError(`Times must be within ${HOURS.start}–${HOURS.end}`, `الوقت يجب أن يكون بين ${HOURS.start} و ${HOURS.end}`, 'startTime');
+  }
+  if (p.endTime <= p.startTime) throw new BookingError('The end time must be after the start time', 'وقت النهاية يجب أن يكون بعد وقت البداية', 'endTime');
+  if (!workingDaysIn(p.startDate, p.endDate, workingDays).length) {
+    throw new BookingError('The period has no FabLab working days', 'الفترة لا تتضمن أيام عمل فاب لاب', 'startDate');
+  }
+}
+
+// Does another holding request take this workspace in this period / time?
+async function _clash(r, period, unitCode, workingDays, t) {
+  const rows = await WorkspaceRequest.findAll({
+    where: {
+      requestId: { [Op.ne]: r.requestId }, unitCode, status: { [Op.in]: HOLDS },
+      startDate: { [Op.lte]: period.endDate }, endDate: { [Op.gte]: period.startDate }
+    },
+    transaction: t
+  });
+  return rows.find(c => overlaps(c, period, workingDays)) || null;
+}
+
+// The admin's edited team → stored members. Members already on the booking
+// keep their user link (their user record is updated with the edits); new
+// rows are a returning user ({ existingUserId }) or a new person.
+async function _resolveEditedMembers(list, applicantType, current, t) {
+  if (!Array.isArray(list) || list.length < 1 || list.length > MAX_PEOPLE) {
+    throw _err(400, 'INVALID', `A team has 1 to ${MAX_PEOPLE} people`, `عدد أفراد الفريق من 1 إلى ${MAX_PEOPLE}`, 'members');
+  }
+  const out = [];
+  const fresh = [];
+  for (let i = 0; i < list.length; i++) {
+    const raw = list[i] || {};
+    const at = (f) => `members.${i}.${f}`;
+    if (raw.existingUserId && !current.some(m => m.userId === raw.existingUserId)) {
+      fresh.push({ i, raw: { existingUserId: raw.existingUserId } });
+      out.push(null);
+      continue;
+    }
+    if (!raw.userId && !raw.keep) {
+      fresh.push({ i, raw });
+      out.push(null);
+      continue;
+    }
+    // A member already on the booking, possibly edited.
+    const m = {
+      userId: raw.userId || null,
+      firstName: _str(raw.firstName, 80), lastName: _str(raw.lastName, 80),
+      sex: raw.sex === 'Female' ? 'Female' : raw.sex === 'Male' ? 'Male' : null,
+      nationality: _str(raw.nationality, 80), nationalId: _digits(raw.nationalId),
+      phoneNumber: _digits(raw.phoneNumber), email: _str(raw.email, 150).toLowerCase(),
+      currentJob: _str(raw.currentJob, 200), isNew: !!raw.isNew
+    };
+    m.name = [m.firstName, m.lastName].filter(Boolean).join(' ') || _str(raw.name, 200);
+    if (!m.name) throw _err(400, 'INVALID', `Name is required (person ${i + 1})`, `الاسم مطلوب (الشخص ${i + 1})`, at('firstName'), { index: i });
+    if (m.phoneNumber && !PHONE_RE.test(m.phoneNumber)) throw _err(400, 'INVALID', 'Invalid mobile number', 'رقم جوال غير صحيح', at('phoneNumber'), { index: i });
+    if (m.email && !EMAIL_RE.test(m.email)) throw _err(400, 'INVALID', 'Invalid email', 'بريد إلكتروني غير صحيح', at('email'), { index: i });
+    if (m.nationalId && !/^\d{6,15}$/.test(m.nationalId)) throw _err(400, 'INVALID', 'Invalid national ID', 'رقم هوية غير صحيح', at('nationalId'), { index: i });
+    if (m.userId) {
+      const user = await User.findByPk(m.userId, { transaction: t });
+      if (user) {
+        const clash = await User.findOne({
+          where: {
+            userId: { [Op.ne]: user.userId },
+            [Op.or]: [m.nationalId && { nationalId: m.nationalId }, m.phoneNumber && { phoneNumber: m.phoneNumber }, m.email && { email: m.email }].filter(Boolean)
+          },
+          transaction: t
+        });
+        if (clash) {
+          throw _err(409, 'MEMBER_EXISTS', `Person ${i + 1}: those details belong to another registered user`,
+            `الشخص ${i + 1}: هذه البيانات مسجّلة لمستخدم آخر (${clash.name || clash.userId})`, at('nationalId'), { index: i });
+        }
+        const patch = {};
+        for (const k of ['firstName', 'lastName', 'sex', 'nationality', 'nationalId', 'phoneNumber', 'email', 'currentJob']) {
+          if (m[k] && m[k] !== user[k]) patch[k] = m[k];
+        }
+        if (patch.firstName || patch.lastName) patch.name = m.name;
+        if (Object.keys(patch).length) await user.update(patch, { transaction: t });
+      }
+    }
+    out.push(m);
+  }
+  if (fresh.length) {
+    const resolved = await _resolveMembers(fresh.map(f => f.raw), applicantType, t);
+    fresh.forEach((f, k) => { out[f.i] = resolved[k]; });
+    await _createUsers(out, t);
+  }
+  const seen = new Set();
+  out.forEach((m, i) => {
+    for (const k of [m.userId, m.nationalId, m.phoneNumber].filter(Boolean)) {
+      if (seen.has(k)) throw _err(400, 'INVALID', 'The same person appears twice', 'تكرر نفس الشخص في الفريق', `members.${i}`, { index: i });
+      seen.add(k);
+    }
+  });
+  return out.map(({ applicationType, nationalAddress, ...m }) => m);
+}
+
+// PUT /api/workspace-requests/:id — the admin edits the booking and team.
+exports.update = async (req, res) => {
+  try {
+    const s = await _status();
+    const b = req.body || {};
+    const row = await sequelize.transaction(async (t) => {
+      await sequelize.query('SELECT pg_advisory_xact_lock(hashtext(:k))', { replacements: { k: 'workspace-requests' }, transaction: t });
+      const r = await WorkspaceRequest.findByPk(req.params.id, { transaction: t, lock: t.LOCK.UPDATE });
+      if (!r) throw _err(404, 'NOT_FOUND', 'Request not found', 'الطلب غير موجود');
+      const data = {
+        applicantType: APPLICANT_TYPES[b.applicantType] ? b.applicantType : r.applicantType,
+        organization: b.organization !== undefined ? (_str(b.organization, 200) || null) : r.organization,
+        projectName: b.projectName !== undefined ? _str(b.projectName, 200) : r.projectName,
+        projectDescription: b.projectDescription !== undefined ? (_str(b.projectDescription, 3000) || null) : r.projectDescription,
+        unitCode: UNIT_CODES.includes(b.unitCode) ? b.unitCode : r.unitCode,
+        startDate: b.startDate || r.startDate, endDate: b.endDate || r.endDate,
+        startTime: b.startTime || r.startTime, endTime: b.endTime || r.endTime
+      };
+      if (!data.projectName) throw new BookingError('Enter the project name', 'أدخل اسم المشروع', 'projectName', 'INVALID');
+      _checkAdminPeriod(data, s.workingDays);
+      if (HOLDS.includes(r.status)) {
+        const hit = await _clash(r, data, data.unitCode, s.workingDays, t);
+        if (hit) throw _err(409, 'CLASH', `Clashes with ${hit.requestNumber}`, `يتعارض مع الطلب ${hit.requestNumber} على نفس المساحة`, 'unitCode');
+      }
+      if (Array.isArray(b.members)) {
+        data.members = await _resolveEditedMembers(b.members, data.applicantType, _members(r), t);
+        const leader = data.members[0];
+        Object.assign(data, { fullName: leader.name, phone: leader.phoneNumber || r.phone, email: leader.email || r.email, peopleCount: data.members.length });
+      }
+      const before = { unitCode: r.unitCode, startDate: r.startDate, endDate: r.endDate, startTime: r.startTime, endTime: r.endTime, peopleCount: r.peopleCount };
+      const after = { unitCode: data.unitCode, startDate: data.startDate, endDate: data.endDate, startTime: data.startTime, endTime: data.endTime, peopleCount: data.peopleCount || r.peopleCount };
+      await r.update({
+        ...data,
+        history: [...(r.history || []), { action: 'edited', at: new Date(), by: _who(req), from: before, to: after, note: _str(b.note, 500) || null }]
+      }, { transaction: t });
+      return r;
+    });
+    let emailSent = false;
+    if (b.notify) emailSent = (await sendUpdated(row, 'edited')).ok;
+    res.json({ request: { ...row.toJSON(), members: _members(row) }, emailSent });
+  } catch (e) { _fail(res, e); }
+};
+
+// POST /api/workspace-requests/:id/extend — a new end date (and optionally
+// a new daily time) instead of a new registration.
+exports.extend = async (req, res) => {
+  try {
+    const s = await _status();
+    const b = req.body || {};
+    const row = await sequelize.transaction(async (t) => {
+      await sequelize.query('SELECT pg_advisory_xact_lock(hashtext(:k))', { replacements: { k: 'workspace-requests' }, transaction: t });
+      const r = await WorkspaceRequest.findByPk(req.params.id, { transaction: t, lock: t.LOCK.UPDATE });
+      if (!r) throw _err(404, 'NOT_FOUND', 'Request not found', 'الطلب غير موجود');
+      if (!HOLDS.includes(r.status)) throw _err(400, 'INVALID', 'Only pending or accepted bookings can be extended', 'يمكن تمديد الطلبات المقبولة أو قيد المراجعة فقط');
+      const next = {
+        startDate: r.startDate,
+        endDate: _str(b.endDate, 10),
+        startTime: _str(b.startTime, 5) || r.startTime,
+        endTime: _str(b.endTime, 5) || r.endTime
+      };
+      if (!DATE_RE.test(next.endDate) || next.endDate < r.endDate) {
+        throw new BookingError('Pick a new end date after the current one', 'اختر تاريخ نهاية جديدًا بعد التاريخ الحالي', 'endDate');
+      }
+      if (next.endDate > addMonths(r.endDate, MAX_MONTHS)) {
+        throw new BookingError('Extend by one month at most each time', 'التمديد شهر واحد كحد أقصى في كل مرة', 'endDate');
+      }
+      if (next.endDate === r.endDate && next.startTime === r.startTime && next.endTime === r.endTime) {
+        throw new BookingError('Nothing changed', 'لم يتغير شيء', 'endDate');
+      }
+      _checkAdminPeriod(next, s.workingDays);
+      const hit = await _clash(r, next, r.unitCode, s.workingDays, t);
+      if (hit) throw _err(409, 'CLASH', `Clashes with ${hit.requestNumber}`, `لا يمكن التمديد: يتعارض مع الطلب ${hit.requestNumber} على نفس المساحة`, 'endDate');
+      const from = { endDate: r.endDate, startTime: r.startTime, endTime: r.endTime };
+      await r.update({
+        endDate: next.endDate, startTime: next.startTime, endTime: next.endTime,
+        history: [...(r.history || []), { action: 'extended', at: new Date(), by: _who(req), from, to: { endDate: next.endDate, startTime: next.startTime, endTime: next.endTime }, note: _str(b.note, 500) || null }]
+      }, { transaction: t });
+      return r;
+    });
+    let emailSent = false;
+    if (b.notify !== false) emailSent = (await sendUpdated(row, 'extended')).ok;
+    res.json({ request: { ...row.toJSON(), members: _members(row) }, emailSent });
+  } catch (e) { _fail(res, e); }
+};
+
+// GET /api/workspace-requests/people?q= — every person's workspace history
+// (deleted bookings included, marked), newest first.
+exports.people = async (req, res) => {
+  try {
+    const q = _str(req.query.q, 80).toLowerCase();
+    const [rows, logRows] = await Promise.all([
+      WorkspaceRequest.findAll({ paranoid: false, order: [['startDate', 'DESC']] }),
+      WorkspaceDayLog.findAll({ attributes: ['requestId', [sequelize.fn('AVG', sequelize.col('rating')), 'avg']], group: ['requestId'], raw: true })
+    ]);
+    const avg = Object.fromEntries(logRows.map(l => [l.requestId, Math.round(Number(l.avg) * 10) / 10]));
+    const people = new Map();
+    for (const r of rows) {
+      _members(r).forEach((m, i) => {
+        const key = m.userId || m.nationalId || m.phoneNumber || m.name;
+        if (!key) return;
+        const p = people.get(key) || { key, userId: m.userId, name: m.name, nationalId: m.nationalId, phoneNumber: m.phoneNumber, email: m.email, bookings: [] };
+        p.bookings.push({
+          requestId: r.requestId, requestNumber: r.requestNumber,
+          status: r.deletedAt ? 'deleted' : r.status, role: i === 0 ? 'leader' : 'member',
+          unitCode: r.unitCode, unitLabel: unitLabel(r.unitCode), projectName: r.projectName,
+          startDate: r.startDate, endDate: r.endDate, startTime: r.startTime, endTime: r.endTime,
+          extensions: (r.history || []).filter(h => h.action === 'extended').length,
+          rating: avg[r.requestId] || null
+        });
+        people.set(key, p);
+      });
+    }
+    let list = [...people.values()];
+    if (q) list = list.filter(p => [p.name, p.nationalId, p.phoneNumber, p.email, p.userId].some(v => String(v || '').toLowerCase().includes(q)));
+    list.sort((a, b) => String(b.bookings[0]?.startDate || '').localeCompare(String(a.bookings[0]?.startDate || '')));
+    res.json({ people: list.slice(0, 300), total: list.length });
   } catch (e) { _fail(res, e); }
 };
 

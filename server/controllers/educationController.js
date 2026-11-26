@@ -1,5 +1,5 @@
 const { User, Education, EducationRating, EducationStudent, EducationAttendance, Admin } = require('../models');
-const { generateUserId, generateEducationId, generateStudentId } = require('../utils/idGenerator');
+const { generateUserId, generateEducationId, generateStudentId, maxStudentNumber } = require('../utils/idGenerator');
 const { Op } = require('sequelize');
 const { sendEducationConfirmation, sendEducationStatusUpdate, sendEducationPeriodEnd, sendCustomEducationEmail, sendEducationStudentConfirmation } = require('../utils/educationEmailService');
 
@@ -466,13 +466,7 @@ exports.bulkAddStudents = async (req, res) => {
     }
 
     // Generate IDs sequentially - find max once
-    const lastStudent = await EducationStudent.findOne({
-      order: [['createdAt', 'DESC']]
-    });
-    let nextIdNumber = 1;
-    if (lastStudent && lastStudent.studentId) {
-      nextIdNumber = parseInt(lastStudent.studentId.replace('S#', '')) + 1;
-    }
+    const nextIdNumber = (await maxStudentNumber()) + 1;
 
     // Get teacher name for QR data
     const educationWithUser = await Education.findByPk(educationId, {

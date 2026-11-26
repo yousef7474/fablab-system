@@ -434,6 +434,14 @@ const RegistrationForm = () => {
         activeStep={activeStep}
         onJump={(i) => setActiveStep(i)}
         extra={<FabyBot currentStep={activeStep} formData={formData} />}
+        railExtra={(
+          <div className="rgx-rail-contact">
+            <small>{isRTL ? 'تواصل معنا' : 'Contact us'}</small>
+            <a href="https://wa.me/966555022605" target="_blank" rel="noopener noreferrer"><Icon d={['M21 11.5a8.4 8.4 0 0 1-12.4 7.4L3 20.5l1.6-5.4A8.4 8.4 0 1 1 21 11.5z']} /><span dir="ltr">+966 55 502 2605</span></a>
+            <a href="mailto:fablabspec@fablabsahsa.com"><Icon d={['M4 4h16a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z', 'M22 6l-10 7L2 6']} /><span dir="ltr">fablabspec@fablabsahsa.com</span></a>
+            <a href="tel:+966135840004"><Icon d={['M22 16.92v3a2 2 0 0 1-2.18 2 19.8 19.8 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.18 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.72c.13.96.36 1.9.7 2.81a2 2 0 0 1-.45 2.11L8.1 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.91.34 1.85.57 2.81.7A2 2 0 0 1 22 16.92z']} /><span dir="ltr">+966 13 584 0004</span></a>
+          </div>
+        )}
       >
         {/* Welcome hero — only on the first (lookup) screen */}
         {activeStep === -1 && (

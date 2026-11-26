@@ -1,15 +1,21 @@
 import React, { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'react-toastify';
 import api from '../../config/api';
+import StudioTopBar from '../shared/StudioTopBar';
+import { useStudioTheme } from '../RegistrationForm/StudioShell';
 import './EliteRegistration.css';
+import './EliteStudio.css';
 
 const EliteUserAccount = () => {
   const navigate = useNavigate();
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [language, setLanguage] = useState('ar');
+  const { i18n } = useTranslation();
+  const language = i18n.language === 'en' ? 'en' : 'ar';
+  const [theme, toggleTheme] = useStudioTheme();
   const [activeTab, setActiveTab] = useState('performance');
   const [performance, setPerformance] = useState(null);
   const [ratings, setRatings] = useState([]);
@@ -658,13 +664,7 @@ const EliteUserAccount = () => {
 
   if (loading) {
     return (
-      <div className="elite-page" dir={isRTL ? 'rtl' : 'ltr'}>
-        <div className="elite-bg-pattern"></div>
-        <div className="elite-floating-orbs">
-          <div className="elite-orb"></div>
-          <div className="elite-orb"></div>
-          <div className="elite-orb"></div>
-        </div>
+      <div className="rgx elx-account" data-theme={theme} dir={isRTL ? 'rtl' : 'ltr'}>
         <div className="elite-loading">
           <div className="loading-spinner large"></div>
         </div>
@@ -673,36 +673,14 @@ const EliteUserAccount = () => {
   }
 
   return (
-    <div className="elite-page elite-account-page" dir={isRTL ? 'rtl' : 'ltr'}>
-      <div className="elite-bg-pattern"></div>
-
-      {/* Animated Background Orbs */}
-      <div className="elite-floating-orbs">
-        <div className="elite-orb"></div>
-        <div className="elite-orb"></div>
-        <div className="elite-orb"></div>
-        <div className="elite-orb"></div>
-      </div>
-
-      {/* Language Switch */}
-      <motion.div
-        className="elite-language-switch"
-        initial={{ opacity: 0, y: -20 }}
-        animate={{ opacity: 1, y: 0 }}
-      >
-        <button
-          className={`lang-btn ${language === 'ar' ? 'active' : ''}`}
-          onClick={() => setLanguage('ar')}
-        >
-          عربي
-        </button>
-        <button
-          className={`lang-btn ${language === 'en' ? 'active' : ''}`}
-          onClick={() => setLanguage('en')}
-        >
-          EN
-        </button>
-      </motion.div>
+    <div className="rgx elx-account" data-theme={theme} dir={isRTL ? 'rtl' : 'ltr'}>
+      <StudioTopBar
+        isRTL={isRTL}
+        theme={theme}
+        onToggleTheme={toggleTheme}
+        subtitle={isRTL ? 'برنامج النخبة' : 'Elite program'}
+        onBrand={() => navigate('/register')}
+      />
 
       <div className="elite-account-container">
         {/* Sidebar */}

@@ -7,6 +7,8 @@ import axios from 'axios';
 import { listRememberedOrders, forgetOrder } from './useCart';
 import useCustomer from './useCustomer';
 import AuthModal from './AuthModal';
+import StudioTopBar from '../shared/StudioTopBar';
+import { useStudioTheme } from '../RegistrationForm/StudioShell';
 import './StorePage.css';
 import './MyOrdersPage.css';
 
@@ -28,11 +30,11 @@ const fmtWhen = (v, isRTL) => v ? new Date(v).toLocaleString(isRTL ? 'ar-SA-u-ca
 }) : '—';
 
 const STATUS_MAP = {
-  pending:   { ar: 'قيد المراجعة',  en: 'Pending Review',  bg: '#fef3c7', fg: '#92400e', icon: '⏳' },
-  confirmed: { ar: 'تم التأكيد',    en: 'Confirmed',       bg: '#dbeafe', fg: '#1d4ed8', icon: '✓' },
-  ready:     { ar: 'جاهز للاستلام', en: 'Ready for Pickup', bg: '#e0f2fe', fg: '#0369a1', icon: '📦' },
-  completed: { ar: 'مكتمل',         en: 'Completed',       bg: '#dcfce7', fg: '#166534', icon: '✅' },
-  cancelled: { ar: 'ملغى',          en: 'Cancelled',       bg: '#fee2e2', fg: '#b91c1c', icon: '✕' }
+  pending:   { ar: 'قيد المراجعة',  en: 'Pending Review', icon: '⏳' },
+  confirmed: { ar: 'تم التأكيد',    en: 'Confirmed', icon: '✓' },
+  ready:     { ar: 'جاهز للاستلام', en: 'Ready for Pickup', icon: '📦' },
+  completed: { ar: 'مكتمل',         en: 'Completed', icon: '✅' },
+  cancelled: { ar: 'ملغى',          en: 'Cancelled', icon: '✕' }
 };
 
 const PAY_METHOD = {
@@ -56,6 +58,7 @@ const MyOrdersPage = () => {
   const { i18n } = useTranslation();
   const isRTL = i18n.language === 'ar';
   const navigate = useNavigate();
+  const [theme, toggleTheme] = useStudioTheme();
 
   const auth = useCustomer();
   const [authOpen, setAuthOpen] = useState(false);
@@ -113,55 +116,43 @@ const MyOrdersPage = () => {
   const completedCount = displayList.filter(x => x.order?.status === 'completed').length;
 
   return (
-    <div className="st" dir={isRTL ? 'rtl' : 'ltr'}>
-      <header className="st-topbar">
-        <div className="st-topbar-inner">
-          <button className="st-topbar-brand" onClick={() => navigate('/store')} type="button">
-            <img src="/logo.png" alt="" className="st-topbar-logo" />
-            <div className="st-topbar-titles">
-              <span className="st-topbar-title">{isRTL ? 'فاب لاب الأحساء' : 'FabLab Al-Ahsa'}</span>
-              <span className="st-topbar-sub">{isRTL ? 'طلباتي' : 'My Orders'}</span>
-            </div>
-          </button>
-          <div className="st-topbar-actions">
-            <button
-              type="button"
-              className="st-lang-btn"
-              onClick={() => i18n.changeLanguage(isRTL ? 'en' : 'ar')}
-              title={isRTL ? 'English' : 'العربية'}
-            >
-              {isRTL ? 'EN' : 'ع'}
-            </button>
-            <button className="st-topbar-back" type="button" onClick={() => navigate('/store')}>
+    <div className="rgx st" data-theme={theme} dir={isRTL ? 'rtl' : 'ltr'}>
+      <StudioTopBar
+        isRTL={isRTL}
+        theme={theme}
+        onToggleTheme={toggleTheme}
+        subtitle={isRTL ? 'طلباتي' : 'My Orders'}
+        onBrand={() => navigate('/store')}
+      >
+        <button className="rgx-tool" type="button" onClick={() => navigate('/store')} title={isRTL ? 'المتجر' : 'Store'}>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/>
+          </svg>
+          <span>{isRTL ? 'المتجر' : 'Store'}</span>
+        </button>
+        {auth.customer ? (
+          <div className="st-user-chip">
+            <span className="st-user-avatar">{(auth.customer.name || '?')[0].toUpperCase()}</span>
+            <span className="st-user-name">{auth.customer.name}</span>
+            <button type="button" className="st-user-logout" onClick={auth.logout} title={isRTL ? 'خروج' : 'Sign out'}>
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/>
+                <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/>
               </svg>
-              <span>{isRTL ? 'المتجر' : 'Store'}</span>
             </button>
-            {auth.customer ? (
-              <div className="st-user-chip">
-                <span className="st-user-avatar">{(auth.customer.name || '?')[0].toUpperCase()}</span>
-                <span className="st-user-name">{auth.customer.name}</span>
-                <button type="button" className="st-user-logout" onClick={auth.logout} title={isRTL ? 'خروج' : 'Sign out'}>
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/>
-                  </svg>
-                </button>
-              </div>
-            ) : (
-              <button type="button" className="st-signin-btn" onClick={() => setAuthOpen(true)}>
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/>
-                </svg>
-                <span>{isRTL ? 'دخول' : 'Sign In'}</span>
-              </button>
-            )}
           </div>
-        </div>
-      </header>
+        ) : (
+          <button type="button" className="rgx-tool" onClick={() => setAuthOpen(true)} title={isRTL ? 'تسجيل الدخول' : 'Sign In'}>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/>
+            </svg>
+            <span>{isRTL ? 'دخول' : 'Sign In'}</span>
+          </button>
+        )}
+      </StudioTopBar>
 
       <div className="mo-main">
-        <header className="mo-hero">
+        <header className="rgx-hero mo-hero">
+          <p className="rgx-eyebrow"><i aria-hidden="true" />{isRTL ? 'متجر فاب لاب' : 'FabLab store'}</p>
           <h1>{isRTL ? 'طلباتي' : 'My Orders'}</h1>
           <p>
             {isRTL
@@ -224,7 +215,8 @@ const MyOrdersPage = () => {
                     </div>
                   );
                 }
-                const status = STATUS_MAP[o.status] || STATUS_MAP.pending;
+                const statusKey = STATUS_MAP[o.status] ? o.status : 'pending';
+                const status = STATUS_MAP[statusKey];
                 return (
                   <motion.div
                     key={o.orderId}
@@ -249,7 +241,7 @@ const MyOrdersPage = () => {
                       <span>{(o.items || []).length} {isRTL ? 'صنف' : 'items'}</span>
                     </div>
                     <div className="mo-card-status">
-                      <span className="mo-status" style={{ background: status.bg, color: status.fg }}>
+                      <span className={`mo-status is-${statusKey}`}>
                         {status.icon} {isRTL ? status.ar : status.en}
                       </span>
                       {o.paidAt
@@ -324,12 +316,12 @@ const MyOrdersPage = () => {
                     ))}
                   </tbody>
                   <tfoot>
-                    <tr><td colSpan={3} style={{ textAlign: 'end', color: '#64748b' }}>{isRTL ? 'المجموع الفرعي' : 'Subtotal'}</td><td style={{ textAlign: 'end' }}>{SAR(selectedOrder.subtotal)}</td></tr>
+                    <tr><td colSpan={3} className="mo-muted" style={{ textAlign: 'end' }}>{isRTL ? 'المجموع الفرعي' : 'Subtotal'}</td><td style={{ textAlign: 'end' }}>{SAR(selectedOrder.subtotal)}</td></tr>
                     {Number(selectedOrder.discountAmount) > 0 && (
-                      <tr><td colSpan={3} style={{ textAlign: 'end', color: '#16a34a' }}>{isRTL ? `خصم (${selectedOrder.couponCode})` : `Discount (${selectedOrder.couponCode})`}</td><td style={{ textAlign: 'end', color: '#16a34a' }}>-{SAR(selectedOrder.discountAmount)}</td></tr>
+                      <tr><td colSpan={3} className="mo-good" style={{ textAlign: 'end' }}>{isRTL ? `خصم (${selectedOrder.couponCode})` : `Discount (${selectedOrder.couponCode})`}</td><td className="mo-good" style={{ textAlign: 'end' }}>-{SAR(selectedOrder.discountAmount)}</td></tr>
                     )}
                     {Number(selectedOrder.taxAmount) > 0 && (
-                      <tr><td colSpan={3} style={{ textAlign: 'end', color: '#64748b' }}>{isRTL ? `ضريبة ${Math.round((selectedOrder.taxRate || 0) * 100)}%` : `VAT ${Math.round((selectedOrder.taxRate || 0) * 100)}%`}</td><td style={{ textAlign: 'end' }}>{SAR(selectedOrder.taxAmount)}</td></tr>
+                      <tr><td colSpan={3} className="mo-muted" style={{ textAlign: 'end' }}>{isRTL ? `ضريبة ${Math.round((selectedOrder.taxRate || 0) * 100)}%` : `VAT ${Math.round((selectedOrder.taxRate || 0) * 100)}%`}</td><td style={{ textAlign: 'end' }}>{SAR(selectedOrder.taxAmount)}</td></tr>
                     )}
                     <tr className="mo-items-final"><td colSpan={3} style={{ textAlign: 'end' }}>{isRTL ? 'الإجمالي' : 'Total'}</td><td style={{ textAlign: 'end' }}>{SAR(selectedOrder.total)}</td></tr>
                   </tfoot>
@@ -342,7 +334,7 @@ const MyOrdersPage = () => {
                   <div className="mo-note"><b>{isRTL ? 'ملاحظاتك: ' : 'Your notes: '}</b>{selectedOrder.notes}</div>
                 )}
               </div>
-              <div className="st-modal-foot" style={{ padding: '14px 22px', borderTop: '1px solid #e5e7eb', display: 'flex', gap: 8, justifyContent: 'flex-end', flexWrap: 'wrap' }}>
+              <div className="st-modal-foot mo-foot">
                 <button className="st-btn st-btn--ghost" onClick={() => removeOrder(selectedOrder.orderId)}>{isRTL ? '🗑️ إزالة من قائمتي' : '🗑️ Remove from list'}</button>
                 <button className="st-btn st-btn--ghost" onClick={() => openInvoice(selectedOrder.orderId)}>{isRTL ? '🖨️ طباعة / حفظ PDF' : '🖨️ Print / Save PDF'}</button>
                 <button className="st-btn st-btn--primary" onClick={() => setSelectedOrder(null)}>{isRTL ? 'إغلاق' : 'Close'}</button>

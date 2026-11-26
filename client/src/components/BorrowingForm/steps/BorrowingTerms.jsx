@@ -60,127 +60,67 @@ const BorrowingTerms = ({ formData, onChange, onBack, onSubmit, loading }) => {
         {isRTL ? 'يرجى قراءة الشروط والأحكام والموافقة عليها' : 'Please read and agree to the terms and conditions'}
       </p>
 
-      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
+      <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }}>
         {/* Terms List */}
-        <div style={{
-          background: '#f8fafc',
-          border: '1px solid #e2e8f0',
-          borderRadius: '12px',
-          padding: '20px',
-          maxHeight: '350px',
-          overflowY: 'auto',
-          marginBottom: '20px'
-        }}>
-          <h3 style={{ margin: '0 0 16px 0', color: '#1e293b', fontSize: '16px' }}>
-            {isRTL ? 'شروط وأحكام استعارة المكونات' : 'Component Borrowing Terms & Conditions'}
-          </h3>
-          {terms.map((term, index) => (
-            <div key={index} style={{ display: 'flex', gap: '12px', marginBottom: '12px', alignItems: 'flex-start' }}>
-              <span style={{
-                background: '#2563eb',
-                color: 'white',
-                borderRadius: '50%',
-                minWidth: '24px',
-                height: '24px',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                fontSize: '12px',
-                fontWeight: '700',
-                marginTop: '2px'
-              }}>
-                {index + 1}
-              </span>
-              <div style={{ flex: 1 }}>
-                <p style={{ margin: 0, color: '#334155', lineHeight: 1.6, fontSize: '14px' }}>{term.ar}</p>
-                <p style={{ margin: '4px 0 0 0', color: '#64748b', lineHeight: 1.6, fontSize: '13px' }}>{term.en}</p>
-              </div>
-            </div>
-          ))}
+        <div className="bfx-terms">
+          <h3>{isRTL ? 'شروط وأحكام استعارة المكونات' : 'Component Borrowing Terms & Conditions'}</h3>
+          <ol>
+            {terms.map((term, index) => (
+              <li key={index}>
+                <span className="bfx-terms-n">{index + 1}</span>
+                <div>
+                  <p>{isRTL ? term.ar : term.en}</p>
+                  <small><bdi>{isRTL ? term.en : term.ar}</bdi></small>
+                </div>
+              </li>
+            ))}
+          </ol>
         </div>
 
         {/* Terms Acceptance Checkbox */}
-        <div style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: '12px',
-          padding: '16px',
-          background: formData.termsAccepted ? '#d4edda' : '#fff',
-          border: `2px solid ${formData.termsAccepted ? '#22c55e' : '#e2e8f0'}`,
-          borderRadius: '12px',
-          cursor: 'pointer',
-          marginBottom: '20px',
-          transition: 'all 0.3s ease'
-        }}
-          onClick={() => onChange({ termsAccepted: !formData.termsAccepted })}
-        >
-          <div style={{
-            width: '24px',
-            height: '24px',
-            borderRadius: '6px',
-            border: `2px solid ${formData.termsAccepted ? '#22c55e' : '#cbd5e1'}`,
-            background: formData.termsAccepted ? '#22c55e' : 'white',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            transition: 'all 0.3s ease',
-            flexShrink: 0
-          }}>
-            {formData.termsAccepted && (
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3">
-                <polyline points="20 6 9 17 4 12"/>
-              </svg>
-            )}
-          </div>
-          <span style={{ fontWeight: '600', color: formData.termsAccepted ? '#155724' : '#334155' }}>
-            {isRTL ? 'أوافق على جميع الشروط والأحكام المذكورة أعلاه' : 'I agree to all the terms and conditions listed above'}
-          </span>
-        </div>
+        <label className={`rgx-ack${formData.termsAccepted ? ' is-on' : ''}`}>
+          <input
+            type="checkbox"
+            checked={!!formData.termsAccepted}
+            onChange={() => onChange({ termsAccepted: !formData.termsAccepted })}
+          />
+          <span>{isRTL ? 'أوافق على جميع الشروط والأحكام المذكورة أعلاه' : 'I agree to all the terms and conditions listed above'}</span>
+        </label>
 
         {/* Signature */}
-        <div className="form-group">
-          <label className="form-label" style={{ fontSize: '16px', fontWeight: '600' }}>
-            {isRTL ? 'التوقيع (الاسم الكامل) *' : 'Signature (Full Name) *'}
+        <div className="form-group bfx-sign">
+          <label className="form-label" htmlFor="bfx-signature">
+            {isRTL ? 'التوقيع (الاسم الكامل)' : 'Signature (Full Name)'} <span className="required">*</span>
           </label>
-          <p style={{ margin: '0 0 8px 0', fontSize: '13px', color: '#64748b' }}>
-            {isRTL ? 'أدخل اسمك الكامل كتوقيع رقمي' : 'Enter your full name as a digital signature'}
-          </p>
+          <small className="bfx-sign-hint">{isRTL ? 'أدخل اسمك الكامل كتوقيع رقمي' : 'Enter your full name as a digital signature'}</small>
           <input
+            id="bfx-signature"
             type="text"
-            className="form-input"
+            className="form-input signature-input"
             placeholder={isRTL ? 'الاسم الكامل' : 'Full Name'}
             value={formData.signature}
             onChange={(e) => onChange({ signature: e.target.value })}
-            style={{
-              textAlign: 'center',
-              fontSize: '18px',
-              fontStyle: 'italic',
-              fontFamily: "'Brush Script MT', 'Segoe Script', cursive, serif",
-              padding: '14px',
-              borderBottom: '2px solid #2563eb'
-            }}
           />
         </div>
       </motion.div>
 
-      <div className="form-navigation" style={{ marginTop: '24px' }}>
+      <div className="form-navigation">
         <button className="btn btn-secondary" onClick={onBack}>
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ transform: isRTL ? 'rotate(180deg)' : 'none' }}>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ transform: isRTL ? 'rotate(180deg)' : 'none' }} aria-hidden="true">
             <path d="m15 18-6-6 6-6"/>
           </svg>
           {isRTL ? 'السابق' : 'Previous'}
         </button>
         <button
-          className="btn btn-primary"
+          className="btn btn-primary btn-submit"
           onClick={onSubmit}
           disabled={!canSubmit || loading}
-          style={{ background: canSubmit && !loading ? 'linear-gradient(135deg, #1a56db, #2563eb)' : undefined, minWidth: '160px' }}
         >
           {loading ? (
             <span className="loading-spinner" />
           ) : (
             <>
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
                 <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
                 <polyline points="22 4 12 14.01 9 11.01"/>
               </svg>

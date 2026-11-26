@@ -1,0 +1,62 @@
+/* ============================================================
+   Studio top bar for full-width public pages (store, elite
+   account). Lives inside a `.rgx[data-theme]` root, so it takes
+   the registration studio's tokens and `.rgx-tool` buttons.
+   ============================================================ */
+
+.stb {
+  position: sticky;
+  top: 0;
+  z-index: 40;
+  background: color-mix(in srgb, var(--r-bg) 78%, transparent);
+  -webkit-backdrop-filter: blur(14px) saturate(1.3);
+  backdrop-filter: blur(14px) saturate(1.3);
+  border-bottom: 1px solid var(--r-line);
+}
+.stb-in {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 12px clamp(14px, 3vw, 28px);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.stb-brand {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--r-ink);
+  font: inherit;
+  text-align: start;
+  cursor: pointer;
+}
+.stb-brand .rgx-logo { box-shadow: var(--r-shadow-sm); border: 1px solid var(--r-line); }
+.stb-brand .rgx-brand-text strong { white-space: nowrap; }
+.stb-brand .rgx-brand-text small { opacity: 1; color: var(--r-red-ink); font-weight: 600; }
+.stb-tools { flex-wrap: nowrap; }
+.rgx[data-theme] .stb-tools .rgx-tool { white-space: nowrap; }
+
+/* tablets: icon-only tools (a call-to-action tool keeps its label until 760px) */
+@media (max-width: 1000px) {
+  .rgx[data-theme] .stb-tools .rgx-tool:not(.is-cta) span { display: none; }
+  .rgx[data-theme] .stb-tools .rgx-tool:not(.is-cta) { width: 42px; padding: 0; justify-content: center; }
+}
+@media (max-width: 640px) {
+  .stb-in { padding: 10px 14px; }
+  .stb-brand .rgx-brand-text small { display: none; }
+}
+@media (max-width: 560px) {
+  .stb-brand .rgx-brand-text { display: none; }
+}
+@media (max-width: 420px) {
+  .stb-site { display: none !important; }
+  .stb-in { padding-inline: 12px; gap: 8px; }
+  .stb-tools { gap: 4px; }
+  .rgx[data-theme] .stb-tools .rgx-tool { width: 36px; height: 36px; }
+}

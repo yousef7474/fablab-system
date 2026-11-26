@@ -1,15 +1,21 @@
 import React, { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { toast } from 'react-toastify';
 import api from '../../config/api';
+import StudioShell, { useStudioTheme } from '../RegistrationForm/StudioShell';
+import { ELITE_INTRO } from './eliteIntro';
 import './EliteRegistration.css';
+import './EliteStudio.css';
 
 const EliteLogin = () => {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
-  const [language, setLanguage] = useState('ar');
+  const { i18n } = useTranslation();
+  const language = i18n.language === 'en' ? 'en' : 'ar';
   const isRTL = language === 'ar';
+  const [theme, toggleTheme] = useStudioTheme();
 
   const [formData, setFormData] = useState({
     email: '',
@@ -99,73 +105,27 @@ const EliteLogin = () => {
   };
 
   return (
-    <div className="elite-page" dir={isRTL ? 'rtl' : 'ltr'}>
-      <div className="elite-bg-pattern"></div>
-
-      {/* Animated Background Orbs */}
-      <div className="elite-floating-orbs">
-        <div className="elite-orb"></div>
-        <div className="elite-orb"></div>
-        <div className="elite-orb"></div>
-        <div className="elite-orb"></div>
-        <div className="elite-orb"></div>
-        <div className="elite-orb"></div>
-      </div>
-
-      {/* Animated Stars */}
-      <div className="elite-stars">
-        {[...Array(20)].map((_, i) => (
-          <div key={i} className="elite-star" style={{
-            left: `${Math.random() * 100}%`,
-            top: `${Math.random() * 100}%`,
-            animationDelay: `${Math.random() * 3}s`
-          }}></div>
-        ))}
-      </div>
-
-      {/* Language Switch */}
-      <motion.div
-        className="elite-language-switch"
-        initial={{ opacity: 0, y: -20 }}
-        animate={{ opacity: 1, y: 0 }}
-      >
-        <button
-          className={`lang-btn ${language === 'ar' ? 'active' : ''}`}
-          onClick={() => setLanguage('ar')}
-        >
-          عربي
-        </button>
-        <button
-          className={`lang-btn ${language === 'en' ? 'active' : ''}`}
-          onClick={() => setLanguage('en')}
-        >
-          EN
-        </button>
-      </motion.div>
-
-      <div className="elite-container">
-        {/* Header */}
+    <StudioShell
+      isRTL={isRTL}
+      theme={theme}
+      onToggleTheme={toggleTheme}
+      servicesHref="/register"
+      subtitle={isRTL ? 'برنامج النخبة' : 'Elite program'}
+      intro={ELITE_INTRO(isRTL)}
+    >
         <motion.div
-          className="elite-header"
-          initial={{ y: -30, opacity: 0 }}
-          animate={{ y: 0, opacity: 1 }}
+          className="rgx-hero"
+          initial={{ opacity: 0, y: -12 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, ease: [0.2, 0.8, 0.2, 1] }}
         >
-          <div className="elite-logo">
-            <motion.svg
-              width="60" height="60" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
-              animate={{ rotate: [0, 5, -5, 0] }}
-              transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
-            >
-              <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
-            </motion.svg>
-          </div>
-          <h1 className="elite-title">{text.elite}</h1>
-          <p className="elite-subtitle">{text.welcomeBack}</p>
+          <p className="rgx-eyebrow"><i aria-hidden="true" />{text.elite}</p>
+          <h1>{text.welcomeBack}</h1>
         </motion.div>
 
         {/* Login Form Card */}
         <motion.div
-          className="elite-form-card"
+          className="rgx-card elx elx-login"
           initial={{ y: 30, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
           transition={{ delay: 0.2 }}
@@ -199,9 +159,9 @@ const EliteLogin = () => {
             <div className="form-navigation" style={{ justifyContent: 'center' }}>
               <button
                 type="submit"
-                className="elite-btn primary"
+                className="btn btn-primary"
                 disabled={loading}
-                style={{ marginRight: 0, width: '100%' }}
+                style={{ width: '100%' }}
               >
                 {loading ? (
                   <span className="loading-spinner"></span>
@@ -221,22 +181,7 @@ const EliteLogin = () => {
 
         </motion.div>
 
-        {/* Back to Home */}
-        <motion.button
-          className="back-home-btn"
-          onClick={() => navigate('/')}
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.5 }}
-        >
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
-            <polyline points="9 22 9 12 15 12 15 22"/>
-          </svg>
-          {text.backHome}
-        </motion.button>
-      </div>
-    </div>
+    </StudioShell>
   );
 };
 

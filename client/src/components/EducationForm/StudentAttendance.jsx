@@ -1,17 +1,22 @@
 import React, { useState, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'react-toastify';
 import * as XLSX from 'xlsx';
 import { Html5Qrcode } from 'html5-qrcode';
 import axios from 'axios';
+import StudioShell, { Icon, useStudioTheme } from '../RegistrationForm/StudioShell';
+import { EDU_ICONS, EDU_INTRO, EduVerify, EduInfo } from './EduParts';
 import './EducationForm.css';
 
 const API_URL = process.env.NODE_ENV === 'production' ? '/api' : (process.env.REACT_APP_API_URL || 'http://localhost:5000/api');
 const api = axios.create({ baseURL: API_URL });
 
 const StudentAttendance = () => {
-  const navigate = useNavigate();
+  const { i18n } = useTranslation();
+  const isRTL = i18n.language === 'ar';
+  const tx = (ar, en) => (isRTL ? ar : en);
+  const [theme, toggleTheme] = useStudioTheme();
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
   const [educationId, setEducationId] = useState('');
@@ -28,7 +33,7 @@ const StudentAttendance = () => {
 
   const handleVerify = async () => {
     if (!educationId.trim()) {
-      toast.error('الرجاء إدخال رقم التعليم');
+      toast.error(tx('الرجاء إدخال رقم التعليم', 'Please enter the education ID'));
       return;
     }
     setLoading(true);
@@ -48,9 +53,9 @@ const StudentAttendance = () => {
       } catch {}
       setAttendanceMap(map);
       setStep(2);
-      toast.success('تم التحقق بنجاح');
+      toast.success(tx('تم التحقق بنجاح', 'Verified successfully'));
     } catch (error) {
-      toast.error(error.response?.data?.messageAr || 'رقم التعليم غير صحيح');
+      toast.error((isRTL ? error.response?.data?.messageAr : error.response?.data?.message) || tx('رقم التعليم غير صحيح', 'Invalid education ID'));
     } finally {
       setLoading(false);
     }
@@ -79,7 +84,7 @@ const StudentAttendance = () => {
       await api.post(`/education/${encodeURIComponent(educationId)}/attendance`, { date: attendanceDate, records });
     } catch (err) {
       console.error('Auto-save attendance error:', err);
-      toast.error('خطأ في حفظ الحضور', { autoClose: 2000 });
+      toast.error(tx('خطأ في حفظ الحضور', 'Could not save attendance'), { autoClose: 2000 });
     }
   };
 
@@ -93,9 +98,9 @@ const StudentAttendance = () => {
         date: attendanceDate,
         records: [{ studentId, status: newStatus }]
       });
-      toast.success(newStatus === 'present' ? '✓ حاضر' : '✗ غائب', { autoClose: 1500 });
+      toast.success(newStatus === 'present' ? tx('✓ حاضر', '✓ Present') : tx('✗ غائب', '✗ Absent'), { autoClose: 1500 });
     } catch (err) {
-      toast.error('خطأ في حفظ الحضور', { autoClose: 2000 });
+      toast.error(tx('خطأ في حفظ الحضور', 'Could not save attendance'), { autoClose: 2000 });
     }
   };
 
@@ -104,7 +109,7 @@ const StudentAttendance = () => {
     students.forEach(s => { map[s.studentId] = status; });
     setAttendanceMap(map);
     autoSaveAttendance(map);
-    toast.success(status === 'present' ? 'تم تحضير الكل' : 'تم تغييب الكل', { autoClose: 1500 });
+    toast.success(status === 'present' ? tx('تم تحضير الكل', 'All marked present') : tx('تم تغييب الكل', 'All marked absent'), { autoClose: 1500 });
   };
 
   // QR Scanner functions
@@ -118,7 +123,7 @@ const StudentAttendance = () => {
       const scanner = new Html5Qrcode('edu-qr-reader');
       qrScannerRef.current = scanner;
       const devices = await Html5Qrcode.getCameras();
-      if (!devices.length) { toast.error('لم يتم العثور على كاميرا'); return; }
+      if (!devices.length) { toast.error(tx('لم يتم العثور على كاميرا', 'No camera found')); return; }
       const cam = devices.find(d => d.label.toLowerCase().includes('back') || d.label.toLowerCase().includes('rear')) || devices[devices.length - 1];
 
       await scanner.start(cam.id, { fps: 25, qrbox: undefined, videoConstraints: { width: { ideal: 1920 }, height: { ideal: 1080 } } },
@@ -136,11 +141,11 @@ const StudentAttendance = () => {
               const res = await api.post('/education/attendance/mark', { studentId: parsed.studentId, educationId: parsed.educationId || educationId });
               const name = parsed.fullName || res.data.student?.fullName || '';
               if (res.data.alreadyMarked) {
-                toast.info(`${name} — مسجل مسبقاً (دخول: ${res.data.checkInTime || '?'} | خروج: ${res.data.checkOutTime || '?'})`, { autoClose: 4000 });
+                toast.info(tx(`${name} — مسجل مسبقاً (دخول: ${res.data.checkInTime || '?'} | خروج: ${res.data.checkOutTime || '?'})`, `${name} — already recorded (in: ${res.data.checkInTime || '?'} | out: ${res.data.checkOutTime || '?'})`), { autoClose: 4000 });
               } else if (res.data.action === 'checkout') {
-                toast.success(`📤 ${name} — تسجيل خروج ${res.data.checkOutTime} (الدخول: ${res.data.checkInTime})`, { autoClose: 4000 });
+                toast.success(tx(`📤 ${name} — تسجيل خروج ${res.data.checkOutTime} (الدخول: ${res.data.checkInTime})`, `📤 ${name} — checked out ${res.data.checkOutTime} (in: ${res.data.checkInTime})`), { autoClose: 4000 });
               } else {
-                toast.success(`📥 ${name} — تسجيل دخول ${res.data.time}`, { autoClose: 3000 });
+                toast.success(tx(`📥 ${name} — تسجيل دخول ${res.data.time}`, `📥 ${name} — checked in ${res.data.time}`), { autoClose: 3000 });
               }
               // Update local map
               setAttendanceMap(prev => ({ ...prev, [parsed.studentId]: 'present' }));
@@ -180,15 +185,15 @@ const StudentAttendance = () => {
       const wb = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(wb, ws, 'الحضور');
       XLSX.writeFile(wb, `attendance_${educationId}_${attendanceDate}.xlsx`);
-      toast.success('تم تحميل الملف');
+      toast.success(tx('تم تحميل الملف', 'File downloaded'));
     } catch {
-      toast.error('حدث خطأ أثناء التحميل');
+      toast.error(tx('حدث خطأ أثناء التحميل', 'Download failed'));
     }
   };
 
   const downloadPeriodExcel = async () => {
     if (!periodStart || !periodEnd) {
-      toast.error('حدد تاريخ البداية والنهاية');
+      toast.error(tx('حدد تاريخ البداية والنهاية', 'Choose the start and end dates'));
       return;
     }
     try {
@@ -209,330 +214,235 @@ const StudentAttendance = () => {
       XLSX.utils.book_append_sheet(wb, ws, 'الحضور');
       XLSX.writeFile(wb, `attendance_${educationId}_${periodStart}_${periodEnd}.xlsx`);
       setShowPeriodModal(false);
-      toast.success('تم تحميل الملف');
+      toast.success(tx('تم تحميل الملف', 'File downloaded'));
     } catch {
-      toast.error('حدث خطأ أثناء التحميل');
+      toast.error(tx('حدث خطأ أثناء التحميل', 'Download failed'));
     }
-  };
-
-  const inputStyle = {
-    width: '100%', padding: '12px 16px', borderRadius: '10px', border: '2px solid #e2e8f0',
-    fontSize: '15px', outline: 'none', transition: 'border 0.2s', direction: 'rtl', textAlign: 'right',
-    boxSizing: 'border-box'
-  };
-
-  const labelStyle = { display: 'block', marginBottom: '6px', fontWeight: '600', color: '#334155', textAlign: 'right', fontSize: '14px' };
-
-  const btnPrimary = {
-    background: 'linear-gradient(135deg, #6d28d9, #7c3aed)', color: 'white', border: 'none',
-    padding: '14px 32px', borderRadius: '12px', fontSize: '16px', fontWeight: '700',
-    cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '8px',
-    boxShadow: '0 4px 15px rgba(109, 40, 217, 0.3)'
   };
 
   const presentCount = Object.values(attendanceMap).filter(s => s === 'present').length;
   const absentCount = Object.values(attendanceMap).filter(s => s === 'absent').length;
 
-  return (
-    <div className="education-page">
-      <div className="education-bg-shapes">
-        <div className="education-shape" />
-        <div className="education-shape" />
-        <div className="education-shape" />
-      </div>
-      <div className="education-container">
+  // Leaving the attendance step must release the camera first.
+  const goToStep = async (next) => {
+    if (showQRScanner) await stopQRScanner();
+    setStep(next);
+  };
+  const startOver = async () => {
+    await goToStep(1);
+    setEducationId('');
+    setEducationInfo(null);
+    setStudents([]);
+    setAttendanceMap({});
+  };
+
+  const steps = [
+    { key: 'verify', label: tx('رقم التعليم', 'Education ID'), icon: EDU_ICONS.key },
+    { key: 'attendance', label: tx('تحضير الطلاب', 'Attendance'), icon: EDU_ICONS.check }
+  ];
+
+  // Period Modal — rendered outside the animated card so position:fixed holds.
+  const periodModal = (
+    <AnimatePresence>
+      {showPeriodModal && (
         <motion.div
-          initial={{ y: 30, opacity: 0 }}
-          animate={{ y: 0, opacity: 1 }}
-          style={{ width: '100%', maxWidth: '800px' }}
+          className="edu-overlay"
+          initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+          onClick={() => setShowPeriodModal(false)}
         >
-          {/* Header */}
-          <div className="education-header">
-            <div className="education-logo">
-              <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2">
-                <path d="M9 11l3 3L22 4" />
-                <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" />
-              </svg>
+          <motion.div
+            className="edu-modal"
+            role="dialog"
+            aria-modal="true"
+            initial={{ scale: 0.92, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.92, opacity: 0 }}
+            onClick={e => e.stopPropagation()}
+          >
+            <h3>{tx('تحميل حضور فترة', 'Download a period')}</h3>
+            <p className="edu-sub">{tx('ملف Excel بحضور كل الطلاب لكل يوم في الفترة.', "An Excel sheet with every student's attendance for each day of the period.")}</p>
+            <div className="form-grid">
+              <div className="form-group">
+                <label className="form-label">{tx('تاريخ البداية', 'Start date')}</label>
+                <input type="date" className="form-input" value={periodStart} onChange={e => setPeriodStart(e.target.value)} />
+              </div>
+              <div className="form-group">
+                <label className="form-label">{tx('تاريخ النهاية', 'End date')}</label>
+                <input type="date" className="form-input" value={periodEnd} onChange={e => setPeriodEnd(e.target.value)} />
+              </div>
             </div>
-            <h1 className="education-title">حضور الطلاب</h1>
-            <p className="education-subtitle">Student Attendance</p>
-          </div>
+            <div className="edu-modal-foot">
+              <button type="button" className="btn btn-secondary" onClick={() => setShowPeriodModal(false)}>
+                {tx('إلغاء', 'Cancel')}
+              </button>
+              <button type="button" className="btn btn-primary" onClick={downloadPeriodExcel}>
+                <Icon d={EDU_ICONS.download} />
+                {tx('تحميل', 'Download')}
+              </button>
+            </div>
+          </motion.div>
+        </motion.div>
+      )}
+    </AnimatePresence>
+  );
 
-          {/* Step indicators */}
-          <div style={{ display: 'flex', justifyContent: 'center', gap: '8px', marginBottom: '24px' }}>
-            {[1, 2].map(s => (
-              <div key={s} style={{
-                width: '40px', height: '6px', borderRadius: '3px',
-                background: step >= s ? 'white' : 'rgba(255,255,255,0.3)',
-                transition: 'background 0.3s'
-              }} />
-            ))}
-          </div>
-
-          {/* Card */}
-          <div style={{
-            background: 'white', borderRadius: '20px', padding: '32px',
-            boxShadow: '0 20px 60px rgba(0,0,0,0.15)', position: 'relative'
-          }}>
-            {/* Home button */}
-            <button
-              onClick={() => navigate('/')}
-              style={{
-                position: 'absolute', top: '16px', left: '16px', background: 'none', border: 'none',
-                cursor: 'pointer', color: '#6d28d9', padding: '8px'
-              }}
+  return (
+    <StudioShell
+      isRTL={isRTL}
+      theme={theme}
+      onToggleTheme={toggleTheme}
+      intro={EDU_INTRO(isRTL)}
+      subtitle={tx('التعليم · حضور الطلاب', 'Education · student attendance')}
+      servicesHref="/register"
+      steps={steps}
+      activeStep={step - 1}
+      onJump={(i) => goToStep(i + 1)}
+      onHome={startOver}
+      extra={periodModal}
+    >
+      <motion.section
+        className="rgx-card"
+        initial={{ opacity: 0, y: 18 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.45, ease: [0.2, 0.8, 0.2, 1] }}
+      >
+        <div className="rgx-content">
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={step}
+              initial={{ opacity: 0, x: isRTL ? -24 : 24 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: isRTL ? 24 : -24 }}
+              transition={{ duration: 0.28, ease: [0.2, 0.8, 0.2, 1] }}
             >
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
-                <polyline points="9 22 9 12 15 12 15 22" />
-              </svg>
-            </button>
+              <p className="rgx-step-eyebrow">
+                <span>{String(step).padStart(2, '0')}</span>
+                {steps[step - 1]?.label}
+              </p>
 
-            <AnimatePresence mode="wait">
               {/* Step 1: Verify Education ID */}
               {step === 1 && (
-                <motion.div key="step1" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}>
-                  <div style={{ textAlign: 'center', marginBottom: '24px' }}>
-                    <div style={{
-                      width: '70px', height: '70px', borderRadius: '50%',
-                      background: 'linear-gradient(135deg, #f5f3ff, #ede9fe)',
-                      display: 'inline-flex', alignItems: 'center', justifyContent: 'center', marginBottom: '12px'
-                    }}>
-                      <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#6d28d9" strokeWidth="2">
-                        <circle cx="11" cy="11" r="8" /><path d="m21 21-4.35-4.35" />
-                      </svg>
-                    </div>
-                    <h2 style={{ color: '#1e293b', fontSize: '22px', margin: '0 0 8px 0' }}>التحقق من رقم التعليم</h2>
-                    <p style={{ color: '#64748b', fontSize: '14px', margin: 0 }}>أدخل رقم التعليم الخاص بالمعلم (مثال: E#00001)</p>
-                  </div>
-                  <div style={{ marginBottom: '20px' }}>
-                    <label style={labelStyle}>رقم التعليم *</label>
-                    <input
-                      type="text"
-                      placeholder="E#00001"
-                      value={educationId}
-                      onChange={e => setEducationId(e.target.value)}
-                      onKeyPress={e => e.key === 'Enter' && handleVerify()}
-                      style={{ ...inputStyle, textAlign: 'center', fontSize: '18px', fontWeight: '700', letterSpacing: '2px' }}
-                    />
-                  </div>
-                  <div style={{ textAlign: 'center' }}>
-                    <button onClick={handleVerify} disabled={loading} style={btnPrimary}>
-                      {loading ? <span style={{ width: '20px', height: '20px', border: '2px solid white', borderTopColor: 'transparent', borderRadius: '50%', display: 'inline-block', animation: 'spin 1s linear infinite' }} /> : 'تحقق'}
-                    </button>
-                  </div>
-                </motion.div>
+                <EduVerify isRTL={isRTL} value={educationId} onChange={setEducationId} onVerify={handleVerify} loading={loading} />
               )}
 
               {/* Step 2: Attendance */}
               {step === 2 && (
-                <motion.div key="step2" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}>
-                  {/* Education Info */}
-                  {educationInfo && (
-                    <div style={{
-                      background: 'linear-gradient(135deg, #f5f3ff, #ede9fe)', borderRadius: '12px',
-                      padding: '16px', marginBottom: '20px', border: '1px solid #ddd6fe'
-                    }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px' }}>
-                        <div><span style={{ color: '#64748b', fontSize: '12px' }}>رقم التعليم</span><br /><strong style={{ color: '#5b21b6' }}>{educationInfo.educationId}</strong></div>
-                        <div><span style={{ color: '#64748b', fontSize: '12px' }}>المعلم</span><br /><strong style={{ color: '#5b21b6' }}>{educationInfo.teacherName}</strong></div>
-                        <div><span style={{ color: '#64748b', fontSize: '12px' }}>القسم</span><br /><strong style={{ color: '#5b21b6' }}>{educationInfo.section}</strong></div>
-                      </div>
-                    </div>
-                  )}
+                <>
+                  <h2 className="step-title">{tx('حضور الطلاب', 'Student Attendance')}</h2>
+                  <p className="step-description">{tx('امسح بطاقات الطلاب أو اضغط على حالة كل طالب — يُحفظ كل تغيير فورًا.', "Scan the students' cards or tap each student's status — every change saves right away.")}</p>
 
-                  {/* Date Picker */}
-                  <div style={{ marginBottom: '20px' }}>
-                    <label style={labelStyle}>تاريخ الحضور</label>
-                    <input
-                      type="date"
-                      value={attendanceDate}
-                      onChange={e => handleDateChange(e.target.value)}
-                      style={{ ...inputStyle, textAlign: 'center', fontSize: '16px', fontWeight: '600' }}
-                    />
+                  {educationInfo && <EduInfo isRTL={isRTL} info={educationInfo} />}
+
+                  {/* Date + quick actions */}
+                  <div className="edu-toolbar">
+                    <div className="form-group">
+                      <label className="form-label">{tx('تاريخ الحضور', 'Attendance date')}</label>
+                      <input
+                        type="date"
+                        className="form-input"
+                        value={attendanceDate}
+                        onChange={e => handleDateChange(e.target.value)}
+                      />
+                    </div>
+                    <div className="edu-actions">
+                      <button type="button" className="btn edu-btn-navy" onClick={() => { showQRScanner ? stopQRScanner() : startQRScanner(); }}>
+                        <Icon d={showQRScanner ? EDU_ICONS.x : EDU_ICONS.qr} />
+                        {showQRScanner ? tx('إغلاق الماسح', 'Close scanner') : tx('مسح QR', 'Scan QR')}
+                      </button>
+                      <button type="button" className="btn edu-btn-ok" onClick={() => markAll('present')}>
+                        {tx('تحضير الكل', 'All present')}
+                      </button>
+                      <button type="button" className="btn btn-secondary edu-btn-no" onClick={() => markAll('absent')}>
+                        {tx('تغييب الكل', 'All absent')}
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Counts */}
+                  <div className="edu-kpis">
+                    <div className="edu-kpi">
+                      <i><Icon d={EDU_ICONS.students} /></i>
+                      <div><b>{students.length}</b><small>{tx('الطلاب', 'Students')}</small></div>
+                    </div>
+                    <div className="edu-kpi ok">
+                      <i><Icon d={['M20 6 9 17l-5-5']} /></i>
+                      <div><b>{presentCount}</b><small>{tx('حاضر', 'Present')}</small></div>
+                    </div>
+                    <div className="edu-kpi no">
+                      <i><Icon d={EDU_ICONS.x} /></i>
+                      <div><b>{absentCount}</b><small>{tx('غائب', 'Absent')}</small></div>
+                    </div>
                   </div>
 
                   {/* QR Scanner */}
                   {showQRScanner && (
-                    <div style={{ marginBottom: '16px', borderRadius: 12, overflow: 'hidden', border: '2px solid #6d28d9', position: 'relative' }}>
-                      <div style={{ background: '#6d28d9', padding: '8px 12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <span style={{ color: 'white', fontWeight: 700, fontSize: '0.85rem' }}>📷 مسح QR الطلاب</span>
-                        <button onClick={stopQRScanner} style={{ background: 'rgba(255,255,255,0.2)', border: 'none', color: 'white', borderRadius: 6, padding: '4px 10px', cursor: 'pointer', fontWeight: 700 }}>✕</button>
+                    <div className="edu-scanner">
+                      <div className="edu-scanner-head">
+                        <span><Icon d={EDU_ICONS.photo} />{tx('مسح QR الطلاب', 'Scan student QR codes')}</span>
+                        <button type="button" onClick={stopQRScanner} aria-label={tx('إغلاق', 'Close')}>✕</button>
                       </div>
-                      <div id="edu-qr-reader" style={{ width: '100%' }} />
+                      <div id="edu-qr-reader" />
                     </div>
                   )}
 
-                  {/* Quick Actions */}
-                  <div style={{ display: 'flex', gap: '10px', marginBottom: '20px', justifyContent: 'center', flexWrap: 'wrap' }}>
-                    <button onClick={() => { showQRScanner ? stopQRScanner() : startQRScanner(); }} style={{
-                      background: 'linear-gradient(135deg, #8b5cf6, #6d28d9)', color: 'white', border: 'none', padding: '8px 20px',
-                      borderRadius: '8px', fontSize: '13px', fontWeight: '600', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6
-                    }}>
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
-                      {showQRScanner ? 'إغلاق الماسح' : 'مسح QR'}
-                    </button>
-                    <button onClick={() => markAll('present')} style={{
-                      background: '#10b981', color: 'white', border: 'none', padding: '8px 20px',
-                      borderRadius: '8px', fontSize: '13px', fontWeight: '600', cursor: 'pointer'
-                    }}>
-                      تحضير الكل
-                    </button>
-                    <button onClick={() => markAll('absent')} style={{
-                      background: '#ef4444', color: 'white', border: 'none', padding: '8px 20px',
-                      borderRadius: '8px', fontSize: '13px', fontWeight: '600', cursor: 'pointer'
-                    }}>
-                      تغييب الكل
-                    </button>
-                    <div style={{ display: 'flex', gap: '12px', alignItems: 'center', fontSize: '13px', fontWeight: '600' }}>
-                      <span style={{ color: '#10b981' }}>حاضر: {presentCount}</span>
-                      <span style={{ color: '#ef4444' }}>غائب: {absentCount}</span>
-                    </div>
-                  </div>
-
-                  {/* Students Table */}
+                  {/* Students */}
                   {students.length > 0 ? (
-                    <div style={{ overflowX: 'auto', borderRadius: '12px', border: '1px solid #e2e8f0', marginBottom: '20px' }}>
-                      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
-                        <thead>
-                          <tr style={{ background: 'linear-gradient(135deg, #5b21b6, #6d28d9)', color: 'white' }}>
-                            <th style={{ padding: '10px 12px', textAlign: 'right' }}>الصورة</th>
-                            <th style={{ padding: '10px 12px', textAlign: 'right' }}>الاسم</th>
-                            <th style={{ padding: '10px 12px', textAlign: 'right' }}>الهوية</th>
-                            <th style={{ padding: '10px 12px', textAlign: 'right' }}>المدرسة</th>
-                            <th style={{ padding: '10px 12px', textAlign: 'center' }}>الحالة</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {students.map((s, i) => (
-                            <tr key={s.studentId} style={{ borderBottom: '1px solid #e2e8f0', background: i % 2 === 0 ? 'white' : '#f8fafc' }}>
-                              <td style={{ padding: '8px 12px' }}>
-                                <img src={s.personalPhoto} alt="" style={{ width: '36px', height: '36px', borderRadius: '50%', objectFit: 'cover' }} />
-                              </td>
-                              <td style={{ padding: '8px 12px', fontWeight: '600' }}>{s.fullName}</td>
-                              <td style={{ padding: '8px 12px' }}>{s.nationalId}</td>
-                              <td style={{ padding: '8px 12px' }}>{s.schoolName}</td>
-                              <td style={{ padding: '8px 12px', textAlign: 'center' }}>
-                                <button
-                                  onClick={() => toggleStatus(s.studentId)}
-                                  style={{
-                                    background: attendanceMap[s.studentId] === 'present' ? '#10b981' : '#ef4444',
-                                    color: 'white',
-                                    border: 'none',
-                                    borderRadius: '8px',
-                                    padding: '6px 16px',
-                                    cursor: 'pointer',
-                                    fontSize: '13px',
-                                    fontWeight: '700',
-                                    minWidth: '70px',
-                                    transition: 'background 0.2s'
-                                  }}
-                                >
-                                  {attendanceMap[s.studentId] === 'present' ? '✓ حاضر' : '✗ غائب'}
-                                </button>
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
+                    <div className="edu-list">
+                      {students.map(s => {
+                        const present = attendanceMap[s.studentId] === 'present';
+                        return (
+                          <div className="edu-row edu-att-row" key={s.studentId}>
+                            <img src={s.personalPhoto} alt="" />
+                            <div className="edu-row-main">
+                              <b>{s.fullName}</b>
+                              <small><bdi>{s.nationalId}</bdi> · {s.schoolName}</small>
+                            </div>
+                            <button
+                              type="button"
+                              className={`edu-status ${present ? 'is-present' : 'is-absent'}`}
+                              onClick={() => toggleStatus(s.studentId)}
+                              aria-pressed={present}
+                            >
+                              {present ? tx('✓ حاضر', '✓ Present') : tx('✗ غائب', '✗ Absent')}
+                            </button>
+                          </div>
+                        );
+                      })}
                     </div>
                   ) : (
-                    <div style={{ textAlign: 'center', padding: '30px', color: '#64748b' }}>
-                      لا يوجد طلاب مسجلين
-                    </div>
+                    <div className="edu-empty">{tx('لا يوجد طلاب مسجلين', 'No registered students')}</div>
                   )}
 
                   {/* Auto-save indicator */}
-                  <div style={{ textAlign: 'center', marginBottom: '20px', fontSize: '0.78rem', color: '#22c55e', fontWeight: 600 }}>
-                    ✓ يتم حفظ الحضور تلقائياً عند النقر
-                  </div>
+                  <p className="edu-autosave">
+                    <Icon d={['M20 6 9 17l-5-5']} />
+                    {tx('يتم حفظ الحضور تلقائياً عند النقر', 'Attendance saves automatically on tap')}
+                  </p>
 
                   {/* Download Section */}
                   {students.length > 0 && (
-                    <div style={{
-                      background: '#f5f3ff', borderRadius: '12px', padding: '16px',
-                      border: '1px solid #ddd6fe', display: 'flex', gap: '10px', justifyContent: 'center', flexWrap: 'wrap'
-                    }}>
-                      <button onClick={downloadDayExcel} style={{
-                        background: 'linear-gradient(135deg, #6d28d9, #7c3aed)', color: 'white', border: 'none',
-                        padding: '10px 20px', borderRadius: '10px', fontSize: '13px', fontWeight: '600', cursor: 'pointer',
-                        display: 'inline-flex', alignItems: 'center', gap: '6px'
-                      }}>
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="7 10 12 15 17 10" /><line x1="12" y1="15" x2="12" y2="3" />
-                        </svg>
-                        تحميل هذا اليوم
-                      </button>
-                      <button onClick={() => setShowPeriodModal(true)} style={{
-                        background: 'linear-gradient(135deg, #7c3aed, #8b5cf6)', color: 'white', border: 'none',
-                        padding: '10px 20px', borderRadius: '10px', fontSize: '13px', fontWeight: '600', cursor: 'pointer',
-                        display: 'inline-flex', alignItems: 'center', gap: '6px'
-                      }}>
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                          <rect x="3" y="4" width="18" height="18" rx="2" ry="2" /><line x1="16" y1="2" x2="16" y2="6" /><line x1="8" y1="2" x2="8" y2="6" /><line x1="3" y1="10" x2="21" y2="10" />
-                        </svg>
-                        تحميل فترة
-                      </button>
+                    <div className="edu-downloads">
+                      <p className="edu-kicker" style={{ margin: 0 }}>
+                        <Icon d={EDU_ICONS.download} />
+                        {tx('تحميل الحضور (Excel)', 'Download attendance (Excel)')}
+                      </p>
+                      <div>
+                        <button type="button" className="btn btn-secondary" onClick={downloadDayExcel}>
+                          <Icon d={EDU_ICONS.download} />
+                          {tx('تحميل هذا اليوم', 'This day')}
+                        </button>
+                        <button type="button" className="btn btn-secondary" onClick={() => setShowPeriodModal(true)}>
+                          <Icon d={EDU_ICONS.schedule} />
+                          {tx('تحميل فترة', 'A period')}
+                        </button>
+                      </div>
                     </div>
                   )}
-                </motion.div>
+                </>
               )}
-            </AnimatePresence>
-          </div>
-        </motion.div>
-      </div>
-
-      {/* Period Modal */}
-      <AnimatePresence>
-        {showPeriodModal && (
-          <motion.div
-            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            onClick={() => setShowPeriodModal(false)}
-            style={{
-              position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-              background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center',
-              justifyContent: 'center', zIndex: 1000
-            }}
-          >
-            <motion.div
-              initial={{ scale: 0.8, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.8, opacity: 0 }}
-              onClick={e => e.stopPropagation()}
-              style={{
-                background: 'white', borderRadius: '20px', padding: '32px',
-                maxWidth: '400px', width: '90%', boxShadow: '0 20px 60px rgba(0,0,0,0.3)'
-              }}
-            >
-              <h3 style={{ color: '#1e293b', marginBottom: '20px', textAlign: 'center' }}>تحميل حضور فترة</h3>
-              <div style={{ marginBottom: '16px' }}>
-                <label style={labelStyle}>تاريخ البداية</label>
-                <input type="date" value={periodStart} onChange={e => setPeriodStart(e.target.value)} style={inputStyle} />
-              </div>
-              <div style={{ marginBottom: '24px' }}>
-                <label style={labelStyle}>تاريخ النهاية</label>
-                <input type="date" value={periodEnd} onChange={e => setPeriodEnd(e.target.value)} style={inputStyle} />
-              </div>
-              <div style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
-                <button onClick={downloadPeriodExcel} style={btnPrimary}>
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="7 10 12 15 17 10" /><line x1="12" y1="15" x2="12" y2="3" />
-                  </svg>
-                  تحميل
-                </button>
-                <button onClick={() => setShowPeriodModal(false)} style={{
-                  ...btnPrimary, background: '#64748b', boxShadow: 'none'
-                }}>
-                  إلغاء
-                </button>
-              </div>
             </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      <style>{`
-        @keyframes spin { to { transform: rotate(360deg); } }
-      `}</style>
-    </div>
+          </AnimatePresence>
+        </div>
+      </motion.section>
+    </StudioShell>
   );
 };
 

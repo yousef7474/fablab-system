@@ -7,6 +7,8 @@ import axios from 'axios';
 import useCart, { rememberOrder } from './useCart';
 import useCustomer from './useCustomer';
 import AuthModal from './AuthModal';
+import StudioTopBar from '../shared/StudioTopBar';
+import { useStudioTheme } from '../RegistrationForm/StudioShell';
 import './StorePage.css';
 
 const API_URL = process.env.NODE_ENV === 'production'
@@ -96,6 +98,7 @@ const StorePage = () => {
   const { i18n } = useTranslation();
   const isRTL = i18n.language === 'ar';
   const navigate = useNavigate();
+  const [theme, toggleTheme] = useStudioTheme();
   const cart = useCart();
   const auth = useCustomer();
   const [authOpen, setAuthOpen] = useState(false);
@@ -339,94 +342,72 @@ const StorePage = () => {
   };
 
   return (
-    <div className="st" dir={isRTL ? 'rtl' : 'ltr'}>
+    <div className="rgx st" data-theme={theme} dir={isRTL ? 'rtl' : 'ltr'}>
       {/* Everything under .st-inner gets blurred when the store is closed. */}
       <div className={`st-inner ${storeClosed ? 'is-blurred' : ''}`}>
-      {/* Topbar */}
-      <header className="st-topbar">
-        <div className="st-topbar-inner">
-          <button className="st-topbar-brand" onClick={() => navigate('/register')} type="button">
-            <img src="/logo.png" alt="" className="st-topbar-logo" />
-            <div className="st-topbar-titles">
-              <span className="st-topbar-title">{isRTL ? 'فاب لاب الأحساء' : 'FabLab Al-Ahsa'}</span>
-              <span className="st-topbar-sub">{isRTL ? 'المتجر' : 'Store'}</span>
-            </div>
+      <StudioTopBar
+        isRTL={isRTL}
+        theme={theme}
+        onToggleTheme={toggleTheme}
+        subtitle={isRTL ? 'المتجر' : 'Store'}
+        onBrand={() => navigate('/register')}
+        end={(
+          <button className="rgx-tool is-cta st-cart-tool" type="button" onClick={() => setDrawer(true)} title={isRTL ? 'سلة المشتريات' : 'Cart'}>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/>
+              <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/>
+            </svg>
+            <span>{isRTL ? 'السلة' : 'Cart'}</span>
+            {cart.count > 0 && <b className="st-cart-badge">{cart.count}</b>}
           </button>
-          <div className="st-topbar-actions">
-            <button
-              type="button"
-              className="st-lang-btn"
-              onClick={() => i18n.changeLanguage(isRTL ? 'en' : 'ar')}
-              title={isRTL ? 'English' : 'العربية'}
-            >
-              {isRTL ? 'EN' : 'ع'}
-            </button>
-            <button className="st-sidebar-toggle" type="button" onClick={() => setSidebarOpen(true)} title={isRTL ? 'التصنيفات' : 'Categories'}>
+        )}
+      >
+        <button className="rgx-tool" type="button" onClick={() => navigate('/store/my-orders')} title={isRTL ? 'طلباتي' : 'My Orders'}>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/>
+          </svg>
+          <span>{isRTL ? 'طلباتي' : 'My Orders'}</span>
+        </button>
+        {auth.customer ? (
+          <div className="st-user-chip">
+            <span className="st-user-avatar">{(auth.customer.name || '?')[0].toUpperCase()}</span>
+            <span className="st-user-name">{auth.customer.name}</span>
+            <button type="button" className="st-user-logout" onClick={() => { auth.logout(); toast.info(isRTL ? 'تم تسجيل الخروج' : 'Signed out'); }} title={isRTL ? 'خروج' : 'Sign out'}>
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/>
+                <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/>
               </svg>
-            </button>
-            <button className="st-topbar-link" type="button" onClick={() => navigate('/store/my-orders')} title={isRTL ? 'طلباتي' : 'My Orders'}>
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/>
-              </svg>
-              <span>{isRTL ? 'طلباتي' : 'My Orders'}</span>
-            </button>
-            {auth.customer ? (
-              <div className="st-user-chip">
-                <span className="st-user-avatar">{(auth.customer.name || '?')[0].toUpperCase()}</span>
-                <span className="st-user-name">{auth.customer.name}</span>
-                <button type="button" className="st-user-logout" onClick={() => { auth.logout(); toast.info(isRTL ? 'تم تسجيل الخروج' : 'Signed out'); }} title={isRTL ? 'خروج' : 'Sign out'}>
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/>
-                  </svg>
-                </button>
-              </div>
-            ) : (
-              <button type="button" className="st-signin-btn" onClick={() => setAuthOpen(true)}>
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/>
-                </svg>
-                <span>{isRTL ? 'تسجيل الدخول' : 'Sign In'}</span>
-              </button>
-            )}
-            <button className="st-topbar-back" type="button" onClick={() => navigate('/register')}>
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
-                <polyline points="9 22 9 12 15 12 15 22"/>
-              </svg>
-              <span>{isRTL ? 'الرئيسية' : 'Home'}</span>
-            </button>
-            <button className="st-cart-btn" type="button" onClick={() => setDrawer(true)}>
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/>
-                <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/>
-              </svg>
-              {cart.count > 0 && <span className="st-cart-badge">{cart.count}</span>}
             </button>
           </div>
-        </div>
-      </header>
+        ) : (
+          <button type="button" className="rgx-tool" onClick={() => setAuthOpen(true)} title={isRTL ? 'تسجيل الدخول' : 'Sign In'}>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/>
+            </svg>
+            <span>{isRTL ? 'تسجيل الدخول' : 'Sign In'}</span>
+          </button>
+        )}
+      </StudioTopBar>
 
       {/* Hero */}
-      <div className="st-hero-wrap">
-        <div className="st-hero-inner">
-          <div className="st-hero-content">
-            <span className="st-hero-eyebrow">{isRTL ? '🛍️ متجر فاب لاب' : '🛍️ FABLAB STORE'}</span>
-            <h1 className="st-hero-title">
-              {isRTL ? 'أدوات، مكونات، ومواد للمبدعين' : 'Tools, Kits & Materials for Makers'}
-            </h1>
-            <p className="st-hero-sub">
-              {isRTL
-                ? 'كل ما تحتاج لتنفيذ مشاريعك في مكان واحد. ادفع نقداً أو بمدى عند الاستلام، أو بتحويل بنكي.'
-                : 'Everything you need for your projects. Pay cash or mada on pickup, or by bank transfer.'}
-            </p>
-            <div className="st-hero-badges">
-              <span className="st-hero-badge">🚚 {isRTL ? 'استلام سريع' : 'Quick pickup'}</span>
-              <span className="st-hero-badge">💳 {isRTL ? 'نقداً · مدى · تحويل' : 'Cash · Mada · Transfer'}</span>
-              <span className="st-hero-badge">✅ {isRTL ? 'ضمان الجودة' : 'Quality guaranteed'}</span>
-            </div>
-          </div>
+      <div className="st-head">
+        <motion.div
+          className="rgx-hero"
+          initial={{ opacity: 0, y: -12 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, ease: [0.2, 0.8, 0.2, 1] }}
+        >
+          <p className="rgx-eyebrow"><i aria-hidden="true" />{isRTL ? 'متجر فاب لاب' : 'FabLab store'}</p>
+          <h1>{isRTL ? <>أدوات، مكونات، ومواد <em>للمبدعين</em></> : <>Tools, kits & materials <em>for makers</em></>}</h1>
+          <p>
+            {isRTL
+              ? 'كل ما تحتاج لتنفيذ مشاريعك في مكان واحد. ادفع نقداً أو بمدى عند الاستلام، أو بتحويل بنكي.'
+              : 'Everything you need for your projects. Pay cash or mada on pickup, or by bank transfer.'}
+          </p>
+        </motion.div>
+        <div className="st-hero-badges">
+          <span className="st-hero-badge">🚚 {isRTL ? 'استلام سريع' : 'Quick pickup'}</span>
+          <span className="st-hero-badge">💳 {isRTL ? 'نقداً · مدى · تحويل' : 'Cash · Mada · Transfer'}</span>
+          <span className="st-hero-badge">✅ {isRTL ? 'ضمان الجودة' : 'Quality guaranteed'}</span>
         </div>
       </div>
 
@@ -479,6 +460,12 @@ const StorePage = () => {
         <main className="st-main">
           {/* Search + heading */}
           <div className="st-toolbar">
+            <button className="st-sidebar-toggle" type="button" onClick={() => setSidebarOpen(true)} title={isRTL ? 'التصنيفات' : 'Categories'}>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/>
+              </svg>
+              <span>{isRTL ? 'التصنيفات' : 'Categories'}</span>
+            </button>
             <div className="st-toolbar-title">
               <h2>
                 {category === 'all' ? (isRTL ? 'جميع المنتجات' : 'All Products')
@@ -958,10 +945,10 @@ const StorePage = () => {
                 {storeCloseReason || (isRTL ? 'الطلبات الجديدة معطّلة حالياً — سنعود قريباً' : 'New orders are disabled — we will be back soon')}
               </p>
               <div className="st-closed-actions">
-                <button type="button" onClick={() => navigate('/register')}>
-                  {isRTL ? 'العودة للصفحة الرئيسية' : 'Back to home'}
+                <button type="button" className="btn btn-primary" onClick={() => navigate('/register')}>
+                  {isRTL ? 'كل الخدمات' : 'All services'}
                 </button>
-                <button type="button" className="ghost" onClick={() => navigate('/store/my-orders')}>
+                <button type="button" className="btn btn-secondary" onClick={() => navigate('/store/my-orders')}>
                   {isRTL ? 'عرض طلباتي السابقة' : 'View my past orders'}
                 </button>
               </div>

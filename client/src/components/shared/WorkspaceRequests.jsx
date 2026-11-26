@@ -3,6 +3,8 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { toast } from 'react-toastify';
 import api from '../../config/api';
 import WorkspaceDayLogs from './WorkspaceDayLogs';
+import WorkspaceArchive from './WorkspaceArchive';
+import { WorkspaceEditModal, WorkspaceExtendModal } from './WorkspaceEditors';
 import { printWorkspaceBanner, printWorkspaceCards } from './workspacePrint';
 import './WorkspaceRequests.css';
 
@@ -58,6 +60,9 @@ const WorkspaceRequests = ({ isRTL }) => {
   const [busy, setBusy] = useState(false);
   const [open, setOpen] = useState(true);
   const [logsFor, setLogsFor] = useState(null);
+  const [editing, setEditing] = useState(null);
+  const [extending, setExtending] = useState(null);
+  const [view, setView] = useState('requests'); // requests | archive
   const L = (pair) => (isRTL ? pair[0] : pair[1]);
 
   const load = useCallback(async () => {
@@ -126,7 +131,9 @@ const WorkspaceRequests = ({ isRTL }) => {
   };
 
   const remove = async (r) => {
-    if (!window.confirm(isRTL ? `حذف الطلب ${r.requestNumber} نهائيًا؟ لا يمكن التراجع.` : `Delete request ${r.requestNumber} for good? This can't be undone.`)) return;
+    if (!window.confirm(isRTL
+      ? `حذف الطلب ${r.requestNumber}؟ سيختفي من القائمة وتتحرر المساحة، ويبقى في أرشيف الأشخاص.`
+      : `Delete request ${r.requestNumber}? It leaves the list and frees the workspace, but stays in the people archive.`)) return;
     try {
       await api.delete(`/workspace-requests/${r.requestId}`);
       toast.success(isRTL ? 'تم حذف الطلب' : 'Request deleted');
@@ -187,6 +194,16 @@ const WorkspaceRequests = ({ isRTL }) => {
             transition={{ duration: 0.25 }}
             className="wsr-body"
           >
+            <div className="wsr-views" role="tablist">
+              <button type="button" role="tab" aria-selected={view === 'requests'} className={view === 'requests' ? 'on' : ''} onClick={() => setView('requests')}>
+                {isRTL ? 'الطلبات' : 'Requests'}
+              </button>
+              <button type="button" role="tab" aria-selected={view === 'archive'} className={view === 'archive' ? 'on' : ''} onClick={() => setView('archive')}>
+                {isRTL ? 'أرشيف الأشخاص' : 'People archive'}
+              </button>
+            </div>
+
+            {view === 'archive' ? <WorkspaceArchive isRTL={isRTL} /> : (<>
             {/* the 8 workspaces today */}
             <div className="wsr-board">
               {board.map(u => (
@@ -273,6 +290,19 @@ const WorkspaceRequests = ({ isRTL }) => {
                             : `Clashes with accepted request ${clash.requestNumber} (${clash.fullName}) on the same workspace`}
                         </p>
                       )}
+                      {Array.isArray(r.history) && r.history.filter(h => h.action !== 'deleted').length > 0 && (
+                        <ul className="wsr-history">
+                          {r.history.filter(h => h.action !== 'deleted').slice(-3).map((h, k) => (
+                            <li key={k}>
+                              {h.action === 'extended'
+                                ? (isRTL ? `مُدّد حتى ${h.to?.endDate} (${h.to?.startTime}–${h.to?.endTime})` : `Extended to ${h.to?.endDate} (${h.to?.startTime}–${h.to?.endTime})`)
+                                : (isRTL ? 'عُدّلت البيانات' : 'Details edited')}
+                              {' · '}{h.by || '—'}{' · '}{new Date(h.at).toLocaleDateString(isRTL ? 'ar-SA-u-ca-gregory-nu-latn' : 'en-GB')}
+                              {h.note ? ` — ${h.note}` : ''}
+                            </li>
+                          ))}
+                        </ul>
+                      )}
                       {r.status !== 'pending' && (
                         <p className="wsr-decided">
                           {isRTL ? 'القرار: ' : 'Decision: '}{r.decidedBy || '—'}
@@ -308,7 +338,11 @@ const WorkspaceRequests = ({ isRTL }) => {
                             {isRTL ? 'رفض' : 'Reject'}
                           </button>
                         )}
-                        <button type="button" className="wsr-btn ghost" onClick={() => remove(r)}>{isRTL ? 'حذف' : 'Delete'}</button>
+                        <button type="button" className="wsr-btn ghost" onClick={() => setEditing(r)}>{isRTL ? 'تعديل' : 'Edit'}</button>
+                        {r.status !== 'rejected' && (
+                          <button type="button" className="wsr-btn ghost" onClick={() => setExtending(r)}>{isRTL ? 'تمديد' : 'Extend'}</button>
+                        )}
+                        <button type="button" className="wsr-btn ghost danger" onClick={() => remove(r)}>{isRTL ? 'حذف' : 'Delete'}</button>
                         <span className="wsr-when">{new Date(r.createdAt).toLocaleString(isRTL ? 'ar-SA-u-ca-gregory-nu-latn' : 'en-GB', { dateStyle: 'medium', timeStyle: 'short' })}</span>
                       </div>
                     </article>
@@ -316,8 +350,16 @@ const WorkspaceRequests = ({ isRTL }) => {
                 })}
               </div>
             )}
+            </>)}
           </motion.div>
         )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {editing && <WorkspaceEditModal request={editing} isRTL={isRTL} onClose={() => setEditing(null)} onSaved={load} />}
+      </AnimatePresence>
+      <AnimatePresence>
+        {extending && <WorkspaceExtendModal request={extending} isRTL={isRTL} onClose={() => setExtending(null)} onSaved={load} />}
       </AnimatePresence>
 
       <AnimatePresence>

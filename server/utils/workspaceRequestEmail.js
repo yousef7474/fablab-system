@@ -94,4 +94,15 @@ const sendDecision = (r) => {
     ));
 };
 
-module.exports = { sendReceived, sendOpsNotice, sendDecision, unitLabel };
+// To the leader: the booking was extended or its details changed.
+const sendUpdated = (r, kind) => _send(r.email,
+  kind === 'extended' ? `تم تمديد حجز مساحة العمل — ${r.requestNumber}` : `تم تحديث حجز مساحة العمل — ${r.requestNumber}`,
+  _shell('linear-gradient(135deg,#1f3d63,#2A4F7C)', 'FABLAB الأحساء · مساحات العمل',
+    kind === 'extended' ? 'تم تمديد حجزك ✓' : 'تم تحديث بيانات حجزك',
+    `<p style="margin:0 0 14px">مرحبًا <b>${_esc(r.fullName)}</b>،</p>
+     <p style="margin:0 0 14px">${kind === 'extended'
+       ? 'تم تمديد فترة حجز مساحة العمل. هذه بيانات الحجز بعد التمديد:'
+       : 'تم تحديث بيانات حجز مساحة العمل. هذه البيانات المحدّثة:'}</p>
+     ${_details(r)}`));
+
+module.exports = { sendReceived, sendOpsNotice, sendDecision, sendUpdated, unitLabel };

@@ -106,6 +106,7 @@ const UserLookup = ({ onUserFound, onNewUser, theme, guidedChoice, onGuideApply,
 
   return (
     <div className="user-lookup">
+      <div className="ul-start">
       <motion.div
         initial={{ scale: 0.8, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
@@ -243,6 +244,9 @@ const UserLookup = ({ onUserFound, onNewUser, theme, guidedChoice, onGuideApply,
         </button>
       </motion.div>
 
+      </div>
+
+      <div className="ul-services">
       {/* Divider */}
       <motion.div
         className="service-divider"
@@ -444,31 +448,89 @@ const UserLookup = ({ onUserFound, onNewUser, theme, guidedChoice, onGuideApply,
           <div className="service-card-arrow" aria-hidden="true">{isRTL ? '←' : '→'}</div>
         </button>
 
-        {/* Education */}
-        <button
-          type="button"
-          className={`service-card service-card--education${showEducationOptions ? ' is-active' : ''}`}
-          onClick={() => setShowEducationOptions(!showEducationOptions)}
-          aria-expanded={showEducationOptions}
-        >
-          <div className="service-card-icon">
-            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/>
-              <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/>
-            </svg>
-          </div>
-          <div className="service-card-body">
-            <div className="service-card-title">{isRTL ? 'التعليم' : 'Education'}</div>
-            <div className="service-card-description">
-              {isRTL ? 'تسجيل المعلمين والطلاب وإدارة الحضور' : 'Teacher and student registration, attendance management'}
+        {/* Education — its three options open right under the tile */}
+        <div className={`service-card-group${showEducationOptions ? ' is-open' : ''}`}>
+          <button
+            type="button"
+            className={`service-card service-card--education${showEducationOptions ? ' is-active' : ''}`}
+            onClick={() => setShowEducationOptions(!showEducationOptions)}
+            aria-expanded={showEducationOptions}
+          >
+            <div className="service-card-icon">
+              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/>
+                <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/>
+              </svg>
             </div>
-          </div>
-          <div className="service-card-arrow" aria-hidden="true">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ transform: showEducationOptions ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.3s' }}>
-              <polyline points="6 9 12 15 18 9"/>
-            </svg>
-          </div>
-        </button>
+            <div className="service-card-body">
+              <div className="service-card-title">{isRTL ? 'التعليم' : 'Education'}</div>
+              <div className="service-card-description">
+                {isRTL ? 'تسجيل المعلمين والطلاب وإدارة الحضور' : 'Teacher and student registration, attendance management'}
+              </div>
+            </div>
+            <div className="service-card-arrow" aria-hidden="true">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ transform: showEducationOptions ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.3s' }}>
+                <polyline points="6 9 12 15 18 9"/>
+              </svg>
+            </div>
+          </button>
+          {/* Education sub-options revealed when Education card is clicked */}
+          <AnimatePresence>
+            {showEducationOptions && (
+              <motion.div
+                className="service-suboptions"
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: 'auto' }}
+                exit={{ opacity: 0, height: 0 }}
+              >
+                <motion.button
+                  type="button"
+                  className="service-suboption"
+                  initial={{ opacity: 0, y: -10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.05 }}
+                  onClick={() => openEducationModal('/educate')}
+                >
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+                    <circle cx="12" cy="7" r="4"/>
+                  </svg>
+                  {isRTL ? 'تسجيل المعلم' : 'Teacher Registration'}
+                </motion.button>
+                <motion.button
+                  type="button"
+                  className="service-suboption"
+                  initial={{ opacity: 0, y: -10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.1 }}
+                  onClick={() => openEducationModal('/educate/students')}
+                >
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                    <circle cx="9" cy="7" r="4"/>
+                    <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+                    <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+                  </svg>
+                  {isRTL ? 'تسجيل الطلاب' : 'Student Registration'}
+                </motion.button>
+                <motion.button
+                  type="button"
+                  className="service-suboption"
+                  initial={{ opacity: 0, y: -10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.15 }}
+                  onClick={() => openEducationModal('/educate/attendance')}
+                >
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M9 11l3 3L22 4"/>
+                    <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>
+                  </svg>
+                  {isRTL ? 'حضور الطلاب' : 'Student Attendance'}
+                </motion.button>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
 
         {/* Elite */}
         <button
@@ -490,63 +552,8 @@ const UserLookup = ({ onUserFound, onNewUser, theme, guidedChoice, onGuideApply,
           <div className="service-card-arrow" aria-hidden="true">{isRTL ? '←' : '→'}</div>
         </button>
       </motion.div>
+      </div>
 
-      {/* Education sub-options revealed when Education card is clicked */}
-      <AnimatePresence>
-        {showEducationOptions && (
-          <motion.div
-            className="service-suboptions"
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: 'auto' }}
-            exit={{ opacity: 0, height: 0 }}
-          >
-            <motion.button
-              type="button"
-              className="service-suboption"
-              initial={{ opacity: 0, y: -10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.05 }}
-              onClick={() => openEducationModal('/educate')}
-            >
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
-                <circle cx="12" cy="7" r="4"/>
-              </svg>
-              {isRTL ? 'تسجيل المعلم' : 'Teacher Registration'}
-            </motion.button>
-            <motion.button
-              type="button"
-              className="service-suboption"
-              initial={{ opacity: 0, y: -10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.1 }}
-              onClick={() => openEducationModal('/educate/students')}
-            >
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
-                <circle cx="9" cy="7" r="4"/>
-                <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
-                <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
-              </svg>
-              {isRTL ? 'تسجيل الطلاب' : 'Student Registration'}
-            </motion.button>
-            <motion.button
-              type="button"
-              className="service-suboption"
-              initial={{ opacity: 0, y: -10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.15 }}
-              onClick={() => openEducationModal('/educate/attendance')}
-            >
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M9 11l3 3L22 4"/>
-                <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>
-              </svg>
-              {isRTL ? 'حضور الطلاب' : 'Student Attendance'}
-            </motion.button>
-          </motion.div>
-        )}
-      </AnimatePresence>
 
       {/* ============================================================
           Contact strip — three clickable actions (WhatsApp, email,

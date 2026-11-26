@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import './RegisterStudio.css';
 
@@ -36,7 +37,8 @@ const CHECK = ['M20 6 9 17l-5-5'];
 // The page frame: the navy rail (brand, then the stepper while
 // registering) beside the main column (tools + the card). Below 1100px
 // the rail folds into a compact header with a segmented progress bar.
-const StudioShell = ({ isRTL, theme, onToggleTheme, onHome, steps, activeStep, onJump, extra, intro, subtitle, children }) => {
+// `servicesHref`: shows a «الخدمات» icon back to the services list (e.g. '/register').
+const StudioShell = ({ isRTL, theme, onToggleTheme, onHome, steps, activeStep, onJump, extra, intro, subtitle, servicesHref, railExtra, children }) => {
   const { i18n } = useTranslation();
   const inSteps = steps && activeStep >= 0;
   const total = steps ? steps.length : 0;
@@ -112,6 +114,7 @@ const StudioShell = ({ isRTL, theme, onToggleTheme, onHome, steps, activeStep, o
                   </motion.li>
                 ))}
               </ul>
+              {railExtra}
             </div>
           )}
 
@@ -129,6 +132,12 @@ const StudioShell = ({ isRTL, theme, onToggleTheme, onHome, steps, activeStep, o
             </span>
           </a>
           <div className="rgx-tools">
+            {servicesHref && (
+              <Link className="rgx-tool" to={servicesHref} title={isRTL ? 'كل الخدمات' : 'All services'}>
+                <Icon d={['M3 3h7v7H3z', 'M14 3h7v7h-7z', 'M14 14h7v7h-7z', 'M3 14h7v7H3z']} />
+                <span>{isRTL ? 'الخدمات' : 'Services'}</span>
+              </Link>
+            )}
             {inSteps && onHome && (
               <button type="button" className="rgx-tool" onClick={onHome} title={isRTL ? 'البدء من جديد' : 'Start over'}>
                 <Icon d={['M3 12a9 9 0 1 0 3-6.7', 'M3 4v5h5']} />

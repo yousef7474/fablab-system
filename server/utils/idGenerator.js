@@ -61,17 +61,19 @@ const generateEducationId = async () => {
 };
 
 // Generate unique Student ID in format S#00001
+// Highest S# number in use. Taken by value, not by newest row: a bulk insert
+// gives every row the same createdAt, so "newest" can be any of them.
+const maxStudentNumber = async (transaction) => {
+  const rows = await EducationStudent.sequelize.query(
+    `SELECT MAX(CAST(SUBSTRING("studentId" FROM 3) AS INTEGER)) AS n
+       FROM education_students WHERE "studentId" ~ '^S#[0-9]+$'`,
+    { type: EducationStudent.sequelize.QueryTypes.SELECT, transaction }
+  );
+  return Number(rows[0]?.n) || 0;
+};
+
 const generateStudentId = async () => {
-  const lastStudent = await EducationStudent.findOne({
-    order: [['createdAt', 'DESC']]
-  });
-
-  let newIdNumber = 1;
-  if (lastStudent && lastStudent.studentId) {
-    const lastIdNumber = parseInt(lastStudent.studentId.replace('S#', ''));
-    newIdNumber = lastIdNumber + 1;
-  }
-
+  const newIdNumber = (await maxStudentNumber()) + 1;
   return `S#${String(newIdNumber).padStart(5, '0')}`;
 };
 
@@ -80,5 +82,6 @@ module.exports = {
   generateRegistrationId,
   generateBorrowingId,
   generateEducationId,
-  generateStudentId
+  generateStudentId,
+  maxStudentNumber
 };

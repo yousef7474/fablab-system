@@ -1,9 +1,21 @@
 import React, { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'react-toastify';
 import api from '../../config/api';
+import StudioShell, { useStudioTheme } from '../RegistrationForm/StudioShell';
+import { ELITE_INTRO } from './eliteIntro';
 import './EliteRegistration.css';
+import './EliteStudio.css';
+
+// Rail icons for the four registration steps.
+const STEP_ICONS = [
+  ['M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2', 'M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8z'],
+  ['M2 5h20v14H2z', 'M6 9h5', 'M6 13h8', 'M16 9h2'],
+  ['M5 11h14v10H5z', 'M8 11V7a4 4 0 0 1 8 0v4'],
+  ['M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z', 'M14 2v6h6', 'M16 13H8', 'M16 17H8']
+];
 
 const EliteRegistrationForm = () => {
   const navigate = useNavigate();
@@ -11,7 +23,9 @@ const EliteRegistrationForm = () => {
   const [step, setStep] = useState(1);
   const [showSuccess, setShowSuccess] = useState(false);
   const [createdUser, setCreatedUser] = useState(null);
-  const [language, setLanguage] = useState('ar');
+  const { i18n } = useTranslation();
+  const language = i18n.language === 'en' ? 'en' : 'ar';
+  const [theme, toggleTheme] = useStudioTheme();
   const [termsAccepted, setTermsAccepted] = useState(false);
   const [showTermsModal, setShowTermsModal] = useState(false);
   const isRTL = language === 'ar';
@@ -347,6 +361,13 @@ Support percentage is determined based on the member's category.`
   };
 
   const text = t[language];
+  const shell = {
+    isRTL, theme, onToggleTheme: toggleTheme, servicesHref: '/register',
+    subtitle: isRTL ? 'برنامج النخبة' : 'Elite program',
+    intro: ELITE_INTRO(isRTL)
+  };
+  const steps = [text.step1, text.step2, text.step3, text.step4]
+    .map((label, i) => ({ key: `s${i + 1}`, label, icon: STEP_ICONS[i] }));
 
   const [formData, setFormData] = useState({
     firstName: '',
@@ -476,19 +497,9 @@ Support percentage is determined based on the member's category.`
 
   if (showSuccess) {
     return (
-      <div className="elite-page" dir={isRTL ? 'rtl' : 'ltr'}>
-        <div className="elite-bg-pattern"></div>
-        {/* Animated Background Orbs */}
-        <div className="elite-floating-orbs">
-          <div className="elite-orb"></div>
-          <div className="elite-orb"></div>
-          <div className="elite-orb"></div>
-          <div className="elite-orb"></div>
-          <div className="elite-orb"></div>
-        </div>
-        <div className="elite-container">
+      <StudioShell {...shell}>
           <motion.div
-            className="elite-success-card"
+            className="rgx-card elx elx-success"
             initial={{ scale: 0.8, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
           >
@@ -514,7 +525,7 @@ Support percentage is determined based on the member's category.`
             )}
             <div className="success-buttons">
               <button
-                className="elite-btn primary"
+                className="btn btn-primary"
                 onClick={() => navigate('/elite/login')}
               >
                 {text.goToLogin}
@@ -525,109 +536,22 @@ Support percentage is determined based on the member's category.`
                 </svg>
               </button>
               <button
-                className="elite-btn secondary"
+                className="btn btn-secondary"
                 onClick={() => navigate('/')}
               >
                 {text.backHome}
               </button>
             </div>
           </motion.div>
-        </div>
-      </div>
+      </StudioShell>
     );
   }
 
   return (
-    <div className="elite-page" dir={isRTL ? 'rtl' : 'ltr'}>
-      <div className="elite-bg-pattern"></div>
-
-      {/* Animated Background Orbs */}
-      <div className="elite-floating-orbs">
-        <div className="elite-orb"></div>
-        <div className="elite-orb"></div>
-        <div className="elite-orb"></div>
-        <div className="elite-orb"></div>
-        <div className="elite-orb"></div>
-        <div className="elite-orb"></div>
-      </div>
-
-      {/* Animated Stars */}
-      <div className="elite-stars">
-        {[...Array(20)].map((_, i) => (
-          <div key={i} className="elite-star" style={{
-            left: `${Math.random() * 100}%`,
-            top: `${Math.random() * 100}%`,
-            animationDelay: `${Math.random() * 3}s`
-          }}></div>
-        ))}
-      </div>
-
-      {/* Language Switch */}
-      <motion.div
-        className="elite-language-switch"
-        initial={{ opacity: 0, y: -20 }}
-        animate={{ opacity: 1, y: 0 }}
-      >
-        <button
-          className={`lang-btn ${language === 'ar' ? 'active' : ''}`}
-          onClick={() => setLanguage('ar')}
-        >
-          عربي
-        </button>
-        <button
-          className={`lang-btn ${language === 'en' ? 'active' : ''}`}
-          onClick={() => setLanguage('en')}
-        >
-          EN
-        </button>
-      </motion.div>
-
-      <div className="elite-container">
-        {/* Header */}
-        <motion.div
-          className="elite-header"
-          initial={{ y: -30, opacity: 0 }}
-          animate={{ y: 0, opacity: 1 }}
-        >
-          <div className="elite-logo">
-            <motion.svg
-              width="60" height="60" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
-              animate={{ rotate: [0, 5, -5, 0] }}
-              transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
-            >
-              <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
-            </motion.svg>
-          </div>
-          <h1 className="elite-title">{text.elite}</h1>
-          <p className="elite-subtitle">{text.newAccount}</p>
-        </motion.div>
-
-        {/* Progress Steps */}
-        <div className="elite-progress elite-progress-4">
-          <div className={`progress-step ${step >= 1 ? 'active' : ''} ${step > 1 ? 'completed' : ''}`}>
-            <div className="step-number">{step > 1 ? '✓' : '1'}</div>
-            <span>{text.step1}</span>
-          </div>
-          <div className="progress-line"></div>
-          <div className={`progress-step ${step >= 2 ? 'active' : ''} ${step > 2 ? 'completed' : ''}`}>
-            <div className="step-number">{step > 2 ? '✓' : '2'}</div>
-            <span>{text.step2}</span>
-          </div>
-          <div className="progress-line"></div>
-          <div className={`progress-step ${step >= 3 ? 'active' : ''} ${step > 3 ? 'completed' : ''}`}>
-            <div className="step-number">{step > 3 ? '✓' : '3'}</div>
-            <span>{text.step3}</span>
-          </div>
-          <div className="progress-line"></div>
-          <div className={`progress-step ${step >= 4 ? 'active' : ''}`}>
-            <div className="step-number">4</div>
-            <span>{text.step4}</span>
-          </div>
-        </div>
-
+    <StudioShell {...shell} steps={steps} activeStep={step - 1} onJump={(i) => setStep(i + 1)}>
         {/* Form Card */}
         <motion.div
-          className="elite-form-card"
+          className="rgx-card elx"
           initial={{ y: 30, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
           transition={{ delay: 0.2 }}
@@ -983,7 +907,7 @@ Support percentage is determined based on the member's category.`
           <div className="form-navigation">
             {step > 1 && (
               <button
-                className="elite-btn secondary"
+                className="btn btn-secondary"
                 onClick={() => setStep(step - 1)}
               >
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -995,7 +919,7 @@ Support percentage is determined based on the member's category.`
 
             {step < 4 ? (
               <button
-                className="elite-btn primary"
+                className="btn btn-primary"
                 onClick={handleNext}
               >
                 {text.next}
@@ -1005,7 +929,7 @@ Support percentage is determined based on the member's category.`
               </button>
             ) : (
               <button
-                className="elite-btn primary"
+                className="btn btn-primary"
                 onClick={handleSubmit}
                 disabled={loading || !termsAccepted}
               >
@@ -1026,17 +950,9 @@ Support percentage is determined based on the member's category.`
         </motion.div>
 
         {/* Already have account - Login Link */}
-        <motion.div
-          className="elite-login-prompt"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.4 }}
-        >
+        <div className="elx-alt">
           <span>{text.alreadyHaveAccount}</span>
-          <button
-            className="elite-login-link-btn"
-            onClick={() => navigate('/elite/login')}
-          >
+          <button type="button" className="btn btn-secondary" onClick={() => navigate('/elite/login')}>
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/>
               <polyline points="10 17 15 12 10 7"/>
@@ -1044,23 +960,7 @@ Support percentage is determined based on the member's category.`
             </svg>
             {text.loginHere}
           </button>
-        </motion.div>
-
-        {/* Back to Home */}
-        <motion.button
-          className="back-home-btn"
-          onClick={() => navigate('/')}
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.5 }}
-        >
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
-            <polyline points="9 22 9 12 15 12 15 22"/>
-          </svg>
-          {text.backHome}
-        </motion.button>
-      </div>
+        </div>
 
       {/* Terms and Conditions Modal */}
       <AnimatePresence>
@@ -1107,7 +1007,7 @@ Support percentage is determined based on the member's category.`
 
               <div className="terms-modal-footer">
                 <button
-                  className="elite-btn primary"
+                  className="btn btn-primary"
                   onClick={() => {
                     setTermsAccepted(true);
                     setShowTermsModal(false);
@@ -1116,7 +1016,7 @@ Support percentage is determined based on the member's category.`
                   {text.acceptTerms}
                 </button>
                 <button
-                  className="elite-btn secondary"
+                  className="btn btn-secondary"
                   onClick={() => setShowTermsModal(false)}
                 >
                   {text.close}
@@ -1126,7 +1026,7 @@ Support percentage is determined based on the member's category.`
           </motion.div>
         )}
       </AnimatePresence>
-    </div>
+    </StudioShell>
   );
 };
 

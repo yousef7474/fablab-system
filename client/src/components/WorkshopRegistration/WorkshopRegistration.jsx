@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'react-toastify';
 import axios from 'axios';
 import EducationTeacherForm from './EducationTeacherForm';
+import StudioShell, { Icon, useStudioTheme } from '../RegistrationForm/StudioShell';
 import './WorkshopRegistration.css';
 
 const API_URL = process.env.NODE_ENV === 'production' ? '/api' : (process.env.REACT_APP_API_URL || 'http://localhost:5000/api');
@@ -28,8 +29,41 @@ const _clearDraft = () => {
   try { localStorage.removeItem(DRAFT_STORAGE_KEY); } catch {}
 };
 
+// Stroke icons (24-unit grid) used on this page.
+const IC = {
+  user: ['M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2', 'M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8z'],
+  userPlus: ['M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2', 'M8.5 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8z', 'M20 8v6', 'M23 11h-6'],
+  users: ['M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2', 'M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8z', 'M23 21v-2a4 4 0 0 0-3-3.87', 'M16 3.13a4 4 0 0 1 0 7.75'],
+  cap: ['M22 10L12 5 2 10l10 5 10-5z', 'M6 12v5c3 2 9 2 12 0v-5'],
+  card: ['M2 5h20v14H2z', 'M2 10h20'],
+  mada: ['M2 5h20v14H2z', 'M2 10h20', 'M6 15h4'],
+  bank: ['M3 21h18', 'M3 10h18', 'M5 6l7-3 7 3', 'M4 10v11', 'M20 10v11', 'M8 14v3', 'M12 14v3', 'M16 14v3'],
+  badge: ['M12 15a7 7 0 1 0 0-14 7 7 0 0 0 0 14z', 'M8.21 13.89 7 23l5-3 5 3-1.21-9.12'],
+  search: ['M11 19a8 8 0 1 0 0-16 8 8 0 0 0 0 16z', 'M21 21l-4.35-4.35'],
+  check: ['M20 6 9 17l-5-5'],
+  cal: ['M5 4h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z', 'M16 2v4', 'M8 2v4', 'M3 10h18'],
+  clock: ['M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20z', 'M12 6v6l4 2'],
+  timer: ['M10 2h4', 'M12 14l3-3', 'M12 22a8 8 0 1 0 0-16 8 8 0 0 0 0 16z'],
+  tag: ['M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z', 'M7 7h.01'],
+  copy: ['M9 9h11v11H9z', 'M5 15H4a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v1'],
+  upload: ['M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4', 'M17 8l-5-5-5 5', 'M12 3v12'],
+  camera: ['M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z', 'M12 17a4 4 0 1 0 0-8 4 4 0 0 0 0 8z'],
+  idcard: ['M3 5h18a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1z', 'M9 13a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5z', 'M14 10h4', 'M14 14h4', 'M6 17c.6-1.6 1.8-2.5 3-2.5s2.4.9 3 2.5'],
+  bag: ['M4 10a4 4 0 0 1 4-4h8a4 4 0 0 1 4 4v10a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2z', 'M9 6V4a3 3 0 0 1 6 0v2', 'M8 14h8'],
+  board: ['M2 3h20', 'M21 3v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V3', 'M7 21l5-5 5 5'],
+  pin: ['M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z', 'M12 13a3 3 0 1 0 0-6 3 3 0 0 0 0 6z'],
+  alert: ['M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z', 'M12 9v4', 'M12 17h.01'],
+  pause: ['M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20z', 'M10 15V9', 'M14 15V9'],
+  gift: ['M20 12v10H4V12', 'M2 7h20v5H2z', 'M12 22V7', 'M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z', 'M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z'],
+  home: ['M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z', 'M9 22V12h6v10'],
+  grid: ['M3 3h7v7H3z', 'M14 3h7v7h-7z', 'M14 14h7v7h-7z', 'M3 14h7v7H3z'],
+  left: ['M19 12H5', 'M12 19l-7-7 7-7'],
+  right: ['M5 12h14', 'M12 5l7 7-7 7']
+};
+
 const WorkshopRegistration = () => {
   const navigate = useNavigate();
+  const [theme, toggleTheme] = useStudioTheme();
   const { workshopId: routeWorkshopId } = useParams();
   const { i18n } = useTranslation();
   const isRTL = i18n.language === 'ar';
@@ -210,10 +244,10 @@ const WorkshopRegistration = () => {
           : `Coupon applied — ${res.data.percent}% off`);
       } else {
         setCoupon(null);
-        toast.error(res.data?.messageAr || res.data?.message || (isRTL ? 'كود غير صالح' : 'Invalid code'));
+        toast.error((isRTL ? res.data?.messageAr : res.data?.message) || res.data?.messageAr || (isRTL ? 'كود غير صالح' : 'Invalid code'));
       }
     } catch (err) {
-      const msg = err?.response?.data?.messageAr || err?.response?.data?.message || (isRTL ? 'فشل التحقق' : 'Validation failed');
+      const msg = (isRTL ? err?.response?.data?.messageAr : err?.response?.data?.message) || err?.response?.data?.messageAr || (isRTL ? 'فشل التحقق' : 'Validation failed');
       toast.error(msg);
     } finally {
       setCouponApplying(false);
@@ -351,11 +385,11 @@ const WorkshopRegistration = () => {
       const studentAge = parseInt(form.age);
       if (!isNaN(studentAge)) {
         if (sw.minAge && studentAge < sw.minAge) {
-          window.alert(isRTL ? `العمر يجب أن يكون بين ${sw.minAge} و ${sw.maxAge || '∞'} سنة. عمرك: ${studentAge}` : `Age must be ${sw.minAge}-${sw.maxAge || '∞'}. Your age: ${studentAge}`);
+          toast.error(isRTL ? `العمر يجب أن يكون بين ${sw.minAge} و ${sw.maxAge || '∞'} سنة. عمرك: ${studentAge}` : `Age must be ${sw.minAge}-${sw.maxAge || '∞'}. Your age: ${studentAge}`);
           return;
         }
         if (sw.maxAge && studentAge > sw.maxAge) {
-          window.alert(isRTL ? `العمر يجب أن يكون بين ${sw.minAge || 0} و ${sw.maxAge} سنة. عمرك: ${studentAge}` : `Age must be ${sw.minAge || 0}-${sw.maxAge}. Your age: ${studentAge}`);
+          toast.error(isRTL ? `العمر يجب أن يكون بين ${sw.minAge || 0} و ${sw.maxAge} سنة. عمرك: ${studentAge}` : `Age must be ${sw.minAge || 0}-${sw.maxAge}. Your age: ${studentAge}`);
           return;
         }
       }
@@ -365,7 +399,7 @@ const WorkshopRegistration = () => {
         const params = new URLSearchParams({ workshopId: form.workshopId, nationalId: form.nationalId });
         const res = await api.get(`/workshops/check-duplicate?${params}`);
         if (res.data.duplicate) {
-          window.alert(isRTL
+          toast.error(isRTL
             ? 'هذا الطالب مسجل بالفعل في هذه الورشة بنفس رقم الهوية.'
             : 'This student is already registered for this workshop with the same National ID.');
           return;
@@ -399,7 +433,7 @@ const WorkshopRegistration = () => {
       setStep(3);
       toast.success(isRTL ? 'تم التسجيل بنجاح!' : 'Registration successful!');
     } catch (error) {
-      const msg = error.response?.data?.messageAr || error.response?.data?.message || (isRTL ? 'خطأ في التسجيل' : 'Registration error');
+      const msg = (isRTL ? error.response?.data?.messageAr : error.response?.data?.message) || error.response?.data?.messageAr || (isRTL ? 'خطأ في التسجيل' : 'Registration error');
       toast.error(msg);
     } finally {
       setSubmitting(false);
@@ -429,8 +463,6 @@ const WorkshopRegistration = () => {
     }
   };
 
-  const toggleLanguage = () => i18n.changeLanguage(i18n.language === 'ar' ? 'en' : 'ar');
-
   const isEduLink = isSingleMode && !!singleWorkshopMeta?.isEducation;
   // A saved student draft past the first step means they already chose.
   const effectiveRole = isEduLink ? (eduRole || (step > 0 ? 'student' : null)) : 'student';
@@ -445,717 +477,578 @@ const WorkshopRegistration = () => {
     return isRTL ? `آخر موعد للتسجيل: ${when} (قبل بدء الورشة بـ 24 ساعة)` : `Registration closes ${when} (24 hours before the workshop starts)`;
   })();
 
+  const tx = (ar, en) => (isRTL ? ar : en);
+  const money = (n) => `${Number(n || 0).toFixed(2)} ${tx('ر.س', 'SAR')}`;
+  const hhmm = (v) => String(v || '').slice(0, 5);
+  const arrowNext = isRTL ? IC.left : IC.right;
+  const arrowBack = isRTL ? IC.right : IC.left;
+
+  // Rail stepper: the picker step is hidden for a shareable single
+  // workshop link (nothing to pick).
+  const railSteps = showStudentFlow && !(isSingleMode && singleFetchError) && (!isEduLink || effectiveRole === 'student')
+    ? (isSingleMode
+      ? [
+          { key: 'info', label: tx('البيانات الشخصية', 'Personal info'), icon: IC.user },
+          { key: 'pay', label: tx('الدفع والتأكيد', 'Payment & confirm'), icon: IC.card }
+        ]
+      : [
+          { key: 'info', label: tx('البيانات الشخصية', 'Personal info'), icon: IC.user },
+          { key: 'pick', label: tx('اختيار الورشة', 'Select workshop'), icon: IC.cap },
+          { key: 'pay', label: tx('الدفع والتأكيد', 'Payment & confirm'), icon: IC.card }
+        ])
+    : null;
+  const stepToRail = (s) => (isSingleMode ? (s === 0 ? 0 : 1) : s);
+  const railToStep = (i) => (isSingleMode ? (i === 0 ? 0 : 2) : i);
+  const railActive = railSteps ? (step === 3 ? railSteps.length : stepToRail(step)) : -1;
+  const stepNo = (s) => String(stepToRail(s) + 1).padStart(2, '0');
+
+  const intro = {
+    portal: isEduLink ? tx('ورشة تعليمية', 'Education workshop') : tx('الورش التدريبية', 'Training workshops'),
+    title: isRTL ? <>تعلّم بيديك<br /><em>في ورش فاب لاب</em></> : <>Learn by making<br /><em>in FabLab workshops</em></>,
+    features: [
+      { ar: 'ورش في الإلكترونيات والطباعة ثلاثية الأبعاد والمزيد', en: 'Electronics, 3D printing and more', d: IC.cap },
+      { ar: 'بطاقة حضور وشهادة بعد إتمام الورشة', en: 'Attendance card and a certificate', d: IC.badge },
+      { ar: 'من سجّل سابقًا يكفيه رقم الجوال أو الهوية', en: 'Returning? Your phone or ID is enough', d: IC.search }
+    ]
+  };
+
+  const closedText = (reason) => (reason === 'full'
+    ? tx('تم اكتمال العدد المسموح به.', 'The workshop is full.')
+    : reason === 'cancelled'
+      ? tx('تم إلغاء هذه الورشة.', 'This workshop has been cancelled.')
+      : reason === 'deadline'
+        ? tx('يُغلق التسجيل قبل بدء الورشة بـ 24 ساعة. للتسجيل المتأخر يرجى التواصل مع فاب لاب.', 'Registration closes 24 hours before the workshop starts. For late registration please contact FabLab.')
+        : reason === 'started' || reason === 'completed'
+          ? tx('بدأت الورشة — يُغلق التسجيل من يوم انطلاقها.', 'The workshop has already started — registration closes on the start day.')
+          : tx('يرجى التواصل مع إدارة فاب لاب لمزيد من المعلومات.', 'Please contact the FabLab admin for more information.'));
+
+  const stepHead = (s, title, desc) => (
+    <>
+      <p className="rgx-step-eyebrow"><span>{stepNo(s)}</span>{railSteps?.[stepToRail(s)]?.label}</p>
+      <h2 className="step-title">{title}</h2>
+      {desc && <p className="step-description">{desc}</p>}
+    </>
+  );
+
+  const slide = {
+    initial: { opacity: 0, x: isRTL ? -24 : 24 },
+    animate: { opacity: 1, x: 0 },
+    exit: { opacity: 0, x: isRTL ? 24 : -24 },
+    transition: { duration: 0.28, ease: [0.2, 0.8, 0.2, 1] }
+  };
+
+  // Landing hero: the edu role chooser, or the returning-trainee lookup.
+  const eduChooser = isEduLink && !effectiveRole;
+  const showHero = !(isSingleMode && singleFetchError) && (eduChooser || (showStudentFlow && step === 0 && lookupMode));
+
   return (
-    <div className="workshop-reg-page" dir={isRTL ? 'rtl' : 'ltr'}>
-      <div className="workshop-reg-container">
-        <motion.div className="workshop-reg-card" initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }}>
-          {/* Header */}
-          <div className="workshop-reg-header">
-            <div className="workshop-reg-logos">
-              <img src="/fablab.png" alt="FabLab" style={{ height: 50 }} />
-              <img src="/found.png" alt="Foundation" style={{ height: 50 }} />
-            </div>
-            <h1>{isRTL ? 'تسجيل في الورش التدريبية' : 'Workshop Registration'}</h1>
-            <p>FABLAB Al-Ahsa</p>
+    <StudioShell
+      isRTL={isRTL}
+      theme={theme}
+      onToggleTheme={toggleTheme}
+      intro={intro}
+      subtitle={tx('التسجيل في الورش', 'Workshop registration')}
+      servicesHref="/register"
+      steps={railSteps}
+      activeStep={railActive}
+      onJump={(i) => { if (step !== 3) setStep(railToStep(i)); }}
+    >
+      {showHero && (
+        <motion.div className="rgx-hero wkr-hero" initial={{ opacity: 0, y: -12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
+          <p className="rgx-eyebrow"><i aria-hidden="true" />{isEduLink ? tx('ورشة تعليمية', 'Education workshop') : tx('الورش التدريبية · فاب لاب الأحساء', 'Training workshops · FabLab Al-Ahsa')}</p>
+          <h1>{isSingleMode && singleWorkshopMeta ? <em>{singleWorkshopMeta.title}</em> : (isRTL ? <>التسجيل في <em>الورش التدريبية</em></> : <>Register for a <em>workshop</em></>)}</h1>
+          <p>{deadlineLabel
+            ? deadlineLabel
+            : isSingleMode
+              ? tx('سجّل بياناتك ثم أكّد التسجيل — من سجّل سابقًا يكفيه رقم الجوال أو الهوية.', 'Enter your details and confirm — returning? Your phone or ID is enough.')
+              : tx('سجّل بياناتك، اختر الورشة المناسبة، ثم أكّد التسجيل — من سجّل سابقًا يكفيه رقم الجوال أو الهوية.', 'Enter your details, pick a workshop and confirm — returning? Your phone or ID is enough.')}</p>
+        </motion.div>
+      )}
+
+      {/* Single-workshop link: failed to load / registration closed */}
+      {isSingleMode && singleFetchError && (
+        <section className="rgx-card rgx-closed">
+          <span className="rgx-closed-ico"><Icon d={IC.alert} /></span>
+          <h2>{singleFetchError}</h2>
+          <div className="rgx-closed-actions">
+            <button type="button" className="btn btn-secondary" onClick={() => navigate('/register')}><Icon d={IC.grid} />{tx('كل الخدمات', 'All services')}</button>
           </div>
+        </section>
+      )}
 
-          {/* Education link: who is registering? */}
-          {isEduLink && !effectiveRole && (
-            <motion.div className="workshop-step-content edu-roles" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}>
-              <div className="edu-roles-workshop">
-                <span>{isRTL ? 'الورشة' : 'Workshop'}</span>
-                <b>{singleWorkshopMeta.title}</b>
-              </div>
-              {deadlineLabel && <div className="edu-deadline">⏰ {deadlineLabel}</div>}
-              <h3>{isRTL ? 'سجّل بصفتك' : 'Register as'}</h3>
-              <div className="edu-role-grid">
-                <button type="button" className="edu-role" onClick={() => setEduRole('student')}>
-                  <span className="edu-role-icon" aria-hidden="true">🎒</span>
-                  <b>{isRTL ? 'طالب' : 'Student'}</b>
-                  <span>{isRTL ? 'سجّل بيانات الطالب للمشاركة في الورشة' : "Enter the student's details to join the workshop"}</span>
-                </button>
-                <button type="button" className="edu-role" onClick={() => setEduRole('teacher')}>
-                  <span className="edu-role-icon" aria-hidden="true">👩‍🏫</span>
-                  <b>{isRTL ? 'معلم أو مدرب' : 'Teacher or instructor'}</b>
-                  <span>{isRTL ? 'بياناتك، القاعة، والمتطلبات التي تحتاج تجهيزها' : 'Your details, the room, and what you need prepared'}</span>
-                </button>
-              </div>
-            </motion.div>
-          )}
-
-          {isEduLink && effectiveRole === 'teacher' && (
-            <EducationTeacherForm
-              meta={singleWorkshopMeta}
-              isRTL={isRTL}
-              deadlineLabel={deadlineLabel}
-              onBack={() => setEduRole(null)}
-            />
-          )}
-
-          {showStudentFlow && (<>
-          {isEduLink && (
-            <div className="edu-student-bar">
-              <span>🎒 {isRTL ? 'تسجيل طالب' : 'Student registration'}{deadlineLabel ? ` · ${deadlineLabel}` : ''}</span>
-              {step !== 3 && <button type="button" className="edu-back-link" onClick={() => setEduRole(null)}>{isRTL ? 'تغيير' : 'Change'}</button>}
-            </div>
-          )}
-          {/* Stepper — in single-workshop mode the picker step is
-              hidden entirely (there's nothing to pick). */}
-          <div className="workshop-stepper">
-            {(isSingleMode
-              ? [
-                  isRTL ? 'البيانات الشخصية' : 'Personal Info',
-                  isRTL ? 'الدفع والتأكيد' : 'Payment & Confirm'
-                ]
-              : [
-                  isRTL ? 'البيانات الشخصية' : 'Personal Info',
-                  isRTL ? 'اختيار الورشة' : 'Select Workshop',
-                  isRTL ? 'الدفع والتأكيد' : 'Payment & Confirm'
-                ]
-            ).map((label, i) => {
-              // Map stepper index → actual step number.
-              const stepNum = isSingleMode ? (i === 0 ? 0 : 2) : i;
-              const done = step > stepNum;
-              const active = step === stepNum;
-              return (
-                <div key={i} className={`workshop-step ${done ? 'completed' : active ? 'active' : ''}`}>
-                  <div className="workshop-step-circle">{done ? '✓' : i + 1}</div>
-                  <span className="workshop-step-label">{label}</span>
-                  {i < (isSingleMode ? 1 : 2) && <div className="workshop-step-line" />}
-                </div>
-              );
-            })}
+      {/* Education link: who is registering? */}
+      {eduChooser && (
+        <motion.section className="rgx-card" initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }}>
+          <h2 className="step-title">{tx('سجّل بصفتك', 'Register as')}</h2>
+          <p className="step-description">{tx('اختر نوع التسجيل في هذه الورشة.', 'Choose how you are joining this workshop.')}</p>
+          <div className="selection-grid wkr-roles">
+            <button type="button" className="selection-card" onClick={() => setEduRole('student')}>
+              <span className="selection-card-icon"><Icon d={IC.bag} /></span>
+              <span className="selection-card-title">{tx('طالب', 'Student')}</span>
+              <span className="selection-card-description">{tx('سجّل بيانات الطالب للمشاركة في الورشة', "Enter the student's details to join the workshop")}</span>
+            </button>
+            <button type="button" className="selection-card" onClick={() => setEduRole('teacher')}>
+              <span className="selection-card-icon"><Icon d={IC.board} /></span>
+              <span className="selection-card-title">{tx('معلم أو مدرب', 'Teacher or instructor')}</span>
+              <span className="selection-card-description">{tx('بياناتك، القاعة، والمتطلبات التي تحتاج تجهيزها', 'Your details, the room, and what you need prepared')}</span>
+            </button>
           </div>
+        </motion.section>
+      )}
 
-          {/* Single-workshop landing banner (registration closed or fetch failed). */}
-          {isSingleMode && singleFetchError && (
-            <div style={{ margin: '20px auto', maxWidth: 640, padding: 22, background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 12, textAlign: 'center', color: '#b91c1c' }}>
-              <div style={{ fontSize: 42, marginBottom: 8 }}>⚠️</div>
-              <h3 style={{ margin: 0, color: '#b91c1c' }}>{singleFetchError}</h3>
+      {isEduLink && effectiveRole === 'teacher' && (
+        <section className="rgx-card wkr-teacher">
+          <EducationTeacherForm
+            meta={singleWorkshopMeta}
+            isRTL={isRTL}
+            deadlineLabel={deadlineLabel}
+            onBack={() => setEduRole(null)}
+          />
+        </section>
+      )}
+
+      {showStudentFlow && !(isSingleMode && singleFetchError) && (
+        <>
+          {isEduLink && step !== 3 && (
+            <div className="wkr-rolebar">
+              <span className="wkr-rolebar-ico"><Icon d={IC.bag} /></span>
+              <span className="wkr-rolebar-text">
+                <b>{tx('تسجيل طالب', 'Student registration')} · {singleWorkshopMeta.title}</b>
+                {deadlineLabel && <small>{deadlineLabel}</small>}
+              </span>
+              <button type="button" className="wkr-linkbtn" onClick={() => setEduRole(null)}>{tx('تغيير', 'Change')}</button>
             </div>
           )}
+
           {isSingleMode && singleWorkshopMeta && !singleWorkshopMeta.isOpen && step !== 3 && (
-            <div style={{ margin: '20px auto', maxWidth: 640, padding: 22, background: '#fef3c7', border: '1px solid #fde68a', borderRadius: 12, textAlign: 'center', color: '#92400e' }}>
-              <div style={{ fontSize: 42, marginBottom: 8 }}>⏸️</div>
-              <h3 style={{ margin: 0, color: '#92400e' }}>
-                {isRTL ? 'التسجيل في هذه الورشة مغلق' : 'Registration for this workshop is closed'}
-              </h3>
-              <p style={{ margin: '8px 0 0', fontSize: 13, color: '#78350f' }}>
-                {singleWorkshopMeta.closedReason === 'full'
-                  ? (isRTL ? 'تم اكتمال العدد المسموح به.' : 'The workshop is full.')
-                  : singleWorkshopMeta.closedReason === 'cancelled'
-                  ? (isRTL ? 'تم إلغاء هذه الورشة.' : 'This workshop has been cancelled.')
-                  : singleWorkshopMeta.closedReason === 'deadline'
-                  ? (isRTL ? 'يُغلق التسجيل قبل بدء الورشة بـ 24 ساعة. للتسجيل المتأخر يرجى التواصل مع فاب لاب.' : 'Registration closes 24 hours before the workshop starts. For late registration please contact FabLab.')
-                  : singleWorkshopMeta.closedReason === 'started' || singleWorkshopMeta.closedReason === 'completed'
-                  ? (isRTL ? 'بدأت الورشة — يُغلق التسجيل من يوم انطلاقها.' : 'The workshop has already started — registration closes on the start day.')
-                  : (isRTL ? 'يرجى التواصل مع إدارة فاب لاب لمزيد من المعلومات.' : 'Please contact the FabLab admin for more information.')}
-              </p>
+            <div className="info-banner warning wkr-closed">
+              <Icon d={IC.pause} />
+              <span>
+                <b>{tx('التسجيل في هذه الورشة مغلق', 'Registration for this workshop is closed')}</b>
+                <br />{closedText(singleWorkshopMeta.closedReason)}
+              </span>
             </div>
           )}
 
-          {/* Step Content */}
-          <AnimatePresence mode="wait">
-            {step === 0 && (
-              <motion.div key="step0" className="workshop-step-content" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}>
-                {lookupMode ? (
-                  <>
-                    <h3>{isRTL ? 'هل سبق لك التسجيل؟' : 'Already registered before?'}</h3>
-                    <p style={{ fontSize: '0.88rem', color: '#64748b', marginBottom: '1.5rem' }}>{isRTL ? 'أدخل رقم الهاتف أو رقم الهوية للمتابعة بسرعة' : 'Enter your phone or national ID to continue quickly'}</p>
-                    <div className="workshop-field" style={{ maxWidth: 400, margin: '0 auto' }}>
-                      <input
-                        dir="ltr"
-                        value={lookupValue}
-                        onChange={e => setLookupValue(e.target.value)}
-                        placeholder={isRTL ? 'رقم الهاتف أو رقم الهوية' : 'Phone number or National ID'}
-                        style={{ textAlign: 'center', fontSize: '1.1rem' }}
-                        onKeyDown={e => e.key === 'Enter' && handleLookup()}
-                      />
-                    </div>
-                    <div className="workshop-actions" style={{ justifyContent: 'center', flexDirection: 'column', alignItems: 'center', gap: '0.75rem' }}>
-                      <button className="workshop-btn-next" disabled={!lookupValue.trim() || lookupLoading} onClick={handleLookup}>
-                        {lookupLoading ? (isRTL ? 'جاري البحث...' : 'Searching...') : (isRTL ? 'بحث' : 'Search')}
-                      </button>
-                      <button onClick={() => setLookupMode(false)} style={{ background: 'none', border: 'none', color: '#3b82f6', cursor: 'pointer', fontSize: '0.88rem', fontFamily: 'inherit' }}>
-                        {isRTL ? 'تسجيل جديد' : 'Register as new'}
-                      </button>
-                    </div>
-                  </>
-                ) : (
-                  <>
-                    <h3>{isRTL ? 'البيانات الشخصية' : 'Personal Information'}</h3>
-                    <div className="workshop-form-grid">
-                      <div className="workshop-field">
-                        <label>{isRTL ? 'الاسم الأول' : 'First Name'} *</label>
-                        <input value={form.firstName} onChange={e => handleChange('firstName', e.target.value)} />
-                      </div>
-                      <div className="workshop-field">
-                        <label>{isRTL ? 'الاسم الأخير' : 'Last Name'} *</label>
-                        <input value={form.lastName} onChange={e => handleChange('lastName', e.target.value)} />
-                      </div>
-                      <div className="workshop-field">
-                        <label>{isRTL ? 'رقم الهاتف' : 'Phone'} *</label>
-                        <input type="tel" dir="ltr" value={form.phone} onChange={e => handleChange('phone', e.target.value)} />
-                      </div>
-                      <div className="workshop-field">
-                        <label>{isRTL ? 'البريد الإلكتروني' : 'Email'} *</label>
-                        <input type="email" dir="ltr" value={form.email} onChange={e => handleChange('email', e.target.value)} />
-                        {form.email && !isValidEmail(form.email) && (
-                          <span style={{ color: '#ef4444', fontSize: '0.75rem', marginTop: 4, display: 'block' }}>
-                            {isRTL ? 'البريد الإلكتروني غير صحيح' : 'Invalid email address'}
-                          </span>
-                        )}
-                      </div>
-                      <div className="workshop-field">
-                        <label>{isRTL ? 'رقم هوية الطالب' : "Student's National ID"} *</label>
-                        <input dir="ltr" value={form.nationalId} onChange={e => handleChange('nationalId', e.target.value)} />
-                      </div>
-                      <div className="workshop-field">
-                        <label>{isRTL ? 'الجنس' : 'Gender'} *</label>
-                        <select value={form.gender} onChange={e => handleChange('gender', e.target.value)}>
-                          <option value="">{isRTL ? 'اختر' : 'Select'}</option>
-                          <option value="male">{isRTL ? 'ذكر' : 'Male'}</option>
-                          <option value="female">{isRTL ? 'أنثى' : 'Female'}</option>
-                        </select>
-                      </div>
-                      {!requireId && (
-                        <div className="workshop-field">
-                          <label>{isRTL ? 'العمر' : 'Age'} *</label>
-                          <input type="number" value={form.age} onChange={e => handleChange('age', e.target.value)} />
-                        </div>
-                      )}
-                      <div className="workshop-field">
-                        <label>{isRTL ? 'المدينة' : 'City'} *</label>
-                        <input value={form.city} onChange={e => handleChange('city', e.target.value)} />
-                      </div>
-                      {requireId && (
-                        <div className="workshop-field workshop-id-field">
-                          <label>{isRTL ? 'صورة الهوية الوطنية أو الإقامة' : 'Photo of the National ID or Iqama'} *</label>
-                          <p className="workshop-id-hint">
-                            {isRTL
-                              ? 'صوّر الوجه الأمامي للبطاقة كاملاً بإضاءة جيدة وبدون انعكاس. نقرأ تاريخ الميلاد منها ونحسب العمر تلقائياً.'
-                              : 'Photograph the whole front of the card in good light, without glare. We read the date of birth and calculate the age automatically.'}
-                          </p>
-                          <div className={`workshop-id-box is-${idCheck.status}`}>
-                            {idCheck.preview && <img src={idCheck.preview} alt="" className="workshop-id-thumb" />}
-                            <div className="workshop-id-body">
-                              {idCheck.status === 'idle' && (
-                                <span className="workshop-id-muted">{isRTL ? 'لم يتم رفع صورة بعد' : 'No photo uploaded yet'}</span>
-                              )}
-                              {idCheck.status === 'reading' && (
-                                <span className="workshop-id-reading">
-                                  <span className="workshop-id-spinner" aria-hidden="true" />
-                                  {isRTL ? 'جاري قراءة البطاقة…' : 'Reading the card…'}
-                                </span>
-                              )}
-                              {idCheck.status === 'ok' && (
-                                <>
-                                  <div className="workshop-id-line">
-                                    <span>{isRTL ? 'تاريخ الميلاد:' : 'Date of birth:'}</span>{' '}
-                                    <b dir="ltr">{fmtDmy(idCheck.birthDate)}</b>{isRTL ? ' م' : ''}
-                                    {idCheck.birthDateHijri && <> · <b dir="ltr">{fmtDmy(idCheck.birthDateHijri)}</b> {isRTL ? 'هـ' : 'AH'}</>}
-                                  </div>
-                                  <div className="workshop-id-age">
-                                    ✓ {isRTL ? 'العمر:' : 'Age:'} <b>{idCheck.age}</b> {isRTL ? 'سنة' : 'years'}
-                                  </div>
-                                </>
-                              )}
-                              {idCheck.status === 'error' && (
-                                <div className="workshop-id-error" role="alert">{idCheck.error}</div>
-                              )}
-                              <label className={`workshop-id-btn ${idCheck.status === 'reading' ? 'is-disabled' : ''}`}>
-                                <input
-                                  type="file"
-                                  accept="image/*"
-                                  disabled={idCheck.status === 'reading'}
-                                  onChange={e => { handleIdUpload(e.target.files); e.target.value = ''; }}
-                                />
-                                {idCheck.status === 'idle'
-                                  ? (isRTL ? '📷 رفع صورة الهوية' : '📷 Upload ID photo')
-                                  : (isRTL ? 'تغيير الصورة' : 'Change photo')}
-                              </label>
-                            </div>
-                          </div>
-                          {idCheck.status === 'ok' && idCheck.idNumber && form.nationalId && form.nationalId !== idCheck.idNumber && (
-                            <div className="workshop-id-warn">
-                              {isRTL
-                                ? <>رقم الهوية في البطاقة (<b dir="ltr">{idCheck.idNumber}</b>) يختلف عن الرقم المُدخل.</>
-                                : <>The number on the card (<b>{idCheck.idNumber}</b>) differs from the one entered.</>}
-                              <button type="button" onClick={() => handleChange('nationalId', idCheck.idNumber)}>
-                                {isRTL ? 'استخدم رقم البطاقة' : 'Use the card number'}
-                              </button>
-                            </div>
-                          )}
-                        </div>
-                      )}
-                    </div>
-                    <div className="workshop-actions">
-                      <button className="workshop-btn-back" onClick={() => setLookupMode(true)}>{isRTL ? 'رجوع' : 'Back'}</button>
-                      <button
-                        className="workshop-btn-next"
-                        disabled={!canProceedStep0 || (isSingleMode && singleWorkshopMeta && !singleWorkshopMeta.isOpen)}
-                        onClick={() => setStep(isSingleMode ? 2 : 1)}
-                      >{isRTL ? 'التالي' : 'Next'}</button>
-                    </div>
-                  </>
-                )}
-              </motion.div>
-            )}
-
-            {step === 1 && (
-              <motion.div key="step1" className="workshop-step-content" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}>
-                <h3>{isRTL ? 'اختر الورشة التدريبية' : 'Select a Workshop'}</h3>
-                {workshops.length === 0 ? (
-                  <div className="workshop-empty">{isRTL ? 'لا توجد ورش متاحة حالياً' : 'No workshops available'}</div>
-                ) : (
-                  <div className="workshop-cards" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '1.25rem', maxHeight: 'none', overflow: 'visible' }}>
-                    {workshops.map(w => {
-                      const pickable = isPickable(w);
-                      const closedLabel = w.closedReason === 'deadline'
-                        ? (isRTL ? 'انتهى التسجيل (يُغلق قبل البدء بـ24 ساعة)' : 'Registration ended (closes 24h before the start)')
-                        : w.closedReason === 'started'
-                        ? (isRTL ? 'بدأت الورشة — التسجيل مغلق' : 'Started — registration closed')
-                        : w.closedReason === 'full' || (w.spotsRemaining != null && w.spotsRemaining <= 0)
-                        ? (isRTL ? 'مكتمل' : 'Full')
-                        : (isRTL ? 'التسجيل مغلق' : 'Registration closed');
-                      return (
-                      <div key={w.workshopId} className={`workshop-card ${form.workshopId === w.workshopId ? 'selected' : ''} ${!pickable ? 'full' : ''}`}
-                        style={{ cursor: pickable ? 'pointer' : 'not-allowed', borderRadius: 16 }}
-                        onClick={() => pickable && handleChange('workshopId', w.workshopId)}>
-                        {w.photo && <div className="workshop-card-img" style={{ height: 200, backgroundImage: `url(${w.photo})`, backgroundSize: 'cover', backgroundPosition: 'center' }} />}
-                        <div className="workshop-card-body" style={{ padding: '1.25rem' }}>
-                          <h4 style={{ fontSize: '1.15rem', marginBottom: '0.5rem' }}>{w.title}</h4>
-                          {pickable && w.registrationDeadline && (
-                            <div style={{ display: 'inline-block', marginBottom: '0.5rem', padding: '3px 10px', borderRadius: 999, background: '#fffbeb', border: '1px solid #fde68a', color: '#92400e', fontSize: '0.78rem', fontWeight: 700 }}>
-                              ⏰ {isRTL ? 'آخر موعد للتسجيل: ' : 'Register by: '}
-                              {new Date(w.registrationDeadline).toLocaleString(isRTL ? 'ar-SA-u-ca-gregory-nu-latn' : 'en-GB', { timeZone: 'Asia/Riyadh', weekday: 'short', day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' })}
-                            </div>
-                          )}
-                          {w.presenter && <div className="workshop-card-presenter" style={{ marginBottom: '0.5rem' }}>{isRTL ? 'المقدم:' : 'Presenter:'} {w.presenter}</div>}
-                          <div className="workshop-card-meta" style={{ marginBottom: '0.6rem', gap: '1rem' }}>
-                            {w.startDate && <span>📅 {w.startDate}{w.endDate && w.endDate !== w.startDate ? ` → ${w.endDate}` : ''}</span>}
-                            {w.startTime && <span>🕐 {w.startTime}{w.endTime ? ` - ${w.endTime}` : ''}</span>}
-                            {w.totalHours && (() => {
-                              let days = 1;
-                              if (w.startDate && w.endDate && w.endDate !== w.startDate) {
-                                days = Math.max(1, Math.ceil((new Date(w.endDate) - new Date(w.startDate)) / (1000*60*60*24)) + 1);
-                              }
-                              const perDay = days > 1 ? (w.totalHours / days).toFixed(1) : null;
-                              return (
-                                <span>⏱ {w.totalHours} {isRTL ? 'ساعة إجمالية' : 'total hours'}
-                                  {perDay && <span style={{ color: '#3b82f6', fontWeight: 600 }}> ({perDay} {isRTL ? `ساعة/يوم × ${days} أيام` : `hrs/day × ${days} days`})</span>}
-                                </span>
-                              );
-                            })()}
-                          </div>
-                          {w.content && <p style={{ fontSize: '0.85rem', color: '#475569', lineHeight: 1.6, marginBottom: '0.5rem' }}>{w.content}</p>}
-                          {w.objectives && <p style={{ fontSize: '0.82rem', color: '#3b82f6', lineHeight: 1.5, marginBottom: '0.5rem', fontWeight: 500 }}>{isRTL ? 'الأهداف: ' : 'Objectives: '}{w.objectives}</p>}
-                          {(w.minAge || w.maxAge) && <p style={{ fontSize: '0.82rem', color: '#92400e', fontWeight: 600, marginBottom: '0.75rem' }}>👤 {isRTL ? 'الأعمار:' : 'Ages:'} {w.minAge || '?'} - {w.maxAge || '?'} {isRTL ? 'سنة' : 'years'}</p>}
-                          <div className="workshop-card-footer" style={{ paddingTop: '0.75rem', borderTop: '1px solid #f1f5f9', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                            {w.price ? <span className="workshop-price" style={{ fontSize: '1.2rem' }}>{w.price} {isRTL ? 'ر.س' : 'SAR'}</span> : <span className="workshop-price free" style={{ fontSize: '1.2rem' }}>{isRTL ? 'مجاني' : 'Free'}</span>}
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                              <span className={`workshop-spots ${!pickable || (w.spotsRemaining != null && w.spotsRemaining <= 3) ? 'low' : ''}`}>
-                                {!pickable ? closedLabel : w.spotsRemaining != null ? `${w.spotsRemaining} ${isRTL ? 'مقعد متبقي' : 'spots left'}` : (isRTL ? 'متاح' : 'Open')}
-                              </span>
-                              {pickable && form.workshopId === w.workshopId && (
-                                <span style={{ background: '#1a56db', color: 'white', padding: '4px 12px', borderRadius: 8, fontSize: '0.78rem', fontWeight: 700 }}>
-                                  {isRTL ? '✓ محدد' : '✓ Selected'}
-                                </span>
-                              )}
-                            </div>
-                          </div>
-                        </div>
-                        {form.workshopId === w.workshopId && <div className="workshop-card-check">✓</div>}
-                      </div>
-                      );
-                    })}
-                  </div>
-                )}
-                <div className="workshop-actions">
-                  <button className="workshop-btn-back" onClick={() => setStep(0)}>{isRTL ? 'السابق' : 'Back'}</button>
-                  <button className="workshop-btn-next" disabled={!canProceedStep1} onClick={handleStep1Next}>{isRTL ? 'التالي' : 'Next'}</button>
-                </div>
-              </motion.div>
-            )}
-
-            {step === 2 && (
-              <motion.div key="step2" className="workshop-step-content" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}>
-                {selectedWorkshop && (
-                  <div className="workshop-summary" style={{ marginBottom: 22 }}>
-                    <strong style={{ fontSize: '1.05rem' }}>{selectedWorkshop.title}</strong>
-                    <span>{selectedWorkshop.startDate}{selectedWorkshop.totalHours ? ` • ${selectedWorkshop.totalHours}h` : ''}</span>
-                    {selectedWorkshop.room && (
-                      <span>📍 {isRTL ? 'القاعة:' : 'Room:'} <b>{selectedWorkshop.room}</b></span>
-                    )}
-                    <span style={{ fontWeight: 800, color: workshopIsPaid ? '#EE2329' : '#16a34a' }}>
-                      {workshopIsPaid ? `${selectedWorkshop.price} ${isRTL ? 'ر.س' : 'SAR'}` : (isRTL ? 'مجاناً' : 'Free')}
-                    </span>
-                  </div>
-                )}
-
-                {!workshopIsPaid && (
-                  <div style={{ padding: 24, background: '#ecfdf5', border: '1px solid #86efac', borderRadius: 12, textAlign: 'center', color: '#065f46', marginBottom: 20 }}>
-                    <div style={{ fontSize: 44, marginBottom: 8 }}>🎉</div>
-                    <h3 style={{ margin: 0, color: '#065f46' }}>{isRTL ? 'هذه الورشة مجانية' : 'This workshop is free'}</h3>
-                    <p style={{ margin: '8px 0 0', fontSize: 14 }}>
-                      {isRTL ? 'اضغط "تأكيد التسجيل" لإتمام العملية' : 'Click "Confirm Registration" to finish'}
-                    </p>
-                  </div>
-                )}
-
-                {workshopIsPaid && (
-                  <>
-                    {/* Coupon code input — always shown (may bring net to 0). */}
-                    <div style={{ marginBottom: 20, padding: 14, background: '#faf5ff', border: '1px solid #ddd6fe', borderRadius: 12 }}>
-                      <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: 1.2, color: '#6d28d9', textTransform: 'uppercase', marginBottom: 8 }}>
-                        🎟 {isRTL ? 'كود خصم (اختياري)' : 'Coupon code (optional)'}
-                      </div>
-                      {coupon ? (
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
-                          <div style={{ fontSize: 13.5 }}>
-                            <b style={{ color: '#16a34a', fontFamily: "'JetBrains Mono', monospace" }}>{coupon.code}</b>
-                            &nbsp;· {isRTL ? `خصم ${coupon.percent}%` : `${coupon.percent}% off`}
-                            &nbsp;· <b>-{Number(coupon.discountAmount).toFixed(2)} {isRTL ? 'ر.س' : 'SAR'}</b>
-                          </div>
-                          <button type="button" onClick={removeCoupon} style={{ padding: '4px 10px', background: '#fff', border: '1px solid #fecaca', color: '#b91c1c', borderRadius: 6, cursor: 'pointer', fontSize: 12, fontWeight: 700, fontFamily: 'inherit' }}>
-                            ✕ {isRTL ? 'إزالة' : 'Remove'}
-                          </button>
-                        </div>
-                      ) : (
-                        <div style={{ display: 'flex', gap: 8 }}>
-                          <input
-                            dir="ltr"
-                            value={couponInput}
-                            onChange={(e) => setCouponInput(e.target.value.toUpperCase())}
-                            placeholder={isRTL ? 'أدخل الكود' : 'Enter code'}
-                            style={{ flex: 1, padding: 10, borderRadius: 8, border: '1px solid #d8b4fe', background: '#fff', fontFamily: "'JetBrains Mono', monospace", fontSize: 14, letterSpacing: 1.5, textAlign: 'center', textTransform: 'uppercase' }}
-                            onKeyDown={(e) => e.key === 'Enter' && applyCoupon()}
-                          />
-                          <button
-                            type="button"
-                            onClick={applyCoupon}
-                            disabled={couponApplying || !couponInput.trim()}
-                            style={{ padding: '10px 18px', borderRadius: 8, border: 'none', background: '#7c3aed', color: '#fff', fontWeight: 800, cursor: 'pointer', fontFamily: 'inherit', opacity: couponApplying || !couponInput.trim() ? 0.6 : 1 }}
-                          >
-                            {couponApplying ? '…' : (isRTL ? 'تطبيق' : 'Apply')}
-                          </button>
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Price summary — shows original price, discount, net. */}
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '14px 18px', background: '#f0fdf4', border: '1px solid #86efac', borderRadius: 10, marginBottom: 20 }}>
-                      <div>
-                        <div style={{ fontSize: 11, color: '#166534', letterSpacing: 0.6, fontWeight: 700, textTransform: 'uppercase' }}>
-                          {isRTL ? 'الإجمالي المستحق' : 'Total due'}
-                        </div>
-                        {coupon && (
-                          <div style={{ fontSize: 11.5, color: '#94a3b8', marginTop: 2 }}>
-                            <span style={{ textDecoration: 'line-through' }}>{Number(coupon.originalPrice).toFixed(2)}</span>
-                            &nbsp;·&nbsp;<b style={{ color: '#16a34a' }}>−{coupon.percent}%</b>
-                          </div>
-                        )}
-                      </div>
-                      <div style={{ fontSize: 22, fontWeight: 900, fontFamily: "'JetBrains Mono', monospace", color: netAmount <= 0 ? '#16a34a' : '#166534' }}>
-                        {netAmount <= 0 ? (isRTL ? 'مجاناً 🎉' : 'FREE 🎉') : `${Number(netAmount).toFixed(2)} ${isRTL ? 'ر.س' : 'SAR'}`}
-                      </div>
-                    </div>
-
-                  </>
-                )}
-                {/* Payment-method picker + bank/mada blocks only make
-                    sense when there's still an amount to pay after any
-                    coupon has been applied. Free coupons skip straight
-                    to the terms checkbox + submit. */}
-                {workshopIsPaid && netAmount > 0 && (
-                  <>
-                    <h3 style={{ marginTop: 0 }}>{isRTL ? 'اختر طريقة الدفع' : 'Choose Payment Method'}</h3>
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 12, marginBottom: 22 }}>
-                      {[
-                        { key: 'bank_transfer', icon: '🏦', ar: 'تحويل بنكي', en: 'Bank Transfer', hint_ar: 'ارفع صورة الإشعار للمراجعة', hint_en: 'Upload transfer proof for review' },
-                        { key: 'mada',          icon: '💳', ar: 'مدى في مقر فاب لاب', en: 'Mada at FabLab', hint_ar: 'ادفع نقداً بمدى داخل المقر', hint_en: 'Pay in-person at the FabLab store' }
-                      ].map(pm => {
-                        const active = form.paymentMethod === pm.key;
-                        return (
-                          <button
-                            key={pm.key}
-                            type="button"
-                            onClick={() => handleChange('paymentMethod', pm.key)}
-                            style={{
-                              padding: 16, borderRadius: 12, cursor: 'pointer', textAlign: 'start',
-                              border: active ? '2px solid #EE2329' : '1px solid #cbd5e1',
-                              background: active ? 'linear-gradient(135deg, #fef2f2, #ffffff)' : '#fff',
-                              boxShadow: active ? '0 8px 24px -12px rgba(238,35,41,0.35)' : 'none',
-                              fontFamily: 'inherit'
-                            }}
-                          >
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                              <span style={{ fontSize: 24 }}>{pm.icon}</span>
-                              <div>
-                                <div style={{ fontSize: 15, fontWeight: 800, color: '#0f172a' }}>{isRTL ? pm.ar : pm.en}</div>
-                                <div style={{ fontSize: 12, color: '#64748b', marginTop: 2 }}>{isRTL ? pm.hint_ar : pm.hint_en}</div>
-                              </div>
-                            </div>
-                          </button>
-                        );
-                      })}
-                    </div>
-
-                    {form.paymentMethod === 'bank_transfer' && (
+          <motion.section className="rgx-card wkr-flow" initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.45, delay: 0.05 }}>
+            <div className="rgx-content">
+              <AnimatePresence mode="wait">
+                {step === 0 && (
+                  <motion.div key={lookupMode ? 'lookup' : 'info'} {...slide}>
+                    {lookupMode ? (
                       <>
-                        <div style={{ background: 'linear-gradient(135deg, #f8fafc, #ffffff)', border: '1px solid #e2e8f0', borderRadius: 14, padding: 20, marginBottom: 20 }}>
-                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-                            <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: 1.4, color: '#EE2329', textTransform: 'uppercase' }}>
-                              {isRTL ? 'تفاصيل التحويل البنكي' : 'Bank Transfer Details'}
-                            </div>
-                            {payment.bank && (
-                              <button
-                                type="button"
-                                onClick={() => copyToClipboard(
-                                  `${payment.bank.bankName || ''}\n${payment.bank.accountHolder || ''}\nIBAN: ${payment.bank.iban || ''}`,
-                                  'all'
-                                )}
-                                style={{ padding: '6px 12px', borderRadius: 8, border: '1px solid #cbd5e1', background: '#fff', color: '#334155', cursor: 'pointer', fontSize: 12, fontWeight: 700 }}
-                              >
-                                {copiedField === 'all' ? (isRTL ? '✓ نُسخ الكل' : '✓ Copied all') : (isRTL ? '📋 نسخ الكل' : '📋 Copy all')}
-                              </button>
-                            )}
+                        {stepHead(0, tx('هل سبق لك التسجيل في ورشة؟', 'Registered for a workshop before?'),
+                          tx('أدخل رقم الجوال أو الهوية لنعبّئ بياناتك تلقائيًا، أو ابدأ تسجيلًا جديدًا.', 'Enter your phone or national ID and we fill in your details — or start a new registration.'))}
+                        <div className="user-lookup-input wkr-lookup">
+                          <input
+                            className="form-input"
+                            value={lookupValue}
+                            onChange={e => setLookupValue(e.target.value)}
+                            placeholder={tx('رقم الجوال أو رقم الهوية', 'Phone number or National ID')}
+                            onKeyDown={e => e.key === 'Enter' && handleLookup()}
+                          />
+                        </div>
+                        <div className="user-lookup-buttons">
+                          <button type="button" className="btn btn-primary" disabled={!lookupValue.trim() || lookupLoading} onClick={handleLookup}>
+                            {lookupLoading ? <span className="loading-spinner" /> : <Icon d={IC.search} />}
+                            {lookupLoading ? tx('جاري البحث…', 'Searching…') : tx('بحث', 'Search')}
+                          </button>
+                          <button type="button" className="btn btn-secondary" onClick={() => setLookupMode(false)}>
+                            <Icon d={IC.userPlus} />{tx('تسجيل جديد', 'Register as new')}
+                          </button>
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        {stepHead(0, tx('البيانات الشخصية', 'Personal information'), tx('بيانات المتدرب كما في الهوية.', "The trainee's details, as on the ID."))}
+                        <div className="form-grid">
+                          <div className="form-group">
+                            <label className="form-label">{tx('الاسم الأول', 'First name')} <span className="required">*</span></label>
+                            <input className="form-input" value={form.firstName} onChange={e => handleChange('firstName', e.target.value)} />
                           </div>
-                          {payment.bank ? (
-                            <>
-                              {[
-                                { key: 'bank',   label_ar: 'البنك',            label_en: 'Bank',            value: payment.bank.bankName, ltr: false },
-                                { key: 'holder', label_ar: 'اسم صاحب الحساب',  label_en: 'Account Holder',  value: payment.bank.accountHolder, ltr: false },
-                                { key: 'iban',   label_ar: 'رقم الآيبان (IBAN)', label_en: 'IBAN',           value: payment.bank.iban, ltr: true, big: true }
-                              ].map(row => (
-                                <div key={row.key} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, padding: '10px 0', borderBottom: '1px dotted #e2e8f0' }}>
-                                  <div style={{ fontSize: 12, color: '#64748b', fontWeight: 700, minWidth: 140 }}>{isRTL ? row.label_ar : row.label_en}</div>
-                                  <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 8, justifyContent: 'flex-end' }}>
-                                    <span
-                                      dir={row.ltr ? 'ltr' : undefined}
-                                      style={{
-                                        fontFamily: row.ltr ? "'JetBrains Mono', monospace" : 'inherit',
-                                        fontWeight: row.big ? 800 : 700,
-                                        fontSize: row.big ? '1.05rem' : '0.95rem',
-                                        color: '#0f172a',
-                                        userSelect: 'all',
-                                        wordBreak: 'break-all',
-                                        textAlign: row.ltr ? 'end' : 'inherit'
-                                      }}
-                                    >
-                                      {row.value || '—'}
-                                    </span>
-                                    {row.value && (
-                                      <button
-                                        type="button"
-                                        onClick={() => copyToClipboard(row.value, row.key)}
-                                        title={isRTL ? 'نسخ' : 'Copy'}
-                                        style={{ padding: '5px 10px', borderRadius: 6, border: '1px solid #cbd5e1', background: '#fff', cursor: 'pointer', fontSize: 12, fontWeight: 700, color: '#334155', minWidth: 60 }}
-                                      >
-                                        {copiedField === row.key ? '✓' : '📋'}
-                                      </button>
-                                    )}
-                                  </div>
+                          <div className="form-group">
+                            <label className="form-label">{tx('الاسم الأخير', 'Last name')} <span className="required">*</span></label>
+                            <input className="form-input" value={form.lastName} onChange={e => handleChange('lastName', e.target.value)} />
+                          </div>
+                          <div className="form-group">
+                            <label className="form-label">{tx('رقم الجوال', 'Phone')} <span className="required">*</span></label>
+                            <input className="form-input" type="tel" dir="ltr" value={form.phone} onChange={e => handleChange('phone', e.target.value)} placeholder="05xxxxxxxx" />
+                          </div>
+                          <div className="form-group">
+                            <label className="form-label">{tx('البريد الإلكتروني', 'Email')} <span className="required">*</span></label>
+                            <input className={`form-input${form.email && !isValidEmail(form.email) ? ' wkr-bad' : ''}`} type="email" dir="ltr" value={form.email} onChange={e => handleChange('email', e.target.value)} placeholder="name@example.com" />
+                            {form.email && !isValidEmail(form.email) && <span className="wkr-err">{tx('البريد الإلكتروني غير صحيح', 'Invalid email address')}</span>}
+                          </div>
+                          <div className="form-group">
+                            <label className="form-label">{tx('رقم هوية الطالب', "Student's national ID")} <span className="required">*</span></label>
+                            <input className="form-input" dir="ltr" value={form.nationalId} onChange={e => handleChange('nationalId', e.target.value)} />
+                          </div>
+                          <div className="form-group">
+                            <label className="form-label">{tx('الجنس', 'Gender')} <span className="required">*</span></label>
+                            <select className="form-select" value={form.gender} onChange={e => handleChange('gender', e.target.value)}>
+                              <option value="">{tx('اختر', 'Select')}</option>
+                              <option value="male">{tx('ذكر', 'Male')}</option>
+                              <option value="female">{tx('أنثى', 'Female')}</option>
+                            </select>
+                          </div>
+                          {!requireId && (
+                            <div className="form-group">
+                              <label className="form-label">{tx('العمر', 'Age')} <span className="required">*</span></label>
+                              <input className="form-input" type="number" value={form.age} onChange={e => handleChange('age', e.target.value)} />
+                            </div>
+                          )}
+                          <div className="form-group">
+                            <label className="form-label">{tx('المدينة', 'City')} <span className="required">*</span></label>
+                            <input className="form-input" value={form.city} onChange={e => handleChange('city', e.target.value)} />
+                          </div>
+                          {requireId && (
+                            <div className="form-group full-width">
+                              <label className="form-label">{tx('صورة الهوية الوطنية أو الإقامة', 'Photo of the National ID or Iqama')} <span className="required">*</span></label>
+                              <div className={`wkr-id is-${idCheck.status}`}>
+                                <span className="wkr-id-thumb">
+                                  {idCheck.preview ? <img src={idCheck.preview} alt="" /> : <Icon d={IC.idcard} />}
+                                </span>
+                                <div className="wkr-id-body">
+                                  {idCheck.status === 'idle' && (
+                                    <p className="wkr-id-hint">{tx('صوّر الوجه الأمامي للبطاقة كاملاً بإضاءة جيدة وبدون انعكاس — نقرأ تاريخ الميلاد ونحسب العمر تلقائياً.', 'Photograph the whole front of the card in good light, without glare — we read the date of birth and work out the age.')}</p>
+                                  )}
+                                  {idCheck.status === 'reading' && (
+                                    <p className="wkr-id-reading"><span className="loading-spinner" />{tx('جاري قراءة البطاقة…', 'Reading the card…')}</p>
+                                  )}
+                                  {idCheck.status === 'ok' && (
+                                    <>
+                                      <p className="wkr-id-line">
+                                        {tx('تاريخ الميلاد:', 'Date of birth:')} <b dir="ltr">{fmtDmy(idCheck.birthDate)}</b>{isRTL ? ' م' : ''}
+                                        {idCheck.birthDateHijri && <> · <b dir="ltr">{fmtDmy(idCheck.birthDateHijri)}</b> {tx('هـ', 'AH')}</>}
+                                      </p>
+                                      <p className="wkr-id-age"><Icon d={IC.check} />{tx('العمر:', 'Age:')} <b>{idCheck.age}</b> {tx('سنة', 'years')}</p>
+                                    </>
+                                  )}
+                                  {idCheck.status === 'error' && <p className="wkr-id-error" role="alert">{idCheck.error}</p>}
+                                  <label className={`btn btn-secondary wkr-id-btn${idCheck.status === 'reading' ? ' is-disabled' : ''}`}>
+                                    <input
+                                      type="file"
+                                      accept="image/*"
+                                      hidden
+                                      disabled={idCheck.status === 'reading'}
+                                      onChange={e => { handleIdUpload(e.target.files); e.target.value = ''; }}
+                                    />
+                                    <Icon d={IC.camera} />
+                                    {idCheck.status === 'idle' ? tx('رفع صورة الهوية', 'Upload ID photo') : tx('تغيير الصورة', 'Change photo')}
+                                  </label>
                                 </div>
-                              ))}
-                              {payment.bank.additionalInfo && (
-                                <div style={{ marginTop: 12, padding: 10, background: '#fef3c7', border: '1px solid #fde68a', borderRadius: 8, fontSize: 12.5, color: '#78350f', lineHeight: 1.7 }}>
-                                  💡 {payment.bank.additionalInfo}
+                              </div>
+                              {idCheck.status === 'ok' && idCheck.idNumber && form.nationalId && form.nationalId !== idCheck.idNumber && (
+                                <div className="info-banner warning wkr-id-warn">
+                                  <Icon d={IC.alert} />
+                                  <span>
+                                    {isRTL
+                                      ? <>رقم الهوية في البطاقة (<b dir="ltr">{idCheck.idNumber}</b>) يختلف عن الرقم المُدخل.</>
+                                      : <>The number on the card (<b>{idCheck.idNumber}</b>) differs from the one entered.</>}
+                                    {' '}
+                                    <button type="button" className="wkr-linkbtn" onClick={() => handleChange('nationalId', idCheck.idNumber)}>{tx('استخدم رقم البطاقة', 'Use the card number')}</button>
+                                  </span>
                                 </div>
                               )}
-                            </>
-                          ) : (
-                            <div style={{ padding: 14, textAlign: 'center', color: '#94a3b8', fontSize: 13 }}>
-                              {isRTL ? 'جاري تحميل تفاصيل الحساب...' : 'Loading account details...'}
                             </div>
                           )}
                         </div>
-
-                        <div style={{ marginBottom: 12 }}>
-                          <label style={{ fontSize: 12, fontWeight: 800, letterSpacing: 1, color: '#EE2329', textTransform: 'uppercase' }}>
-                            {isRTL ? '📤 ارفع صورة إشعار التحويل *' : '📤 Upload transfer proof *'}
-                          </label>
-                          <input
-                            type="file"
-                            accept="image/png,image/jpeg,image/jpg,image/webp,application/pdf"
-                            onChange={(e) => handleProofUpload(e.target.files)}
-                            style={{ marginTop: 8, display: 'block', fontFamily: 'inherit', width: '100%' }}
-                          />
-                          {proofFile && (
-                            <div style={{ marginTop: 8, padding: '10px 14px', background: '#ecfdf5', border: '1px solid #86efac', borderRadius: 8, fontSize: 13, color: '#065f46', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                              <span>✓ {isRTL ? 'تم رفع' : 'Uploaded'}: <b>{proofFile.fileName}</b> ({(proofFile.fileSize / 1024).toFixed(0)} KB)</span>
-                              <button type="button" onClick={() => setProofFile(null)} style={{ border: 'none', background: 'transparent', color: '#dc2626', cursor: 'pointer', fontWeight: 700, fontSize: 12 }}>✕</button>
-                            </div>
-                          )}
-                          <p style={{ marginTop: 6, fontSize: 11.5, color: '#64748b' }}>
-                            {isRTL
-                              ? 'صيغ مقبولة: PNG, JPG, WebP, PDF · الحد الأقصى 10 ميجابايت'
-                              : 'Accepted: PNG, JPG, WebP, PDF · max 10 MB'}
-                          </p>
+                        <div className="form-navigation">
+                          <button type="button" className="btn btn-secondary" onClick={() => setLookupMode(true)}><Icon d={arrowBack} />{tx('رجوع', 'Back')}</button>
+                          <button
+                            type="button"
+                            className="btn btn-primary"
+                            disabled={!canProceedStep0 || (isSingleMode && singleWorkshopMeta && !singleWorkshopMeta.isOpen)}
+                            onClick={() => setStep(isSingleMode ? 2 : 1)}
+                          >{tx('التالي', 'Next')}<Icon d={arrowNext} /></button>
                         </div>
                       </>
                     )}
+                  </motion.div>
+                )}
 
-                    {form.paymentMethod === 'mada' && payment.mada && (
-                      <div style={{ padding: 20, background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: 12, marginBottom: 20, color: '#1e3a8a' }}>
-                        <div style={{ fontSize: 15, fontWeight: 800, marginBottom: 8 }}>💳 {payment.mada.title || (isRTL ? 'الدفع بمدى' : 'Mada Payment')}</div>
-                        <p style={{ margin: 0, fontSize: 14, lineHeight: 1.75 }}>{payment.mada.instructions}</p>
-                        {payment.mada.address && (
-                          <p style={{ margin: '10px 0 0', fontSize: 12.5, color: '#1d4ed8' }}>
-                            📍 {payment.mada.address}
-                          </p>
-                        )}
-                        <p style={{ margin: '10px 0 0', fontSize: 12.5, color: '#334155' }}>
-                          {isRTL
-                            ? 'سيتم تفعيل تسجيلك بعد الدفع في المقر.'
-                            : 'Your registration will be activated after in-store payment.'}
-                        </p>
+                {step === 1 && (
+                  <motion.div key="pick" {...slide}>
+                    {stepHead(1, tx('اختر الورشة التدريبية', 'Select a workshop'), tx('الورش المفتوحة للتسجيل الآن — اختر ورشة واحدة.', 'Workshops open for registration now — pick one.'))}
+                    {workshops.length === 0 ? (
+                      <div className="wkr-empty"><Icon d={IC.cap} />{tx('لا توجد ورش متاحة حالياً', 'No workshops available right now')}</div>
+                    ) : (
+                      <div className="wkr-cards">
+                        {workshops.map(w => {
+                          const pickable = isPickable(w);
+                          const on = form.workshopId === w.workshopId;
+                          const closedLabel = w.closedReason === 'deadline'
+                            ? tx('انتهى التسجيل (يُغلق قبل البدء بـ24 ساعة)', 'Registration ended (closes 24h before the start)')
+                            : w.closedReason === 'started'
+                              ? tx('بدأت الورشة — التسجيل مغلق', 'Started — registration closed')
+                              : w.closedReason === 'full' || (w.spotsRemaining != null && w.spotsRemaining <= 0)
+                                ? tx('مكتمل', 'Full')
+                                : tx('التسجيل مغلق', 'Registration closed');
+                          let days = 1;
+                          if (w.startDate && w.endDate && w.endDate !== w.startDate) {
+                            days = Math.max(1, Math.ceil((new Date(w.endDate) - new Date(w.startDate)) / (1000 * 60 * 60 * 24)) + 1);
+                          }
+                          const perDay = w.totalHours && days > 1 ? (w.totalHours / days).toFixed(1) : null;
+                          return (
+                            <button
+                              type="button"
+                              key={w.workshopId}
+                              className={`wkr-card${on ? ' on' : ''}${!pickable ? ' off' : ''}`}
+                              disabled={!pickable}
+                              onClick={() => pickable && handleChange('workshopId', w.workshopId)}
+                              aria-pressed={on}
+                            >
+                              {w.photo
+                                ? <span className="wkr-card-img" style={{ backgroundImage: `url(${w.photo})` }} />
+                                : <span className="wkr-card-img wkr-card-img--none"><Icon d={IC.cap} /></span>}
+                              {on && <span className="wkr-card-check"><Icon d={IC.check} /></span>}
+                              <span className="wkr-card-body">
+                                <b className="wkr-card-title">{w.title}</b>
+                                {pickable && w.registrationDeadline && (
+                                  <span className="wkr-chip amber"><Icon d={IC.clock} />{tx('آخر موعد: ', 'Register by: ')}{new Date(w.registrationDeadline).toLocaleString(isRTL ? 'ar-SA-u-ca-gregory-nu-latn' : 'en-GB', { timeZone: 'Asia/Riyadh', weekday: 'short', day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' })}</span>
+                                )}
+                                {w.presenter && <span className="wkr-card-presenter">{tx('المقدم:', 'Presenter:')} <bdi>{w.presenter}</bdi></span>}
+                                <span className="wkr-card-meta">
+                                  {w.startDate && <span><Icon d={IC.cal} />{w.startDate}{w.endDate && w.endDate !== w.startDate ? ` ← ${w.endDate}` : ''}</span>}
+                                  {w.startTime && <span dir="ltr"><Icon d={IC.clock} />{hhmm(w.startTime)}{w.endTime ? ` - ${hhmm(w.endTime)}` : ''}</span>}
+                                  {w.totalHours && <span><Icon d={IC.timer} />{w.totalHours} {tx('ساعة', 'hrs')}{perDay ? ` (${perDay} × ${days})` : ''}</span>}
+                                  {(w.minAge || w.maxAge) && <span><Icon d={IC.users} />{w.minAge || '?'}–{w.maxAge || '?'} {tx('سنة', 'yrs')}</span>}
+                                </span>
+                                {w.content && <span className="wkr-card-text">{w.content}</span>}
+                                {w.objectives && <span className="wkr-card-obj">{tx('الأهداف: ', 'Objectives: ')}{w.objectives}</span>}
+                                <span className="wkr-card-foot">
+                                  <b className={`wkr-price${Number(w.price) > 0 ? '' : ' free'}`}>{Number(w.price) > 0 ? `${w.price} ${tx('ر.س', 'SAR')}` : tx('مجاني', 'Free')}</b>
+                                  <span className={`wkr-spots${!pickable || (w.spotsRemaining != null && w.spotsRemaining <= 3) ? ' low' : ''}`}>
+                                    {!pickable ? closedLabel : w.spotsRemaining != null ? `${w.spotsRemaining} ${tx('مقعد متبقٍ', 'spots left')}` : tx('متاح', 'Open')}
+                                  </span>
+                                </span>
+                              </span>
+                            </button>
+                          );
+                        })}
                       </div>
                     )}
-                  </>
+                    <div className="form-navigation">
+                      <button type="button" className="btn btn-secondary" onClick={() => setStep(0)}><Icon d={arrowBack} />{tx('السابق', 'Back')}</button>
+                      <button type="button" className="btn btn-primary" disabled={!canProceedStep1} onClick={handleStep1Next}>{tx('التالي', 'Next')}<Icon d={arrowNext} /></button>
+                    </div>
+                  </motion.div>
                 )}
 
-                {/* Terms & conditions — required for paid workshops.
-                    Renders even when a coupon zeroed the price so the
-                    customer still consents. */}
-                {workshopIsPaid && payment.terms.length > 0 && (
-                  <div style={{ marginTop: 16, padding: 16, background: '#fff', border: '1px solid #cbd5e1', borderRadius: 12 }}>
-                    <div style={{ fontSize: 12, fontWeight: 800, letterSpacing: 1.2, color: '#EE2329', textTransform: 'uppercase', marginBottom: 10 }}>
-                      📜 {isRTL ? 'الشروط والأحكام' : 'Terms & Conditions'}
+                {step === 2 && (
+                  <motion.div key="pay" {...slide}>
+                    {stepHead(2, tx('الدفع والتأكيد', 'Payment & confirmation'), workshopIsPaid
+                      ? tx('راجع الورشة، اختر طريقة الدفع ثم أكّد التسجيل.', 'Review the workshop, choose how to pay, then confirm.')
+                      : tx('راجع الورشة ثم أكّد التسجيل.', 'Review the workshop, then confirm.'))}
+
+                    {selectedWorkshop && (
+                      <div className="wkr-summary">
+                        <span className="wkr-summary-ico"><Icon d={IC.cap} /></span>
+                        <span className="wkr-summary-text">
+                          <b>{selectedWorkshop.title}</b>
+                          <small>
+                            {selectedWorkshop.startDate}{selectedWorkshop.totalHours ? ` · ${selectedWorkshop.totalHours} ${tx('ساعة', 'h')}` : ''}
+                            {selectedWorkshop.room ? <> · {tx('القاعة:', 'Room:')} <b>{selectedWorkshop.room}</b></> : null}
+                          </small>
+                        </span>
+                        <b className={`wkr-price${workshopIsPaid ? '' : ' free'}`}>{workshopIsPaid ? `${selectedWorkshop.price} ${tx('ر.س', 'SAR')}` : tx('مجاناً', 'Free')}</b>
+                      </div>
+                    )}
+
+                    {!workshopIsPaid && (
+                      <div className="info-banner success wkr-free">
+                        <Icon d={IC.gift} />
+                        <span><b>{tx('هذه الورشة مجانية', 'This workshop is free')}</b><br />{tx('اضغط «تأكيد التسجيل» لإتمام العملية.', 'Press “Confirm registration” to finish.')}</span>
+                      </div>
+                    )}
+
+                    {workshopIsPaid && (
+                      <div className="wkr-due">
+                        <div className="wkr-coupon">
+                          <span className="wkr-coupon-label"><Icon d={IC.tag} />{tx('كود خصم (اختياري)', 'Coupon code (optional)')}</span>
+                          {coupon ? (
+                            <div className="wkr-coupon-on">
+                              <span><b dir="ltr">{coupon.code}</b> · {isRTL ? `خصم ${coupon.percent}%` : `${coupon.percent}% off`} · <b>-{money(coupon.discountAmount)}</b></span>
+                              <button type="button" className="wkr-linkbtn danger" onClick={removeCoupon}>{tx('إزالة', 'Remove')}</button>
+                            </div>
+                          ) : (
+                            <div className="wkr-coupon-row">
+                              <input
+                                className="form-input"
+                                dir="ltr"
+                                value={couponInput}
+                                onChange={(e) => setCouponInput(e.target.value.toUpperCase())}
+                                placeholder={tx('أدخل الكود', 'Enter code')}
+                                onKeyDown={(e) => e.key === 'Enter' && applyCoupon()}
+                              />
+                              <button type="button" className="btn btn-secondary" onClick={applyCoupon} disabled={couponApplying || !couponInput.trim()}>
+                                {couponApplying ? <span className="loading-spinner" /> : tx('تطبيق', 'Apply')}
+                              </button>
+                            </div>
+                          )}
+                        </div>
+
+                        <div className="wkr-total">
+                          <span>
+                            <small>{tx('الإجمالي المستحق', 'Total due')}</small>
+                            {coupon && <em><s>{Number(coupon.originalPrice).toFixed(2)}</s> · −{coupon.percent}%</em>}
+                          </span>
+                          <b>{netAmount <= 0 ? tx('مجاناً', 'Free') : money(netAmount)}</b>
+                        </div>
+                      </div>
+                    )}
+
+                    {workshopIsPaid && netAmount > 0 && (
+                      <>
+                        <h3 className="wkr-sub">{tx('طريقة الدفع', 'Payment method')}</h3>
+                        <div className="selection-grid wkr-pay">
+                          {[
+                            { key: 'bank_transfer', icon: IC.bank, ar: 'تحويل بنكي', en: 'Bank transfer', hAr: 'ارفع صورة الإشعار للمراجعة', hEn: 'Upload the transfer receipt for review' },
+                            { key: 'mada', icon: IC.mada, ar: 'مدى في مقر فاب لاب', en: 'Mada at FabLab', hAr: 'ادفع بمدى داخل المقر', hEn: 'Pay in person at FabLab' }
+                          ].map(pm => (
+                            <button
+                              key={pm.key}
+                              type="button"
+                              className={`selection-card${form.paymentMethod === pm.key ? ' selected' : ''}`}
+                              onClick={() => handleChange('paymentMethod', pm.key)}
+                            >
+                              <span className="selection-card-icon"><Icon d={pm.icon} /></span>
+                              <span className="selection-card-title">{isRTL ? pm.ar : pm.en}</span>
+                              <span className="selection-card-description">{isRTL ? pm.hAr : pm.hEn}</span>
+                            </button>
+                          ))}
+                        </div>
+
+                        {form.paymentMethod === 'bank_transfer' && (
+                          <>
+                            <div className="wkr-bank">
+                              <div className="wkr-bank-head">
+                                <b>{tx('تفاصيل التحويل البنكي', 'Bank transfer details')}</b>
+                                {payment.bank && (
+                                  <button
+                                    type="button"
+                                    className="wkr-copy"
+                                    onClick={() => copyToClipboard(`${payment.bank.bankName || ''}\n${payment.bank.accountHolder || ''}\nIBAN: ${payment.bank.iban || ''}`, 'all')}
+                                  >
+                                    <Icon d={copiedField === 'all' ? IC.check : IC.copy} />{copiedField === 'all' ? tx('نُسخ الكل', 'Copied') : tx('نسخ الكل', 'Copy all')}
+                                  </button>
+                                )}
+                              </div>
+                              {payment.bank ? (
+                                <>
+                                  {[
+                                    { key: 'bank', ar: 'البنك', en: 'Bank', value: payment.bank.bankName },
+                                    { key: 'holder', ar: 'اسم صاحب الحساب', en: 'Account holder', value: payment.bank.accountHolder },
+                                    { key: 'iban', ar: 'رقم الآيبان (IBAN)', en: 'IBAN', value: payment.bank.iban, ltr: true }
+                                  ].map(row => (
+                                    <div key={row.key} className="wkr-bank-row">
+                                      <small>{isRTL ? row.ar : row.en}</small>
+                                      <span dir={row.ltr ? 'ltr' : undefined} className={row.ltr ? 'mono' : ''}>{row.value || '—'}</span>
+                                      {row.value && (
+                                        <button type="button" className="wkr-copy icon" onClick={() => copyToClipboard(row.value, row.key)} title={tx('نسخ', 'Copy')}>
+                                          <Icon d={copiedField === row.key ? IC.check : IC.copy} />
+                                        </button>
+                                      )}
+                                    </div>
+                                  ))}
+                                  {payment.bank.additionalInfo && <p className="wkr-bank-note" dir="auto">{payment.bank.additionalInfo}</p>}
+                                </>
+                              ) : (
+                                <p className="wkr-muted">{tx('جاري تحميل تفاصيل الحساب…', 'Loading account details…')}</p>
+                              )}
+                            </div>
+
+                            <label className={`wkr-upload${proofFile ? ' has-file' : ''}`}>
+                              <input type="file" hidden accept="image/png,image/jpeg,image/jpg,image/webp,application/pdf" onChange={(e) => { handleProofUpload(e.target.files); e.target.value = ''; }} />
+                              <span className="wkr-upload-ico"><Icon d={proofFile ? IC.check : IC.upload} /></span>
+                              <span className="wkr-upload-text">
+                                {proofFile
+                                  ? <><b>{proofFile.fileName}</b><small>{(proofFile.fileSize / 1024).toFixed(0)} KB · {tx('اضغط للتغيير', 'Tap to change')}</small></>
+                                  : <><b>{tx('ارفع صورة إشعار التحويل', 'Upload the transfer receipt')} <span className="required">*</span></b><small>{tx('PNG أو JPG أو WebP أو PDF · حتى 10 ميجابايت', 'PNG, JPG, WebP or PDF · up to 10 MB')}</small></>}
+                              </span>
+                              {proofFile && <button type="button" className="wkr-linkbtn danger" onClick={(e) => { e.preventDefault(); setProofFile(null); }}>{tx('إزالة', 'Remove')}</button>}
+                            </label>
+                          </>
+                        )}
+
+                        {form.paymentMethod === 'mada' && payment.mada && (
+                          <div className="info-banner wkr-mada">
+                            <Icon d={IC.mada} />
+                            <span>
+                              <b>{payment.mada.title || tx('الدفع بمدى', 'Mada payment')}</b><br />
+                              {payment.mada.instructions}
+                              {payment.mada.address && <><br /><Icon d={IC.pin} /> {payment.mada.address}</>}
+                              <br /><small>{tx('سيتم تفعيل تسجيلك بعد الدفع في المقر.', 'Your registration is activated after you pay at FabLab.')}</small>
+                            </span>
+                          </div>
+                        )}
+                      </>
+                    )}
+
+                    {workshopIsPaid && payment.terms.length > 0 && (
+                      <div className="wkr-terms">
+                        <b className="wkr-sub">{tx('الشروط والأحكام', 'Terms & conditions')}</b>
+                        <ol className="wkr-terms-list" dir="auto">
+                          {payment.terms.map((t, i) => <li key={i}>{t}</li>)}
+                        </ol>
+                        <label className={`rgx-ack${termsAgreed ? ' is-on' : ''}`}>
+                          <input type="checkbox" checked={termsAgreed} onChange={(e) => setTermsAgreed(e.target.checked)} />
+                          <span>{tx('أقرّ بأنني قرأت الشروط والأحكام أعلاه وأوافق عليها بالكامل قبل إتمام التسجيل.', 'I have read and agree to all the terms and conditions above.')}</span>
+                        </label>
+                      </div>
+                    )}
+
+                    <div className="form-navigation">
+                      <button type="button" className="btn btn-secondary" onClick={() => setStep(isSingleMode ? 0 : 1)}><Icon d={arrowBack} />{tx('السابق', 'Back')}</button>
+                      <button type="button" className="btn btn-primary btn-submit" disabled={!canProceedStep2 || submitting} onClick={handleSubmit}>
+                        {submitting ? <span className="loading-spinner" /> : <Icon d={IC.check} />}
+                        {submitting ? tx('جاري التسجيل…', 'Submitting…') : tx('تأكيد التسجيل', 'Confirm registration')}
+                      </button>
                     </div>
-                    <div style={{ maxHeight: 190, overflowY: 'auto', border: '1px solid #e2e8f0', borderRadius: 8, padding: '10px 14px', background: '#f8fafc', fontSize: 13.2, lineHeight: 1.85, color: '#334155' }}>
-                      <ol style={{ margin: 0, paddingInlineStart: 18 }}>
-                        {payment.terms.map((t, i) => (
-                          <li key={i} style={{ marginBottom: 6 }}>{t}</li>
-                        ))}
-                      </ol>
-                    </div>
-                    <label style={{ display: 'flex', alignItems: 'flex-start', gap: 8, marginTop: 12, cursor: 'pointer', fontSize: 13.5, color: '#0f172a' }}>
-                      <input
-                        type="checkbox"
-                        checked={termsAgreed}
-                        onChange={(e) => setTermsAgreed(e.target.checked)}
-                        style={{ marginTop: 3, transform: 'scale(1.2)', cursor: 'pointer' }}
-                      />
-                      <span>
-                        {isRTL
-                          ? 'أقرّ بأنني قرأت الشروط والأحكام أعلاه وأوافق عليها بالكامل قبل إتمام التسجيل.'
-                          : 'I have read and agree to all the terms and conditions above.'}
-                      </span>
-                    </label>
-                  </div>
+                  </motion.div>
                 )}
 
-                <div className="workshop-actions">
-                  <button className="workshop-btn-back" onClick={() => setStep(isSingleMode ? 0 : 1)}>{isRTL ? 'السابق' : 'Back'}</button>
-                  <button className="workshop-btn-submit" disabled={!canProceedStep2 || submitting} onClick={handleSubmit}>
-                    {submitting ? (isRTL ? 'جاري التسجيل...' : 'Submitting...') : (isRTL ? '✓ تأكيد التسجيل' : '✓ Confirm Registration')}
-                  </button>
-                </div>
-              </motion.div>
-            )}
-
-            {step === 3 && result && (
-              <motion.div
-                key="step3"
-                className="workshop-step-content workshop-success"
-                initial={{ opacity: 0, scale: 0.85 }}
-                animate={{ opacity: 1, scale: 1 }}
-                transition={{ type: 'spring', stiffness: 220, damping: 20 }}
-              >
-                <motion.div
-                  className="workshop-success-icon"
-                  initial={{ scale: 0, rotate: -90 }}
-                  animate={{ scale: 1, rotate: 0 }}
-                  transition={{ type: 'spring', stiffness: 260, damping: 14, delay: 0.15 }}
-                  style={{ background: 'linear-gradient(135deg, #16a34a, #065f46)', boxShadow: '0 0 60px rgba(22,163,74,0.55)' }}
-                >✓</motion.div>
-                <motion.h3
-                  initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.3 }}
-                  style={{ color: '#16a34a', margin: '20px 0 6px' }}
-                >
-                  {result.paymentMethod === 'free'
-                    ? (isRTL ? 'تم التسجيل بنجاح!' : 'Registration Successful!')
-                    : (isRTL ? 'تم استلام طلبك — بانتظار مراجعة الدفع' : 'Received — Awaiting Payment Review')}
-                </motion.h3>
-
-                <motion.div
-                  initial={{ opacity: 0, y: 12 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.42 }}
-                  style={{
-                    display: 'inline-block',
-                    padding: '10px 24px',
-                    borderRadius: 999,
-                    background: '#fef2f2',
-                    border: '2px dashed #EE2329',
-                    fontFamily: "'JetBrains Mono', monospace",
-                    fontSize: '1.15rem',
-                    fontWeight: 800,
-                    color: '#EE2329',
-                    letterSpacing: 2,
-                    margin: '10px 0 18px'
-                  }}
-                >
-                  {result.invoiceNumber}
-                </motion.div>
-
-                <motion.p
-                  initial={{ opacity: 0 }} animate={{ opacity: 1 }}
-                  transition={{ delay: 0.55 }}
-                  style={{ fontSize: 14, color: '#475569', lineHeight: 1.75, maxWidth: 520, margin: '0 auto' }}
-                >
-                  {result.paymentMethod === 'free' && (isRTL
-                    ? 'تسجيلك مفعّل وسيصلك بريد التأكيد مع بطاقة الحضور.'
-                    : 'Your seat is confirmed. Check your inbox for the workshop email + attendance ID.')}
-                  {result.paymentMethod === 'bank_transfer' && (isRTL
-                    ? 'استلمنا صورة إشعار التحويل. سيقوم فريق الإدارة بالتحقق منها وسيصلك بريد التأكيد النهائي مع الفاتورة قريباً.'
-                    : 'We received your transfer proof. Our team will verify and email you the final confirmation + invoice shortly.')}
-                  {result.paymentMethod === 'mada' && (isRTL
-                    ? 'يرجى الحضور إلى مقر فاب لاب الأحساء لإتمام الدفع بمدى. سيقوم فريقنا بتفعيل تسجيلك فور الدفع.'
-                    : 'Please visit the FabLab Al-Ahsa store to complete payment by mada. Our team will activate your seat immediately after payment.')}
-                </motion.p>
-
-                <motion.div
-                  initial={{ opacity: 0 }} animate={{ opacity: 1 }}
-                  transition={{ delay: 0.7 }}
-                  className="workshop-summary"
-                  style={{ margin: '22px auto 0', maxWidth: 480 }}
-                >
-                  <strong>{result.workshop?.title || selectedWorkshop?.title}</strong>
-                  {Number(result.discountAmount) > 0 && (
-                    <span>{isRTL ? 'الخصم:' : 'Discount:'} <b style={{ color: '#16a34a' }}>−{Number(result.discountAmount).toFixed(2)} {isRTL ? 'ر.س' : 'SAR'}</b>
-                      {result.couponCode && <> ({result.couponCode} · {result.couponPercent}%)</>}
-                    </span>
-                  )}
-                  {result.paymentAmount > 0 && (
-                    <span>{isRTL ? 'الإجمالي المستحق:' : 'Amount due:'} <b style={{ color: '#EE2329' }}>{Number(result.paymentAmount).toFixed(2)} {isRTL ? 'ر.س' : 'SAR'}</b></span>
-                  )}
-                  <span>{isRTL ? 'الحالة:' : 'Status:'} {
-                    result.paymentStatus === 'verified'
-                      ? (isRTL ? '✓ مؤكد' : '✓ Confirmed')
-                      : (isRTL ? '⏳ بانتظار المراجعة' : '⏳ Pending review')
-                  }</span>
-                </motion.div>
-
-                <div style={{ marginTop: 24 }}>
-                  <button className="workshop-btn-next" onClick={() => navigate('/')}>{isRTL ? 'العودة للرئيسية' : 'Back to Home'}</button>
-                </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
-          </>)}
-
-          {/* Footer */}
-          <div className="workshop-reg-footer">
-            <button className="workshop-lang-btn" onClick={toggleLanguage}>
-              {i18n.language === 'ar' ? 'English' : 'العربية'}
-            </button>
-          </div>
-        </motion.div>
-      </div>
-    </div>
+                {step === 3 && result && (
+                  <motion.div key="done" className="wkr-done" initial={{ opacity: 0, scale: 0.94 }} animate={{ opacity: 1, scale: 1 }} transition={{ type: 'spring', stiffness: 220, damping: 20 }}>
+                    <motion.span
+                      className={`wkr-done-ico${result.paymentMethod === 'free' ? '' : ' wait'}`}
+                      initial={{ scale: 0, rotate: -90 }}
+                      animate={{ scale: 1, rotate: 0 }}
+                      transition={{ type: 'spring', stiffness: 260, damping: 14, delay: 0.12 }}
+                    >
+                      <Icon d={result.paymentMethod === 'free' ? IC.check : IC.clock} />
+                    </motion.span>
+                    <h2>
+                      {result.paymentMethod === 'free'
+                        ? tx('تم التسجيل بنجاح!', 'Registration successful!')
+                        : tx('تم استلام طلبك — بانتظار مراجعة الدفع', 'Received — awaiting payment review')}
+                    </h2>
+                    <span className="wkr-ref" dir="ltr">{result.invoiceNumber}</span>
+                    <p>
+                      {result.paymentMethod === 'free' && tx('تسجيلك مفعّل وسيصلك بريد التأكيد مع بطاقة الحضور.', 'Your seat is confirmed. Check your inbox for the workshop email and attendance ID.')}
+                      {result.paymentMethod === 'bank_transfer' && tx('استلمنا صورة إشعار التحويل. سيقوم فريق الإدارة بالتحقق منها وسيصلك بريد التأكيد النهائي مع الفاتورة قريباً.', 'We received your transfer receipt. Our team will verify it and email you the final confirmation and invoice shortly.')}
+                      {result.paymentMethod === 'mada' && tx('يرجى الحضور إلى مقر فاب لاب الأحساء لإتمام الدفع بمدى. سيقوم فريقنا بتفعيل تسجيلك فور الدفع.', 'Please visit FabLab Al-Ahsa to pay by mada. Our team activates your seat right after payment.')}
+                    </p>
+                    <div className="wkr-done-sum">
+                      <div><small>{tx('الورشة', 'Workshop')}</small><b>{result.workshop?.title || selectedWorkshop?.title}</b></div>
+                      {Number(result.discountAmount) > 0 && (
+                        <div><small>{tx('الخصم', 'Discount')}</small><b className="ok">−{money(result.discountAmount)}{result.couponCode ? ` (${result.couponCode} · ${result.couponPercent}%)` : ''}</b></div>
+                      )}
+                      {result.paymentAmount > 0 && <div><small>{tx('الإجمالي المستحق', 'Amount due')}</small><b className="due">{money(result.paymentAmount)}</b></div>}
+                      <div><small>{tx('الحالة', 'Status')}</small><b>{result.paymentStatus === 'verified' ? tx('مؤكد', 'Confirmed') : tx('بانتظار المراجعة', 'Pending review')}</b></div>
+                    </div>
+                    <div className="wkr-done-actions">
+                      <button type="button" className="btn btn-primary" onClick={() => navigate('/')}><Icon d={IC.home} />{tx('العودة للرئيسية', 'Back to home')}</button>
+                      <button type="button" className="btn btn-secondary" onClick={() => navigate('/register')}><Icon d={IC.grid} />{tx('خدمات أخرى', 'Other services')}</button>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+          </motion.section>
+        </>
+      )}
+    </StudioShell>
   );
 };
 

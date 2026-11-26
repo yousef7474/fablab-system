@@ -3,6 +3,7 @@ import { useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { motion, AnimatePresence } from 'framer-motion';
 import api from '../../config/api';
+import StudioShell, { Icon, useStudioTheme } from '../RegistrationForm/StudioShell';
 import './WorkshopSurvey.css';
 
 // Public post-workshop survey, reached from the per-student link
@@ -10,11 +11,24 @@ import './WorkshopSurvey.css';
 // certificate — the server emails it right away when attendance is
 // already enough.
 const FACES = ['😞', '🙁', '😐', '🙂', '😍'];
+const SI = {
+  user: ['M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2', 'M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8z'],
+  cal: ['M5 4h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z', 'M16 2v4', 'M8 2v4', 'M3 10h18'],
+  clock: ['M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20z', 'M12 6v6l4 2'],
+  cap: ['M22 10L12 5 2 10l10 5 10-5z', 'M6 12v5c3 2 9 2 12 0v-5'],
+  mail: ['M4 4h16a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z', 'M22 6l-10 7L2 6'],
+  check: ['M20 6 9 17l-5-5'],
+  link: ['M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71', 'M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71'],
+  alert: ['M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z', 'M12 9v4', 'M12 17h.01'],
+  eye: ['M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z', 'M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z'],
+  send: ['M22 2 11 13', 'M22 2l-7 20-4-9-9-4 20-7z']
+};
 
 const WorkshopSurvey = () => {
   const { token } = useParams();
   const { i18n } = useTranslation();
   const isRTL = i18n.language === 'ar';
+  const [theme, toggleTheme] = useStudioTheme();
   const L = (q) => (isRTL ? q.ar : q.en);
 
   const [data, setData] = useState(null);
@@ -71,47 +85,44 @@ const WorkshopSurvey = () => {
 
   const fmtDate = (d) => (d ? String(d).slice(0, 10).split('-').reverse().join('/') : '');
 
-  const header = (
-    <header className="wsurvey-head" style={data?.workshop?.color ? { '--ws-accent': data.workshop.color } : undefined}>
-      <div className="wsurvey-logos">
-        <img src="/fablab.png" alt="FabLab" />
-        <img src="/found.png" alt="Foundation" />
-      </div>
-      <span className="wsurvey-kicker">{isRTL ? 'استبيان الورشة' : 'Workshop survey'}</span>
-      {data?.workshop && (
+  const tx = (ar, en) => (isRTL ? ar : en);
+
+  const hero = (
+    <motion.div className="rgx-hero wsurvey-hero" initial={{ opacity: 0, y: -12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
+      <p className="rgx-eyebrow"><i aria-hidden="true" />{tx('استبيان الورشة', 'Workshop survey')}</p>
+      {data?.workshop ? (
         <>
-          <h1>{data.workshop.title}</h1>
+          <h1><em>{data.workshop.title}</em></h1>
           <p className="wsurvey-meta">
-            {data.workshop.presenter && <span>{isRTL ? 'المدرب:' : 'Trainer:'} {data.workshop.presenter}</span>}
+            {data.workshop.presenter && <span><Icon d={SI.user} />{tx('المدرب:', 'Trainer:')} <bdi>{data.workshop.presenter}</bdi></span>}
             {data.workshop.startDate && (
-              <span dir="ltr">{fmtDate(data.workshop.startDate)}{data.workshop.endDate && data.workshop.endDate !== data.workshop.startDate ? ` – ${fmtDate(data.workshop.endDate)}` : ''}</span>
+              <span><Icon d={SI.cal} /><bdi dir="ltr">{fmtDate(data.workshop.startDate)}{data.workshop.endDate && data.workshop.endDate !== data.workshop.startDate ? ` – ${fmtDate(data.workshop.endDate)}` : ''}</bdi></span>
             )}
           </p>
         </>
+      ) : (
+        <h1>{isRTL ? <>رأيك <em>يهمّنا</em></> : <>Your feedback <em>matters</em></>}</h1>
       )}
-      <button type="button" className="wsurvey-lang" onClick={() => i18n.changeLanguage(isRTL ? 'en' : 'ar')}>
-        {isRTL ? 'English' : 'العربية'}
-      </button>
-    </header>
+    </motion.div>
   );
 
   const notice = (icon, title, text, tone = 'info') => (
-    <div className={`wsurvey-notice ${tone}`}>
-      <div className="wsurvey-notice-icon" aria-hidden="true">{icon}</div>
+    <section className={`rgx-card rgx-closed wsurvey-notice ${tone}`}>
+      <span className="rgx-closed-ico"><Icon d={icon} /></span>
       <h2>{title}</h2>
-      {text && <p>{text}</p>}
-    </div>
+      {text && <p className="rgx-closed-text">{text}</p>}
+    </section>
   );
 
   let body;
   if (loadError) {
     body = loadError === 'invalid'
-      ? notice('🔗', isRTL ? 'رابط الاستبيان غير صالح' : 'This survey link is not valid', isRTL ? 'تأكد من فتح الرابط كاملاً كما وصلك في البريد، أو تواصل مع فاب لاب.' : 'Make sure you opened the full link from your email, or contact FabLab.', 'error')
-      : notice('⚠️', isRTL ? 'تعذّر تحميل الاستبيان' : 'Could not load the survey', isRTL ? 'تحقق من اتصالك ثم أعد تحميل الصفحة.' : 'Check your connection and reload the page.', 'error');
+      ? notice(SI.link, isRTL ? 'رابط الاستبيان غير صالح' : 'This survey link is not valid', isRTL ? 'تأكد من فتح الرابط كاملاً كما وصلك في البريد، أو تواصل مع فاب لاب.' : 'Make sure you opened the full link from your email, or contact FabLab.', 'error')
+      : notice(SI.alert, isRTL ? 'تعذّر تحميل الاستبيان' : 'Could not load the survey', isRTL ? 'تحقق من اتصالك ثم أعد تحميل الصفحة.' : 'Check your connection and reload the page.', 'error');
   } else if (!data) {
-    body = <div className="wsurvey-loading"><span className="wsurvey-spinner" />{isRTL ? 'جارٍ التحميل…' : 'Loading…'}</div>;
+    body = <section className="rgx-card wsurvey-loading"><span className="loading-spinner" />{isRTL ? 'جارٍ التحميل…' : 'Loading…'}</section>;
   } else if (result && result.preview) {
-    body = notice('👁', isRTL ? 'انتهت المعاينة' : 'End of preview',
+    body = notice(SI.eye, isRTL ? 'انتهت المعاينة' : 'End of preview',
       isRTL ? 'هذه معاينة للاستبيان كما يراه الطالب — لم تُحفظ أي إجابات.' : 'This is a preview of the survey as students see it — no answers were saved.');
   } else if (result) {
     const att = result.attendance || {};
@@ -129,28 +140,28 @@ const WorkshopSurvey = () => {
     } else {
       text = isRTL ? 'ستصلك الشهادة على بريدك الإلكتروني قريباً.' : 'Your certificate will be emailed to you shortly.';
     }
-    body = notice('🎓', isRTL ? 'شكراً لك! تم استلام الاستبيان' : 'Thank you! Your survey was received', text, 'success');
+    body = notice(SI.cap, isRTL ? 'شكراً لك! تم استلام الاستبيان' : 'Thank you! Your survey was received', text, 'success');
   } else if (data.submitted) {
-    body = notice('✅', isRTL ? 'سبق أن عبّأت هذا الاستبيان' : 'You have already filled in this survey',
+    body = notice(SI.check, isRTL ? 'سبق أن عبّأت هذا الاستبيان' : 'You have already filled in this survey',
       data.certificateSent
         ? (isRTL ? 'أُرسلت شهادتك إلى بريدك الإلكتروني.' : 'Your certificate was emailed to you.')
         : (isRTL ? 'شكراً لمشاركتك رأيك.' : 'Thank you for your feedback.'), 'success');
   } else if (!data.isOpen) {
-    body = notice('🗓️', isRTL ? 'لم يُفتح الاستبيان بعد' : 'The survey is not open yet',
+    body = notice(SI.cal, isRTL ? 'لم يُفتح الاستبيان بعد' : 'The survey is not open yet',
       isRTL ? `يُتاح الاستبيان من يوم بدء الورشة (${fmtDate(data.opensOn)}).` : `The survey opens on the workshop's start day (${fmtDate(data.opensOn)}).`);
   } else {
+    const labels = isRTL ? data.ratingLabels.ar : data.ratingLabels.en;
     body = (
-      <>
+      <section className="rgx-card wsurvey-form">
         {data.preview && (
-          <div className="wsurvey-preview">
-            👁 {isRTL ? 'وضع المعاينة — هكذا يرى الطالب الاستبيان، ولا تُحفظ الإجابات.' : 'Preview mode — this is what students see; answers are not saved.'}
+          <div className="info-banner warning wsurvey-preview">
+            <Icon d={SI.eye} />
+            <span>{isRTL ? 'وضع المعاينة — هكذا يرى الطالب الاستبيان، ولا تُحفظ الإجابات.' : 'Preview mode — this is what students see; answers are not saved.'}</span>
           </div>
         )}
         <div className="wsurvey-intro">
-          <p>
-            {isRTL ? `مرحباً ${data.student.firstName || ''} 👋` : `Hi ${data.student.firstName || ''} 👋`}
-          </p>
-          <p>
+          <h2 className="step-title">{isRTL ? `مرحباً ${data.student.firstName || ''} 👋` : `Hi ${data.student.firstName || ''} 👋`}</h2>
+          <p className="step-description">
             {isRTL
               ? 'رأيك يساعدنا على تطوير ورشنا. يستغرق الاستبيان دقيقتين تقريباً، وبعد إرساله تُصدر شهادة إتمام الورشة.'
               : 'Your feedback helps us improve our workshops. It takes about two minutes, and your certificate is issued once you submit it.'}
@@ -158,7 +169,8 @@ const WorkshopSurvey = () => {
         </div>
 
         <div className="wsurvey-progress" aria-hidden="true">
-          <div className="wsurvey-progress-fill" style={{ width: `${progress}%` }} />
+          <div className="wsurvey-progress-bar"><i style={{ width: `${progress}%` }} /></div>
+          <span>{answeredRequired}/{required.length}</span>
         </div>
 
         <ol className="wsurvey-questions">
@@ -166,7 +178,7 @@ const WorkshopSurvey = () => {
             <motion.li
               key={q.id}
               id={`q-${q.id}`}
-              className={`wsurvey-q ${isMissing(q) ? 'missing' : ''}`}
+              className={`wsurvey-q${isMissing(q) ? ' missing' : ''}`}
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: Math.min(i * 0.03, 0.3) }}
@@ -178,24 +190,26 @@ const WorkshopSurvey = () => {
 
               {q.type === 'rating' && (
                 <div className="wsurvey-rating" role="radiogroup" aria-label={L(q)}>
-                  {[1, 2, 3, 4, 5].map(n => (
-                    <button
-                      key={n}
-                      type="button"
-                      role="radio"
-                      aria-checked={answers[q.id] === n}
-                      className={`wsurvey-rate ${answers[q.id] === n ? 'on' : ''}`}
-                      onClick={() => setAnswer(q.id, n)}
-                      title={(isRTL ? data.ratingLabels.ar : data.ratingLabels.en)[n - 1]}
-                    >
-                      <span className="wsurvey-face">{FACES[n - 1]}</span>
-                      <span className="wsurvey-rate-n">{n}</span>
-                    </button>
-                  ))}
-                  <div className="wsurvey-rating-caption">
+                  <div className="wsurvey-rates">
+                    {[1, 2, 3, 4, 5].map(n => (
+                      <button
+                        key={n}
+                        type="button"
+                        role="radio"
+                        aria-checked={answers[q.id] === n}
+                        className={`wsurvey-rate${answers[q.id] === n ? ' on' : ''}`}
+                        onClick={() => setAnswer(q.id, n)}
+                        title={labels[n - 1]}
+                      >
+                        <span className="wsurvey-face">{FACES[n - 1]}</span>
+                        <span className="wsurvey-rate-n">{n}</span>
+                      </button>
+                    ))}
+                  </div>
+                  <div className={`wsurvey-rating-caption${answers[q.id] ? ' picked' : ''}`}>
                     {answers[q.id]
-                      ? (isRTL ? data.ratingLabels.ar : data.ratingLabels.en)[answers[q.id] - 1]
-                      : <><span>{(isRTL ? data.ratingLabels.ar : data.ratingLabels.en)[0]}</span><span>{(isRTL ? data.ratingLabels.ar : data.ratingLabels.en)[4]}</span></>}
+                      ? labels[answers[q.id] - 1]
+                      : <><span>{labels[0]}</span><span>{labels[4]}</span></>}
                   </div>
                 </div>
               )}
@@ -208,9 +222,10 @@ const WorkshopSurvey = () => {
                       type="button"
                       role="radio"
                       aria-checked={answers[q.id] === o.v}
-                      className={`wsurvey-chip ${answers[q.id] === o.v ? 'on' : ''}`}
+                      className={`wsurvey-chip${answers[q.id] === o.v ? ' on' : ''}`}
                       onClick={() => setAnswer(q.id, answers[q.id] === o.v && !q.required ? undefined : o.v)}
                     >
+                      {answers[q.id] === o.v && <Icon d={SI.check} />}
                       {L(o)}
                     </button>
                   ))}
@@ -219,7 +234,7 @@ const WorkshopSurvey = () => {
 
               {q.type === 'text' && (
                 <textarea
-                  className="wsurvey-text"
+                  className="form-textarea wsurvey-text"
                   rows={3}
                   maxLength={1000}
                   value={answers[q.id] || ''}
@@ -233,33 +248,49 @@ const WorkshopSurvey = () => {
           ))}
         </ol>
 
-        {submitError && <div className="wsurvey-submit-error" role="alert">{submitError}</div>}
-        <button type="button" className="wsurvey-submit" onClick={submit} disabled={submitting}>
-          {submitting
-            ? (isRTL ? 'جارٍ الإرسال…' : 'Submitting…')
-            : (isRTL ? `إرسال الاستبيان (${answeredRequired}/${required.length})` : `Submit survey (${answeredRequired}/${required.length})`)}
-        </button>
-      </>
+        {submitError && <div className="info-banner warning" role="alert"><Icon d={SI.alert} /><span>{submitError}</span></div>}
+        <div className="form-navigation wsurvey-nav">
+          <button type="button" className="btn btn-primary btn-submit" onClick={submit} disabled={submitting}>
+            {submitting ? <span className="loading-spinner" /> : <Icon d={SI.send} />}
+            {submitting
+              ? (isRTL ? 'جارٍ الإرسال…' : 'Submitting…')
+              : (isRTL ? `إرسال الاستبيان (${answeredRequired}/${required.length})` : `Submit survey (${answeredRequired}/${required.length})`)}
+          </button>
+        </div>
+      </section>
     );
   }
 
+  const intro = {
+    portal: tx('استبيان الورشة', 'Workshop survey'),
+    title: isRTL ? <>رأيك يطوّر<br /><em>ورشنا القادمة</em></> : <>Your feedback<br /><em>shapes our workshops</em></>,
+    features: [
+      { ar: 'دقيقتان تقريبًا لتعبئة الاستبيان', en: 'Takes about two minutes', d: SI.clock },
+      { ar: 'تُصدر شهادة الإتمام بعد إرسال الاستبيان', en: 'Your certificate is issued once you submit', d: SI.cap },
+      { ar: 'تصل الشهادة إلى بريدك الإلكتروني', en: 'The certificate is emailed to you', d: SI.mail }
+    ]
+  };
+
   return (
-    <div className="wsurvey-page" dir={isRTL ? 'rtl' : 'ltr'}>
-      <div className="wsurvey-card">
-        {header}
-        <AnimatePresence mode="wait">
-          <motion.main
-            key={result ? 'done' : data?.submitted ? 'submitted' : loadError || (data ? 'form' : 'loading')}
-            className="wsurvey-body"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-          >
-            {body}
-          </motion.main>
-        </AnimatePresence>
-      </div>
-    </div>
+    <StudioShell
+      isRTL={isRTL}
+      theme={theme}
+      onToggleTheme={toggleTheme}
+      intro={intro}
+      subtitle={tx('استبيان الورشة', 'Workshop survey')}
+    >
+      {hero}
+      <AnimatePresence mode="wait">
+        <motion.div
+          key={result ? 'done' : data?.submitted ? 'submitted' : loadError || (data ? 'form' : 'loading')}
+          initial={{ opacity: 0, y: 14 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0 }}
+        >
+          {body}
+        </motion.div>
+      </AnimatePresence>
+    </StudioShell>
   );
 };
 

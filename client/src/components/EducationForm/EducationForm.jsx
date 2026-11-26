@@ -4,15 +4,13 @@ import { useTranslation } from 'react-i18next';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'react-toastify';
 import api from '../../config/api';
+import StudioShell, { Icon, useStudioTheme } from '../RegistrationForm/StudioShell';
 import TeacherInfo from './steps/TeacherInfo';
 import SectionSelection from './steps/SectionSelection';
 import ScheduleSelection from './steps/ScheduleSelection';
 import RoomPhoto from './steps/RoomPhoto';
 import EducationTerms from './steps/EducationTerms';
-// Shared form classes (form-card, stepper, btn, form-input) live in the
-// registration stylesheet; without this import the page rendered
-// unstyled whenever it was opened directly instead of via the home page.
-import '../RegistrationForm/RegistrationForm.css';
+import { EDU_ICONS, EDU_INTRO } from './EduParts';
 import './EducationForm.css';
 
 const defaultFormData = {
@@ -41,6 +39,7 @@ const EducationForm = () => {
   const { i18n } = useTranslation();
   const isRTL = i18n.language === 'ar';
   const navigate = useNavigate();
+  const [theme, toggleTheme] = useStudioTheme();
 
   const [activeStep, setActiveStep] = useState(0);
   const [formData, setFormData] = useState(defaultFormData);
@@ -48,16 +47,17 @@ const EducationForm = () => {
   const [result, setResult] = useState(null);
 
   const steps = [
-    { key: 'teacher', labelEn: 'Teacher Info', labelAr: 'المعلم' },
-    { key: 'section', labelEn: 'Section', labelAr: 'القسم' },
-    { key: 'schedule', labelEn: 'Schedule', labelAr: 'الجدول' },
-    { key: 'photo', labelEn: 'Room Photo', labelAr: 'صورة القاعة' },
-    { key: 'terms', labelEn: 'Terms', labelAr: 'الشروط' }
+    { key: 'teacher', label: isRTL ? 'المعلم' : 'Teacher', icon: EDU_ICONS.teacher },
+    { key: 'section', label: isRTL ? 'القسم' : 'Section', icon: EDU_ICONS.section },
+    { key: 'schedule', label: isRTL ? 'الجدول' : 'Schedule', icon: EDU_ICONS.schedule },
+    { key: 'photo', label: isRTL ? 'صور القاعة' : 'Room photos', icon: EDU_ICONS.photo },
+    { key: 'terms', label: isRTL ? 'الشروط والتوقيع' : 'Terms & signature', icon: EDU_ICONS.terms }
   ];
 
   const handleNext = () => setActiveStep((prev) => prev + 1);
   const handleBack = () => setActiveStep((prev) => prev - 1);
   const handleFormDataChange = (data) => setFormData({ ...formData, ...data });
+  const startOver = () => { setResult(null); setFormData(defaultFormData); setActiveStep(0); };
 
   const handleSubmit = async () => {
     setLoading(true);
@@ -93,148 +93,81 @@ const EducationForm = () => {
     }
   };
 
+  const shell = {
+    isRTL,
+    theme,
+    onToggleTheme: toggleTheme,
+    intro: EDU_INTRO(isRTL),
+    subtitle: isRTL ? 'التعليم · تسجيل المعلم' : 'Education · teacher registration',
+    servicesHref: '/register'
+  };
+
   if (result) {
     return (
-      <div className="education-page" dir={isRTL ? 'rtl' : 'ltr'}>
-        <div className="education-container">
-          <motion.div className="form-card" initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }}>
-            <div style={{ textAlign: 'center', padding: '40px 20px' }}>
-              <motion.div
-                initial={{ scale: 0 }}
-                animate={{ scale: 1 }}
-                transition={{ type: 'spring', delay: 0.2 }}
-              >
-                <div style={{ width: '80px', height: '80px', background: '#f5f3ff', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px' }}>
-                  <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#6d28d9" strokeWidth="2">
-                    <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
-                    <polyline points="22 4 12 14.01 9 11.01"/>
-                  </svg>
-                </div>
-              </motion.div>
-              <h2 style={{ color: '#5b21b6', marginBottom: '8px' }}>
-                {isRTL ? 'تم إرسال طلب التعليم بنجاح!' : 'Education Request Submitted Successfully!'}
-              </h2>
-              <div style={{
-                background: '#f5f3ff',
-                padding: '20px',
-                borderRadius: '12px',
-                margin: '20px 0',
-                border: '1px solid #ddd6fe'
-              }}>
-                <p style={{ fontSize: '14px', color: '#64748b', margin: '0 0 8px' }}>
-                  {isRTL ? 'رقم الطلب' : 'Education ID'}
-                </p>
-                <p style={{ fontSize: '28px', fontWeight: '700', color: '#6d28d9', margin: 0 }}>
-                  {result.educationId}
-                </p>
-              </div>
-              <p style={{ color: '#666', lineHeight: 1.8 }}>
-                {isRTL ? 'سيتم مراجعة طلبك من قبل الإدارة. سيتم التواصل معك بالنتيجة.' : 'Your request will be reviewed by the administration. You will be contacted with the result.'}
-              </p>
-              <div style={{ display: 'flex', gap: '12px', justifyContent: 'center', marginTop: '24px' }}>
-                <button
-                  className="btn btn-primary"
-                  onClick={() => { setResult(null); setFormData(defaultFormData); setActiveStep(0); }}
-                  style={{ background: 'linear-gradient(135deg, #6d28d9, #7c3aed)' }}
-                >
-                  {isRTL ? 'طلب تعليم جديد' : 'New Education Request'}
-                </button>
-                <button className="btn btn-secondary" onClick={() => navigate('/')}>
-                  {isRTL ? 'العودة للرئيسية' : 'Back to Home'}
-                </button>
-              </div>
-            </div>
-          </motion.div>
-        </div>
-      </div>
+      <StudioShell {...shell}>
+        <motion.section
+          className="rgx-card edu-done"
+          initial={{ opacity: 0, y: 18 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.45, ease: [0.2, 0.8, 0.2, 1] }}
+        >
+          <motion.span className="edu-done-ico" initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ type: 'spring', delay: 0.15 }}>
+            <Icon d={EDU_ICONS.done} />
+          </motion.span>
+          <h2>{isRTL ? 'تم إرسال طلب التعليم بنجاح!' : 'Education Request Submitted Successfully!'}</h2>
+          <div className="edu-idbox">
+            <small>{isRTL ? 'رقم الطلب (رقم التعليم)' : 'Education ID'}</small>
+            <b>{result.educationId}</b>
+          </div>
+          <p>{isRTL ? 'سيتم مراجعة طلبك من قبل الإدارة. سيتم التواصل معك بالنتيجة.' : 'Your request will be reviewed by the administration. You will be contacted with the result.'}</p>
+          <div className="edu-done-actions">
+            <button className="btn btn-primary" onClick={startOver}>
+              <Icon d={EDU_ICONS.plus} />
+              {isRTL ? 'طلب تعليم جديد' : 'New Education Request'}
+            </button>
+            <button className="btn btn-secondary" onClick={() => navigate('/register')}>
+              <Icon d={EDU_ICONS.section} />
+              {isRTL ? 'كل الخدمات' : 'All services'}
+            </button>
+          </div>
+        </motion.section>
+      </StudioShell>
     );
   }
 
   return (
-    <div className="education-page" dir={isRTL ? 'rtl' : 'ltr'}>
-      {/* Animated Background */}
-      <div className="education-bg-shapes">
-        <div className="education-shape"></div>
-        <div className="education-shape"></div>
-        <div className="education-shape"></div>
-      </div>
-
-      <div className="education-container">
-        <div style={{ width: '100%', maxWidth: '900px' }}>
-          {/* Header */}
-          <motion.div
-            className="education-header"
-            initial={{ opacity: 0, y: -20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5 }}
-          >
-            <div className="education-logo">
-              <img src="/logo.png" alt="FABLAB Logo" style={{ width: '70px', height: '70px', objectFit: 'contain' }} />
-            </div>
-            <h1 className="education-title">FABLAB Al-Ahsa</h1>
-            <p className="education-subtitle">
-              {isRTL ? 'نظام تسجيل التعليم' : 'Education Registration System'}
-            </p>
-          </motion.div>
-
-          {/* Form Card */}
-          <motion.div
-            className="form-card"
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 0.2 }}
-          >
-            {/* Home Button */}
-            <div className="home-button-container">
-              <button
-                className="home-button"
-                onClick={() => navigate('/')}
-                title={isRTL ? 'العودة للرئيسية' : 'Back to Home'}
-              >
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
-                  <polyline points="9 22 9 12 15 12 15 22"/>
-                </svg>
-                <span>{isRTL ? 'الرئيسية' : 'Home'}</span>
-              </button>
-            </div>
-
-            {/* Stepper */}
-            <div className="stepper-container">
-              <div className="stepper-wrapper">
-                {steps.map((step, index) => (
-                  <div
-                    key={step.key}
-                    className={`step-item ${index === activeStep ? 'active' : ''} ${index < activeStep ? 'completed' : ''}`}
-                  >
-                    <div className="step-circle">
-                      {index < activeStep ? '✓' : index + 1}
-                    </div>
-                    <span className="step-label">{isRTL ? step.labelAr : step.labelEn}</span>
-                    {index < steps.length - 1 && <div className="step-connector" />}
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Form Content */}
-            <div className="form-content">
-              <AnimatePresence mode="wait">
-                <motion.div
-                  key={activeStep}
-                  initial={{ opacity: 0, x: isRTL ? -30 : 30 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  exit={{ opacity: 0, x: isRTL ? 30 : -30 }}
-                  transition={{ duration: 0.3 }}
-                >
-                  {renderStepContent(activeStep)}
-                </motion.div>
-              </AnimatePresence>
-            </div>
-          </motion.div>
+    <StudioShell
+      {...shell}
+      steps={steps}
+      activeStep={activeStep}
+      onJump={(i) => setActiveStep(i)}
+      onHome={startOver}
+    >
+      <motion.section
+        className="rgx-card"
+        initial={{ opacity: 0, y: 18 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.45, ease: [0.2, 0.8, 0.2, 1] }}
+      >
+        <div className="rgx-content">
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={activeStep}
+              initial={{ opacity: 0, x: isRTL ? -24 : 24 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: isRTL ? 24 : -24 }}
+              transition={{ duration: 0.28, ease: [0.2, 0.8, 0.2, 1] }}
+            >
+              <p className="rgx-step-eyebrow">
+                <span>{String(activeStep + 1).padStart(2, '0')}</span>
+                {steps[activeStep]?.label}
+              </p>
+              {renderStepContent(activeStep)}
+            </motion.div>
+          </AnimatePresence>
         </div>
-      </div>
-    </div>
+      </motion.section>
+    </StudioShell>
   );
 };
 

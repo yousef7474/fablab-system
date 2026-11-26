@@ -101,6 +101,12 @@ body {
    its own container, never bubble up to the body. */
 [dir="rtl"] #root { overflow-x: hidden; max-width: 100vw; }
 
+/* Studio pages (.rgx): `hidden` turns body/#root into scroll boxes, which
+   stops the sticky rail and top bar. `clip` guards overflow the same way
+   without that. */
+body:has(.rgx),
+#root:has(.rgx) { overflow-x: clip; }
+
 /* Typography */
 h1, h2, h3, h4, h5, h6 {
   font-weight: 700;
